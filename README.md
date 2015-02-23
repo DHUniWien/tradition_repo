@@ -9,6 +9,9 @@ Quality Evangelist: Ramona<br/>
 Master Tracker: Severin<br/>
 Risk Analyst: Joel<br/>
 
+##Run
+mvn exec:java
+
 ##Tools
 JIRA - [jira.pse2.iam.unibe.ch](http://jira.pse2.iam.unibe.ch/)
 (uses IPSec - VPN)<br/>
