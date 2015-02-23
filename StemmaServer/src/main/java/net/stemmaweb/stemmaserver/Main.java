@@ -16,6 +16,8 @@ import java.net.URI;
 public class Main {
     // Base URI the Grizzly HTTP server will listen on
     public static final String BASE_URI = "http://localhost:8080/";
+    public static final String DB_PATH = "database"; // this is the local path to StemmaServer/database
+    public static final String PROPS_PATH = "properties/"; // this is the path to StemmaServer/properties/
 
     /**
      * Starts Grizzly HTTP server exposing JAX-RS resources defined in this application.
@@ -27,8 +29,8 @@ public class Main {
         final ResourceConfig rc = new ResourceConfig().packages("net.stemmaweb.stemmaserver");
         
         GraphDatabaseService graphDb = new GraphDatabaseFactory()
-        .newEmbeddedDatabaseBuilder( "database" )
-        .loadPropertiesFromFile( "properties/" + "neo4j.properties" )
+        .newEmbeddedDatabaseBuilder( DB_PATH )
+        .loadPropertiesFromFile( PROPS_PATH + "neo4j.properties" )
         .newGraphDatabase();
 
         // create and start a new instance of grizzly http server
