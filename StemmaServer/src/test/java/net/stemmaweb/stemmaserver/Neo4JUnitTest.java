@@ -47,6 +47,30 @@ public class Neo4JUnitTest {
 		}
 	}
 	
+	@Test
+	public void testUnicodeCapability()
+	{
+		Node n = null;
+		try ( Transaction tx = graphDb.beginTx() )
+		{
+		    n = graphDb.createNode();
+		    n.setProperty( "name", "äöüדגכαβγ" );
+		    tx.success();
+		}
+	
+		// The node should have a valid id
+		assertTrue(n.getId()>-1L);
+	
+		// Retrieve a node by using the id of the created node. The id's and
+		// property should match.
+		try ( Transaction tx = graphDb.beginTx() )
+		{
+		    Node foundNode = graphDb.getNodeById( n.getId() );
+		    assertTrue(foundNode.getId()==n.getId());
+		    assertTrue(((String) foundNode.getProperty("name")).equals("äöüדגכαβγ"));
+		}
+	}
+	
 	@After
 	public void destroyTestDatabase()
 	{
