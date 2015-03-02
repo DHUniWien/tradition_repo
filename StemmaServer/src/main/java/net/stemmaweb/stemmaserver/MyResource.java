@@ -58,8 +58,7 @@ public class MyResource {
     		rel.setProperty("val", ",");
     		
     		tx.success();
-    	}
-    	
+    	}    	
     	
     	return "Node created";
     }
