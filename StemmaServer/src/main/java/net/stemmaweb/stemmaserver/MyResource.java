@@ -36,7 +36,7 @@ public class MyResource {
     @Produces(MediaType.TEXT_PLAIN)
     @Path("/test")
     public String test() {
-        return "Test erfolgreich!";
+        return "{\"Status\": \"OK\"}";
     }
     
     @GET

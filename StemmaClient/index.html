@@ -11,6 +11,21 @@
 		$(document).ready(function(){
 			// do jQuery
 		});
+		
+		function xmlToString(xmlData) { 
+
+		    var xmlString;
+		    //IE
+		    if (window.ActiveXObject){
+		        xmlString = xmlData.xml;
+		    }
+		    // code for Mozilla, Firefox, Opera, etc.
+		    else{
+		        xmlString = (new XMLSerializer()).serializeToString(xmlData);
+		    }
+		    return xmlString;
+		}   
+		
 		function post(url, form){
 			url = baseurl + url;
 			$(".send" + form).text("POST " + $( "#" + form ).serialize());
@@ -87,7 +102,14 @@
 				  url: url,
 				  data: $("#customtext").val(),
 				  success: function(data){
-  					var ret = JSON.stringify(data);
+					  var ret = "";
+					if(typeof(data) === "string") {
+						ret = data;
+					    } else {
+							
+						//ret = JSON.stringify(data);
+						ret = xmlToString(data);
+					}
   					$(".returncustom").text(ret);
   					$(".returncustom").css("color","red");
   					setTimeout(function(){
