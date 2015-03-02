@@ -34,6 +34,13 @@ public class MyResource {
     
     @GET
     @Produces(MediaType.TEXT_PLAIN)
+    @Path("/test")
+    public String test() {
+        return "Test erfolgreich!";
+    }
+    
+    @GET
+    @Produces(MediaType.TEXT_PLAIN)
     @Path("/{nodename}")
     public String create(@PathParam("nodename") String nodename) {
        
