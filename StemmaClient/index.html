@@ -8,8 +8,14 @@
 		$(document).ready(function(){
 			// do jQuery
 		});
-		function send(url, form){
+		function post(url, form){
+			$(".send" + form).text("POST " + $( "#" + form ).serialize());
+			$(".send" + form).css("color","red");
+			setTimeout(function(){
+				$(".send" + form).css("color", "black");
+			}, 800);
 			$.post( url, $( "#" + form ).serialize(), function(data){
+				
 				
 				var ret = JSON.stringify(data);
 				$(".return" + form).text(ret);
@@ -66,10 +72,13 @@
 				 </div>
 				 <div class="row send">
  					<div class="col-sm-2">
- 					  <input type="button" class="btn btn-default" value="Senden" onclick="send('http://localhost:8080/rest/newtradition','newtrad')" />
+ 					  <input type="button" class="btn btn-default" value="Senden" onclick="post('http://localhost:8080/rest/newtradition','newtrad')" />
  					</div>
 					<div class="col-sm-8 output">
-   					  <label class="col-sm-2">Return</label>
+					  <label>Send</label>
+					  <samp><span class="sendnewtrad"></span></samp>
+					  <br/>
+   					  <label>Return</label>
    					  <samp><span class="returnnewtrad"></span></samp>
 					</div>
 				 </div>
