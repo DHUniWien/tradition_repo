@@ -1,34 +1,85 @@
 <html>
 <head>
 	<script src="jquery-2.1.3.min.js"></script>
+	<link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<link href="style.css" rel="stylesheet">
+	<script src="bootstrap/js/bootstrap.min.js"></script>
 	<script type="text/javascript">
 		$(document).ready(function(){
 			// do jQuery
-			
-				
-			
 		});
 		function send(url, form){
 			$.post( url, $( "#" + form ).serialize(), function(data){
 				
 				var ret = JSON.stringify(data);
-				$("#" + form).children(".return").text(ret);
-				$("#" + form).children(".return").css("color","red");
+				$(".return" + form).text(ret);
+				$(".return" + form).css("color","red");
 				setTimeout(function(){
-				  $("#" + form).children(".return").css("color", "black");
+					$(".return" + form).css("color", "black");
 				}, 1000);
-			} );
+			} ).fail(function() {
+				$(".return" + form).text("NO CONNECTION TO DATABASE");
+				$(".return" + form).css("color","red");
+				
+  			});
 		}
 		
 		
 	</script>
 </head>
 <body>
-	<h3>Testing Page for REST API</h3>
-	<form method="post" id="newtrad">
-		Tradition Name: <input type="text" name="traditionname" />
-		<input type="button" value="Senden" onclick="send('http://localhost:8080/rest/newtradition','newtrad')">
-		Return:
-		<div style="float:right" class="return"></div>
-	</form>
+	    <nav class="navbar navbar-inverse navbar-fixed-top">
+	      <div class="container">
+	        <div class="navbar-header">
+	          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+	            <span class="sr-only">Toggle navigation</span>
+	            <span class="icon-bar"></span>
+	            <span class="icon-bar"></span>
+	            <span class="icon-bar"></span>
+	          </button>
+	          <a class="navbar-brand" href="#">Stemma Test Client</a>
+	        </div>
+	        <div id="navbar" class="collapse navbar-collapse">
+	          <ul class="nav navbar-nav">
+	            <li class="active"><a href="#">Traditions</a></li>
+	            <li><a href="#about">About</a></li>
+	            <li><a href="#contact">Contact</a></li>
+	          </ul>
+	        </div><!--/.nav-collapse -->
+	      </div>
+	    </nav>
+
+	    <div class="container">
+
+	      <div class="starter-template">
+	        <h1>Tradition Tests</h1>
+			<hr>
+			<h3>Create a tradition</h3>
+			<form method="post" id="newtrad">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition name</label>
+					<div class="col-sm-8">
+				      <input class="form-control" type="text" name="traditionname" placeholder="e.g. Parcival">	
+				    </div>
+					
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden" onclick="send('http://localhost:8080/rest/newtradition','newtrad')" />
+ 					</div>
+					<div class="col-sm-8 output">
+   					  <label class="col-sm-2">Return</label>
+   					  <samp><span class="returnnewtrad"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+	      </div>
+
+	    </div><!-- /.container -->
+  
+
+	</body>
 </body>

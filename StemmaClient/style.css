@@ -1,0 +1,23 @@
+body {
+  padding-top: 50px;
+}
+
+.container {
+	width: 60%;
+}
+.starter-template {
+  padding: 40px 15px;
+}
+
+.form-group {
+	vertical-align: center;
+	padding-top: 1em;
+}
+
+.output {
+	padding-top: 0.5em;
+}
+
+.send {
+	padding-top: 1em;
+}
