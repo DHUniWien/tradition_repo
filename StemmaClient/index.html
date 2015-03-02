@@ -1,0 +1,34 @@
+<html>
+<head>
+	<script src="jquery-2.1.3.min.js"></script>
+	<script type="text/javascript">
+		$(document).ready(function(){
+			// do jQuery
+			
+				
+			
+		});
+		function send(url, form){
+			$.post( url, $( "#" + form ).serialize(), function(data){
+				
+				var ret = JSON.stringify(data);
+				$("#" + form).children(".return").text(ret);
+				$("#" + form).children(".return").css("color","red");
+				setTimeout(function(){
+				  $("#" + form).children(".return").css("color", "black");
+				}, 1000);
+			} );
+		}
+		
+		
+	</script>
+</head>
+<body>
+	<h3>Testing Page for REST API</h3>
+	<form method="post" id="newtrad">
+		Tradition Name: <input type="text" name="traditionname" />
+		<input type="button" value="Senden" onclick="send('http://localhost:8080/rest/newtradition','newtrad')">
+		Return:
+		<div style="float:right" class="return"></div>
+	</form>
+</body>

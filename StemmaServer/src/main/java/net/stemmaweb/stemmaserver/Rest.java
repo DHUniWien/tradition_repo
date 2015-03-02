@@ -1,22 +1,25 @@
 package net.stemmaweb.stemmaserver;
 
-import javax.ws.rs.GET;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.FormParam;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
- * Root resource (exposed at "myresource" path)
+ * Root resource (exposed at "rest" path)
  */
-@Path("myresource")
-public class MyResource {
+@Path("rest")
+public class Rest {
 	
 	public static final String DB_PATH = "database"; // this is the local path to StemmaServer/database
 
@@ -26,34 +29,33 @@ public class MyResource {
      *
      * @return String that will be returned as a text/plain response.
      */
-    @GET
-    @Produces(MediaType.TEXT_PLAIN)
-    public String getIt() {
-        return "Got it!";
-    }
     
-    @GET
-    @Produces(MediaType.TEXT_PLAIN)
-    @Path("/{nodename}")
-    public String create(@PathParam("nodename") String nodename) {
+    @POST
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes("application/x-www-form-urlencoded")
+    @Path("/newtradition")
+    public String create(MultivaluedMap<String, String> formParams) {
        
+    	
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-    	
+
     	try (Transaction tx = db.beginTx()) {
-    		Node word1 = db.createNode(Nodes.READING);	
-    		Node word2 = db.createNode(Nodes.READING);
-    		word1.setProperty("val", "Hallo");
-    		word2.setProperty("val", "Welt");
-    		
-    		Relationship rel = word1.createRelationshipTo(word2,
-    				Relations.NORMAL);
-    		rel.setProperty("val", ",");
+    		Node tradition = db.createNode(Nodes.TRADITION);	
+    		tradition.setProperty("name", formParams.get("traditionname").get(0));
     		
     		tx.success();
     	}
+    	catch(Exception e)
+    	{
+    		System.out.println("Error while doing transaction!");
+    		return "{\"Status\": \"ERROR\"}";
+    	}
+    	finally
+    	{
+    		db.shutdown();
+    	}
     	
-    	
-    	return "Node created";
+    	return "{\"Status\": \"OK\"}";
     }
 }

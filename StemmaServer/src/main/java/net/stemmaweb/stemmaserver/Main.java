@@ -28,10 +28,17 @@ public class Main {
         // in net.stemmaweb.stemmaserver package
         final ResourceConfig rc = new ResourceConfig().packages("net.stemmaweb.stemmaserver");
         
-        GraphDatabaseService graphDb = new GraphDatabaseFactory()
+        /*
+         * Moved the initialization of the graph db to the file myresource.java
+         * GraphDatabaseService graphDb = new GraphDatabaseFactory()
         .newEmbeddedDatabaseBuilder( DB_PATH )
         .loadPropertiesFromFile( PROPS_PATH + "neo4j.properties" )
         .newGraphDatabase();
+        */
+        
+        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
+    	db.shutdown();
 
         // create and start a new instance of grizzly http server
         // exposing the Jersey application at BASE_URI

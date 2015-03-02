@@ -13,7 +13,7 @@ Risk Analyst: Joel<br/>
 mvn exec:java
 
 ##Tools
-JIRA - [jira.pse2.iam.unibe.ch](http://jira.pse2.iam.unibe.ch/)
+JIRA - [pse2.iam.unibe.ch](http://pse2.iam.unibe.ch/)
 (uses IPSec - VPN)<br/>
 SourceTree - [http://sourcetreeapp.com](http://sourcetreeapp.com)<br/>
 GitHub - [http://github.com](http://github.com)<br/>
