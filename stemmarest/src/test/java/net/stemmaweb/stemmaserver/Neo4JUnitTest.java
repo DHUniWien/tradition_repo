@@ -52,7 +52,7 @@ public class Neo4JUnitTest {
 		try ( Transaction tx = graphDb.beginTx() )
 		{
 		    n = graphDb.createNode();
-		    n.setProperty( "name", "äöüדגכαβγ" );
+		    n.setProperty( "name", "Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³" );
 		    tx.success();
 		}
 	
@@ -65,7 +65,31 @@ public class Neo4JUnitTest {
 		{
 		    Node foundNode = graphDb.getNodeById( n.getId() );
 		    assertTrue(foundNode.getId()==n.getId());
-		    assertTrue(((String) foundNode.getProperty("name")).equals("äöüדגכαβγ"));
+		    assertTrue(((String) foundNode.getProperty("name")).equals("Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³"));
+		}
+	}
+	
+	@Test
+	public void testHebrewCapability()
+	{
+		Node n = null;
+		try ( Transaction tx = graphDb.beginTx() )
+		{
+		    n = graphDb.createNode();
+		    n.setProperty( "name", "שלום זוהי בדיקה" );
+		    tx.success();
+		}
+	
+		// The node should have a valid id
+		assertTrue(n.getId()>-1L);
+	
+		// Retrieve a node by using the id of the created node. The id's and
+		// property should match.
+		try ( Transaction tx = graphDb.beginTx() )
+		{
+		    Node foundNode = graphDb.getNodeById( n.getId() );
+		    assertTrue(foundNode.getId()==n.getId());
+		    assertTrue(((String) foundNode.getProperty("name")).equals("שלום זוהי בדיקה"));
 		}
 	}
 	
