@@ -4,3 +4,4 @@ stemmarest/generated/*
 stemmarest/target/*
 stemmarest/.classpath
 stemmarest/.project
+stemmarest/.*
