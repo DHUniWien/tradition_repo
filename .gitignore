@@ -2,4 +2,5 @@ StemmaServer/database/*
 stemmarest/database/*
 stemmarest/generated/*
 stemmarest/target/*
-stemmarest/.*
+stemmarest/.classpath
+stemmarest/.project

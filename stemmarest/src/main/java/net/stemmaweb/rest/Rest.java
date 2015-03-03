@@ -18,7 +18,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 /**
  * Root resource (exposed at "rest" path)
  */
-@Path("rest")
+@Path("/")
 public class Rest {
 	
 	public static final String DB_PATH = "database"; // this is the local path to StemmaServer/database
