@@ -1,7 +1,10 @@
 package net.stemmaweb.rest;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
@@ -10,6 +13,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 
@@ -23,6 +27,10 @@ import javax.ws.rs.core.Response;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
+import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.impls.tg.TinkerGraphFactory;
+import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
+import com.tinkerpop.blueprints.util.io.graphml.GraphMLWriter;
 
 /**
  * Root resource (exposed at "rest" path)
@@ -50,27 +58,33 @@ public class Rest {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/newtradition")
-    public String create(@FormDataParam("name") String name,
+    public String create(
+    					@FormDataParam("name") String name,
+    					@FormDataParam("language") String language,
+    					@FormDataParam("public") String is_public,
     					@FormDataParam("file") InputStream uploadedInputStream,
     					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
-       
-    	if(uploadedInputStream!=null)
-				System.out.println(uploadedInputStream.available());
-
-    	if(fileDetail!=null)
-    	{
-    		System.out.println("Test ok " + name + "" + fileDetail.getFileName());
-    	}
-    	else
-    	{
-    		System.out.println("error filedetail is empty");
-    	}
-    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+      
+    	
+    	Boolean is_public_bool = is_public.equals("on")? true : false;
+    	String uploadedFileLocation = "upload/" + fileDetail.getFileName();
+    	 
+		// save it
+		writeToFile(uploadedInputStream, uploadedFileLocation);
+    	
+    	Graph graph = TinkerGraphFactory.createTinkerGraph();
+    	GraphMLReader.inputGraph(graph, uploadedFileLocation);
+    	
+    	
+    	
+  /*  	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-
+    	
     	try (Transaction tx = db.beginTx()) {
     		Node tradition = db.createNode(Nodes.TRADITION);	
     		tradition.setProperty("name", name);
+    		tradition.setProperty("language", language);
+    		tradition.setProperty("public", is_public_bool);
     		
     		tx.success();
     	}
@@ -78,13 +92,37 @@ public class Rest {
     	{
     		System.out.println("Error while doing transaction!");
     		return "{\"Status\": \"ERROR\"}";
+    		//return Response.status(500).entity("Internal Server Error").build();
     	}
     	finally
     	{
     		db.shutdown();
-    	}
+    	}*/
     	
     	return "{\"Status\": \"OK\"}";
-    	//return Response.status(200).entity("Return message").build();
+    	//return Response.status(200).entity(output).build();
     }
+    
+ // save uploaded file to new location
+ 	private void writeToFile(InputStream uploadedInputStream,
+ 		String uploadedFileLocation) {
+  
+ 		try {
+ 			OutputStream out = new FileOutputStream(new File(
+ 					uploadedFileLocation));
+ 			int read = 0;
+ 			byte[] bytes = new byte[1024];
+  
+ 			out = new FileOutputStream(new File(uploadedFileLocation));
+ 			while ((read = uploadedInputStream.read(bytes)) != -1) {
+ 				out.write(bytes, 0, read);
+ 			}
+ 			out.flush();
+ 			out.close();
+ 		} catch (IOException e) {
+  
+ 			e.printStackTrace();
+ 		}
+  
+ 	}
 }
