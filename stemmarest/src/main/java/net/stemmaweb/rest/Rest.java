@@ -17,6 +17,8 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 
+import net.stemmaweb.services.GraphMLToNeo4JParser;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -24,14 +26,10 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.xml.stream.XMLStreamException;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
-import com.tinkerpop.blueprints.Graph;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.tg.TinkerGraphFactory;
-import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
-import com.tinkerpop.blueprints.util.io.graphml.GraphMLWriter;
 
 /**
  * Root resource (exposed at "rest" path)
@@ -53,6 +51,7 @@ public class Rest {
      * to the client as "text/plain" media type.
      *
      * @return String that will be returned as a text/plain response.
+     * @throws XMLStreamException 
      */
     
     @POST
@@ -64,7 +63,7 @@ public class Rest {
     					@FormDataParam("language") String language,
     					@FormDataParam("public") String is_public,
     					@FormDataParam("file") InputStream uploadedInputStream,
-    					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
+    					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
       
     	
     	Boolean is_public_bool = is_public.equals("on")? true : false;
@@ -73,18 +72,17 @@ public class Rest {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
-    	Graph graph = TinkerGraphFactory.createTinkerGraph();
-    	GraphMLReader.inputGraph(graph, uploadedFileLocation);
+		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH);
     	
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
     	int i = 0;
-    	try{
+    	/*try{
     		for(Vertex node : graph.getVertices())
     		{
     			try (Transaction tx = db.beginTx()) {
     				Node nd = db.createNode(Nodes.WORD);	
-    				System.out.println(node.getId());
+    				System.out.println(node.getId() + " " + node.getProperty("dn15"));
     				if(node.getProperty("dn15")!=null)
     					nd.setProperty("text", node.getProperty("dn15")); // text
     				if(node.getProperty("dn14")!=null)
@@ -101,8 +99,8 @@ public class Rest {
 
     	    	
     		}
-    	}
-    	catch(Exception e)
+    	}*/
+    	/*catch(Exception e)
     	{
     		System.out.println("Error while doing transaction! " + i);
     		return "{\"Status\": \"ERROR\"}";
@@ -110,7 +108,7 @@ public class Rest {
     	}
     	finally{
     		db.shutdown();
-    	}
+    	}*/
 	    	
 	    
     	
