@@ -2,3 +2,4 @@ StemmaServer/database/*
 stemmarest/database/*
 stemmarest/generated/*
 stemmarest/target/*
+stemmarest/.*
