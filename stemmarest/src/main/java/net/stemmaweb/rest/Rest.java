@@ -28,6 +28,7 @@ import javax.ws.rs.core.Response;
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import com.tinkerpop.blueprints.Graph;
+import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.tg.TinkerGraphFactory;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
 import com.tinkerpop.blueprints.util.io.graphml.GraphMLWriter;
@@ -75,29 +76,44 @@ public class Rest {
     	Graph graph = TinkerGraphFactory.createTinkerGraph();
     	GraphMLReader.inputGraph(graph, uploadedFileLocation);
     	
-    	
-    	
-  /*  	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-    	
-    	try (Transaction tx = db.beginTx()) {
-    		Node tradition = db.createNode(Nodes.TRADITION);	
-    		tradition.setProperty("name", name);
-    		tradition.setProperty("language", language);
-    		tradition.setProperty("public", is_public_bool);
-    		
-    		tx.success();
+    	int i = 0;
+    	try{
+    		for(Vertex node : graph.getVertices())
+    		{
+    			try (Transaction tx = db.beginTx()) {
+    				Node nd = db.createNode(Nodes.WORD);	
+    				System.out.println(node.getId());
+    				if(node.getProperty("dn15")!=null)
+    					nd.setProperty("text", node.getProperty("dn15")); // text
+    				if(node.getProperty("dn14")!=null)
+    					nd.setProperty("rank", node.getProperty("dn14")); // rank
+    				if(node.getProperty("dn1")!=null)
+    					nd.setProperty("id", node.getProperty("dn1")); // id
+    				//
+    				//nd.setProperty("rank", node.getProperty("dn14")); // rank
+    			//nd.setProperty("rank", node.getProperty("dn14")); // rank
+    				//nd.setProperty("id", node.getProperty("dn1")); // id
+    				i++;
+    				tx.success();
+    			}
+
+    	    	
+    		}
     	}
     	catch(Exception e)
     	{
-    		System.out.println("Error while doing transaction!");
+    		System.out.println("Error while doing transaction! " + i);
     		return "{\"Status\": \"ERROR\"}";
     		//return Response.status(500).entity("Internal Server Error").build();
     	}
-    	finally
-    	{
+    	finally{
     		db.shutdown();
-    	}*/
+    	}
+	    	
+	    
+    	
     	
     	return "{\"Status\": \"OK\"}";
     	//return Response.status(200).entity(output).build();
