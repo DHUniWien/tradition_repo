@@ -49,6 +49,59 @@
   			});
 		}
 		
+		function postWithfile(url, form)
+		{
+			url = baseurl + url;
+			var data = new FormData();
+			
+			$("form#"+ form +" :input").each(function(){
+			 var input = $(this);
+			 if(input.attr('type')!="file")
+			 {
+				 data.append(input.name,input.val());
+			 }
+			 else
+			 {
+	 			 data.append('file', input[0].files);
+				
+			 }
+			});
+			
+			for (var key in data) {
+			    console.log(key, data[key]);
+			    //fd.append(key, data[key]);
+			}
+			
+			$(".send" + form).text("POST " + $( "#" + form ).serialize());
+			$(".send" + form).css("color","red");
+			setTimeout(function(){
+				$(".send" + form).css("color", "black");
+			}, 800);
+			
+			$.ajax({
+			    url: url,
+			    data: data,
+			    cache: false,
+			    contentType: false,
+			    processData: false,
+			    type: 'POST',
+			    success: function(data){
+					var ret = JSON.stringify(data);
+					$(".return" + form).text(ret);
+					$(".return" + form).css("color","red");
+					setTimeout(function(){
+						$(".return" + form).css("color", "black");
+					}, 1000);
+			    },
+				error: function() {
+					$(".return" + form).text("NO CONNECTION TO DATABASE");
+					$(".return" + form).css("color","red");
+				}
+			});
+			
+			
+		}
+		
 		function custom(){
 			
 			if($("input[name='optradio']:checked").val()=="POST")
@@ -203,18 +256,23 @@
 			</form>
 			<hr>
 			<h3><a name="traditions">Create a tradition</a></h3>
-			<form method="post" id="newtrad">
+			<form method="post" id="newtrad" enctype="multipart/form-data" action="http://localhost:8080/newtradition">
 				<div class="form-group">
 				  <div class="row">
-					<label class="col-sm-2 control-label">Tradition name</label>
+					<label class="col-sm-2 control-label">Name</label>
 					<div class="col-sm-8">
-				      <input class="form-control" type="text" name="traditionname" placeholder="e.g. Parcival">	
+				     <input class="form-control" type="text" name="name" placeholder="e.g. Parcival">
 				    </div>
-					
 				 </div>
+			  	<div class="row">
+					<label class="col-sm-2 control-label">File</label>
+					<div class="col-sm-8">
+				 	   <input type="file" name="file" id="file" size="50" maxlength="100000" accept="text/*">
+					</div>
+				</div>
 				 <div class="row send">
  					<div class="col-sm-2">
- 					  <input type="button" class="btn btn-default" value="Senden" onclick="post('rest/newtradition','newtrad')" />
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="postWithfile('newtradition','newtrad')"/>
  					</div>
 					<div class="col-sm-8 output">
 					  <label>Send</label>
