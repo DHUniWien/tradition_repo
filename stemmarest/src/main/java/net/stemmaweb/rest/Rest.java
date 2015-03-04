@@ -73,11 +73,15 @@ public class Rest {
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
 		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH);
+		
+		deleteFile(uploadedFileLocation);
     	
+		/*
+		 * UNCOMMENT THIS BLOCK IF YOU WANT TO INSERT ADDITIONAL INFORMATION INTO THE DB
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-    	int i = 0;
-    	/*try{
+    
+    	try{
     		for(Vertex node : graph.getVertices())
     		{
     			try (Transaction tx = db.beginTx()) {
@@ -99,8 +103,8 @@ public class Rest {
 
     	    	
     		}
-    	}*/
-    	/*catch(Exception e)
+    	}
+    	catch(Exception e)
     	{
     		System.out.println("Error while doing transaction! " + i);
     		return "{\"Status\": \"ERROR\"}";
@@ -110,18 +114,16 @@ public class Rest {
     		db.shutdown();
     	}*/
 	    	
-	    
-    	
-    	
     	return "{\"Status\": \"OK\"}";
     	//return Response.status(200).entity(output).build();
     }
     
- // save uploaded file to new location
+    // save uploaded file to temp location
  	private void writeToFile(InputStream uploadedInputStream,
  		String uploadedFileLocation) {
   
  		try {
+ 			
  			OutputStream out = new FileOutputStream(new File(
  					uploadedFileLocation));
  			int read = 0;
@@ -138,5 +140,12 @@ public class Rest {
  			e.printStackTrace();
  		}
   
+ 	}
+ 	
+ 	// delete file from location
+ 	private void deleteFile(String filename)
+ 	{
+ 		File file = new File(filename);
+ 		file.delete();
  	}
 }
