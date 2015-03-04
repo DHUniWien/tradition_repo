@@ -4,12 +4,14 @@
 	<link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
 	<link href="style.css" rel="stylesheet">
 	<script src="bootstrap/js/bootstrap.min.js"></script>
+	<script src="jquery.runner-min.js"></script>
 	<script type="text/javascript">
 	
 	var baseurl = "http://localhost:8080/";
 	
 		$(document).ready(function(){
 			// do jQuery
+			$('#runner').runner();
 		});
 		
 		function xmlToString(xmlData) { 
@@ -33,9 +35,11 @@
 			setTimeout(function(){
 				$(".send" + form).css("color", "black");
 			}, 800);
+			$('#runner').runner('reset');
+			$('#runner').runner('start');
 			$.post( url, $( "#" + form ).serialize(), function(data){
 				
-				
+				$('#runner').runner('stop');
 				var ret = JSON.stringify(data);
 				$(".return" + form).text(ret);
 				$(".return" + form).css("color","red");
@@ -43,10 +47,12 @@
 					$(".return" + form).css("color", "black");
 				}, 1000);
 			} ).fail(function() {
+				$('#runner').runner('stop');
 				$(".return" + form).text("NO CONNECTION TO DATABASE");
 				$(".return" + form).css("color","red");
 				
   			});
+			$('#runner').runner('stop');
 		}
 		
 		function postWithfile(url, form)
@@ -71,7 +77,8 @@
 			setTimeout(function(){
 				$(".send" + form).css("color", "black");
 			}, 800);
-			
+			$('#runner').runner('reset');
+			$('#runner').runner('start');
 			$.ajax({
 			    url: url,
 			    data: data,
@@ -80,6 +87,7 @@
 			    processData: false,
 			    type: 'POST',
 			    success: function(data){
+					$('#runner').runner('stop');
 					var ret = JSON.stringify(data);
 					$(".return" + form).text(ret);
 					$(".return" + form).css("color","red");
@@ -88,8 +96,10 @@
 					}, 1000);
 			    },
 				error: function() {
+					$('#runner').runner('stop');
 					$(".return" + form).text("NO CONNECTION TO DATABASE");
 					$(".return" + form).css("color","red");
+					
 				}
 			});
 			
@@ -106,11 +116,14 @@
 				setTimeout(function(){
 					$(".sendcustom").css("color", "black");
 				}, 800);
+				$('#runner').runner('reset');
+				$('#runner').runner('start');
 				$.ajax({
 				  type: "POST",
 				  url: url,
 				  data: $("#customtext").val(),
 				  success: function(data){
+					  $('#runner').runner('stop');
   					var ret = JSON.stringify(data);
   					$(".returncustom").text(ret);
   					$(".returncustom").css("color","red");
@@ -119,6 +132,7 @@
   					}, 1000);
 				  },
 				  error: function(XMLHttpRequest, textStatus, errorThrown) {
+					  $('#runner').runner('stop');
 					  if(errorThrown == "Not Found" || errorThrown == "Method Not Allowed")
 					  	$(".returncustom").text("NOT SUPPORTED CALL");
 					  else
@@ -144,11 +158,14 @@
 				setTimeout(function(){
 					$(".sendcustom").css("color", "black");
 				}, 800);
+				$('#runner').runner('reset');
+				$('#runner').runner('start');
 				$.ajax({
 				  type: "GET",
 				  url: url,
 				  data: $("#customtext").val(),
 				  success: function(data){
+					  $('#runner').runner('stop');
 					  var ret = "";
 					if(typeof(data) === "string") {
 						ret = data;
@@ -164,6 +181,7 @@
   					}, 1000);
 				  },
 				  error: function(XMLHttpRequest, textStatus, errorThrown) {
+					  $('#runner').runner('stop');
 					  if(errorThrown == "Not Found" || errorThrown == "Method Not Allowed")
 					  	$(".returncustom").text("NOT SUPPORTED CALL");
 					  else
@@ -293,6 +311,12 @@
 			 </div>
 			</form>
 			
+		  	<div class="row">
+				<label class="col-sm-2 control-label">Time taken</label>
+				<div class="col-sm-8">
+			 	   <span id="runner"></span>s
+				</div>
+			</div>
 	      </div>
 
 	    </div><!-- /.container -->

@@ -17,6 +17,8 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 
+import net.stemmaweb.services.GraphMLToNeo4JParser;
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -24,14 +26,10 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.xml.stream.XMLStreamException;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
-import com.tinkerpop.blueprints.Graph;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.tg.TinkerGraphFactory;
-import com.tinkerpop.blueprints.util.io.graphml.GraphMLReader;
-import com.tinkerpop.blueprints.util.io.graphml.GraphMLWriter;
 
 /**
  * Root resource (exposed at "rest" path)
@@ -53,6 +51,7 @@ public class Rest {
      * to the client as "text/plain" media type.
      *
      * @return String that will be returned as a text/plain response.
+     * @throws XMLStreamException 
      */
     
     @POST
@@ -64,7 +63,7 @@ public class Rest {
     					@FormDataParam("language") String language,
     					@FormDataParam("public") String is_public,
     					@FormDataParam("file") InputStream uploadedInputStream,
-    					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
+    					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
       
     	
     	Boolean is_public_bool = is_public.equals("on")? true : false;
@@ -73,18 +72,21 @@ public class Rest {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
-    	Graph graph = TinkerGraphFactory.createTinkerGraph();
-    	GraphMLReader.inputGraph(graph, uploadedFileLocation);
+		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH);
+		
+		deleteFile(uploadedFileLocation);
     	
+		/*
+		 * UNCOMMENT THIS BLOCK IF YOU WANT TO INSERT ADDITIONAL INFORMATION INTO THE DB
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-    	int i = 0;
+    
     	try{
     		for(Vertex node : graph.getVertices())
     		{
     			try (Transaction tx = db.beginTx()) {
     				Node nd = db.createNode(Nodes.WORD);	
-    				System.out.println(node.getId());
+    				System.out.println(node.getId() + " " + node.getProperty("dn15"));
     				if(node.getProperty("dn15")!=null)
     					nd.setProperty("text", node.getProperty("dn15")); // text
     				if(node.getProperty("dn14")!=null)
@@ -110,20 +112,18 @@ public class Rest {
     	}
     	finally{
     		db.shutdown();
-    	}
+    	}*/
 	    	
-	    
-    	
-    	
     	return "{\"Status\": \"OK\"}";
     	//return Response.status(200).entity(output).build();
     }
     
- // save uploaded file to new location
+    // save uploaded file to temp location
  	private void writeToFile(InputStream uploadedInputStream,
  		String uploadedFileLocation) {
   
  		try {
+ 			
  			OutputStream out = new FileOutputStream(new File(
  					uploadedFileLocation));
  			int read = 0;
@@ -140,5 +140,12 @@ public class Rest {
  			e.printStackTrace();
  		}
   
+ 	}
+ 	
+ 	// delete file from location
+ 	private void deleteFile(String filename)
+ 	{
+ 		File file = new File(filename);
+ 		file.delete();
  	}
 }
