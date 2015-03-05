@@ -5,3 +5,4 @@ stemmarest/target/*
 stemmarest/.classpath
 stemmarest/.project
 stemmarest/.*
+stemmarest/upload/*

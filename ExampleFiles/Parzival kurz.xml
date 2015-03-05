@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <graph edgedefault="directed" id="Parzival_249-255" parse.edgeids="canonical" parse.edges="25942" parse.nodeids="canonical" parse.nodes="2326" parse.order="nodesfirst">
+    <data key="dg0">Default</data>
+    <data key="dg1">Parzival 249-255</data>
+    <data key="dg2">1</data>
+    <data key="dg3"/>
+    <data key="dg6">3.2</data>
+    <node id="n0">
+      <data key="dn15">#END#</data>
+      <data key="dn14">1540</data>
+      <data key="dn1">__END__</data>
+      <data key="dn3">1</data>
+    </node>
+    <node id="n1">
+      <data key="dn15">#START#</data>
+      <data key="dn14">0</data>
+      <data key="dn8">1</data>
+      <data key="dn1">__START__</data>
+    </node>
+    <node id="n2">
+      <data key="dn15">sich </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">1</data>
+      <data key="dn1">n1</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n3">
+      <data key="dn15">sie </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">5</data>
+      <data key="dn1">n10</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n4">
+      <data key="dn15">gevriesch </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">64</data>
+      <data key="dn1">n100</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n5">
+      <data key="dn15">iamerbaere </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">650</data>
+      <data key="dn1">n1000</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n6">
+      <data key="dn15">laere </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">651</data>
+      <data key="dn1">n1001</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n7">
+      <data key="dn15">/ </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">652</data>
+      <data key="dn1">n1002</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n8">
+      <data key="dn15">la </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">653</data>
+      <data key="dn1">n1003</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n9">
+      <data key="dn15">sag </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">653</data>
+      <data key="dn1">n1004</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n10">
+      <data key="dn15">hoeren </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">654</data>
+      <data key="dn1">n1005</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n11">
+      <data key="dn15">an </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">654</data>
+      <data key="dn1">n1006</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n12">
+      <data key="dn15">beidiu </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">655</data>
+      <data key="dn1">n1007</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n13">
+      <data key="dn15">liebiu </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">655</data>
+      <data key="dn1">n1008</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n14">
+      <data key="dn15">maere </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">656</data>
+      <data key="dn1">n1009</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n15">
+      <data key="dn15">vriesch </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">64</data>
+      <data key="dn1">n101</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n16">
+      <data key="dn15">/ </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">657</data>
+      <data key="dn1">n1010</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n17">
+      <data key="dn15">ob </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">658</data>
+      <data key="dn1">n1011</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n18">
+      <data key="dn15">uf </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">658</data>
+      <data key="dn1">n1012</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n19">
+      <data key="dn15">benedic </data>
+      <data key="dn11">Default</data>
+      <data key="dn14">659</data>
+      <data key="dn1">n1013</data>
+      <data key="dn2">0</data>
+    </node>
+  </graph>
+</graphml>
