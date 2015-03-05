@@ -154,7 +154,6 @@ public class GraphMLToNeo4JParser
 	    {
 	    	db.shutdown();
 	    }
-
 	}
 	
 }
