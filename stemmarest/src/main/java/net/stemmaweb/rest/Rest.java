@@ -7,25 +7,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MultivaluedMap;
 
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLStreamException;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
@@ -60,13 +49,13 @@ public class Rest {
     @Path("/newtradition")
     public String create(
     					@FormDataParam("name") String name,
-    					@FormDataParam("LeftToRight") Boolean LeftToRight,
+    					@FormDataParam("language") String language,
     					@FormDataParam("public") String is_public,
     					@FormDataParam("file") InputStream uploadedInputStream,
     					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
       
     	
-    	Boolean is_public_bool = is_public.equals("on")? true : false;
+    	//Boolean is_public_bool = is_public.equals("on")? true : false;
     	String uploadedFileLocation = "upload/" + fileDetail.getFileName();
     	 
 		// save it
