@@ -60,7 +60,7 @@ public class Rest {
     @Path("/newtradition")
     public String create(
     					@FormDataParam("name") String name,
-    					@FormDataParam("language") String language,
+    					@FormDataParam("LeftToRight") Boolean LeftToRight,
     					@FormDataParam("public") String is_public,
     					@FormDataParam("file") InputStream uploadedInputStream,
     					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
