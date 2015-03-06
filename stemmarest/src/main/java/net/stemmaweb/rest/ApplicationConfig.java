@@ -50,5 +50,7 @@ public class ApplicationConfig extends Application {
     		}
     		tx.success();
     	}
+    	
+    	db.shutdown();
     }
 }
