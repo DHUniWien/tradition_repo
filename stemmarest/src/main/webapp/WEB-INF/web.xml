@@ -9,6 +9,10 @@
             <param-name>com.sun.jersey.config.property.packages</param-name>
             <param-value>net.stemmaweb.rest</param-value>
         </init-param>
+        <init-param>
+    		<param-name>javax.ws.rs.Application</param-name>
+    		<param-value>net.stemmaweb.rest.ApplicationConfig</param-value>
+		</init-param>
         <load-on-startup>1</load-on-startup>
     </servlet>
     <servlet-mapping>
