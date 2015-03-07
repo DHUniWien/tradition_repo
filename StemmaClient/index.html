@@ -140,8 +140,42 @@
 					
 				}
 			});
+		}
+		
+		function getByPath(url, form){
+			url = baseurl + url;
+			var selects = "form#"+ form +" :input";
+			$(selects).each(function(index){
 			
-			
+			 	var input = $(this);
+   			 if(input.attr('type')=="text")
+   			 {
+				 url += "/" + input.val();
+			 }
+			 
+			});
+			$(".send" + form).text("GET " + url);
+			$(".send" + form).css("color","red");
+			setTimeout(function(){
+				$(".send" + form).css("color", "black");
+			}, 800);
+			$('#runner').runner('reset');
+			$('#runner').runner('start');
+			$.get(url,function(data){
+				$('#runner').runner('stop');
+				$(".return" + form).text(JSON.stringify(data));
+				$(".return" + form).css("color","red");
+				setTimeout(function(){
+					$(".return" + form).css("color", "black");
+				}, 1000);
+			}).fail(function(xhr){
+				$('#runner').runner('stop');
+				if(xhr.responseText!="")
+					$(".return" + form).text(xhr.responseText);
+				else
+					$(".return" + form).text("NO CONNECTION TO DATABASE");
+				$(".return" + form).css("color","red");
+			});
 		}
 		
 		function customRequest(){
@@ -353,6 +387,32 @@
 					  <br/>
    					  <label>Return</label>
    					  <samp><span class="returnnewtrad"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="user">Get traditions for a user</a></h3>
+			<form method="post" name="gettrad" id="gettrad">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">ID</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="id" placeholder="e.g. 42">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('user/traditions','gettrad')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgettrad"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngettrad"></span></samp>
 					</div>
 				 </div>
 			 </div>

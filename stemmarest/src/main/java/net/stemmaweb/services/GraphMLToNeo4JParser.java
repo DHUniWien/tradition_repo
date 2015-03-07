@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import javax.ws.rs.core.Response;
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
@@ -33,7 +34,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 public class GraphMLToNeo4JParser
 {
 
-	public static void parseGraphML(String filename, String databasePath, String userId, String nameAbbrev) throws FileNotFoundException, XMLStreamException
+	public static Response parseGraphML(String filename, String databasePath, String userId, String nameAbbrev) throws FileNotFoundException, XMLStreamException
 	{
 		String prefix = userId + "_" + nameAbbrev + "_";
 		XMLInputFactory factory;
@@ -53,6 +54,7 @@ public class GraphMLToNeo4JParser
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(databasePath);
     	
+    	ExecutionEngine engine = new ExecutionEngine(db);
     	Node tradRootNode = null;
     	String origPrefix = prefix;
     	
@@ -100,10 +102,7 @@ public class GraphMLToNeo4JParser
 			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
 				        						reader.getElementText());
 			        				}
-			        			}
-			        				
-			        					
-			        				
+			        			}	
 			        		}
 			        		else if(type_nd==2) // node
 			        		{
@@ -125,18 +124,29 @@ public class GraphMLToNeo4JParser
 			        	}
 			        	else if(depth==2)
 			        	{
+			        		String attr = reader.getAttributeValue(0);
+			        		String text = reader.getElementText();
 			        		// needs implementation of meta data here
-			        		if(map.get(reader.getAttributeValue(0)).equals("name"))
+			        		if(map.get(attr).equals("name"))
 			        		{
 			        			
-			        			String attr = reader.getAttributeValue(0);
+			        			ExecutionResult result = engine.execute("match (n:TRADITION {name:'"+ text +"'}) return n");
+			        			Iterator<Node> nodes = result.columnAs("n");
+			        			if(nodes.hasNext())
+			        			{
+			        				throw new Exception("Error: A tradition with the same name already exists");
+			        			}
+			        			
+			        			
 			        			tradRootNode = currNode;
 			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
 			        			System.out.println(prefix);
 			        			currNode.setProperty("id", prefix);
+			        			
+			        			
 			        		}
-			        		currNode.setProperty(map.get(reader.getAttributeValue(0)), 
-        							reader.getElementText());
+			        		currNode.setProperty(map.get(attr), 
+        							text);
 			        	}
 			        }
 			        else if(reader.getLocalName().equals("edge"))
@@ -195,8 +205,6 @@ public class GraphMLToNeo4JParser
 			        }
 			    }
 			}
-			
-			ExecutionEngine engine = new ExecutionEngine(db);
 	    	
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
@@ -207,12 +215,14 @@ public class GraphMLToNeo4JParser
 	    catch(Exception e)
 	    {
 	    	e.printStackTrace();
-	    	System.out.println("Error!");
-	    }
-	    finally
-	    {
 	    	db.shutdown();
+	    	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error: Tradition could not be imported!").build();
 	    }
+    	finally
+    	{
+    		db.shutdown();
+    	}
+    	return Response.status(Response.Status.OK).entity("Tradition imported successfully").build();
 	}
 	
 }

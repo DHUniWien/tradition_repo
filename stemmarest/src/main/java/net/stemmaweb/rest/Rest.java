@@ -74,51 +74,12 @@ public class Rest {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
-		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId, name.substring(0, 3));
+		Response resp = GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId, name.substring(0, 3));
 		// The prefix will always be some sort of '12_', to make sure that all nodes are unique
 		
 		deleteFile(uploadedFileLocation);
-		
-		/*
-		 * UNCOMMENT THIS BLOCK IF YOU WANT TO INSERT ADDITIONAL INFORMATION INTO THE DB
-    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-    
-    	try{
-    		for(Vertex node : graph.getVertices())
-    		{
-    			try (Transaction tx = db.beginTx()) {
-    				Node nd = db.createNode(Nodes.WORD);	
-    				System.out.println(node.getId() + " " + node.getProperty("dn15"));
-    				if(node.getProperty("dn15")!=null)
-    					nd.setProperty("text", node.getProperty("dn15")); // text
-    				if(node.getProperty("dn14")!=null)
-    					nd.setProperty("rank", node.getProperty("dn14")); // rank
-    				if(node.getProperty("dn1")!=null)
-    					nd.setProperty("id", node.getProperty("dn1")); // id
-    				//
-    				//nd.setProperty("rank", node.getProperty("dn14")); // rank
-    			//nd.setProperty("rank", node.getProperty("dn14")); // rank
-    				//nd.setProperty("id", node.getProperty("dn1")); // id
-    				i++;
-    				tx.success();
-    			}
 
-    	    	
-    		}
-    	}
-    	catch(Exception e)
-    	{
-    		System.out.println("Error while doing transaction! " + i);
-    		return "{\"Status\": \"ERROR\"}";
-    		//return Response.status(500).entity("Internal Server Error").build();
-    	}
-    	finally{
-    		db.shutdown();
-    	}*/
-	    	
-    	//return "{\"Status\": \"OK\"}";
-    	return Response.status(200).entity("OK").build();
+    	return resp;
     }
     
     // save uploaded file to temp location
