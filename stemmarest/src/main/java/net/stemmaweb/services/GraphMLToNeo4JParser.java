@@ -143,10 +143,19 @@ public class GraphMLToNeo4JParser
 			        			System.out.println(prefix);
 			        			currNode.setProperty("id", prefix);
 			        			
-			        			
+			        			currNode.setProperty(map.get(attr), 
+	        							text);
 			        		}
-			        		currNode.setProperty(map.get(attr), 
-        							text);
+			        		else if(map.get(attr).equals("stemmata"))
+			        		{
+			        			// the stemma tree is available as 'text' here
+			        		}
+			        		else
+			        		{
+			        			currNode.setProperty(map.get(attr), 
+	        							text);
+			        		}
+			        		
 			        	}
 			        }
 			        else if(reader.getLocalName().equals("edge"))
