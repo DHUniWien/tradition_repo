@@ -19,15 +19,29 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
-
+/**
+ * 
+ * @author jakob
+ *
+ */
 @Path("/user")
 public class User {
+	
+	/**
+	 * 
+	 * @return User!
+	 */
     @GET 
     @Produces("text/plain")
     public String getIt() {
         return "User!";
     }
     
+    /**
+     * 
+     * @param userModel in JSON Format 
+     * @return OK on success or an ERROR as JSON
+     */
     @POST
     @Path("create")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -66,6 +80,11 @@ public class User {
     	return "{\"Status\": \"OK\"}";
     }
     
+    /**
+     * 
+     * @param userId
+     * @return UserModel as JSON
+     */
     @GET
 	@Path("{userId}")
     @Produces(MediaType.APPLICATION_JSON)
