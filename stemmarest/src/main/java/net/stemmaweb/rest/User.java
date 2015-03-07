@@ -39,6 +39,34 @@ public class User {
     }
     
     /**
+     * This method can be used to determine whether a user with given Id exists in the DB
+     * @param userId
+     * @return
+     */
+    public static boolean checkUserExists(String userId)
+    {
+    	boolean userExists = false;
+    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	
+    	ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
+    	{
+    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
+    		Iterator<Node> nodes = result.columnAs("userId");
+    		if(nodes.hasNext())
+    			userExists = true;
+    		else
+    			userExists = false;
+    		tx.success();
+    	}
+    	finally {
+    		db.shutdown();
+    	}
+		return userExists;
+    }
+    
+    /**
      * 
      * @param userModel in JSON Format 
      * @return OK on success or an ERROR as JSON
@@ -49,28 +77,25 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON)
     public Response create(UserModel userModel){
     	
+    	if(checkUserExists(userModel.getId()))
+    	{
+    		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
+    	}
+    	
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
-    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userModel.getId()+"'}) return userId");
-    		Iterator<Node> nodes = result.columnAs("userId");
     		ExecutionResult rootNodeSearch = engine.execute("match (n:ROOT) return n");
     		Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
     		
-
-    		if(!nodes.hasNext())
-    		{
-    			Node node = db.createNode(Nodes.USER);
-    			node.setProperty("id", userModel.getId());
-    			node.setProperty("isAdmin", userModel.getIsAdmin());
+    		Node node = db.createNode(Nodes.USER);
+    		node.setProperty("id", userModel.getId());
+    		node.setProperty("isAdmin", userModel.getIsAdmin());
     			
-    			node.createRelationshipTo(rootNode, Relations.NORMAL);
-    		} else {
-    			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
-    		}
+    		node.createRelationshipTo(rootNode, Relations.NORMAL);
 
     		tx.success();
     	} finally {
@@ -117,9 +142,15 @@ public class User {
     @GET
     @Path("traditions/{userId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTraditionsByUserId(@PathParam("userId") int userId)
+    public Response getTraditionsByUserId(@PathParam("userId") String userId)
     {
     	String json_string = "";
+    	
+    	if(!checkUserExists(userId))
+    	{
+    		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
+    	}
+    	
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
@@ -127,35 +158,21 @@ public class User {
     	ExecutionResult result = null;
     	try(Transaction tx = db.beginTx())
     	{
-    		result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
-    		Iterator<Node> nodes = result.columnAs("userId");
-    		if(!nodes.hasNext())
-    		{
-    			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
-    		}
-    		else
-    		{
-    			result = engine.execute("match (n)-[:NORMAL]->(userId:USER {id:'"+userId+"'}) return n");
-    			Iterator<Node> traditions = result.columnAs("n");
-    			if(!nodes.hasNext())
-    			{
-    				json_string = "{}";
-    			}
-    			else
-    			{
-    				json_string = "{\"traditions\":[";
-    				while(traditions.hasNext())
-    				{
-    					json_string = "{\"name\":\"" + traditions.next().getProperty("name") + "\"}";
-    					if(traditions.hasNext())
-    						json_string += ",";
-    				}
-    				json_string += "]}";
-    			}
-    		}
+    		result = engine.execute("match (n)-[:NORMAL]->(userId:USER {id:'"+userId+"'}) return n");
+    		Iterator<Node> traditions = result.columnAs("n");
+   			json_string = "{\"traditions\":[";
+   			while(traditions.hasNext())
+   			{
+   				json_string = "{\"name\":\"" + traditions.next().getProperty("name") + "\"}";
+  				if(traditions.hasNext())
+   					json_string += ",";
+   			}
+    		json_string += "]}";
+    		
     		tx.success();
+   		
     	} finally {
-        	db.shutdown();
+    		db.shutdown();
     	}
     	
     	return Response.status(Response.Status.OK).entity(json_string).build();

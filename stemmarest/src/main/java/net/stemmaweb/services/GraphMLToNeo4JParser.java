@@ -31,7 +31,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 public class GraphMLToNeo4JParser
 {
 
-	public static void parseGraphML(String filename, String databasePath) throws FileNotFoundException, XMLStreamException
+	public static void parseGraphML(String filename, String databasePath, String prefix) throws FileNotFoundException, XMLStreamException
 	{
 		XMLInputFactory factory;
 		XMLStreamReader reader;

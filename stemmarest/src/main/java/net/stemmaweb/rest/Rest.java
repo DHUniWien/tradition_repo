@@ -51,6 +51,7 @@ public class Rest {
     					@FormDataParam("name") String name,
     					@FormDataParam("language") String language,
     					@FormDataParam("public") String is_public,
+    					@FormDataParam("userId") String userId,
     					@FormDataParam("file") InputStream uploadedInputStream,
     					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
       
@@ -61,7 +62,8 @@ public class Rest {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
-		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH);
+		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId + "_");
+		// The prefix will always be some sort of '12_', to make sure that all nodes are unique
 		
 		deleteFile(uploadedFileLocation);
     	
