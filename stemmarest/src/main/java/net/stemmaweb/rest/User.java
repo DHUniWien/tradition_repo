@@ -22,7 +22,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
  * 
- * @author jakob
+ * @author jakob, severin
  *
  */
 @Path("/user")
@@ -104,7 +104,7 @@ public class User {
         		userModel.setId((String) node.getProperty("id"));
         		userModel.setIsAdmin((String) node.getProperty("isAdmin"));
     		} else {
-    			Response.status(Response.Status.NOT_FOUND);
+    			return Response.status(Response.Status.NOT_FOUND).build();
     		}
 
     		tx.success();
@@ -113,5 +113,53 @@ public class User {
     	}  	
     	return Response.status(Response.Status.OK).entity(userModel).build();
 	}
+    
+    @GET
+    @Path("traditions/{userId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTraditionsByUserId(@PathParam("userId") int userId)
+    {
+    	String json_string = "";
+    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+
+    	ExecutionEngine engine = new ExecutionEngine(db);
+    	ExecutionResult result = null;
+    	try(Transaction tx = db.beginTx())
+    	{
+    		result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
+    		Iterator<Node> nodes = result.columnAs("userId");
+    		if(!nodes.hasNext())
+    		{
+    			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
+    		}
+    		else
+    		{
+    			result = engine.execute("match (n)-[:NORMAL]->(userId:USER {id:'"+userId+"'}) return n");
+    			Iterator<Node> traditions = result.columnAs("n");
+    			if(!nodes.hasNext())
+    			{
+    				json_string = "{}";
+    			}
+    			else
+    			{
+    				json_string = "{\"traditions\":[";
+    				while(traditions.hasNext())
+    				{
+    					json_string = "{\"name\":\"" + traditions.next().getProperty("name") + "\"}";
+    					if(traditions.hasNext())
+    						json_string += ",";
+    				}
+    				json_string += "]}";
+    			}
+    		}
+    		tx.success();
+    	} finally {
+        	db.shutdown();
+    	}
+    	
+    	return Response.status(Response.Status.OK).entity(json_string).build();
+    }
+    
     
 }

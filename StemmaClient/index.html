@@ -88,7 +88,7 @@
 					
 				}
 			});
-			$('#runner').runner('stop');
+			
 		}
 		
 		function postWithfile(url, form)
@@ -200,15 +200,17 @@
 				  type: "GET",
 				  url: url,
 				  data: $("#customtext").val(),
+					dataType: "json",
 				  success: function(data){
 					  $('#runner').runner('stop');
 					  var ret = "";
-					if(typeof(data) === "string") {
-						ret = data;
+					if(typeof(data) == "string") {
+						ret = JSON.stringify(data);
 					    } else {
 							
-						//ret = JSON.stringify(data);
-						ret = xmlToString(data);
+						ret = JSON.stringify(data);
+					//	ret = xmlToString(data);
+				
 					}
   					$(".returncustom").text(ret);
   					$(".returncustom").css("color","red");
@@ -216,15 +218,16 @@
   						$(".returncustom").css("color", "black");
   					}, 1000);
 				  },
-				  error: function(XMLHttpRequest, textStatus, errorThrown) {
-					  $('#runner').runner('stop');
-					  if(errorThrown == "Not Found" || errorThrown == "Method Not Allowed")
-					  	$(".returncustom").text("NOT SUPPORTED CALL");
-					  else
-						$(".returncustom").text("NO CONNECTION TO SERVER");
- 					
- 					$(".returncustom").css("color","red");
-				  }
+  				error: function(xhr) {
+					
+  					$('#runner').runner('stop');
+  					if(xhr.responseText!="")
+  						$(".return" + form).text(xhr.responseText);
+  					else
+  						$(".return" + form).text("NO CONNECTION TO DATABASE");
+  					$(".return" + form).css("color","red");
+					
+  				}	
 				});
 			}
 			
@@ -250,7 +253,7 @@
 	          <ul class="nav navbar-nav">
 				<li class="active"><a href="#custom">Custom Req.</a></li>
 	            <li><a href="#traditions">Traditions</a></li>
-	            <li><a href="#contact">Contact</a></li>
+	            <li><a href="#user">user</a></li>
 	          </ul>
 	        </div><!--/.nav-collapse -->
 	      </div>
