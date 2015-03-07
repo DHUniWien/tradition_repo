@@ -25,7 +25,7 @@ public class ApplicationConfig extends Application {
         s.add(MyResource.class);
         s.add(Witness.class);
         s.add(Rest.class);
-        
+        s.add(User.class);
         if(!init)
         	initializeApp();
         
