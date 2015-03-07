@@ -9,6 +9,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.UserModel;
 
@@ -46,7 +47,7 @@ public class User {
     @Path("create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public String create(UserModel userModel){
+    public Response create(UserModel userModel){
     	
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
@@ -68,7 +69,7 @@ public class User {
     			
     			node.createRelationshipTo(rootNode, Relations.NORMAL);
     		} else {
-    			return "{\"Status\": \"ERROR A User with this id already exists\"}";
+    			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
     		}
 
     		tx.success();
@@ -76,8 +77,7 @@ public class User {
         	db.shutdown();
     	}
     	
-    	
-    	return "{\"Status\": \"OK\"}";
+    	return Response.status(Response.Status.CREATED).build();
     }
     
     /**
@@ -88,7 +88,7 @@ public class User {
     @GET
 	@Path("{userId}")
     @Produces(MediaType.APPLICATION_JSON)
-	public UserModel getUserById(@PathParam("userId") String userId) {
+	public Response getUserById(@PathParam("userId") String userId) {
     	UserModel userModel = new UserModel();
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
@@ -104,15 +104,14 @@ public class User {
         		userModel.setId((String) node.getProperty("id"));
         		userModel.setIsAdmin((String) node.getProperty("isAdmin"));
     		} else {
-    			userModel.setId("");
-        		userModel.setIsAdmin("");
+    			Response.status(Response.Status.NOT_FOUND);
     		}
 
     		tx.success();
     	} finally {
         	db.shutdown();
     	}  	
-    	return userModel;
+    	return Response.status(Response.Status.OK).entity(userModel).build();
 	}
     
 }
