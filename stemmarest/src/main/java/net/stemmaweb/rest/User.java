@@ -16,13 +16,9 @@ import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
-import scala.util.control.Exception.Finally;
-
-import com.sun.jersey.multipart.FormDataParam;
 
 @Path("/user")
 public class User {
@@ -56,7 +52,7 @@ public class User {
     			node.setProperty("id", userModel.getId());
     			node.setProperty("isAdmin", userModel.getIsAdmin());
     			
-    			Relationship relation = node.createRelationshipTo(rootNode, Relations.NORMAL);
+    			node.createRelationshipTo(rootNode, Relations.NORMAL);
     		} else {
     			return "{\"Status\": \"ERROR A User with this id already exists\"}";
     		}
@@ -72,18 +68,32 @@ public class User {
     
     @GET
 	@Path("{userId}")
-	public String getUserById(@PathParam("userId") String userId) {
+    @Produces(MediaType.APPLICATION_JSON)
+	public UserModel getUserById(@PathParam("userId") String userId) {
+    	UserModel userModel = new UserModel();
+    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
-		return userId;
+    	ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
+    	{
+    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
+    		Iterator<Node> nodes = result.columnAs("userId");
+    		
+    		if(nodes.hasNext()){
+    			Node node = nodes.next();
+        		userModel.setId((String) node.getProperty("id"));
+        		userModel.setIsAdmin((String) node.getProperty("isAdmin"));
+    		} else {
+    			userModel.setId("");
+        		userModel.setIsAdmin("");
+    		}
+
+    		tx.success();
+    	} finally {
+        	db.shutdown();
+    	}  	
+    	return userModel;
 	}
     
-    @POST
-    @Path("{userId}/addtradition")
-
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public String addTradition( UserModel user){
-    	return user.getId();
-    }
-
 }
