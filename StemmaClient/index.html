@@ -122,18 +122,20 @@
 			    contentType: false,
 			    processData: false,
 			    type: 'POST',
-			    success: function(data){
+			    success: function(xhr){
 					$('#runner').runner('stop');
-					var ret = JSON.stringify(data);
-					$(".return" + form).text(ret);
+					$(".return" + form).text("OK");
 					$(".return" + form).css("color","red");
 					setTimeout(function(){
 						$(".return" + form).css("color", "black");
 					}, 1000);
 			    },
-				error: function() {
+				error: function(xhr) {
 					$('#runner').runner('stop');
-					$(".return" + form).text("NO CONNECTION TO DATABASE");
+					if(xhr.responseText!="")
+						$(".return" + form).text(xhr.responseText);
+					else
+						$(".return" + form).text("NO CONNECTION TO DATABASE");
 					$(".return" + form).css("color","red");
 					
 				}
@@ -309,6 +311,12 @@
 			<h3><a name="traditions">Create a tradition</a></h3>
 			<form method="post" name="newtrad" id="newtrad" enctype="multipart/form-data" action="http://localhost:8080/newtradition">
 				<div class="form-group">
+   				  <div class="row">
+   					<label class="col-sm-2 control-label">User ID</label>
+   					<div class="col-sm-8">
+   				    	<input class="form-control" type="text" name="userId" placeholder="e.g. 42">
+   				    </div>
+   				 </div>
 				  <div class="row">
 					<label class="col-sm-2 control-label">Name</label>
 					<div class="col-sm-8">

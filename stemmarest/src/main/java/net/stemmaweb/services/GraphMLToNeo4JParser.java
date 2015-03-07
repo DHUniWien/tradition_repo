@@ -16,6 +16,8 @@ import javax.xml.stream.XMLStreamReader;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
 
+import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -31,8 +33,9 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 public class GraphMLToNeo4JParser
 {
 
-	public static void parseGraphML(String filename, String databasePath, String prefix) throws FileNotFoundException, XMLStreamException
+	public static void parseGraphML(String filename, String databasePath, String userId, String nameAbbrev) throws FileNotFoundException, XMLStreamException
 	{
+		String prefix = userId + "_" + nameAbbrev + "_";
 		XMLInputFactory factory;
 		XMLStreamReader reader;
 		File file = new File(filename);
@@ -50,9 +53,13 @@ public class GraphMLToNeo4JParser
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(databasePath);
     	
+    	Node tradRootNode = null;
+    	String origPrefix = prefix;
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
 	    	Node currNode = null;
+	    	currNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
 	    	Relationship rel = null;
 			while (true) {
 			    int event = reader.next();
@@ -63,6 +70,8 @@ public class GraphMLToNeo4JParser
 			    		reader.getLocalName().equals("node") ||
 			    		reader.getLocalName().equals("edge"))
 			    	{
+			    		if(reader.getLocalName().equals("graph"))
+			    			prefix = origPrefix;
 			    		depth--;
 			    		type_nd = 0;
 			    	}
@@ -79,31 +88,68 @@ public class GraphMLToNeo4JParser
 			        	{
 			        		if(type_nd==1) // edge
 			        		{
-			        			rel.setProperty(map.get(reader.getAttributeValue(0)),
-			        						reader.getElementText());
+			        			if(rel!=null)
+			        			{
+			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
+			        				{
+			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
+				        						prefix + reader.getElementText());
+			        				}
+			        				else
+			        				{
+			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
+				        						reader.getElementText());
+			        				}
+			        			}
+			        				
+			        					
+			        				
 			        		}
 			        		else if(type_nd==2) // node
 			        		{
-			        			currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+			        			if(currNode!=null)
+			        			{
+			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
+			        				{
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+			        							prefix + reader.getElementText());
+			        				}
+			        				else
+			        				{
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
 			        							reader.getElementText());
+			        				}
+			        			}
+			        				
 			        		}
 			        	}
-			        	else
+			        	else if(depth==2)
 			        	{
 			        		// needs implementation of meta data here
+			        		if(map.get(reader.getAttributeValue(0)).equals("name"))
+			        		{
+			        			
+			        			String attr = reader.getAttributeValue(0);
+			        			tradRootNode = currNode;
+			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
+			        			System.out.println(prefix);
+			        			currNode.setProperty("id", prefix);
+			        		}
+			        		currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+        							reader.getElementText());
 			        	}
 			        }
 			        else if(reader.getLocalName().equals("edge"))
 			        {
 			        	
-			        	ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", reader.getAttributeValue(0));
-			        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", reader.getAttributeValue(1));
+			        	ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", prefix + reader.getAttributeValue(0));
+			        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", prefix + reader.getAttributeValue(1));
 			        	Iterator<Node> st_it = startNodes.iterator();
 			        	Iterator<Node> en_it = endNodes.iterator();
 			        	if(st_it.hasNext() && en_it.hasNext())
 			        	{
 			        		rel = (st_it.next()).createRelationshipTo((en_it.next()), Relations.NORMAL);
-			        		rel.setProperty("id", reader.getAttributeValue(2));
+			        		rel.setProperty("id", prefix + reader.getAttributeValue(2));
 			        	}
 			        	depth++;
 			        	type_nd = 1;
@@ -111,7 +157,11 @@ public class GraphMLToNeo4JParser
 			        else if(reader.getLocalName().equals("node"))
 			        {
 			        	currNode = db.createNode(Nodes.WORD);
-			        	currNode.setProperty("id", reader.getAttributeValue(0));
+			        	currNode.setProperty("id", prefix + reader.getAttributeValue(0));
+			        	if(reader.getAttributeValue(0).equals("n1"))
+			        	{
+			        		currNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
+			        	}
 			        	depth++;
 			        	type_nd = 2;
 			        }
@@ -139,10 +189,19 @@ public class GraphMLToNeo4JParser
 			        }
 			        else if(reader.getLocalName().equals("graph"))
 			        {
+			        	String attr = reader.getAttributeValue(1);
+			        	prefix +=  attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
 			        	depth++;
 			        }
 			    }
 			}
+			
+			ExecutionEngine engine = new ExecutionEngine(db);
+	    	
+	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
+	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
+	   	    tradRootNode.createRelationshipTo(userNode, Relations.NORMAL);
+	   		
 			tx.success();
 		}
 	    catch(Exception e)

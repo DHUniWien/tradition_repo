@@ -15,7 +15,15 @@ import javax.ws.rs.Produces;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLStreamException;
+
+import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
@@ -47,7 +55,7 @@ public class Rest {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/newtradition")
-    public String create(
+    public Response create(
     					@FormDataParam("name") String name,
     					@FormDataParam("language") String language,
     					@FormDataParam("public") String is_public,
@@ -55,6 +63,10 @@ public class Rest {
     					@FormDataParam("file") InputStream uploadedInputStream,
     					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
       
+    	if(!User.checkUserExists(userId))
+    	{
+    		return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
+    	}
     	
     	//Boolean is_public_bool = is_public.equals("on")? true : false;
     	String uploadedFileLocation = "upload/" + fileDetail.getFileName();
@@ -62,11 +74,11 @@ public class Rest {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
-		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId + "_");
+		GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId, name.substring(0, 3));
 		// The prefix will always be some sort of '12_', to make sure that all nodes are unique
 		
 		deleteFile(uploadedFileLocation);
-    	
+		
 		/*
 		 * UNCOMMENT THIS BLOCK IF YOU WANT TO INSERT ADDITIONAL INFORMATION INTO THE DB
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
@@ -105,8 +117,8 @@ public class Rest {
     		db.shutdown();
     	}*/
 	    	
-    	return "{\"Status\": \"OK\"}";
-    	//return Response.status(200).entity(output).build();
+    	//return "{\"Status\": \"OK\"}";
+    	return Response.status(200).entity("OK").build();
     }
     
     // save uploaded file to temp location

@@ -145,7 +145,6 @@ public class User {
     public Response getTraditionsByUserId(@PathParam("userId") String userId)
     {
     	String json_string = "";
-    	
     	if(!checkUserExists(userId))
     	{
     		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
@@ -163,7 +162,7 @@ public class User {
    			json_string = "{\"traditions\":[";
    			while(traditions.hasNext())
    			{
-   				json_string = "{\"name\":\"" + traditions.next().getProperty("name") + "\"}";
+   				json_string += "{\"name\":\"" + traditions.next().getProperty("name") + "\"}";
   				if(traditions.hasNext())
    					json_string += ",";
    			}
