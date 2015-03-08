@@ -112,7 +112,7 @@
 		
     </dependencies>
     <properties>
-        <jersey-version>1.19</jersey-version>
+        <jersey-version>1.8</jersey-version>
     </properties>
    
 </project>

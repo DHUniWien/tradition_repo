@@ -26,6 +26,7 @@ public class ApplicationConfig extends Application {
         s.add(Witness.class);
         s.add(Rest.class);
         s.add(User.class);
+        s.add(TextInfo.class);
         if(!init)
         	initializeApp();
         
