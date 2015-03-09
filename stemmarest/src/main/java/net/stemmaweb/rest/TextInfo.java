@@ -65,10 +65,13 @@ public class TextInfo {
     		
     		
     		if(nodes.hasNext()){
+    			// Remove the old ownership
     			String removeRelationQuery = "MATCH (tradition:TRADITION {id: '"+textId+"'}) "
-    					+ "MATCH tradition-[r:NORMAL]->() DELETE r";
+    					+ "MATCH tradition-[r:NORMAL]->(:USER) DELETE r";
     			result = engine.execute(removeRelationQuery);
     			System.out.println(result.dumpToString());
+    			
+    			// Add the new ownership
     			String createNewRelationQuery = "MATCH(user:USER {id:'"+textInfo.getOwnerId()+"'}) "
     					+ "MATCH(tradition: TRADITION {id:'"+textId+"'}) "
     							+ "SET tradition.name = '"+textInfo.getName()+"' "
