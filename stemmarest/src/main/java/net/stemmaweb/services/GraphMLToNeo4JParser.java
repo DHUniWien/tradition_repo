@@ -117,8 +117,8 @@ public class GraphMLToNeo4JParser
 			        			{
 			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
 			        				{
-			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
-			        							prefix + reader.getElementText());
+			        					//System.out.println(currNode.getProperty("id"));
+			        					//currNode.setProperty(map.get(reader.getAttributeValue(0)), prefix + reader.getElementText());
 			        				}
 			        				else
 			        				{
@@ -186,6 +186,7 @@ public class GraphMLToNeo4JParser
 					        			from = fromTmp;
 					        			if(rel!=null)
 					        			{
+					        				System.out.println(leximes.toString());
 					        				String[] leximArray = new String[leximes.size()];
 					        				leximArray = leximes.toArray(leximArray);
 					        				rel.setProperty("leximes", leximArray);
@@ -213,6 +214,7 @@ public class GraphMLToNeo4JParser
 					        			from = fromTmp;
 					        			if(rel!=null)
 					        			{
+					        				System.out.println(leximes.toString());
 					        				String[] leximArray = new String[leximes.size()];
 					        				leximArray = leximes.toArray(leximArray);
 					        				rel.setProperty("leximes", leximArray);
@@ -232,11 +234,14 @@ public class GraphMLToNeo4JParser
 			        else if(reader.getLocalName().equals("node"))
 			        {
 			        	currNode = db.createNode(Nodes.WORD);
+			        	
 			        	currNode.setProperty("id", prefix + reader.getAttributeValue(0));
+			        	
 			        	if(reader.getAttributeValue(0).equals("n1"))
 			        	{
 			        		currNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
 			        	}
+			        	
 			        	depth++;
 			        	type_nd = 2;
 			        }
