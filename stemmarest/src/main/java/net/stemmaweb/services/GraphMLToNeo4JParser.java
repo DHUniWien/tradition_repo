@@ -6,6 +6,8 @@ import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.ws.rs.core.Response;
 import javax.xml.namespace.QName;
@@ -58,6 +60,11 @@ public class GraphMLToNeo4JParser
     	Node tradRootNode = null;
     	String origPrefix = prefix;
     	
+    	Node from = null;
+    	Node to = null;
+    	
+    	LinkedList<String> leximes = new LinkedList<String>();
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
 	    	Node currNode = null;
@@ -97,10 +104,10 @@ public class GraphMLToNeo4JParser
 			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
 				        						prefix + reader.getElementText());
 			        				}
-			        				else
+			        				else if(map.get(reader.getAttributeValue(0)).equals("witness"))
 			        				{
-			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
-				        						reader.getElementText());
+			        					leximes.add(reader.getElementText());
+			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
 			        				}
 			        			}	
 			        		}
@@ -110,8 +117,8 @@ public class GraphMLToNeo4JParser
 			        			{
 			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
 			        				{
-			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
-			        							prefix + reader.getElementText());
+			        					//System.out.println(currNode.getProperty("id"));
+			        					//currNode.setProperty(map.get(reader.getAttributeValue(0)), prefix + reader.getElementText());
 			        				}
 			        				else
 			        				{
@@ -129,18 +136,16 @@ public class GraphMLToNeo4JParser
 			        		// needs implementation of meta data here
 			        		if(map.get(attr).equals("name"))
 			        		{
-			        			
-			        			ExecutionResult result = engine.execute("match (n:TRADITION {name:'"+ text +"'}) return n");
+			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
+			        			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ prefix +"'}) return n");
 			        			Iterator<Node> nodes = result.columnAs("n");
 			        			if(nodes.hasNext())
 			        			{
 			        				throw new Exception("Error: A tradition with the same name already exists");
 			        			}
-			        			
-			        			
 			        			tradRootNode = currNode;
-			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
-			        			System.out.println(prefix);
+			        			
+			        			//System.out.println(prefix);
 			        			currNode.setProperty("id", prefix);
 			        			
 			        			currNode.setProperty(map.get(attr), 
@@ -158,29 +163,85 @@ public class GraphMLToNeo4JParser
 			        		
 			        	}
 			        }
-			        else if(reader.getLocalName().equals("edge"))
+			        else if(reader.getLocalName().equals("edge")) // this definitely needs refactoring!
 			        {
-			        	
-			        	ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", prefix + reader.getAttributeValue(0));
-			        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", prefix + reader.getAttributeValue(1));
-			        	Iterator<Node> st_it = startNodes.iterator();
-			        	Iterator<Node> en_it = endNodes.iterator();
-			        	if(st_it.hasNext() && en_it.hasNext())
+			        	String fromNodeName = prefix + reader.getAttributeValue(0);
+			        	String toNodeName = prefix + reader.getAttributeValue(1);
+			        	if(from!=null && to!=null)
 			        	{
-			        		rel = (st_it.next()).createRelationshipTo((en_it.next()), Relations.NORMAL);
-			        		rel.setProperty("id", prefix + reader.getAttributeValue(2));
+			        		if(!(from.getProperty("id").equals(fromNodeName) 
+				        			&& to.getProperty("id").equals(toNodeName)))
+				        	{
+				        		ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", fromNodeName);
+					        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", toNodeName);
+					        	Iterator<Node> st_it = startNodes.iterator();
+					        	Iterator<Node> en_it = endNodes.iterator();
+					        	if(st_it.hasNext() && en_it.hasNext())
+					        	{
+					        		Node fromTmp = st_it.next();
+					        		Node toTmp = en_it.next();
+					        		if(!(fromTmp.equals(from) && toTmp.equals(to)))
+					        		{
+					        			to = toTmp;
+					        			from = fromTmp;
+					        			if(rel!=null)
+					        			{
+					        				//System.out.println(leximes.toString());
+					        				String[] leximArray = new String[leximes.size()];
+					        				leximArray = leximes.toArray(leximArray);
+					        				rel.setProperty("leximes", leximArray);
+					        				leximes.clear();
+					        			}
+					        			rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
+					        		}
+					        	}
+				        	}
 			        	}
+			        	else
+			        	{
+				        		ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", fromNodeName);
+					        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", toNodeName);
+					        	Iterator<Node> st_it = startNodes.iterator();
+					        	Iterator<Node> en_it = endNodes.iterator();
+					        	if(st_it.hasNext() && en_it.hasNext())
+					        	{
+					        		Node fromTmp = st_it.next();
+					        		Node toTmp = en_it.next();
+					        		if(!(fromTmp.equals(from) && toTmp.equals(to)))
+					        		{
+					        			to = toTmp;
+					        			from = fromTmp;
+					        			if(rel!=null)
+					        			{
+					        				//System.out.println(leximes.toString());
+					        				String[] leximArray = new String[leximes.size()];
+					        				leximArray = leximes.toArray(leximArray);
+					        				rel.setProperty("leximes", leximArray);
+					        				leximes.clear();
+					        			}
+					        			rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
+					        		}
+					        	}
+			        	}
+			        	
+			        		
+			        	
 			        	depth++;
 			        	type_nd = 1;
 			        }
 			        else if(reader.getLocalName().equals("node"))
 			        {
 			        	currNode = db.createNode(Nodes.WORD);
+			        	
 			        	currNode.setProperty("id", prefix + reader.getAttributeValue(0));
+			        	
 			        	if(reader.getAttributeValue(0).equals("n1"))
 			        	{
 			        		currNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
 			        	}
+			        	
 			        	depth++;
 			        	type_nd = 2;
 			        }
@@ -213,6 +274,13 @@ public class GraphMLToNeo4JParser
 			        	depth++;
 			        }
 			    }
+			}
+			if(rel!=null)	// add relationship props to last rel
+			{
+				String[] leximArray = new String[leximes.size()];
+				leximArray = leximes.toArray(leximArray);
+				rel.setProperty("leximes", leximArray);
+				leximes.clear();
 			}
 	    	
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
