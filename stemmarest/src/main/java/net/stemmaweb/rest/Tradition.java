@@ -1,10 +1,10 @@
 package net.stemmaweb.rest;
 
-import java.awt.List;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 
@@ -33,6 +33,8 @@ import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
+import net.stemmaweb.model.*;
+
 
 /**
  * 
@@ -49,7 +51,7 @@ public class Tradition {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitness() {
 		
-		List<Witness> witlist= new List<Witness>();
+		ArrayList<WitnessModel> witlist= new ArrayList<WitnessModel>();
 
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 		GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -70,7 +72,7 @@ public class Tradition {
 		{
 			db.shutdown();
 		}
-		return Response.status(Status.NOT_FOUND).build();
+		//return Response.status(Status.NOT_FOUND).build();
 		
 		return Response.ok().build();
 	}

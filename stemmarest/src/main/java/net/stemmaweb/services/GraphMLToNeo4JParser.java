@@ -129,17 +129,15 @@ public class GraphMLToNeo4JParser
 			        		// needs implementation of meta data here
 			        		if(map.get(attr).equals("name"))
 			        		{
-			        			
-			        			ExecutionResult result = engine.execute("match (n:TRADITION {name:'"+ text +"'}) return n");
+			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
+			        			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ prefix +"'}) return n");
 			        			Iterator<Node> nodes = result.columnAs("n");
 			        			if(nodes.hasNext())
 			        			{
 			        				throw new Exception("Error: A tradition with the same name already exists");
 			        			}
-			        			
-			        			
 			        			tradRootNode = currNode;
-			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
+			        			
 			        			System.out.println(prefix);
 			        			currNode.setProperty("id", prefix);
 			        			
