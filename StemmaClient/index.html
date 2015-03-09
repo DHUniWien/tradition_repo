@@ -258,10 +258,10 @@
 					
   					$('#runner').runner('stop');
   					if(xhr.responseText!="")
-  						$(".return" + form).text(xhr.responseText);
+  						$(".returncustom").text(xhr.responseText);
   					else
-  						$(".return" + form).text("NO CONNECTION TO DATABASE");
-  					$(".return" + form).css("color","red");
+  						$(".returncustom").text("NO CONNECTION TO DATABASE");
+  					$(".returncustom").css("color","red");
 					
   				}	
 				});

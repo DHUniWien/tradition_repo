@@ -8,8 +8,8 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import org.neo4j.cypher.ExecutionEngine;
-import org.neo4j.cypher.ExecutionResult;
+//import org.neo4j.cypher.ExecutionEngine;
+//import org.neo4j.cypher.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
@@ -17,6 +17,9 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.impl.util.StringLogger;
 
 import Exeptions.DataBaseExeption;
+
+import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
 
 /**
  * 
@@ -44,29 +47,37 @@ public class Witness {
 		ExecutionEngine engine = new ExecutionEngine(db, StringLogger.SYSTEM);
 
 		ExecutionResult result;
+		String witnessQuary = "match (n {leximes:'" + textId + "'}) return n";
+
 		try (Transaction tx = db.beginTx()) {
 
-			result = engine.execute("match (n {leximes: '" + textId
-					+ "'}) return n");
-			Iterator<Node> nodes = (Iterator<Node>) result.columnAs("n");
+			result = engine.execute(witnessQuary);
+			Iterator<Node> nodes = result.columnAs("n");
 			if (nodes.hasNext())
 				throw new DataBaseExeption("more that one node with same Id");
-			node = nodes.next();
-			while (nodes.hasNext()) { // TODO not correct! only temporary!
-				result = engine.execute("match (" + node
-						+ "-[NORMAL]-(b)) return b"); // not sure if this will
+			if (!nodes.hasNext())
+				throw new DataBaseExeption(
+						"such witness does not exist in the data base");
+			else
+				node = nodes.next();
+			String nextWordQuary = "match (n {Id:'" + node.getId()
+					+ "'})-[:NORMAL]-(b)) return b"; // not sure if this will
 														// work
-				nodes = (Iterator<Node>) result.columnAs("b");
+
+			while (nodes.hasNext()) { // TODO not correct! only temporary!
+				result = engine.execute(nextWordQuary);
+				nodes = result.columnAs("b");
 				node = nodes.next();
 				if (nodes.hasNext())
 					throw new DataBaseExeption(
 							"more that one NORMAL relationship to a single node");
 
-				witnessAsText += "" + node.getProperty("word");  // TODO check property name
+				witnessAsText += " " + node.getProperty("word"); // TODO check
+																	// property
+																	// name
 			}
 		}
 		return witnessAsText;
-
 	}
 
 	/**
