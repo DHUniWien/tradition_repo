@@ -19,7 +19,6 @@ public class GetWitnessTest {
 
 	@Before
 	public void prepareTestDatabase() {
-		wintess = new Witness();
 		graphDb = new TestGraphDatabaseFactory().newImpermanentDatabase();
 		ExecutionEngine engine = new ExecutionEngine(graphDb,
 				StringLogger.SYSTEM);
@@ -42,11 +41,10 @@ public class GetWitnessTest {
 
 	@Test
 	public void testWintessAsString() {
-
-		try (Transaction tx = graphDb.beginTx()) {
+		
+		wintess = new Witness();
 			assertEquals("this is a witness test",
 					wintess.getWitnssAsPlainText("1"));
-		}
 	}
 
 	@After
