@@ -145,7 +145,7 @@ public class GraphMLToNeo4JParser
 			        			}
 			        			tradRootNode = currNode;
 			        			
-			        			System.out.println(prefix);
+			        			//System.out.println(prefix);
 			        			currNode.setProperty("id", prefix);
 			        			
 			        			currNode.setProperty(map.get(attr), 
@@ -186,7 +186,7 @@ public class GraphMLToNeo4JParser
 					        			from = fromTmp;
 					        			if(rel!=null)
 					        			{
-					        				System.out.println(leximes.toString());
+					        				//System.out.println(leximes.toString());
 					        				String[] leximArray = new String[leximes.size()];
 					        				leximArray = leximes.toArray(leximArray);
 					        				rel.setProperty("leximes", leximArray);
@@ -214,7 +214,7 @@ public class GraphMLToNeo4JParser
 					        			from = fromTmp;
 					        			if(rel!=null)
 					        			{
-					        				System.out.println(leximes.toString());
+					        				//System.out.println(leximes.toString());
 					        				String[] leximArray = new String[leximes.size()];
 					        				leximArray = leximes.toArray(leximArray);
 					        				rel.setProperty("leximes", leximArray);
