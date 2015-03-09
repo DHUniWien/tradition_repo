@@ -14,15 +14,16 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.kernel.impl.util.StringLogger;
 
-import Exceptions.DataBaseException;
+import Exeptions.DataBaseExeption;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 
 /**
  * 
- * @author jakob/ido
+ * @author jakobschaerer/ido
  *
  **/
 
@@ -35,51 +36,46 @@ public class Witness {
 	 */
 
 	@GET
-	@Path("{textId}, {userId}, {traditionName}")
+	@Path("{textId}")
 	@Produces("text/plain")
-	public String getWitnssAsPlainText(@PathParam("userId") String userId,
-			@PathParam("traditionName") String traditionName,
-			@PathParam("textId") String textId) throws DataBaseException {
+	public String getWitnssAsPlainText(@PathParam("textId") String textId)
+			throws DataBaseExeption {
 		Node node;
 		String witnessAsText = "";
 		GraphDatabaseService db = new GraphDatabaseFactory()
 				.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
+		ExecutionEngine engine = new ExecutionEngine(db, StringLogger.SYSTEM);
 
 		ExecutionResult result;
-		String witnessQuary = "match s,(user:USER {id:'" + userId
-				+ "'})-[r]->(tradition:TRADITION {name:'" + traditionName
-				+ "'}), (tradition)-[r]->(s:WORD {id:'" + traditionName
-				+ "__START__'}), p=(s)--[r]-->(b)--[r]-->(c)"
-						+ " where r.id= '"+ textId + "' AND c.id= '"+traditionName+"__END__' return nodes(p)";
+		String witnessQuary = "match (n {leximes:'" + textId + "'}) return n";
 
 		try (Transaction tx = db.beginTx()) {
 
 			result = engine.execute(witnessQuary);
-			Iterator<Node> nodes = result.columnAs("s");
+			Iterator<Node> nodes = result.columnAs("n");
 			if (nodes.hasNext())
-				throw new DataBaseException(
-						"a word with more than one relationship with the same id");
+				throw new DataBaseExeption("more that one node with same Id");
 			if (!nodes.hasNext())
-				throw new DataBaseException(
+				throw new DataBaseExeption(
 						"such witness does not exist in the data base");
 			else
 				node = nodes.next();
-			
-			
-			/*String nextWordQuary = "match (n)-[r {id:'" + node.getId()
-					+ "'}]-(b)) return b";
+			String nextWordQuary = "match (n {Id:'" + node.getId()
+					+ "'})-[:NORMAL]-(b)) return b"; // not sure if this will
+														// work
 
 			while (nodes.hasNext()) { // TODO not correct! only temporary!
 				result = engine.execute(nextWordQuary);
 				nodes = result.columnAs("b");
 				node = nodes.next();
 				if (nodes.hasNext())
-					throw new DataBaseException(
-							"more than one NORMAL relationship to a single node");
+					throw new DataBaseExeption(
+							"more that one NORMAL relationship to a single node");
 
-				witnessAsText += " " + node.getProperty("text");
-			}*/
+				witnessAsText += " " + node.getProperty("word"); // TODO check
+																	// property
+																	// name
+			}
 		}
 		return witnessAsText;
 	}
@@ -96,4 +92,5 @@ public class Witness {
 
 		return textId;
 	}
+
 }
