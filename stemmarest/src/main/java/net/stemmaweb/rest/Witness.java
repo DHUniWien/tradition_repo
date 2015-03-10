@@ -11,8 +11,12 @@ import javax.ws.rs.core.MediaType;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.UniquenessFactory;
 import org.neo4j.graphdb.Transaction;
 
 import Exceptions.DataBaseException;
@@ -51,23 +55,38 @@ public class Witness {
 			@PathParam("traditionName") String traditionName,
 			@PathParam("textId") String textId) throws DataBaseException {
 		String witnessAsText = "";
-
+		final String value = textId;
 		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId,
 				witnessAsText);
 
+			Evaluator e = new Evaluator() {
+
+			@Override
+			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
+			
+				if (path.length()==0)
+					return Evaluation.EXCLUDE_AND_CONTINUE;
+				
+				boolean includes = path.lastRelationship().getProperty("lexemes").equals(value);				
+				boolean continues = path.lastRelationship().getProperty("lexemes").equals(value);
+				
+				return Evaluation.of(includes, continues);
+			}
+		};
+
 		try (Transaction tx = db.beginTx()) {
+		
 			for (Node witnessNodes : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(Evaluators.toDepth(20)).traverse(witnessNode)
+					.evaluator(e).traverse(witnessNode)
 					.nodes()) {
 				witnessAsText += witnessNodes.getProperty("text") + " ";
 			}
 		}
 
-
 		return witnessAsText.trim();
 	}
-	
+
 	/**
 	 * finds a witness in data base and return it as a list of readings
 	 * 
@@ -98,18 +117,17 @@ public class Witness {
 		ExecutionResult result;
 
 		/**
-		 * this quarry gets the first word of the text (not the "Start" node)
+		 * this quarry gets the "Start" node of the witness
 		 */
 		String witnessQuarry = "match (user:USER {id:'" + userId
 				+ "'})--(tradition:TRADITION {name:'" + traditionName
 				+ "'})--(w:WORD  {name:'" + traditionName
-				+ "__Start__'})-[:NORMAL {lexemes:'" + textId
-				+ "'}]->(n:WORD) return n";
+				+ "__Start__'}) return w";
 
 		try (Transaction tx = db.beginTx()) {
 
 			result = engine.execute(witnessQuarry);
-			Iterator<Node> nodes = result.columnAs("n");
+			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext())
 				throw new DataBaseException(findPathProblem(userId,
@@ -120,15 +138,9 @@ public class Witness {
 			if (nodes.hasNext())
 				throw new DataBaseException(
 						"this path leads to more than one witness");
-
-			// TODO adjust the depth so the traversal run until the last word
-			// (according to the relationship property)
-
 		}
 		return witnessNode;
 	}
-
-	
 
 	/**
 	 * will find the missing link in the data base path in case of an empty
