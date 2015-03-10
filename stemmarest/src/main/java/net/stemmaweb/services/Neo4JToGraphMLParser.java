@@ -38,6 +38,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluators;
 
+import com.sun.org.apache.commons.collections.IteratorUtils;
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 /**
@@ -66,6 +67,8 @@ public class Neo4JToGraphMLParser
 		map.put("scope", "de10");
 		map.put("type", "de11");
 		map.put("witness", "de12");
+		map.put("id", "id");
+		map.put("lexemes", "de12");
 		
 		return map;
 	}
@@ -392,6 +395,7 @@ public class Neo4JToGraphMLParser
   
     		HashMap<String,String> mapGraph = createGraphMap();
     		HashMap<String,String> mapNode = createNodeMap();
+    		HashMap<String,String> mapEdge = createEdgeMap();
     		
     		Iterable<String> props = traditionNode.getPropertyKeys();
     		for(String prop : props)
@@ -433,7 +437,70 @@ public class Neo4JToGraphMLParser
 	        			}
         			}
         		}
-        		writer.writeEndElement();
+        		writer.writeEndElement(); // end node
+    		}
+        		
+    		String startNode = "";
+    		String endNode = "";
+    		String[] startId = null;
+    		String[] endId = null;
+    		String id = "";
+    		for ( Path position : db.traversalDescription()
+    		        .relationships( Relations.NORMAL,Direction.OUTGOING)
+    		        .traverse( graphNode ) )
+    		{
+        		Relationship rel = position.lastRelationship();
+        		if(rel!=null)
+        		{
+        			props = rel.getPropertyKeys();
+        			
+        			
+        			for(String prop : props)
+            		{
+            			String val = mapEdge.get(prop);
+            			
+            			if(val!=null)
+            			{
+    	        			if(prop.equals("id"))
+    	        			{
+    	        				String[] id_string = rel.getProperty("id").toString().split("_");
+    	        				id = id_string[id_string.length-1];
+    	        				
+    	        				Iterable<Node> nodeIterable = position.nodes();
+    	        				
+    	        				List<Node> nds = IteratorUtils.toList(nodeIterable.iterator());
+    	        				startNode = nds.get(nds.size()-2).getProperty("id").toString();
+    	        				endNode = nds.get(nds.size()-1).getProperty("id").toString();
+    	        				startId = startNode.split("_");
+    	        				endId = endNode.split("_");
+    	        				
+    	        			}
+    	        			else if(prop.equals("lexemes"))
+    	        			{
+    	        				int id_int = Integer.parseInt(id.substring(1, id.length()));
+    	        				String[] lexemes = (String[]) rel.getProperty(prop);
+    	        				for(int i = 0; i < lexemes.length; i++)
+    	        				{
+	    	        				writer.writeStartElement("edge");
+	    	        				
+	    	        				writer.writeAttribute("source", startId[startId.length-1]);
+	    	        				writer.writeAttribute("target", endId[endId.length-1]);
+	    	        				writer.writeAttribute("id",'e'+String.valueOf(id_int++));
+	    	        				
+	    	        				writer.writeStartElement("data");
+	    	        				writer.writeAttribute("key",val);
+	    	        				writer.writeCharacters(lexemes[i]);
+	    	        				
+	    	        				writer.writeEndElement();
+	    	        				writer.writeEndElement(); // end edge
+    	        				}
+    	        			}
+            			}
+            		}
+        			
+        			
+        		}
+        		
     		}
     		
     		writer.writeEndElement(); // graph

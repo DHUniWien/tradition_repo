@@ -189,7 +189,7 @@ public class GraphMLToNeo4JParser
 					        				//System.out.println(leximes.toString());
 					        				String[] leximArray = new String[leximes.size()];
 					        				leximArray = leximes.toArray(leximArray);
-					        				rel.setProperty("leximes", leximArray);
+					        				rel.setProperty("lexemes", leximArray);
 					        				leximes.clear();
 					        			}
 					        			rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
