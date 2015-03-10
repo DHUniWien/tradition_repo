@@ -646,7 +646,7 @@ public class Neo4JToGraphMLParser
     	
     	File outputFile = new File(filename);
 		if(outputFile.exists())
-			return Response.ok(outputFile).build();
+			return Response.ok(outputFile, MediaType.APPLICATION_XML).build();
 		else
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Something went wrong").build();
 	}

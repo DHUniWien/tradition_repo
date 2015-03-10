@@ -24,9 +24,9 @@ public class ApplicationConfig extends Application {
         Set<Class<?>> s = new HashSet<Class<?>>();
         s.add(MyResource.class);
         s.add(Witness.class);
-        s.add(Rest.class);
         s.add(User.class);
         s.add(TextInfo.class);
+        s.add(Tradition.class);
         if(!init)
         	initializeApp();
         
