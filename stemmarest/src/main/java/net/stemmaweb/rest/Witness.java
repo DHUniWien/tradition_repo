@@ -2,17 +2,18 @@ package net.stemmaweb.rest;
 
 import java.util.Iterator;
 
-import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.GET;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.helpers.collection.IteratorUtil;
 
 import Exceptions.DataBaseException;
 
@@ -47,37 +48,38 @@ public class Witness {
 
 		ExecutionResult result;
 		String witnessQuary = "match (user:USER {id:'" + userId
-				+ "'})-[r1]->(tradition:TRADITION {name:'" + traditionName
-				+ "'}), (tradition)-[r2]->(s:WORD {id:'" + traditionName
-				+ "__START__'}), p=(s)<--(b)<--(c), (s)<-[r]-(b)"
-				+ " where r.id= '" + textId + "' AND c.id= '" + traditionName
-				+ "__END__' return extract(n IN nodes(p)| n.text) AS extracted";
+				+ "'})--(tradition:TRADITION {name:'" + traditionName
+				+ "'})--(w:WORD  {name:'" + traditionName + "'})-[:NORMAL {lexemes:'"+textId+"'}]->(n:WORD) return n";
+
+		/*
+		 * match (user:USER {id:'" + userId +
+		 * "'})--(tradition:TRADITION {name:'" + traditionName +
+		 * "'})--(w:WORD {name:'" + traditionName + "'}) return w
+		 */
+		/*
+		 * , p=(s)-[:NORMAL*0.. {id:'" + textId + "'}]->(b)" + " where b.id= '"
+		 * + traditionName +
+		 * "__END__' return extract(n IN nodes(p)| n.text) AS extracted";
+		 */
 
 		try (Transaction tx = db.beginTx()) {
-
+			Node witnessNode;
 			result = engine.execute(witnessQuary);
-			Iterator<String> texts = result.columnAs("n.text");
+			Iterator<Node> nodes = result.columnAs("n");
 
-			if (!texts.hasNext())
+			if (!nodes.hasNext())
 				throw new DataBaseException(findPathProblem(userId,
 						traditionName, textId));
-			else {
-				for (String text : IteratorUtil.asIterable(texts))
-					witnessAsText = " " + text;
+			else
+				witnessNode = nodes.next();
+
+			for (Node witnessNodes : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(Evaluators.toDepth(20)).traverse(witnessNode)
+					.nodes()) {
+				witnessAsText += witnessNodes.getProperty("text") + " ";
 			}
 
-			/*
-			 * String nextWordQuary = "match (n)-[r {id:'" + node.getId() +
-			 * "'}]-(b)) return b";
-			 * 
-			 * while (nodes.hasNext()) { // TODO not correct! only temporary!
-			 * result = engine.execute(nextWordQuary); nodes =
-			 * result.columnAs("b"); node = nodes.next(); if (nodes.hasNext())
-			 * throw new DataBaseException(
-			 * "more than one NORMAL relationship to a single node");
-			 * 
-			 * witnessAsText += " " + node.getProperty("text"); }
-			 */
 		}
 		return witnessAsText;
 	}
@@ -107,32 +109,31 @@ public class Witness {
 	private String findPathProblem(String userId, String traditionName,
 			String textId) {
 		String exceptionString = "";
-		GraphDatabaseService db = new GraphDatabaseFactory()
-				.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
+
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult userResult = engine.execute("match (n:USER {id:'"
-					+ userId + "'}) return n");
-			Iterator<Node> users = userResult.columnAs("n");
+			ExecutionResult userResult = engine.execute("match (u:USER {id:'"
+					+ userId + "'}) return u");
+			Iterator<Node> users = userResult.columnAs("u");
 			if (!users.hasNext())
 				exceptionString = "such user does not exist in the system";
 			else {
 				ExecutionResult traditionResult = engine
-						.execute("match (n:TRADITION {name:'" + traditionName
-								+ "'}) retun n");
-				Iterator<Node> traditions = traditionResult.columnAs("n");
+						.execute("match (t:TRADITION {name:'" + traditionName
+								+ "'}) return t");
+				Iterator<Node> traditions = traditionResult.columnAs("t");
 
 				if (!traditions.hasNext())
 					exceptionString = "such trsdition does not exist in the system";
 				else {
 					ExecutionResult witnessResult = engine
-							.execute("match (n:TRADITION {id:'" + traditionName
-									+ "__START__'}) retun n");
-					Iterator<Node> witnesses = witnessResult.columnAs("n");
+							.execute("match (w:TRADITION {id:'" + traditionName
+									+ "__START__'}) return w");
+					Iterator<Node> witnesses = witnessResult.columnAs("w");
 
 					if (!witnesses.hasNext())
-						exceptionString = "such wtiness does not exist in the system";
+						exceptionString = "such witness does not exist in the system";
 					else
 						exceptionString = "there is some unknown problem with the data path";
 				}

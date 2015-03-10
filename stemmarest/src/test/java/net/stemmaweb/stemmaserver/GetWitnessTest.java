@@ -28,19 +28,19 @@ public class GetWitnessTest {
 		ExecutionEngine beforeEngine = new ExecutionEngine(graphDb);
 		String createWitness = "create (testUser:USER {id:'testUserId'}),"
 				+ " (testTradition:TRADITION {name:'testTraditionName'}),"
-				+ " (witnessStart:WORD {name:'testTraditionName__STRAT__'}),"
+				+ " (witnessStart:WORD {name:'testTraditionName', text:''}),"
 				+ " (word1:WORD {text:'this'}),"
 				+ " (word2:WORD {text:'is'}),"
 				+ " (word3:WORD {text:'a'}),"
 				+ " (word4:WORD {text:'witness'}),"
 				+ " (word5:WORD {text:'test'}),"
-				+ " (testUser)-[:TEST_REALTIONSHIP]->(testTradition),"
-				+ " (testTradition)-[:TEST_REALTIONSHIP]->(witnessStart),"
-				+ " (witnessStart)-[:TEST_REALTIONSHIP {leximes:'testLexime'}]->(word1),"
-				+ " (word1)-[:TEST_REALTIONSHIP {leximes:'testLexime'}]->(word2),"
-				+ " (word2)-[:TEST_REALTIONSHIP {leximes:'testLexime'}]->(word3),"
-				+ " (word3)-[:TEST_REALTIONSHIP {leximes:'testLexime'}]->(word4),"
-				+ " (word4)-[:TEST_REALTIONSHIP {leximes:'testLexime'}]->(word5);";
+				+ " (testUser)-[:NORMAL]->(testTradition),"
+				+ " (testTradition)-[:NORMAL]->(witnessStart),"
+				+ " (witnessStart)-[:NORMAL {lexemes:'testLexime'}]->(word1),"
+				+ " (word1)-[:NORMAL {lexemes:'testLexime'}]->(word2),"
+				+ " (word2)-[:NORMAL {lexemes:'testLexime'}]->(word3),"
+				+ " (word3)-[:NORMAL {lexemes:'testLexime'}]->(word4),"
+				+ " (word4)-[:NORMAL {lexemes:'testLexime'}]->(word5);";
 		try (Transaction tx = graphDb.beginTx()) {
 			beforeEngine.execute(createWitness);
 			tx.success();
@@ -67,7 +67,7 @@ public class GetWitnessTest {
 		wintess = new Witness();
 		wintess.setDb(graphDb);
 		
-		assertEquals("this is a witness test", wintess.getWitnssAsPlainText(
+		assertEquals("this is a witness test ", wintess.getWitnssAsPlainText(
 				"testUserId", "testTraditionName", "testLexime"));
 	}
 
