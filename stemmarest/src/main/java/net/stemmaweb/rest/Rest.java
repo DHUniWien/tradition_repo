@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -34,6 +36,15 @@ public class Rest {
     public String getIt() {
 		System.out.println("Hello, World!");
         return "hello from rest.java!";
+    }
+	
+	@GET 
+	@Path("/gettradition")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTradition()
+	{
+		
+        return Neo4JToGraphMLParser.parseNeo4J("1","Sapientia", DB_PATH);
     }
 	
     /**

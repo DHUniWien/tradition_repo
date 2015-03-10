@@ -67,7 +67,7 @@ public class TextInfo {
     		if(nodes.hasNext()){
     			// Remove the old ownership
     			String removeRelationQuery = "MATCH (tradition:TRADITION {id: '"+textId+"'}) "
-    					+ "MATCH tradition-[r:NORMAL]->(:USER) DELETE r";
+    					+ "MATCH tradition<-[r:NORMAL]-(:USER) DELETE r";
     			result = engine.execute(removeRelationQuery);
     			System.out.println(result.dumpToString());
     			
@@ -76,7 +76,7 @@ public class TextInfo {
     					+ "MATCH(tradition: TRADITION {id:'"+textId+"'}) "
     							+ "SET tradition.name = '"+textInfo.getName()+"' "
     									+ "SET tradition.public = '"+textInfo.getIsPublic()+"' "
-    											+ "CREATE (tradition)-[r:NORMAL]->(user) RETURN r, tradition";
+    											+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     			result = engine.execute(createNewRelationQuery);
     			System.out.println(result.dumpToString());
     			

@@ -118,7 +118,7 @@ public class GraphMLToNeo4JParser
 			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
 			        				{
 			        					//System.out.println(currNode.getProperty("id"));
-			        					//currNode.setProperty(map.get(reader.getAttributeValue(0)), prefix + reader.getElementText());
+			        					currNode.setProperty("dn99", reader.getElementText());
 			        				}
 			        				else
 			        				{
@@ -239,7 +239,7 @@ public class GraphMLToNeo4JParser
 			        	
 			        	if(reader.getAttributeValue(0).equals("n1"))
 			        	{
-			        		currNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
+			        		tradRootNode.createRelationshipTo(currNode, Relations.NORMAL);
 			        	}
 			        	
 			        	depth++;
@@ -285,7 +285,7 @@ public class GraphMLToNeo4JParser
 	    	
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
-	   	    tradRootNode.createRelationshipTo(userNode, Relations.NORMAL);
+	   	    userNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
 	   		
 			tx.success();
 		}

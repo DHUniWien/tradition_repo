@@ -95,7 +95,7 @@ public class User {
     		node.setProperty("id", userModel.getId());
     		node.setProperty("isAdmin", userModel.getIsAdmin());
     			
-    		node.createRelationshipTo(rootNode, Relations.NORMAL);
+    		rootNode.createRelationshipTo(node, Relations.NORMAL);
 
     		tx.success();
     	} finally {
@@ -157,7 +157,7 @@ public class User {
     	ExecutionResult result = null;
     	try(Transaction tx = db.beginTx())
     	{
-    		result = engine.execute("match (n)-[:NORMAL]->(userId:USER {id:'"+userId+"'}) return n");
+    		result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'"+userId+"'}) return n");
     		Iterator<Node> traditions = result.columnAs("n");
    			json_string = "{\"traditions\":[";
    			while(traditions.hasNext())
