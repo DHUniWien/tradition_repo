@@ -109,6 +109,10 @@ public class GraphMLToNeo4JParser
 			        					leximes.add(reader.getElementText());
 			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
 			        				}
+			        				else
+			        				{
+			        					rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
+			        				}
 			        			}	
 			        		}
 			        		else if(type_nd==2) // node
@@ -189,7 +193,8 @@ public class GraphMLToNeo4JParser
 					        				//System.out.println(leximes.toString());
 					        				String[] leximArray = new String[leximes.size()];
 					        				leximArray = leximes.toArray(leximArray);
-					        				rel.setProperty("lexemes", leximArray);
+					        				if(leximArray.length>0)
+					        					rel.setProperty("lexemes", leximArray);
 					        				leximes.clear();
 					        			}
 					        			rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);

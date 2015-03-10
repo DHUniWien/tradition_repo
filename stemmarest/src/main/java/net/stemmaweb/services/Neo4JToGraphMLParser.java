@@ -380,8 +380,11 @@ public class Neo4JToGraphMLParser
     		
     		// graph 1
     		
-    		Node graphNode = nodes.next();
+    		int graphCount = 0; // make sure only write meta data for graph 1
+    		Iterable<String> props = null;
     		
+    		Node graphNode = nodes.next();
+    			
     		writer.writeStartElement("graph");
     		writer.writeAttribute("edgedefault", "directed");
     		writer.writeAttribute("id", traditionNode.getProperty("name").toString());
@@ -397,17 +400,20 @@ public class Neo4JToGraphMLParser
     		HashMap<String,String> mapNode = createNodeMap();
     		HashMap<String,String> mapEdge = createEdgeMap();
     		
-    		Iterable<String> props = traditionNode.getPropertyKeys();
-    		for(String prop : props)
+    		if(graphCount++==0)
     		{
-    			String val = mapGraph.get(prop);
-    			if(val!=null)
-    			{
-    				writer.writeStartElement("data");
-    				writer.writeAttribute("key",val);
-    				writer.writeCharacters(traditionNode.getProperty(prop).toString());
-    				writer.writeEndElement();
-    			}
+	    		props = traditionNode.getPropertyKeys();
+	    		for(String prop : props)
+	    		{
+	    			String val = mapGraph.get(prop);
+	    			if(val!=null)
+	    			{
+	    				writer.writeStartElement("data");
+	    				writer.writeAttribute("key",val);
+	    				writer.writeCharacters(traditionNode.getProperty(prop).toString());
+	    				writer.writeEndElement();
+	    			}
+	    		}
     		}
     		
     		for ( Path position : db.traversalDescription()
@@ -497,15 +503,128 @@ public class Neo4JToGraphMLParser
     	        			}
             			}
             		}
-        			
-        			
+        		
         		}
         		
     		}
     		
     		writer.writeEndElement(); // graph
     		
+
     		// graph 2
+    		
+    		if(nodes.hasNext())
+    		{
+    			writer.writeStartElement("graph");
+        		writer.writeAttribute("edgedefault", "directed");
+        		writer.writeAttribute("id", "relationships");
+        		writer.writeAttribute("parse.edgeids", "canonical");
+        		// THIS NEEDS TO BE IMPLEMENTED LATER 
+        		// writer.writeAttribute("parse.edges", );
+        		writer.writeAttribute("parse.nodeids", "canonical");
+        		// THIS NEEDS TO BE IMPLEMENTED LATER 
+        		// writer.writeAttribute("parse.nodes", );
+        		writer.writeAttribute("parse.order", "nodesfirst");
+        		
+        		Node relNode = nodes.next();
+        		
+        		
+        		result = engine.execute("match (n:WORD) where n.id=~'"+ relNode.getProperty("id") + ".*' return n");
+        		Iterator<Node> graphNodes = result.columnAs("n");
+        		
+        		while(graphNodes.hasNext())
+        		{
+        			Node nextNode = graphNodes.next();
+        			
+        			props = nextNode.getPropertyKeys();
+        			writer.writeStartElement("node");
+            		for(String prop : props)
+            		{
+            			String val = mapNode.get(prop);
+            			
+            			if(val!=null)
+            			{
+    	        			if(prop.equals("id"))
+    	        			{
+    	        				String[] id_arr = nextNode.getProperty("id").toString().split("_");
+    	        				writer.writeAttribute("id",id_arr[id_arr.length-1]);
+    	        			}
+    	        			else
+    	        			{
+    	        				writer.writeStartElement("data");
+    	        				writer.writeAttribute("key",val);
+    	        				writer.writeCharacters(nextNode.getProperty(prop).toString());
+    	        				writer.writeEndElement();
+    	        			}
+            			}
+            		}
+            		writer.writeEndElement(); // end node
+        		}
+        		
+        		result = engine.execute("match (n:WORD) where n.id=~'"+ relNode.getProperty("id") + ".*' return n");
+        		graphNodes = result.columnAs("n");
+        		
+        		while(graphNodes.hasNext())
+        		{
+        			Node nextNode = graphNodes.next();
+        			
+        			props = nextNode.getPropertyKeys();
+        			
+        			Iterable<Relationship> rels = nextNode.getRelationships(Direction.OUTGOING);
+        			Iterator<Relationship> relIterator = rels.iterator();
+        			
+        			while(relIterator.hasNext())
+        			{
+        				Relationship rel = relIterator.next();
+        				
+        				if(rel!=null)
+                		{
+        					writer.writeStartElement("edge");
+                			props = rel.getPropertyKeys();
+                			
+                			for(String prop : props)
+                    		{
+                    			String val = mapEdge.get(prop);
+                    			
+                    			if(val!=null)
+                    			{
+                    				
+                    				
+            	        			if(prop.equals("id"))
+            	        			{    				
+            	        				startNode = nextNode.getProperty("id").toString();
+            	        				endNode = rel.getEndNode().getProperty("id").toString();
+            	        				startId = startNode.split("_");
+            	        				endId = endNode.split("_");
+            	        				String[] id_string = rel.getProperty("id").toString().split("_");
+            	        				id = id_string[id_string.length-1];
+            	        				
+            	        				writer.writeAttribute("source", startId[startId.length-1]);
+		    	        				writer.writeAttribute("target", endId[endId.length-1]);
+		    	        				writer.writeAttribute("id", id);
+            	        			}    	
+	                    			else if(!prop.equals("lexemes"))
+	                    			{
+	                    				
+		    	        				
+		    	        				writer.writeStartElement("data");
+		    	        				
+    	    	        				writer.writeAttribute("key",val);
+    	    	        				writer.writeCharacters(rel.getProperty(prop).toString());
+    	    	        				
+    	    	        				writer.writeEndElement();
+    	    	        				
+    	    	        			
+	                    			}
+                    			}
+                    		}
+                			writer.writeEndElement(); // end edge
+                		}
+        			}
+        		}	
+        		writer.writeEndElement(); // end graph
+    		}
+    		
     		
     		
     		writer.writeEndElement();
