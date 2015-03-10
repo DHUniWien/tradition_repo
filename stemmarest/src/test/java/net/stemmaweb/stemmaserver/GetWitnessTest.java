@@ -28,7 +28,7 @@ public class GetWitnessTest {
 		ExecutionEngine beforeEngine = new ExecutionEngine(graphDb);
 		String createWitness = "create (testUser:USER {id:'testUserId'}),"
 				+ " (testTradition:TRADITION {name:'testTraditionName'}),"
-				+ " (witnessStart:WORD {name:'testTraditionName', text:''}),"
+				+ " (witnessStart:WORD {name:'testTraditionName__Start__', text:''}),"
 				+ " (word1:WORD {text:'this'}),"
 				+ " (word2:WORD {text:'is'}),"
 				+ " (word3:WORD {text:'a'}),"
@@ -51,10 +51,10 @@ public class GetWitnessTest {
 	public void testNodeCreation() {
 
 		ExecutionEngine engine = new ExecutionEngine(graphDb);
-		String nodeCreationQuary = "match (n:WORD {text:'this'}) return n";
+		String nodeCreationQuarry = "match (n:WORD {text:'this'}) return n";
 
 		try (Transaction tx = graphDb.beginTx()) {
-			ExecutionResult result = engine.execute(nodeCreationQuary);
+			ExecutionResult result = engine.execute(nodeCreationQuarry);
 			Iterator<Node> nodes = result.columnAs("n");
 			String textProperty = (String) nodes.next().getProperty("text");
 			assertEquals("this", textProperty);
