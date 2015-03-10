@@ -29,13 +29,23 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
- * This class provides methods for importing Graphml (XML) File into Neo4J
+ * This class provides a method for importing Graphml (XML) File into Neo4J
  * @author sevi
  * 
  */
 public class GraphMLToNeo4JParser
 {
-
+	
+	/**
+	 * Reads xml file and imports it into Neo4J Database 
+	 * @param filename - the graphMl file
+	 * @param databasePath - the path to the Neo4J database folder
+	 * @param userId - the user id who will own the tradition
+	 * @param nameAbbrev - an abbreviation for the tradition (used as prefix in db)
+	 * @return Http Response
+	 * @throws FileNotFoundException
+	 * @throws XMLStreamException
+	 */
 	public static Response parseGraphML(String filename, String databasePath, String userId, String nameAbbrev) throws FileNotFoundException, XMLStreamException
 	{
 		String prefix = userId + "_" + nameAbbrev + "_";
@@ -53,25 +63,30 @@ public class GraphMLToNeo4JParser
 		HashMap<String, String> map = new HashMap<String, String>();
 		// to store all keys of the introduction part
 		
+		// opens a connection to neo4j database
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(databasePath);
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
-    	Node tradRootNode = null;
-    	String origPrefix = prefix;
     	
-    	Node from = null;
-    	Node to = null;
+    	Node tradRootNode = null;	// this will be the entry point of the graph
+    	String origPrefix = prefix;	// store the original prefix 
+    	
+    	Node from = null;			// a round-trip store for the start node of a path
+    	Node to = null;				// a round-trip store for the end node of a path
     	
     	LinkedList<String> leximes = new LinkedList<String>();
+    								// a round-trip store for witness names of a single relationship
     	
     	try (Transaction tx = db.beginTx()) 
     	{
-	    	Node currNode = null;
+	    	Node currNode = null;	// holds the current node
 	    	currNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-	    	Relationship rel = null;
+	    	Relationship rel = null;	// holds the current relationship
 			while (true) {
-			    int event = reader.next();
+				// START READING THE GRAPHML FILE
+			    int event = reader.next(); // gets the next <element>
+			    
 			    if(event == XMLStreamConstants.END_ELEMENT)
 			    {
 			    	if(reader.getLocalName().equals("graph") ||
