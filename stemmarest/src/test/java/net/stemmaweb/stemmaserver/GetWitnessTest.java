@@ -67,7 +67,7 @@ public class GetWitnessTest {
 		wintess = new Witness();
 		wintess.setDb(graphDb);
 		
-		assertEquals("this is a witness test ", wintess.getWitnssAsPlainText(
+		assertEquals("this is a witness test", wintess.getWitnssAsPlainText(
 				"testUserId", "testTraditionName", "testLexime"));
 	}
 

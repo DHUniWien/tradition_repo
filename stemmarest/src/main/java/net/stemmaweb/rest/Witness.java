@@ -64,7 +64,8 @@ public class Witness {
 			}
 		}
 
-		return witnessAsText;
+
+		return witnessAsText.trim();
 	}
 	
 	/**
