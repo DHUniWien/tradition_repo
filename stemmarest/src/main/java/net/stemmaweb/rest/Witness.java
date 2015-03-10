@@ -47,24 +47,17 @@ public class Witness {
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		ExecutionResult result;
-		String witnessQuary = "match (user:USER {id:'" + userId
+		String witnessQuarry = "match (user:USER {id:'" + userId
 				+ "'})--(tradition:TRADITION {name:'" + traditionName
-				+ "'})--(w:WORD  {name:'" + traditionName + "'})-[:NORMAL {lexemes:'"+textId+"'}]->(n:WORD) return n";
-
-		/*
-		 * match (user:USER {id:'" + userId +
-		 * "'})--(tradition:TRADITION {name:'" + traditionName +
-		 * "'})--(w:WORD {name:'" + traditionName + "'}) return w
-		 */
-		/*
-		 * , p=(s)-[:NORMAL*0.. {id:'" + textId + "'}]->(b)" + " where b.id= '"
-		 * + traditionName +
-		 * "__END__' return extract(n IN nodes(p)| n.text) AS extracted";
-		 */
+				+ "'})--(w:WORD  {name:'" + traditionName + "__Start__'})-[:NORMAL {lexemes:'"+textId+"'}]->(n:WORD) return n";
 
 		try (Transaction tx = db.beginTx()) {
 			Node witnessNode;
-			result = engine.execute(witnessQuary);
+			/**
+			 * this quarry gets the first word of the text
+			 * (not the "START" node)
+			 */
+			result = engine.execute(witnessQuarry);
 			Iterator<Node> nodes = result.columnAs("n");
 
 			if (!nodes.hasNext())
@@ -73,9 +66,12 @@ public class Witness {
 			else
 				witnessNode = nodes.next();
 
+			
+			//TODO adjust the depth to fit until the last word (according to the relationship property 
+
 			for (Node witnessNodes : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(Evaluators.toDepth(20)).traverse(witnessNode)
+					.evaluator(Evaluators.toDepth(20)).traverse(witnessNode) 
 					.nodes()) {
 				witnessAsText += witnessNodes.getProperty("text") + " ";
 			}
