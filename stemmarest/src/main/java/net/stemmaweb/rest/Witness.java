@@ -32,10 +32,18 @@ public class Witness {
 	private GraphDatabaseService db = new GraphDatabaseFactory()
 			.newEmbeddedDatabase(DB_PATH);
 
-	/*
-	 * gets the requested witness as a string
+	/**
+	 * find a requested witness in the data base and return it as a string
+	 * 
+	 * @param userId
+	 *            : the id of the user who owns the witness
+	 * @param traditionName
+	 *            : the name of the tradition which the witness is in
+	 * @param textId
+	 *            : the id of the witness
+	 * @return a witness as a string
+	 * @throws DataBaseException
 	 */
-
 	@GET
 	@Path("{textId}, {userId}, {traditionName}")
 	@Produces("text/plain")
@@ -44,19 +52,61 @@ public class Witness {
 			@PathParam("textId") String textId) throws DataBaseException {
 		String witnessAsText = "";
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-
-		ExecutionResult result;
-		String witnessQuarry = "match (user:USER {id:'" + userId
-				+ "'})--(tradition:TRADITION {name:'" + traditionName
-				+ "'})--(w:WORD  {name:'" + traditionName + "__Start__'})-[:NORMAL {lexemes:'"+textId+"'}]->(n:WORD) return n";
+		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId,
+				witnessAsText);
 
 		try (Transaction tx = db.beginTx()) {
-			Node witnessNode;
-			/**
-			 * this quarry gets the first word of the text
-			 * (not the "START" node)
-			 */
+			for (Node witnessNodes : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(Evaluators.toDepth(20)).traverse(witnessNode)
+					.nodes()) {
+				witnessAsText += witnessNodes.getProperty("text") + " ";
+			}
+		}
+
+		return witnessAsText;
+	}
+	
+	/**
+	 * finds a witness in data base and return it as a list of readings
+	 * 
+	 * @param userId
+	 *            : the id of the user who owns the witness
+	 * @param traditionName
+	 *            : the name of the tradition which the witness is in
+	 * @param textId
+	 *            : the id of the witness
+	 * @return a witness as a list of readings
+	 * @throws DataBaseException
+	 */
+	@Path("{textId}, {userId}, {traditionName}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public String getWitnessAsReadings(@PathParam("userId") String userId,
+			@PathParam("traditionName") String traditionName,
+			@PathParam("textId") String textId) throws DataBaseException {
+
+		return textId;
+	}
+
+	private Node getFirstWitnessNode(String userId, String traditionName,
+			String textId, String witnessAsText) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+
+		Node witnessNode;
+
+		ExecutionResult result;
+
+		/**
+		 * this quarry gets the first word of the text (not the "Start" node)
+		 */
+		String witnessQuarry = "match (user:USER {id:'" + userId
+				+ "'})--(tradition:TRADITION {name:'" + traditionName
+				+ "'})--(w:WORD  {name:'" + traditionName
+				+ "__Start__'})-[:NORMAL {lexemes:'" + textId
+				+ "'}]->(n:WORD) return n";
+
+		try (Transaction tx = db.beginTx()) {
+
 			result = engine.execute(witnessQuarry);
 			Iterator<Node> nodes = result.columnAs("n");
 
@@ -66,32 +116,18 @@ public class Witness {
 			else
 				witnessNode = nodes.next();
 
-			
-			//TODO adjust the depth to fit until the last word (according to the relationship property 
+			if (nodes.hasNext())
+				throw new DataBaseException(
+						"this path leads to more than one witness");
 
-			for (Node witnessNodes : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(Evaluators.toDepth(20)).traverse(witnessNode) 
-					.nodes()) {
-				witnessAsText += witnessNodes.getProperty("text") + " ";
-			}
+			// TODO adjust the depth so the traversal run until the last word
+			// (according to the relationship property)
 
 		}
-		return witnessAsText;
+		return witnessNode;
 	}
 
-	/**
-	 * 
-	 * @param textId
-	 * @return a witness as a list of readings
-	 */
-
-	@Path("{textId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public String getWitnessAsReadings(@PathParam("textId") String textId) {
-
-		return textId;
-	}
+	
 
 	/**
 	 * will find the missing link in the data base path in case of an empty
@@ -131,11 +167,10 @@ public class Witness {
 					if (!witnesses.hasNext())
 						exceptionString = "such witness does not exist in the system";
 					else
-						exceptionString = "there is some unknown problem with the data path";
+						exceptionString = "no witness found: there is a problem with the data path";
 				}
 			}
 		}
-
 		return exceptionString;
 	}
 
