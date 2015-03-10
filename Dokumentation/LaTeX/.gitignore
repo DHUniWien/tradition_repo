@@ -1,0 +1,12 @@
+*.aux
+*.bcf
+*.dvi
+*.idx
+*.log
+*.out.ps
+*.ptc
+*.run.xml
+*.synctex.gz
+*.toc
+*.idx
+*.log

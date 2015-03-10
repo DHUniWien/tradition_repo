@@ -1,0 +1,346 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The Legrand Orange Book
+% LaTeX Template
+% Version 2.0 (9/2/15)
+%
+% This template has been downloaded from:
+% http://www.LaTeXTemplates.com
+%
+% Mathias Legrand (legrand.mathias@gmail.com) with modifications by:
+% Vel (vel@latextemplates.com)
+%
+% License:
+% CC BY-NC-SA 3.0 (http://creativecommons.org/licenses/by-nc-sa/3.0/)
+%
+% Compiling this template:
+% This template uses biber for its bibliography and makeindex for its index.
+% When you first open the template, compile it from the command line with the 
+% commands below to make sure your LaTeX distribution is configured correctly:
+%
+% 1) pdflatex main
+% 2) makeindex main.idx -s StyleInd.ist
+% 3) biber main
+% 4) pdflatex main x 2
+%
+% After this, when you wish to update the bibliography/index use the appropriate
+% command above and make sure to compile with pdflatex several times 
+% afterwards to propagate your changes to the document.
+%
+% This template also uses a number of packages which may need to be
+% updated to the newest versions for the template to compile. It is strongly
+% recommended you update your LaTeX distribution if you have any
+% compilation errors.
+%
+% Important note:
+% Chapter heading images should have a 2:1 width:height ratio,
+% e.g. 920px width and 460px height.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------------------------
+%	PACKAGES AND OTHER DOCUMENT CONFIGURATIONS
+%----------------------------------------------------------------------------------------
+
+\documentclass[11pt,fleqn,openany]{book} % Default font size and left-justified equations
+
+%----------------------------------------------------------------------------------------
+
+\input{structure} % Insert the commands.tex file which contains the majority of the structure behind the template
+
+\begin{document}
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\begingroup
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture,overlay]
+\coordinate [below=12cm] (midpoint) at (current page.north);
+\node at (current page.north west)
+{\begin{tikzpicture}[remember picture,overlay]
+\node[anchor=north west,inner sep=0pt] at (0,0) {\includegraphics[width=\paperwidth]{Pictures/background.pdf}}; % Background image
+\draw[anchor=north] (midpoint) node [fill=ocre!30!white,fill opacity=0.6,text opacity=1,inner sep=1cm]{\Huge\centering\bfseries\sffamily\parbox[c][][t]{\paperwidth}{\centering Stemmarest\\[15pt] % Book title
+{\Large Dokumentation des PSE2 Projekt}\\[20pt] % Subtitle
+{\small Jakob Schaerer, Severin Zumbrunn, Ido Gershoni, Joel Niklaus, Ramona Imhof}}}; % Author name
+\end{tikzpicture}};
+\end{tikzpicture}
+\vfill
+\endgroup
+
+%----------------------------------------------------------------------------------------
+%	COPYRIGHT PAGE
+%----------------------------------------------------------------------------------------
+
+\newpage
+~\vfill
+\thispagestyle{empty}
+
+\noindent Copyright \copyright\ 2015 Team PSE2\\ % Copyright notice
+
+\noindent \textsc{Published by ...}\\ % Publisher
+
+\noindent \textsc{....org}\\ % URL
+
+\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
+
+\noindent \textit{First printing, March 2013} % Printing/edition date
+
+%----------------------------------------------------------------------------------------
+%	TABLE OF CONTENTS
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Table of contents heading image
+
+\pagestyle{empty} % No headers
+
+\tableofcontents % Print the table of contents itself
+
+\cleardoublepage % Forces the first chapter to start on an odd page so it's on the right
+
+\pagestyle{fancy} % Print headers again
+
+%----------------------------------------------------------------------------------------
+%	PART
+%----------------------------------------------------------------------------------------
+
+\part{Project}
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 1
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Introduction}
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 2
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Database (neo4j)}
+
+\section{Structure}
+
+\begin{center}
+\includegraphics[scale=0.65]{Pictures/db_overview.png} 
+\end{center}
+
+\begin{center}
+\includegraphics[scale=0.65]{Pictures/db_overview2.png} 
+\end{center}
+%----------------------------------------------------------------------------------------
+%	CHAPTER 3
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Jersey}
+
+Lorem Ipsum
+
+%----------------------------------------------------------------------------------------
+%	PART
+%----------------------------------------------------------------------------------------
+
+\part{RESTful API}
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 1
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Documentation}
+
+\section{/myresource}
+\begin{get}
+/myresource
+\end{get}
+
+\subsection*{Summary}
+Returns a welcome message
+\begin{parameter}
+\end{parameter}
+\begin{return}[SUCCESS]
+\textbf{text/plain}\\
+''Hi there!''
+\end{return}
+
+\section{/user}
+\begin{get}
+/user
+\end{get}
+
+\subsection*{Summary}
+Returns a welcome message
+\begin{parameter}
+\end{parameter}
+\begin{return}[SUCCESS]
+\textbf{text/plain}\\
+''User!''
+\end{return}
+
+\section{/user/create}
+\begin{post}
+/user/create
+\end{post}
+
+\subsection*{Summary}
+Creates a user.
+\begin{parameter}
+\textbf{application/json}\\
+\{ ''userId'':<userId>, ''isPublic'':<isAdmin> \}
+\end{parameter}
+\begin{return}[CREATED]
+\textbf{application/json}\\
+\{ ''userId'':<userId>, ''isPublic'':<isAdmin> \}
+\end{return}
+\begin{return}[CONFLICT]
+\textbf{application/json}\\
+Error: A user with this id already exists
+\end{return}
+
+\section{/user/\{id\}}
+\begin{get}
+/user/\{id\}
+\end{get}
+
+\subsection*{Summary}
+Returns the user as JSON Object
+\begin{parameter}\textbf{URL}\\
+ Id: the user id
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json}\\
+\{ 'userId': <userId>, 'isAdmin': <isAdmin> \}\\
+\textit{The information about the user}
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+\textit{The information about the user}
+\end{return}
+
+\section{/user/traditions/\{userId\}}
+\begin{get}
+/user/traditions/\{userId\}
+\end{get}
+
+\subsection*{Summary}
+List all Traditions of a user
+\begin{parameter}
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json}\\
+\{''traditions'':[ \{''name'':<traditionName> \} ] \}
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A user with this id does not exist!
+\end{return}
+
+\section{/textinfo/\{textId\}}
+\begin{post}
+/textinfo/\{textId\}
+\end{post}
+
+\subsection*{Summary}
+Update the textInfo of a tradition.
+\begin{parameter}\textbf{URL}\\
+textId: the id of the tradition \\
+\end{parameter}
+\begin{parameter}
+\textbf{application/json}\\
+\{  'name': <new\_name>, 'language': <new\_language>, 'isPublic': <is\_public>, 'ownerId': <new\_ownerId>  \}
+\end{parameter}
+\begin{return}[SUCCESS]
+\textbf{application/json}\\
+\{  'name': <new\_name>, 'language': <new\_language>, 'isPublic': <is\_public>, 'ownerId': <new\_ownerId>  \}\\
+\textit{The new information of the tradition.}
+\end{return}
+\begin{return}[CONFLICT]
+\textbf{application/json}\\
+''Error: A user with this id does not exist''\\
+\textit{If the user does not exist. }
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+\textit{If the tradition was not found. }
+\end{return}
+
+\section{/rest}
+\begin{get}
+/rest
+\end{get}
+
+\subsection*{Summary}
+Returns a welcome message
+\begin{parameter}
+\end{parameter}
+\begin{return}[SUCCESS]
+\textbf{text/plain}\\
+''hello from rest.java!''
+\end{return}
+
+\section{/rest/tradition/new}
+\begin{post}
+/rest/tradition/new
+\end{post}
+
+\subsection*{Summary}
+Create a new tradition.
+\begin{parameter}
+\textbf{text/plain}\\
+name: The name of the tradition
+\end{parameter}
+\begin{parameter}
+\textbf{multipart/form-data}\\
+language: The language of the tradition\\
+public: 0 if the tradition is not public 1 if the tradition is public\\
+name: The name of the tradition\\
+file: multipart file input stream
+\end{parameter}
+\begin{return}[CONFLICT]
+\textbf{application/json}\\
+''Error: No user with this id exists''
+\end{return}
+\begin{return}[INTERNAL\_SERVER\_ERROR]
+\textbf{application/json}\\
+''Error: Tradition could not be imported!''
+\textit{If the server was not able to parse the input file}
+\end{return}
+\begin{return}[OK]
+\textbf{application/json}\\
+''Tradition imported successfully''
+\end{return}
+
+%----------------------------------------------------------------------------------------
+%	BIBLIOGRAPHY
+%----------------------------------------------------------------------------------------
+
+\chapter*{Bibliography}
+\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
+\section*{Books}
+\addcontentsline{toc}{section}{Books}
+\printbibliography[heading=bibempty,type=book]
+\section*{Articles}
+\addcontentsline{toc}{section}{Articles}
+\printbibliography[heading=bibempty,type=article]
+
+%----------------------------------------------------------------------------------------
+%	INDEX
+%----------------------------------------------------------------------------------------
+
+\cleardoublepage
+\phantomsection
+\setlength{\columnsep}{0.75cm}
+\addcontentsline{toc}{chapter}{\textcolor{ocre}{Index}}
+\printindex
+
+%----------------------------------------------------------------------------------------
+
+\end{document}
