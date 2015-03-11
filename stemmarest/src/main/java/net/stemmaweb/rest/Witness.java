@@ -133,7 +133,7 @@ public class Witness {
 	 * @return a witness as a list of readings
 	 * @throws DataBaseException
 	 */
-	@Path("{textId}, {userId}, {traditionName}")
+	@Path("{textId}/{userId}/{traditionName}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public String getWitnessAsReadings(@PathParam("userId") String userId,
 			@PathParam("traditionName") String traditionName,
