@@ -422,6 +422,32 @@
 			</form>
 			
 			<hr>
+			<h3><a name="user">Get witness list for tradition for a user</a></h3>
+			<form method="post" name="getwitn" id="getwitn">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradid" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/witness','getwitn','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetwitn"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetwitn"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
 			<h3><a name="traditiongraph">Get a graphml for a tradition for a user</a></h3>
 			<form name="gettradition" id="gettradition">
 				<div class="form-group">

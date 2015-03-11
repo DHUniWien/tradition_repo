@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.ws.rs.Consumes;
@@ -11,6 +12,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -144,7 +146,7 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTraditionsByUserId(@PathParam("userId") String userId)
     {
-    	String json_string = "";
+    	ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
     	if(!checkUserExists(userId))
     	{
     		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
@@ -158,15 +160,18 @@ public class User {
     	try(Transaction tx = db.beginTx())
     	{
     		result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'"+userId+"'}) return n");
-    		Iterator<Node> traditions = result.columnAs("n");
-   			json_string = "{\"traditions\":[";
-   			while(traditions.hasNext())
+    		Iterator<Node> tradIterator = result.columnAs("n");
+   			while(tradIterator.hasNext())
    			{
-   				json_string += "{\"name\":\"" + traditions.next().getProperty("name") + "\"}";
-  				if(traditions.hasNext())
-   					json_string += ",";
+  				if(tradIterator.hasNext())
+  				{
+  					Node tradNode = tradIterator.next();
+  					TraditionModel tradition = new TraditionModel();
+  					tradition.setId(tradNode.getProperty("id").toString());
+  					tradition.setName(tradNode.getProperty("name").toString());
+   					traditions.add(tradition);
+  				}
    			}
-    		json_string += "]}";
     		
     		tx.success();
    		
@@ -174,7 +179,7 @@ public class User {
     		db.shutdown();
     	}
     	
-    	return Response.status(Response.Status.OK).entity(json_string).build();
+    	return Response.status(Response.Status.OK).entity(traditions).build();
     }
     
     

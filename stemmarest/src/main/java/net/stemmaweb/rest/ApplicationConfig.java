@@ -48,6 +48,7 @@ public class ApplicationConfig extends Application {
     		{
     			Node node = db.createNode(Nodes.ROOT);
     			node.setProperty("name", "Root node");
+    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
     		}
     		tx.success();
     	}

@@ -45,9 +45,9 @@ public class GraphMLToNeo4JParser
 	 * @throws FileNotFoundException
 	 * @throws XMLStreamException
 	 */
-	public static Response parseGraphML(String filename, String databasePath, String userId, String nameAbbrev) throws FileNotFoundException, XMLStreamException
+	public static Response parseGraphML(String filename, String databasePath, String userId) throws FileNotFoundException, XMLStreamException
 	{
-		String prefix = userId + "_" + nameAbbrev + "_";
+		
 		XMLInputFactory factory;
 		XMLStreamReader reader;
 		File file = new File(filename);
@@ -68,9 +68,6 @@ public class GraphMLToNeo4JParser
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
-    	Node tradRootNode = null;	// this will be the entry point of the graph
-    	String origPrefix = prefix;	// store the original prefix 
-    	
     	Node from = null;			// a round-trip store for the start node of a path
     	Node to = null;				// a round-trip store for the end node of a path
     	
@@ -79,6 +76,22 @@ public class GraphMLToNeo4JParser
     	
     	try (Transaction tx = db.beginTx()) 
     	{
+    		
+        	
+        	// retrieves the last inserted Tradition id
+        	String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
+        												.iterator()
+        												.next()
+        												.getProperty("LAST_INSERTED_TRADITION_ID")
+        												.toString();
+        	int last_inserted_id = Integer.parseInt(prefix);
+        	last_inserted_id++;
+        	prefix = String.valueOf(last_inserted_id);
+        	
+        	
+        	Node tradRootNode = null;	// this will be the entry point of the graph
+        	String origPrefix = prefix + "_";	// store the original prefix 
+        	
 	    	Node currNode = null;	// holds the current node
 	    	currNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
 	    	Relationship rel = null;	// holds the current relationship
@@ -154,8 +167,10 @@ public class GraphMLToNeo4JParser
 			        		// needs implementation of meta data here
 			        		if(map.get(attr).equals("name"))
 			        		{
-			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
-			        			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ prefix +"'}) return n");
+			        			
+			        			
+			        			ExecutionResult result = engine.execute("match (n:TRADITION {name:'"+ map.get(attr) +"'}) return n");
+			        			
 			        			Iterator<Node> nodes = result.columnAs("n");
 			        			if(nodes.hasNext())
 			        			{
@@ -164,10 +179,11 @@ public class GraphMLToNeo4JParser
 			        			tradRootNode = currNode;
 			        			
 			        			//System.out.println(prefix);
-			        			currNode.setProperty("id", prefix);
+			        			currNode.setProperty("id", origPrefix.substring(0, origPrefix.length()-1));
 			        			
 			        			currNode.setProperty(map.get(attr), 
 	        							text);
+			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
 			        		}
 			        		else if(map.get(attr).equals("stemmata"))
 			        		{
@@ -305,6 +321,12 @@ public class GraphMLToNeo4JParser
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
 	   	    userNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
+	   	    
+	   	    
+	   	    db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
+	   	    								.iterator()
+	   	    								.next()
+	   	    								.setProperty("LAST_INSERTED_TRADITION_ID", origPrefix.substring(0, origPrefix.length()-1));
 	   		
 			tx.success();
 		}

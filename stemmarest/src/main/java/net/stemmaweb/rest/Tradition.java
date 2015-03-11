@@ -48,11 +48,10 @@ public class Tradition {
 	public static final String DB_PATH = "database";
 
 	@GET
-	@Path("witness/{userId}/{tradName}")
+	@Path("witness/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitness(@PathParam("userId") String userId,
-								@PathParam("tradName") String traditionName) {
+	public Response getWitness(@PathParam("tradId") String tradId) {
 		
 		ArrayList<WitnessModel> witlist= new ArrayList<WitnessModel>();
 
@@ -66,7 +65,7 @@ public class Tradition {
 		{
 			Node traditionNode = null;
 			Node startNode = null;
-    		ExecutionResult result = engine.execute("match (u:USER {id:'"+ userId +"'})-[:NORMAL]->(n:TRADITION {name: '"+ traditionName +"'}) return n");
+    		ExecutionResult result = engine.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		
     		if(!nodes.hasNext())
@@ -98,15 +97,18 @@ public class Tradition {
     		if(rels==null) 
     			return Response.status(Status.NOT_FOUND).entity("start node not found").build();
 
-    		relIt = rels.iterator();
-    		
-    		for(String id : ((String[])relIt.next().getProperty("lexemes")) ) 
+    		for(Relationship rel : rels)
     		{
-    			WitnessModel witM = new WitnessModel();
-    			witM.setId(id);
-    			
-    			witlist.add(witM);
+    			for(String id : ((String[])rel.getProperty("lexemes")) ) 
+        		{
+        			WitnessModel witM = new WitnessModel();
+        			witM.setId(id);
+        			
+        			witlist.add(witM);
+        		}
     		}
+    		
+    		
     		
 			tx.success();
 		}
@@ -169,7 +171,7 @@ public class Tradition {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
     	
-		Response resp = GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId, name.substring(0, 3));
+		Response resp = GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId);
 		// The prefix will always be some sort of '12_', to make sure that all nodes are unique
 		
 		deleteFile(uploadedFileLocation);
