@@ -33,6 +33,7 @@ import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -57,10 +58,11 @@ public class Tradition {
 	public static final String DB_PATH = "database";
 
 	@GET
-	@Path("witness")
+	@Path("witness/{userId}/{tradName}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitness() {
+	public Response getWitness(@PathParam("userId") String userId,
+								@PathParam("tradName") String traditionName) {
 		
 		ArrayList<WitnessModel> witlist= new ArrayList<WitnessModel>();
 
@@ -72,7 +74,50 @@ public class Tradition {
 		
 		try (Transaction tx = db.beginTx()) 
 		{
-			
+			Node traditionNode = null;
+			Node startNode = null;
+    		ExecutionResult result = engine.execute("match (u:USER {id:'"+ userId +"'})-[:NORMAL]->(n:TRADITION {name: '"+ traditionName +"'}) return n");
+    		Iterator<Node> nodes = result.columnAs("n");
+    		
+    		if(!nodes.hasNext())
+    			return Response.status(Status.NOT_FOUND).entity("trad node not found").build();
+    		
+    		traditionNode = nodes.next();
+    		    		
+    		Iterable<Relationship> rels = traditionNode.getRelationships(Direction.OUTGOING);
+    		
+    		if(rels==null) 
+    			return Response.status(Status.NOT_FOUND).entity("rels not found").build();
+
+    		Iterator<Relationship> relIt = rels.iterator();
+    		
+    		while( relIt.hasNext()) 
+    		{
+    			Relationship rel = relIt.next();
+    			startNode = rel.getEndNode();
+    			if(startNode!=null && startNode.hasProperty("text"))
+    			{
+    				if(startNode.getProperty("text").equals("#START#"))
+    				{
+    					rels = startNode.getRelationships(Direction.OUTGOING);
+    					break;
+    				}
+    			}	
+    		}
+
+    		if(rels==null) 
+    			return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+
+    		relIt = rels.iterator();
+    		
+    		for(String id : ((String[])relIt.next().getProperty("lexemes")) ) 
+    		{
+    			WitnessModel witM = new WitnessModel();
+    			witM.setId(id);
+    			
+    			witlist.add(witM);
+    		}
+    		
 			tx.success();
 		}
 		catch(Exception e)
@@ -85,7 +130,7 @@ public class Tradition {
 		}
 		//return Response.status(Status.NOT_FOUND).build();
 		
-		return Response.ok().build();
+		return Response.ok(witlist).build();
 	}
 	
 	/**
