@@ -157,20 +157,6 @@ Lorem Ipsum
 
 \chapter{Documentation}
 
-\section{/myresource}
-\begin{get}
-/myresource
-\end{get}
-
-\subsection*{Summary}
-Returns a welcome message
-\begin{parameter}
-\end{parameter}
-\begin{return}[SUCCESS]
-\textbf{text/plain}\\
-''Hi there!''
-\end{return}
-
 \section{/user}
 \begin{get}
 /user
@@ -232,7 +218,8 @@ Returns the user as JSON Object
 
 \subsection*{Summary}
 List all Traditions of a user
-\begin{parameter}
+\begin{parameter}\textbf{URL}\\
+userId: the id of the user \\
 \end{parameter}
 \begin{return}[OK]
 \textbf{application/json}\\
@@ -272,23 +259,28 @@ textId: the id of the tradition \\
 \textit{If the tradition was not found. }
 \end{return}
 
-\section{/rest}
+\section{/tradition/witness/\{tradId\}}
 \begin{get}
-/rest
+/tradition/witness/\{tradId\}
 \end{get}
 
 \subsection*{Summary}
-Returns a welcome message
-\begin{parameter}
+List all Witness of a tradition
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
 \end{parameter}
-\begin{return}[SUCCESS]
-\textbf{text/plain}\\
-''hello from rest.java!''
+\begin{return}[OK]
+\textbf{application/json}\\
+
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A tradition with this id does not exist!
 \end{return}
 
-\section{/rest/tradition/new}
+\section{/tradition/new}
 \begin{post}
-/rest/tradition/new
+/tradition/new
 \end{post}
 
 \subsection*{Summary}
@@ -316,6 +308,25 @@ file: multipart file input stream
 \begin{return}[OK]
 \textbf{application/json}\\
 ''Tradition imported successfully''
+\end{return}
+
+\section{/tradition/get/\{tradId\}}
+\begin{get}
+/tradition/get/\{tradId\}
+\end{get}
+
+\subsection*{Summary}
+Get a graphml of a tradition
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/xml}\\
+
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A tradition with this id does not exist!
 \end{return}
 
 %----------------------------------------------------------------------------------------

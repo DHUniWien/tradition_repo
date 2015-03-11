@@ -102,7 +102,7 @@ public class Neo4JToGraphMLParser
 			return map;
 		}
 
-	public static Response parseNeo4J(String userId, String traditionName, String databasePath)
+	public static Response parseNeo4J(String tradId, String databasePath)
 	{
 		
 		String filename = "upload/" + "output.xml";
@@ -115,7 +115,7 @@ public class Neo4JToGraphMLParser
     	try (Transaction tx = db.beginTx()) 
     	{
     		Node traditionNode = null;
-    		ExecutionResult result = engine.execute("match (u:USER {id:'"+ userId +"'})-[:NORMAL]-(n:TRADITION {name: '"+ traditionName +"'}) return n");
+    		ExecutionResult result = engine.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		
     		if(!nodes.hasNext())
@@ -359,7 +359,7 @@ public class Neo4JToGraphMLParser
     		
     		// ####### KEYS END #######################################
     		
-    		result = engine.execute("match (t:TRADITION {name:'"+ traditionName +"'})-[:NORMAL]-(n:WORD) return n");
+    		result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:NORMAL]-(n:WORD) return n");
     		nodes = result.columnAs("n");
     		
     		if(!nodes.hasNext())

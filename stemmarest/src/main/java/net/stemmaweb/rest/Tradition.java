@@ -132,13 +132,11 @@ public class Tradition {
 	 * @return XML data
 	 */
 	@GET 
-	@Path("get/{userId}/{tradName}")
+	@Path("get/{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTradition(	@PathParam("userId") String userId,
-    								@PathParam("tradName") String traditionName)
+    public Response getTradition(@PathParam("tradId") String tradId)
 	{
-		System.out.println("Call for " + userId + " and " + traditionName);
-        return Neo4JToGraphMLParser.parseNeo4J(userId,traditionName, DB_PATH);
+        return Neo4JToGraphMLParser.parseNeo4J(tradId, DB_PATH);
     }
 
 	
