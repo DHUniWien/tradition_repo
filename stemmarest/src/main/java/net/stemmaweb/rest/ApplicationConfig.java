@@ -2,7 +2,6 @@ package net.stemmaweb.rest;
 
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 
 import javax.ws.rs.core.Application;
@@ -48,6 +47,7 @@ public class ApplicationConfig extends Application {
     		if(!nodes.hasNext())
     		{
     			Node node = db.createNode(Nodes.ROOT);
+    			node.setProperty("name", "Root node");
     		}
     		tx.success();
     	}
