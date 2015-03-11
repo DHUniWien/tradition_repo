@@ -28,11 +28,11 @@ public class GetWitnessTest {
 		String createWitness = "create (testUser:USER {id:'testUserId'}),"
 				+ " (testTradition:TRADITION {name:'testTraditionName'}),"
 				+ " (witnessStart:WORD {name:'testTraditionName__Start__', text:''}),"
-				+ " (word1:WORD {text:'this'}),"
-				+ " (word2:WORD {text:'is'}),"
-				+ " (word3:WORD {text:'a'}),"
-				+ " (word4:WORD {text:'witness'}),"
-				+ " (word5:WORD {text:'test'}),"
+				+ " (word1:WORD {text:'this', rank:'1'}),"
+				+ " (word2:WORD {text:'is', rank:'2'}),"
+				+ " (word3:WORD {text:'a', rank:'3'}),"
+				+ " (word4:WORD {text:'witness', rank:'4'}),"
+				+ " (word5:WORD {text:'test', rank:'5'}),"
 				+ " (testUser)-[:NORMAL]->(testTradition),"
 				+ " (testTradition)-[:NORMAL]->(witnessStart),"
 				+ " (witnessStart)-[:NORMAL {lexemes:'testLexime'}]->(word1),"
@@ -65,9 +65,19 @@ public class GetWitnessTest {
 
 		wintess = new Witness();
 		wintess.setDb(graphDb);
-		
+
 		assertEquals("this is a witness test", wintess.getWitnssAsPlainText(
 				"testUserId", "testTraditionName", "testLexime"));
+	}
+
+	@Test
+	public void testWintessAsStringWithRanks() {
+
+		wintess = new Witness();
+		wintess.setDb(graphDb);
+
+		assertEquals("is a witness", wintess.getWitnssAsPlainText("testUserId",
+				"testTraditionName", "testLexime", "2", "4"));
 	}
 
 	@After

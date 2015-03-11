@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.ws.rs.Path;
@@ -8,6 +9,10 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.services.DbPathProblemService;
+
+import org.codehaus.jettison.json.JSONArray;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -17,6 +22,7 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.Transaction;
 
 import Exceptions.DataBaseException;
+import Exceptions.UrlPathException;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -26,7 +32,6 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
  * @author jakob/ido
  *
  **/
-
 @Path("/witness")
 public class Witness {
 	public static final String DB_PATH = "database";
@@ -46,41 +51,73 @@ public class Witness {
 	 * @throws DataBaseException
 	 */
 	@GET
-	@Path("{textId}, {userId}, {traditionName}")
+	@Path("{textId}/{userId}/{traditionName}")
 	@Produces("text/plain")
 	public String getWitnssAsPlainText(@PathParam("userId") String userId,
 			@PathParam("traditionName") String traditionName,
 			@PathParam("textId") String textId) throws DataBaseException {
 		String witnessAsText = "";
-		final String value = textId;
-		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId,
-				witnessAsText);
+		final String WITNESS_ID = textId;
+		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-			Evaluator e = new Evaluator() {
+		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId);
+		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
 
-			@Override
-			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
-			
-				if (path.length()==0)
-					return Evaluation.EXCLUDE_AND_CONTINUE;
-				
-				boolean includes = path.lastRelationship().getProperty("lexemes").equals(value);				
-				boolean continues = path.lastRelationship().getProperty("lexemes").equals(value);
-				
-				return Evaluation.of(includes, continues);
-			}
-		};
+		for (ReadingModel readingModel : readingModels) {
+			witnessAsText += readingModel.getText() + " ";
+		}
+		return witnessAsText.trim();
+	}
 
-		try (Transaction tx = db.beginTx()) {
-		
-			for (Node witnessNodes : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).traverse(witnessNode)
-					.nodes()) {
-				witnessAsText += witnessNodes.getProperty("text") + " ";
-			}
+	/**
+	 * find a requested witness in the data base and return it as a string
+	 * according to define start and end readings
+	 * 
+	 * @param userId
+	 *            : the id of the user who owns the witness
+	 * @param traditionName
+	 *            : the name of the tradition which the witness is in
+	 * @param textId
+	 *            : the id of the witness
+	 * @return a witness as a string
+	 * @throws DataBaseException
+	 */
+	@GET
+	@Path("{textId}/{userId}/{traditionName}/{startRank}/{endRank}")
+	@Produces("text/plain")
+	public Object getWitnssAsPlainText(@PathParam("userId") String userId,
+			@PathParam("traditionName") String traditionName,
+			@PathParam("textId") String textId,
+			@PathParam("startRank") String startRank,
+			@PathParam("endRank") String endRank) {
+
+		int endRankAsInt;
+		int startRankAsInt;
+		try {
+			startRankAsInt = Integer.parseInt(startRank);
+			endRankAsInt = Integer.parseInt(endRank);
+		} catch (NumberFormatException e) {
+			throw new UrlPathException(
+					"the requested rank range is not defined by numbers");
 		}
 
+		if (startRankAsInt >= endRankAsInt)
+			throw new UrlPathException(
+					"the start rank is not lower than the end rank");
+
+		String witnessAsText = "";
+		final String WITNESS_ID = textId;
+		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+
+		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId);
+
+		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
+
+		for (ReadingModel readingModel : readingModels) {
+			if (readingModel.getRankAsInt() >= startRankAsInt
+					&& readingModel.getRankAsInt() <= endRankAsInt)
+				witnessAsText += readingModel.getText() + " ";
+		}
 		return witnessAsText.trim();
 	}
 
@@ -101,14 +138,30 @@ public class Witness {
 	public String getWitnessAsReadings(@PathParam("userId") String userId,
 			@PathParam("traditionName") String traditionName,
 			@PathParam("textId") String textId) throws DataBaseException {
+		final String WITNESS_ID = textId;
 
-		return textId;
+		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+
+		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId);
+		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
+		JSONArray ar = new JSONArray(readingModels);
+
+		return ar.toString();
 	}
 
+	/**
+	 * gets the "start" node of a witness
+	 * 
+	 * @param traditionName
+	 * @param userId
+	 * @param textId
+	 *            : the witness id
+	 * @return the start node of a witness
+	 */
 	private Node getFirstWitnessNode(String userId, String traditionName,
-			String textId, String witnessAsText) {
+			String textId) {
 		ExecutionEngine engine = new ExecutionEngine(db);
-
+		DbPathProblemService problemFinder = new DbPathProblemService(db);
 		Node witnessNode;
 
 		ExecutionResult result;
@@ -127,8 +180,8 @@ public class Witness {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext())
-				throw new DataBaseException(findPathProblem(userId,
-						traditionName, textId));
+				throw new DataBaseException(problemFinder.findPathProblem(
+						userId, traditionName, textId));
 			else
 				witnessNode = nodes.next();
 
@@ -139,49 +192,56 @@ public class Witness {
 		return witnessNode;
 	}
 
-	/**
-	 * will find the missing link in the data base path in case of an empty
-	 * result in the witness search
-	 * 
-	 * @param userId
-	 * @param traditionName
-	 * @param textId
-	 * @return the text to be displayed in the exception
-	 */
-	private String findPathProblem(String userId, String traditionName,
-			String textId) {
-		String exceptionString = "";
-		ExecutionEngine engine = new ExecutionEngine(db);
+	private ArrayList<ReadingModel> getNodesOfWitness(final String WITNESS_ID,
+			Node witnessNode) {
+		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+
+		Evaluator e = new Evaluator() {
+			@Override
+			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
+
+				if (path.length() == 0)
+					return Evaluation.EXCLUDE_AND_CONTINUE;
+
+				boolean includes = path.lastRelationship()
+						.getProperty("lexemes").equals(WITNESS_ID);
+				boolean continues = path.lastRelationship()
+						.getProperty("lexemes").equals(WITNESS_ID);
+
+				return Evaluation.of(includes, continues);
+			}
+		};
 
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult userResult = engine.execute("match (u:USER {id:'"
-					+ userId + "'}) return u");
-			Iterator<Node> users = userResult.columnAs("u");
-			if (!users.hasNext())
-				exceptionString = "such user does not exist in the system";
-			else {
-				ExecutionResult traditionResult = engine
-						.execute("match (t:TRADITION {name:'" + traditionName
-								+ "'}) return t");
-				Iterator<Node> traditions = traditionResult.columnAs("t");
+			for (Node witnessNodes : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).traverse(witnessNode).nodes()) {
+				ReadingModel tempReading = extractReadingFromNode(witnessNodes);
 
-				if (!traditions.hasNext())
-					exceptionString = "such trsdition does not exist in the system";
-				else {
-					ExecutionResult witnessResult = engine
-							.execute("match (w:TRADITION {id:'" + traditionName
-									+ "__START__'}) return w");
-					Iterator<Node> witnesses = witnessResult.columnAs("w");
-
-					if (!witnesses.hasNext())
-						exceptionString = "such witness does not exist in the system";
-					else
-						exceptionString = "no witness found: there is a problem with the data path";
-				}
+				readingModels.add(tempReading);
 			}
+			if (readingModels.isEmpty())
+				throw new DataBaseException("this witness is empty");
 		}
-		return exceptionString;
+		return readingModels;
+	}
+
+	private ReadingModel extractReadingFromNode(Node witnessNodes) {
+		ReadingModel tempReading = new ReadingModel();
+		if (witnessNodes.hasProperty("text"))
+			tempReading.setText((String) witnessNodes.getProperty("text"));
+		if (witnessNodes.hasProperty("id"))
+			tempReading.setId((String) witnessNodes.getProperty("id"));
+		if (witnessNodes.hasProperty("language"))
+			tempReading.setLanguage((String) witnessNodes
+					.getProperty("language"));
+		if (witnessNodes.hasProperty("rank"))
+			tempReading.setRank((String) witnessNodes.getProperty("rank"));
+		if (witnessNodes.hasProperty("is_common"))
+			tempReading.setIs_common((String) witnessNodes
+					.getProperty("is_common"));
+		return tempReading;
 	}
 
 	public void setDb(GraphDatabaseService graphDb) {
