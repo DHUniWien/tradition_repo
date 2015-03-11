@@ -1,29 +1,18 @@
 package net.stemmaweb.services;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamWriter;
-import javax.xml.transform.OutputKeys;
 
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -33,10 +22,8 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Evaluators;
 
 import com.sun.org.apache.commons.collections.IteratorUtils;
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
@@ -459,12 +446,9 @@ public class Neo4JToGraphMLParser
         		if(rel!=null)
         		{
         			props = rel.getPropertyKeys();
-        			
-        			
         			for(String prop : props)
             		{
             			String val = mapEdge.get(prop);
-            			
             			if(val!=null)
             			{
     	        			if(prop.equals("id"))
@@ -474,7 +458,8 @@ public class Neo4JToGraphMLParser
     	        				
     	        				Iterable<Node> nodeIterable = position.nodes();
     	        				
-    	        				List<Node> nds = IteratorUtils.toList(nodeIterable.iterator());
+    	        				@SuppressWarnings("unchecked")
+								List<Node> nds = IteratorUtils.toList(nodeIterable.iterator());
     	        				startNode = nds.get(nds.size()-2).getProperty("id").toString();
     	        				endNode = nds.get(nds.size()-1).getProperty("id").toString();
     	        				startId = startNode.split("_");
@@ -503,14 +488,10 @@ public class Neo4JToGraphMLParser
     	        			}
             			}
             		}
-        		
         		}
-        		
     		}
-    		
     		writer.writeEndElement(); // graph
-    		
-
+    	
     		// graph 2
     		
     		if(nodes.hasNext())
@@ -525,10 +506,7 @@ public class Neo4JToGraphMLParser
         		// THIS NEEDS TO BE IMPLEMENTED LATER 
         		// writer.writeAttribute("parse.nodes", );
         		writer.writeAttribute("parse.order", "nodesfirst");
-        		
         		Node relNode = nodes.next();
-        		
-        		
         		result = engine.execute("match (n:WORD) where n.id=~'"+ relNode.getProperty("id") + ".*' return n");
         		Iterator<Node> graphNodes = result.columnAs("n");
         		
@@ -560,36 +538,26 @@ public class Neo4JToGraphMLParser
             		}
             		writer.writeEndElement(); // end node
         		}
-        		
         		result = engine.execute("match (n:WORD) where n.id=~'"+ relNode.getProperty("id") + ".*' return n");
         		graphNodes = result.columnAs("n");
-        		
         		while(graphNodes.hasNext())
         		{
         			Node nextNode = graphNodes.next();
-        			
         			props = nextNode.getPropertyKeys();
-        			
         			Iterable<Relationship> rels = nextNode.getRelationships(Direction.OUTGOING);
         			Iterator<Relationship> relIterator = rels.iterator();
-        			
         			while(relIterator.hasNext())
         			{
         				Relationship rel = relIterator.next();
-        				
         				if(rel!=null)
                 		{
         					writer.writeStartElement("edge");
                 			props = rel.getPropertyKeys();
-                			
                 			for(String prop : props)
                     		{
-                    			String val = mapEdge.get(prop);
-                    			
+                    			String val = mapEdge.get(prop);			
                     			if(val!=null)
                     			{
-                    				
-                    				
             	        			if(prop.equals("id"))
             	        			{    				
             	        				startNode = nextNode.getProperty("id").toString();
@@ -598,23 +566,16 @@ public class Neo4JToGraphMLParser
             	        				endId = endNode.split("_");
             	        				String[] id_string = rel.getProperty("id").toString().split("_");
             	        				id = id_string[id_string.length-1];
-            	        				
             	        				writer.writeAttribute("source", startId[startId.length-1]);
 		    	        				writer.writeAttribute("target", endId[endId.length-1]);
 		    	        				writer.writeAttribute("id", id);
             	        			}    	
 	                    			else if(!prop.equals("lexemes"))
 	                    			{
-	                    				
-		    	        				
 		    	        				writer.writeStartElement("data");
-		    	        				
     	    	        				writer.writeAttribute("key",val);
     	    	        				writer.writeCharacters(rel.getProperty(prop).toString());
-    	    	        				
     	    	        				writer.writeEndElement();
-    	    	        				
-    	    	        			
 	                    			}
                     			}
                     		}
@@ -624,14 +585,9 @@ public class Neo4JToGraphMLParser
         		}	
         		writer.writeEndElement(); // end graph
     		}
-    		
-    		
-    		
     		writer.writeEndElement();
     		writer.flush();
-    		
-    		out.close();
-    		
+    		out.close();	
 		}
 	    catch(Exception e)
 	    {
@@ -643,12 +599,10 @@ public class Neo4JToGraphMLParser
 		{
 			db.shutdown();
 		}
-    	
     	File outputFile = new File(filename);
 		if(outputFile.exists())
 			return Response.ok(outputFile, MediaType.APPLICATION_XML).build();
 		else
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Something went wrong").build();
 	}
-	
 }
