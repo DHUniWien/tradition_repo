@@ -172,7 +172,7 @@ public class Witness {
 		String witnessQuarry = "match (user:USER {id:'" + userId
 				+ "'})--(tradition:TRADITION {name:'" + traditionName
 				+ "'})--(w:WORD  {name:'" + traditionName
-				+ "__Start__'}) return w";
+				+ "__START__'}) return w";
 
 		try (Transaction tx = db.beginTx()) {
 

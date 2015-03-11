@@ -23,11 +23,12 @@ public class GetWitnessTest {
 
 	@Before
 	public void prepareTestDatabase() {
+
 		graphDb = new TestGraphDatabaseFactory().newImpermanentDatabase();
 		ExecutionEngine beforeEngine = new ExecutionEngine(graphDb);
 		String createWitness = "create (testUser:USER {id:'testUserId'}),"
 				+ " (testTradition:TRADITION {name:'testTraditionName'}),"
-				+ " (witnessStart:WORD {name:'testTraditionName__Start__', text:''}),"
+				+ " (witnessStart:WORD {name:'testTraditionName__START__', text:''}),"
 				+ " (word1:WORD {text:'this', rank:'1'}),"
 				+ " (word2:WORD {text:'is', rank:'2'}),"
 				+ " (word3:WORD {text:'a', rank:'3'}),"
