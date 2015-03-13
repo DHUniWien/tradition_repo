@@ -56,16 +56,16 @@ public class Witness {
 	 * @throws DataBaseException
 	 */
 	@GET
-	@Path("{textId}/{userId}/{traditionName}")
+	@Path("{tradId}/{textId}")
 	@Produces("text/plain")
-	public String getWitnssAsPlainText(@PathParam("userId") String userId,
-			@PathParam("traditionName") String traditionName,
+	public String getWitnssAsPlainText(
+			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId);
+		Node witnessNode = getFirstWitnessNode(tradId, textId);
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
 
 		for (ReadingModel readingModel : readingModels) {
@@ -88,10 +88,10 @@ public class Witness {
 	 * @throws DataBaseException
 	 */
 	@GET
-	@Path("{textId}/{userId}/{traditionName}/{startRank}/{endRank}")
+	@Path("{tradId}/{textId}/{startRank}/{endRank}")
 	@Produces("text/plain")
-	public Object getWitnssAsPlainText(@PathParam("userId") String userId,
-			@PathParam("traditionName") String traditionName,
+	public Object getWitnssAsPlainText(
+			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {
@@ -114,7 +114,7 @@ public class Witness {
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId);
+		Node witnessNode = getFirstWitnessNode(tradId, textId);
 
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
 
@@ -138,16 +138,16 @@ public class Witness {
 	 * @return a witness as a list of readings
 	 * @throws DataBaseException
 	 */
-	@Path("{textId}/{userId}/{traditionName}")
+	@Path("{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public String getWitnessAsReadings(@PathParam("userId") String userId,
-			@PathParam("traditionName") String traditionName,
+	public String getWitnessAsReadings(
+			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 		final String WITNESS_ID = textId;
 
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getFirstWitnessNode(userId, traditionName, textId);
+		Node witnessNode = getFirstWitnessNode(tradId, textId);
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
 		JSONArray ar = new JSONArray(readingModels);
 
@@ -163,7 +163,7 @@ public class Witness {
 	 *            : the witness id
 	 * @return the start node of a witness
 	 */
-	private Node getFirstWitnessNode(String userId, String traditionName,
+	private Node getFirstWitnessNode(String tradId,
 			String textId) {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService(db);
@@ -174,8 +174,7 @@ public class Witness {
 		/**
 		 * this quarry gets the "Start" node of the witness
 		 */
-		String witnessQuarry = "match (user:USER {id:'" + userId
-				+ "'})--(tradition:TRADITION {name:'" + traditionName
+		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
 				+ "'})--(w:WORD  {text:'#START#'}) return w";
 
 		try (Transaction tx = db.beginTx()) {
@@ -184,8 +183,7 @@ public class Witness {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext())
-				throw new DataBaseException(problemFinder.findPathProblem(
-						userId, traditionName, textId));
+				throw new DataBaseException(problemFinder.findPathProblem(tradId, textId));
 			else
 				witnessNode = nodes.next();
 
@@ -207,12 +205,21 @@ public class Witness {
 				if (path.length() == 0)
 					return Evaluation.EXCLUDE_AND_CONTINUE;
 
-				boolean includes = path.lastRelationship()
-						.getProperty("lexemes").equals(WITNESS_ID);
-				boolean continues = path.lastRelationship()
-						.getProperty("lexemes").equals(WITNESS_ID);
+				boolean includes = false;
+				boolean continues = false;
+				String[] arr = (String[])path.lastRelationship().getProperty("lexemes");
+				for(String str : arr)
+				{
+					if(str.equals(WITNESS_ID))
+					{
+						includes = true;
+					}
+					 
+				}
+				
+				
 
-				return Evaluation.of(includes, continues);
+				return Evaluation.of(includes, includes);
 			}
 		};
 
@@ -224,10 +231,15 @@ public class Witness {
 				ReadingModel tempReading = extractReadingFromNode(witnessNodes);
 
 				readingModels.add(tempReading);
+				System.out.println(tempReading.getText());
 			}
 			if (readingModels.isEmpty())
+			{
+				db.shutdown();
 				throw new DataBaseException("this witness is empty");
+			}
 		}
+		db.shutdown();
 		return readingModels;
 	}
 
