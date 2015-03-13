@@ -16,8 +16,7 @@ public class DbPathProblemService {
 		db = _db;
 	}
 
-	public String findPathProblem(String tradId,
-			String textId) {
+	public String findPathProblem(String tradId, String textId) {
 		String exceptionString = "";
 		ExecutionEngine engine = new ExecutionEngine(db);
 
@@ -29,19 +28,20 @@ public class DbPathProblemService {
 			Iterator<Node> traditions = traditionResult.columnAs("t");
 
 			if (!traditions.hasNext())
-				exceptionString = "such trsdition does not exist in the system";
+				exceptionString = "such trsdition does not exist in the data base";
 			else {
 				ExecutionResult witnessResult = engine
-						.execute("match (w:TRADITION {id:'" + tradId
-								+ "__START__'}) return w");
+						.execute("match (tradition:TRADITION {id:'" + tradId
+								+ "'})--(w:WORD  {text:'#START#'}) return w");
 				Iterator<Node> witnesses = witnessResult.columnAs("w");
 
 				if (!witnesses.hasNext())
-					exceptionString = "such witness does not exist in the system";
+					exceptionString = "such witness does not exist in the data base";
 				else
 					exceptionString = "no witness found: there is a problem with the data path";
 			}
 		}
+		db.shutdown();
 		return exceptionString;
 	}
 

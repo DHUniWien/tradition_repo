@@ -13,7 +13,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DbPathProblemService;
 
 import org.codehaus.jettison.json.JSONArray;
@@ -27,8 +26,6 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.Transaction;
 
 import Exceptions.DataBaseException;
-import Exceptions.UrlPathException;
-
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 
@@ -58,8 +55,7 @@ public class Witness {
 	@GET
 	@Path("{tradId}/{textId}")
 	@Produces("text/plain")
-	public String getWitnssAsPlainText(
-			@PathParam("tradId") String tradId,
+	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
@@ -90,25 +86,10 @@ public class Witness {
 	@GET
 	@Path("{tradId}/{textId}/{startRank}/{endRank}")
 	@Produces("text/plain")
-	public Object getWitnssAsPlainText(
-			@PathParam("tradId") String tradId,
+	public Object getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {
-
-		int endRankAsInt;
-		int startRankAsInt;
-		try {
-			startRankAsInt = Integer.parseInt(startRank);
-			endRankAsInt = Integer.parseInt(endRank);
-		} catch (NumberFormatException e) {
-			throw new UrlPathException(
-					"the requested rank range is not defined by numbers");
-		}
-
-		if (startRankAsInt >= endRankAsInt)
-			throw new UrlPathException(
-					"the start rank is not lower than the end rank");
 
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
@@ -118,10 +99,21 @@ public class Witness {
 
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
 
+		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
-			if (readingModel.getRankAsInt() >= startRankAsInt
-					&& readingModel.getRankAsInt() <= endRankAsInt)
+			if (readingModel.getRank().equals(startRank))
+				includeReading = 1;
+			if (readingModel.getRank().equals(endRank)) {
+				witnessAsText += readingModel.getText();
+				includeReading = 0;
+			}
+			if (includeReading == 1)
 				witnessAsText += readingModel.getText() + " ";
+		}
+		if (witnessAsText == "") {
+			db.shutdown();
+			throw new DataBaseException(
+					"no readings were found between those ranks");
 		}
 		return witnessAsText.trim();
 	}
@@ -140,8 +132,7 @@ public class Witness {
 	 */
 	@Path("{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public String getWitnessAsReadings(
-			@PathParam("tradId") String tradId,
+	public String getWitnessAsReadings(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 		final String WITNESS_ID = textId;
 
@@ -163,8 +154,7 @@ public class Witness {
 	 *            : the witness id
 	 * @return the start node of a witness
 	 */
-	private Node getFirstWitnessNode(String tradId,
-			String textId) {
+	private Node getFirstWitnessNode(String tradId, String textId) {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService(db);
 		Node witnessNode;
@@ -182,14 +172,18 @@ public class Witness {
 			result = engine.execute(witnessQuarry);
 			Iterator<Node> nodes = result.columnAs("w");
 
-			if (!nodes.hasNext())
-				throw new DataBaseException(problemFinder.findPathProblem(tradId, textId));
-			else
+			if (!nodes.hasNext()) {
+				throw new DataBaseException(problemFinder.findPathProblem(
+						tradId, textId));
+			} else
 				witnessNode = nodes.next();
 
-			if (nodes.hasNext())
+			if (nodes.hasNext()) {
+				db.shutdown();
 				throw new DataBaseException(
 						"this path leads to more than one witness");
+			}
+			tx.success();
 		}
 		return witnessNode;
 	}
@@ -207,19 +201,22 @@ public class Witness {
 
 				boolean includes = false;
 				boolean continues = false;
-				String[] arr = (String[])path.lastRelationship().getProperty("lexemes");
-				for(String str : arr)
-				{
-					if(str.equals(WITNESS_ID))
-					{
-						includes = true;
-					}
-					 
-				}
-				
-				
 
-				return Evaluation.of(includes, includes);
+				String arr = (String) path.lastRelationship().getProperty(
+						"lexemes");
+				if (arr.contains(WITNESS_ID)) {
+					includes = true;
+					continues = true;
+				}
+				// not in use: cast the property 'lexemes' into an array of
+				// strings
+				/*
+				 * String[] arr = (String[])
+				 * path.lastRelationship().getProperty( "lexemes"); for (String
+				 * str : arr) { if (str. equals(WITNESS_ID)) { includes = true;
+				 * continues = true; } }
+				 */
+				return Evaluation.of(includes, continues);
 			}
 		};
 
@@ -233,13 +230,12 @@ public class Witness {
 				readingModels.add(tempReading);
 				System.out.println(tempReading.getText());
 			}
-			if (readingModels.isEmpty())
-			{
+			if (readingModels.isEmpty()) {
 				db.shutdown();
 				throw new DataBaseException("this witness is empty");
 			}
+			tx.success();
 		}
-		db.shutdown();
 		return readingModels;
 	}
 
@@ -263,72 +259,65 @@ public class Witness {
 	public void setDb(GraphDatabaseService graphDb) {
 		db = graphDb;
 	}
-	
+
 	@GET
 	@Path("readings/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getReadings(@PathParam("tradId") String tradId) {
-		
-		ArrayList<ReadingModel> readList= new ArrayList<ReadingModel>();
+
+		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
 
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
 		ExecutionEngine engine = new ExecutionEngine(db);
-	
-		
-		try (Transaction tx = db.beginTx()) 
-		{
+
+		try (Transaction tx = db.beginTx()) {
 			Node traditionNode = null;
 			Node startNode = null;
-    		ExecutionResult result = engine.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		
-    		if(!nodes.hasNext())
-    			return Response.status(Status.NOT_FOUND).entity("trad node not found").build();
-    		
-    		traditionNode = nodes.next();
-    		    		
-    		Iterable<Relationship> rels = traditionNode.getRelationships(Direction.OUTGOING);
-    		
-    		if(rels==null) 
-    			return Response.status(Status.NOT_FOUND).entity("rels not found").build();
+			ExecutionResult result = engine.execute("match (n:TRADITION {id: '"
+					+ tradId + "'}) return n");
+			Iterator<Node> nodes = result.columnAs("n");
 
-    		Iterator<Relationship> relIt = rels.iterator();
-    		
-    		while( relIt.hasNext()) 
-    		{
-    			Relationship rel = relIt.next();
-    			startNode = rel.getEndNode();
-    			if(startNode!=null && startNode.hasProperty("text"))
-    			{
-    				if(startNode.getProperty("text").equals("#START#"))
-    				{
-    					rels = startNode.getRelationships(Direction.OUTGOING);
-    					break;
-    				}
-    			}	
-    		}
+			if (!nodes.hasNext())
+				return Response.status(Status.NOT_FOUND)
+						.entity("trad node not found").build();
 
-    		if(rels==null) 
-    			return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+			traditionNode = nodes.next();
 
+			Iterable<Relationship> rels = traditionNode
+					.getRelationships(Direction.OUTGOING);
 
-    		
-    		
+			if (rels == null)
+				return Response.status(Status.NOT_FOUND)
+						.entity("rels not found").build();
+
+			Iterator<Relationship> relIt = rels.iterator();
+
+			while (relIt.hasNext()) {
+				Relationship rel = relIt.next();
+				startNode = rel.getEndNode();
+				if (startNode != null && startNode.hasProperty("text")) {
+					if (startNode.getProperty("text").equals("#START#")) {
+						rels = startNode.getRelationships(Direction.OUTGOING);
+						break;
+					}
+				}
+			}
+
+			if (rels == null)
+				return Response.status(Status.NOT_FOUND)
+						.entity("start node not found").build();
+
 			tx.success();
-		}
-		catch(Exception e)
-	    {
-	    	e.printStackTrace();
-	    }	
-		finally
-		{
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
 			db.shutdown();
 		}
-		//return Response.status(Status.NOT_FOUND).build();
-		
+		// return Response.status(Status.NOT_FOUND).build();
+
 		return Response.ok(readList).build();
 	}
 }

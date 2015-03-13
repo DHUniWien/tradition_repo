@@ -27,8 +27,8 @@ public class GetWitnessTest {
 		graphDb = new TestGraphDatabaseFactory().newImpermanentDatabase();
 		ExecutionEngine beforeEngine = new ExecutionEngine(graphDb);
 		String createWitness = "create (testUser:USER {id:'testUserId'}),"
-				+ " (testTradition:TRADITION {name:'testTraditionName'}),"
-				+ " (witnessStart:WORD {name:'testTraditionName__START__', text:''}),"
+				+ " (testTradition:TRADITION {id:'1000'}),"
+				+ " (witnessStart:WORD {text:'#START#'}),"
 				+ " (word1:WORD {text:'this', rank:'1'}),"
 				+ " (word2:WORD {text:'is', rank:'2'}),"
 				+ " (word3:WORD {text:'a', rank:'3'}),"
@@ -36,11 +36,11 @@ public class GetWitnessTest {
 				+ " (word5:WORD {text:'test', rank:'5'}),"
 				+ " (testUser)-[:NORMAL]->(testTradition),"
 				+ " (testTradition)-[:NORMAL]->(witnessStart),"
-				+ " (witnessStart)-[:NORMAL {lexemes:'testLexime'}]->(word1),"
-				+ " (word1)-[:NORMAL {lexemes:'testLexime'}]->(word2),"
-				+ " (word2)-[:NORMAL {lexemes:'testLexime'}]->(word3),"
-				+ " (word3)-[:NORMAL {lexemes:'testLexime'}]->(word4),"
-				+ " (word4)-[:NORMAL {lexemes:'testLexime'}]->(word5);";
+				+ " (witnessStart)-[:NORMAL {lexemes:'[testLexime,testLexime2]'}]->(word1),"
+				+ " (word1)-[:NORMAL {lexemes:'[testLexime,testLexime2]'}]->(word2),"
+				+ " (word2)-[:NORMAL {lexemes:'[testLexime,testLexime2]'}]->(word3),"
+				+ " (word3)-[:NORMAL {lexemes:'[testLexime,testLexime2]'}]->(word4),"
+				+ " (word4)-[:NORMAL {lexemes:'[testLexime,testLexime2]'}]->(word5);";
 		try (Transaction tx = graphDb.beginTx()) {
 			beforeEngine.execute(createWitness);
 			tx.success();
@@ -67,8 +67,9 @@ public class GetWitnessTest {
 		wintess = new Witness();
 		wintess.setDb(graphDb);
 
-		assertEquals("this is a witness test", wintess.getWitnssAsPlainText(
-				"testUserId", "testTraditionName", "testLexime"));
+		assertEquals("this is a witness test",
+				wintess.getWitnssAsPlainText("1000", "testLexime"));
+		graphDb.shutdown();
 	}
 
 	@Test
@@ -77,8 +78,9 @@ public class GetWitnessTest {
 		wintess = new Witness();
 		wintess.setDb(graphDb);
 
-		assertEquals("is a witness", wintess.getWitnssAsPlainText("testUserId",
-				"testTraditionName", "testLexime", "2", "4"));
+		assertEquals("is a witness",
+				wintess.getWitnssAsPlainText("1000", "testLexime", "2", "4"));
+		graphDb.shutdown();
 	}
 
 	@After

@@ -32,14 +32,6 @@ public class ReadingModel {
 		return rank;
 	}
 	
-	public int getRankAsInt(){
-		try{
-		return Integer.parseInt(rank);	
-		}
-		catch (NumberFormatException e){
-			throw new UrlPathException("the rank was not a number");
-		}		
-	}
 	public void setRank(String string) {
 		this.rank = string;
 	}
