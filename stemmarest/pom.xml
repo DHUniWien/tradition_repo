@@ -94,6 +94,19 @@
 			<version>${jersey-version}</version>
 			<scope>test</scope>
 		</dependency>
+		 <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>${powermock.version}</version>
+      <scope>test</scope>
+   </dependency>
+   <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito</artifactId>
+      <version>${powermock.version}</version>
+      <scope>test</scope>
+   </dependency>
+		
 		<dependency>
 	<groupId>javax.ws.rs</groupId>
 	<artifactId>javax.ws.rs-api</artifactId>
@@ -104,14 +117,13 @@
 	<artifactId>jersey-json</artifactId>
 	<version>${jersey-version}</version>
 </dependency>
-<dependency>
-   <groupId>com.owlike</groupId>
-   <artifactId>genson</artifactId>
-   <version>0.99</version>
-</dependency>
-		
+
+
+
     </dependencies>
     <properties>
+        <powermock.version>1.6.1</powermock.version>
+    
         <jersey-version>1.8</jersey-version>
     </properties>
    

@@ -14,7 +14,9 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
+import net.stemmaweb.stemmaserver.TestA;
 
+import org.junit.Test;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -29,17 +31,14 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  */
 @Path("/user")
 public class User {
+	TestA blub = new TestA();
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	
-	/**
-	 * 
-	 * @return User!
-	 */
-    @GET 
-    @Produces("text/plain")
-    public String getIt() {
-        return "User!";
-    }
-    
+	@GET
+	public String getIt(){
+		System.out.println(blub.blub());
+		return "User!";
+	}
     /**
      * This method can be used to determine whether a user with given Id exists in the DB
      * @param userId
@@ -47,25 +46,25 @@ public class User {
      */
     public static boolean checkUserExists(String userId)
     {
-    	boolean userExists = false;
-    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
-    	
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	try(Transaction tx = db.beginTx())
-    	{
-    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
-    		Iterator<Node> nodes = result.columnAs("userId");
-    		if(nodes.hasNext())
-    			userExists = true;
-    		else
-    			userExists = false;
-    		tx.success();
-    	}
-    	finally {
-    		db.shutdown();
-    	}
-		return userExists;
+//    	boolean userExists = false;
+//    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+//    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+//    	
+//    	ExecutionEngine engine = new ExecutionEngine(db);
+//    	try(Transaction tx = db.beginTx())
+//    	{
+//    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
+//    		Iterator<Node> nodes = result.columnAs("userId");
+//    		if(nodes.hasNext())
+//    			userExists = true;
+//    		else
+//    			userExists = false;
+//    		tx.success();
+//    	}
+//    	finally {
+//    		db.shutdown();
+//    	}
+		return false;
     }
     
     /**
@@ -83,10 +82,8 @@ public class User {
     	{
     		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
     	}
-    	
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    	System.out.println(dbFactory.hashCode());
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
-
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
