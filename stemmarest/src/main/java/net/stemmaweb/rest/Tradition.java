@@ -30,6 +30,9 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.Traverser;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
@@ -39,13 +42,103 @@ import net.stemmaweb.model.*;
 
 /**
  * 
- * @author ramona, sevi
+ * @author ramona, sevi, joel
  *
  **/
 
 @Path("/tradition")
 public class Tradition {
 	public static final String DB_PATH = "database";
+	
+	private Traverser getReading(final Node reading, GraphDatabaseService db) {
+	    TraversalDescription td = db.traversalDescription()
+	            .breadthFirst()
+	            .relationships( Relations.NORMAL, Direction.OUTGOING )
+	            .evaluator( Evaluators.excludeStartPosition() );
+	    return td.traverse( reading );
+	}
+	
+	private ReadingModel setReadingModel(Node node) {
+		ReadingModel reading = new ReadingModel();
+		reading.setId("" + node.getId());
+		reading.setIs_common(node.getProperty("is_common").toString());
+		reading.setLanguage(node.getProperty("language").toString());
+		reading.setText(node.getProperty("text").toString());
+		reading.setRank(node.getProperty("rank").toString());
+		return reading;
+	}
+	
+	/**
+	 * Returns a single reading in a specific tradition.
+	 * 
+	 * @param tradId
+	 * @param readId
+	 * @return
+	 */
+	@GET
+	@Path("reading/{tradId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
+		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
+		ExecutionEngine engine = new ExecutionEngine(db);
+		ReadingModel reading = null;
+		
+		try (Transaction tx = db.beginTx()) {
+			Node traditionNode = null;
+			Node startNode = null;
+    		ExecutionResult result = engine.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
+    		Iterator<Node> nodes = result.columnAs("n");
+    		
+    		if(!nodes.hasNext())
+    			return Response.status(Status.NOT_FOUND).entity("trad node not found").build();
+    		
+    		traditionNode = nodes.next();
+    		
+    		Iterable<Relationship> rels = traditionNode.getRelationships(Direction.OUTGOING);
+    		
+    		if(rels==null) 
+    			return Response.status(Status.NOT_FOUND).entity("rels not found").build();
+
+    		Iterator<Relationship> relIt = rels.iterator();
+    		
+    		while( relIt.hasNext()) {
+    			Relationship rel = relIt.next();
+    			startNode = rel.getEndNode();
+    			if(startNode!=null && startNode.hasProperty("text")) {
+    				if(startNode.getProperty("text").equals("#START#")) {
+    					rels = startNode.getRelationships(Direction.OUTGOING);
+    					break;
+    				}
+    			}	
+    		}
+
+    		if(rels == null) 
+    			return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+    		
+    		Traverser traverser = getReading( startNode, db );
+    		for ( org.neo4j.graphdb.Path path : traverser){
+    			String id = (String) path.endNode().getProperty("id"); 
+    		    if(id.matches(".*" + readId)) {
+    		    	reading = setReadingModel(path.endNode());
+    		    	break;
+    		    }
+    		}
+    		if(reading == null)
+    			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+    		
+    		tx.success();
+		}
+		catch(Exception e) {
+	    	e.printStackTrace();
+	    }	
+		finally {
+			db.shutdown();
+		}
+		
+		return Response.ok(reading).build();
+	}
 
 	@GET
 	@Path("witness/{tradId}")
