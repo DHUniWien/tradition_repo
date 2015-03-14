@@ -43,6 +43,7 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 @Path("/witness")
 public class Witness {
 	public static final String DB_PATH = "database";
+	private static GraphDatabaseService db = null;
 
 	/**
 	 * find a requested witness in the data base and return it as a string
@@ -57,10 +58,12 @@ public class Witness {
 	 * @throws DataBaseException
 	 */
 	@GET
-	@Path("{tradId}/{textId}")
+	@Path("string/{tradId}/{textId}")
 	@Produces("text/plain")
 	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
+		
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -71,6 +74,7 @@ public class Witness {
 		for (ReadingModel readingModel : readingModels) {
 			witnessAsText += readingModel.getDn15() + " ";
 		}
+		db.shutdown();
 		return witnessAsText.trim();
 	}
 
@@ -88,16 +92,13 @@ public class Witness {
 	 * @throws DataBaseException
 	 */
 	@GET
-	@Path("{tradId}/{textId}/{startRank}/{endRank}")
+	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
 	@Produces("text/plain")
-	public Object getWitnssAsPlainText(@PathParam("tradId") String tradId,
+	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {
-		
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -117,12 +118,10 @@ public class Witness {
 			if (includeReading == 1)
 				witnessAsText += readingModel.getDn15() + " ";
 		}
-		if (witnessAsText == "") {
-			db.shutdown();
-			throw new DataBaseException(
-					"no readings were found between those ranks");
-		}
-		return witnessAsText.trim();
+		db.shutdown();
+		if(witnessAsText.equals(""))
+			return Response.status(Status.NOT_FOUND).build();
+		return Response.ok(witnessAsText.trim()).build();
 	}
 
 	/**
@@ -137,19 +136,23 @@ public class Witness {
 	 * @return a witness as a list of readings
 	 * @throws DataBaseException
 	 */
-	@Path("{tradId}/{textId}")
+	@Path("list/{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public String getWitnessAsReadings(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId) throws DataBaseException {
+	public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId) {
 		final String WITNESS_ID = textId;
 
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-
+		
 		Node witnessNode = getFirstWitnessNode(tradId, textId);
+		if(witnessNode==null)
+			return Response.status(Status.NOT_FOUND).entity("Could not find tradition with this id").build();
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
-		JSONArray ar = new JSONArray(readingModels);
-
-		return ar.toString();
+		if(readingModels.size()==0)
+			return Response.status(Status.NOT_FOUND).entity("Could not found a witness with this id").build();
+		db.shutdown();
+		return Response.status(Status.OK).entity(readingModels).build();
 	}
 
 	/**
@@ -162,12 +165,10 @@ public class Witness {
 	 * @return the start node of a witness
 	 */
 	private Node getFirstWitnessNode(String tradId, String textId) {
-		
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService();
-		Node witnessNode;
+		Node witnessNode = null;
 
 		ExecutionResult result;
 
@@ -187,12 +188,7 @@ public class Witness {
 						tradId, textId));
 			} else
 				witnessNode = nodes.next();
-
-			if (nodes.hasNext()) {
-				db.shutdown();
-				throw new DataBaseException(
-						"this path leads to more than one witness");
-			}
+			
 			tx.success();
 		}
 		return witnessNode;
@@ -201,9 +197,6 @@ public class Witness {
 	private ArrayList<ReadingModel> getNodesOfWitness(final String WITNESS_ID,
 			Node witnessNode) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-		
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Evaluator e = new Evaluator() {
 			@Override
@@ -215,11 +208,15 @@ public class Witness {
 				boolean includes = false;
 				boolean continues = false;
 
-				String arr = (String) path.lastRelationship().getProperty(
+				String[] arr = (String[]) path.lastRelationship().getProperty(
 						"lexemes");
-				if (arr.contains(WITNESS_ID)) {
-					includes = true;
-					continues = true;
+				for(String str : arr)
+				{
+					if(str.equals(WITNESS_ID))
+					{
+						includes = true;
+						continues = true;
+					}
 				}
 				// not in use: cast the property 'lexemes' into an array of
 				// strings
@@ -242,10 +239,6 @@ public class Witness {
 
 				readingModels.add(tempReading);
 			}
-			if (readingModels.isEmpty()) {
-				db.shutdown();
-				throw new DataBaseException("this witness is empty");
-			}
 			tx.success();
 		}
 		return readingModels;
@@ -258,10 +251,7 @@ public class Witness {
 	public Response getReadings(@PathParam("tradId") String tradId) {
 
 		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
-
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {
@@ -315,7 +305,6 @@ public class Witness {
 
 			tx.success();
 		} catch (Exception e) {
-			db.shutdown();
 			e.printStackTrace();
 		} finally {
 			db.shutdown();
