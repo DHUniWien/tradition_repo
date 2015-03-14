@@ -398,7 +398,91 @@
 			</form>
 			
 			<hr>
-			<h3><a name="traditions">Change metadata of a tradition</a></h3>
+			<h3><a name="tradition">/witness/{tradId}</a></h3>
+			<form method="post" name="getwitn" id="getwitn">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradid" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/witness','getwitn','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetwitn"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetwitn"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="traditiongraph">/get/{tradId}</a></h3>
+			<form name="gettradition" id="gettradition">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1001">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/get','gettradition','xml')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgettradition"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngettradition"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="tradition">/reading/{tradId}/{readId}</a></h3>
+			<form method="post" name="getre" id="getre">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Reading id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="readId" placeholder="e.g. n23">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/reading','getre','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetre"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetre"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="traditions">/{tradId}</a></h3>
 			<form method="post" name="chgtrad" id="chgtrad">
 				<div class="form-group">
    				  <div class="row">
@@ -448,12 +532,150 @@
 			 </div>
 			</form>
 			
+			<h2>/witness</h2>
+			
 			<hr>
-			<h3><a name="user">Get tradition list for a user</a></h3>
+			<h3><a name="witness">/string/{tradId}/{textId}</a></h3>
+			<form method="post" name="getwt" id="getwt">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Text id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="textId" placeholder="e.g. Mk10">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('witness/string','getwt','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetwt"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetwt"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="witness">/string/rank/{tradId}/{textId}/{startRank}/{endRank}</a></h3>
+			<form method="post" name="getwtr" id="getwtr">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Text id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="textId" placeholder="e.g. Mk10">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Start rank</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="startRank" placeholder="e.g. r100.1">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">End rank</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="endRank" placeholder="e.g. r1200.2">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('witness/string','getwtr','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetwtr"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetwtr"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="witness">/list/{tradId}/{textId}</a></h3>
+			<form method="post" name="getwtl" id="getwtl">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Text id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="textId" placeholder="e.g. Mk10">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('witness/list','getwtl','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetwtl"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetwtl"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="readings">/readings/{tradId}</a></h3>
+			<form method="post" name="getred" id="getred">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('witness/readings','getred','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetred"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetred"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			
+			<h2>/user</h2>
+			<hr>
+			<h3><a name="user">traditions/{userId}</a></h3>
 			<form method="post" name="gettrad" id="gettrad">
 				<div class="form-group">
 				  <div class="row">
-					<label class="col-sm-2 control-label">ID</label>
+					<label class="col-sm-2 control-label">User ID</label>
 					<div class="col-sm-8">
 				    	<input class="form-control" type="text" name="id" placeholder="e.g. 42">
 				    </div>
@@ -474,64 +696,14 @@
 			 </div>
 			</form>
 			
-			<hr>
-			<h3><a name="user">Get witness list for tradition for a user</a></h3>
-			<form method="post" name="getwitn" id="getwitn">
-				<div class="form-group">
-				  <div class="row">
-					<label class="col-sm-2 control-label">Tradition id</label>
-					<div class="col-sm-8">
-				    	<input class="form-control" type="text" name="tradid" placeholder="e.g. 1000">
-				    </div>
-				 </div>
-				 <div class="row send">
- 					<div class="col-sm-2">
- 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/witness','getwitn','json')"/>
-					
- 					</div>
-					<div class="col-sm-8 output">
-					  <label>Send</label>
-					  <samp><span class="sendgetwitn"></span></samp>
-					  <br/>
-   					  <label>Return</label>
-   					  <samp><span class="returngetwitn"></span></samp>
-					</div>
-				 </div>
-			 </div>
-			</form>
+
 			
 			<hr>
-			<h3><a name="traditiongraph">Get a graphml for a tradition for a user</a></h3>
-			<form name="gettradition" id="gettradition">
-				<div class="form-group">
-				  <div class="row">
-					<label class="col-sm-2 control-label">Tradition id</label>
-					<div class="col-sm-8">
-				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1001">
-				    </div>
-				 </div>
-				 <div class="row send">
- 					<div class="col-sm-2">
- 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/get','gettradition','xml')"/>
-					
- 					</div>
-					<div class="col-sm-8 output">
-					  <label>Send</label>
-					  <samp><span class="sendgettradition"></span></samp>
-					  <br/>
-   					  <label>Return</label>
-   					  <samp><span class="returngettradition"></span></samp>
-					</div>
-				 </div>
-			 </div>
-			</form>
-			
-			<hr>
-			<h3><a name="user">Create a user</a></h3>
+			<h3><a name="user">/create</a></h3>
 			<form method="post" name="newuser" id="newuser">
 				<div class="form-group">
 				  <div class="row">
-					<label class="col-sm-2 control-label">ID</label>
+					<label class="col-sm-2 control-label">User ID</label>
 					<div class="col-sm-8">
 				    	<input class="form-control" type="text" name="id" placeholder="e.g. 42">
 				    </div>
@@ -558,6 +730,32 @@
 					  <br/>
    					  <label>Return</label>
    					  <samp><span class="returnnewuser"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
+			<h3><a name="user">/{userId}</a></h3>
+			<form method="post" name="getusr" id="getusr">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">User ID</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="userId" placeholder="e.g. 42">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('user','getusr','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetusr"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetusr"></span></samp>
 					</div>
 				 </div>
 			 </div>
