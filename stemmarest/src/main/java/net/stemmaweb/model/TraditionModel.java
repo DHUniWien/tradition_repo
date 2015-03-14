@@ -1,5 +1,8 @@
 package net.stemmaweb.model;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
+@XmlRootElement
 public class TraditionModel {
 	private String id;
 	private String name;

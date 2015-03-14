@@ -1,10 +1,13 @@
 package net.stemmaweb.model;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
 /**
  * 
  * @author Jakob
  *
  */
+@XmlRootElement
 public class TextInfoModel {
 	private String name;
 	private String language;

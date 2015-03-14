@@ -2,9 +2,12 @@ package net.stemmaweb.model;
 
 import java.util.HashMap;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 import Exceptions.UrlPathException;
 
+@XmlRootElement
 public class ReadingModel {
 	
 	private String dn0; // grammar_invalid
