@@ -49,7 +49,8 @@ import net.stemmaweb.model.*;
 @Path("/tradition")
 public class Tradition {
 	public static final String DB_PATH = "database";
-	
+
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     /**
      * 
      * @param textInfo in JSON Format 
@@ -62,13 +63,14 @@ public class Tradition {
     public Response create(TextInfoModel textInfo,
     		@PathParam("textId") String textId){
     	
-    	if(!User.checkUserExists(textInfo.getOwnerId()))
+
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
+    	
+    	User user = new User();
+    	if(!user.checkUserExists(textInfo.getOwnerId()))
     	{
     		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id does not exist").build();
     	}
-    	
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
@@ -126,8 +128,8 @@ public class Tradition {
 	@Path("reading/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase("database");
 		
 		ExecutionEngine engine = new ExecutionEngine(db);
 		ReadingModel reading = null;
@@ -195,7 +197,6 @@ public class Tradition {
 		
 		ArrayList<WitnessModel> witlist= new ArrayList<WitnessModel>();
 
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 		GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
 		
 		ExecutionEngine engine = new ExecutionEngine(db);
@@ -297,8 +298,9 @@ public class Tradition {
     					@FormDataParam("userId") String userId,
     					@FormDataParam("file") InputStream uploadedInputStream,
     					@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
-      
-    	if(!User.checkUserExists(userId))
+    	
+    	User user = new User();
+    	if(!user.checkUserExists(userId))
     	{
     		return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
     	}

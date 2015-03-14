@@ -14,9 +14,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
-import net.stemmaweb.stemmaserver.TestA;
 
-import org.junit.Test;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -31,12 +29,10 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  */
 @Path("/user")
 public class User {
-	TestA blub = new TestA();
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	
 	@GET
 	public String getIt(){
-		System.out.println(blub.blub());
 		return "User!";
 	}
     /**
@@ -44,27 +40,25 @@ public class User {
      * @param userId
      * @return
      */
-    public static boolean checkUserExists(String userId)
+    public boolean checkUserExists(String userId)
     {
-//    	boolean userExists = false;
-//    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-//    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
-//    	
-//    	ExecutionEngine engine = new ExecutionEngine(db);
-//    	try(Transaction tx = db.beginTx())
-//    	{
-//    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
-//    		Iterator<Node> nodes = result.columnAs("userId");
-//    		if(nodes.hasNext())
-//    			userExists = true;
-//    		else
-//    			userExists = false;
-//    		tx.success();
-//    	}
-//    	finally {
-//    		db.shutdown();
-//    	}
-		return false;
+    	boolean userExists = false;
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
+    	{
+    		ExecutionResult result = engine.execute("match (userId:USER {id:'"+userId+"'}) return userId");
+    		Iterator<Node> nodes = result.columnAs("userId");
+    		if(nodes.hasNext())
+    			userExists = true;
+    		else
+    			userExists = false;
+    		tx.success();
+    	}
+    	finally {
+    		db.shutdown();
+    	}
+		return userExists;
     }
     
     /**
@@ -77,13 +71,13 @@ public class User {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response create(UserModel userModel){
-    	
+
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
     	if(checkUserExists(userModel.getId()))
     	{
     		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
     	}
-    	System.out.println(dbFactory.hashCode());
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
@@ -114,7 +108,6 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON)
 	public Response getUserById(@PathParam("userId") String userId) {
     	UserModel userModel = new UserModel();
-    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
     	ExecutionEngine engine = new ExecutionEngine(db);
@@ -144,13 +137,13 @@ public class User {
     public Response getTraditionsByUserId(@PathParam("userId") String userId)
     {
     	ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
+
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
     	if(!checkUserExists(userId))
     	{
     		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
     	}
     	
-    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	ExecutionResult result = null;

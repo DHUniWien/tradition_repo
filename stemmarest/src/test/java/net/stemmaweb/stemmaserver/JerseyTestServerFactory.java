@@ -18,29 +18,43 @@ import com.sun.jersey.test.framework.spi.container.grizzly2.GrizzlyTestContainer
 
 import com.sun.jersey.api.json.JSONConfiguration;
 
-public class JerseyTestServerBuilder {
+
+public class JerseyTestServerFactory {
 	private final Collection<Object> resources = new HashSet<>();
 	private Integer port;
 
-	public static JerseyTestServerBuilder aJerseyTest() {
-		return new JerseyTestServerBuilder();
+	public static JerseyTestServerFactory NewJerseyTestServer() {
+		return new JerseyTestServerFactory();
 	}
 
-	public JerseyTestServerBuilder withPort(int port) {
-		this.port = port;
-		return this;
-	}
-
-	public JerseyTestServerBuilder addResource(Object resource) {
+	/**
+	 * 
+	 * @param resource
+	 * @return this JerseyTestServerFactory
+	 */
+	public JerseyTestServerFactory addResource(Object resource) {
 		resources.add(resource);
 		return this;
 	}
 
-	public JerseyTest build() {
+	/**
+	 * 
+	 * @param port as int
+	 * @return this as JerseyTestServerFactory
+	 */
+	public JerseyTestServerFactory setPort(int port) {
+		this.port = port;
+		return this;
+	}
+
+	/**
+	 * 
+	 * @return JerseyTest
+	 */
+	public JerseyTest create() {
 		return new JerseyTest() {
 			@Override
-			protected TestContainerFactory getTestContainerFactory()
-					throws TestContainerException {
+			protected TestContainerFactory getTestContainerFactory() throws TestContainerException {
 				return new GrizzlyTestContainerFactory();
 			}
 
@@ -65,6 +79,9 @@ public class JerseyTestServerBuilder {
 				};
 			}
 
+			/**
+			 * Populate the App with the configured Resources
+			 */
 			@Override
 			protected AppDescriptor configure() {
 				DefaultResourceConfig resourceConfig = new DefaultResourceConfig();

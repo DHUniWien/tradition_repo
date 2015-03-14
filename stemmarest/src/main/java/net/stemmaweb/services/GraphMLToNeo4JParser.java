@@ -62,10 +62,9 @@ public class GraphMLToNeo4JParser
 		HashMap<String, String> map = new HashMap<String, String>();
 		// to store all keys of the introduction part
 		
-		// opens a connection to neo4j database
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(databasePath);
-    	
+		GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+		
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
     	Node from = null;			// a round-trip store for the start node of a path
