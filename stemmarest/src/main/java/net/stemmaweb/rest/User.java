@@ -71,13 +71,13 @@ public class User {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response create(UserModel userModel){
-
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	
     	if(checkUserExists(userModel.getId()))
     	{
     		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
     	}
     	
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
@@ -137,13 +137,13 @@ public class User {
     public Response getTraditionsByUserId(@PathParam("userId") String userId)
     {
     	ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
-
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	
     	if(!checkUserExists(userId))
     	{
     		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
     	}
     	
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	ExecutionResult result = null;

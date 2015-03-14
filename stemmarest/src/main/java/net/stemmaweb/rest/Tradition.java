@@ -63,14 +63,13 @@ public class Tradition {
     public Response create(TextInfoModel textInfo,
     		@PathParam("textId") String textId){
     	
-
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
-    	
     	User user = new User();
     	if(!user.checkUserExists(textInfo.getOwnerId()))
     	{
     		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id does not exist").build();
     	}
+
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())

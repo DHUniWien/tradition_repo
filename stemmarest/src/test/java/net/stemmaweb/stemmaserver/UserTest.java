@@ -8,6 +8,7 @@ import java.util.Iterator;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
 
@@ -131,12 +132,15 @@ public class UserTest {
 	
 	@Test
 	public void getUserTest(){
-		String jsonPayload = "{\"isAdmin\":\"0\",\"id\":\"43\"}";
+		UserModel userModel = new UserModel();
+		userModel.setId("43");
+		userModel.setIsAdmin("0");
 		ClientResponse returnJSON = jerseyTest.resource().path("/user/create")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
 		
-		String actualResponse = jerseyTest.resource().path("/user/43").get(String.class);
-		assertEquals(actualResponse, "{\"isAdmin\":\"0\",\"id\":\"43\"}");
+		UserModel actualResponse = jerseyTest.resource().path("/user/43").get(UserModel.class);
+		assertEquals(actualResponse.getId(),"43");
+		assertEquals(actualResponse.getIsAdmin(),"0");
 	}
 	
 	@After
