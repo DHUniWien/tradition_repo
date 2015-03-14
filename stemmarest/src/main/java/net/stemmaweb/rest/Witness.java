@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import javax.ws.rs.Consumes;
@@ -14,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DbPathProblemService;
+import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import org.codehaus.jettison.json.JSONArray;
 import org.neo4j.graphdb.Direction;
@@ -23,9 +25,13 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.Transaction;
 
 import Exceptions.DataBaseException;
+
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 
@@ -37,8 +43,6 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 @Path("/witness")
 public class Witness {
 	public static final String DB_PATH = "database";
-	private GraphDatabaseService db = new GraphDatabaseFactory()
-			.newEmbeddedDatabase(DB_PATH);
 
 	/**
 	 * find a requested witness in the data base and return it as a string
@@ -65,7 +69,7 @@ public class Witness {
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
 
 		for (ReadingModel readingModel : readingModels) {
-			witnessAsText += readingModel.getText() + " ";
+			witnessAsText += readingModel.getDn15() + " ";
 		}
 		return witnessAsText.trim();
 	}
@@ -90,6 +94,9 @@ public class Witness {
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {
+		
+		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
@@ -101,14 +108,14 @@ public class Witness {
 
 		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
-			if (readingModel.getRank().equals(startRank))
+			if (readingModel.getDn14().equals(startRank))
 				includeReading = 1;
-			if (readingModel.getRank().equals(endRank)) {
-				witnessAsText += readingModel.getText();
+			if (readingModel.getDn14().equals(endRank)) {
+				witnessAsText += readingModel.getDn15();
 				includeReading = 0;
 			}
 			if (includeReading == 1)
-				witnessAsText += readingModel.getText() + " ";
+				witnessAsText += readingModel.getDn15() + " ";
 		}
 		if (witnessAsText == "") {
 			db.shutdown();
@@ -155,8 +162,11 @@ public class Witness {
 	 * @return the start node of a witness
 	 */
 	private Node getFirstWitnessNode(String tradId, String textId) {
+		
+		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
-		DbPathProblemService problemFinder = new DbPathProblemService(db);
+		DbPathProblemService problemFinder = new DbPathProblemService();
 		Node witnessNode;
 
 		ExecutionResult result;
@@ -191,6 +201,9 @@ public class Witness {
 	private ArrayList<ReadingModel> getNodesOfWitness(final String WITNESS_ID,
 			Node witnessNode) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+		
+		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Evaluator e = new Evaluator() {
 			@Override
@@ -225,10 +238,9 @@ public class Witness {
 			for (Node witnessNodes : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).traverse(witnessNode).nodes()) {
-				ReadingModel tempReading = extractReadingFromNode(witnessNodes);
+				ReadingModel tempReading = Reading.readingModelFromNode(witnessNodes);
 
 				readingModels.add(tempReading);
-				System.out.println(tempReading.getText());
 			}
 			if (readingModels.isEmpty()) {
 				db.shutdown();
@@ -237,27 +249,6 @@ public class Witness {
 			tx.success();
 		}
 		return readingModels;
-	}
-
-	private ReadingModel extractReadingFromNode(Node witnessNodes) {
-		ReadingModel tempReading = new ReadingModel();
-		if (witnessNodes.hasProperty("text"))
-			tempReading.setText((String) witnessNodes.getProperty("text"));
-		if (witnessNodes.hasProperty("id"))
-			tempReading.setId((String) witnessNodes.getProperty("id"));
-		if (witnessNodes.hasProperty("language"))
-			tempReading.setLanguage((String) witnessNodes
-					.getProperty("language"));
-		if (witnessNodes.hasProperty("rank"))
-			tempReading.setRank((String) witnessNodes.getProperty("rank"));
-		if (witnessNodes.hasProperty("is_common"))
-			tempReading.setIs_common((String) witnessNodes
-					.getProperty("is_common"));
-		return tempReading;
-	}
-
-	public void setDb(GraphDatabaseService graphDb) {
-		db = graphDb;
 	}
 
 	@GET
@@ -309,9 +300,22 @@ public class Witness {
 			if (rels == null)
 				return Response.status(Status.NOT_FOUND)
 						.entity("start node not found").build();
+			
+			TraversalDescription td = db.traversalDescription()
+		            .breadthFirst()
+		            .relationships( Relations.NORMAL, Direction.OUTGOING )
+		            .evaluator( Evaluators.excludeStartPosition() );
+			
+			Traverser traverser = td.traverse(startNode);
+    		for ( org.neo4j.graphdb.Path path : traverser){
+    			Node nd = path.endNode();
+    		    ReadingModel rm = Reading.readingModelFromNode(nd);
+    		    readList.add(rm);
+    		}
 
 			tx.success();
 		} catch (Exception e) {
+			db.shutdown();
 			e.printStackTrace();
 		} finally {
 			db.shutdown();

@@ -58,16 +58,6 @@ public class Tradition {
 	    return td.traverse( reading );
 	}
 	
-	private ReadingModel setReadingModel(Node node) {
-		ReadingModel reading = new ReadingModel();
-		reading.setId("" + node.getId());
-		reading.setIs_common(node.getProperty("is_common").toString());
-		reading.setLanguage(node.getProperty("language").toString());
-		reading.setText(node.getProperty("text").toString());
-		reading.setRank(node.getProperty("rank").toString());
-		return reading;
-	}
-	
 	/**
 	 * Returns a single reading in a specific tradition.
 	 * 
@@ -121,7 +111,7 @@ public class Tradition {
     		for ( org.neo4j.graphdb.Path path : traverser){
     			String id = (String) path.endNode().getProperty("id"); 
     		    if(id.matches(".*" + readId)) {
-    		    	reading = setReadingModel(path.endNode());
+    		    	reading = Reading.readingModelFromNode(path.endNode());
     		    	break;
     		    }
     		}

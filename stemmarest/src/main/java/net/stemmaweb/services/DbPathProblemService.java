@@ -7,17 +7,17 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 public class DbPathProblemService {
-
-	private GraphDatabaseService db;
-
-	public DbPathProblemService(GraphDatabaseService _db) {
-		db = _db;
-	}
+	
+	public static final String DB_PATH = "database";
 
 	public String findPathProblem(String tradId, String textId) {
+		
 		String exceptionString = "";
+		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {
@@ -45,11 +45,4 @@ public class DbPathProblemService {
 		return exceptionString;
 	}
 
-	public GraphDatabaseService getDb() {
-		return db;
-	}
-
-	public void setDb(GraphDatabaseService db) {
-		this.db = db;
-	}
 }
