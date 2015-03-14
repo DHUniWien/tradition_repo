@@ -8,7 +8,7 @@ import javax.ws.rs.Produces;
 /** Example resource class hosted at the URI path "/myresource"
  */
 @Path("/myresource")
-public class MyResource {
+public class MyResource implements IResource{
     
     /** Method processing HTTP GET requests, producing "text/plain" MIME media
      * type.

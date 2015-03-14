@@ -40,19 +40,19 @@ import com.sun.jersey.test.framework.JerseyTest;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UserTest {
-	
 	/*
 	 * Create a Mock object for the dbFactory. 
 	 */
 	@Mock
-	private GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
+	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 	
 	
 	/*
 	 * Create a Spy object for dbService.
 	 */
 	@Spy
-	GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
+	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
+
 		
 	/*
 	 * The Resource under test. The mockDbFactory will be injected into this resource.

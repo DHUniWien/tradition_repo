@@ -28,7 +28,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  *
  */
 @Path("/user")
-public class User {
+public class User implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	
 	@GET
@@ -43,7 +43,7 @@ public class User {
     public boolean checkUserExists(String userId)
     {
     	boolean userExists = false;
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
@@ -77,7 +77,7 @@ public class User {
     		return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists").build();
     	}
     	
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
@@ -108,7 +108,7 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON)
 	public Response getUserById(@PathParam("userId") String userId) {
     	UserModel userModel = new UserModel();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
@@ -143,7 +143,7 @@ public class User {
     		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
     	}
     	
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
 
     	ExecutionEngine engine = new ExecutionEngine(db);
     	ExecutionResult result = null;

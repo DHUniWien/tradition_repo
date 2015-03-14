@@ -47,8 +47,8 @@ import net.stemmaweb.model.*;
  **/
 
 @Path("/tradition")
-public class Tradition {
-	public static final String DB_PATH = "database";
+public class Tradition implements IResource {
+	
 
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     /**
@@ -128,7 +128,7 @@ public class Tradition {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase("database");
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		
 		ExecutionEngine engine = new ExecutionEngine(db);
 		ReadingModel reading = null;

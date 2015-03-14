@@ -41,8 +41,7 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
  *
  **/
 @Path("/witness")
-public class Witness {
-	public static final String DB_PATH = "database";
+public class Witness implements IResource {
 	private static GraphDatabaseService db = null;
 
 	/**

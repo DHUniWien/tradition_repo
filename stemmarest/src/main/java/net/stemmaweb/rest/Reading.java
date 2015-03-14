@@ -6,7 +6,7 @@ import org.neo4j.graphdb.Node;
 import net.stemmaweb.model.ReadingModel;
 
 @JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
-public class Reading
+public class Reading implements IResource
 {
 	public static ReadingModel readingModelFromNode(Node node)
 	{
