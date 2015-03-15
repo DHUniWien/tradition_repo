@@ -116,6 +116,7 @@
 
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
+
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
 %----------------------------------------------------------------------------------------
@@ -143,6 +144,132 @@ Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod 
 
 Lorem Ipsum
 
+%----------------------------------------------------------------------------------------
+%	PART
+%----------------------------------------------------------------------------------------
+
+\part{Testing}
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 1
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Concept}
+This chapter describes the test-concept of the Digital Humanities PSE2 Project. The testing is used to assure the quality of the project and for test driven development. All tests are written in a manner they don't have any impact on the architecture of the project. To achieve this object mocking and injection by mockito is used. 
+
+\section*{Integration Tests}
+Every user story is tested by an integration Test. The integration tests assures the quality of the project. The technique of integration tests is described in the Integration test chapter. 
+
+\section*{Unit Tests}
+Unit tests are used for test driven development and are defined by the developer. They are only for the development process and are not referenced in quality audits.
+
+\newpage
+
+\section*{Jersey Overview} 
+
+\begin{center}
+\includegraphics[scale=.40]{Pictures/jerseyoverview.png} 
+\end{center}
+
+In the productive system for every REST call jersey is instantiating the requested resource and providing the service. Each resource object has its own database service, which is closed after each call. In production a embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database without test related code in the project, object injection is used. 
+
+
+\chapter{Injection}
+Mockito is used to mock, spy and inject objects in the tests. To use Mockito with junit the following annotation has to be done directly above the class header.
+\begin{lstlisting}[language=java]
+@RunWith(MockitoJUnitRunner.class)
+\end{lstlisting}
+With the MockitoJUnitRunner the annotations @Mock, @Spy and @InjectMocks can be used. To inject an GraphDatabaseService, the GraphDatabaseFactory is mocked and the newEmbeddedDatabase method overwritten that it returns an impermanent database. 
+\begin{lstlisting}[language=java]
+@Mock
+protected GraphDatabaseFactory mockDbFactory =
+   new GraphDatabaseFactory();
+\end{lstlisting}
+The Mock annotation creates a Mock object. This is needed to overwrite the newEmbeddedDatabase method.
+\begin{lstlisting}[language=java]
+Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
+	.thenReturn(mockDbService);  
+\end{lstlisting}
+Where mockDbService is a spy object. This is needed to suppress each shutdown call of this object. This is necessary because the resource is not new created for every restcall and so the database should not be closed. See more in the Integrationtest chapter. 
+\begin{lstlisting}[language=java]
+@Spy
+protected GraphDatabaseService mockDbService = 
+  new TestGraphDatabaseFactory().newImpermanentDatabase();
+\end{lstlisting}
+
+\begin{lstlisting}[language=java]
+Mockito.doNothing().when(mockDbService).shutdown();
+\end{lstlisting}
+
+And the injection of the Mockobjects into a resource
+
+\begin{lstlisting}[language=java]
+@InjectMocks
+private User userResource;
+\end{lstlisting}
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 2
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Unit Test}
+
+\begin{center}
+\includegraphics[scale=.4]{Pictures/junitoverview.png}
+\end{center} 
+ 
+For Unit Tests the methods of the resource are called directly.
+\begin{lstlisting}[language=java]
+@Test
+public void SimpleTest(){
+  String actualResponse = userResource.getIt();
+  assertEquals(actualResponse, "User!");
+}
+\end{lstlisting}
+
+
+\subsection*{Example}
+\url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserUnitTest.java}
+%----------------------------------------------------------------------------------------
+%	CHAPTER 3
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Integration Tests}
+
+\begin{center}
+\includegraphics[scale=.4]{Pictures/jerseytestoverview.png} 
+\end{center}
+
+To inject objects into a resource it is mandatory that the resource is created statically at the place the injection is done. This is not possible when the resources are instantiated when a REST call occurs. To solve this JerseyTestServerFactory creates a server where already instantiated resources can be registered. 
+To start a JerseyTestServer a global JerseyTest has to be created.
+\begin{lstlisting}[language=java]
+private JerseyTest jerseyTest;
+\end{lstlisting}
+The JerseyTestServerFactory creates a JerseyTest with already instantiated resources. This is necessary to inject the mock objects. Multiple resources can be added by chaining .addResource(..).addResource()
+\begin{lstlisting}[language=java]
+jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+	.addResource(userResource).create();
+jerseyTest.setUp();
+\end{lstlisting}
+
+The test is done by calling a webresource of jerseyTest
+\begin{lstlisting}[language=java]
+@Test
+public void SimpleTest(){
+  String actualResponse = jerseyTest.resource()
+      .path("/user").get(String.class);
+  assertEquals(actualResponse, "User!");
+}
+\end{lstlisting}
+
+\subsection*{Example}
+\url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserTest.java}
 %----------------------------------------------------------------------------------------
 %	PART
 %----------------------------------------------------------------------------------------

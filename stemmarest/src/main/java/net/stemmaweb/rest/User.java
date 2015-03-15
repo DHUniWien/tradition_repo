@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 
+import org.junit.Before;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -32,7 +33,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 @Path("/user")
 public class User implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-	
+
 	@GET
 	public String getIt(){
 		return "User!";
