@@ -3,7 +3,6 @@ package net.stemmaweb.stemmaserver;
 
 import static org.junit.Assert.*;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 

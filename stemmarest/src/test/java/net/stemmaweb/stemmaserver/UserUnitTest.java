@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Iterator;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.UserModel;
