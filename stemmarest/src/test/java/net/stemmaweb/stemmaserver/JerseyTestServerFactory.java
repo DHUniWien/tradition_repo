@@ -23,7 +23,7 @@ public class JerseyTestServerFactory {
 	private final Collection<Object> resources = new HashSet<>();
 	private Integer port;
 
-	public static JerseyTestServerFactory NewJerseyTestServer() {
+	public static JerseyTestServerFactory newJerseyTestServer() {
 		return new JerseyTestServerFactory();
 	}
 

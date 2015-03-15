@@ -3,11 +3,14 @@ package net.stemmaweb.stemmaserver;
 
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
@@ -31,6 +34,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -100,16 +104,22 @@ public class UserTest {
 		/*
 		 * Create a JersyTestServer serving the Resource under test
 		 */
-		jerseyTest = JerseyTestServerFactory.NewJerseyTestServer().addResource(userResource).create();
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(userResource).create();
 		jerseyTest.setUp();
 	}
 	
+	/**
+	 * Test if the Resource is up and running
+	 */
 	@Test
 	public void SimpleTest(){
 		String actualResponse = jerseyTest.resource().path("/user").get(String.class);
 		assertEquals(actualResponse, "User!");
 	}
 	
+	/**
+	 * Test the ability to create a user
+	 */
 	@Test
 	public void createUserTest(){
 
@@ -119,6 +129,10 @@ public class UserTest {
 		assertEquals(returnJSON.getStatus(), Response.status(Response.Status.CREATED).build().getStatus());
 	}
 	
+	
+	/**
+	 * Test the behavior when creating a second user with the same id
+	 */
 	@Test
 	public void createConflictingUserTest(){
 
@@ -130,19 +144,58 @@ public class UserTest {
 		assertEquals(returnJSON.getStatus(), Response.status(Response.Status.CONFLICT).build().getStatus());
 	}
 	
+	/**
+	 * Test if the representation of a user is correct
+	 */
 	@Test
 	public void getUserTest(){
 		UserModel userModel = new UserModel();
 		userModel.setId("43");
 		userModel.setIsAdmin("0");
-		ClientResponse returnJSON = jerseyTest.resource().path("/user/create")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
 		
 		UserModel actualResponse = jerseyTest.resource().path("/user/43").get(UserModel.class);
 		assertEquals(actualResponse.getId(),"43");
 		assertEquals(actualResponse.getIsAdmin(),"0");
 	}
 	
+	/**
+	 * Test if the traditions of a user are listed well
+	 */
+	@Test
+	public void getUserTraditions(){
+        String jsonPayload = "{\"isAdmin\":0,\"id\":837462}";
+        jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+        
+	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
+    	try(Transaction tx = mockDbService.beginTx())
+    	{
+    		// Add the new ownership
+    		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
+    		engine.execute(createTradition);
+    		String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
+    				+ "MATCH(tradition: TRADITION {id:'842'}) "
+    						+ "SET tradition.name = 'TestTradition' "
+    								+ "SET tradition.public = '0' "
+    										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+    		engine.execute(createNewRelationQuery);
+    		
+    		tx.success();
+    	} 
+    	TraditionModel trad = new TraditionModel();
+    	trad.setId("842");
+    	trad.setName("TestTradition");
+    	List<TraditionModel> traditions = jerseyTest.resource().path("/user/traditions/837462")
+    			.get(new GenericType<List<TraditionModel>>(){});
+    	TraditionModel tradLoaded = traditions.get(0);
+    	assertEquals(trad.getId(), tradLoaded.getId());
+    	assertEquals(trad.getName(), tradLoaded.getName());
+	}
+	
+	/**
+	 * Shut down the jersey server
+	 * @throws Exception
+	 */
 	@After
 	public void tearDown() throws Exception {
 		mockDbService.shutdown();

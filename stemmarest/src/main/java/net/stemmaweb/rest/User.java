@@ -22,6 +22,8 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
+
+
 /**
  * 
  * @author jakob, severin
@@ -137,7 +139,6 @@ public class User implements IResource {
     public Response getTraditionsByUserId(@PathParam("userId") String userId)
     {
     	ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
-    	
     	if(!checkUserExists(userId))
     	{
     		return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!").build();
