@@ -60,7 +60,7 @@ public class Tradition implements IResource {
     @Path("{textId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response create(TextInfoModel textInfo,
+    public Response changeMetaData(TextInfoModel textInfo,
     		@PathParam("textId") String textId){
     	
     	User user = new User();
@@ -192,7 +192,7 @@ public class Tradition implements IResource {
 	@Path("witness/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitness(@PathParam("tradId") String tradId) {
+	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 		
 		ArrayList<WitnessModel> witlist= new ArrayList<WitnessModel>();
 
@@ -290,7 +290,7 @@ public class Tradition implements IResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("new")
-    public Response create(
+    public Response importGraphMl(
     					@FormDataParam("name") String name,
     					@FormDataParam("language") String language,
     					@FormDataParam("public") String is_public,

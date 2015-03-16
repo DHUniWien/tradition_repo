@@ -126,9 +126,7 @@ public class Witness implements IResource {
 	/**
 	 * finds a witness in data base and return it as a list of readings
 	 * 
-	 * @param userId
-	 *            : the id of the user who owns the witness
-	 * @param traditionName
+	 * @param tradId
 	 *            : the name of the tradition which the witness is in
 	 * @param textId
 	 *            : the id of the witness
@@ -247,7 +245,7 @@ public class Witness implements IResource {
 	@Path("readings/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getReadings(@PathParam("tradId") String tradId) {
+	public Response getAllReadings(@PathParam("tradId") String tradId) {
 
 		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
