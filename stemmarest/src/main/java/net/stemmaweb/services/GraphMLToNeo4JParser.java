@@ -123,21 +123,24 @@ public class GraphMLToNeo4JParser
 			        	{
 			        		if(type_nd==1) // edge
 			        		{
+			        			
 			        			if(rel!=null)
 			        			{
-			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
+			        				String attr = map.get(reader.getAttributeValue(0));
+			        				String val = reader.getElementText();
+
+			        				if(attr.equals("id"))
 			        				{
-			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
-				        						prefix + reader.getElementText());
+			        					rel.setProperty(attr,prefix + val);
 			        				}
-			        				else if(map.get(reader.getAttributeValue(0)).equals("witness"))
+			        				else if(attr.equals("witness"))
 			        				{
-			        					leximes.add(reader.getElementText());
+			        					leximes.add(val);
 			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
 			        				}
 			        				else
 			        				{
-			        					rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
+			        					rel.setProperty(attr,val);
 			        					//System.out.println(map.get(reader.getElementText()));
 			        				}
 			        			}	
@@ -290,9 +293,10 @@ public class GraphMLToNeo4JParser
 			        			tradRootNode.createRelationshipTo(currNode, Relations.NORMAL);
 			        		}
 			        	
-			        		depth++;
-			        		type_nd = 2;
+			        		
 			        	}
+			        	depth++;
+		        		type_nd = 2;
 			        }
 			        else if(reader.getLocalName().equals("key"))
 			        {
@@ -320,7 +324,6 @@ public class GraphMLToNeo4JParser
 			        {
 			        	depth++;
 			        	graphNumber++;
-			        	System.out.println("graph " + graphNumber);
 			        }
 			    }
 			}
