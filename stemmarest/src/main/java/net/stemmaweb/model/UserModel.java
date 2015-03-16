@@ -6,6 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class UserModel {
 	private String id;
 	private String isAdmin;
+
 	public String getIsAdmin() {
 		return isAdmin;
 	}

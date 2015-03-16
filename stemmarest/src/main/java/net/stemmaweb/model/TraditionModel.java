@@ -6,6 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class TraditionModel {
 	private String id;
 	private String name;
+
 	public String getName() {
 		return name;
 	}
