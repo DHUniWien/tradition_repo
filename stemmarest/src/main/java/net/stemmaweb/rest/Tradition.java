@@ -37,7 +37,7 @@ import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 
-import Exceptions.NodeNotFoundException;
+import Exceptions.DataBaseException;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
@@ -137,7 +137,7 @@ public class Tradition implements IResource {
 				traditionNode = getTraditionNode(tradId, engine);
 				relationships = getRelationships(traditionNode);
 				startNode = getStartNode(relationships);
-			} catch (NodeNotFoundException e) {
+			} catch (DataBaseException e) {
 				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
 
@@ -166,7 +166,7 @@ public class Tradition implements IResource {
 	@Path("witness/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitness(@PathParam("tradId") String tradId) {
+	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -182,7 +182,7 @@ public class Tradition implements IResource {
 				traditionNode = getTraditionNode(tradId, engine);
 				relationships = getRelationships(traditionNode);
 				// startNode = getStartNode(relationships);
-			} catch (NodeNotFoundException e) {
+			} catch (DataBaseException e) {
 				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
 
@@ -229,9 +229,9 @@ public class Tradition implements IResource {
 	 * @param startNode
 	 * @param relations
 	 * @return
-	 * @throws NodeNotFoundException
+	 * @throws DataBaseException
 	 */
-	private Node getStartNode(Iterable<Relationship> relations) throws NodeNotFoundException {
+	private Node getStartNode(Iterable<Relationship> relations) throws DataBaseException {
 		Node startNode = null;
 		Iterator<Relationship> relationsIterator = relations.iterator();
 		while (relationsIterator.hasNext()) {
@@ -246,7 +246,7 @@ public class Tradition implements IResource {
 		}
 
 		if (relations == null)
-			throw new NodeNotFoundException("start node not found");
+			throw new DataBaseException("start node not found");
 		return startNode;
 	}
 
@@ -255,13 +255,13 @@ public class Tradition implements IResource {
 	 * 
 	 * @param traditionNode
 	 * @return
-	 * @throws NodeNotFoundException
+	 * @throws DataBaseException
 	 */
-	private Iterable<Relationship> getRelationships(Node traditionNode) throws NodeNotFoundException {
+	private Iterable<Relationship> getRelationships(Node traditionNode) throws DataBaseException {
 		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);
 
 		if (relations == null)
-			throw new NodeNotFoundException("relationships not found");
+			throw new DataBaseException("relationships not found");
 		return relations;
 	}
 
@@ -271,14 +271,14 @@ public class Tradition implements IResource {
 	 * @param tradId
 	 * @param engine
 	 * @return
-	 * @throws NodeNotFoundException
+	 * @throws DataBaseException
 	 */
-	private Node getTraditionNode(String tradId, ExecutionEngine engine) throws NodeNotFoundException {
+	private Node getTraditionNode(String tradId, ExecutionEngine engine) throws DataBaseException {
 		ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
 		Iterator<Node> nodes = result.columnAs("n");
 
 		if (!nodes.hasNext())
-			throw new NodeNotFoundException("tradition node not found");
+			throw new DataBaseException("tradition node not found");
 
 		return nodes.next();
 	}
@@ -307,7 +307,7 @@ public class Tradition implements IResource {
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	@Produces(MediaType.APPLICATION_JSON)
 	@Path("new")
-	public Response create(@FormDataParam("name") String name, @FormDataParam("language") String language,
+	public Response importGraphMl(@FormDataParam("name") String name, @FormDataParam("language") String language,
 			@FormDataParam("public") String is_public, @FormDataParam("userId") String userId,
 			@FormDataParam("file") InputStream uploadedInputStream,
 			@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {

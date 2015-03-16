@@ -13,7 +13,7 @@ public class DbPathProblemService {
 	
 	public static final String DB_PATH = "database";
 
-	public String findPathProblem(String tradId, String textId) {
+	public String findPathProblem(String tradId) {
 		
 		String exceptionString = "";
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();

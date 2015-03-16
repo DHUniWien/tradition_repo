@@ -63,8 +63,8 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getFirstWitnessNode(tradId, textId);
-		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
+		Node witnessNode = getStartNode(tradId);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
 
 		for (ReadingModel readingModel : readingModels) {
 			witnessAsText += readingModel.getDn15() + " ";
@@ -96,9 +96,9 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getFirstWitnessNode(tradId, textId);
+		Node witnessNode = getStartNode(tradId);
 
-		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
 
 		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
@@ -137,10 +137,10 @@ public class Witness implements IResource {
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getFirstWitnessNode(tradId, textId);
+		Node witnessNode = getStartNode(tradId);
 		if (witnessNode == null)
 			return Response.status(Status.NOT_FOUND).entity("Could not find tradition with this id").build();
-		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
 		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND).entity("Could not found a witness with this id").build();
 		db.shutdown();
@@ -149,20 +149,16 @@ public class Witness implements IResource {
 
 	/**
 	 * gets the "start" node of a witness
-	 * 
 	 * @param traditionName
 	 * @param userId
-	 * @param textId
-	 *            : the witness id
+	 * 
 	 * @return the start node of a witness
 	 */
-	private Node getFirstWitnessNode(String tradId, String textId) {
+	private Node getStartNode(String tradId) {
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService();
-		Node witnessNode = null;
-
-		ExecutionResult result;
+		Node startNode = null;
 
 		/**
 		 * this quarry gets the "Start" node of the witness
@@ -171,20 +167,26 @@ public class Witness implements IResource {
 
 		try (Transaction tx = db.beginTx()) {
 
-			result = engine.execute(witnessQuarry);
+			ExecutionResult	result = engine.execute(witnessQuarry);
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(problemFinder.findPathProblem(tradId, textId));
+				throw new DataBaseException(problemFinder.findPathProblem(tradId));
 			} else
-				witnessNode = nodes.next();
+				startNode = nodes.next();
 
 			tx.success();
 		}
-		return witnessNode;
+		return startNode;
 	}
 
-	private ArrayList<ReadingModel> getNodesOfWitness(final String WITNESS_ID, Node witnessNode) {
+	/**
+	 * gets all readings of a single witness
+	 * @param WITNESS_ID
+	 * @param startNode: the start node of the tradition
+	 * @return a list of the readings as readingModels
+	 */
+	private ArrayList<ReadingModel> getAllReadingsOfWitness(final String WITNESS_ID, Node startNode) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Evaluator e = new Evaluator() {
@@ -203,15 +205,7 @@ public class Witness implements IResource {
 						includes = true;
 						continues = true;
 					}
-				}
-				// not in use: cast the property 'lexemes' into an array of
-				// strings
-				/*
-				 * String[] arr = (String[])
-				 * path.lastRelationship().getProperty( "lexemes"); for (String
-				 * str : arr) { if (str. equals(WITNESS_ID)) { includes = true;
-				 * continues = true; } }
-				 */
+				}				
 				return Evaluation.of(includes, continues);
 			}
 		};
@@ -219,7 +213,7 @@ public class Witness implements IResource {
 		try (Transaction tx = db.beginTx()) {
 
 			for (Node witnessNodes : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(e).traverse(witnessNode).nodes()) {
+					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(e).traverse(startNode).nodes()) {
 				ReadingModel tempReading = Reading.readingModelFromNode(witnessNodes);
 
 				readingModels.add(tempReading);
@@ -233,7 +227,7 @@ public class Witness implements IResource {
 	@Path("readings/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getReadings(@PathParam("tradId") String tradId) {
+	public Response getAllReadingsOfTradition(@PathParam("tradId") String tradId) {
 
 		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
