@@ -1,7 +1,12 @@
 package Exceptions;
 
 public class UrlPathException extends RuntimeException {
-	public UrlPathException(String string) {
-		super(string);
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6419801902006380162L;
+
+	public UrlPathException(String message) {
+		super(message);
 	}
 }

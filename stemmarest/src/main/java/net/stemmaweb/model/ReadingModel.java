@@ -21,6 +21,7 @@ public class ReadingModel {
 	private String dn13; // normal_form
 	private String dn14; // rank
 	private String dn15; // text
+
 	public String getDn0() {
 		return dn0;
 	}

@@ -1,13 +1,13 @@
 package Exceptions;
 
-public class DataBaseException extends RuntimeException {
+public class NodeNotFoundException extends RuntimeException {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 3398020002854193125L;
 
-	public DataBaseException(String message) {
+	public NodeNotFoundException(String message) {
 		super(message);
 	}
 }

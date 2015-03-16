@@ -1,12 +1,11 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 
 import javax.ws.rs.Consumes;
-import javax.ws.rs.Path;
 import javax.ws.rs.GET;
+import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
@@ -15,25 +14,22 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DbPathProblemService;
-import net.stemmaweb.services.Neo4JToGraphMLParser;
 
-import org.codehaus.jettison.json.JSONArray;
+import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
-import org.neo4j.graphdb.Transaction;
 
 import Exceptions.DataBaseException;
-
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 
 /**
  * 
@@ -59,9 +55,9 @@ public class Witness implements IResource {
 	@GET
 	@Path("string/{tradId}/{textId}")
 	@Produces("text/plain")
-	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId) throws DataBaseException {
-		
+	public String getWitnssAsPlainText(@PathParam("tradId") String tradId, @PathParam("textId") String textId)
+			throws DataBaseException {
+
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
@@ -93,10 +89,8 @@ public class Witness implements IResource {
 	@GET
 	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
 	@Produces("text/plain")
-	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId,
-			@PathParam("startRank") String startRank,
-			@PathParam("endRank") String endRank) {
+	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId, @PathParam("textId") String textId,
+			@PathParam("startRank") String startRank, @PathParam("endRank") String endRank) {
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
@@ -118,7 +112,7 @@ public class Witness implements IResource {
 				witnessAsText += readingModel.getDn15() + " ";
 		}
 		db.shutdown();
-		if(witnessAsText.equals(""))
+		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND).build();
 		return Response.ok(witnessAsText.trim()).build();
 	}
@@ -137,18 +131,17 @@ public class Witness implements IResource {
 	 */
 	@Path("list/{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId) {
+	public Response getWitnessAsReadings(@PathParam("tradId") String tradId, @PathParam("textId") String textId) {
 		final String WITNESS_ID = textId;
 
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-		
+
 		Node witnessNode = getFirstWitnessNode(tradId, textId);
-		if(witnessNode==null)
+		if (witnessNode == null)
 			return Response.status(Status.NOT_FOUND).entity("Could not find tradition with this id").build();
 		readingModels = getNodesOfWitness(WITNESS_ID, witnessNode);
-		if(readingModels.size()==0)
+		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND).entity("Could not found a witness with this id").build();
 		db.shutdown();
 		return Response.status(Status.OK).entity(readingModels).build();
@@ -174,8 +167,7 @@ public class Witness implements IResource {
 		/**
 		 * this quarry gets the "Start" node of the witness
 		 */
-		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
-				+ "'})--(w:WORD  {text:'#START#'}) return w";
+		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId + "'})--(w:WORD  {text:'#START#'}) return w";
 
 		try (Transaction tx = db.beginTx()) {
 
@@ -183,18 +175,16 @@ public class Witness implements IResource {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(problemFinder.findPathProblem(
-						tradId, textId));
+				throw new DataBaseException(problemFinder.findPathProblem(tradId, textId));
 			} else
 				witnessNode = nodes.next();
-			
+
 			tx.success();
 		}
 		return witnessNode;
 	}
 
-	private ArrayList<ReadingModel> getNodesOfWitness(final String WITNESS_ID,
-			Node witnessNode) {
+	private ArrayList<ReadingModel> getNodesOfWitness(final String WITNESS_ID, Node witnessNode) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Evaluator e = new Evaluator() {
@@ -207,12 +197,9 @@ public class Witness implements IResource {
 				boolean includes = false;
 				boolean continues = false;
 
-				String[] arr = (String[]) path.lastRelationship().getProperty(
-						"lexemes");
-				for(String str : arr)
-				{
-					if(str.equals(WITNESS_ID))
-					{
+				String[] arr = (String[]) path.lastRelationship().getProperty("lexemes");
+				for (String str : arr) {
+					if (str.equals(WITNESS_ID)) {
 						includes = true;
 						continues = true;
 					}
@@ -232,8 +219,7 @@ public class Witness implements IResource {
 		try (Transaction tx = db.beginTx()) {
 
 			for (Node witnessNodes : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).traverse(witnessNode).nodes()) {
+					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(e).traverse(witnessNode).nodes()) {
 				ReadingModel tempReading = Reading.readingModelFromNode(witnessNodes);
 
 				readingModels.add(tempReading);
@@ -256,22 +242,18 @@ public class Witness implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			Node traditionNode = null;
 			Node startNode = null;
-			ExecutionResult result = engine.execute("match (n:TRADITION {id: '"
-					+ tradId + "'}) return n");
+			ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 
 			if (!nodes.hasNext())
-				return Response.status(Status.NOT_FOUND)
-						.entity("trad node not found").build();
+				return Response.status(Status.NOT_FOUND).entity("trad node not found").build();
 
 			traditionNode = nodes.next();
 
-			Iterable<Relationship> rels = traditionNode
-					.getRelationships(Direction.OUTGOING);
+			Iterable<Relationship> rels = traditionNode.getRelationships(Direction.OUTGOING);
 
 			if (rels == null)
-				return Response.status(Status.NOT_FOUND)
-						.entity("rels not found").build();
+				return Response.status(Status.NOT_FOUND).entity("rels not found").build();
 
 			Iterator<Relationship> relIt = rels.iterator();
 
@@ -287,20 +269,17 @@ public class Witness implements IResource {
 			}
 
 			if (rels == null)
-				return Response.status(Status.NOT_FOUND)
-						.entity("start node not found").build();
-			
-			TraversalDescription td = db.traversalDescription()
-		            .breadthFirst()
-		            .relationships( Relations.NORMAL, Direction.OUTGOING )
-		            .evaluator( Evaluators.excludeStartPosition() );
-			
+				return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+
+			TraversalDescription td = db.traversalDescription().breadthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
+
 			Traverser traverser = td.traverse(startNode);
-    		for ( org.neo4j.graphdb.Path path : traverser){
-    			Node nd = path.endNode();
-    		    ReadingModel rm = Reading.readingModelFromNode(nd);
-    		    readList.add(rm);
-    		}
+			for (org.neo4j.graphdb.Path path : traverser) {
+				Node nd = path.endNode();
+				ReadingModel rm = Reading.readingModelFromNode(nd);
+				readList.add(rm);
+			}
 
 			tx.success();
 		} catch (Exception e) {
