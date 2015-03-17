@@ -163,7 +163,7 @@ public class Witness implements IResource {
 	 *            : reading id
 	 * @return the requested reading
 	 */
-	@Path("list/{tradId}/{textId}/{readId}")
+	@Path("reading/next/{tradId}/{textId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getNextReadingInWitness(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
@@ -181,20 +181,47 @@ public class Witness implements IResource {
 
 		return Response.ok(reading).build();
 	}
-
+	
 	/**
-	 * gets the next reading to a given reading and a witness
+	 * gets the next readings from a given readings in the same witness
+	 * 
+	 * @param tradId
+	 *            : tradition id
+	 * @param textId
+	 *            : witness id
+	 * @param readId
+	 *            : reading id
+	 * @return the requested reading
+	 */
+	@Path("reading/previous/{tradId}/{textId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getPreviousReadingInWitness(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId,
+			@PathParam("readId") String readId) {
+
+		final String WITNESS_ID = textId;
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+
+		Node startNode = getStartNode(tradId);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+
+		ReadingModel reading = getPreviousReading(WITNESS_ID, readId, startNode);
+
+		return Response.ok(reading).build();
+	}
+	
+	/**
+	 * gets the Next reading to a given reading and a witness
 	 * help method
 	 * @param WITNESS_ID
 	 * @param readId
 	 * @param startNode
-	 * @return the next reading to that of the readId
+	 * @return the Next reading to that of the readId
 	 */
-	private ReadingModel getNextReading(final String WITNESS_ID, String readId,
+	private ReadingModel getNextReading(String WITNESS_ID, String readId,
 			Node startNode) {
-
-		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-		ReadingModel reading = null;
 
 		Evaluator e = createEvalForWitness(WITNESS_ID);
 
@@ -211,7 +238,43 @@ public class Witness implements IResource {
 					stop = 1;
 				}
 			}
-			throw new DataBaseException("requested readings not found");
+			db.shutdown();
+			throw new DataBaseException("given readings not found");
+		}
+	}
+
+	/**
+	 * gets the Previous reading to a given reading and a witness
+	 * help method
+	 * @param WITNESS_ID
+	 * @param readId
+	 * @param startNode
+	 * @return the Previous reading to that of the readId
+	 */
+	private ReadingModel getPreviousReading(final String WITNESS_ID, String readId,
+			Node startNode) {
+		Node previousNode = null;
+
+			Evaluator e = createEvalForWitness(WITNESS_ID);
+
+		try (Transaction tx = db.beginTx()) {
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).traverse(startNode).nodes()) {
+			
+				if (((String) node.getProperty("id")).equals(readId)) {
+					tx.success();
+					if (previousNode != null)
+					return Reading.readingModelFromNode(previousNode);	
+					else{
+						db.shutdown();
+						throw new DataBaseException("there is no previous reading to the given one");
+					}						
+				}
+				previousNode = node;
+			}
+			db.shutdown();
+			throw new DataBaseException("given readings not found");
 		}
 	}
 
