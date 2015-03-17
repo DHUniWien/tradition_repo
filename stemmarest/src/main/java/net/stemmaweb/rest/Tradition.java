@@ -294,7 +294,8 @@ public class Tradition implements IResource {
 	@Path("get/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getTradition(@PathParam("tradId") String tradId) {
-		return Neo4JToGraphMLParser.parseNeo4J(tradId, DB_PATH);
+		Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
+		return parser.parseNeo4J(tradId);
 	}
 
 	/**
@@ -323,7 +324,8 @@ public class Tradition implements IResource {
 		// save it
 		writeToFile(uploadedInputStream, uploadedFileLocation);
 
-		Response resp = GraphMLToNeo4JParser.parseGraphML(uploadedFileLocation, DB_PATH, userId);
+		GraphMLToNeo4JParser parser = new GraphMLToNeo4JParser();
+		Response resp = parser.parseGraphML(uploadedFileLocation, userId);
 		// The prefix will always be some sort of '12_', to make sure that all
 		// nodes are unique
 

@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 
+import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Relations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -33,8 +34,9 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  * @author sevi
  * 
  */
-public class Neo4JToGraphMLParser
+public class Neo4JToGraphMLParser implements IResource
 {
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	
 	// This creates a static hashmap for the graphml definitions (Edge only)
 	public static HashMap<String,String> createEdgeMap()
@@ -102,13 +104,13 @@ public class Neo4JToGraphMLParser
 			return map;
 		}
 
-	public static Response parseNeo4J(String tradId, String databasePath)
+	public Response parseNeo4J(String tradId)
 	{
 		
 		String filename = "upload/" + "output.xml";
 		
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(databasePath);
+		
+    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	

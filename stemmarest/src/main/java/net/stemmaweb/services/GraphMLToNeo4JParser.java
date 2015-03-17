@@ -15,6 +15,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
 
@@ -32,28 +33,26 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  * @author sevi
  * 
  */
-public class GraphMLToNeo4JParser
+public class GraphMLToNeo4JParser implements IResource
 {
-	
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	/**
 	 * Reads xml file and imports it into Neo4J Database 
 	 * @param filename - the graphMl file
-	 * @param databasePath - the path to the Neo4J database folder
 	 * @param userId - the user id who will own the tradition
 	 * @param nameAbbrev - an abbreviation for the tradition (used as prefix in db)
 	 * @return Http Response
 	 * @throws FileNotFoundException
 	 * @throws XMLStreamException
 	 */
-	public static Response parseGraphML(String filename, String databasePath, String userId) throws FileNotFoundException, XMLStreamException
+	public Response parseGraphML(String filename, String userId) throws FileNotFoundException
 	{
-		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		XMLInputFactory factory;
 		XMLStreamReader reader;
 		File file = new File(filename);
 		InputStream in = new FileInputStream(file);
 		factory = XMLInputFactory.newInstance();
-		reader = factory.createXMLStreamReader(in);
 		
 		int depth = 0; 
 		// 0 root, 1 <graphml>, 2 <graph>, 3 <node>, 4 <data>
@@ -61,9 +60,6 @@ public class GraphMLToNeo4JParser
 		// 0 = no, 1 = edge, 2 = node
 		HashMap<String, String> map = new HashMap<String, String>();
 		// to store all keys of the introduction part
-		
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
 		
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
@@ -76,7 +72,7 @@ public class GraphMLToNeo4JParser
     	try (Transaction tx = db.beginTx()) 
     	{
     		
-        	
+    		reader = factory.createXMLStreamReader(in);
         	// retrieves the last inserted Tradition id
         	String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
         												.iterator()
