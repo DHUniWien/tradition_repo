@@ -38,7 +38,9 @@ import Exceptions.DataBaseException;
  **/
 @Path("/witness")
 public class Witness implements IResource {
-	private static GraphDatabaseService db = null;
+	private static GraphDatabaseService db;
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+
 
 	/**
 	 * find a requested witness in the data base and return it as a string
@@ -58,7 +60,7 @@ public class Witness implements IResource {
 	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 
-		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+		 db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -93,7 +95,7 @@ public class Witness implements IResource {
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {
-		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -137,7 +139,7 @@ public class Witness implements IResource {
 			@PathParam("textId") String textId) {
 		final String WITNESS_ID = textId;
 
-		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node witnessNode = getStartNode(tradId);
@@ -170,7 +172,7 @@ public class Witness implements IResource {
 			@PathParam("readId") String readId) {
 
 		final String WITNESS_ID = textId;
-		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node startNode = getStartNode(tradId);
 		if (startNode == null)
@@ -200,7 +202,7 @@ public class Witness implements IResource {
 			@PathParam("readId") String readId) {
 
 		final String WITNESS_ID = textId;
-		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node startNode = getStartNode(tradId);
 		if (startNode == null)
@@ -373,7 +375,7 @@ public class Witness implements IResource {
 	public Response getAllReadingsOfTradition(@PathParam("tradId") String tradId) {
 
 		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
-		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {

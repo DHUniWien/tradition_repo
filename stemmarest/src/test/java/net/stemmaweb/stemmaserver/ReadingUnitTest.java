@@ -8,7 +8,9 @@ import java.util.Iterator;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,10 +45,13 @@ public class ReadingUnitTest {
 
 	@InjectMocks
 	private Witness witness;
+	
+	@InjectMocks
+	private DbPathProblemService problemService;
 
 	@Before
 	public void setUp() throws Exception {
-		String filename = "src/TestXMLFiles/Sapientia.xml";
+		String filename = "src\\TestXMLFiles\\Sapientia.xml";
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
@@ -69,17 +74,17 @@ public class ReadingUnitTest {
 			tx.success();
 		}
 
+		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
+				.thenReturn(mockDbService);
+
+		Mockito.doNothing().when(mockDbService).shutdown();
+
 		try {
 			importResource.parseGraphML(filename, "1");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
 		}
-
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
-				.thenReturn(mockDbService);
-
-		Mockito.doNothing().when(mockDbService).shutdown();
 	}
 
 	/**
