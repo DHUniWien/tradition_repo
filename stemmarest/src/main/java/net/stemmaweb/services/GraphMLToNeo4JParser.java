@@ -150,6 +150,11 @@ public class GraphMLToNeo4JParser implements IResource
 			        					//System.out.println(currNode.getProperty("id"));
 			        					currNode.setProperty("dn99", reader.getElementText());
 			        				}
+			        				else if(map.get(reader.getAttributeValue(0)).equals("rank"))
+			        				{
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+			        							Long.parseLong(reader.getElementText()));
+			        				}
 			        				else
 			        				{
 			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
