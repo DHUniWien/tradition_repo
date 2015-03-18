@@ -55,8 +55,8 @@ public class Witness implements IResource {
 	@GET
 	@Path("string/{tradId}/{textId}")
 	@Produces("text/plain")
-	public String getWitnssAsPlainText(@PathParam("tradId") String tradId, @PathParam("textId") String textId)
-			throws DataBaseException {
+	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId) throws DataBaseException {
 
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
@@ -89,8 +89,10 @@ public class Witness implements IResource {
 	@GET
 	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
 	@Produces("text/plain")
-	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId, @PathParam("textId") String textId,
-			@PathParam("startRank") String startRank, @PathParam("endRank") String endRank) {
+	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId,
+			@PathParam("startRank") String startRank,
+			@PathParam("endRank") String endRank) {
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
@@ -131,7 +133,8 @@ public class Witness implements IResource {
 	 */
 	@Path("list/{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnessAsReadings(@PathParam("tradId") String tradId, @PathParam("textId") String textId) {
+	public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId) {
 		final String WITNESS_ID = textId;
 
 		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
@@ -139,16 +142,169 @@ public class Witness implements IResource {
 
 		Node witnessNode = getStartNode(tradId);
 		if (witnessNode == null)
-			return Response.status(Status.NOT_FOUND).entity("Could not find tradition with this id").build();
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
 		if (readingModels.size() == 0)
-			return Response.status(Status.NOT_FOUND).entity("Could not found a witness with this id").build();
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not found a witness with this id").build();
 		db.shutdown();
 		return Response.status(Status.OK).entity(readingModels).build();
 	}
 
 	/**
-	 * gets the "start" node of a witness
+	 * gets the next readings from a given readings in the same witness
+	 * 
+	 * @param tradId
+	 *            : tradition id
+	 * @param textId
+	 *            : witness id
+	 * @param readId
+	 *            : reading id
+	 * @return the requested reading
+	 */
+	@Path("reading/next/{tradId}/{textId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getNextReadingInWitness(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId,
+			@PathParam("readId") String readId) {
+
+		final String WITNESS_ID = textId;
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+
+		Node startNode = getStartNode(tradId);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+
+		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode);
+
+		return Response.ok(reading).build();
+	}
+	
+	/**
+	 * gets the next readings from a given readings in the same witness
+	 * 
+	 * @param tradId
+	 *            : tradition id
+	 * @param textId
+	 *            : witness id
+	 * @param readId
+	 *            : reading id
+	 * @return the requested reading
+	 */
+	@Path("reading/previous/{tradId}/{textId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getPreviousReadingInWitness(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId,
+			@PathParam("readId") String readId) {
+
+		final String WITNESS_ID = textId;
+		db = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+
+		Node startNode = getStartNode(tradId);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+
+		ReadingModel reading = getPreviousReading(WITNESS_ID, readId, startNode);
+
+		return Response.ok(reading).build();
+	}
+	
+	/**
+	 * gets the Next reading to a given reading and a witness
+	 * help method
+	 * @param WITNESS_ID
+	 * @param readId
+	 * @param startNode
+	 * @return the Next reading to that of the readId
+	 */
+	private ReadingModel getNextReading(String WITNESS_ID, String readId,
+			Node startNode) {
+
+		Evaluator e = createEvalForWitness(WITNESS_ID);
+
+		try (Transaction tx = db.beginTx()) {
+			int stop = 0;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).traverse(startNode).nodes()) {
+				if (stop == 1) {
+					tx.success();
+					return Reading.readingModelFromNode(node);
+				}
+				if (((String) node.getProperty("id")).equals(readId)) {
+					stop = 1;
+				}
+			}
+			db.shutdown();
+			throw new DataBaseException("given readings not found");
+		}
+	}
+
+	/**
+	 * gets the Previous reading to a given reading and a witness
+	 * help method
+	 * @param WITNESS_ID
+	 * @param readId
+	 * @param startNode
+	 * @return the Previous reading to that of the readId
+	 */
+	private ReadingModel getPreviousReading(final String WITNESS_ID, String readId,
+			Node startNode) {
+		Node previousNode = null;
+
+			Evaluator e = createEvalForWitness(WITNESS_ID);
+
+		try (Transaction tx = db.beginTx()) {
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).traverse(startNode).nodes()) {
+			
+				if (((String) node.getProperty("id")).equals(readId)) {
+					tx.success();
+					if (previousNode != null)
+					return Reading.readingModelFromNode(previousNode);	
+					else{
+						db.shutdown();
+						throw new DataBaseException("there is no previous reading to the given one");
+					}						
+				}
+				previousNode = node;
+			}
+			db.shutdown();
+			throw new DataBaseException("given readings not found");
+		}
+	}
+
+	private Evaluator createEvalForWitness(final String WITNESS_ID) {
+		Evaluator e = new Evaluator() {
+			@Override
+			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
+
+				if (path.length() == 0)
+					return Evaluation.EXCLUDE_AND_CONTINUE;
+
+				boolean includes = false;
+				boolean continues = false;
+
+				String[] arr = (String[]) path.lastRelationship().getProperty(
+						"lexemes");
+				for (String str : arr) {
+					if (str.equals(WITNESS_ID)) {
+						includes = true;
+						continues = true;
+					}
+				}
+				return Evaluation.of(includes, continues);
+			}
+		};
+		return e;
+	}
+
+	/**
+	 * gets the "start" node of a tradition
 	 * @param traditionName
 	 * @param userId
 	 * 
@@ -163,15 +319,17 @@ public class Witness implements IResource {
 		/**
 		 * this quarry gets the "Start" node of the witness
 		 */
-		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId + "'})--(w:WORD  {text:'#START#'}) return w";
+		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
+				+ "'})--(w:WORD  {text:'#START#'}) return w";
 
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult	result = engine.execute(witnessQuarry);
+			ExecutionResult result = engine.execute(witnessQuarry);
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(problemFinder.findPathProblem(tradId));
+				throw new DataBaseException(
+						problemFinder.findPathProblem(tradId));
 			} else
 				startNode = nodes.next();
 
@@ -182,39 +340,24 @@ public class Witness implements IResource {
 
 	/**
 	 * gets all readings of a single witness
+	 * 
 	 * @param WITNESS_ID
-	 * @param startNode: the start node of the tradition
+	 * @param startNode
+	 *            : the start node of the tradition
 	 * @return a list of the readings as readingModels
 	 */
-	private ArrayList<ReadingModel> getAllReadingsOfWitness(final String WITNESS_ID, Node startNode) {
+	private ArrayList<ReadingModel> getAllReadingsOfWitness(
+			final String WITNESS_ID, Node startNode) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Evaluator e = new Evaluator() {
-			@Override
-			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
-
-				if (path.length() == 0)
-					return Evaluation.EXCLUDE_AND_CONTINUE;
-
-				boolean includes = false;
-				boolean continues = false;
-
-				String[] arr = (String[]) path.lastRelationship().getProperty("lexemes");
-				for (String str : arr) {
-					if (str.equals(WITNESS_ID)) {
-						includes = true;
-						continues = true;
-					}
-				}				
-				return Evaluation.of(includes, continues);
-			}
-		};
-
+		Evaluator e = createEvalForWitness(WITNESS_ID);
 		try (Transaction tx = db.beginTx()) {
 
 			for (Node witnessNodes : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(e).traverse(startNode).nodes()) {
-				ReadingModel tempReading = Reading.readingModelFromNode(witnessNodes);
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).traverse(startNode).nodes()) {
+				ReadingModel tempReading = Reading
+						.readingModelFromNode(witnessNodes);
 
 				readingModels.add(tempReading);
 			}
@@ -236,18 +379,22 @@ public class Witness implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			Node traditionNode = null;
 			Node startNode = null;
-			ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
+			ExecutionResult result = engine.execute("match (n:TRADITION {id: '"
+					+ tradId + "'}) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 
 			if (!nodes.hasNext())
-				return Response.status(Status.NOT_FOUND).entity("trad node not found").build();
+				return Response.status(Status.NOT_FOUND)
+						.entity("trad node not found").build();
 
 			traditionNode = nodes.next();
 
-			Iterable<Relationship> rels = traditionNode.getRelationships(Direction.OUTGOING);
+			Iterable<Relationship> rels = traditionNode
+					.getRelationships(Direction.OUTGOING);
 
 			if (rels == null)
-				return Response.status(Status.NOT_FOUND).entity("rels not found").build();
+				return Response.status(Status.NOT_FOUND)
+						.entity("rels not found").build();
 
 			Iterator<Relationship> relIt = rels.iterator();
 
@@ -263,10 +410,12 @@ public class Witness implements IResource {
 			}
 
 			if (rels == null)
-				return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+				return Response.status(Status.NOT_FOUND)
+						.entity("start node not found").build();
 
 			TraversalDescription td = db.traversalDescription().breadthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(Evaluators.excludeStartPosition());
 
 			Traverser traverser = td.traverse(startNode);
 			for (org.neo4j.graphdb.Path path : traverser) {
