@@ -124,7 +124,7 @@
 			    type: 'POST',
 			    success: function(xhr){
 					$('#runner').runner('stop');
-					$(".return" + form).text("OK");
+					$(".return" + form).text(JSON.stringify(xhr));
 					$(".return" + form).css("color","red");
 					setTimeout(function(){
 						$(".return" + form).css("color", "black");

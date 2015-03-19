@@ -68,7 +68,7 @@ public class GraphMLToNeo4JParser implements IResource
     	
     	LinkedList<String> leximes = new LinkedList<String>();
     								// a round-trip store for witness names of a single relationship
-    	
+    	int last_inserted_id = 0;
     	try (Transaction tx = db.beginTx()) 
     	{
     		
@@ -79,7 +79,7 @@ public class GraphMLToNeo4JParser implements IResource
         												.next()
         												.getProperty("LAST_INSERTED_TRADITION_ID")
         												.toString();
-        	int last_inserted_id = Integer.parseInt(prefix);
+        	last_inserted_id = Integer.parseInt(prefix);
         	last_inserted_id++;
         	prefix = String.valueOf(last_inserted_id) + "_";
         	
@@ -358,7 +358,7 @@ public class GraphMLToNeo4JParser implements IResource
     	{
     		db.shutdown();
     	}
-    	return Response.status(Response.Status.OK).entity("Tradition imported successfully").build();
+    	return Response.status(Response.Status.OK).entity("{\"tradId\":" + last_inserted_id + "}").build();
 	}
 	
 }
