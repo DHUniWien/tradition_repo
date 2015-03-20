@@ -162,6 +162,52 @@ public class Tradition implements IResource {
 		return Response.ok(reading).build();
 	}
 
+	/**
+	 * Duplicates a reading in a specific tradition.
+	 * 
+	 * @param tradId
+	 * @param readId
+	 * @return
+	 */
+	@GET
+	@Path("duplicate/{tradId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
+		return Response.ok("This method should duplicate a reading. Not implemented yet.").build();
+	}
+
+	/**
+	 * Splits up a reading into two readings in a specific tradition.
+	 * 
+	 * @param tradId
+	 * @param readId
+	 * @return
+	 */
+	@GET
+	@Path("split/{tradId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
+		return Response.ok("This method should split up a reading. Not implemented yet.").build();
+	}
+
+	/**
+	 * Merges two readings into one single reading in a specific tradition.
+	 * 
+	 * @param tradId
+	 * @param readId
+	 * @return
+	 */
+	@GET
+	@Path("merge/{tradId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response mergeReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
+		return Response.ok("This method should merge two readings into one single reading. Not implemented yet.")
+				.build();
+	}
+
 	@GET
 	@Path("witness/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
