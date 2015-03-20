@@ -189,7 +189,77 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
-		return Response.ok("This method should split up a reading. Not implemented yet.").build();
+		// TODO: API yet unclear: thus just set as variables for the moment:
+		// (Maybe we can get the texts using a small algorithm)
+		String originalReadingText = "bla";
+		String addedReadingText = "blub";
+		String addedReadingId = tradId + "180_149_" + readId + ".5";
+
+		Node originalReading = null;
+		Node addedReading = null;
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ExecutionEngine engine = new ExecutionEngine(db);
+
+		try (Transaction tx = db.beginTx()) {
+			Node traditionNode = null;
+			Iterable<Relationship> relationships = null;
+			Node startNode = null;
+			try {
+				traditionNode = getTraditionNode(tradId, engine);
+				relationships = getRelationships(traditionNode);
+				startNode = getStartNode(relationships);
+			} catch (DataBaseException e) {
+				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+			}
+
+			try {
+				boolean foundReading = false;
+				Traverser traverser = getReading(startNode, db);
+				for (org.neo4j.graphdb.Path path : traverser) {
+					String id = (String) path.endNode().getProperty("id");
+					if (id.matches(".*" + readId)) {
+						// splitting of reading happens here
+						addedReading = db.createNode();
+						originalReading = path.endNode();
+
+						Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
+								Direction.OUTGOING);
+						for (Relationship relationship : rels) {
+							addedReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
+							relationship.delete();
+						}
+
+						addedReading.addLabel(Nodes.WORD);
+						addedReading.setProperty("text", addedReadingText);
+						addedReading.setProperty("id", addedReadingId);
+						// set Rank to Rank of original reading and add .5
+						addedReading.setProperty("rank", originalReading.getProperty("rank") + ".5");
+						addedReading.setProperty("language", originalReading.getProperty("language"));
+						addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
+						addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
+
+						originalReading.createRelationshipTo(addedReading, Relations.NORMAL);
+						originalReading.setProperty("text", originalReadingText);
+
+						foundReading = true;
+						break;
+					}
+				}
+				if (!foundReading)
+					return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+			} catch (Exception e) {
+				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+			}
+
+			tx.success();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			db.shutdown();
+		}
+
+		return Response.ok("Successfully split up reading").build();
 	}
 
 	/**
