@@ -15,6 +15,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
 
@@ -32,28 +33,26 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  * @author sevi
  * 
  */
-public class GraphMLToNeo4JParser
+public class GraphMLToNeo4JParser implements IResource
 {
-	
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	/**
 	 * Reads xml file and imports it into Neo4J Database 
 	 * @param filename - the graphMl file
-	 * @param databasePath - the path to the Neo4J database folder
 	 * @param userId - the user id who will own the tradition
 	 * @param nameAbbrev - an abbreviation for the tradition (used as prefix in db)
 	 * @return Http Response
 	 * @throws FileNotFoundException
 	 * @throws XMLStreamException
 	 */
-	public static Response parseGraphML(String filename, String databasePath, String userId) throws FileNotFoundException, XMLStreamException
+	public Response parseGraphML(String filename, String userId) throws FileNotFoundException
 	{
-		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		XMLInputFactory factory;
 		XMLStreamReader reader;
 		File file = new File(filename);
 		InputStream in = new FileInputStream(file);
 		factory = XMLInputFactory.newInstance();
-		reader = factory.createXMLStreamReader(in);
 		
 		int depth = 0; 
 		// 0 root, 1 <graphml>, 2 <graph>, 3 <node>, 4 <data>
@@ -62,9 +61,6 @@ public class GraphMLToNeo4JParser
 		HashMap<String, String> map = new HashMap<String, String>();
 		// to store all keys of the introduction part
 		
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db= dbFactory.newEmbeddedDatabase("database");
-		
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
     	Node from = null;			// a round-trip store for the start node of a path
@@ -72,28 +68,30 @@ public class GraphMLToNeo4JParser
     	
     	LinkedList<String> leximes = new LinkedList<String>();
     								// a round-trip store for witness names of a single relationship
-    	
+    	int last_inserted_id = 0;
     	try (Transaction tx = db.beginTx()) 
     	{
     		
-        	
+    		reader = factory.createXMLStreamReader(in);
         	// retrieves the last inserted Tradition id
         	String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
         												.iterator()
         												.next()
         												.getProperty("LAST_INSERTED_TRADITION_ID")
         												.toString();
-        	int last_inserted_id = Integer.parseInt(prefix);
+        	last_inserted_id = Integer.parseInt(prefix);
         	last_inserted_id++;
-        	prefix = String.valueOf(last_inserted_id);
+        	prefix = String.valueOf(last_inserted_id) + "_";
         	
         	
         	Node tradRootNode = null;	// this will be the entry point of the graph
-        	String origPrefix = prefix + "_";	// store the original prefix 
         	
 	    	Node currNode = null;	// holds the current node
 	    	currNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
 	    	Relationship rel = null;	// holds the current relationship
+	    	
+	    	int graphNumber = 0; 	// holds the current graph number 
+	    	
 			while (true) {
 				// START READING THE GRAPHML FILE
 			    int event = reader.next(); // gets the next <element>
@@ -105,8 +103,6 @@ public class GraphMLToNeo4JParser
 			    		reader.getLocalName().equals("node") ||
 			    		reader.getLocalName().equals("edge"))
 			    	{
-			    		if(reader.getLocalName().equals("graph"))
-			    			prefix = origPrefix;
 			    		depth--;
 			    		type_nd = 0;
 			    	}
@@ -123,21 +119,25 @@ public class GraphMLToNeo4JParser
 			        	{
 			        		if(type_nd==1) // edge
 			        		{
+			        			
 			        			if(rel!=null)
 			        			{
-			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
+			        				String attr = map.get(reader.getAttributeValue(0));
+			        				String val = reader.getElementText();
+
+			        				if(attr.equals("id"))
 			        				{
-			        					rel.setProperty(map.get(reader.getAttributeValue(0)),
-				        						prefix + reader.getElementText());
+			        					rel.setProperty(attr,prefix + val);
 			        				}
-			        				else if(map.get(reader.getAttributeValue(0)).equals("witness"))
+			        				else if(attr.equals("witness"))
 			        				{
-			        					leximes.add(reader.getElementText());
+			        					leximes.add(val);
 			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
 			        				}
 			        				else
 			        				{
-			        					rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
+			        					rel.setProperty(attr,val);
+			        					//System.out.println(map.get(reader.getElementText()));
 			        				}
 			        			}	
 			        		}
@@ -149,6 +149,11 @@ public class GraphMLToNeo4JParser
 			        				{
 			        					//System.out.println(currNode.getProperty("id"));
 			        					currNode.setProperty("dn99", reader.getElementText());
+			        				}
+			        				else if(map.get(reader.getAttributeValue(0)).equals("rank"))
+			        				{
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+			        							Long.parseLong(reader.getElementText()));
 			        				}
 			        				else
 			        				{
@@ -166,8 +171,6 @@ public class GraphMLToNeo4JParser
 			        		// needs implementation of meta data here
 			        		if(map.get(attr).equals("name"))
 			        		{
-			        			
-			        			
 			        			ExecutionResult result = engine.execute("match (n:TRADITION {name:'"+ map.get(attr) +"'}) return n");
 			        			
 			        			Iterator<Node> nodes = result.columnAs("n");
@@ -178,11 +181,10 @@ public class GraphMLToNeo4JParser
 			        			tradRootNode = currNode;
 			        			
 			        			//System.out.println(prefix);
-			        			currNode.setProperty("id", origPrefix.substring(0, origPrefix.length()-1));
+			        			currNode.setProperty("id", prefix.substring(0, prefix.length()-1));
 			        			
 			        			currNode.setProperty(map.get(attr), 
 	        							text);
-			        			prefix += attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
 			        		}
 			        		else if(map.get(attr).equals("stemmata"))
 			        		{
@@ -226,7 +228,14 @@ public class GraphMLToNeo4JParser
 					        					rel.setProperty("lexemes", leximArray);
 					        				leximes.clear();
 					        			}
-					        			rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        			if(graphNumber<=1)
+					        			{
+					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        			}
+					        			else
+					        			{
+					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.RELATIONSHIP);
+					        			}
 					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
 					        		}
 					        	}
@@ -254,7 +263,14 @@ public class GraphMLToNeo4JParser
 					        				rel.setProperty("leximes", leximArray);
 					        				leximes.clear();
 					        			}
-					        			rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        			if(graphNumber<=1)
+					        			{
+					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        			}
+					        			else
+					        			{
+					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.RELATIONSHIP);
+					        			}
 					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
 					        		}
 					        	}
@@ -267,17 +283,21 @@ public class GraphMLToNeo4JParser
 			        }
 			        else if(reader.getLocalName().equals("node"))
 			        {
-			        	currNode = db.createNode(Nodes.WORD);
+			        	if(graphNumber<=1)
+			        	{	// only store nodes for graph 1, ignore all others (unused)
+			        		currNode = db.createNode(Nodes.WORD);
 			        	
-			        	currNode.setProperty("id", prefix + reader.getAttributeValue(0));
+			        		currNode.setProperty("id", prefix + reader.getAttributeValue(0));
 			        	
-			        	if(reader.getAttributeValue(0).equals("n1"))
-			        	{
-			        		tradRootNode.createRelationshipTo(currNode, Relations.NORMAL);
+			        		if(reader.getAttributeValue(0).equals("n1"))
+			        		{
+			        			tradRootNode.createRelationshipTo(currNode, Relations.NORMAL);
+			        		}
+			        	
+			        		
 			        	}
-			        	
 			        	depth++;
-			        	type_nd = 2;
+		        		type_nd = 2;
 			        }
 			        else if(reader.getLocalName().equals("key"))
 			        {
@@ -303,9 +323,8 @@ public class GraphMLToNeo4JParser
 			        }
 			        else if(reader.getLocalName().equals("graph"))
 			        {
-			        	String attr = reader.getAttributeValue(1);
-			        	prefix +=  attr.charAt(0) + attr.charAt(attr.length()-1) + "_";
 			        	depth++;
+			        	graphNumber++;
 			        }
 			    }
 			}
@@ -325,7 +344,7 @@ public class GraphMLToNeo4JParser
 	   	    db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
 	   	    								.iterator()
 	   	    								.next()
-	   	    								.setProperty("LAST_INSERTED_TRADITION_ID", origPrefix.substring(0, origPrefix.length()-1));
+	   	    								.setProperty("LAST_INSERTED_TRADITION_ID", prefix.substring(0, prefix.length()-1));
 	   		
 			tx.success();
 		}
@@ -339,7 +358,7 @@ public class GraphMLToNeo4JParser
     	{
     		db.shutdown();
     	}
-    	return Response.status(Response.Status.OK).entity("Tradition imported successfully").build();
+    	return Response.status(Response.Status.OK).entity("{\"tradId\":" + last_inserted_id + "}").build();
 	}
 	
 }

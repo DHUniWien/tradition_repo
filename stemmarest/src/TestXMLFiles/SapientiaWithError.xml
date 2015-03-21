@@ -1,0 +1,58 @@
+error element</error>
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key attr.name="language" attr.type="string" for="graph" id="dg0"/>
+  <key attr.name="name" attr.type="string" for="graph" id="dg1"/>
+  <key attr.name="public" attr.type="boolean" for="graph" id="dg2"/>
+  <key attr.name="stemmata" attr.type="string" for="graph" id="dg3"/>
+  <key attr.name="stemweb_jobid" attr.type="string" for="graph" id="dg4"/>
+  <key attr.name="user" attr.type="string" for="graph" id="dg5"/>
+  <key attr.name="version" attr.type="string" for="graph" id="dg6"/>
+  <key attr.name="grammar_invalid" attr.type="boolean" for="node" id="dn0"/>
+  <key attr.name="id" attr.type="string" for="node" id="dn1"/>
+  <key attr.name="is_common" attr.type="boolean" for="node" id="dn2"/>
+  <key attr.name="is_end" attr.type="boolean" for="node" id="dn3"/>
+  <key attr.name="is_lacuna" attr.type="boolean" for="node" id="dn4"/>
+  <key attr.name="is_lemma" attr.type="boolean" for="node" id="dn5"/>
+  <key attr.name="is_nonsense" attr.type="boolean" for="node" id="dn6"/>
+  <key attr.name="is_ph" attr.type="boolean" for="node" id="dn7"/>
+  <key attr.name="is_start" attr.type="boolean" for="node" id="dn8"/>
+  <key attr.name="join_next" attr.type="boolean" for="node" id="dn9"/>
+  <key attr.name="join_prior" attr.type="boolean" for="node" id="dn10"/>
+  <key attr.name="language" attr.type="string" for="node" id="dn11"/>
+  <key attr.name="lexemes" attr.type="string" for="node" id="dn12"/>
+  <key attr.name="normal_form" attr.type="string" for="node" id="dn13"/>
+  <key attr.name="rank" attr.type="int" for="node" id="dn14"/>
+  <key attr.name="text" attr.type="string" for="node" id="dn15"/>
+  <key attr.name="a_derivable_from_b" attr.type="boolean" for="edge" id="de0"/>
+  <key attr.name="alters_meaning" attr.type="int" for="edge" id="de1"/>
+  <key attr.name="annotation" attr.type="string" for="edge" id="de2"/>
+  <key attr.name="b_derivable_from_a" attr.type="boolean" for="edge" id="de3"/>
+  <key attr.name="displayform" attr.type="string" for="edge" id="de4"/>
+  <key attr.name="extra" attr.type="boolean" for="edge" id="de5"/>
+  <key attr.name="is_significant" attr.type="string" for="edge" id="de6"/>
+  <key attr.name="non_independent" attr.type="boolean" for="edge" id="de7"/>
+  <key attr.name="reading_a" attr.type="string" for="edge" id="de8"/>
+  <key attr.name="reading_b" attr.type="string" for="edge" id="de9"/>
+  <key attr.name="scope" attr.type="string" for="edge" id="de10"/>
+  <key attr.name="type" attr.type="string" for="edge" id="de11"/>
+  <key attr.name="witness" attr.type="string" for="edge" id="de12"/>
+  
+  <errorelement
+  
+  <graph edgedefault="directed" id="Sapientia" parse.edgeids="canonical" parse.edges="25449" parse.nodeids="canonical" parse.nodes="2813" parse.order="nodesfirst">
+    <data key="dg0">Latin</data>
+    <data key="dg1">Sapientia</data>
+    <data key="dg2">1</data>
+    <data key="dg3">digraph "stemma" {  O [ class=hypothetical ];  a [ class=hypothetical ];  b [ class=hypothetical ];  c [ class=hypothetical ];  d [ class=hypothetical ];  e [ class=hypothetical ];  f [ class=hypothetical ];  g [ class=hypothetical ];  h [ class=hypothetical ];  An74 [ class=extant ];  Au318 [ class=extant ];  Ba96 [ class=extant ];  Er16 [ class=extant ];  Go325 [ class=extant ];  Gr314 [ class=extant ];  Kf133 [ class=extant ];  Krems185 [ class=extant ];  Krems299 [ class=extant ];  Mu11475 [ class=extant ];  Mu22405 [ class=extant ];  Mu28315 [ class=extant ];  MuU151 [ class=extant ];  Sg524 [ class=extant ];  Wi3181 [ class=extant ];  Krems185 -&gt; b;  Krems299 -&gt; Mu22405;  O -&gt; a;  O -&gt; b;  a -&gt; Au318;  a -&gt; Go325;  a -&gt; Gr314;  a -&gt; f;  a -&gt; g;  b -&gt; Au318;  b -&gt; Ba96;  b -&gt; Go325;  b -&gt; Gr314;  b -&gt; Sg524;  b -&gt; c;  c -&gt; An74;  c -&gt; MuU151;  c -&gt; d;  d -&gt; Mu11475;  d -&gt; e;  e -&gt; Er16;  e -&gt; Mu28315;  f -&gt; Krems299;  f -&gt; h;  g -&gt; Mu22405;  g -&gt; Wi3181;  h -&gt; Kf133;  h -&gt; Krems185;}
+graph "Semstem 1402333041_0" {  0 [ class=hypothetical ];  1 [ class=hypothetical ];  10 [ class=hypothetical ];  2 [ class=hypothetical ];  3 [ class=hypothetical ];  4 [ class=hypothetical ];  5 [ class=hypothetical ];  6 [ class=hypothetical ];  7 [ class=hypothetical ];  8 [ class=hypothetical ];  9 [ class=hypothetical ];  MuU151 [ class=hypothetical ];  An74 [ class=extant ];  Au318 [ class=extant ];  Ba96 [ class=extant ];  Er16 [ class=extant ];  Go325 [ class=extant ];  Gr314 [ class=extant ];  Kf133 [ class=extant ];  Kr185 [ class=extant ];  Kr299 [ class=extant ];  Mu11475 [ class=extant ];  Mu22405 [ class=extant ];  Mu28315 [ class=extant ];  Sg524 [ class=extant ];  Wi3818 [ class=extant ];  10 -- Ba96;  10 -- Sg524;  1 -- 10;  1 -- 2;  2 -- 3;  2 -- Mu11475;  4 -- 3;  5 -- 4;  6 -- 5;  7 -- 6;  7 -- 8;  7 -- Go325;  7 -- Wi3818;  8 -- Mu22405;  9 -- 5;  9 -- Au318;  9 -- Kr185;  An74 -- 4;  Er16 -- 3;  Gr314 -- 8;  Kf133 -- 6;  Kr299 -- 6;  Mu28315 -- 3;  MuU151 -- 0;  MuU151 -- 1;}</data>
+    <data key="dg5">103771436735746086798</data>
+    <data key="dg6">3.2</data>
+    <node id="n0">
+      <data key="dn15">#END#</data>
+      <data key="dn3">1</data>
+      <data key="dn14">2117</data>
+      <data key="dn1">__END__</data>
+    </node>
+  </graph>
+</graphml>
