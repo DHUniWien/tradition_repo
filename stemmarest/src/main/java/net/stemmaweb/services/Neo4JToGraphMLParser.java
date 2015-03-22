@@ -369,7 +369,6 @@ public class Neo4JToGraphMLParser implements IResource
     		
     		// graph 1
     		
-    		int graphCount = 0; // make sure only write meta data for graph 1
     		Iterable<String> props = null;
     		
     		Node graphNode = nodes.next();
@@ -389,27 +388,25 @@ public class Neo4JToGraphMLParser implements IResource
     		HashMap<String,String> mapNode = createNodeMap();
     		HashMap<String,String> mapEdge = createEdgeMap();
     		
-    		if(graphCount++==0)
+    		props = traditionNode.getPropertyKeys();
+    		for(String prop : props)
     		{
-	    		props = traditionNode.getPropertyKeys();
-	    		for(String prop : props)
-	    		{
-	    			String val = mapGraph.get(prop);
-	    			if(val!=null)
-	    			{
-	    				writer.writeStartElement("data");
-	    				writer.writeAttribute("key",val);
-	    				writer.writeCharacters(traditionNode.getProperty(prop).toString());
-	    				writer.writeEndElement();
-	    			}
-	    		}
+    			String val = mapGraph.get(prop);
+    			if(val!=null)
+    			{
+    				writer.writeStartElement("data");
+    				writer.writeAttribute("key",val);
+    				writer.writeCharacters(traditionNode.getProperty(prop).toString());
+    				writer.writeEndElement();
+    			}
     		}
     		
-    		for ( Path position : db.traversalDescription()
-    		        .relationships( Relations.NORMAL,Direction.OUTGOING)
-    		        .traverse( graphNode ) )
+    		result = engine.execute("match (n:WORD) where n.id=~'"+ tradId + ".*' return n");
+    		Iterator<Node> nodesIt = result.columnAs("n");
+    		
+    		while(nodesIt.hasNext())
     		{
-    			Node node = position.endNode();
+    			Node node = nodesIt.next();
     			props = node.getPropertyKeys();
     			writer.writeStartElement("node");
         		for(String prop : props)
@@ -495,99 +492,91 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeEndElement(); // graph
     	
     		// graph 2
+    		// get the same nodes again, but this time we will later also search for other relationships
+    		result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:NORMAL]-(n:WORD) return n");
+    		nodes = result.columnAs("n");
     		
-    		if(nodes.hasNext())
+			writer.writeStartElement("graph");
+    		writer.writeAttribute("edgedefault", "directed");
+    		writer.writeAttribute("id", "relationships");
+    		writer.writeAttribute("parse.edgeids", "canonical");
+    		// THIS NEEDS TO BE IMPLEMENTED LATER 
+    		// writer.writeAttribute("parse.edges", );
+    		writer.writeAttribute("parse.nodeids", "canonical");
+    		// THIS NEEDS TO BE IMPLEMENTED LATER 
+    		// writer.writeAttribute("parse.nodes", );
+    		writer.writeAttribute("parse.order", "nodesfirst");
+    		
+    		result = engine.execute("match (n:WORD) where n.id=~'"+ tradId + ".*' return n");
+    		nodesIt = result.columnAs("n");
+    		
+    		while(nodesIt.hasNext())
     		{
-    			writer.writeStartElement("graph");
-        		writer.writeAttribute("edgedefault", "directed");
-        		writer.writeAttribute("id", "relationships");
-        		writer.writeAttribute("parse.edgeids", "canonical");
-        		// THIS NEEDS TO BE IMPLEMENTED LATER 
-        		// writer.writeAttribute("parse.edges", );
-        		writer.writeAttribute("parse.nodeids", "canonical");
-        		// THIS NEEDS TO BE IMPLEMENTED LATER 
-        		// writer.writeAttribute("parse.nodes", );
-        		writer.writeAttribute("parse.order", "nodesfirst");
-        		Node relNode = nodes.next();
-        		result = engine.execute("match (n:WORD) where n.id=~'"+ relNode.getProperty("id") + ".*' return n");
-        		Iterator<Node> graphNodes = result.columnAs("n");
-        		
-        		while(graphNodes.hasNext())
+    			Node nextNode = nodesIt.next();
+    			
+    			props = nextNode.getPropertyKeys();
+    			writer.writeStartElement("node");
+        		for(String prop : props)
         		{
-        			Node nextNode = graphNodes.next();
+        			String val = mapNode.get(prop);
         			
-        			props = nextNode.getPropertyKeys();
-        			writer.writeStartElement("node");
-            		for(String prop : props)
-            		{
-            			String val = mapNode.get(prop);
-            			
-            			if(val!=null)
-            			{
-    	        			if(prop.equals("id"))
-    	        			{
-    	        				String[] id_arr = nextNode.getProperty("id").toString().split("_");
-    	        				writer.writeAttribute("id",id_arr[id_arr.length-1]);
-    	        			}
-    	        			else
-    	        			{
-    	        				writer.writeStartElement("data");
-    	        				writer.writeAttribute("key",val);
-    	        				writer.writeCharacters(nextNode.getProperty(prop).toString());
-    	        				writer.writeEndElement();
-    	        			}
-            			}
-            		}
-            		writer.writeEndElement(); // end node
-        		}
-        		result = engine.execute("match (n:WORD) where n.id=~'"+ relNode.getProperty("id") + ".*' return n");
-        		graphNodes = result.columnAs("n");
-        		while(graphNodes.hasNext())
-        		{
-        			Node nextNode = graphNodes.next();
-        			props = nextNode.getPropertyKeys();
-        			Iterable<Relationship> rels = nextNode.getRelationships(Direction.OUTGOING);
-        			Iterator<Relationship> relIterator = rels.iterator();
-        			while(relIterator.hasNext())
+        			if(val!=null)
         			{
-        				Relationship rel = relIterator.next();
-        				if(rel!=null)
-                		{
-        					writer.writeStartElement("edge");
-                			props = rel.getPropertyKeys();
-                			for(String prop : props)
-                    		{
-                    			String val = mapEdge.get(prop);			
-                    			if(val!=null)
-                    			{
-            	        			if(prop.equals("id"))
-            	        			{    				
-            	        				startNode = nextNode.getProperty("id").toString();
-            	        				endNode = rel.getEndNode().getProperty("id").toString();
-            	        				startId = startNode.split("_");
-            	        				endId = endNode.split("_");
-            	        				String[] id_string = rel.getProperty("id").toString().split("_");
-            	        				id = id_string[id_string.length-1];
-            	        				writer.writeAttribute("source", startId[startId.length-1]);
-		    	        				writer.writeAttribute("target", endId[endId.length-1]);
-		    	        				writer.writeAttribute("id", id);
-            	        			}    	
-	                    			else if(!prop.equals("lexemes"))
-	                    			{
-		    	        				writer.writeStartElement("data");
-    	    	        				writer.writeAttribute("key",val);
-    	    	        				writer.writeCharacters(rel.getProperty(prop).toString());
-    	    	        				writer.writeEndElement();
-	                    			}
-                    			}
-                    		}
-                			writer.writeEndElement(); // end edge
-                		}
+	        			if(prop.equals("id"))
+	        			{
+	        				String[] id_arr = nextNode.getProperty("id").toString().split("_");
+	        				writer.writeAttribute("id",id_arr[id_arr.length-1]);
+	        			}
+	        			else if(prop.equals("dn99"))
+	        			{
+	        				writer.writeStartElement("data");
+	        				writer.writeAttribute("key","dn1");
+	        				writer.writeCharacters(nextNode.getProperty(prop).toString());
+	        				writer.writeEndElement();
+	        			}
         			}
-        		}	
-        		writer.writeEndElement(); // end graph
+        		}
+        		writer.writeEndElement(); // end node
     		}
-    		writer.writeEndElement();
+    		
+    		result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]->(e) where n.id=~'"+ tradId + ".*' return r");
+    		Iterator<Relationship> relIt = result.columnAs("r");
+
+    		while(relIt.hasNext())
+    		{
+    			Relationship nextRel = relIt.next();
+    			props = nextRel.getPropertyKeys();
+				writer.writeStartElement("edge");
+    			for(String prop : props)
+        		{
+        			String val = mapEdge.get(prop);			
+        			if(val!=null)
+        			{
+	        			if(prop.equals("id"))
+	        			{    				
+	        				startNode = nextRel.getStartNode().getProperty("id").toString();
+	        				endNode = nextRel.getEndNode().getProperty("id").toString();
+	        				startId = startNode.split("_");
+	        				endId = endNode.split("_");
+	        				String[] id_string = nextRel.getProperty("id").toString().split("_");
+	        				id = id_string[id_string.length-1];
+	        				writer.writeAttribute("source", startId[startId.length-1]);
+	        				writer.writeAttribute("target", endId[endId.length-1]);
+	        				writer.writeAttribute("id", id);
+	        			}    	
+            			else
+            			{
+	        				writer.writeStartElement("data");
+	        				writer.writeAttribute("key",val);
+	        				writer.writeCharacters(nextRel.getProperty(prop).toString());
+	        				writer.writeEndElement();
+            			}
+        			}
+        		}
+    			writer.writeEndElement(); // end edge
+    		}
+    		writer.writeEndElement(); // end graph
+    		writer.writeEndElement(); // end graphml
     		writer.flush();
     		out.close();	
 		}
