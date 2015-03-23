@@ -20,6 +20,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -277,12 +278,19 @@ public class Tradition implements IResource {
 		return Response.ok("This method should merge two readings into one single reading. Not implemented yet.")
 				.build();
 	}
-
+	
+	/**
+	 * Gets all witnesses in the tradition
+	 * 
+	 * @param tradId
+	 * @return ArrayList<WitnessModel>
+	 */
 	@GET
 	@Path("witness/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
+		
 		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -337,6 +345,50 @@ public class Tradition implements IResource {
 		// return Response.status(Status.NOT_FOUND).build();
 
 		return Response.ok(witlist).build();
+	}
+	
+	
+	@GET
+	@Path("relation/{textid}/relationships")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getAllRelationships(@PathParam("tradId") String tradId) {
+		
+		ArrayList<RelationshipModel> relList = new ArrayList<RelationshipModel>();
+		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		ExecutionEngine engine = new ExecutionEngine(db);
+		
+		try (Transaction tx = db.beginTx()) {
+			Node traditionNode = null;
+			Iterable<Relationship> relationships = null;
+			Node startNode = null;
+		
+			try {
+				traditionNode = getTraditionNode(tradId, engine);
+				relationships = getRelationships(traditionNode);
+				// startNode = getStartNode(relationships);
+				
+				ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]-(w) where n.id = '"+ tradId +"_.*"+ "' return r");
+				Iterator<Relationship> rel = result.columnAs("r");$
+				
+				if (!rel.hasNext())
+					throw new DataBaseException("no relationships found");
+				else {
+					for(Relationship rel : rel.hasNext())
+				}
+
+			} catch (DataBaseException e) {
+				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			db.shutdown();
+		}
+		return null;	
 	}
 
 	/**
