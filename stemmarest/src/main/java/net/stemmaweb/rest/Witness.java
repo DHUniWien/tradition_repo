@@ -133,6 +133,7 @@ public class Witness implements IResource {
 	 * @return a witness as a list of readings
 	 * @throws DataBaseException
 	 */
+	@GET
 	@Path("list/{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
@@ -165,6 +166,7 @@ public class Witness implements IResource {
 	 *            : reading id
 	 * @return the requested reading
 	 */
+	@GET
 	@Path("reading/next/{tradId}/{textId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getNextReadingInWitness(@PathParam("tradId") String tradId,
@@ -195,6 +197,7 @@ public class Witness implements IResource {
 	 *            : reading id
 	 * @return the requested reading
 	 */
+	@GET
 	@Path("reading/previous/{tradId}/{textId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getPreviousReadingInWitness(@PathParam("tradId") String tradId,
@@ -225,13 +228,12 @@ public class Witness implements IResource {
 	private ReadingModel getNextReading(String WITNESS_ID, String readId,
 			Node startNode) {
 
-		Evaluator e = createEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			int stop = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).traverse(startNode).nodes()) {
+					.evaluator(Evaluators.excludeStartPosition()).traverse(startNode).nodes()) {
 				if (stop == 1) {
 					tx.success();
 					return Reading.readingModelFromNode(node);

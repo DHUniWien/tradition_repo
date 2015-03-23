@@ -154,7 +154,7 @@ public class ReadingTest {
 		 */
 
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n13")
+				.path("/witness/reading/next/" + tradId + "/An74/1001_n2")
 				.get(ReadingModel.class);
 		assertEquals(actualResponse.getDn1(), "1001_n14");
 	}
@@ -169,7 +169,7 @@ public class ReadingTest {
 		 */
 
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n13")
+				.path("/witness/reading/next/" + tradId + "/An74/1001_n2")
 				.get(ReadingModel.class);
 		assertEquals(actualResponse.getDn1(), "1001_n12");
 	}
