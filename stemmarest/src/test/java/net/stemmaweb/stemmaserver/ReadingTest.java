@@ -4,16 +4,9 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import java.util.List;
-
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
-import net.stemmaweb.rest.User;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -32,15 +25,12 @@ import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -51,8 +41,6 @@ import com.sun.jersey.test.framework.JerseyTest;
 @RunWith(MockitoJUnitRunner.class)
 public class ReadingTest {
 	private String tradId;
-	private String[] witIds;
-
 	/*
 	 * Create a Mock object for the dbFactory.
 	 */
@@ -126,13 +114,6 @@ public class ReadingTest {
 		 */
 		Mockito.doNothing().when(mockDbService).shutdown();
 
-		/*
-		 * Create a JersyTestServer serving the Resource under test
-		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(witness).create();
-		jerseyTest.setUp();
-
 		/**
 		 * load a tradition to the test DB
 		 */
@@ -154,19 +135,43 @@ public class ReadingTest {
 
 			tx.success();
 		}
+		
+		/*
+		 * Create a JersyTestServer serving the Resource under test
+		 */
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+				.addResource(witness).create();
+		jerseyTest.setUp();
 	}
 
 	// not working yet!!
 	@Test
-	public void getNextReadingTest() {
-		
-		ReadingModel readingModel = new ReadingModel();
-		readingModel.setDn1("r1099.2");
-		
+	public void nextReadingTest() {
+
+		/*
+		 * ReadingModel readingModel = new ReadingModel();
+		 * readingModel.setDn1("r1099.2");
+		 */
+
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("witness/reading/next/" + tradId + "/r1099/r1099.1")
+				.path("/witness/reading/next/" + tradId + "/An74/1001_n13")
 				.get(ReadingModel.class);
-		assertEquals(actualResponse.getDn1(), "r1099.2");
+		assertEquals(actualResponse.getDn1(), "1001_n14");
+	}
+
+	// not working yet!!
+	@Test
+	public void previousReadingTest() {
+
+		/*
+		 * ReadingModel readingModel = new ReadingModel();
+		 * readingModel.setDn1("r1099.2");
+		 */
+
+		ReadingModel actualResponse = jerseyTest.resource()
+				.path("/witness/reading/next/" + tradId + "/An74/1001_n13")
+				.get(ReadingModel.class);
+		assertEquals(actualResponse.getDn1(), "1001_n12");
 	}
 
 	/**
