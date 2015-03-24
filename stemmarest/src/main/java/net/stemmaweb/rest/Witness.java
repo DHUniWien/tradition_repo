@@ -13,7 +13,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.services.DbPathProblemService;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -29,6 +28,7 @@ import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
+
 import Exceptions.DataBaseException;
 
 /**
@@ -38,7 +38,6 @@ import Exceptions.DataBaseException;
  **/
 @Path("/witness")
 public class Witness implements IResource {
-	private static GraphDatabaseService db;
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
 
@@ -60,13 +59,13 @@ public class Witness implements IResource {
 	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 
-		 db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 		DatabaseService service = new DatabaseService(db);
 		Node startNode = service.getStartNode(tradId);
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
 
 		for (ReadingModel readingModel : readingModels) {
 			witnessAsText += readingModel.getDn15() + " ";
@@ -95,7 +94,7 @@ public class Witness implements IResource {
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {
-		db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -103,7 +102,7 @@ public class Witness implements IResource {
 		DatabaseService service = new DatabaseService(db);
 		Node startNode = service.getStartNode(tradId);
 
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
 
 		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
@@ -141,7 +140,7 @@ public class Witness implements IResource {
 			@PathParam("textId") String textId) {
 		final String WITNESS_ID = textId;
 
-		db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		DatabaseService service = new DatabaseService(db);
@@ -149,7 +148,7 @@ public class Witness implements IResource {
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
 		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not found a witness with this id").build();
@@ -176,7 +175,7 @@ public class Witness implements IResource {
 			@PathParam("readId") String readId) {
 
 		final String WITNESS_ID = textId;
-		db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		DatabaseService service = new DatabaseService(db);
 		Node startNode = service.getStartNode(tradId);
@@ -184,7 +183,7 @@ public class Witness implements IResource {
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 
-		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode);
+		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode, db);
 
 		return Response.ok(reading).build();
 	}
@@ -208,7 +207,7 @@ public class Witness implements IResource {
 			@PathParam("readId") String readId) {
 
 		final String WITNESS_ID = textId;
-		db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		DatabaseService service = new DatabaseService(db);
 		Node startNode = service.getStartNode(tradId);
@@ -216,7 +215,7 @@ public class Witness implements IResource {
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 
-		ReadingModel reading = getPreviousReading(WITNESS_ID, readId, startNode);
+		ReadingModel reading = getPreviousReading(WITNESS_ID, readId, startNode, db);
 
 		return Response.ok(reading).build();
 	}
@@ -230,7 +229,7 @@ public class Witness implements IResource {
 	 * @return the Next reading to that of the readId
 	 */
 	private ReadingModel getNextReading(String WITNESS_ID, String readId,
-			Node startNode) {
+			Node startNode, GraphDatabaseService db) {
 		Evaluator e = createEvalForWitness(WITNESS_ID);
 
 
@@ -261,7 +260,7 @@ public class Witness implements IResource {
 	 * @return the Previous reading to that of the readId
 	 */
 	private ReadingModel getPreviousReading(final String WITNESS_ID, String readId,
-			Node startNode) {
+			Node startNode,GraphDatabaseService db) {
 		Node previousNode = null;
 
 			Evaluator e = createEvalForWitness(WITNESS_ID);
@@ -323,7 +322,7 @@ public class Witness implements IResource {
 	 * @return a list of the readings as readingModels
 	 */
 	private ArrayList<ReadingModel> getAllReadingsOfWitness(
-			final String WITNESS_ID, Node startNode) {
+			final String WITNESS_ID, Node startNode,GraphDatabaseService db) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Evaluator e = createEvalForWitness(WITNESS_ID);
@@ -349,7 +348,7 @@ public class Witness implements IResource {
 	public Response getAllReadingsOfTradition(@PathParam("tradId") String tradId) {
 
 		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
-		db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {

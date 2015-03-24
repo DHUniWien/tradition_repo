@@ -166,9 +166,6 @@ public class Tradition implements IResource {
 			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
 		String addedReadingId = tradId + "180_149_" + readId + ".5";
 		
-		Node originalReading = null;
-		Node addedReading = null;
-		
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node startNode = null;

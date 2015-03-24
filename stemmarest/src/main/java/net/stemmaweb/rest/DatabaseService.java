@@ -52,7 +52,7 @@ public class DatabaseService {
 
 			if (!nodes.hasNext()) {
 				throw new DataBaseException(
-						problemFinder.findPathProblem(tradId));
+						problemFinder.findPathProblem(tradId,db));
 			} else
 				startNode = nodes.next();
 
