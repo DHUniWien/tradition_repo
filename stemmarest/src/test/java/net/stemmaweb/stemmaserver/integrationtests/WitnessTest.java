@@ -162,11 +162,12 @@ public class WitnessTest {
 // not working yet!! TODO get the result as json string
 	@Test
 	public void witnessAsListTest() {
-		String[] texts = { "this", "is", "the", "test", "text" };
+		String[] texts = { "when", "april", "with", "his", "showers", "sweet", "with", "fruit", "the", "drought", "of", "march", "has", "pierced", "unto", "the", "root" };
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
 				.path("/witness/list/" + tradId + "/A")
 				.get(new GenericType<List<ReadingModel>>() {
 				});
+		assertEquals (texts.length, listOfReadings.size());
 		for (int i = 0; i < listOfReadings.size(); i++) {
 			assertEquals(texts[i], listOfReadings.get(i).getDn12());
 		}
