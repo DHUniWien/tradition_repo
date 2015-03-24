@@ -28,7 +28,7 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
-
+import org.neo4j.graphdb.traversal.Uniqueness;
 import Exceptions.DataBaseException;
 
 /**
@@ -227,13 +227,14 @@ public class Witness implements IResource {
 	 */
 	private ReadingModel getNextReading(String WITNESS_ID, String readId,
 			Node startNode) {
+		Evaluator e = createEvalForWitness(WITNESS_ID);
 
 
 		try (Transaction tx = db.beginTx()) {
 			int stop = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(Evaluators.excludeStartPosition()).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NODE_PATH).traverse(startNode).nodes()) {
 				if (stop == 1) {
 					tx.success();
 					return Reading.readingModelFromNode(node);
@@ -264,7 +265,7 @@ public class Witness implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NODE_PATH).traverse(startNode).nodes()) {
 			
 				if (((String) node.getProperty("id")).equals(readId)) {
 					tx.success();

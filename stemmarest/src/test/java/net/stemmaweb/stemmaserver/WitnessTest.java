@@ -4,7 +4,8 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import net.stemmaweb.model.ReadingModel;
+
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Witness;
@@ -39,7 +40,7 @@ import com.sun.jersey.test.framework.JerseyTest;
  *
  */
 @RunWith(MockitoJUnitRunner.class)
-public class ReadingTest {
+public class WitnessTest {
 	private String tradId;
 	/*
 	 * Create a Mock object for the dbFactory.
@@ -144,24 +145,39 @@ public class ReadingTest {
 		jerseyTest.setUp();
 	}
 
-	// not working yet!!
+	// not working yet!! assert text has been copied from result text
 	@Test
-	public void nextReadingTest() {
+	public void witnessAsTextTest() {
+		String expectedText = "Sapiencia vincit maliciam Hec proposicio scribitur in libro Sapiencie In qua proposicione duo tanguntur ad ipsius theologie commendacionem Primum est ipsius";
+		Witness witness = new Witness();
+		String text = witness.getWitnssAsPlainText(tradId, "An74");
+		assertEquals(expectedText, text);
 
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n2")
-				.get(ReadingModel.class);
-		assertEquals("1001_n14", actualResponse.getDn1());
+		WitnessModel actualResponse = jerseyTest.resource()
+				.path("/witness/string/" + tradId + "/An74")
+				.get(WitnessModel.class);
+		assertEquals(expectedText, actualResponse.toString());
+
 	}
 
-	// not working yet!!
+	// not working yet!! TODO get the result as json string
 	@Test
-	public void previousReadingTest() {
+	public void witnessAsListTest() {
 
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n2")
-				.get(ReadingModel.class);
-		assertEquals("1001_n12", actualResponse.getDn1());
+		WitnessModel actualResponse = jerseyTest.resource()
+				.path("/witness/list/" + tradId + "/An74")
+				.get(WitnessModel.class);
+		assertEquals("1001_n14", actualResponse);
+	}
+	
+	//nor working! TODO fix return as string
+	@Test
+	public void witnessBetweenRanksTest() {
+
+		String expectedText = "Sapiencia vincit maliciam";
+		Witness witness = new Witness();
+		String text = witness.getWitnssAsPlainText(tradId, "An74", "2", "4").toString();
+		assertEquals(expectedText, text);
 	}
 
 	/**
