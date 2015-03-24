@@ -147,7 +147,6 @@ public class WitnessTest {
 		jerseyTest.setUp();
 	}
 
-	// not working yet!!
 	@Test
 	public void witnessAsTextTest() {
 		String expectedText = "when april with his showers sweet with fruit the drought of march has pierced unto the root";
@@ -159,8 +158,8 @@ public class WitnessTest {
 		assertEquals(expectedText, returnedText);
 
 	}
-
-	// not working yet!! TODO get the result as json string
+	
+// not working yet!! TODO get the result as json string
 	@Test
 	public void witnessAsListTest() {
 		String[] texts = { "this", "is", "the", "test", "text" };
@@ -173,7 +172,6 @@ public class WitnessTest {
 		}
 	}
 
-	// nor working! TODO fix return as string
 	@Test
 	public void witnessBetweenRanksTest() {
 

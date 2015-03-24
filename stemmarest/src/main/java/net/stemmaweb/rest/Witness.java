@@ -330,7 +330,7 @@ public class Witness implements IResource {
 
 			for (Node startNodes : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
 				ReadingModel tempReading = Reading
 						.readingModelFromNode(startNodes);
 
@@ -338,6 +338,7 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		}
+		readingModels.remove(readingModels.size()-1);
 		return readingModels;
 	}
 

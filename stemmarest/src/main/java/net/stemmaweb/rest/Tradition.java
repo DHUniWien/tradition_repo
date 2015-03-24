@@ -260,13 +260,10 @@ public class Tradition implements IResource {
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Iterable<Relationship> relationships = null;
 			Node startNode = null;
 			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				startNode = getStartNode(relationships);
+				DatabaseService service = new DatabaseService(db);
+				startNode = service.getStartNode(tradId);
 			} catch (DataBaseException e) {
 				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
