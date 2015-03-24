@@ -1,11 +1,14 @@
 package net.stemmaweb.rest;
 
+import javax.ws.rs.Path;
+
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.neo4j.graphdb.Node;
 
 import net.stemmaweb.model.ReadingModel;
 
 @JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
+@Path("reading")
 public class Reading implements IResource
 {
 	public static ReadingModel readingModelFromNode(Node node)
@@ -47,5 +50,7 @@ public class Reading implements IResource
 		
 		return rm;
 	}
+	
+	
 	
 }

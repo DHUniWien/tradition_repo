@@ -190,6 +190,7 @@ public class UserTest {
     	TraditionModel tradLoaded = traditions.get(0);
     	assertEquals(trad.getId(), tradLoaded.getId());
     	assertEquals(trad.getName(), tradLoaded.getName());
+    	
 	}
 	
 	/**

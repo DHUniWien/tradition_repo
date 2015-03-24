@@ -78,7 +78,7 @@ public class ReadingTest {
 	@Before
 	public void setUp() throws Exception {
 		// might not work on MAC!!
-		String filename = "src\\TestXMLFiles\\Sapientia.xml";
+		String filename = "src/TestXMLFiles/Sapientia.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1

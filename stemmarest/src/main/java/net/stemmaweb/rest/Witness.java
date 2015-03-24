@@ -64,9 +64,9 @@ public class Witness implements IResource {
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-
-		Node witnessNode = getStartNode(tradId);
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
+		DatabaseService service = new DatabaseService(db);
+		Node startNode = service.getStartNode(tradId);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode);
 
 		for (ReadingModel readingModel : readingModels) {
 			witnessAsText += readingModel.getDn15() + " ";
@@ -100,9 +100,10 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getStartNode(tradId);
+		DatabaseService service = new DatabaseService(db);
+		Node startNode = service.getStartNode(tradId);
 
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode);
 
 		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
@@ -143,11 +144,12 @@ public class Witness implements IResource {
 		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node witnessNode = getStartNode(tradId);
-		if (witnessNode == null)
+		DatabaseService service = new DatabaseService(db);
+		Node startNode = service.getStartNode(tradId);
+		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, witnessNode);
+		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode);
 		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not found a witness with this id").build();
@@ -176,7 +178,8 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		Node startNode = getStartNode(tradId);
+		DatabaseService service = new DatabaseService(db);
+		Node startNode = service.getStartNode(tradId);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
@@ -207,7 +210,8 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		Node startNode = getStartNode(tradId);
+		DatabaseService service = new DatabaseService(db);
+		Node startNode = service.getStartNode(tradId);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
@@ -308,40 +312,7 @@ public class Witness implements IResource {
 		return e;
 	}
 
-	/**
-	 * gets the "start" node of a tradition
-	 * @param traditionName
-	 * @param userId
-	 * 
-	 * @return the start node of a witness
-	 */
-	private Node getStartNode(String tradId) {
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-		DbPathProblemService problemFinder = new DbPathProblemService();
-		Node startNode = null;
-
-		/**
-		 * this quarry gets the "Start" node of the witness
-		 */
-		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
-				+ "'})--(w:WORD  {text:'#START#'}) return w";
-
-		try (Transaction tx = db.beginTx()) {
-
-			ExecutionResult result = engine.execute(witnessQuarry);
-			Iterator<Node> nodes = result.columnAs("w");
-
-			if (!nodes.hasNext()) {
-				throw new DataBaseException(
-						problemFinder.findPathProblem(tradId));
-			} else
-				startNode = nodes.next();
-
-			tx.success();
-		}
-		return startNode;
-	}
 
 	/**
 	 * gets all readings of a single witness
@@ -358,11 +329,11 @@ public class Witness implements IResource {
 		Evaluator e = createEvalForWitness(WITNESS_ID);
 		try (Transaction tx = db.beginTx()) {
 
-			for (Node witnessNodes : db.traversalDescription().depthFirst()
+			for (Node startNodes : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).traverse(startNode).nodes()) {
 				ReadingModel tempReading = Reading
-						.readingModelFromNode(witnessNodes);
+						.readingModelFromNode(startNodes);
 
 				readingModels.add(tempReading);
 			}
