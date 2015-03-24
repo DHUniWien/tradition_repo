@@ -4,14 +4,13 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import java.util.List;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -36,7 +35,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -45,7 +43,7 @@ import com.sun.jersey.test.framework.JerseyTest;
  *
  */
 @RunWith(MockitoJUnitRunner.class)
-public class WitnessTest {
+public class TraditionTest {
 	private String tradId;
 	/*
 	 * Create a Mock object for the dbFactory.
@@ -68,7 +66,7 @@ public class WitnessTest {
 	private GraphMLToNeo4JParser importResource;
 
 	@InjectMocks
-	private Witness witness;
+	private Tradition tradition;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -146,58 +144,21 @@ public class WitnessTest {
 		 * Create a JersyTestServer serving the Resource under test
 		 */
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(witness).create();
+				.addResource(tradition).create();
 		jerseyTest.setUp();
 	}
-
+	
 	@Test
-	public void witnessAsTextTestA() {
-		String expectedText = "when april with his showers sweet with fruit the drought of march has pierced unto the root";
-		String text = witness.getWitnssAsPlainText(tradId, "A");
-		assertEquals(expectedText, text);
-
-		String returnedText = jerseyTest.resource()
-				.path("/witness/string/" + tradId + "/A").get(String.class);
-		assertEquals(expectedText, returnedText);
-
-	}
-
-	@Test
-	public void witnessAsTextTestB() {
-		String expectedText = "when showers sweet with april fruit the march of drought has pierced to the root";
-		String text = witness.getWitnssAsPlainText(tradId, "B");
-		assertEquals(expectedText, text);
-
-		String returnedText = jerseyTest.resource()
-				.path("/witness/string/" + tradId + "/B").get(String.class);
-		assertEquals(expectedText, returnedText);
-
-	}
-
-	// not working yet!! TODO get the result as json string
-	@Test
-	public void witnessAsListTest() {
-		String[] texts = { "when", "april", "with", "his", "showers", "sweet",
-				"with", "fruit", "the", "drought", "of", "march", "has",
-				"pierced", "unto", "the", "root" };
-		List<ReadingModel> listOfReadings = jerseyTest.resource()
-				.path("/witness/list/" + tradId + "/A")
-				.get(new GenericType<List<ReadingModel>>() {
-				});
-		assertEquals(texts.length, listOfReadings.size());
-		for (int i = 0; i < listOfReadings.size(); i++) {
-			assertEquals(texts[i], listOfReadings.get(i).getDn15());
+	public void randomNodeExistsTest(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (w:WORD {text:'april'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			long rank = 2;
+			assertEquals(rank , nodes.next().getProperty("rank"));
+			tx.success();
 		}
-	}
-
-	@Test
-	public void witnessBetweenRanksTest() {
-
-		String expectedText = "april with his showers";
-		String actualResponse = jerseyTest.resource()
-				.path("/witness/string/rank/" + tradId + "/A/2/5")
-				.get(String.class);
-		assertEquals(expectedText, actualResponse);
 	}
 
 	/**
@@ -213,46 +174,6 @@ public class WitnessTest {
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
 		}
-	}
-
-	@Test
-	public void nextReadingTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		String readId;
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'with'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("id");
-
-			tx.success();
-		}
-
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/A/" + readId)
-				.get(ReadingModel.class);
-		assertEquals("his", actualResponse.getDn15());
-	}
-
-	@Test
-	public void previousReadingTest() {
-
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		String readId;
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'with'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("id");
-
-			tx.success();
-		}
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/previous/" + tradId + "/A/" + readId)
-				.get(ReadingModel.class);
-		assertEquals("april", actualResponse.getDn15());
 	}
 
 	/**

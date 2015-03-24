@@ -7,6 +7,7 @@ import java.util.Iterator;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DbPathProblemService;
@@ -64,7 +65,7 @@ public class ReadingTest {
 	private GraphMLToNeo4JParser importResource;
 
 	@InjectMocks
-	private Witness witness;
+	private Reading reading;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -139,50 +140,23 @@ public class ReadingTest {
 		 * Create a JersyTestServer serving the Resource under test
 		 */
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(witness).create();
+				.addResource(reading).create();
 		jerseyTest.setUp();
 	}
 
 	@Test
-	public void nextReadingTest() {
+	public void randomNodeExistsTest(){
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		String readId;
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'with'}) return w");
+			ExecutionResult result = engine.execute("match (w:WORD {text:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("id");
-
+			long rank = 2;
+			assertEquals(rank , nodes.next().getProperty("rank"));
 			tx.success();
 		}
-
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/A/"+readId)
-				.get(ReadingModel.class);
-		assertEquals("his", actualResponse.getDn15());
 	}
-
-	@Test
-	public void previousReadingTest() {
-
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		String readId;
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'with'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("id");
-
-			tx.success();
-		}
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/previous/" + tradId + "/A/"+readId)
-				.get(ReadingModel.class);
-		assertEquals("april", actualResponse.getDn15());
-	}
-
+	
 	/**
 	 * test if the tradition node exists
 	 */
