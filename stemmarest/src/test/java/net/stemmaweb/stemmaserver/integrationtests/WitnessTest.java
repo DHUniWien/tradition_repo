@@ -154,10 +154,10 @@ public class WitnessTest {
 		String text = witness.getWitnssAsPlainText(tradId, "An74");
 		assertEquals(expectedText, text);
 
-		WitnessModel actualResponse = jerseyTest.resource()
+		String actualResponse = jerseyTest.resource()
 				.path("/witness/string/" + tradId + "/An74")
-				.get(WitnessModel.class);
-		assertEquals(expectedText, actualResponse.toString());
+				.get(String.class);
+		assertEquals(expectedText, actualResponse);
 
 	}
 
@@ -176,9 +176,10 @@ public class WitnessTest {
 	public void witnessBetweenRanksTest() {
 
 		String expectedText = "Sapiencia vincit maliciam";
-		Witness witness = new Witness();
-		String text = witness.getWitnssAsPlainText(tradId, "An74", "2", "4").toString();
-		assertEquals(expectedText, text);
+		String actualResponse = jerseyTest.resource()
+				.path("/witness/string/rank/" + tradId + "/An74/2/4")
+				.get(String.class);		
+		assertEquals(expectedText, actualResponse);
 	}
 
 	/**
