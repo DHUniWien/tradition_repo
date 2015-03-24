@@ -22,6 +22,7 @@ import javax.xml.stream.XMLStreamException;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
@@ -451,34 +452,7 @@ public class Tradition implements IResource {
 		return Response.ok(witlist).build();
 	}
 
-	/**
-	 * Helper method for getting the start node
-	 * 
-	 * @param startNode
-	 * @param relations
-	 * @return
-	 * @throws DataBaseException
-	 */
-	/*
-	private Node getStartNode(Iterable<Relationship> relations) throws DataBaseException {
-		Node startNode = null;
-		Iterator<Relationship> relationsIterator = relations.iterator();
-		while (relationsIterator.hasNext()) {
-			Relationship rel = relationsIterator.next();
-			startNode = rel.getEndNode();
-			if (startNode != null && startNode.hasProperty("text")) {
-				if (startNode.getProperty("text").equals("#START#")) {
-					relations = startNode.getRelationships(Direction.OUTGOING);
-					break;
-				}
-			}
-		}
-
-		if (relations == null)
-			throw new DataBaseException("start node not found");
-		return startNode;
-	}*/
-
+	
 	/**
 	 * Helper method for getting all outgoing relationships of a node
 	 * 
@@ -586,6 +560,75 @@ public class Tradition implements IResource {
 			e.printStackTrace();
 		}
 
+	}
+	
+	@GET
+	@Path("readings/{tradId}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getAllReadingsOfTradition(@PathParam("tradId") String tradId) {
+
+		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ExecutionEngine engine = new ExecutionEngine(db);
+
+		try (Transaction tx = db.beginTx()) {
+			Node traditionNode = null;
+			Node startNode = null;
+			ExecutionResult result = engine.execute("match (n:TRADITION {id: '"
+					+ tradId + "'}) return n");
+			Iterator<Node> nodes = result.columnAs("n");
+
+			if (!nodes.hasNext())
+				return Response.status(Status.NOT_FOUND)
+						.entity("trad node not found").build();
+
+			traditionNode = nodes.next();
+
+			Iterable<Relationship> rels = traditionNode
+					.getRelationships(Direction.OUTGOING);
+
+			if (rels == null)
+				return Response.status(Status.NOT_FOUND)
+						.entity("rels not found").build();
+
+			Iterator<Relationship> relIt = rels.iterator();
+
+			while (relIt.hasNext()) {
+				Relationship rel = relIt.next();
+				startNode = rel.getEndNode();
+				if (startNode != null && startNode.hasProperty("text")) {
+					if (startNode.getProperty("text").equals("#START#")) {
+						rels = startNode.getRelationships(Direction.OUTGOING);
+						break;
+					}
+				}
+			}
+
+			if (rels == null)
+				return Response.status(Status.NOT_FOUND)
+						.entity("start node not found").build();
+
+			TraversalDescription td = db.traversalDescription().breadthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.evaluator(Evaluators.excludeStartPosition());
+
+			Traverser traverser = td.traverse(startNode);
+			for (org.neo4j.graphdb.Path path : traverser) {
+				Node nd = path.endNode();
+				ReadingModel rm = Reading.readingModelFromNode(nd);
+				readList.add(rm);
+			}
+
+			tx.success();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			db.shutdown();
+		}
+		// return Response.status(Status.NOT_FOUND).build();
+
+		return Response.ok(readList).build();
 	}
 
 	/**

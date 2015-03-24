@@ -1,8 +1,6 @@
-package net.stemmaweb.rest;
+package net.stemmaweb.services;
 
 import java.util.Iterator;
-
-import net.stemmaweb.services.DbPathProblemService;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;

@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.services.DatabaseService;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -340,74 +341,5 @@ public class Witness implements IResource {
 		}
 		readingModels.remove(readingModels.size()-1);
 		return readingModels;
-	}
-
-	@GET
-	@Path("readings/{tradId}")
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getAllReadingsOfTradition(@PathParam("tradId") String tradId) {
-
-		ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
-
-		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Node startNode = null;
-			ExecutionResult result = engine.execute("match (n:TRADITION {id: '"
-					+ tradId + "'}) return n");
-			Iterator<Node> nodes = result.columnAs("n");
-
-			if (!nodes.hasNext())
-				return Response.status(Status.NOT_FOUND)
-						.entity("trad node not found").build();
-
-			traditionNode = nodes.next();
-
-			Iterable<Relationship> rels = traditionNode
-					.getRelationships(Direction.OUTGOING);
-
-			if (rels == null)
-				return Response.status(Status.NOT_FOUND)
-						.entity("rels not found").build();
-
-			Iterator<Relationship> relIt = rels.iterator();
-
-			while (relIt.hasNext()) {
-				Relationship rel = relIt.next();
-				startNode = rel.getEndNode();
-				if (startNode != null && startNode.hasProperty("text")) {
-					if (startNode.getProperty("text").equals("#START#")) {
-						rels = startNode.getRelationships(Direction.OUTGOING);
-						break;
-					}
-				}
-			}
-
-			if (rels == null)
-				return Response.status(Status.NOT_FOUND)
-						.entity("start node not found").build();
-
-			TraversalDescription td = db.traversalDescription().breadthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(Evaluators.excludeStartPosition());
-
-			Traverser traverser = td.traverse(startNode);
-			for (org.neo4j.graphdb.Path path : traverser) {
-				Node nd = path.endNode();
-				ReadingModel rm = Reading.readingModelFromNode(nd);
-				readList.add(rm);
-			}
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
-		}
-		// return Response.status(Status.NOT_FOUND).build();
-
-		return Response.ok(readList).build();
 	}
 }
