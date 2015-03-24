@@ -33,7 +33,7 @@ public class DatabaseService {
 	 * 
 	 * @return the start node of a witness
 	 */
-	public Node getStartNode(String tradId) {
+	public Node getStartNode(String tradId) throws DataBaseException {
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService();
