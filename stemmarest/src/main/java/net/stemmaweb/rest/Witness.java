@@ -237,7 +237,7 @@ public class Witness implements IResource {
 			int stop = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NODE_PATH).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
 				if (stop == 1) {
 					tx.success();
 					return Reading.readingModelFromNode(node);
@@ -268,7 +268,7 @@ public class Witness implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NODE_PATH).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
 			
 				if (((String) node.getProperty("id")).equals(readId)) {
 					tx.success();

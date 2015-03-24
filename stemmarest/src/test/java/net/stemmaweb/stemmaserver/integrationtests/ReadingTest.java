@@ -66,9 +66,6 @@ public class ReadingTest {
 	@InjectMocks
 	private Witness witness;
 
-	@InjectMocks
-	private DbPathProblemService problemService;
-
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
 	 * grizzly http service
@@ -78,7 +75,7 @@ public class ReadingTest {
 	@Before
 	public void setUp() throws Exception {
 		// might not work on MAC!!
-		String filename = "src/TestXMLFiles/Sapientia.xml";
+		String filename = "src\\TestXMLFiles\\testTradition.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -146,24 +143,44 @@ public class ReadingTest {
 		jerseyTest.setUp();
 	}
 
-	// not working yet!!
 	@Test
 	public void nextReadingTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		String readId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'with'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			readId = (String) nodes.next().getProperty("id");
+
+			tx.success();
+		}
 
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n2")
+				.path("/witness/reading/next/" + tradId + "/A/"+readId)
 				.get(ReadingModel.class);
-		assertEquals("1001_n14", actualResponse.getDn1());
+		assertEquals("his", actualResponse.getDn15());
 	}
 
-	// not working yet!!
 	@Test
 	public void previousReadingTest() {
 
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		String readId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'with'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			readId = (String) nodes.next().getProperty("id");
+
+			tx.success();
+		}
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n2")
+				.path("/witness/reading/previous/" + tradId + "/A/"+readId)
 				.get(ReadingModel.class);
-		assertEquals("1001_n12", actualResponse.getDn1());
+		assertEquals("april", actualResponse.getDn15());
 	}
 
 	/**
@@ -174,7 +191,7 @@ public class ReadingTest {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ResourceIterable<Node> tradNodes = mockDbService
 					.findNodesByLabelAndProperty(Nodes.TRADITION, "name",
-							"Sapientia");
+							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
