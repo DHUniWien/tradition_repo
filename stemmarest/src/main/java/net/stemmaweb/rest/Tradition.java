@@ -126,39 +126,28 @@ public class Tradition implements IResource {
 	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		ExecutionEngine engine = new ExecutionEngine(db);
 		ReadingModel reading = null;
-
-		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Iterable<Relationship> relationships = null;
-			Node startNode = null;
-			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				startNode = getStartNode(relationships);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
-
-			Traverser traverser = getReading(startNode, db);
-			for (org.neo4j.graphdb.Path path : traverser) {
-				String id = (String) path.endNode().getProperty("id");
-				if (id.matches(".*" + readId)) {
-					reading = Reading.readingModelFromNode(path.endNode());
-					break;
-				}
-			}
-			if (reading == null)
-				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
+	
+		Node startNode = null;
+		try {
+			DatabaseService service = new DatabaseService(db);
+			startNode = service.getStartNode(tradId);
+		} catch (DataBaseException e) {
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
-
+	
+		Traverser traverser = getReading(startNode, db);
+		for (org.neo4j.graphdb.Path path : traverser) {
+			String id = (String) path.endNode().getProperty("id");
+			if (id.matches(".*" + readId)) {
+				reading = Reading.readingModelFromNode(path.endNode());
+				break;
+			}
+		}
+		if (reading == null)
+			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+	
+	
 		return Response.ok(reading).build();
 	}
 
@@ -176,81 +165,69 @@ public class Tradition implements IResource {
 	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
 			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
 		String addedReadingId = tradId + "180_149_" + readId + ".5";
-
+		
 		Node originalReading = null;
 		Node addedReading = null;
-
+		
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
 
-		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Iterable<Relationship> relationships = null;
-			Node startNode = null;
-			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				startNode = getStartNode(relationships);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
+	Node startNode = null;
+	try {
+		DatabaseService service = new DatabaseService(db);
+		startNode = service.getStartNode(tradId);
+	} catch (DataBaseException e) {
+		return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+	}
 
-			try {
-				boolean foundReading = false;
-				Traverser traverser = getReading(startNode, db);
-				for (org.neo4j.graphdb.Path path : traverser) {
-					String id = (String) path.endNode().getProperty("id");
-					if (id.matches(".*" + readId)) {
-						// duplicating of reading happens here
-						addedReading = db.createNode();
-						originalReading = path.endNode();
+	try {
+		boolean foundReading = false;
+		Traverser traverser = getReading(startNode, db);
+		for (org.neo4j.graphdb.Path path : traverser) {
+			String id = (String) path.endNode().getProperty("id");
+			if (id.matches(".*" + readId)) {
+				// duplicating of reading happens here
+				addedReading = db.createNode();
+				originalReading = path.endNode();
 
-						// copy reading
-						addedReading.addLabel(Nodes.WORD);
-						addedReading.setProperty("text", originalReading.getProperty("text"));
-						addedReading.setProperty("id", addedReadingId);
-						addedReading.setProperty("rank", originalReading.getProperty("rank"));
-						addedReading.setProperty("language", originalReading.getProperty("language"));
-						addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
-						addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
+				// copy reading
+				addedReading.addLabel(Nodes.WORD);
+				addedReading.setProperty("text", originalReading.getProperty("text"));
+				addedReading.setProperty("id", addedReadingId);
+				addedReading.setProperty("rank", originalReading.getProperty("rank"));
+				addedReading.setProperty("language", originalReading.getProperty("language"));
+				addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
+				addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
 
-						// add witnesses to relationships
-						// Outgoing
-						Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
-								Direction.OUTGOING);
-						for (Relationship relationship : rels) {
-							relationship.setProperty("lexemes", firstWitnesses);
-							Node targetNode = relationship.getEndNode();
-							Relationship addedRelationship = addedReading.createRelationshipTo(targetNode,
-									Relations.NORMAL);
-							addedRelationship.setProperty("lexemes", secondWitnesses);
-						}
-						// Incoming
-						rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
-						for (Relationship relationship : rels) {
-							relationship.setProperty("lexemes", firstWitnesses);
-							Node originNode = relationship.getStartNode();
-							Relationship addedRelationship = originNode.createRelationshipTo(addedReading,
-									Relations.NORMAL);
-							addedRelationship.setProperty("lexemes", secondWitnesses);
-						}
-
-						foundReading = true;
-						break;
-					}
+				// add witnesses to relationships
+				// Outgoing
+				Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
+						Direction.OUTGOING);
+				for (Relationship relationship : rels) {
+					relationship.setProperty("lexemes", firstWitnesses);
+					Node targetNode = relationship.getEndNode();
+					Relationship addedRelationship = addedReading.createRelationshipTo(targetNode,
+							Relations.NORMAL);
+					addedRelationship.setProperty("lexemes", secondWitnesses);
 				}
-				if (!foundReading)
-					return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-			} catch (Exception e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
+				// Incoming
+				rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
+				for (Relationship relationship : rels) {
+					relationship.setProperty("lexemes", firstWitnesses);
+					Node originNode = relationship.getStartNode();
+					Relationship addedRelationship = originNode.createRelationshipTo(addedReading,
+							Relations.NORMAL);
+					addedRelationship.setProperty("lexemes", secondWitnesses);
+				}
 
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
+				foundReading = true;
+				break;
+			}
 		}
+		if (!foundReading)
+			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+	} catch (Exception e) {
+		return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+	}
 
 		return Response.ok("Successfully duplicated reading").build();
 	}
@@ -277,66 +254,54 @@ public class Tradition implements IResource {
 		Node addedReading = null;
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
 
-		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Iterable<Relationship> relationships = null;
-			Node startNode = null;
-			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				startNode = getStartNode(relationships);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
-
-			try {
-				boolean foundReading = false;
-				Traverser traverser = getReading(startNode, db);
-				for (org.neo4j.graphdb.Path path : traverser) {
-					String id = (String) path.endNode().getProperty("id");
-					if (id.matches(".*" + readId)) {
-						// splitting of reading happens here
-						addedReading = db.createNode();
-						originalReading = path.endNode();
-
-						Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
-								Direction.OUTGOING);
-						for (Relationship relationship : rels) {
-							addedReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
-							relationship.delete();
-						}
-
-						addedReading.addLabel(Nodes.WORD);
-						addedReading.setProperty("text", addedReadingText);
-						addedReading.setProperty("id", addedReadingId);
-						// set Rank to Rank of original reading and add .5
-						addedReading.setProperty("rank", originalReading.getProperty("rank") + ".5");
-						addedReading.setProperty("language", originalReading.getProperty("language"));
-						addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
-						addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
-
-						originalReading.createRelationshipTo(addedReading, Relations.NORMAL);
-						originalReading.setProperty("text", originalReadingText);
-
-						foundReading = true;
-						break;
-					}
-				}
-				if (!foundReading)
-					return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-			} catch (Exception e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
+		
+		Node startNode = null;
+		try {
+			DatabaseService service = new DatabaseService(db);
+			startNode = service.getStartNode(tradId);
+		} catch (DataBaseException e) {
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
-
+		
+		try {
+			boolean foundReading = false;
+			Traverser traverser = getReading(startNode, db);
+			for (org.neo4j.graphdb.Path path : traverser) {
+				String id = (String) path.endNode().getProperty("id");
+				if (id.matches(".*" + readId)) {
+					// splitting of reading happens here
+					addedReading = db.createNode();
+					originalReading = path.endNode();
+		
+					Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
+							Direction.OUTGOING);
+					for (Relationship relationship : rels) {
+						addedReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
+						relationship.delete();
+					}
+		
+					addedReading.addLabel(Nodes.WORD);
+					addedReading.setProperty("text", addedReadingText);
+					addedReading.setProperty("id", addedReadingId);
+					// set Rank to Rank of original reading and add .5
+					addedReading.setProperty("rank", originalReading.getProperty("rank") + ".5");
+					addedReading.setProperty("language", originalReading.getProperty("language"));
+					addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
+					addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
+		
+					originalReading.createRelationshipTo(addedReading, Relations.NORMAL);
+					originalReading.setProperty("text", originalReadingText);
+		
+					foundReading = true;
+					break;
+				}
+			}
+			if (!foundReading)
+				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+		} catch (Exception e) {
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+		}
 		return Response.ok("Successfully split up reading").build();
 	}
 
@@ -425,6 +390,7 @@ public class Tradition implements IResource {
 	 * @return
 	 * @throws DataBaseException
 	 */
+	/*
 	private Node getStartNode(Iterable<Relationship> relations) throws DataBaseException {
 		Node startNode = null;
 		Iterator<Relationship> relationsIterator = relations.iterator();
@@ -442,7 +408,7 @@ public class Tradition implements IResource {
 		if (relations == null)
 			throw new DataBaseException("start node not found");
 		return startNode;
-	}
+	}*/
 
 	/**
 	 * Helper method for getting all outgoing relationships of a node
