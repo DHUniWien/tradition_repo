@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver;
+package net.stemmaweb.stemmaserver.integrationtests;
 
 
 import static org.junit.Assert.*;
@@ -13,6 +13,7 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;

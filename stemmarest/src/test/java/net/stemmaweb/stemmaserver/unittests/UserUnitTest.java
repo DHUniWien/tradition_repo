@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver;
+package net.stemmaweb.stemmaserver.unittests;
 
 import static org.junit.Assert.assertEquals;
 
