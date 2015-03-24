@@ -171,65 +171,73 @@ public class Tradition implements IResource {
 		
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-	Node startNode = null;
-	try {
-		DatabaseService service = new DatabaseService(db);
-		startNode = service.getStartNode(tradId);
-	} catch (DataBaseException e) {
-		return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-	}
-
-	try {
-		boolean foundReading = false;
-		Traverser traverser = getReading(startNode, db);
-		for (org.neo4j.graphdb.Path path : traverser) {
-			String id = (String) path.endNode().getProperty("id");
-			if (id.matches(".*" + readId)) {
-				// duplicating of reading happens here
-				addedReading = db.createNode();
-				originalReading = path.endNode();
-
-				// copy reading
-				addedReading.addLabel(Nodes.WORD);
-				addedReading.setProperty("text", originalReading.getProperty("text"));
-				addedReading.setProperty("id", addedReadingId);
-				addedReading.setProperty("rank", originalReading.getProperty("rank"));
-				addedReading.setProperty("language", originalReading.getProperty("language"));
-				addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
-				addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
-
-				// add witnesses to relationships
-				// Outgoing
-				Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
-						Direction.OUTGOING);
-				for (Relationship relationship : rels) {
-					relationship.setProperty("lexemes", firstWitnesses);
-					Node targetNode = relationship.getEndNode();
-					Relationship addedRelationship = addedReading.createRelationshipTo(targetNode,
-							Relations.NORMAL);
-					addedRelationship.setProperty("lexemes", secondWitnesses);
-				}
-				// Incoming
-				rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
-				for (Relationship relationship : rels) {
-					relationship.setProperty("lexemes", firstWitnesses);
-					Node originNode = relationship.getStartNode();
-					Relationship addedRelationship = originNode.createRelationshipTo(addedReading,
-							Relations.NORMAL);
-					addedRelationship.setProperty("lexemes", secondWitnesses);
-				}
-
-				foundReading = true;
-				break;
-			}
+		Node startNode = null;
+		try {
+			DatabaseService service = new DatabaseService(db);
+			startNode = service.getStartNode(tradId);
+		} catch (DataBaseException e) {
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
-		if (!foundReading)
-			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-	} catch (Exception e) {
-		return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+	
+		try {
+			boolean foundReading = false;
+			Traverser traverser = getReading(startNode, db);
+			for (org.neo4j.graphdb.Path path : traverser) {
+				String id = (String) path.endNode().getProperty("id");
+				if (id.matches(".*" + readId)) {
+					duplicateReading(firstWitnesses, secondWitnesses,
+							addedReadingId, db, path);
+	
+					foundReading = true;
+					break;
+				}
+			}
+			if (!foundReading)
+				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+		} catch (Exception e) {
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+		}
+		return Response.ok("Successfully duplicated reading").build();
 	}
 
-		return Response.ok("Successfully duplicated reading").build();
+	private void duplicateReading(String firstWitnesses,
+			String secondWitnesses, String addedReadingId,
+			GraphDatabaseService db, org.neo4j.graphdb.Path path) {
+		Node originalReading;
+		Node addedReading;
+		// duplicating of reading happens here
+		addedReading = db.createNode();
+		originalReading = path.endNode();
+
+		// copy reading
+		addedReading.addLabel(Nodes.WORD);
+		addedReading.setProperty("text", originalReading.getProperty("text"));
+		addedReading.setProperty("id", addedReadingId);
+		addedReading.setProperty("rank", originalReading.getProperty("rank"));
+		addedReading.setProperty("language", originalReading.getProperty("language"));
+		addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
+		addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
+
+		// add witnesses to relationships
+		// Outgoing
+		Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
+				Direction.OUTGOING);
+		for (Relationship relationship : rels) {
+			relationship.setProperty("lexemes", firstWitnesses);
+			Node targetNode = relationship.getEndNode();
+			Relationship addedRelationship = addedReading.createRelationshipTo(targetNode,
+					Relations.NORMAL);
+			addedRelationship.setProperty("lexemes", secondWitnesses);
+		}
+		// Incoming
+		rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
+		for (Relationship relationship : rels) {
+			relationship.setProperty("lexemes", firstWitnesses);
+			Node originNode = relationship.getStartNode();
+			Relationship addedRelationship = originNode.createRelationshipTo(addedReading,
+					Relations.NORMAL);
+			addedRelationship.setProperty("lexemes", secondWitnesses);
+		}
 	}
 
 	/**
