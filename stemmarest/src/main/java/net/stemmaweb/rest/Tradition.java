@@ -156,6 +156,8 @@ public class Tradition implements IResource {
 	 * 
 	 * @param tradId
 	 * @param readId
+	 * @param firstWitnesses
+	 * @param secondWitnesses
 	 * @return
 	 */
 	@GET
@@ -238,6 +240,87 @@ public class Tradition implements IResource {
 	}
 
 	/**
+	 * Merges two readings into one single reading in a specific tradition.
+	 * 
+	 * @param tradId
+	 * @param firstReadId
+	 * @param secondReadId
+	 * @return
+	 */
+	@GET
+	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") String firstReadId,
+			@PathParam("secondReadId") String secondReadId) {
+		Node firstReading = null;
+		Node secondReading = null;
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ExecutionEngine engine = new ExecutionEngine(db);
+
+		try (Transaction tx = db.beginTx()) {
+			Node traditionNode = null;
+			Iterable<Relationship> relationships = null;
+			Node startNode = null;
+			try {
+				traditionNode = getTraditionNode(tradId, engine);
+				relationships = getRelationships(traditionNode);
+				startNode = getStartNode(relationships);
+			} catch (DataBaseException e) {
+				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+			}
+
+			try {
+				boolean foundReadings = false;
+				Traverser traverser = getReading(startNode, db);
+				for (org.neo4j.graphdb.Path path : traverser) {
+					String id = (String) path.endNode().getProperty("id");
+					if (id.matches(".*" + firstReadId))
+						firstReading = path.endNode();
+					if (id.matches(".*" + secondReadId))
+						secondReading = path.endNode();
+					if (firstReading != null && secondReading != null) {
+						foundReadings = true;
+						break;
+					}
+				}
+				if (!foundReadings)
+					return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
+
+				if (!firstReading.getProperty("text").toString()
+						.equalsIgnoreCase(secondReading.getProperty("text").toString()))
+					return Response.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("readings to be merged do not contain the same text").build();
+
+				// merging of readings happens here
+				copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
+				copyRelationshipProperties(firstReading, secondReading, Direction.OUTGOING);
+				secondReading.delete();
+
+			} catch (Exception e) {
+				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+			}
+
+			tx.success();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			db.shutdown();
+		}
+
+		return Response.ok("Successfully merged readings").build();
+	}
+
+	private void copyRelationshipProperties(Node firstReading, Node secondReading, Direction direction) {
+		Relationship firstRel = firstReading.getSingleRelationship(Relations.NORMAL, direction);
+		Relationship secondRel = secondReading.getSingleRelationship(Relations.NORMAL, direction);
+		firstRel.setProperty("lexemes", firstRel.getProperty("lexemes").toString()
+				+ secondRel.getProperty("lexemes").toString());
+		secondRel.delete();
+	}
+
+	/**
 	 * Splits up a reading into two readings in a specific tradition.
 	 * 
 	 * @param tradId
@@ -308,22 +391,6 @@ public class Tradition implements IResource {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
 		return Response.ok("Successfully split up reading").build();
-	}
-
-	/**
-	 * Merges two readings into one single reading in a specific tradition.
-	 * 
-	 * @param tradId
-	 * @param readId
-	 * @return
-	 */
-	@GET
-	@Path("merge/{tradId}/{readId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	@Consumes(MediaType.APPLICATION_JSON)
-	public Response mergeReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
-		return Response.ok("This method should merge two readings into one single reading. Not implemented yet.")
-				.build();
 	}
 
 	@GET
