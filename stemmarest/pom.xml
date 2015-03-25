@@ -107,16 +107,30 @@
       <scope>test</scope>
    </dependency>
 		
-		<dependency>
-	<groupId>javax.ws.rs</groupId>
-	<artifactId>javax.ws.rs-api</artifactId>
-	<version>2.0-m04</version>
-</dependency>
-<dependency>
-	<groupId>com.sun.jersey</groupId>
-	<artifactId>jersey-json</artifactId>
-	<version>${jersey-version}</version>
-</dependency>
+	<dependency>
+		<groupId>javax.ws.rs</groupId>
+		<artifactId>javax.ws.rs-api</artifactId>
+		<version>2.0-m04</version>
+	</dependency>
+	
+	<!-- Jackson 2.x Core -->
+	<dependency>
+		<groupId>com.fasterxml.jackson.core</groupId>
+		<artifactId>jackson-core</artifactId>
+		<version>2.2.3</version>
+	</dependency>
+	<!-- Jackson 2.x Annotations -->
+	<dependency>
+		<groupId>com.fasterxml.jackson.core</groupId>
+		<artifactId>jackson-annotations</artifactId>
+		<version>2.2.3</version>
+	</dependency>
+	<!-- Jackson 2.x Databind -->
+	<dependency>
+		<groupId>com.fasterxml.jackson.core</groupId>
+		<artifactId>jackson-databind</artifactId>
+		<version>2.2.3</version>
+	</dependency>
 
 <dependency>
 		<groupId>org.codehaus.jackson</groupId>

@@ -20,11 +20,6 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,6 +40,9 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -160,9 +158,9 @@ public class TraditionTest {
 	}
 	
 	@Test
-	public void getReadingTest() throws JsonGenerationException, JsonMappingException, IOException{
+	public void getReadingTest() throws JsonProcessingException {
 		
-		String expected = "{}";
+		String expected = "{\"dn1\":\"n1\",\"dn2\":\"1\",\"dn11\":\"Default\",\"dn14\":\"1\",\"dn15\":\"when\"}";
 		
 		Response resp = tradition.getReading("1001", "n2");
 		
