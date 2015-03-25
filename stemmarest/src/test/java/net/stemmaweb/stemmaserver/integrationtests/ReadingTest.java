@@ -13,6 +13,7 @@ import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
 import org.junit.Before;
@@ -75,8 +76,12 @@ public class ReadingTest {
 
 	@Before
 	public void setUp() throws Exception {
-		// might not work on MAC!!
-		String filename = "src\\TestXMLFiles\\testTradition.xml";
+		
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else 
+			filename = "src/TestXMLFiles/testTradition.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1

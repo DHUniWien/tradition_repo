@@ -118,7 +118,13 @@
 	<version>${jersey-version}</version>
 </dependency>
 
-
+<dependency>
+		<groupId>org.codehaus.jackson</groupId>
+		<artifactId>jackson-mapper-asl</artifactId>
+		<version>1.8.5</version>
+	</dependency>
+	
+	
 
     </dependencies>
     <properties>
@@ -126,5 +132,12 @@
     
         <jersey-version>1.8</jersey-version>
     </properties>
+   
+     <repositories>
+	<repository>
+		<id>codehaus</id>
+		<url>http://repository.codehaus.org/org/codehaus</url>
+	</repository>
+  </repositories>
    
 </project>

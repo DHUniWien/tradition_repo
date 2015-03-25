@@ -2,9 +2,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.*;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.Iterator;
 
 import javax.ws.rs.core.Response;
@@ -15,16 +13,12 @@ import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,7 +47,7 @@ import com.sun.jersey.test.framework.JerseyTest;
  *
  */
 @RunWith(MockitoJUnitRunner.class)
-public class TraditionTest {
+public class DatabaseServiceTest {
 	private String tradId;
 	/*
 	 * Create a Mock object for the dbFactory.
@@ -74,15 +68,9 @@ public class TraditionTest {
 	 */
 	@InjectMocks
 	private GraphMLToNeo4JParser importResource;
+	
+	private DatabaseService service;
 
-	@InjectMocks
-	private Tradition tradition;
-
-	/*
-	 * JerseyTest is the test environment to Test api calls it provides a
-	 * grizzly http service
-	 */
-	private JerseyTest jerseyTest;
 
 	@Before
 	public void setUp() throws Exception {
@@ -150,40 +138,18 @@ public class TraditionTest {
 
 			tx.success();
 		}
-
-		/*
-		 * Create a JersyTestServer serving the Resource under test
-		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(tradition).create();
-		jerseyTest.setUp();
+		
+		service = new DatabaseService(mockDbService);
 	}
 	
 	@Test
-	public void getReadingTest() throws JsonGenerationException, JsonMappingException, IOException{
-		
-		String expected = "{}";
-		
-		Response resp = tradition.getReading("1001", "n2");
-		
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.setSerializationInclusion(Include.NON_NULL);
-		String json = mapper.writeValueAsString(resp.getEntity());
-		
-		assertEquals(expected,json);
-		
+	public void getStartNodeTest(){
+		try(Transaction tx = mockDbService.beginTx())
+		{
+			assertEquals("__START__", service.getStartNode("1001").getProperty("dn99").toString());
+		}
 	}
 	
-	@Test
-	public void getAllReadingsOfTraditionTest(){
-		
-		String expected = "[{\"name\":\"Tradition\",\"id\":\"1001\"}]";
-		
-		Response resp = tradition.getAllReadingsOfTradition("1001");
-		
-		assertEquals(expected, resp.getEntity().toString());
-	}
-
 	/**
 	 * Shut down the jersey server
 	 * 
@@ -192,7 +158,6 @@ public class TraditionTest {
 	@After
 	public void tearDown() throws Exception {
 		mockDbService.shutdown();
-		jerseyTest.tearDown();
 	}
 
 }

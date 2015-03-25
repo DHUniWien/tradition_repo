@@ -1,13 +1,9 @@
-package net.stemmaweb.stemmaserver.integrationtests;
+package net.stemmaweb.stemmaserver.unittests;
 
 import static org.junit.Assert.*;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.Iterator;
-
-import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
@@ -20,11 +16,6 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
-import org.codehaus.jackson.JsonGenerationException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.JsonSerializer;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,11 +40,11 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Severin
+ * @author Ido
  *
  */
 @RunWith(MockitoJUnitRunner.class)
-public class TraditionTest {
+public class TraditionUnitTest {
 	private String tradId;
 	/*
 	 * Create a Mock object for the dbFactory.
@@ -160,28 +151,44 @@ public class TraditionTest {
 	}
 	
 	@Test
-	public void getReadingTest() throws JsonGenerationException, JsonMappingException, IOException{
-		
-		String expected = "{}";
-		
-		Response resp = tradition.getReading("1001", "n2");
-		
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.setSerializationInclusion(Include.NON_NULL);
-		String json = mapper.writeValueAsString(resp.getEntity());
-		
-		assertEquals(expected,json);
-		
+	public void randomNodeExistsTest(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (w:WORD {text:'april'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			long rank = 2;
+			assertEquals(rank , nodes.next().getProperty("rank"));
+			tx.success();
+		}
 	}
-	
+
+	/**
+	 * test if the tradition node exists
+	 */
 	@Test
-	public void getAllReadingsOfTraditionTest(){
-		
-		String expected = "[{\"name\":\"Tradition\",\"id\":\"1001\"}]";
-		
-		Response resp = tradition.getAllReadingsOfTradition("1001");
-		
-		assertEquals(expected, resp.getEntity().toString());
+	public void traditionNodeExistsTest() {
+		try (Transaction tx = mockDbService.beginTx()) {
+			ResourceIterable<Node> tradNodes = mockDbService
+					.findNodesByLabelAndProperty(Nodes.TRADITION, "name",
+							"Tradition");
+			Iterator<Node> tradNodesIt = tradNodes.iterator();
+			assertTrue(tradNodesIt.hasNext());
+			tx.success();
+		}
+	}
+
+	/**
+	 * test if the tradition end node exists
+	 */
+	@Test
+	public void traditionEndNodeExistsTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+
+		ExecutionResult result = engine
+				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
+		ResourceIterator<Node> tradNodes = result.columnAs("n");
+		assertTrue(tradNodes.hasNext());
 	}
 
 	/**
