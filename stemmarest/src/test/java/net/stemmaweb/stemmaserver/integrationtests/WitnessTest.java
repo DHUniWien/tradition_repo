@@ -15,6 +15,7 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
 import org.junit.Before;
@@ -78,11 +79,11 @@ public class WitnessTest {
 
 	@Before
 	public void setUp() throws Exception {
-		// for windows
-		String filename = "src\\TestXMLFiles\\testTradition.xml";
-
-		// for mac
-		// String filename = "src/TestXMLFiles/testTradition.xml";
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else 
+			filename = "src/TestXMLFiles/testTradition.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -153,7 +154,7 @@ public class WitnessTest {
 	@Test
 	public void witnessAsTextTestA() {
 		String expectedText = "when april with his showers sweet with fruit the drought of march has pierced unto the root";
-		String text = witness.getWitnssAsPlainText(tradId, "A");
+		String text = witness.getWitnessAsPlainText(tradId, "A");
 		assertEquals(expectedText, text);
 
 		String returnedText = jerseyTest.resource()
@@ -165,7 +166,7 @@ public class WitnessTest {
 	@Test
 	public void witnessAsTextTestB() {
 		String expectedText = "when showers sweet with april fruit the march of drought has pierced to the root";
-		String text = witness.getWitnssAsPlainText(tradId, "B");
+		String text = witness.getWitnessAsPlainText(tradId, "B");
 		assertEquals(expectedText, text);
 
 		String returnedText = jerseyTest.resource()
@@ -207,7 +208,7 @@ public class WitnessTest {
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ResourceIterable<Node> tradNodes = mockDbService
-					.findNodesByLabelAndProperty(Nodes.TRADITION, "name",
+					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
 							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
@@ -221,10 +222,10 @@ public class WitnessTest {
 		String readId;
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'with'}) return w");
+					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("id");
+			readId = (String) nodes.next().getProperty("dn1");
 
 			tx.success();
 		}
@@ -242,10 +243,10 @@ public class WitnessTest {
 		String readId;
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'with'}) return w");
+					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("id");
+			readId = (String) nodes.next().getProperty("dn1");
 
 			tx.success();
 		}
@@ -263,7 +264,7 @@ public class WitnessTest {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 
 		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
+				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}

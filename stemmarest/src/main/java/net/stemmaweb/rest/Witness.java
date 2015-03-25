@@ -57,7 +57,7 @@ public class Witness implements IResource {
 	@GET
 	@Path("string/{tradId}/{textId}")
 	@Produces("text/plain")
-	public String getWitnssAsPlainText(@PathParam("tradId") String tradId,
+	public String getWitnessAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -243,7 +243,7 @@ public class Witness implements IResource {
 					tx.success();
 					return Reading.readingModelFromNode(node);
 				}
-				if (((String) node.getProperty("id")).equals(readId)) {
+				if (((String) node.getProperty("dn1")).equals(readId)) {
 					stop = 1;
 				}
 			}
@@ -271,7 +271,7 @@ public class Witness implements IResource {
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
 			
-				if (((String) node.getProperty("id")).equals(readId)) {
+				if (((String) node.getProperty("dn1")).equals(readId)) {
 					tx.success();
 					if (previousNode != null)
 					return Reading.readingModelFromNode(previousNode);	

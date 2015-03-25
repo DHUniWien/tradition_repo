@@ -138,7 +138,7 @@ public class Tradition implements IResource {
 		}
 	
 		try (Transaction tx = db.beginTx()) {
-			if(startNode.getProperty("id").toString().equals(tradId + "_" + readId))
+			if(startNode.getProperty("dn1").toString().equals(readId))
 			{
 				reading = Reading.readingModelFromNode(startNode);
 			}
@@ -146,8 +146,8 @@ public class Tradition implements IResource {
 			{
 				Traverser traverser = getReading(startNode, db);
 				for (org.neo4j.graphdb.Path path : traverser) {
-					String id = (String) path.endNode().getProperty("id");
-					if (id.equals(tradId + "_" + readId)) {
+					String id = (String) path.endNode().getProperty("dn1");
+					if (id.equals(readId)) {
 						reading = Reading.readingModelFromNode(path.endNode());
 						break;
 					}

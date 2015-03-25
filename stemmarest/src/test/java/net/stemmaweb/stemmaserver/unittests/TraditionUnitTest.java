@@ -154,11 +154,11 @@ public class TraditionUnitTest {
 	public void randomNodeExistsTest(){
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (w:WORD {text:'april'}) return w");
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			long rank = 2;
-			assertEquals(rank , nodes.next().getProperty("rank"));
+			assertEquals(rank , nodes.next().getProperty("dn14"));
 			tx.success();
 		}
 	}
@@ -170,7 +170,7 @@ public class TraditionUnitTest {
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ResourceIterable<Node> tradNodes = mockDbService
-					.findNodesByLabelAndProperty(Nodes.TRADITION, "name",
+					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
 							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
@@ -186,7 +186,7 @@ public class TraditionUnitTest {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 
 		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
+				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}
