@@ -162,7 +162,7 @@ public class TraditionTest {
 		
 		String expected = "{\"dn1\":\"n1\",\"dn2\":\"1\",\"dn11\":\"Default\",\"dn14\":\"1\",\"dn15\":\"when\"}";
 		
-		Response resp = tradition.getReading("1001", "n2");
+		Response resp = tradition.getReading("1001", "n1");
 		
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);

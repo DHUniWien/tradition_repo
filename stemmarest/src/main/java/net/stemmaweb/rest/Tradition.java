@@ -138,12 +138,19 @@ public class Tradition implements IResource {
 		}
 	
 		try (Transaction tx = db.beginTx()) {
-			Traverser traverser = getReading(startNode, db);
-			for (org.neo4j.graphdb.Path path : traverser) {
-				String id = (String) path.endNode().getProperty("id");
-				if (id.equals(tradId + "_" + readId)) {
-					reading = Reading.readingModelFromNode(path.endNode());
-					break;
+			if(startNode.getProperty("id").toString().equals(tradId + "_" + readId))
+			{
+				reading = Reading.readingModelFromNode(startNode);
+			}
+			else
+			{
+				Traverser traverser = getReading(startNode, db);
+				for (org.neo4j.graphdb.Path path : traverser) {
+					String id = (String) path.endNode().getProperty("id");
+					if (id.equals(tradId + "_" + readId)) {
+						reading = Reading.readingModelFromNode(path.endNode());
+						break;
+					}
 				}
 			}
 			tx.success();
