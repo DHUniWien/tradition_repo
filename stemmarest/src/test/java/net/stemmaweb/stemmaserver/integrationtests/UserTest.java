@@ -13,6 +13,7 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
@@ -75,19 +76,9 @@ public class UserTest {
 		/*
 		 * Populate the test database with the root node
 		 */
-    	ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
-    	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		if(!nodes.hasNext())
-    		{
-    			Node node = mockDbService.createNode(Nodes.ROOT);
-    			node.setProperty("name", "Root node");
-    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-    		}
-    		tx.success();
-    	}
+		DatabaseService dbService = new DatabaseService(mockDbService);
+		dbService.createRootNode();
+
     	
     	/*
     	 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to return 
