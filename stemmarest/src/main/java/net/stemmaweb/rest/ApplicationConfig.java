@@ -6,6 +6,8 @@ import java.util.Set;
 
 import javax.ws.rs.core.Application;
 
+import net.stemmaweb.services.DatabaseService;
+
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -38,20 +40,8 @@ public class ApplicationConfig extends Application {
     	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
     	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
     	
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	try(Transaction tx = db.beginTx())
-    	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		if(!nodes.hasNext())
-    		{
-    			Node node = db.createNode(Nodes.ROOT);
-    			node.setProperty("name", "Root node");
-    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-    		}
-    		tx.success();
-    	}
-    	
-    	db.shutdown();
+    	DatabaseService dbService = new DatabaseService(db);
+    	dbService.createRootNode();
     }
+
 }
