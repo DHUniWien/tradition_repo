@@ -4,77 +4,103 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
 public class RelationshipModel {
-	private String id;
-	private String sourceNode;
-	private String targetNode;
-	private String reading_a;
-	private String reading_b;
-	private int alters_meaning;	
-	private String is_significant;
-	private String annotation;
-	private String scope;
-	private String type;
-
+	
+	private String de0; // a_derivable_from_b
+	private String de1; // alters_meaning
+	private String de2; // annotation
+	private String de3; // b_derivable_from_a
+	private String de4; // displayform
+	private String de5; // extra
+	private String de6; // is_significant
+	private String de7; // non_independent
+	private String de8; // reading_a
+	private String de9; // reading_b
+	private String de10; // scope
+	private String de11; // type
+	private String de12; // witness
+	
+	public String getDe0() {
+		return de0;
+	}
+	public void setDe0(String de0) {
+		this.de0 = de0;
+	}
+	
+	public String getDe2() {
+		return de2;
+	}
+	public void setDe2(String de2) {
+		this.de2 = de2;
+	}
+	
+	public String getDe4() {
+		return de4;
+	}
+	public void setDe4(String de4) {
+		this.de4 = de4;
+	}
+	
+	public String getDe6() {
+		return de6;
+	}
+	public void setDe6(String de6) {
+		this.de6 = de6;
+	}
+	
+	public String getDe1() {
+		return de1;
+	}
+	public void setDe1(String de1) {
+		this.de1 = de1;
+	}
+	public String getDe3() {
+		return de3;
+	}
+	public void setDe3(String de3) {
+		this.de3 = de3;
+	}
+	public String getDe5() {
+		return de5;
+	}
+	public void setDe5(String de5) {
+		this.de5 = de5;
+	}
+	public String getDe7() {
+		return de7;
+	}
+	public void setDe7(String de7) {
+		this.de7 = de7;
+	}
+	public String getDe8() {
+		return de8;
+	}
+	public void setDe8(String de8) {
+		this.de8 = de8;
+	}
+	public String getDe9() {
+		return de9;
+	}
+	public void setDe9(String de9) {
+		this.de9 = de9;
+	}
+	public String getDe10() {
+		return de10;
+	}
+	public void setDe10(String de10) {
+		this.de10 = de10;
+	}
+	public String getDe11() {
+		return de11;
+	}
+	public void setDe11(String de11) {
+		this.de11 = de11;
+	}
+	public String getDe12() {
+		return de12;
+	}
+	public void setDe12(String de12) {
+		this.de12 = de12;
+	}
 
 	
-	public String getSourceNode() {
-		return sourceNode;
-	}
-	public void setSourceNode(String sourceNode) {
-		this.sourceNode = sourceNode;
-	}
-	public String getTargetNode() {
-		return targetNode;
-	}
-	public void setTargetNode(String targetNode) {
-		this.targetNode = targetNode;
-	}
-	public String getReading_a() {
-		return reading_a;
-	}
-	public void setReading_a(String reading_a) {
-		this.reading_a = reading_a;
-	}
-	public String getReading_b() {
-		return reading_b;
-	}
-	public void setReading_b(String reading_b) {
-		this.reading_b = reading_b;
-	}
-	public int getAlters_meaning() {
-		return alters_meaning;
-	}
-	public void setAlters_meaning(int alters_meaning) {
-		this.alters_meaning = alters_meaning;
-	}
-	public String getIs_significant() {
-		return is_significant;
-	}
-	public void setIs_significant(String is_significant) {
-		this.is_significant = is_significant;
-	}
-	public String getAnnotation() {
-		return annotation;
-	}
-	public void setAnnotation(String annotation) {
-		this.annotation = annotation;
-	}
-	public String getScope() {
-		return scope;
-	}
-	public void setScope(String scope) {
-		this.scope = scope;
-	}
-	public String getType() {
-		return type;
-	}
-	public void setType(String type) {
-		this.type = type;
-	}
-	public String getId() {
-		return id;
-	}
-	public void setId(String id) {
-		this.id = id;
-	}
 }

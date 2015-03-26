@@ -171,89 +171,11 @@ public class Tradition implements IResource {
 	 * @return
 	 */
 	@GET
-	@Path("duplicate/{tradId}/{readId}/{firstWitnesses}/{secondWitnesses}")
+	@Path("duplicate/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	@Consumes(MediaType.APPLICATION_JSON)
-	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
-			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
-		String addedReadingId = tradId + "180_149_" + readId + ".5";
-
-		Node originalReading = null;
-		Node addedReading = null;
-
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
-
-		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Iterable<Relationship> relationships = null;
-			Node startNode = null;
-			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				startNode = getStartNode(relationships);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
-
-			try {
-				boolean foundReading = false;
-				Traverser traverser = getReading(startNode, db);
-				for (org.neo4j.graphdb.Path path : traverser) {
-					String id = (String) path.endNode().getProperty("id");
-					if (id.matches(".*" + readId)) {
-						// duplicating of reading happens here
-						addedReading = db.createNode();
-						originalReading = path.endNode();
-
-						// copy reading
-						addedReading.addLabel(Nodes.WORD);
-						addedReading.setProperty("text", originalReading.getProperty("text"));
-						addedReading.setProperty("id", addedReadingId);
-						addedReading.setProperty("rank", originalReading.getProperty("rank"));
-						addedReading.setProperty("language", originalReading.getProperty("language"));
-						addedReading.setProperty("is_common", originalReading.getProperty("is_common"));
-						addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
-
-						// add witnesses to relationships
-						// Outgoing
-						Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL,
-								Direction.OUTGOING);
-						for (Relationship relationship : rels) {
-							relationship.setProperty("lexemes", firstWitnesses);
-							Node targetNode = relationship.getEndNode();
-							Relationship addedRelationship = addedReading.createRelationshipTo(targetNode,
-									Relations.NORMAL);
-							addedRelationship.setProperty("lexemes", secondWitnesses);
-						}
-						// Incoming
-						rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
-						for (Relationship relationship : rels) {
-							relationship.setProperty("lexemes", firstWitnesses);
-							Node originNode = relationship.getStartNode();
-							Relationship addedRelationship = originNode.createRelationshipTo(addedReading,
-									Relations.NORMAL);
-							addedRelationship.setProperty("lexemes", secondWitnesses);
-						}
-
-						foundReading = true;
-						break;
-					}
-				}
-				if (!foundReading)
-					return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-			} catch (Exception e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
-		}
-
-		return Response.ok("Successfully duplicated reading").build();
+	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
+		return Response.ok("This method should duplicate a reading. Not implemented yet.").build();
 	}
 
 	/**
@@ -439,34 +361,59 @@ public class Tradition implements IResource {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		
 		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
-			Iterable<Relationship> relationships = null;
-			Node startNode = null;
-		
-			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				// startNode = getStartNode(relationships);
+			
+		ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]-(w) where n.id = '"+ tradId +"_.*"+ "' return r");
+		Iterator<Relationship> rels = result.columnAs("r");
 				
-				ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]-(w) where n.id = '"+ tradId +"_.*"+ "' return r");
-				Iterator<Relationship> rel = result.columnAs("r");$
-				
-				if (!rel.hasNext())
+				if (!rels.hasNext())
+				{
+					db.shutdown();
 					throw new DataBaseException("no relationships found");
-				else {
-					for(Relationship rel : rel.hasNext())
+				}
+				
+				while(rels.hasNext())
+				{
+					Relationship rel = rels.next();
+					RelationshipModel relMod = new RelationshipModel();
+				
+					if(rel.hasProperty("grammar_invalid"))
+						relMod.setDe0(rel.getProperty("grammar_invalid").toString());
+					if(rel.hasProperty("dn99"))
+						relMod.setDe1(rel.getProperty("dn99").toString());
+					if(rel.hasProperty("is_common"))
+						relMod.setDe2(rel.getProperty("is_common").toString());
+					if(rel.hasProperty("is_end"))
+						relMod.setDe3(rel.getProperty("is_end").toString());
+					if(rel.hasProperty("is_lacuna"))
+						relMod.setDe4(rel.getProperty("is_lacuna").toString());
+					if(rel.hasProperty("is_lemma"))
+						relMod.setDe5(rel.getProperty("is_lemma").toString());
+					if(rel.hasProperty("is_nonsense"))
+						relMod.setDe6(rel.getProperty("is_nonsense").toString());
+					if(rel.hasProperty("is_ph"))
+						relMod.setDe7(rel.getProperty("is_ph").toString());
+					if(rel.hasProperty("is_start"))
+						relMod.setDe8(rel.getProperty("is_start").toString());
+					if(rel.hasProperty("join_next"))
+						relMod.setDe9(rel.getProperty("join_next").toString());
+					if(rel.hasProperty("join_prior"))
+						relMod.setDe10(rel.getProperty("join_prior").toString());
+					if(rel.hasProperty("language"))
+						relMod.setDe11(rel.getProperty("language").toString());
+					if(rel.hasProperty("lexemes"))
+						relMod.setDe12(rel.getProperty("lexemes").toString());
+										
+					relList.add(relMod);
 				}
 
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
+			
 			
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			db.shutdown();
 		}
-		return null;	
+		return Response.ok(relList).build();
 	}
 
 	/**
