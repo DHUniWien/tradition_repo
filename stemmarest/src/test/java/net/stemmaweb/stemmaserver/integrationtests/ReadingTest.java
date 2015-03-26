@@ -1,15 +1,19 @@
-package net.stemmaweb.stemmaserver;
+package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
+
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,10 +66,7 @@ public class ReadingTest {
 	private GraphMLToNeo4JParser importResource;
 
 	@InjectMocks
-	private Witness witness;
-
-	@InjectMocks
-	private DbPathProblemService problemService;
+	private Reading reading;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -75,8 +76,12 @@ public class ReadingTest {
 
 	@Before
 	public void setUp() throws Exception {
-		// might not work on MAC!!
-		String filename = "src\\TestXMLFiles\\Sapientia.xml";
+		
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else 
+			filename = "src/TestXMLFiles/testTradition.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -135,45 +140,28 @@ public class ReadingTest {
 
 			tx.success();
 		}
-		
+
 		/*
 		 * Create a JersyTestServer serving the Resource under test
 		 */
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(witness).create();
+				.addResource(reading).create();
 		jerseyTest.setUp();
 	}
 
-	// not working yet!!
 	@Test
-	public void nextReadingTest() {
-
-		/*
-		 * ReadingModel readingModel = new ReadingModel();
-		 * readingModel.setDn1("r1099.2");
-		 */
-
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n13")
-				.get(ReadingModel.class);
-		assertEquals(actualResponse.getDn1(), "1001_n14");
+	public void randomNodeExistsTest(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			long rank = 2;
+			assertEquals(rank , nodes.next().getProperty("dn14"));
+			tx.success();
+		}
 	}
-
-	// not working yet!!
-	@Test
-	public void previousReadingTest() {
-
-		/*
-		 * ReadingModel readingModel = new ReadingModel();
-		 * readingModel.setDn1("r1099.2");
-		 */
-
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/An74/1001_n13")
-				.get(ReadingModel.class);
-		assertEquals(actualResponse.getDn1(), "1001_n12");
-	}
-
+	
 	/**
 	 * test if the tradition node exists
 	 */
@@ -181,8 +169,8 @@ public class ReadingTest {
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ResourceIterable<Node> tradNodes = mockDbService
-					.findNodesByLabelAndProperty(Nodes.TRADITION, "name",
-							"Sapientia");
+					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
+							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
@@ -197,7 +185,7 @@ public class ReadingTest {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 
 		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
+				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}

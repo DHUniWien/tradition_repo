@@ -122,14 +122,15 @@ public class GraphMLToNeo4JParser implements IResource
 			        			
 			        			if(rel!=null)
 			        			{
-			        				String attr = map.get(reader.getAttributeValue(0));
+			        				String attr = reader.getAttributeValue(0);
 			        				String val = reader.getElementText();
 
-			        				if(attr.equals("id"))
+			        				if(map.get(attr).equals("id"))
 			        				{
-			        					rel.setProperty(attr,prefix + val);
+			        					rel.setProperty("id", prefix + val);
+			        					rel.setProperty(attr,val);
 			        				}
-			        				else if(attr.equals("witness"))
+			        				else if(map.get(attr).equals("witness"))
 			        				{
 			        					leximes.add(val);
 			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
@@ -148,16 +149,16 @@ public class GraphMLToNeo4JParser implements IResource
 			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
 			        				{
 			        					//System.out.println(currNode.getProperty("id"));
-			        					currNode.setProperty("dn99", reader.getElementText());
+			        					currNode.setProperty(reader.getAttributeValue(0), reader.getElementText());
 			        				}
 			        				else if(map.get(reader.getAttributeValue(0)).equals("rank"))
 			        				{
-			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+			        					currNode.setProperty(reader.getAttributeValue(0), 
 			        							Long.parseLong(reader.getElementText()));
 			        				}
 			        				else
 			        				{
-			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
+			        					currNode.setProperty(reader.getAttributeValue(0), 
 			        							reader.getElementText());
 			        				}
 			        			}
@@ -183,8 +184,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        			//System.out.println(prefix);
 			        			currNode.setProperty("id", prefix.substring(0, prefix.length()-1));
 			        			
-			        			currNode.setProperty(map.get(attr), 
-	        							text);
+			        			currNode.setProperty(attr, text);
 			        		}
 			        		else if(map.get(attr).equals("stemmata"))
 			        		{
@@ -192,8 +192,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        		}
 			        		else
 			        		{
-			        			currNode.setProperty(map.get(attr), 
-	        							text);
+			        			currNode.setProperty(attr,text);
 			        		}
 			        		
 			        	}

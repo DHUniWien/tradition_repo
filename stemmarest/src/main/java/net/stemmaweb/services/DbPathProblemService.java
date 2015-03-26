@@ -10,14 +10,11 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 public class DbPathProblemService {
-	
-	public static final String DB_PATH = "database";
 
-	public String findPathProblem(String tradId) {
-		
+
+	public String findPathProblem(String tradId, GraphDatabaseService db) {
+
 		String exceptionString = "";
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {

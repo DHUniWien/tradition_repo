@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver;
+package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.*;
 import net.stemmaweb.rest.Relations;
@@ -12,7 +12,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-public class UnicodeJUnitTest {
+public class UnicodeTest {
 
 	GraphDatabaseService graphDb;
 

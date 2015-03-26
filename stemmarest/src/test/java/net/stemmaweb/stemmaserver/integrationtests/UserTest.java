@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver;
+package net.stemmaweb.stemmaserver.integrationtests;
 
 
 import static org.junit.Assert.*;
@@ -13,6 +13,8 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
@@ -74,19 +76,9 @@ public class UserTest {
 		/*
 		 * Populate the test database with the root node
 		 */
-    	ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
-    	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		if(!nodes.hasNext())
-    		{
-    			Node node = mockDbService.createNode(Nodes.ROOT);
-    			node.setProperty("name", "Root node");
-    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-    		}
-    		tx.success();
-    	}
+		DatabaseService dbService = new DatabaseService(mockDbService);
+		dbService.createRootNode();
+
     	
     	/*
     	 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to return 
@@ -113,7 +105,7 @@ public class UserTest {
 	@Test
 	public void SimpleTest(){
 		String actualResponse = jerseyTest.resource().path("/user").get(String.class);
-		assertEquals(actualResponse, "User!");
+		assertEquals("User!",actualResponse);
 	}
 	
 	/**
@@ -125,7 +117,7 @@ public class UserTest {
         String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
         ClientResponse returnJSON = jerseyTest.resource().path("/user/create")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-		assertEquals(returnJSON.getStatus(), Response.status(Response.Status.CREATED).build().getStatus());
+		assertEquals(Response.status(Response.Status.CREATED).build().getStatus(), returnJSON.getStatus());
 	}
 	
 	
@@ -140,7 +132,7 @@ public class UserTest {
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
         returnJSON = jerseyTest.resource().path("/user/create")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-		assertEquals(returnJSON.getStatus(), Response.status(Response.Status.CONFLICT).build().getStatus());
+		assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),returnJSON.getStatus());
 	}
 	
 	/**
@@ -154,8 +146,8 @@ public class UserTest {
 		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
 		
 		UserModel actualResponse = jerseyTest.resource().path("/user/43").get(UserModel.class);
-		assertEquals(actualResponse.getId(),"43");
-		assertEquals(actualResponse.getIsAdmin(),"0");
+		assertEquals("43",actualResponse.getId());
+		assertEquals("0",actualResponse.getIsAdmin());
 	}
 	
 	/**
@@ -189,6 +181,7 @@ public class UserTest {
     	TraditionModel tradLoaded = traditions.get(0);
     	assertEquals(trad.getId(), tradLoaded.getId());
     	assertEquals(trad.getName(), tradLoaded.getName());
+    	
 	}
 	
 	/**

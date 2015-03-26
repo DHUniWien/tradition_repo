@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver;
+package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.*;
 
@@ -15,6 +15,7 @@ import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
+import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -88,7 +89,11 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLImportFileNotFoundExceptionTest()
 	{
-		String filename = "src/TestXMLFiles/SapientiaFileNotExisting.xml";
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\SapientiaFileNotExisting.xml";
+		else 
+			filename = "src/TestXMLFiles/SapientiaFileNotExisting.xml";
 		try
 		{
 			Response actualResponse = importResource.parseGraphML(filename, "1");
@@ -108,7 +113,11 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLImportXMLStreamErrorTest()
 	{
 		Response actualResponse = null;
-		String filename = "src/TestXMLFiles/SapientiaWithError.xml";
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\SapientiaWithError.xml";
+		else 
+			filename = "src/TestXMLFiles/SapientiaWithError.xml";
 		try
 		{
 			actualResponse = importResource.parseGraphML(filename, "1");
@@ -129,7 +138,11 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLImportSuccessTest(){
 		Response actualResponse = null;
-		String filename = "src/TestXMLFiles/Sapientia.xml";
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else 
+			filename = "src/TestXMLFiles/testTradition.xml";
 		try
 		{
 			actualResponse = importResource.parseGraphML(filename, "1");
@@ -153,7 +166,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void traditionNodeExistsTest(){
 		try(Transaction tx = mockDbService.beginTx())
     	{
-			ResourceIterable<Node> tradNodes = mockDbService.findNodesByLabelAndProperty(Nodes.TRADITION, "name", "Sapientia");
+			ResourceIterable<Node> tradNodes = mockDbService.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1", "Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
@@ -166,7 +179,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void traditionEndNodeExistsTest(){
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		
-		ExecutionResult result = engine.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
+		ExecutionResult result = engine.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}
@@ -197,8 +210,11 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLExportSuccessTest(){
 		
 		removeOutputFile();
-		
-		String filename = "src/TestXMLFiles/Sapientia.xml";
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else 
+			filename = "src/TestXMLFiles/testTradition.xml";
 		try
 		{
 			importResource.parseGraphML(filename, "1");

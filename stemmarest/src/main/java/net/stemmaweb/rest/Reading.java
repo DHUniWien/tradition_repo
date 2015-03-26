@@ -1,51 +1,56 @@
 package net.stemmaweb.rest;
 
+import javax.ws.rs.Path;
+
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.neo4j.graphdb.Node;
 
 import net.stemmaweb.model.ReadingModel;
 
 @JsonSerialize(include=JsonSerialize.Inclusion.NON_NULL)
+@Path("reading")
 public class Reading implements IResource
 {
 	public static ReadingModel readingModelFromNode(Node node)
 	{
 		ReadingModel rm = new ReadingModel();
 		
-		if(node.hasProperty("grammar_invalid"))
-			rm.setDn0(node.getProperty("grammar_invalid").toString());
-		if(node.hasProperty("dn99"))
-			rm.setDn1(node.getProperty("dn99").toString());
-		if(node.hasProperty("is_common"))
-			rm.setDn2(node.getProperty("is_common").toString());
-		if(node.hasProperty("is_end"))
-			rm.setDn3(node.getProperty("is_end").toString());
-		if(node.hasProperty("is_lacuna"))
-			rm.setDn4(node.getProperty("is_lacuna").toString());
-		if(node.hasProperty("is_lemma"))
-			rm.setDn5(node.getProperty("is_lemma").toString());
-		if(node.hasProperty("is_nonsense"))
-			rm.setDn6(node.getProperty("is_nonsense").toString());
-		if(node.hasProperty("is_ph"))
-			rm.setDn7(node.getProperty("is_ph").toString());
-		if(node.hasProperty("is_start"))
-			rm.setDn8(node.getProperty("is_start").toString());
-		if(node.hasProperty("join_next"))
-			rm.setDn9(node.getProperty("join_next").toString());
-		if(node.hasProperty("join_prior"))
-			rm.setDn10(node.getProperty("join_prior").toString());
-		if(node.hasProperty("language"))
-			rm.setDn11(node.getProperty("language").toString());
-		if(node.hasProperty("lexemes"))
-			rm.setDn12(node.getProperty("lexemes").toString());
-		if(node.hasProperty("normal_form"))
-			rm.setDn13(node.getProperty("normal_form").toString());
-		if(node.hasProperty("rank"))
-			rm.setDn14(node.getProperty("rank").toString());
-		if(node.hasProperty("text"))
-			rm.setDn15(node.getProperty("text").toString());
+		if(node.hasProperty("dn0"))
+			rm.setDn0(node.getProperty("dn0").toString());
+		if(node.hasProperty("dn1"))
+			rm.setDn1(node.getProperty("dn1").toString());
+		if(node.hasProperty("dn2"))
+			rm.setDn2(node.getProperty("dn2").toString());
+		if(node.hasProperty("dn3"))
+			rm.setDn3(node.getProperty("dn3").toString());
+		if(node.hasProperty("dn4"))
+			rm.setDn4(node.getProperty("dn4").toString());
+		if(node.hasProperty("dn5"))
+			rm.setDn5(node.getProperty("dn5").toString());
+		if(node.hasProperty("dn6"))
+			rm.setDn6(node.getProperty("dn6").toString());
+		if(node.hasProperty("dn7"))
+			rm.setDn7(node.getProperty("dn7").toString());
+		if(node.hasProperty("dn8"))
+			rm.setDn8(node.getProperty("dn8").toString());
+		if(node.hasProperty("dn9"))
+			rm.setDn9(node.getProperty("dn9").toString());
+		if(node.hasProperty("dn10"))
+			rm.setDn10(node.getProperty("dn10").toString());
+		if(node.hasProperty("dn11"))
+			rm.setDn11(node.getProperty("dn11").toString());
+		if(node.hasProperty("dn12"))
+			rm.setDn12(node.getProperty("dn12").toString());
+		if(node.hasProperty("dn13"))
+			rm.setDn13(node.getProperty("dn13").toString());
+		if(node.hasProperty("dn14"))
+			rm.setDn14(node.getProperty("dn14").toString());
+		if(node.hasProperty("dn15"))
+			rm.setDn15(node.getProperty("dn15").toString());
 		
 		return rm;
 	}
+	
+	
 	
 }
