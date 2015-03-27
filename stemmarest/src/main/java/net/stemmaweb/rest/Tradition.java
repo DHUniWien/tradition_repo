@@ -427,17 +427,15 @@ public class Tradition implements IResource {
 
 			// This Block could not be replaced by the method getStartNode() but
 			// yet unclear why.
-			Iterator<Relationship> relIt = relationships.iterator();
-			while (relIt.hasNext()) {
-				Relationship rel = relIt.next();
-				startNode = rel.getEndNode();
-				if (startNode != null && startNode.hasProperty("text")) {
-					if (startNode.getProperty("text").equals("#START#")) {
-						relationships = startNode.getRelationships(Direction.OUTGOING);
-						break;
-					}
-				}
+			startNode = null;
+			try {
+				DatabaseService service = new DatabaseService(db);
+				startNode = service.getStartNode(tradId);
+			} catch (DataBaseException e) {
+				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
+			
+			relationships = startNode.getRelationships(Direction.OUTGOING);
 
 			if (relationships == null)
 				return Response.status(Status.NOT_FOUND).entity("start node not found").build();
