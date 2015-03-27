@@ -151,7 +151,12 @@ public class Tradition implements IResource {
 				}
 			}
 			tx.success();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			db.shutdown();
 		}
+
 		if (reading == null)
 			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 
@@ -184,7 +189,7 @@ public class Tradition implements IResource {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
 
-		try {
+		try (Transaction tx = db.beginTx()) {
 			boolean foundReading = false;
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
@@ -198,8 +203,12 @@ public class Tradition implements IResource {
 			}
 			if (!foundReading)
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+
+			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+		} finally {
+			db.shutdown();
 		}
 		return Response.ok("Successfully duplicated reading").build();
 	}
@@ -219,7 +228,7 @@ public class Tradition implements IResource {
 		addedReading.setProperty("dn14", originalReading.getProperty("dn14"));
 		addedReading.setProperty("dn11", originalReading.getProperty("dn11"));
 		addedReading.setProperty("dn2", originalReading.getProperty("dn2"));
-		addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
+		//addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
 
 		// add witnesses to relationships
 		// Outgoing
@@ -258,49 +267,44 @@ public class Tradition implements IResource {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
+		Node startNode = null;
+		try {
+			DatabaseService service = new DatabaseService(db);
+			startNode = service.getStartNode(tradId);
+		} catch (DataBaseException e) {
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+		}
+
 		try (Transaction tx = db.beginTx()) {
-			Node startNode = null;
-			try {
-				DatabaseService service = new DatabaseService(db);
-				startNode = service.getStartNode(tradId);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
-
-			try {
-				boolean foundReadings = false;
-				Traverser traverser = getReading(startNode, db);
-				for (org.neo4j.graphdb.Path path : traverser) {
-					String id = (String) path.endNode().getProperty("dn1");
-					if (id.equals(firstReadId))
-						firstReading = path.endNode();
-					if (id.equals(secondReadId))
-						secondReading = path.endNode();
-					if (firstReading != null && secondReading != null) {
-						foundReadings = true;
-						break;
-					}
+			boolean foundReadings = false;
+			Traverser traverser = getReading(startNode, db);
+			for (org.neo4j.graphdb.Path path : traverser) {
+				String id = (String) path.endNode().getProperty("dn1");
+				if (id.equals(firstReadId))
+					firstReading = path.endNode();
+				if (id.equals(secondReadId))
+					secondReading = path.endNode();
+				if (firstReading != null && secondReading != null) {
+					foundReadings = true;
+					break;
 				}
-				if (!foundReadings)
-					return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
-
-				if (!firstReading.getProperty("dn15").toString()
-						.equalsIgnoreCase(secondReading.getProperty("dn15").toString()))
-					return Response.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("readings to be merged do not contain the same text").build();
-
-				// merging of readings happens here
-				copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
-				copyRelationshipProperties(firstReading, secondReading, Direction.OUTGOING);
-				secondReading.delete();
-
-			} catch (Exception e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
+			if (!foundReadings)
+				return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
+
+			if (!firstReading.getProperty("dn15").toString()
+					.equalsIgnoreCase(secondReading.getProperty("dn15").toString()))
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("readings to be merged do not contain the same text").build();
+
+			// merging of readings happens here
+			copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
+			copyRelationshipProperties(firstReading, secondReading, Direction.OUTGOING);
+			secondReading.delete();
 
 			tx.success();
 		} catch (Exception e) {
-			e.printStackTrace();
+			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		} finally {
 			db.shutdown();
 		}
@@ -346,7 +350,7 @@ public class Tradition implements IResource {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
 
-		try {
+		try (Transaction tx = db.beginTx()) {
 			boolean foundReading = false;
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
@@ -370,7 +374,7 @@ public class Tradition implements IResource {
 					addedReading.setProperty("dn14", originalReading.getProperty("dn14") + ".5");
 					addedReading.setProperty("dn11", originalReading.getProperty("dn11"));
 					addedReading.setProperty("dn2", originalReading.getProperty("dn2"));
-					addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
+					//addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
 
 					originalReading.createRelationshipTo(addedReading, Relations.NORMAL);
 					originalReading.setProperty("dn15", originalReadingText);
@@ -381,8 +385,12 @@ public class Tradition implements IResource {
 			}
 			if (!foundReading)
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+
+			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+		} finally {
+			db.shutdown();
 		}
 		return Response.ok("Successfully split up reading").build();
 	}
