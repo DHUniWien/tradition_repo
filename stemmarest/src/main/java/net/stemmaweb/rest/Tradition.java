@@ -170,10 +170,9 @@ public class Tradition implements IResource {
 	@GET
 	@Path("duplicate/{tradId}/{readId}/{firstWitnesses}/{secondWitnesses}")
 	@Produces(MediaType.APPLICATION_JSON)
-	@Consumes(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
 			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
-		String addedReadingId = tradId + "180_149_" + readId + ".5";
+		String addedReadingId = tradId + "_" + readId + ".5";
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -190,7 +189,7 @@ public class Tradition implements IResource {
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
 				String id = (String) path.endNode().getProperty("dn1");
-				if (id.matches(".*" + readId)) {
+				if (id.equals(readId)) {
 					duplicateReading(firstWitnesses, secondWitnesses, addedReadingId, db, path);
 
 					foundReading = true;
@@ -252,14 +251,12 @@ public class Tradition implements IResource {
 	@GET
 	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	@Consumes(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") String firstReadId,
 			@PathParam("secondReadId") String secondReadId) {
 		Node firstReading = null;
 		Node secondReading = null;
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
 
 		try (Transaction tx = db.beginTx()) {
 			Node startNode = null;
@@ -275,9 +272,9 @@ public class Tradition implements IResource {
 				Traverser traverser = getReading(startNode, db);
 				for (org.neo4j.graphdb.Path path : traverser) {
 					String id = (String) path.endNode().getProperty("dn1");
-					if (id.matches(".*" + firstReadId))
+					if (id.equals(firstReadId))
 						firstReading = path.endNode();
-					if (id.matches(".*" + secondReadId))
+					if (id.equals(secondReadId))
 						secondReading = path.endNode();
 					if (firstReading != null && secondReading != null) {
 						foundReadings = true;
@@ -329,13 +326,12 @@ public class Tradition implements IResource {
 	@GET
 	@Path("split/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	@Consumes(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
 		// TODO: API yet unclear: thus just set as variables for the moment:
 		// (Maybe we can get the texts using a small algorithm)
 		String originalReadingText = "bla";
 		String addedReadingText = "blub";
-		String addedReadingId = tradId + "180_149_" + readId + ".5";
+		String addedReadingId = tradId + "_" + readId + ".5";
 
 		Node originalReading = null;
 		Node addedReading = null;
@@ -355,7 +351,7 @@ public class Tradition implements IResource {
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
 				String id = (String) path.endNode().getProperty("dn1");
-				if (id.matches(".*" + readId)) {
+				if (id.equals(readId)) {
 					// splitting of reading happens here
 					addedReading = db.createNode();
 					originalReading = path.endNode();
