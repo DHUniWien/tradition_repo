@@ -6,10 +6,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
@@ -43,6 +47,8 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -173,8 +179,36 @@ public class TraditionTest {
 	}
 
 	@Test
-	public void getAllRelationships() {
-		
+	public void getAllRelationshipsTest() {
+		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
+        jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+            	
+    	RelationshipModel rel = new RelationshipModel();
+    	rel.setSource("n13");
+    	rel.setTarget("n24");
+    	rel.setId("e2");
+    	rel.setDe8("april");
+    	rel.setDe6("no");
+    	rel.setDe9("april");
+    	rel.setDe1("0");
+    	rel.setDe11("transposition");
+    	rel.setDe10("local");
+    	
+    	List<RelationshipModel> relationships = jerseyTest.resource().path("/tradition/relation/"+tradId+"/relationships")
+    			.get(new GenericType<List<RelationshipModel>>(){});
+    	RelationshipModel relLoaded = relationships.get(4);
+    	
+    	/*assertEquals(rel.getSource(),relLoaded.getSource());
+    	assertEquals(rel.getTarget(),relLoaded.getTarget());
+    	assertEquals(rel.getId(), relLoaded.getId());*/
+    	assertEquals(rel.getDe8(),relLoaded.getDe8());
+    	assertEquals(rel.getDe6(),relLoaded.getDe6());
+    	assertEquals(rel.getDe9(),relLoaded.getDe9());
+    	assertEquals(rel.getDe1(),relLoaded.getDe1());
+    	assertEquals(rel.getDe11(),relLoaded.getDe11());
+    	assertEquals(rel.getDe10(),relLoaded.getDe10());
+
+    	
 	}
 	/**
 	 * Shut down the jersey server

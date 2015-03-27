@@ -5,6 +5,27 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement
 public class RelationshipModel {
 	
+	private String source;
+	private String target;
+	private String id;
+	public String getSource() {
+		return source;
+	}
+	public void setSource(String source) {
+		this.source = source;
+	}
+	public String getTarget() {
+		return target;
+	}
+	public void setTarget(String target) {
+		this.target = target;
+	}
+	public String getId() {
+		return id;
+	}
+	public void setId(String id) {
+		this.id = id;
+	}
 	private String de0; // a_derivable_from_b
 	private String de1; // alters_meaning
 	private String de2; // annotation
