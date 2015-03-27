@@ -172,6 +172,10 @@ public class TraditionTest {
 		
 	}
 
+	@Test
+	public void getAllRelationships() {
+		
+	}
 	/**
 	 * Shut down the jersey server
 	 * 

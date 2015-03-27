@@ -467,7 +467,7 @@ public class Tradition implements IResource {
 	
 	
 	@GET
-	@Path("relation/{textid}/relationships")
+	@Path("relation/{tradId}/relationships")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
@@ -477,6 +477,10 @@ public class Tradition implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
+		
+		RelationshipModel relMTest= new RelationshipModel();
+		relMTest.setDe1("0");
+		relList.add(relMTest);
 		
 		try (Transaction tx = db.beginTx()) {
 			
@@ -494,32 +498,32 @@ public class Tradition implements IResource {
 					Relationship rel = rels.next();
 					RelationshipModel relMod = new RelationshipModel();
 				
-					if(rel.hasProperty("grammar_invalid"))
-						relMod.setDe0(rel.getProperty("grammar_invalid").toString());
-					if(rel.hasProperty("dn99"))
-						relMod.setDe1(rel.getProperty("dn99").toString());
-					if(rel.hasProperty("is_common"))
-						relMod.setDe2(rel.getProperty("is_common").toString());
-					if(rel.hasProperty("is_end"))
-						relMod.setDe3(rel.getProperty("is_end").toString());
-					if(rel.hasProperty("is_lacuna"))
-						relMod.setDe4(rel.getProperty("is_lacuna").toString());
-					if(rel.hasProperty("is_lemma"))
-						relMod.setDe5(rel.getProperty("is_lemma").toString());
-					if(rel.hasProperty("is_nonsense"))
-						relMod.setDe6(rel.getProperty("is_nonsense").toString());
-					if(rel.hasProperty("is_ph"))
-						relMod.setDe7(rel.getProperty("is_ph").toString());
-					if(rel.hasProperty("is_start"))
-						relMod.setDe8(rel.getProperty("is_start").toString());
-					if(rel.hasProperty("join_next"))
-						relMod.setDe9(rel.getProperty("join_next").toString());
-					if(rel.hasProperty("join_prior"))
-						relMod.setDe10(rel.getProperty("join_prior").toString());
-					if(rel.hasProperty("language"))
-						relMod.setDe11(rel.getProperty("language").toString());
-					if(rel.hasProperty("lexemes"))
-						relMod.setDe12(rel.getProperty("lexemes").toString());
+					if(rel.hasProperty("de0"))
+						relMod.setDe0(rel.getProperty("de0").toString());
+					if(rel.hasProperty("de1"))
+						relMod.setDe1(rel.getProperty("de1").toString());
+					if(rel.hasProperty("de2"))
+						relMod.setDe2(rel.getProperty("de2").toString());
+					if(rel.hasProperty("de3"))
+						relMod.setDe3(rel.getProperty("de3").toString());
+					if(rel.hasProperty("de4"))
+						relMod.setDe4(rel.getProperty("de4").toString());
+					if(rel.hasProperty("de5"))
+						relMod.setDe5(rel.getProperty("de5").toString());
+					if(rel.hasProperty("de6"))
+						relMod.setDe6(rel.getProperty("de6").toString());
+					if(rel.hasProperty("de7"))
+						relMod.setDe7(rel.getProperty("de7").toString());
+					if(rel.hasProperty("de8"))
+						relMod.setDe8(rel.getProperty("de8").toString());
+					if(rel.hasProperty("de9"))
+						relMod.setDe9(rel.getProperty("de9").toString());
+					if(rel.hasProperty("de10"))
+						relMod.setDe10(rel.getProperty("de10").toString());
+					if(rel.hasProperty("de11"))
+						relMod.setDe11(rel.getProperty("de11").toString());
+					if(rel.hasProperty("de12"))
+						relMod.setDe12(rel.getProperty("de12").toString());
 										
 					relList.add(relMod);
 				}

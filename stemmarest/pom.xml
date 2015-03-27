@@ -144,7 +144,7 @@
     <properties>
         <powermock.version>1.6.1</powermock.version>
     
-        <jersey-version>1.8</jersey-version>
+        <jersey-version>1.9</jersey-version>
     </properties>
    
      <repositories>
