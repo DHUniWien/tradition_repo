@@ -345,6 +345,10 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		}
+		
+		//remove the #END# node if it exists
+		if(readingModels.get(readingModels.size()-1).getDn15().equals("#END#"))
+			readingModels.remove(readingModels.size()-1);
 		return readingModels;
 	}
 }
