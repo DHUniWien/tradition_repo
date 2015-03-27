@@ -124,21 +124,24 @@ public class GraphMLToNeo4JParser implements IResource
 			        			{
 			        				String attr = reader.getAttributeValue(0);
 			        				String val = reader.getElementText();
-
-			        				if(map.get(attr).equals("id"))
+			        				
+			        				if(map.get(attr)!=null)
 			        				{
-			        					rel.setProperty("id", prefix + val);
-			        					rel.setProperty(attr,val);
-			        				}
-			        				else if(map.get(attr).equals("witness"))
-			        				{
-			        					leximes.add(val);
+			        					if(map.get(attr).equals("id"))
+			        					{
+			        						rel.setProperty("id", prefix + val);
+			        						rel.setProperty(attr,val);
+			        					}
+			        					else if(map.get(attr).equals("witness"))
+			        					{
+			        						leximes.add(val);
 			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
-			        				}
-			        				else
-			        				{
-			        					rel.setProperty(attr,val);
+			        					}
+			        					else
+			        					{
+			        						rel.setProperty(attr,val);
 			        					//System.out.println(map.get(reader.getElementText()));
+			        					}
 			        				}
 			        			}	
 			        		}

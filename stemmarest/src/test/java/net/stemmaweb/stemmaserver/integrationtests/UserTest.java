@@ -175,7 +175,7 @@ public class UserTest {
     		engine.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
-    						+ "SET tradition.name = 'TestTradition' "
+    						+ "SET tradition.dg1 = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
