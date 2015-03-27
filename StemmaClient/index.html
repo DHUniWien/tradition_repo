@@ -482,6 +482,32 @@
 			</form>
 			
 			<hr>
+			<h3><a name="readings">/readings/{tradId}</a></h3>
+			<form method="post" name="getred" id="getred">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">Tradition id</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
+				    </div>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('tradition/readings','getred','json')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendgetred"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returngetred"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+			
+			<hr>
 			<h3><a name="traditions">/{tradId}</a></h3>
 			<form method="post" name="chgtrad" id="chgtrad">
 				<div class="form-group">
@@ -642,32 +668,6 @@
 			 </div>
 			</form>
 			
-			<hr>
-			<h3><a name="readings">/readings/{tradId}</a></h3>
-			<form method="post" name="getred" id="getred">
-				<div class="form-group">
-				  <div class="row">
-					<label class="col-sm-2 control-label">Tradition id</label>
-					<div class="col-sm-8">
-				    	<input class="form-control" type="text" name="tradId" placeholder="e.g. 1000">
-				    </div>
-				 </div>
-				 <div class="row send">
- 					<div class="col-sm-2">
- 					  <input type="button" class="btn btn-default" value="Senden"  onclick="getByPath('witness/readings','getred','json')"/>
-					
- 					</div>
-					<div class="col-sm-8 output">
-					  <label>Send</label>
-					  <samp><span class="sendgetred"></span></samp>
-					  <br/>
-   					  <label>Return</label>
-   					  <samp><span class="returngetred"></span></samp>
-					</div>
-				 </div>
-			 </div>
-			</form>
-			
 			
 			<h2>/user</h2>
 			<hr>
@@ -774,6 +774,29 @@
 
 	    </div><!-- /.container -->
   
-
-	</body>
+		<button id="goFS">Go fullscreen</button>
+		<script>
+  
+		var viewFullScreen = document.getElementById("goFS");
+		    if (viewFullScreen) {
+		        viewFullScreen.addEventListener("click", function () {
+		            var docElm = document.documentElement;
+		            if (docElm.requestFullscreen) {
+		                docElm.requestFullscreen();
+		            }
+		            else if (docElm.msRequestFullscreen) {
+		                docElm.msRequestFullscreen();
+		            }
+		            else if (docElm.mozRequestFullScreen) {
+		                docElm.mozRequestFullScreen();
+		            }
+		            else if (docElm.webkitRequestFullScreen) {
+		                docElm.webkitRequestFullScreen();
+		            }
+		        }, false);
+		    }
+  
+		</script>
+	
 </body>
+</html>

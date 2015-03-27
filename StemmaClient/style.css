@@ -25,3 +25,21 @@ body {
 .row {
 	padding-top: 5px;
 }
+
+/* Fullscreen */
+html:-moz-full-screen {
+    background: darkgray;
+}
+
+html:-webkit-full-screen {
+    background: darkgray;
+}
+
+html:-ms-fullscreen {
+    background: darkgray;
+    width: 100%; /* needed to center contents in IE */
+}
+
+html:fullscreen {
+    background: darkgray;
+}

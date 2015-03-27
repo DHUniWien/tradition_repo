@@ -13,7 +13,6 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
@@ -72,13 +71,23 @@ public class UserTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		
+
 		/*
 		 * Populate the test database with the root node
 		 */
-		DatabaseService dbService = new DatabaseService(mockDbService);
-		dbService.createRootNode();
-
+    	ExecutionEngine engine = new ExecutionEngine(mockDbService);
+    	try(Transaction tx = mockDbService.beginTx())
+    	{
+    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
+    		Iterator<Node> nodes = result.columnAs("n");
+    		if(!nodes.hasNext())
+    		{
+    			Node node = mockDbService.createNode(Nodes.ROOT);
+    			node.setProperty("name", "Root node");
+    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
+    		}
+    		tx.success();
+    	}
     	
     	/*
     	 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to return 
@@ -166,7 +175,7 @@ public class UserTest {
     		engine.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
-    						+ "SET tradition.name = 'TestTradition' "
+    						+ "SET tradition.dg1 = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);

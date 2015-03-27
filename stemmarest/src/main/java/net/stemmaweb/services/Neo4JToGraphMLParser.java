@@ -37,72 +37,6 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 public class Neo4JToGraphMLParser implements IResource
 {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-	
-	// This creates a static hashmap for the graphml definitions (Edge only)
-	public static HashMap<String,String> createEdgeMap()
-	{
-		HashMap<String,String> map = new HashMap<String,String>();
-		
-		map.put("a_derivable_from_b", "de0");
-		map.put("alters_meaning", "de1");
-		map.put("annotation", "de2");
-		map.put("b_derivable_from_a", "de3");
-		map.put("displayform", "de4");
-		map.put("extra", "de5");
-		map.put("is_significant", "de6");
-		map.put("non_independent", "de7");
-		map.put("reading_a", "de8");
-		map.put("reading_b", "de9");
-		map.put("scope", "de10");
-		map.put("type", "de11");
-		map.put("witness", "de12");
-		map.put("id", "id");
-		map.put("lexemes", "de12");
-		
-		return map;
-	}
-	
-	// This creates a static hashmap for the graphml definitions (Node only)
-		public static HashMap<String,String> createNodeMap()
-		{
-			HashMap<String,String> map = new HashMap<String,String>();
-			
-			map.put("grammar_invalid", "dn0");
-			map.put("id", "dn1");
-			map.put("is_common", "dn2");
-			map.put("is_end", "dn3");
-			map.put("is_lacuna", "dn4");
-			map.put("is_lemma", "dn5");
-			map.put("is_nonsense", "dn6");
-			map.put("is_ph", "dn7");
-			map.put("is_start", "dn8");
-			map.put("join_next", "dn9");
-			map.put("join_prior", "dn10");
-			map.put("language", "dn11");
-			map.put("lexemes", "dn12");
-			map.put("normal_form", "dn13");
-			map.put("rank", "dn14");
-			map.put("text", "dn15");
-			map.put("dn99", "dn1");
-
-			return map;
-		}
-	
-	// This creates a static hashmap for the graphml definitions (graph only)
-		public static HashMap<String,String> createGraphMap()
-		{
-			HashMap<String,String> map = new HashMap<String,String>();
-			
-			map.put("language", "dg0");
-			map.put("name", "dg1");
-			map.put("public", "dg2");
-			map.put("stemmata", "dg3");
-			map.put("stemweb_jobid", "dg4");
-			map.put("user", "dg5");
-			map.put("version", "dg6");
-			
-			return map;
-		}
 
 	public Response parseNeo4J(String tradId)
 	{
@@ -375,7 +309,7 @@ public class Neo4JToGraphMLParser implements IResource
     			
     		writer.writeStartElement("graph");
     		writer.writeAttribute("edgedefault", "directed");
-    		writer.writeAttribute("id", traditionNode.getProperty("name").toString());
+    		//writer.writeAttribute("id", traditionNode.getProperty("dg1").toString());
     		writer.writeAttribute("parse.edgeids", "canonical");
     		// THIS NEEDS TO BE IMPLEMENTED LATER 
     		// writer.writeAttribute("parse.edges", );
@@ -383,16 +317,12 @@ public class Neo4JToGraphMLParser implements IResource
     		// THIS NEEDS TO BE IMPLEMENTED LATER 
     		// writer.writeAttribute("parse.nodes", );
     		writer.writeAttribute("parse.order", "nodesfirst");
-  
-    		HashMap<String,String> mapGraph = createGraphMap();
-    		HashMap<String,String> mapNode = createNodeMap();
-    		HashMap<String,String> mapEdge = createEdgeMap();
     		
     		props = traditionNode.getPropertyKeys();
     		for(String prop : props)
     		{
-    			String val = mapGraph.get(prop);
-    			if(val!=null)
+    			String val = prop;
+    			if(val!=null && !val.equals("id"))
     			{
     				writer.writeStartElement("data");
     				writer.writeAttribute("key",val);
@@ -411,7 +341,7 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeStartElement("node");
         		for(String prop : props)
         		{
-        			String val = mapNode.get(prop);
+        			String val = prop;
         			
         			if(val!=null)
         			{
@@ -447,7 +377,7 @@ public class Neo4JToGraphMLParser implements IResource
         			props = rel.getPropertyKeys();
         			for(String prop : props)
             		{
-            			String val = mapEdge.get(prop);
+            			String val = prop;
             			if(val!=null)
             			{
     	        			if(prop.equals("id"))
@@ -478,7 +408,7 @@ public class Neo4JToGraphMLParser implements IResource
 	    	        				writer.writeAttribute("id",'e'+String.valueOf(id_int++));
 	    	        				
 	    	        				writer.writeStartElement("data");
-	    	        				writer.writeAttribute("key",val);
+	    	        				writer.writeAttribute("key","de12");
 	    	        				writer.writeCharacters(lexemes[i]);
 	    	        				
 	    	        				writer.writeEndElement();
@@ -518,7 +448,7 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeStartElement("node");
         		for(String prop : props)
         		{
-        			String val = mapNode.get(prop);
+        			String val = prop;
         			
         			if(val!=null)
         			{
@@ -527,7 +457,7 @@ public class Neo4JToGraphMLParser implements IResource
 	        				String[] id_arr = nextNode.getProperty("id").toString().split("_");
 	        				writer.writeAttribute("id",id_arr[id_arr.length-1]);
 	        			}
-	        			else if(prop.equals("dn99"))
+	        			else if(prop.equals("dn1"))
 	        			{
 	        				writer.writeStartElement("data");
 	        				writer.writeAttribute("key","dn1");
@@ -549,7 +479,7 @@ public class Neo4JToGraphMLParser implements IResource
 				writer.writeStartElement("edge");
     			for(String prop : props)
         		{
-        			String val = mapEdge.get(prop);			
+        			String val = prop;			
         			if(val!=null)
         			{
 	        			if(prop.equals("id"))

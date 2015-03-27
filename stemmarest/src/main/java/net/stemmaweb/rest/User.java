@@ -140,6 +140,7 @@ public class User implements IResource {
 					.build();
 		}
 
+		System.out.println("ok");
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
@@ -152,7 +153,7 @@ public class User implements IResource {
 					Node tradNode = tradIterator.next();
 					TraditionModel tradition = new TraditionModel();
 					tradition.setId(tradNode.getProperty("id").toString());
-					tradition.setName(tradNode.getProperty("name").toString());
+					tradition.setName(tradNode.getProperty("dg1").toString());
 					traditions.add(tradition);
 				}
 			}
