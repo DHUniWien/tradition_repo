@@ -6,6 +6,8 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.ws.rs.core.Response;
+
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
@@ -154,8 +156,8 @@ public class WitnessTest {
 	@Test
 	public void witnessAsTextTestA() {
 		String expectedText = "when april with his showers sweet with fruit the drought of march has pierced unto the root";
-		String text = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedText, text);
+		Response resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
 				.path("/witness/string/" + tradId + "/A").get(String.class);
@@ -166,8 +168,8 @@ public class WitnessTest {
 	@Test
 	public void witnessAsTextTestB() {
 		String expectedText = "when showers sweet with april fruit the march of drought has pierced to the root";
-		String text = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedText, text);
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
 				.path("/witness/string/" + tradId + "/B").get(String.class);

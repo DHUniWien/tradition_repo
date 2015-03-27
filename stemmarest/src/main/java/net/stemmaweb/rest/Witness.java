@@ -56,8 +56,8 @@ public class Witness implements IResource {
 	 */
 	@GET
 	@Path("string/{tradId}/{textId}")
-	@Produces("text/plain")
-	public String getWitnessAsPlainText(@PathParam("tradId") String tradId,
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getWitnessAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) throws DataBaseException {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -72,7 +72,10 @@ public class Witness implements IResource {
 			witnessAsText += readingModel.getDn15() + " ";
 		}
 		db.shutdown();
-		return witnessAsText.trim();
+		if(witnessAsText.length()==0)
+			return Response.status(Status.NOT_FOUND).build();
+		return Response.status(Response.Status.OK)
+				.entity("{\"tradId\":\"" + tradId + "\",\"textId\":\"" + textId + "\", \"text\":\"" + witnessAsText.trim() + "\"}").build();
 	}
 
 	/**
@@ -90,7 +93,7 @@ public class Witness implements IResource {
 	 */
 	@GET
 	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
-	@Produces("text/plain")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
@@ -342,6 +345,10 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		}
+		
+		//remove the #END# node if it exists
+		if(readingModels.get(readingModels.size()-1).getDn15().equals("#END#"))
+			readingModels.remove(readingModels.size()-1);
 		return readingModels;
 	}
 }
