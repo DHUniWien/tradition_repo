@@ -114,7 +114,7 @@ public class UserTest {
 	@Test
 	public void SimpleTest(){
 		String actualResponse = jerseyTest.resource().path("/user").get(String.class);
-		assertEquals(actualResponse, "User!");
+		assertEquals("User!",actualResponse);
 	}
 	
 	/**
@@ -126,7 +126,7 @@ public class UserTest {
         String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
         ClientResponse returnJSON = jerseyTest.resource().path("/user/create")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-		assertEquals(returnJSON.getStatus(), Response.status(Response.Status.CREATED).build().getStatus());
+		assertEquals(Response.status(Response.Status.CREATED).build().getStatus(), returnJSON.getStatus());
 	}
 	
 	
@@ -141,7 +141,7 @@ public class UserTest {
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
         returnJSON = jerseyTest.resource().path("/user/create")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-		assertEquals(returnJSON.getStatus(), Response.status(Response.Status.CONFLICT).build().getStatus());
+		assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),returnJSON.getStatus());
 	}
 	
 	/**
@@ -155,8 +155,8 @@ public class UserTest {
 		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
 		
 		UserModel actualResponse = jerseyTest.resource().path("/user/43").get(UserModel.class);
-		assertEquals(actualResponse.getId(),"43");
-		assertEquals(actualResponse.getIsAdmin(),"0");
+		assertEquals("43",actualResponse.getId());
+		assertEquals("0",actualResponse.getIsAdmin());
 	}
 	
 	/**

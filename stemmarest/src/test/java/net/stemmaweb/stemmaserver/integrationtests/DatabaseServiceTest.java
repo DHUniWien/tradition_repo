@@ -146,7 +146,7 @@ public class DatabaseServiceTest {
 	public void getStartNodeTest(){
 		try(Transaction tx = mockDbService.beginTx())
 		{
-			assertEquals("__START__", service.getStartNode("1001").getProperty("dn99").toString());
+			assertEquals("__START__", service.getStartNode("1001").getProperty("dn1").toString());
 		}
 	}
 	

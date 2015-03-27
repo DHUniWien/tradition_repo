@@ -160,7 +160,7 @@ public class TraditionTest {
 	@Test
 	public void getReadingTest() throws JsonProcessingException {
 		
-		String expected = "{\"dn1\":\"n1\",\"dn2\":\"1\",\"dn11\":\"Default\",\"dn14\":\"1\",\"dn15\":\"when\"}";
+		String expected = "{\"dn1\":\"n2\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":\"2\",\"dn15\":\"april\"}";
 		
 		Response resp = tradition.getReading("1001", "n2");
 		
@@ -170,16 +170,6 @@ public class TraditionTest {
 		
 		assertEquals(expected,json);
 		
-	}
-	
-	@Test
-	public void getAllReadingsOfTraditionTest(){
-		
-		String expected = "[{\"name\":\"Tradition\",\"id\":\"1001\"}]";
-		
-		Response resp = tradition.getAllReadingsOfTradition("1001");
-		
-		assertEquals(expected, resp.getEntity().toString());
 	}
 
 	/**
