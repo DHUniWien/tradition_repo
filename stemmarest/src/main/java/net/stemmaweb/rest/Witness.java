@@ -298,12 +298,15 @@ public class Witness implements IResource {
 				boolean includes = false;
 				boolean continues = false;
 
-				String[] arr = (String[]) path.lastRelationship().getProperty(
-						"lexemes");
-				for (String str : arr) {
-					if (str.equals(WITNESS_ID)) {
-						includes = true;
-						continues = true;
+				if(path.lastRelationship().hasProperty("lexemes"))
+				{
+					String[] arr = (String[]) path.lastRelationship().getProperty(
+							"lexemes");
+					for (String str : arr) {
+						if (str.equals(WITNESS_ID)) {
+							includes = true;
+							continues = true;
+						}
 					}
 				}
 				return Evaluation.of(includes, continues);
@@ -339,7 +342,6 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		}
-		readingModels.remove(readingModels.size()-1);
 		return readingModels;
 	}
 }
