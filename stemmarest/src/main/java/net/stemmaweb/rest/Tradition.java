@@ -471,7 +471,7 @@ public class Tradition implements IResource {
 		
 		try (Transaction tx = db.beginTx()) {
 			
-		ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]-(w) where n.id =~ '"+ tradId +"_.*"+ "' return r");
+		ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]->(w) where n.id =~ '"+ tradId +"_.*"+ "' return r");
 		Iterator<Relationship> rels = result.columnAs("r");
 				
 				if (!rels.hasNext())
@@ -485,12 +485,12 @@ public class Tradition implements IResource {
 					Relationship rel = rels.next();
 					RelationshipModel relMod = new RelationshipModel();
 				
-					if(rel.hasProperty("source"))
-						relMod.setSource(rel.getProperty("source").toString());
-					if(rel.hasProperty("target"))
-						relMod.setTarget(rel.getProperty("target").toString());
+					if(rel.getStartNode()!=null)
+						relMod.setSource(rel.getStartNode().getProperty("id").toString().substring(5));
+					if(rel.getEndNode()!=null)
+						relMod.setTarget(rel.getEndNode().getProperty("id").toString().substring(5));
 					if(rel.hasProperty("id"))
-						relMod.setId(rel.getProperty("id").toString());
+						relMod.setId(rel.getProperty("id").toString().substring(5));
 					if(rel.hasProperty("de0"))
 						relMod.setDe0(rel.getProperty("de0").toString());
 					if(rel.hasProperty("de1"))

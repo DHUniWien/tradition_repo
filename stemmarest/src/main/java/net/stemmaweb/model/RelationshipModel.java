@@ -8,6 +8,20 @@ public class RelationshipModel {
 	private String source;
 	private String target;
 	private String id;
+	private String de0; // a_derivable_from_b
+	private String de1; // alters_meaning
+	private String de2; // annotation
+	private String de3; // b_derivable_from_a
+	private String de4; // displayform
+	private String de5; // extra
+	private String de6; // is_significant
+	private String de7; // non_independent
+	private String de8; // reading_a
+	private String de9; // reading_b
+	private String de10; // scope
+	private String de11; // type
+	private String de12; // witness
+	
 	public String getSource() {
 		return source;
 	}
@@ -26,19 +40,6 @@ public class RelationshipModel {
 	public void setId(String id) {
 		this.id = id;
 	}
-	private String de0; // a_derivable_from_b
-	private String de1; // alters_meaning
-	private String de2; // annotation
-	private String de3; // b_derivable_from_a
-	private String de4; // displayform
-	private String de5; // extra
-	private String de6; // is_significant
-	private String de7; // non_independent
-	private String de8; // reading_a
-	private String de9; // reading_b
-	private String de10; // scope
-	private String de11; // type
-	private String de12; // witness
 	
 	public String getDe0() {
 		return de0;

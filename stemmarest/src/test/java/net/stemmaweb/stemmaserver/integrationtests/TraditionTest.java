@@ -196,11 +196,11 @@ public class TraditionTest {
     	
     	List<RelationshipModel> relationships = jerseyTest.resource().path("/tradition/relation/"+tradId+"/relationships")
     			.get(new GenericType<List<RelationshipModel>>(){});
-    	RelationshipModel relLoaded = relationships.get(4);
+    	RelationshipModel relLoaded = relationships.get(2);
     	
-    	/*assertEquals(rel.getSource(),relLoaded.getSource());
+    	assertEquals(rel.getSource(),relLoaded.getSource());
     	assertEquals(rel.getTarget(),relLoaded.getTarget());
-    	assertEquals(rel.getId(), relLoaded.getId());*/
+    	assertEquals(rel.getId(), relLoaded.getId());
     	assertEquals(rel.getDe8(),relLoaded.getDe8());
     	assertEquals(rel.getDe6(),relLoaded.getDe6());
     	assertEquals(rel.getDe9(),relLoaded.getDe9());
