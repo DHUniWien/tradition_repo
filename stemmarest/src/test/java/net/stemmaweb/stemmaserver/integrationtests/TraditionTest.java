@@ -1,25 +1,19 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -38,8 +32,6 @@ import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.ResourceIterable;
-import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
@@ -69,8 +61,7 @@ public class TraditionTest {
 	 * Create a Spy object for dbService.
 	 */
 	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory()
-			.newImpermanentDatabase();
+	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
 
 	/*
 	 * The Resource under test. The mockDbFactory will be injected into this
@@ -90,11 +81,11 @@ public class TraditionTest {
 
 	@Before
 	public void setUp() throws Exception {
-		
+
 		String filename = "";
-		if(OSDetector.isWin())
+		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else 
+		else
 			filename = "src/TestXMLFiles/testTradition.xml";
 
 		/*
@@ -124,8 +115,7 @@ public class TraditionTest {
 		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
 		 * instead of dbFactory.newEmbeddedDatabase("database");
 		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
-				.thenReturn(mockDbService);
+		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
 
 		/*
 		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
@@ -146,8 +136,7 @@ public class TraditionTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (u:USER)--(t:TRADITION) return t");
+			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -158,58 +147,97 @@ public class TraditionTest {
 		/*
 		 * Create a JersyTestServer serving the Resource under test
 		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(tradition).create();
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
 		jerseyTest.setUp();
 	}
-	
+
 	@Test
 	public void getReadingTest() throws JsonProcessingException {
-		
+
 		String expected = "{\"dn1\":\"n2\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":\"2\",\"dn15\":\"april\"}";
-		
+
 		Response resp = tradition.getReading("1001", "n2");
-		
+
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);
 		String json = mapper.writeValueAsString(resp.getEntity());
-		
-		assertEquals(expected,json);
-		
+
+		assertEquals(expected, json);
+
+	}
+
+	@Test
+	public void splitReadingTest() {
+		Response response = tradition.splitReading("1001", "n2");
+
+		String expected = "Successfully split up reading";
+
+		assertEquals(expected, response.getEntity().toString());
+	}
+
+	@Test
+	public void duplicateReadingTest() {
+		Response response = tradition.duplicateReading("1001", "n2", "A, B", "C");
+
+		String expected = "Successfully duplicated reading";
+
+		assertEquals(expected, response.getEntity().toString());
+	}
+
+	@Test
+	public void mergeReadingsTest() {
+		tradition.duplicateReading("1001", "n22", "A, B", "C");
+		Response response = tradition.mergeReadings("1001", "n22", "n22.5");
+
+		String expected = "Successfully merged readings";
+
+		assertEquals(expected, response.getEntity().toString());
+	}
+
+	@Test
+	public void mergeReadingsWithDifferentTextTest() {
+		Response response = tradition.mergeReadings("1001", "n2", "n3");
+
+		String expected = "Readings to be merged do not contain the same text";
+
+		assertEquals(expected, response.getEntity().toString());
 	}
 
 	@Test
 	public void getAllRelationshipsTest() {
 		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
-        jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-            	
-    	RelationshipModel rel = new RelationshipModel();
-    	rel.setSource("n13");
-    	rel.setTarget("n24");
-    	rel.setId("e2");
-    	rel.setDe8("april");
-    	rel.setDe6("no");
-    	rel.setDe9("april");
-    	rel.setDe1("0");
-    	rel.setDe11("transposition");
-    	rel.setDe10("local");
-    	
-    	List<RelationshipModel> relationships = jerseyTest.resource().path("/tradition/relation/"+tradId+"/relationships")
-    			.get(new GenericType<List<RelationshipModel>>(){});
-    	RelationshipModel relLoaded = relationships.get(2);
-    	
-    	assertEquals(rel.getSource(),relLoaded.getSource());
-    	assertEquals(rel.getTarget(),relLoaded.getTarget());
-    	assertEquals(rel.getId(), relLoaded.getId());
-    	assertEquals(rel.getDe8(),relLoaded.getDe8());
-    	assertEquals(rel.getDe6(),relLoaded.getDe6());
-    	assertEquals(rel.getDe9(),relLoaded.getDe9());
-    	assertEquals(rel.getDe1(),relLoaded.getDe1());
-    	assertEquals(rel.getDe11(),relLoaded.getDe11());
-    	assertEquals(rel.getDe10(),relLoaded.getDe10());
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, jsonPayload);
 
-    	
+		RelationshipModel rel = new RelationshipModel();
+		rel.setSource("n13");
+		rel.setTarget("n24");
+		rel.setId("e2");
+		rel.setDe8("april");
+		rel.setDe6("no");
+		rel.setDe9("april");
+		rel.setDe1("0");
+		rel.setDe11("transposition");
+		rel.setDe10("local");
+
+		List<RelationshipModel> relationships = jerseyTest.resource()
+				.path("/tradition/relation/" + tradId + "/relationships")
+				.get(new GenericType<List<RelationshipModel>>() {
+				});
+		RelationshipModel relLoaded = relationships.get(2);
+
+		assertEquals(rel.getSource(), relLoaded.getSource());
+		assertEquals(rel.getTarget(), relLoaded.getTarget());
+		assertEquals(rel.getId(), relLoaded.getId());
+		assertEquals(rel.getDe8(), relLoaded.getDe8());
+		assertEquals(rel.getDe6(), relLoaded.getDe6());
+		assertEquals(rel.getDe9(), relLoaded.getDe9());
+		assertEquals(rel.getDe1(), relLoaded.getDe1());
+		assertEquals(rel.getDe11(), relLoaded.getDe11());
+		assertEquals(rel.getDe10(), relLoaded.getDe10());
+
 	}
+
 	/**
 	 * Shut down the jersey server
 	 * 

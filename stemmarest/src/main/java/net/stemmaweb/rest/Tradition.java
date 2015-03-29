@@ -178,7 +178,7 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
 			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
-		String addedReadingId = tradId + "_" + readId + ".5";
+		String addedReadingId = readId + ".5";
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -296,7 +296,7 @@ public class Tradition implements IResource {
 			if (!firstReading.getProperty("dn15").toString()
 					.equalsIgnoreCase(secondReading.getProperty("dn15").toString()))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("readings to be merged do not contain the same text").build();
+						.entity("Readings to be merged do not contain the same text").build();
 
 			// merging of readings happens here
 			copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
@@ -336,7 +336,7 @@ public class Tradition implements IResource {
 		// (Maybe we can get the texts using a small algorithm)
 		String originalReadingText = "bla";
 		String addedReadingText = "blub";
-		String addedReadingId = tradId + "_" + readId + ".5";
+		String addedReadingId = readId + ".5";
 
 		Node originalReading = null;
 		Node addedReading = null;
@@ -396,13 +396,12 @@ public class Tradition implements IResource {
 		return Response.ok("Successfully split up reading").build();
 	}
 
-
 	@GET
 	@Path("witness/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
-		
+
 		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -455,74 +454,70 @@ public class Tradition implements IResource {
 
 		return Response.ok(witlist).build();
 	}
-	
-	
+
 	@GET
 	@Path("relation/{tradId}/relationships")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
-		
+
 		ArrayList<RelationshipModel> relList = new ArrayList<RelationshipModel>();
-		
+
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
-		
-		try (Transaction tx = db.beginTx()) {
-			
-		ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]->(w) where n.id =~ '"+ tradId +"_.*"+ "' return r");
-		Iterator<Relationship> rels = result.columnAs("r");
-				
-				if (!rels.hasNext())
-				{
-					db.shutdown();
-					throw new DataBaseException("no relationships found");
-				}
-				
-				while(rels.hasNext())
-				{
-					Relationship rel = rels.next();
-					RelationshipModel relMod = new RelationshipModel();
-				
-					if(rel.getStartNode()!=null)
-						relMod.setSource(rel.getStartNode().getProperty("id").toString().substring(5));
-					if(rel.getEndNode()!=null)
-						relMod.setTarget(rel.getEndNode().getProperty("id").toString().substring(5));
-					if(rel.hasProperty("id"))
-						relMod.setId(rel.getProperty("id").toString().substring(5));
-					if(rel.hasProperty("de0"))
-						relMod.setDe0(rel.getProperty("de0").toString());
-					if(rel.hasProperty("de1"))
-						relMod.setDe1(rel.getProperty("de1").toString());
-					if(rel.hasProperty("de2"))
-						relMod.setDe2(rel.getProperty("de2").toString());
-					if(rel.hasProperty("de3"))
-						relMod.setDe3(rel.getProperty("de3").toString());
-					if(rel.hasProperty("de4"))
-						relMod.setDe4(rel.getProperty("de4").toString());
-					if(rel.hasProperty("de5"))
-						relMod.setDe5(rel.getProperty("de5").toString());
-					if(rel.hasProperty("de6"))
-						relMod.setDe6(rel.getProperty("de6").toString());
-					if(rel.hasProperty("de7"))
-						relMod.setDe7(rel.getProperty("de7").toString());
-					if(rel.hasProperty("de8"))
-						relMod.setDe8(rel.getProperty("de8").toString());
-					if(rel.hasProperty("de9"))
-						relMod.setDe9(rel.getProperty("de9").toString());
-					if(rel.hasProperty("de10"))
-						relMod.setDe10(rel.getProperty("de10").toString());
-					if(rel.hasProperty("de11"))
-						relMod.setDe11(rel.getProperty("de11").toString());
-					if(rel.hasProperty("de12"))
-						relMod.setDe12(rel.getProperty("de12").toString());
-										
-					relList.add(relMod);
-				}
 
-			
-			
+		try (Transaction tx = db.beginTx()) {
+
+			ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]->(w) where n.id =~ '" + tradId
+					+ "_.*" + "' return r");
+			Iterator<Relationship> rels = result.columnAs("r");
+
+			if (!rels.hasNext()) {
+				db.shutdown();
+				throw new DataBaseException("no relationships found");
+			}
+
+			while (rels.hasNext()) {
+				Relationship rel = rels.next();
+				RelationshipModel relMod = new RelationshipModel();
+
+				if (rel.getStartNode() != null)
+					relMod.setSource(rel.getStartNode().getProperty("id").toString().substring(5));
+				if (rel.getEndNode() != null)
+					relMod.setTarget(rel.getEndNode().getProperty("id").toString().substring(5));
+				if (rel.hasProperty("id"))
+					relMod.setId(rel.getProperty("id").toString().substring(5));
+				if (rel.hasProperty("de0"))
+					relMod.setDe0(rel.getProperty("de0").toString());
+				if (rel.hasProperty("de1"))
+					relMod.setDe1(rel.getProperty("de1").toString());
+				if (rel.hasProperty("de2"))
+					relMod.setDe2(rel.getProperty("de2").toString());
+				if (rel.hasProperty("de3"))
+					relMod.setDe3(rel.getProperty("de3").toString());
+				if (rel.hasProperty("de4"))
+					relMod.setDe4(rel.getProperty("de4").toString());
+				if (rel.hasProperty("de5"))
+					relMod.setDe5(rel.getProperty("de5").toString());
+				if (rel.hasProperty("de6"))
+					relMod.setDe6(rel.getProperty("de6").toString());
+				if (rel.hasProperty("de7"))
+					relMod.setDe7(rel.getProperty("de7").toString());
+				if (rel.hasProperty("de8"))
+					relMod.setDe8(rel.getProperty("de8").toString());
+				if (rel.hasProperty("de9"))
+					relMod.setDe9(rel.getProperty("de9").toString());
+				if (rel.hasProperty("de10"))
+					relMod.setDe10(rel.getProperty("de10").toString());
+				if (rel.hasProperty("de11"))
+					relMod.setDe11(rel.getProperty("de11").toString());
+				if (rel.hasProperty("de12"))
+					relMod.setDe12(rel.getProperty("de12").toString());
+
+				relList.add(relMod);
+			}
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
