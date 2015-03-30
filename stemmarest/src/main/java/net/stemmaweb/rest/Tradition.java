@@ -332,14 +332,7 @@ public class Tradition implements IResource {
 	@Path("split/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
-		// TODO: API yet unclear: thus just set as variables for the moment:
-		// (Maybe we can get the texts using a small algorithm)
-		String originalReadingText = "bla";
-		String addedReadingText = "blub";
 		String addedReadingId = readId + ".5";
-
-		Node originalReading = null;
-		Node addedReading = null;
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -358,27 +351,38 @@ public class Tradition implements IResource {
 				String id = (String) path.endNode().getProperty("dn1");
 				if (id.equals(readId)) {
 					// splitting of reading happens here
-					addedReading = db.createNode();
-					originalReading = path.endNode();
+					Node originalReading = path.endNode();
 
-					Iterable<Relationship> rels = originalReading
-							.getRelationships(Relations.NORMAL, Direction.OUTGOING);
-					for (Relationship relationship : rels) {
-						addedReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
-						relationship.delete();
+					String oldText = originalReading.getProperty("dn15").toString();
+					String[] splittedWords = oldText.split("\\s+");
+					if (splittedWords.length < 2)
+						return Response.status(Status.INTERNAL_SERVER_ERROR)
+								.entity("A reading to be splitted has to contain at least 2 words").build();
+					originalReading.setProperty("dn15", splittedWords[0]);
+
+					Node previousReading = originalReading;
+					Node newReading = null;
+
+					for (int i = 1; i < splittedWords.length; i++) {
+						newReading = db.createNode();
+
+						Iterable<Relationship> rels = previousReading.getRelationships(Relations.NORMAL,
+								Direction.OUTGOING);
+						for (Relationship relationship : rels) {
+							newReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
+							relationship.delete();
+						}
+
+						Reading.copyReadingProperties(previousReading, newReading);
+						newReading.setProperty("dn15", splittedWords[i]);
+						newReading.setProperty("dn1", addedReadingId);
+						// set Rank to Rank of original reading and add .5
+						newReading.setProperty("dn14", previousReading.getProperty("dn14") + ".5");
+
+						previousReading.createRelationshipTo(newReading, Relations.NORMAL);
+
+						previousReading = newReading;
 					}
-
-					addedReading.addLabel(Nodes.WORD);
-					addedReading.setProperty("dn15", addedReadingText);
-					addedReading.setProperty("dn1", addedReadingId);
-					// set Rank to Rank of original reading and add .5
-					addedReading.setProperty("dn14", originalReading.getProperty("dn14") + ".5");
-					addedReading.setProperty("dn11", originalReading.getProperty("dn11"));
-					addedReading.setProperty("dn2", originalReading.getProperty("dn2"));
-					//addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
-
-					originalReading.createRelationshipTo(addedReading, Relations.NORMAL);
-					originalReading.setProperty("dn15", originalReadingText);
 
 					foundReading = true;
 					break;

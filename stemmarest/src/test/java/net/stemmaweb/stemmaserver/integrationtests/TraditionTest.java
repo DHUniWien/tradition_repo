@@ -167,10 +167,10 @@ public class TraditionTest {
 	}
 
 	@Test
-	public void splitReadingTest() {
+	public void splitReadingContainingOnlyOneWordTest() {
 		Response response = tradition.splitReading("1001", "n2");
 
-		String expected = "Successfully split up reading";
+		String expected = "A reading to be splitted has to contain at least 2 words";
 
 		assertEquals(expected, response.getEntity().toString());
 	}
