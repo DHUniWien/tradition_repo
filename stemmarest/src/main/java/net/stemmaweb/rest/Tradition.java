@@ -223,13 +223,8 @@ public class Tradition implements IResource {
 		originalReading = path.endNode();
 
 		// copy reading
-		addedReading.addLabel(Nodes.WORD);
-		addedReading.setProperty("dn15", originalReading.getProperty("dn15"));
+		Reading.copyReadingProperties(originalReading, addedReading);
 		addedReading.setProperty("dn1", addedReadingId);
-		addedReading.setProperty("dn14", originalReading.getProperty("dn14"));
-		addedReading.setProperty("dn11", originalReading.getProperty("dn11"));
-		addedReading.setProperty("dn2", originalReading.getProperty("dn2"));
-		//addedReading.setProperty("dn99", originalReading.getProperty("dn99"));
 
 		// add witnesses to relationships
 		// Outgoing
