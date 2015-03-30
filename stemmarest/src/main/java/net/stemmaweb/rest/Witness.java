@@ -41,7 +41,6 @@ import Exceptions.DataBaseException;
 public class Witness implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
-
 	/**
 	 * find a requested witness in the data base and return it as a string
 	 * 
@@ -72,10 +71,10 @@ public class Witness implements IResource {
 			witnessAsText += readingModel.getDn15() + " ";
 		}
 		db.shutdown();
-		if(witnessAsText.length()==0)
+		if (witnessAsText.length() == 0)
 			return Response.status(Status.NOT_FOUND).build();
 		return Response.status(Response.Status.OK)
-				.entity("{\"tradId\":\"" + tradId + "\",\"textId\":\"" + textId + "\", \"text\":\"" + witnessAsText.trim() + "\"}").build();
+				.entity("{\"text\":\"" + witnessAsText.trim() + "\"}").build();
 	}
 
 	/**
@@ -122,7 +121,8 @@ public class Witness implements IResource {
 		db.shutdown();
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND).build();
-		return Response.ok(witnessAsText.trim()).build();
+		return Response.status(Response.Status.OK)
+				.entity("{\"text\":\"" + witnessAsText.trim() + "\"}").build();
 	}
 
 	/**
@@ -191,7 +191,7 @@ public class Witness implements IResource {
 
 		return Response.ok(reading).build();
 	}
-	
+
 	/**
 	 * gets the next readings from a given readings in the same witness
 	 * 
@@ -206,7 +206,8 @@ public class Witness implements IResource {
 	@GET
 	@Path("reading/previous/{tradId}/{textId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getPreviousReadingInWitness(@PathParam("tradId") String tradId,
+	public Response getPreviousReadingInWitness(
+			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("readId") String readId) {
 
@@ -219,14 +220,15 @@ public class Witness implements IResource {
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 
-		ReadingModel reading = getPreviousReading(WITNESS_ID, readId, startNode, db);
+		ReadingModel reading = getPreviousReading(WITNESS_ID, readId,
+				startNode, db);
 
 		return Response.ok(reading).build();
 	}
-	
+
 	/**
-	 * gets the Next reading to a given reading and a witness
-	 * help method
+	 * gets the Next reading to a given reading and a witness help method
+	 * 
 	 * @param WITNESS_ID
 	 * @param readId
 	 * @param startNode
@@ -236,12 +238,12 @@ public class Witness implements IResource {
 			Node startNode, GraphDatabaseService db) {
 		Evaluator e = createEvalForWitness(WITNESS_ID);
 
-
 		try (Transaction tx = db.beginTx()) {
 			int stop = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NONE)
+					.traverse(startNode).nodes()) {
 				if (stop == 1) {
 					tx.success();
 					return Reading.readingModelFromNode(node);
@@ -256,32 +258,34 @@ public class Witness implements IResource {
 	}
 
 	/**
-	 * gets the Previous reading to a given reading and a witness
-	 * help method
+	 * gets the Previous reading to a given reading and a witness help method
+	 * 
 	 * @param WITNESS_ID
 	 * @param readId
 	 * @param startNode
 	 * @return the Previous reading to that of the readId
 	 */
-	private ReadingModel getPreviousReading(final String WITNESS_ID, String readId,
-			Node startNode,GraphDatabaseService db) {
+	private ReadingModel getPreviousReading(final String WITNESS_ID,
+			String readId, Node startNode, GraphDatabaseService db) {
 		Node previousNode = null;
 
-			Evaluator e = createEvalForWitness(WITNESS_ID);
+		Evaluator e = createEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
-			
+					.evaluator(e).uniqueness(Uniqueness.NONE)
+					.traverse(startNode).nodes()) {
+
 				if (((String) node.getProperty("dn1")).equals(readId)) {
 					tx.success();
 					if (previousNode != null)
-					return Reading.readingModelFromNode(previousNode);	
-					else{
+						return Reading.readingModelFromNode(previousNode);
+					else {
 						db.shutdown();
-						throw new DataBaseException("there is no previous reading to the given one");
-					}						
+						throw new DataBaseException(
+								"there is no previous reading to the given one");
+					}
 				}
 				previousNode = node;
 			}
@@ -301,10 +305,9 @@ public class Witness implements IResource {
 				boolean includes = false;
 				boolean continues = false;
 
-				if(path.lastRelationship().hasProperty("lexemes"))
-				{
-					String[] arr = (String[]) path.lastRelationship().getProperty(
-							"lexemes");
+				if (path.lastRelationship().hasProperty("lexemes")) {
+					String[] arr = (String[]) path.lastRelationship()
+							.getProperty("lexemes");
 					for (String str : arr) {
 						if (str.equals(WITNESS_ID)) {
 							includes = true;
@@ -318,8 +321,6 @@ public class Witness implements IResource {
 		return e;
 	}
 
-
-
 	/**
 	 * gets all readings of a single witness
 	 * 
@@ -329,7 +330,7 @@ public class Witness implements IResource {
 	 * @return a list of the readings as readingModels
 	 */
 	private ArrayList<ReadingModel> getAllReadingsOfWitness(
-			final String WITNESS_ID, Node startNode,GraphDatabaseService db) {
+			final String WITNESS_ID, Node startNode, GraphDatabaseService db) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Evaluator e = createEvalForWitness(WITNESS_ID);
@@ -337,7 +338,8 @@ public class Witness implements IResource {
 
 			for (Node startNodes : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE).traverse(startNode).nodes()) {
+					.evaluator(e).uniqueness(Uniqueness.NONE)
+					.traverse(startNode).nodes()) {
 				ReadingModel tempReading = Reading
 						.readingModelFromNode(startNodes);
 
@@ -345,10 +347,11 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		}
-		
-		//remove the #END# node if it exists
-		if(readingModels.get(readingModels.size()-1).getDn15().equals("#END#"))
-			readingModels.remove(readingModels.size()-1);
+
+		// remove the #END# node if it exists
+		if (readingModels.get(readingModels.size() - 1).getDn15()
+				.equals("#END#"))
+			readingModels.remove(readingModels.size() - 1);
 		return readingModels;
 	}
 }

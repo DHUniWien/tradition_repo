@@ -155,29 +155,26 @@ public class WitnessTest {
 
 	@Test
 	public void witnessAsTextTestA() {
-		String expectedText = "when april with his showers sweet with fruit the drought of march has pierced unto the root";
+		String expectedText = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
 		Response resp = witness.getWitnessAsPlainText(tradId, "A");
 		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
 				.path("/witness/string/" + tradId + "/A").get(String.class);
 		assertEquals(expectedText, returnedText);
-
 	}
 
 	@Test
 	public void witnessAsTextTestB() {
-		String expectedText = "when showers sweet with april fruit the march of drought has pierced to the root";
+		String expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
 		Response resp = witness.getWitnessAsPlainText(tradId, "B");
 		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
 				.path("/witness/string/" + tradId + "/B").get(String.class);
 		assertEquals(expectedText, returnedText);
-
 	}
 
-	// not working yet!! TODO get the result as json string
 	@Test
 	public void witnessAsListTest() {
 		String[] texts = { "when", "april", "with", "his", "showers", "sweet",
@@ -196,7 +193,7 @@ public class WitnessTest {
 	@Test
 	public void witnessBetweenRanksTest() {
 
-		String expectedText = "april with his showers";
+		String expectedText = "{\"text\":\"april with his showers\"}";
 		String actualResponse = jerseyTest.resource()
 				.path("/witness/string/rank/" + tradId + "/A/2/5")
 				.get(String.class);
@@ -281,5 +278,4 @@ public class WitnessTest {
 		mockDbService.shutdown();
 		jerseyTest.tearDown();
 	}
-
 }
