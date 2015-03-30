@@ -167,43 +167,6 @@ public class TraditionTest {
 	}
 
 	@Test
-	public void splitReadingContainingOnlyOneWordTest() {
-		Response response = tradition.splitReading("1001", "n2");
-
-		String expected = "A reading to be splitted has to contain at least 2 words";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	@Test
-	public void duplicateReadingTest() {
-		Response response = tradition.duplicateReading("1001", "n2", "A, B", "C");
-
-		String expected = "Successfully duplicated reading";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	@Test
-	public void mergeReadingsTest() {
-		tradition.duplicateReading("1001", "n22", "A, B", "C");
-		Response response = tradition.mergeReadings("1001", "n22", "n22.5");
-
-		String expected = "Successfully merged readings";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	@Test
-	public void mergeReadingsWithDifferentTextTest() {
-		Response response = tradition.mergeReadings("1001", "n2", "n3");
-
-		String expected = "Readings to be merged do not contain the same text";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	@Test
 	public void getAllRelationshipsTest() {
 		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
 		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)

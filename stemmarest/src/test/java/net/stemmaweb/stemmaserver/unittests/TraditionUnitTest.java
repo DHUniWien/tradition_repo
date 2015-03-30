@@ -1,17 +1,16 @@
 package net.stemmaweb.stemmaserver.unittests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
-import net.stemmaweb.model.ReadingModel;
+import javax.ws.rs.core.Response;
+
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -56,8 +55,7 @@ public class TraditionUnitTest {
 	 * Create a Spy object for dbService.
 	 */
 	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory()
-			.newImpermanentDatabase();
+	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
 
 	/*
 	 * The Resource under test. The mockDbFactory will be injected into this
@@ -77,11 +75,11 @@ public class TraditionUnitTest {
 
 	@Before
 	public void setUp() throws Exception {
-		
+
 		String filename = "";
-		if(OSDetector.isWin())
+		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else 
+		else
 			filename = "src/TestXMLFiles/testTradition.xml";
 
 		/*
@@ -111,8 +109,7 @@ public class TraditionUnitTest {
 		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
 		 * instead of dbFactory.newEmbeddedDatabase("database");
 		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
-				.thenReturn(mockDbService);
+		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
 
 		/*
 		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
@@ -133,8 +130,7 @@ public class TraditionUnitTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (u:USER)--(t:TRADITION) return t");
+			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -145,20 +141,19 @@ public class TraditionUnitTest {
 		/*
 		 * Create a JersyTestServer serving the Resource under test
 		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(tradition).create();
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
 		jerseyTest.setUp();
 	}
-	
+
 	@Test
-	public void randomNodeExistsTest(){
+	public void randomNodeExistsTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			long rank = 2;
-			assertEquals(rank , nodes.next().getProperty("dn14"));
+			assertEquals(rank, nodes.next().getProperty("dn14"));
 			tx.success();
 		}
 	}
@@ -169,9 +164,8 @@ public class TraditionUnitTest {
 	@Test
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
-			ResourceIterable<Node> tradNodes = mockDbService
-					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
-							"Tradition");
+			ResourceIterable<Node> tradNodes = mockDbService.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
+					"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
@@ -185,10 +179,46 @@ public class TraditionUnitTest {
 	public void traditionEndNodeExistsTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 
-		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
+		ExecutionResult result = engine.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
+	}
+
+	@Test
+	public void splitReadingContainingOnlyOneWordTest() {
+		Response response = tradition.splitReading("1001", "n2");
+
+		String expected = "A reading to be splitted has to contain at least 2 words";
+
+		assertEquals(expected, response.getEntity().toString());
+	}
+
+	@Test
+	public void duplicateReadingTest() {
+		Response response = tradition.duplicateReading("1001", "n2", "A, B", "C");
+
+		String expected = "Successfully duplicated reading";
+
+		assertEquals(expected, response.getEntity().toString());
+	}
+
+	@Test
+	public void mergeReadingsTest() {
+		tradition.duplicateReading("1001", "n22", "A, B", "C");
+		Response response = tradition.mergeReadings("1001", "n22", "n22.5");
+
+		String expected = "Successfully merged readings";
+
+		assertEquals(expected, response.getEntity().toString());
+	}
+
+	@Test
+	public void mergeReadingsWithDifferentTextTest() {
+		Response response = tradition.mergeReadings("1001", "n2", "n3");
+
+		String expected = "Readings to be merged do not contain the same text";
+
+		assertEquals(expected, response.getEntity().toString());
 	}
 
 	/**
