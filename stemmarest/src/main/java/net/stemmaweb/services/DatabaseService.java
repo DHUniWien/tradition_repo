@@ -43,7 +43,7 @@ public class DatabaseService {
 		 * this quarry gets the "Start" node of the witness
 		 */
 		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
-				+ "'})--(w:WORD  {dn1:'__START__'}) return w";
+				+ "'})-[:NORMAL]->(w:WORD) return w";
 
 		try (Transaction tx = db.beginTx()) {
 

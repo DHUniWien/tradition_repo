@@ -38,6 +38,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 import Exceptions.DataBaseException;
 
@@ -125,7 +126,7 @@ public class Tradition implements IResource {
 	@GET
 	@Path("reading/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
+	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ReadingModel reading = null;
@@ -139,13 +140,13 @@ public class Tradition implements IResource {
 		}
 
 		try (Transaction tx = db.beginTx()) {
-			if (startNode.getProperty("dn1").toString().equals(readId)) {
+			if (startNode.getId()==readId) {
 				reading = Reading.readingModelFromNode(startNode);
 			} else {
 				Traverser traverser = getReading(startNode, db);
 				for (org.neo4j.graphdb.Path path : traverser) {
-					String id = (String) path.endNode().getProperty("dn1");
-					if (id.equals(readId)) {
+					long id = path.endNode().getId();
+					if (id==readId) {
 						reading = Reading.readingModelFromNode(path.endNode());
 						break;
 					}
@@ -176,9 +177,8 @@ public class Tradition implements IResource {
 	@GET
 	@Path("duplicate/{tradId}/{readId}/{firstWitnesses}/{secondWitnesses}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
+	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId,
 			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
-		String addedReadingId = readId + ".5";
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -194,9 +194,9 @@ public class Tradition implements IResource {
 			boolean foundReading = false;
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
-				String id = (String) path.endNode().getProperty("dn1");
-				if (id.equals(readId)) {
-					duplicateReading(firstWitnesses, secondWitnesses, addedReadingId, db, path);
+				long id = path.endNode().getId();
+				if (id==readId) {
+					duplicateReading(firstWitnesses, secondWitnesses, db, path);
 
 					foundReading = true;
 					break;
@@ -214,7 +214,7 @@ public class Tradition implements IResource {
 		return Response.ok("Successfully duplicated reading").build();
 	}
 
-	private void duplicateReading(String firstWitnesses, String secondWitnesses, String addedReadingId,
+	private void duplicateReading(String firstWitnesses, String secondWitnesses,
 			GraphDatabaseService db, org.neo4j.graphdb.Path path) {
 		Node originalReading;
 		Node addedReading;
@@ -224,7 +224,6 @@ public class Tradition implements IResource {
 
 		// copy reading
 		Reading.copyReadingProperties(originalReading, addedReading);
-		addedReading.setProperty("dn1", addedReadingId);
 
 		// add witnesses to relationships
 		// Outgoing
@@ -257,8 +256,8 @@ public class Tradition implements IResource {
 	@GET
 	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") String firstReadId,
-			@PathParam("secondReadId") String secondReadId) {
+	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") long firstReadId,
+			@PathParam("secondReadId") long secondReadId) {
 		Node firstReading = null;
 		Node secondReading = null;
 
@@ -276,10 +275,10 @@ public class Tradition implements IResource {
 			boolean foundReadings = false;
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
-				String id = (String) path.endNode().getProperty("dn1");
-				if (id.equals(firstReadId))
+				long id = path.endNode().getId();
+				if (id==firstReadId)
 					firstReading = path.endNode();
-				if (id.equals(secondReadId))
+				if (id==secondReadId)
 					secondReading = path.endNode();
 				if (firstReading != null && secondReading != null) {
 					foundReadings = true;
@@ -328,8 +327,7 @@ public class Tradition implements IResource {
 	@GET
 	@Path("split/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
-		String addedReadingId = readId + ".5";
+	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -345,8 +343,8 @@ public class Tradition implements IResource {
 			boolean foundReading = false;
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
-				String id = (String) path.endNode().getProperty("dn1");
-				if (id.equals(readId)) {
+				long id = path.endNode().getId();
+				if (id==readId) {
 					// splitting of reading happens here
 					Node originalReading = path.endNode();
 
@@ -371,7 +369,6 @@ public class Tradition implements IResource {
 						}
 
 						Reading.copyReadingProperties(previousReading, newReading);
-						newReading.setProperty("dn1", addedReadingId);
 						newReading.setProperty("dn15", splittedWords[i]);
 						Long previousRank = (Long) previousReading.getProperty("dn14");
 						newReading.setProperty("dn14", previousRank + 1);
@@ -470,53 +467,54 @@ public class Tradition implements IResource {
 
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]->(w) where n.id =~ '" + tradId
-					+ "_.*" + "' return r");
-			Iterator<Relationship> rels = result.columnAs("r");
-
-			if (!rels.hasNext()) {
-				db.shutdown();
-				throw new DataBaseException("no relationships found");
-			}
-
-			while (rels.hasNext()) {
-				Relationship rel = rels.next();
-				RelationshipModel relMod = new RelationshipModel();
-
-				if (rel.getStartNode() != null)
-					relMod.setSource(rel.getStartNode().getProperty("id").toString().substring(5));
-				if (rel.getEndNode() != null)
-					relMod.setTarget(rel.getEndNode().getProperty("id").toString().substring(5));
-				if (rel.hasProperty("id"))
-					relMod.setId(rel.getProperty("id").toString().substring(5));
-				if (rel.hasProperty("de0"))
-					relMod.setDe0(rel.getProperty("de0").toString());
-				if (rel.hasProperty("de1"))
-					relMod.setDe1(rel.getProperty("de1").toString());
-				if (rel.hasProperty("de2"))
-					relMod.setDe2(rel.getProperty("de2").toString());
-				if (rel.hasProperty("de3"))
-					relMod.setDe3(rel.getProperty("de3").toString());
-				if (rel.hasProperty("de4"))
-					relMod.setDe4(rel.getProperty("de4").toString());
-				if (rel.hasProperty("de5"))
-					relMod.setDe5(rel.getProperty("de5").toString());
-				if (rel.hasProperty("de6"))
-					relMod.setDe6(rel.getProperty("de6").toString());
-				if (rel.hasProperty("de7"))
-					relMod.setDe7(rel.getProperty("de7").toString());
-				if (rel.hasProperty("de8"))
-					relMod.setDe8(rel.getProperty("de8").toString());
-				if (rel.hasProperty("de9"))
-					relMod.setDe9(rel.getProperty("de9").toString());
-				if (rel.hasProperty("de10"))
-					relMod.setDe10(rel.getProperty("de10").toString());
-				if (rel.hasProperty("de11"))
-					relMod.setDe11(rel.getProperty("de11").toString());
-				if (rel.hasProperty("de12"))
-					relMod.setDe12(rel.getProperty("de12").toString());
-
-				relList.add(relMod);
+			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
+			Iterator<Node> nodes = result.columnAs("s");
+			Node startNode = nodes.next();
+			
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(startNode).nodes()) {
+				
+				Iterable<Relationship> rels = node.getRelationships(Relations.RELATIONSHIP,Direction.OUTGOING);
+				for(Relationship rel : rels)
+				{
+					RelationshipModel relMod = new RelationshipModel();
+	
+					if (rel.getStartNode() != null)
+						relMod.setSource(String.valueOf(rel.getStartNode().getId()));
+					if (rel.getEndNode() != null)
+						relMod.setTarget(String.valueOf(rel.getEndNode().getId()));
+					relMod.setId(String.valueOf(rel.getId()));
+					if (rel.hasProperty("de0"))
+						relMod.setDe0(rel.getProperty("de0").toString());
+					if (rel.hasProperty("de1"))
+						relMod.setDe1(rel.getProperty("de1").toString());
+					if (rel.hasProperty("de2"))
+						relMod.setDe2(rel.getProperty("de2").toString());
+					if (rel.hasProperty("de3"))
+						relMod.setDe3(rel.getProperty("de3").toString());
+					if (rel.hasProperty("de4"))
+						relMod.setDe4(rel.getProperty("de4").toString());
+					if (rel.hasProperty("de5"))
+						relMod.setDe5(rel.getProperty("de5").toString());
+					if (rel.hasProperty("de6"))
+						relMod.setDe6(rel.getProperty("de6").toString());
+					if (rel.hasProperty("de7"))
+						relMod.setDe7(rel.getProperty("de7").toString());
+					if (rel.hasProperty("de8"))
+						relMod.setDe8(rel.getProperty("de8").toString());
+					if (rel.hasProperty("de9"))
+						relMod.setDe9(rel.getProperty("de9").toString());
+					if (rel.hasProperty("de10"))
+						relMod.setDe10(rel.getProperty("de10").toString());
+					if (rel.hasProperty("de11"))
+						relMod.setDe11(rel.getProperty("de11").toString());
+					if (rel.hasProperty("de12"))
+						relMod.setDe12(rel.getProperty("de12").toString());
+	
+					relList.add(relMod);
+				}
 			}
 
 		} catch (Exception e) {

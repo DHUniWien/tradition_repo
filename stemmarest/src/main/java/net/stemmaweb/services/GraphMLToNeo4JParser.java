@@ -15,18 +15,24 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * This class provides a method for importing Graphml (XML) File into Neo4J
@@ -91,6 +97,8 @@ public class GraphMLToNeo4JParser implements IResource
 	    	Relationship rel = null;	// holds the current relationship
 	    	
 	    	int graphNumber = 0; 	// holds the current graph number 
+	    	
+	    	int firstNode = 0; // flag to get START NODE (always == n1) == 2
 	    	
 			while (true) {
 				// START READING THE GRAPHML FILE
@@ -291,12 +299,14 @@ public class GraphMLToNeo4JParser implements IResource
 			        	
 			        		currNode.setProperty("id", prefix + reader.getAttributeValue(0));
 			        	
-			        		if(reader.getAttributeValue(0).equals("n1"))
+			        		
+			        		if(firstNode==1)
 			        		{
 			        			tradRootNode.createRelationshipTo(currNode, Relations.NORMAL);
+			        			firstNode++;
 			        		}
-			        	
-			        		
+			        		if(firstNode<1)
+			        			firstNode++;
 			        	}
 			        	depth++;
 		        		type_nd = 2;
@@ -336,6 +346,23 @@ public class GraphMLToNeo4JParser implements IResource
 				leximArray = leximes.toArray(leximArray);
 				rel.setProperty("leximes", leximArray);
 				leximes.clear();
+			}
+			
+			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
+			Iterator<Node> nodes = result.columnAs("s");
+			Node startNode = nodes.next();
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL, Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_PATH)
+					.traverse(startNode).nodes()) {
+				if(node.hasProperty("dn1"))
+				{
+					node.removeProperty("dn1");
+				}
+				if(node.hasProperty("id"))
+				{
+					node.removeProperty("id");
+				}
 			}
 	    	
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");

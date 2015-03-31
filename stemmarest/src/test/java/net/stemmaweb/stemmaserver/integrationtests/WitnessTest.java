@@ -218,13 +218,13 @@ public class WitnessTest {
 	@Test
 	public void nextReadingTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		String readId;
+		long readId;
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("dn1");
+			readId = nodes.next().getId();
 
 			tx.success();
 		}
@@ -239,13 +239,13 @@ public class WitnessTest {
 	public void previousReadingTest() {
 
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		String readId;
+		long readId;
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("dn1");
+			readId = nodes.next().getId();
 
 			tx.success();
 		}

@@ -158,9 +158,9 @@ public class TraditionTest {
 	@Test
 	public void getReadingTest() throws JsonProcessingException {
 
-		String expected = "{\"dn1\":\"n2\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
+		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
-		Response resp = tradition.getReading(tradId, "n2");
+		Response resp = tradition.getReading(tradId, 16);
 
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);
@@ -173,7 +173,7 @@ public class TraditionTest {
 	@Test
 	public void duplicateReadingTest() {
 		// duplicate reading
-		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/n2/A/B,C")
+		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/B,C")
 				.type(MediaType.APPLICATION_JSON)
 				.get(ClientResponse.class);
 
@@ -183,19 +183,15 @@ public class TraditionTest {
 
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (w:WORD {dn1:'n2'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node nextNode = nodes.next();
+			Node nextNode = mockDbService.getNodeById(16);
 			original = Reading.readingModelFromNode(nextNode);
 			Iterable<Relationship> rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
 				assertEquals("A", relationship.getProperty("lexemes"));
 				
-			result = engine.execute("match (w:WORD {dn1:'n2.5'}) return w");
-			nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			nextNode = nodes.next();
+			
+			
+			nextNode = mockDbService.getNodeById(29);
 			duplicate = Reading.readingModelFromNode(nextNode);
 			rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
@@ -205,13 +201,13 @@ public class TraditionTest {
 		}
 
 		// test properties
-		assertEquals("n2", original.getDn1());
+		assertEquals("16", original.getDn1());
 		assertEquals("0", original.getDn2());
 		assertEquals("Default", original.getDn11());
 		assertEquals(2, original.getDn14().longValue());
 		assertEquals("april", original.getDn15());
 
-		assertEquals("n2.5", duplicate.getDn1());
+		assertEquals("29", duplicate.getDn1());
 		assertEquals("0", duplicate.getDn2());
 		assertEquals("Default", duplicate.getDn11());
 		assertEquals(2, duplicate.getDn14().longValue());
@@ -221,7 +217,7 @@ public class TraditionTest {
 	// TODO not fully implemented yet
 	@Test
 	public void mergeReadingsTest() {
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/n2/n4")
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/23")
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 		System.out.println(response);
 	}
@@ -229,7 +225,7 @@ public class TraditionTest {
 	// TODO not fully implemented yet
 	@Test
 	public void splitReadingTest() {
-		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/n2")
+		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/16")
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 		System.out.println(response);
 	}
@@ -241,9 +237,9 @@ public class TraditionTest {
 				.post(ClientResponse.class, jsonPayload);
 
 		RelationshipModel rel = new RelationshipModel();
-		rel.setSource("n13");
-		rel.setTarget("n24");
-		rel.setId("e2");
+		rel.setSource("16");
+		rel.setTarget("27");
+		rel.setId("36");
 		rel.setDe8("april");
 		rel.setDe6("no");
 		rel.setDe9("april");

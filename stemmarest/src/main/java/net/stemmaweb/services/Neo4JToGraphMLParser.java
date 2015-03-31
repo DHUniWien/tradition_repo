@@ -25,6 +25,7 @@ import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.org.apache.commons.collections.IteratorUtils;
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
@@ -331,47 +332,48 @@ public class Neo4JToGraphMLParser implements IResource
     			}
     		}
     		
-    		result = engine.execute("match (n:WORD) where n.id=~'"+ tradId + ".*' return n");
-    		Iterator<Node> nodesIt = result.columnAs("n");
-    		
-    		while(nodesIt.hasNext())
-    		{
-    			Node node = nodesIt.next();
-    			props = node.getPropertyKeys();
+    		result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
+			nodes = result.columnAs("s");
+			Node startNodeTrad = nodes.next();
+			
+			long nodeId = 0;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(startNodeTrad).nodes()) {
+				props = node.getPropertyKeys();
     			writer.writeStartElement("node");
+    			writer.writeAttribute("id", String.valueOf(node.getId()));
+    			writer.writeStartElement("data");
+    			writer.writeAttribute("key","dn1");
+    			writer.writeCharacters("n" + nodeId++);
+    			writer.writeEndElement();
         		for(String prop : props)
         		{
         			String val = prop;
         			
         			if(val!=null)
         			{
-	        			if(prop.equals("id"))
-	        			{
-	        				String[] id = node.getProperty("id").toString().split("_");
-	        				writer.writeAttribute("id",id[id.length-1]);
-	        			}
-	        			else
-	        			{
-	        				writer.writeStartElement("data");
-	        				writer.writeAttribute("key",val);
-	        				writer.writeCharacters(node.getProperty(prop).toString());
-	        				writer.writeEndElement();
-	        			}
+	        			writer.writeStartElement("data");
+	        			writer.writeAttribute("key",val);
+	        			writer.writeCharacters(node.getProperty(prop).toString());
+	        			writer.writeEndElement();
         			}
         		}
         		writer.writeEndElement(); // end node
-    		}
+			}
         		
     		String startNode = "";
     		String endNode = "";
     		String[] startId = null;
     		String[] endId = null;
     		String id = "";
-    		for ( Path position : db.traversalDescription()
+    		for ( Relationship rel : db.traversalDescription()
     		        .relationships( Relations.NORMAL,Direction.OUTGOING)
-    		        .traverse( graphNode ) )
+    		        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+    		        .traverse( graphNode ).relationships() )
     		{
-        		Relationship rel = position.lastRelationship();
+
         		if(rel!=null)
         		{
         			props = rel.getPropertyKeys();
@@ -385,15 +387,6 @@ public class Neo4JToGraphMLParser implements IResource
     	        				String[] id_string = rel.getProperty("id").toString().split("_");
     	        				id = id_string[id_string.length-1];
     	        				
-    	        				Iterable<Node> nodeIterable = position.nodes();
-    	        				
-    	        				@SuppressWarnings("unchecked")
-								List<Node> nds = IteratorUtils.toList(nodeIterable.iterator());
-    	        				startNode = nds.get(nds.size()-2).getProperty("id").toString();
-    	        				endNode = nds.get(nds.size()-1).getProperty("id").toString();
-    	        				startId = startNode.split("_");
-    	        				endId = endNode.split("_");
-    	        				
     	        			}
     	        			else if(prop.equals("lexemes"))
     	        			{
@@ -403,8 +396,8 @@ public class Neo4JToGraphMLParser implements IResource
     	        				{
 	    	        				writer.writeStartElement("edge");
 	    	        				
-	    	        				writer.writeAttribute("source", startId[startId.length-1]);
-	    	        				writer.writeAttribute("target", endId[endId.length-1]);
+	    	        				writer.writeAttribute("source", rel.getStartNode().getId() + "");
+	    	        				writer.writeAttribute("target", rel.getEndNode().getId() + "");
 	    	        				writer.writeAttribute("id",'e'+String.valueOf(id_int++));
 	    	        				
 	    	        				writer.writeStartElement("data");
@@ -437,73 +430,60 @@ public class Neo4JToGraphMLParser implements IResource
     		// writer.writeAttribute("parse.nodes", );
     		writer.writeAttribute("parse.order", "nodesfirst");
     		
-    		result = engine.execute("match (n:WORD) where n.id=~'"+ tradId + ".*' return n");
-    		nodesIt = result.columnAs("n");
-    		
-    		while(nodesIt.hasNext())
-    		{
-    			Node nextNode = nodesIt.next();
+    		nodeId = 0;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(startNodeTrad).nodes()) {
     			
-    			props = nextNode.getPropertyKeys();
+    			props = node.getPropertyKeys();
     			writer.writeStartElement("node");
-        		for(String prop : props)
-        		{
-        			String val = prop;
-        			
-        			if(val!=null)
-        			{
-	        			if(prop.equals("id"))
-	        			{
-	        				String[] id_arr = nextNode.getProperty("id").toString().split("_");
-	        				writer.writeAttribute("id",id_arr[id_arr.length-1]);
-	        			}
-	        			else if(prop.equals("dn1"))
-	        			{
-	        				writer.writeStartElement("data");
-	        				writer.writeAttribute("key","dn1");
-	        				writer.writeCharacters(nextNode.getProperty(prop).toString());
-	        				writer.writeEndElement();
-	        			}
-        			}
-        		}
+    			writer.writeAttribute("id", node.getId() + "");
+	        	writer.writeStartElement("data");
+	        	writer.writeAttribute("key","dn1");
+	        	writer.writeCharacters("n" + nodeId++);
+	        	writer.writeEndElement();
         		writer.writeEndElement(); // end node
     		}
     		
-    		result = engine.execute("match (n:WORD)-[r:RELATIONSHIP]->(e) where n.id=~'"+ tradId + ".*' return r");
-    		Iterator<Relationship> relIt = result.columnAs("r");
-
-    		while(relIt.hasNext())
-    		{
-    			Relationship nextRel = relIt.next();
-    			props = nextRel.getPropertyKeys();
-				writer.writeStartElement("edge");
-    			for(String prop : props)
-        		{
-        			String val = prop;			
-        			if(val!=null)
-        			{
-	        			if(prop.equals("id"))
-	        			{    				
-	        				startNode = nextRel.getStartNode().getProperty("id").toString();
-	        				endNode = nextRel.getEndNode().getProperty("id").toString();
-	        				startId = startNode.split("_");
-	        				endId = endNode.split("_");
-	        				String[] id_string = nextRel.getProperty("id").toString().split("_");
-	        				id = id_string[id_string.length-1];
-	        				writer.writeAttribute("source", startId[startId.length-1]);
-	        				writer.writeAttribute("target", endId[endId.length-1]);
-	        				writer.writeAttribute("id", id);
-	        			}    	
-            			else
-            			{
-	        				writer.writeStartElement("data");
-	        				writer.writeAttribute("key",val);
-	        				writer.writeCharacters(nextRel.getProperty(prop).toString());
-	        				writer.writeEndElement();
-            			}
-        			}
-        		}
-    			writer.writeEndElement(); // end edge
+			result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
+			nodes = result.columnAs("s");
+			startNodeTrad = nodes.next();
+			
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(startNodeTrad).nodes()) {
+				
+				Iterable<Relationship> rels = node.getRelationships(Relations.RELATIONSHIP,Direction.OUTGOING);
+				for(Relationship rel : rels)
+				{
+	    			props = rel.getPropertyKeys();
+					writer.writeStartElement("edge");
+	    			for(String prop : props)
+	        		{
+	        			String val = prop;			
+	        			if(val!=null)
+	        			{
+		        			if(prop.equals("id"))
+		        			{    				
+		        				startNode = rel.getStartNode().getId() + "";
+		        				endNode = rel.getEndNode().getId() + "";
+		        				writer.writeAttribute("source", startNode);
+		        				writer.writeAttribute("target", endNode);
+		        				writer.writeAttribute("id", rel.getProperty(prop).toString());
+		        			}    	
+	            			else
+	            			{
+		        				writer.writeStartElement("data");
+		        				writer.writeAttribute("key",val);
+		        				writer.writeCharacters(rel.getProperty(prop).toString());
+		        				writer.writeEndElement();
+	            			}
+	        			}
+	        		}
+	    			writer.writeEndElement(); // end edge
+				}
     		}
     		writer.writeEndElement(); // end graph
     		writer.writeEndElement(); // end graphml
