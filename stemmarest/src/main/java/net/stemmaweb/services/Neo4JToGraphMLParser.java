@@ -337,6 +337,7 @@ public class Neo4JToGraphMLParser implements IResource
 			Node startNodeTrad = nodes.next();
 			
 			long nodeId = 0;
+			long edgeId = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
@@ -382,15 +383,8 @@ public class Neo4JToGraphMLParser implements IResource
             			String val = prop;
             			if(val!=null)
             			{
-    	        			if(prop.equals("id"))
+    	        			if(prop.equals("lexemes"))
     	        			{
-    	        				String[] id_string = rel.getProperty("id").toString().split("_");
-    	        				id = id_string[id_string.length-1];
-    	        				
-    	        			}
-    	        			else if(prop.equals("lexemes"))
-    	        			{
-    	        				int id_int = Integer.parseInt(id.substring(1, id.length()));
     	        				String[] lexemes = (String[]) rel.getProperty(prop);
     	        				for(int i = 0; i < lexemes.length; i++)
     	        				{
@@ -398,7 +392,7 @@ public class Neo4JToGraphMLParser implements IResource
 	    	        				
 	    	        				writer.writeAttribute("source", rel.getStartNode().getId() + "");
 	    	        				writer.writeAttribute("target", rel.getEndNode().getId() + "");
-	    	        				writer.writeAttribute("id",'e'+String.valueOf(id_int++));
+	    	        				writer.writeAttribute("id","e" + edgeId++);
 	    	        				
 	    	        				writer.writeStartElement("data");
 	    	        				writer.writeAttribute("key","de12");
@@ -431,6 +425,7 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("parse.order", "nodesfirst");
     		
     		nodeId = 0;
+    		edgeId = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(Relations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
@@ -460,26 +455,20 @@ public class Neo4JToGraphMLParser implements IResource
 				{
 	    			props = rel.getPropertyKeys();
 					writer.writeStartElement("edge");
+					startNode = rel.getStartNode().getId() + "";
+    				endNode = rel.getEndNode().getId() + "";
+    				writer.writeAttribute("source", startNode);
+    				writer.writeAttribute("target", endNode);
+    				writer.writeAttribute("id", "e" + edgeId++);
 	    			for(String prop : props)
 	        		{
 	        			String val = prop;			
 	        			if(val!=null)
 	        			{
-		        			if(prop.equals("id"))
-		        			{    				
-		        				startNode = rel.getStartNode().getId() + "";
-		        				endNode = rel.getEndNode().getId() + "";
-		        				writer.writeAttribute("source", startNode);
-		        				writer.writeAttribute("target", endNode);
-		        				writer.writeAttribute("id", rel.getProperty(prop).toString());
-		        			}    	
-	            			else
-	            			{
-		        				writer.writeStartElement("data");
-		        				writer.writeAttribute("key",val);
-		        				writer.writeCharacters(rel.getProperty(prop).toString());
-		        				writer.writeEndElement();
-	            			}
+		        			writer.writeStartElement("data");
+		        			writer.writeAttribute("key",val);
+		        			writer.writeCharacters(rel.getProperty(prop).toString());
+		        			writer.writeEndElement();
 	        			}
 	        		}
 	    			writer.writeEndElement(); // end edge

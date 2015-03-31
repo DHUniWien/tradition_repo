@@ -363,6 +363,14 @@ public class GraphMLToNeo4JParser implements IResource
 				{
 					node.removeProperty("id");
 				}
+				for(Relationship relation : node.getRelationships())
+				{
+					if(relation.hasProperty("id"))
+					{
+						relation.removeProperty("id");
+					}
+					
+				}
 			}
 	    	
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
