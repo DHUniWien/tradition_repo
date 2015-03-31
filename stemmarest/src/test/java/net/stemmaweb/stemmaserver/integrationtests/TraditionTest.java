@@ -10,6 +10,7 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relations;
@@ -156,7 +157,7 @@ public class TraditionTest {
 
 		String expected = "{\"dn1\":\"n2\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":\"2\",\"dn15\":\"april\"}";
 
-		Response resp = tradition.getReading("1001", "n2");
+		Response resp = tradition.getReading(tradId, "n2");
 
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);
@@ -164,6 +165,50 @@ public class TraditionTest {
 
 		assertEquals(expected, json);
 
+	}
+
+	// TODO not fully implemented yet
+	@Test
+	public void duplicateReadingTest() {
+		String readId = "n2";
+
+		// duplicate reading
+		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/" + readId + "/A/B,C")
+				.type(MediaType.APPLICATION_JSON).post();
+
+		// read result from database
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'with'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			readId = (String) nodes.next().getProperty("dn1");
+
+			tx.success();
+		}
+		ReadingModel actualResponse = jerseyTest.resource()
+				.path("/witness/reading/previous/" + tradId + "/A/" + readId).get(ReadingModel.class);
+		assertEquals("april", actualResponse.getDn15());
+
+
+
+
+	}
+
+	// TODO not fully implemented yet
+	@Test
+	public void mergeReadingsTest() {
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/n2/n4")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+		System.out.println(response);
+	}
+
+	// TODO not fully implemented yet
+	@Test
+	public void splitReadingTest() {
+		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/n2")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+		System.out.println(response);
 	}
 
 	@Test

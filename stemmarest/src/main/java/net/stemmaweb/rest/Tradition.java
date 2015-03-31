@@ -165,7 +165,7 @@ public class Tradition implements IResource {
 	}
 
 	/**
-	 * Duplicates a reading in a specific tradition.
+	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
 	 * @param tradId
 	 * @param readId
@@ -173,8 +173,8 @@ public class Tradition implements IResource {
 	 * @param secondWitnesses
 	 * @return
 	 */
-	@GET
-	@Path("duplicate/{tradId}/{readId}")
+	@POST
+	@Path("duplicate/{tradId}/{readId}/{firstWitnesses}/{secondWitnesses}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
 			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
@@ -247,13 +247,14 @@ public class Tradition implements IResource {
 
 	/**
 	 * Merges two readings into one single reading in a specific tradition.
+	 * Opposite of duplicate
 	 * 
 	 * @param tradId
 	 * @param firstReadId
 	 * @param secondReadId
 	 * @return
 	 */
-	@GET
+	@POST
 	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") String firstReadId,
@@ -317,13 +318,14 @@ public class Tradition implements IResource {
 	}
 
 	/**
-	 * Splits up a reading into two readings in a specific tradition.
+	 * Splits up a single reading into several ones in a specific tradition.
+	 * Opposite of compress
 	 * 
 	 * @param tradId
 	 * @param readId
 	 * @return
 	 */
-	@GET
+	@POST
 	@Path("split/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {

@@ -186,7 +186,7 @@ public class TraditionUnitTest {
 
 	@Test
 	public void splitReadingContainingOnlyOneWordTest() {
-		Response response = tradition.splitReading("1001", "n2");
+		Response response = tradition.splitReading(tradId, "n2");
 
 		String expected = "A reading to be splitted has to contain at least 2 words";
 
@@ -195,7 +195,7 @@ public class TraditionUnitTest {
 
 	@Test
 	public void duplicateReadingTest() {
-		Response response = tradition.duplicateReading("1001", "n2", "A, B", "C");
+		Response response = tradition.duplicateReading(tradId, "n2", "A, B", "C");
 
 		String expected = "Successfully duplicated reading";
 
@@ -204,8 +204,8 @@ public class TraditionUnitTest {
 
 	@Test
 	public void mergeReadingsTest() {
-		tradition.duplicateReading("1001", "n22", "A, B", "C");
-		Response response = tradition.mergeReadings("1001", "n22", "n22.5");
+		tradition.duplicateReading(tradId, "n22", "A, B", "C");
+		Response response = tradition.mergeReadings(tradId, "n22", "n22.5");
 
 		String expected = "Successfully merged readings";
 
@@ -214,7 +214,7 @@ public class TraditionUnitTest {
 
 	@Test
 	public void mergeReadingsWithDifferentTextTest() {
-		Response response = tradition.mergeReadings("1001", "n2", "n3");
+		Response response = tradition.mergeReadings(tradId, "n2", "n3");
 
 		String expected = "Readings to be merged do not contain the same text";
 
