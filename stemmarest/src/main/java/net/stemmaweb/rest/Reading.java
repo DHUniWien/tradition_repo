@@ -42,7 +42,7 @@ public class Reading implements IResource {
 		if (node.hasProperty("dn13"))
 			rm.setDn13(node.getProperty("dn13").toString());
 		if (node.hasProperty("dn14"))
-			rm.setDn14(node.getProperty("dn14").toString());
+			rm.setDn14(Long.parseLong(node.getProperty("dn14").toString()));
 		if (node.hasProperty("dn15"))
 			rm.setDn15(node.getProperty("dn15").toString());
 

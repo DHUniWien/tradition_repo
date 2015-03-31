@@ -154,7 +154,7 @@ public class TraditionTest {
 	@Test
 	public void getReadingTest() throws JsonProcessingException {
 
-		String expected = "{\"dn1\":\"n2\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":\"2\",\"dn15\":\"april\"}";
+		String expected = "{\"dn1\":\"n2\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
 		Response resp = tradition.getReading("1001", "n2");
 
