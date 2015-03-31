@@ -22,7 +22,7 @@ public class ReadingModel {
 	private String dn11; // language
 	private String dn12; // lexemes
 	private String dn13; // normal_form
-	private String dn14; // rank
+	private Long dn14; // rank
 	private String dn15; // text
 
 	public String getDn0() {
@@ -109,10 +109,10 @@ public class ReadingModel {
 	public void setDn13(String dn13) {
 		this.dn13 = dn13;
 	}
-	public String getDn14() {
+	public Long getDn14() {
 		return dn14;
 	}
-	public void setDn14(String dn14) {
+	public void setDn14(Long dn14) {
 		this.dn14 = dn14;
 	}
 	public String getDn15() {

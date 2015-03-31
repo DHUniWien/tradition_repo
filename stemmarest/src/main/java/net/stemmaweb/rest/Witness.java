@@ -109,9 +109,9 @@ public class Witness implements IResource {
 
 		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
-			if (readingModel.getDn14().equals(startRank))
+			if (readingModel.getDn14()==Long.parseLong(startRank))
 				includeReading = 1;
-			if (readingModel.getDn14().equals(endRank)) {
+			if (readingModel.getDn14()==Long.parseLong(endRank)) {
 				witnessAsText += readingModel.getDn15();
 				includeReading = 0;
 			}
