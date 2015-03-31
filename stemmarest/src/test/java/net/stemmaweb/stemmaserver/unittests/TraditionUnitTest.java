@@ -205,7 +205,7 @@ public class TraditionUnitTest {
 	@Test
 	public void mergeReadingsTest() {
 		tradition.duplicateReading(tradId, 16, "A, B", "C");
-		Response response = tradition.mergeReadings(tradId, 16,23);
+		Response response = tradition.mergeReadings(tradId, 16, 29);
 
 		String expected = "Successfully merged readings";
 

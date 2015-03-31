@@ -188,9 +188,7 @@ public class TraditionTest {
 			Iterable<Relationship> rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
 				assertEquals("A", relationship.getProperty("lexemes"));
-				
-			
-			
+
 			nextNode = mockDbService.getNodeById(29);
 			duplicate = Reading.readingModelFromNode(nextNode);
 			rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);

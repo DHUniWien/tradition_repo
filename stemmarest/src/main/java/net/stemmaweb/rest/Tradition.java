@@ -224,6 +224,7 @@ public class Tradition implements IResource {
 
 		// copy reading
 		Reading.copyReadingProperties(originalReading, addedReading);
+		// System.out.println(addedReading.getId());
 
 		// add witnesses to relationships
 		// Outgoing
