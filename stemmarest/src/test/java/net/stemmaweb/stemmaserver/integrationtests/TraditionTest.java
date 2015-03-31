@@ -35,6 +35,7 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
@@ -173,7 +174,7 @@ public class TraditionTest {
 	@Test
 	public void duplicateReadingTest() {
 		// duplicate reading
-		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/B,C")
+		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/B,C")
 				.type(MediaType.APPLICATION_JSON)
 				.get(ClientResponse.class);
 
@@ -181,7 +182,6 @@ public class TraditionTest {
 		ReadingModel original = null;
 		ReadingModel duplicate = null;
 
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
 			Node nextNode = mockDbService.getNodeById(16);
 			original = Reading.readingModelFromNode(nextNode);
@@ -212,12 +212,50 @@ public class TraditionTest {
 		assertEquals("april", duplicate.getDn15());
 	}
 
-	// TODO not fully implemented yet
 	@Test
 	public void mergeReadingsTest() {
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/23")
+		// duplicate reading
+		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
+				.get(ClientResponse.class);
+		// merge readings again
+		jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-		System.out.println(response);
+
+		// read result from database
+		ReadingModel merged = null;
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			Node nextNode = mockDbService.getNodeById(16);
+			merged = Reading.readingModelFromNode(nextNode);
+			Iterable<Relationship> rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
+			for (Relationship relationship : rels)
+				assertEquals("ABC", relationship.getProperty("lexemes"));
+
+			tx.success();
+		}
+
+		// test properties
+		assertEquals("16", merged.getDn1());
+		assertEquals("0", merged.getDn2());
+		assertEquals("Default", merged.getDn11());
+		assertEquals(2, merged.getDn14().longValue());
+		assertEquals("april", merged.getDn15());
+	}
+
+	@Test(expected = NotFoundException.class)
+	public void mergeReadingsAbsenceOfMergedNodeTest() {
+		// duplicate reading
+		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
+				.get(ClientResponse.class);
+		// merge readings again
+		jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29").type(MediaType.APPLICATION_JSON)
+				.get(ClientResponse.class);
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			mockDbService.getNodeById(29);
+
+			tx.success();
+		}
 	}
 
 	// TODO not fully implemented yet
