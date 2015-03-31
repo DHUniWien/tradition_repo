@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relations;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -31,8 +32,10 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
@@ -167,39 +170,59 @@ public class TraditionTest {
 
 	}
 
-	// TODO not fully implemented yet
 	@Test
 	public void duplicateReadingTest() {
-		String readId = "n2";
-
 		// duplicate reading
-		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/" + readId + "/A/B,C")
-				.type(MediaType.APPLICATION_JSON).post();
+		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/n2/A/B,C")
+				.type(MediaType.APPLICATION_JSON)
+				.get(ClientResponse.class);
 
 		// read result from database
+		ReadingModel original = null;
+		ReadingModel duplicate = null;
+
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'with'}) return w");
+			ExecutionResult result = engine.execute("match (w:WORD {dn1:'n2'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			readId = (String) nodes.next().getProperty("dn1");
-
+			assertTrue(nodes.hasNext());
+			Node nextNode = nodes.next();
+			original = Reading.readingModelFromNode(nextNode);
+			Iterable<Relationship> rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
+			for (Relationship relationship : rels)
+				assertEquals("A", relationship.getProperty("lexemes"));
+				
+			result = engine.execute("match (w:WORD {dn1:'n2.5'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			nextNode = nodes.next();
+			duplicate = Reading.readingModelFromNode(nextNode);
+			rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
+			for (Relationship relationship : rels)
+				assertEquals("B,C", relationship.getProperty("lexemes"));
+			
 			tx.success();
 		}
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/previous/" + tradId + "/A/" + readId).get(ReadingModel.class);
-		assertEquals("april", actualResponse.getDn15());
 
+		// test properties
+		assertEquals("n2", original.getDn1());
+		assertEquals("0", original.getDn2());
+		assertEquals("Default", original.getDn11());
+		assertEquals(2, original.getDn14().longValue());
+		assertEquals("april", original.getDn15());
 
-
-
+		assertEquals("n2.5", duplicate.getDn1());
+		assertEquals("0", duplicate.getDn2());
+		assertEquals("Default", duplicate.getDn11());
+		assertEquals(2, duplicate.getDn14().longValue());
+		assertEquals("april", duplicate.getDn15());
 	}
 
 	// TODO not fully implemented yet
 	@Test
 	public void mergeReadingsTest() {
 		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/n2/n4")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 		System.out.println(response);
 	}
 
@@ -207,7 +230,7 @@ public class TraditionTest {
 	@Test
 	public void splitReadingTest() {
 		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/n2")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 		System.out.println(response);
 	}
 

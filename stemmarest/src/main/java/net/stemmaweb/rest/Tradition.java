@@ -173,7 +173,7 @@ public class Tradition implements IResource {
 	 * @param secondWitnesses
 	 * @return
 	 */
-	@POST
+	@GET
 	@Path("duplicate/{tradId}/{readId}/{firstWitnesses}/{secondWitnesses}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId,
@@ -254,7 +254,7 @@ public class Tradition implements IResource {
 	 * @param secondReadId
 	 * @return
 	 */
-	@POST
+	@GET
 	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") String firstReadId,
@@ -325,7 +325,7 @@ public class Tradition implements IResource {
 	 * @param readId
 	 * @return
 	 */
-	@POST
+	@GET
 	@Path("split/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") String readId) {
@@ -371,10 +371,10 @@ public class Tradition implements IResource {
 						}
 
 						Reading.copyReadingProperties(previousReading, newReading);
-						newReading.setProperty("dn15", splittedWords[i]);
 						newReading.setProperty("dn1", addedReadingId);
-						// set Rank to Rank of original reading and add .5
-						newReading.setProperty("dn14", previousReading.getProperty("dn14") + ".5");
+						newReading.setProperty("dn15", splittedWords[i]);
+						Long previousRank = (Long) previousReading.getProperty("dn14");
+						newReading.setProperty("dn14", previousRank + 1);
 
 						previousReading.createRelationshipTo(newReading, Relations.NORMAL);
 
