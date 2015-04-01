@@ -348,8 +348,6 @@ public class GraphMLToNeo4JParser implements IResource
 				leximes.clear();
 			}
 			
-			System.out.println("import finished");
-			
 			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
 			Iterator<Node> nodes = result.columnAs("s");
 			Node startNode = nodes.next();
@@ -371,7 +369,6 @@ public class GraphMLToNeo4JParser implements IResource
 					{
 						relation.removeProperty("id");
 					}
-					
 				}
 			}
 	    	
