@@ -52,7 +52,7 @@ public class Relation implements IResource {
     @Produces(MediaType.APPLICATION_JSON)
 	public Response create(RelationshipModel relationshipModel,
 			@PathParam("textId") String textId) {
-
+    	
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
     	Relationship relationshipAtoB = null;
     	try (Transaction tx = db.beginTx()) 
@@ -63,6 +63,7 @@ public class Relation implements IResource {
     		 * the id search is O(n) just go through all ids without care. And the 
     		 * 
     		 */
+    		System.out.println(relationshipModel.getSource());
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
@@ -79,8 +80,13 @@ public class Relation implements IResource {
         	relationshipAtoB.setProperty("de10", nullToEmptyString(relationshipModel.getDe10()));
         	
         	tx.success();
-    	} catch (Exception e){
-    		System.out.println(e.toString());
+    	} 
+    	catch (NotFoundException nfe) 
+    	{
+    		return Response.status(Response.Status.NOT_FOUND).tag(nfe.toString()).build();
+    	}
+    	catch (Exception e)
+    	{
     		return Response.serverError().build();
     	} finally {	
     		db.shutdown();
