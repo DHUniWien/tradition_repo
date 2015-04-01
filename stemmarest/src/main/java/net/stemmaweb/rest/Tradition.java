@@ -113,7 +113,7 @@ public class Tradition implements IResource {
 
 	private Traverser getReading(final Node reading, GraphDatabaseService db) {
 		TraversalDescription td = db.traversalDescription().breadthFirst()
-				.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
+				.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
 		return td.traverse(reading);
 	}
 
@@ -229,19 +229,19 @@ public class Tradition implements IResource {
 
 		// add witnesses to relationships
 		// Outgoing
-		Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL, Direction.OUTGOING);
+		Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
 		for (Relationship relationship : rels) {
 			relationship.setProperty("lexemes", firstWitnesses);
 			Node targetNode = relationship.getEndNode();
-			Relationship addedRelationship = addedReading.createRelationshipTo(targetNode, Relations.NORMAL);
+			Relationship addedRelationship = addedReading.createRelationshipTo(targetNode, ERelations.NORMAL);
 			addedRelationship.setProperty("lexemes", secondWitnesses);
 		}
 		// Incoming
-		rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
+		rels = originalReading.getRelationships(ERelations.NORMAL, Direction.INCOMING);
 		for (Relationship relationship : rels) {
 			relationship.setProperty("lexemes", firstWitnesses);
 			Node originNode = relationship.getStartNode();
-			Relationship addedRelationship = originNode.createRelationshipTo(addedReading, Relations.NORMAL);
+			Relationship addedRelationship = originNode.createRelationshipTo(addedReading, ERelations.NORMAL);
 			addedRelationship.setProperty("lexemes", secondWitnesses);
 		}
 	}
@@ -311,8 +311,8 @@ public class Tradition implements IResource {
 	}
 
 	private void copyRelationshipProperties(Node firstReading, Node secondReading, Direction direction) {
-		Relationship firstRel = firstReading.getSingleRelationship(Relations.NORMAL, direction);
-		Relationship secondRel = secondReading.getSingleRelationship(Relations.NORMAL, direction);
+		Relationship firstRel = firstReading.getSingleRelationship(ERelations.NORMAL, direction);
+		Relationship secondRel = secondReading.getSingleRelationship(ERelations.NORMAL, direction);
 		firstRel.setProperty("lexemes", firstRel.getProperty("lexemes").toString()
 				+ secondRel.getProperty("lexemes").toString());
 		secondRel.delete();
@@ -363,10 +363,10 @@ public class Tradition implements IResource {
 					for (int i = 1; i < splittedWords.length; i++) {
 						newReading = db.createNode();
 
-						Iterable<Relationship> rels = previousReading.getRelationships(Relations.NORMAL,
+						Iterable<Relationship> rels = previousReading.getRelationships(ERelations.NORMAL,
 								Direction.OUTGOING);
 						for (Relationship relationship : rels) {
-							newReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
+							newReading.createRelationshipTo(relationship.getEndNode(), ERelations.NORMAL);
 							relationship.delete();
 						}
 
@@ -375,7 +375,7 @@ public class Tradition implements IResource {
 						Long previousRank = (Long) previousReading.getProperty("dn14");
 						newReading.setProperty("dn14", previousRank + 1);
 
-						previousReading.createRelationshipTo(newReading, Relations.NORMAL);
+						previousReading.createRelationshipTo(newReading, ERelations.NORMAL);
 
 						previousReading = newReading;
 					}
@@ -474,11 +474,11 @@ public class Tradition implements IResource {
 			Node startNode = nodes.next();
 			
 			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
 				
-				Iterable<Relationship> rels = node.getRelationships(Relations.RELATIONSHIP,Direction.OUTGOING);
+				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
 				for(Relationship rel : rels)
 				{
 					RelationshipModel relMod = new RelationshipModel();
@@ -679,7 +679,7 @@ public class Tradition implements IResource {
 				return Response.status(Status.NOT_FOUND).entity("start node not found").build();
 
 			TraversalDescription td = db.traversalDescription().breadthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
+					.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
 
 			Traverser traverser = td.traverse(startNode);
 			for (org.neo4j.graphdb.Path path : traverser) {

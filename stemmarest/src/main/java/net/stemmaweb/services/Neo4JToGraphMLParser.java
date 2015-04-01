@@ -14,7 +14,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 
 import net.stemmaweb.rest.IResource;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -339,7 +339,7 @@ public class Neo4JToGraphMLParser implements IResource
 			long nodeId = 0;
 			long edgeId = 0;
 			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNodeTrad).nodes()) {
 				props = node.getPropertyKeys();
@@ -370,7 +370,7 @@ public class Neo4JToGraphMLParser implements IResource
     		String[] endId = null;
     		String id = "";
     		for ( Relationship rel : db.traversalDescription()
-    		        .relationships( Relations.NORMAL,Direction.OUTGOING)
+    		        .relationships( ERelations.NORMAL,Direction.OUTGOING)
     		        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
     		        .traverse( graphNode ).relationships() )
     		{
@@ -427,7 +427,7 @@ public class Neo4JToGraphMLParser implements IResource
     		nodeId = 0;
     		edgeId = 0;
 			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNodeTrad).nodes()) {
     			
@@ -446,11 +446,11 @@ public class Neo4JToGraphMLParser implements IResource
 			startNodeTrad = nodes.next();
 			
 			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNodeTrad).nodes()) {
 				
-				Iterable<Relationship> rels = node.getRelationships(Relations.RELATIONSHIP,Direction.OUTGOING);
+				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
 				for(Relationship rel : rels)
 				{
 	    			props = rel.getPropertyKeys();

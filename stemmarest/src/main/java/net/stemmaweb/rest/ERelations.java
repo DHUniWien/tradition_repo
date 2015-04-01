@@ -2,6 +2,6 @@ package net.stemmaweb.rest;
 
 
 import org.neo4j.graphdb.RelationshipType;
-public enum Relations implements RelationshipType{
+public enum ERelations implements RelationshipType{
 	NORMAL, RELATIONSHIP
 }
