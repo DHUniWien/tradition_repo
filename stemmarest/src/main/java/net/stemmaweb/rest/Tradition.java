@@ -79,7 +79,7 @@ public class Tradition implements IResource {
 
 		User user = new User();
 		if (!user.checkUserExists(textInfo.getOwnerId())) {
-			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id does not exist")
+			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
 
@@ -107,7 +107,7 @@ public class Tradition implements IResource {
 
 			} else {
 				// Tradition no found
-				return Response.status(Response.Status.NOT_FOUND).build();
+				return Response.status(Response.Status.NOT_FOUND).entity("Tradition not found").build();
 			}
 
 			tx.success();
