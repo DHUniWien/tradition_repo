@@ -9,7 +9,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -22,6 +25,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
+import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
@@ -31,6 +35,7 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
+import org.eclipse.persistence.exceptions.DatabaseException;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
@@ -173,17 +178,15 @@ public class Tradition implements IResource {
 	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
 	 * @param tradId
-	 * @param readId
-	 * @param firstWitnesses
-	 * @param secondWitnesses
+	 * @param duplicateModel
 	 * @return
 	 */
-	@GET
-	@Path("duplicate/{tradId}/{readId}/{firstWitnesses}/{secondWitnesses}")
+	@POST
+	@Path("duplicate/{tradId}")
+	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response duplicateReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId,
-			@PathParam("firstWitnesses") String firstWitnesses, @PathParam("secondWitnesses") String secondWitnesses) {
-
+	public Response duplicateReading(@PathParam("tradId") String tradId,
+			DuplicateModel duplicateModel) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node startNode = null;
@@ -195,18 +198,22 @@ public class Tradition implements IResource {
 		}
 
 		try (Transaction tx = db.beginTx()) {
-			boolean foundReading = false;
+			boolean foundReadings = false;
+			List<Long> readings = duplicateModel.getReadings();
 			Traverser traverser = getReading(startNode, db);
 			for (org.neo4j.graphdb.Path path : traverser) {
 				long id = path.endNode().getId();
-				if (id==readId) {
-					duplicateReading(firstWitnesses, secondWitnesses, db, path);
+				if (readings.contains(id)) {
+					duplicateReading(duplicateModel.getWitnesses(), db, path);
 
-					foundReading = true;
-					break;
+					readings.remove(id);
+					if (readings.isEmpty()) {
+						foundReadings = true;
+						break;
+					}
 				}
 			}
-			if (!foundReading)
+			if (!foundReadings)
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 
 			tx.success();
@@ -215,38 +222,59 @@ public class Tradition implements IResource {
 		} finally {
 			db.shutdown();
 		}
-		return Response.ok("Successfully duplicated reading").build();
+		return Response.ok("Successfully duplicated readings").build();
 	}
 
-	private void duplicateReading(String firstWitnesses, String secondWitnesses,
-			GraphDatabaseService db, org.neo4j.graphdb.Path path) {
-		Node originalReading;
-		Node addedReading;
-		// duplicating of reading happens here
-		addedReading = db.createNode();
-		originalReading = path.endNode();
+	private void duplicateReading(List<String> witnesses,
+			GraphDatabaseService db, org.neo4j.graphdb.Path path) throws DatabaseException {
+		Node addedReading = db.createNode();
+		Node originalReading = path.endNode();
 
 		// copy reading
 		Reading.copyReadingProperties(originalReading, addedReading);
-		// System.out.println(addedReading.getId());
+
+		// test if there are witnesses to be duplicated for which no witnesses
+		// in the readings relationships exist
+		List<String> allWitnesses = new LinkedList<String>();
+		String[] currentWitnesses;
+		Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL);
+		for (Relationship relationship : rels) {
+			currentWitnesses = (String[]) relationship.getProperty("lexemes");
+			for (String currentWitness : currentWitnesses)
+				if (!allWitnesses.contains(currentWitness))
+					allWitnesses.add(currentWitness);
+
+		}
+//		for (String newWitness : witnesses)
+//			if (!allWitnesses.contains(newWitness))
+//				throw new DataBaseException("The node to be duplicated has to be part of the new witnesses");
 
 		// add witnesses to relationships
-		// Outgoing
-		Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
-		for (Relationship relationship : rels) {
-			relationship.setProperty("lexemes", firstWitnesses);
-			Node targetNode = relationship.getEndNode();
-			Relationship addedRelationship = addedReading.createRelationshipTo(targetNode, ERelations.NORMAL);
-			addedRelationship.setProperty("lexemes", secondWitnesses);
-		}
 		// Incoming
 		rels = originalReading.getRelationships(ERelations.NORMAL, Direction.INCOMING);
-		for (Relationship relationship : rels) {
-			relationship.setProperty("lexemes", firstWitnesses);
-			Node originNode = relationship.getStartNode();
-			Relationship addedRelationship = originNode.createRelationshipTo(addedReading, ERelations.NORMAL);
-			addedRelationship.setProperty("lexemes", secondWitnesses);
-		}
+		for (Relationship originalRelationship : rels)
+			handleRelationships(witnesses, originalRelationship, originalRelationship.getStartNode(), addedReading);
+		// Outgoing
+		rels = originalReading.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
+		for (Relationship originalRelationship : rels)
+			handleRelationships(witnesses, originalRelationship, addedReading, originalRelationship.getEndNode());
+	}
+
+	private void handleRelationships(List<String> newWitnesses, Relationship originalRelationship, Node originNode,
+			Node targetNode) throws DataBaseException {
+		List<String> oldWitnesses = Arrays.asList((String[]) originalRelationship.getProperty("lexemes"));
+
+		for (String oldWitness : oldWitnesses)
+			if (newWitnesses.contains(oldWitness))
+				oldWitnesses.remove(oldWitness);
+
+		// if (oldWitnesses.isEmpty())
+		// throw new
+		// DataBaseException("The node to be duplicated has to have at least one witness.");
+
+		originalRelationship.setProperty("lexemes", oldWitnesses.toArray(new String[oldWitnesses.size()]));
+		Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+		addedRelationship.setProperty("lexemes", newWitnesses.toArray(new String[newWitnesses.size()]));
 	}
 
 	/**
@@ -258,7 +286,7 @@ public class Tradition implements IResource {
 	 * @param secondReadId
 	 * @return
 	 */
-	@GET
+	@POST
 	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") long firstReadId,
@@ -316,8 +344,14 @@ public class Tradition implements IResource {
 	private void copyRelationshipProperties(Node firstReading, Node secondReading, Direction direction) {
 		Relationship firstRel = firstReading.getSingleRelationship(ERelations.NORMAL, direction);
 		Relationship secondRel = secondReading.getSingleRelationship(ERelations.NORMAL, direction);
-		firstRel.setProperty("lexemes", firstRel.getProperty("lexemes").toString()
-				+ secondRel.getProperty("lexemes").toString());
+		String[] firstWitnesses = (String[]) firstRel.getProperty("lexemes");
+		String[] secondWitnesses = (String[]) secondRel.getProperty("lexemes");
+		String[] combinedWitnesses = new String[firstWitnesses.length + secondWitnesses.length];
+		for(int i = 0; i < firstWitnesses.length; i++)
+			combinedWitnesses[i] = firstWitnesses[i];
+		for(int i = 0; i < secondWitnesses.length; i++)
+			combinedWitnesses[firstWitnesses.length + i] = secondWitnesses[i];
+		firstRel.setProperty("lexemes", combinedWitnesses);
 		secondRel.delete();
 	}
 
@@ -329,7 +363,7 @@ public class Tradition implements IResource {
 	 * @param readId
 	 * @return
 	 */
-	@GET
+	@POST
 	@Path("split/{tradId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
@@ -424,8 +458,6 @@ public class Tradition implements IResource {
 				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
 
-			// This Block could not be replaced by the method getStartNode() but
-			// yet unclear why.
 			startNode = null;
 			try {
 				DatabaseService service = new DatabaseService(db);

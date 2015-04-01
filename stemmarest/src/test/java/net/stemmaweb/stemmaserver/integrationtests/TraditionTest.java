@@ -3,10 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
@@ -15,9 +12,9 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -48,6 +45,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
@@ -177,9 +175,10 @@ public class TraditionTest {
 	@Test
 	public void duplicateReadingTest() {
 		// duplicate reading
-		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/B,C")
+		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
+		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId)
 				.type(MediaType.APPLICATION_JSON)
-				.get(ClientResponse.class);
+				.post(ClientResponse.class, jsonPayload);
 
 		// read result from database
 		ReadingModel original = null;
@@ -190,39 +189,71 @@ public class TraditionTest {
 			original = Reading.readingModelFromNode(nextNode);
 			Iterable<Relationship> rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
-				assertEquals("A", relationship.getProperty("lexemes"));
+				assertEquals("A", ((String[]) relationship.getProperty("lexemes"))[0]);
+			assertEquals(16, nextNode.getId());
+			assertEquals("16", original.getDn1());
+			assertEquals("0", original.getDn2());
+			assertEquals("Default", original.getDn11());
+			assertEquals(2, original.getDn14().longValue());
+			assertEquals("april", original.getDn15());
 
 			nextNode = mockDbService.getNodeById(29);
 			duplicate = Reading.readingModelFromNode(nextNode);
 			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+			for (Relationship relationship : rels) {
+				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[0]);
+				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[1]);
+			}
+			assertEquals(29, nextNode.getId());
+			assertEquals("29", duplicate.getDn1());
+			assertEquals("0", duplicate.getDn2());
+			assertEquals("Default", duplicate.getDn11());
+			assertEquals(2, duplicate.getDn14().longValue());
+			assertEquals("april", duplicate.getDn15());
+
+
+			nextNode = mockDbService.getNodeById(18);
+			original = Reading.readingModelFromNode(nextNode);
+			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+
 			for (Relationship relationship : rels)
-				assertEquals("B,C", relationship.getProperty("lexemes"));
-			
+				assertEquals("A", ((String[]) relationship.getProperty("lexemes"))[0]);
+			assertEquals(18, nextNode.getId());
+			assertEquals("18", original.getDn1());
+			assertEquals("0", original.getDn2());
+			assertEquals("Default", original.getDn11());
+			assertEquals(16, original.getDn14().longValue());
+			assertEquals("unto", original.getDn15());
+
+			nextNode = mockDbService.getNodeById(30);
+			duplicate = Reading.readingModelFromNode(nextNode);
+			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+			for (Relationship relationship : rels) {
+				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[0]);
+				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[1]);
+			}
+			assertEquals(30, nextNode.getId());
+			assertEquals("30", duplicate.getDn1());
+			assertEquals("0", duplicate.getDn2());
+			assertEquals("Default", duplicate.getDn11());
+			assertEquals(16, duplicate.getDn14().longValue());
+			assertEquals("unto", duplicate.getDn15());
+
 			tx.success();
 		}
 
-		// test properties
-		assertEquals("16", original.getDn1());
-		assertEquals("0", original.getDn2());
-		assertEquals("Default", original.getDn11());
-		assertEquals(2, original.getDn14().longValue());
-		assertEquals("april", original.getDn15());
-
-		assertEquals("29", duplicate.getDn1());
-		assertEquals("0", duplicate.getDn2());
-		assertEquals("Default", duplicate.getDn11());
-		assertEquals(2, duplicate.getDn14().longValue());
-		assertEquals("april", duplicate.getDn15());
+		assertEquals(Status.OK, response.getClientResponseStatus());
 	}
 
 	@Test
 	public void mergeReadingsTest() {
 		// duplicate reading
-		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
-				.get(ClientResponse.class);
+		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
+		jerseyTest.resource().path("/tradition/duplicate/" + tradId).type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, jsonPayload);
 		// merge readings again
-		jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
-				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 		// read result from database
 		ReadingModel merged = null;
@@ -231,42 +262,54 @@ public class TraditionTest {
 			Node nextNode = mockDbService.getNodeById(16);
 			merged = Reading.readingModelFromNode(nextNode);
 			Iterable<Relationship> rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-			for (Relationship relationship : rels)
-				assertEquals("ABC", relationship.getProperty("lexemes"));
+			for (Relationship relationship : rels) {
+				assertEquals("A", ((String[]) relationship.getProperty("lexemes"))[0]);
+				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[1]);
+				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[2]);
+			}
+			assertEquals(16, nextNode.getId());
+			assertEquals("16", merged.getDn1());
+			assertEquals("0", merged.getDn2());
+			assertEquals("Default", merged.getDn11());
+			assertEquals(2, merged.getDn14().longValue());
+			assertEquals("april", merged.getDn15());
 
 			tx.success();
 		}
 
-		// test properties
-		assertEquals("16", merged.getDn1());
-		assertEquals("0", merged.getDn2());
-		assertEquals("Default", merged.getDn11());
-		assertEquals(2, merged.getDn14().longValue());
-		assertEquals("april", merged.getDn15());
+		assertEquals(Status.OK, response.getClientResponseStatus());
 	}
 
 	@Test(expected = NotFoundException.class)
 	public void mergeReadingsAbsenceOfMergedNodeTest() {
 		// duplicate reading
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
-				.get(ClientResponse.class);
+				.post(ClientResponse.class);
 		// merge readings again
-		jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29").type(MediaType.APPLICATION_JSON)
-				.get(ClientResponse.class);
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class);
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			mockDbService.getNodeById(29);
 
 			tx.success();
 		}
+
+		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
 	}
 
-	// TODO not fully implemented yet
+	// TODO not fully implemented yet waiting for compress to be implemented
 	@Test
 	public void splitReadingTest() {
+		// compress readings
+
+		// split reading again
 		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/16")
-				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 		System.out.println(response);
+
+		// assertEquals(Status.OK, response.getClientResponseStatus());
 	}
 
 	@Test
