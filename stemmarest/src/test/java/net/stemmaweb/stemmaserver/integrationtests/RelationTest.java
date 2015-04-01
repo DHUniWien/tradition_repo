@@ -5,20 +5,14 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import java.util.List;
-
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.ReturnIdModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -44,7 +38,6 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -242,7 +235,7 @@ public class RelationTest {
 	/**
 	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
 	 */
-	@Test
+	@Test(expected=NotFoundException.class)
 	public void removeRelationshipTestDH43(){
 		/*
 		 * Create a relationship
@@ -261,8 +254,77 @@ public class RelationTest {
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
-		//ClientResponse removalResponse =
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships/"+relationshipId).delete(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
+		try (Transaction tx = mockDbService.beginTx()) 
+    	{
+    		mockDbService.getRelationshipById(Long.parseLong(relationshipId));
+    	} 
+	}
+	
+	/**
+	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
+	 * Try to remove a relationship that does not exist
+	 */
+	@Test
+	public void removeRelationshipThatDoesNotExistTestDH43(){
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships/1337").delete(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+	}
+	
+	/**
+	 * Test the removal method by posting two nodes to /relation/{textid}/relationships/delete
+	 */
+	@Test(expected=NotFoundException.class)
+	public void removeRelationshipTestRemoveAllDH43(){
+		/*
+		 * Create two relationships between two nodes
+		 */
+		RelationshipModel relationship = new RelationshipModel();
+		String relationshipId1 = "";
+		String relationshipId2 = "";
+		relationship.setSource("16");
+		relationship.setTarget("24");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("april");
+		relationship.setDe9("showers");
+		relationship.setDe10("local");
+		
+		ClientResponse actualResponse1 = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		relationshipId1 = actualResponse1.getEntity(ReturnIdModel.class).getId();
+		
+		relationship = new RelationshipModel();
+		relationship.setSource("16");
+		relationship.setTarget("24");
+		relationship.setDe11("others");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("april");
+		relationship.setDe9("showers");
+		relationship.setDe10("local");
+		
+		ClientResponse actualResponse2 = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class).getId();
+		
+		/*
+		 * Create the model to remove
+		 */
+		RelationshipModel removeModel = new RelationshipModel();
+		removeModel.setSource("16");
+		removeModel.setTarget("24");
+		removeModel.setDe10("local");
+		
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships/delete").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,removeModel);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+		
+		try (Transaction tx = mockDbService.beginTx()) 
+    	{
+    		mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
+    		mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+    	} 
 	}
 	
 	/**
