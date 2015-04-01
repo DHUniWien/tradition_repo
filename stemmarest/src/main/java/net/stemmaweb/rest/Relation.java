@@ -1,6 +1,9 @@
 package net.stemmaweb.rest;
 
+import java.util.ArrayList;
+
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -10,19 +13,13 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.services.DatabaseService;
-
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.Traverser;
 
-import Exceptions.DataBaseException;
 
 /**
  * 
@@ -57,16 +54,19 @@ public class Relation implements IResource {
 			@PathParam("textId") String textId) {
 
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-    
+    	Relationship relationshipAtoB = null;
     	try (Transaction tx = db.beginTx()) 
     	{
-        	//Node readingA = getNodeByTradIdAndReadingId(textId, relationshipModel.getSource(), db);
-        	//Node readingB = getNodeByTradIdAndReadingId(textId, relationshipModel.getTarget(), db);
         	
+    		/*
+    		 * Currently search by id search because is much faster by measurement. Because 
+    		 * the id search is O(n) just go through all ids without care. And the 
+    		 * 
+    		 */
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
-        	Relationship relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
+        	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
         	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
 //        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
         	relationshipAtoB.setProperty("de1", nullToEmptyString(relationshipModel.getDe1()));
@@ -86,8 +86,89 @@ public class Relation implements IResource {
     		db.shutdown();
     	}
 
-		return Response.status(Response.Status.CREATED).build();
+		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
+    
+    
+    /***
+     *TODO needs clarification 
+     *
+     *DELETE Does not suport parameters according to RFC2616 9.7. So the method is here implemented 
+     *with post and {textId}/relationships/delete 
+     *source and target node as parameters like in https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271
+     */
+    /**
+     * Remove all like https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271)
+     *  in Relationships of type RELATIONSHIP between the two nodes.
+     * @param relationshipModel
+     * @param textId
+     * @return HTTP Response 404 when no node was found, 200 When relationships where removed
+     */
+    //@DELETE 
+    @POST
+    @Path("{textId}/relationships/delete")
+    @Consumes(MediaType.APPLICATION_JSON)
+	public Response delete(RelationshipModel relationshipModel,
+			@PathParam("textId") String textId) {
+
+    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	try (Transaction tx = db.beginTx()) 
+    	{
+        	
+    		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
+    		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
+    		
+    		Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATIONSHIP);
+
+    		Relationship relationshipAtoB = null;
+    		for (Relationship relationship : relationships) {
+    			if((relationship.getStartNode().equals(readingA)||relationship.getEndNode().equals(readingA)) &&
+    					relationship.getStartNode().equals(readingB)||relationship.getEndNode().equals(readingB)){
+    				relationshipAtoB = relationship;
+    			}
+			}
+    		
+    		if(relationshipAtoB != null)
+    			relationshipAtoB.delete();
+    		else 
+    			return Response.status(Response.Status.NOT_FOUND).build();
+    			
+        	tx.success();
+    	} catch (Exception e){
+    		System.out.println(e.toString());
+    		return Response.serverError().build();
+    	} finally {	
+    		db.shutdown();
+    	}
+
+		return Response.status(Response.Status.OK).build();
+	}
+    
+    /**
+     * Removes a relationship by ID
+     * @param relationshipId
+     * @param textId
+     * @return HTTP Response 404 when no Relationship was found with id, 200 when the Relationship was removed
+     */
+    @DELETE
+    @Path("{textId}/relationships/{relationshipId}")
+    public Response deleteById(@PathParam("relationshipId") String relationshipId,
+			@PathParam("textId") String textId) {
+    	
+    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	try (Transaction tx = db.beginTx()) 
+    	{
+    		Relationship relationship = db.getRelationshipById(Long.parseLong(relationshipId));
+    		relationship.delete();
+    		tx.success();
+    	} catch (NotFoundException e) {
+    		return Response.status(Response.Status.NOT_FOUND).build();
+    	}
+    	finally {
+    		db.shutdown();
+    	}
+    	return Response.ok().build();
+    }
     
     private String nullToEmptyString(String str){
     	if(str == null)
@@ -95,59 +176,4 @@ public class Relation implements IResource {
     	else 
     		return str;
     }
-    
-    /**
-     * 
-     * @param traditionId
-     * @param readingId
-     * @param db
-     * @return
-     */
-    private Node getNodeByTradIdAndReadingId(String traditionId, String readingId, GraphDatabaseService db)
-    {
-    	
-		Node reading = null;
-		Node startNode = null;
-		
-		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(traditionId);
-		} catch (DataBaseException e) {
-			return null;
-		}
-    	
-		try (Transaction tx = db.beginTx()) {
-			if (startNode.getId()==Integer.parseInt(readingId)) {
-				reading = startNode;
-			} else {
-				Traverser traverser = getReading(startNode, db);
-				for (org.neo4j.graphdb.Path path : traverser) {
-					long id = path.endNode().getId();
-					if (id==Integer.parseInt(readingId)) {
-						reading = path.endNode();
-						break;
-					}
-				}
-			}
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			//db.shutdown();
-		}
-		
-		return reading;
-    }
-    
-    /**
-     * 
-     * @param reading
-     * @param db
-     * @return
-     */
-	private Traverser getReading(final Node reading, GraphDatabaseService db) {
-		TraversalDescription td = db.traversalDescription().breadthFirst()
-				.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
-		return td.traverse(reading);
-	}
 }
