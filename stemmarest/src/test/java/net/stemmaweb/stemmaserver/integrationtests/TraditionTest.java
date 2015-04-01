@@ -472,7 +472,7 @@ public class TraditionTest {
 
 			assertTrue(tradition.getId().equals(tradId));
 			assertTrue(tradition.getName().equals("Tradition"));
-			//assertTrue
+			
 			tx.success();
 		}
 		
@@ -488,11 +488,33 @@ public class TraditionTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
+		/*
+		 * Test if user with id 42 has now the tradition
+		 */
 		result = null;
 		try (Transaction tx = mockDbService.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
-			assertTrue(tradIterator.hasNext());
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+
+			tx.success();
+
+		}
+		
+		/*
+		 * The user with id 1 has no tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(!tradIterator.hasNext());
 
 			tx.success();
 
