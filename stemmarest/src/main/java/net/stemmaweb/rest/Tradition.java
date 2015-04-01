@@ -75,7 +75,7 @@ public class Tradition implements IResource {
 	@Path("{textId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response create(TextInfoModel textInfo, @PathParam("textId") String textId) {
+	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
 
 		User user = new User();
 		if (!user.checkUserExists(textInfo.getOwnerId())) {
