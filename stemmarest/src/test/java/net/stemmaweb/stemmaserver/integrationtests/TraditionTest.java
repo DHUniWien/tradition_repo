@@ -485,8 +485,8 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("42");
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
-		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 		
 		/*
 		 * Test if user with id 42 has now the tradition
