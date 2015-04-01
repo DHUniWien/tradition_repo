@@ -1,7 +1,10 @@
 package net.stemmaweb.rest;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,6 +28,7 @@ import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -706,5 +710,45 @@ public class Tradition implements IResource {
 	private void deleteFile(String filename) {
 		File file = new File(filename);
 		file.delete();
+	}
+
+	/**
+	 * Returns GraphML file from specified tradition owned by user
+	 * 
+	 * @param userId
+	 * @param traditionName
+	 * @return XML data
+	 */
+	@GET
+	@Path("getdot/{tradId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getDot(@PathParam("tradId") String tradId) {
+		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		Neo4JToDotParser parser = new Neo4JToDotParser(db);
+		Response resp = parser.parseNeo4J(tradId);
+		
+		String filename = "upload/" + "output.dot";
+		
+		String everything = "";
+		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        while (line != null) {
+	            sb.append(line);
+	            sb.append(System.lineSeparator());
+	            line = br.readLine();
+	        }
+	        everything = sb.toString();
+	    } catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return Response.ok(everything).build();
 	}
 }

@@ -351,9 +351,9 @@ public class GraphMLToNeo4JParser implements IResource
 			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
 			Iterator<Node> nodes = result.columnAs("s");
 			Node startNode = nodes.next();
-			for (Node node : db.traversalDescription().depthFirst()
+			for (Node node : db.traversalDescription().breadthFirst()
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.uniqueness(Uniqueness.NODE_PATH)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
 				if(node.hasProperty("dn1"))
 				{
@@ -369,7 +369,6 @@ public class GraphMLToNeo4JParser implements IResource
 					{
 						relation.removeProperty("id");
 					}
-					
 				}
 			}
 	    	
