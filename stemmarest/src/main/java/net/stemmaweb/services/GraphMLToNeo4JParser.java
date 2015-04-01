@@ -19,7 +19,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -240,11 +240,11 @@ public class GraphMLToNeo4JParser implements IResource
 					        			}
 					        			if(graphNumber<=1)
 					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.NORMAL);
 					        			}
 					        			else
 					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.RELATIONSHIP);
+					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.RELATIONSHIP);
 					        			}
 					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
 					        		}
@@ -275,11 +275,11 @@ public class GraphMLToNeo4JParser implements IResource
 					        			}
 					        			if(graphNumber<=1)
 					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.NORMAL);
+					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.NORMAL);
 					        			}
 					        			else
 					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, Relations.RELATIONSHIP);
+					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.RELATIONSHIP);
 					        			}
 					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
 					        		}
@@ -302,7 +302,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        		
 			        		if(firstNode==1)
 			        		{
-			        			tradRootNode.createRelationshipTo(currNode, Relations.NORMAL);
+			        			tradRootNode.createRelationshipTo(currNode, ERelations.NORMAL);
 			        			firstNode++;
 			        		}
 			        		if(firstNode<1)
@@ -351,9 +351,9 @@ public class GraphMLToNeo4JParser implements IResource
 			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
 			Iterator<Node> nodes = result.columnAs("s");
 			Node startNode = nodes.next();
-			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING)
-					.uniqueness(Uniqueness.NODE_PATH)
+			for (Node node : db.traversalDescription().breadthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
 				if(node.hasProperty("dn1"))
 				{
@@ -369,13 +369,12 @@ public class GraphMLToNeo4JParser implements IResource
 					{
 						relation.removeProperty("id");
 					}
-					
 				}
 			}
 	    	
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
-	   	    userNode.createRelationshipTo(tradRootNode, Relations.NORMAL);
+	   	    userNode.createRelationshipTo(tradRootNode, ERelations.NORMAL);
 	   	    
 	   	    
 	   	    db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")

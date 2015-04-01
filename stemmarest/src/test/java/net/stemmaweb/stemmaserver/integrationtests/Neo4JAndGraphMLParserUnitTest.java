@@ -11,7 +11,7 @@ import javax.xml.stream.XMLStreamException;
 
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
@@ -74,7 +74,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
-			rootNode.createRelationshipTo(node, Relations.NORMAL);
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
     		tx.success();
     	}
     	

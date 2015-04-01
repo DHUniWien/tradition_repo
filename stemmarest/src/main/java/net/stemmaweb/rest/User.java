@@ -88,7 +88,7 @@ public class User implements IResource {
 			node.setProperty("id", userModel.getId());
 			node.setProperty("isAdmin", userModel.getIsAdmin());
 
-			rootNode.createRelationshipTo(node, Relations.NORMAL);
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 
 			tx.success();
 		} finally {

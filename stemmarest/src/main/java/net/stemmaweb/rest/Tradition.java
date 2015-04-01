@@ -1,7 +1,10 @@
 package net.stemmaweb.rest;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,6 +32,7 @@ import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import org.eclipse.persistence.exceptions.DatabaseException;
@@ -117,7 +121,7 @@ public class Tradition implements IResource {
 
 	private Traverser getReading(final Node reading, GraphDatabaseService db) {
 		TraversalDescription td = db.traversalDescription().breadthFirst()
-				.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
+				.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
 		return td.traverse(reading);
 	}
 
@@ -233,12 +237,13 @@ public class Tradition implements IResource {
 		// in the readings relationships exist
 		List<String> allWitnesses = new LinkedList<String>();
 		String[] currentWitnesses;
-		Iterable<Relationship> rels = originalReading.getRelationships(Relations.NORMAL);
+		Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL);
 		for (Relationship relationship : rels) {
 			currentWitnesses = (String[]) relationship.getProperty("lexemes");
 			for (String currentWitness : currentWitnesses)
 				if (!allWitnesses.contains(currentWitness))
 					allWitnesses.add(currentWitness);
+
 		}
 //		for (String newWitness : witnesses)
 //			if (!allWitnesses.contains(newWitness))
@@ -246,11 +251,11 @@ public class Tradition implements IResource {
 
 		// add witnesses to relationships
 		// Incoming
-		rels = originalReading.getRelationships(Relations.NORMAL, Direction.INCOMING);
+		rels = originalReading.getRelationships(ERelations.NORMAL, Direction.INCOMING);
 		for (Relationship originalRelationship : rels)
 			handleRelationships(witnesses, originalRelationship, originalRelationship.getStartNode(), addedReading);
 		// Outgoing
-		rels = originalReading.getRelationships(Relations.NORMAL, Direction.OUTGOING);
+		rels = originalReading.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
 		for (Relationship originalRelationship : rels)
 			handleRelationships(witnesses, originalRelationship, addedReading, originalRelationship.getEndNode());
 	}
@@ -268,7 +273,7 @@ public class Tradition implements IResource {
 		// DataBaseException("The node to be duplicated has to have at least one witness.");
 
 		originalRelationship.setProperty("lexemes", oldWitnesses.toArray(new String[oldWitnesses.size()]));
-		Relationship addedRelationship = originNode.createRelationshipTo(targetNode, Relations.NORMAL);
+		Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
 		addedRelationship.setProperty("lexemes", newWitnesses.toArray(new String[newWitnesses.size()]));
 	}
 
@@ -337,8 +342,8 @@ public class Tradition implements IResource {
 	}
 
 	private void copyRelationshipProperties(Node firstReading, Node secondReading, Direction direction) {
-		Relationship firstRel = firstReading.getSingleRelationship(Relations.NORMAL, direction);
-		Relationship secondRel = secondReading.getSingleRelationship(Relations.NORMAL, direction);
+		Relationship firstRel = firstReading.getSingleRelationship(ERelations.NORMAL, direction);
+		Relationship secondRel = secondReading.getSingleRelationship(ERelations.NORMAL, direction);
 		String[] firstWitnesses = (String[]) firstRel.getProperty("lexemes");
 		String[] secondWitnesses = (String[]) secondRel.getProperty("lexemes");
 		String[] combinedWitnesses = new String[firstWitnesses.length + secondWitnesses.length];
@@ -395,10 +400,10 @@ public class Tradition implements IResource {
 					for (int i = 1; i < splittedWords.length; i++) {
 						newReading = db.createNode();
 
-						Iterable<Relationship> rels = previousReading.getRelationships(Relations.NORMAL,
+						Iterable<Relationship> rels = previousReading.getRelationships(ERelations.NORMAL,
 								Direction.OUTGOING);
 						for (Relationship relationship : rels) {
-							newReading.createRelationshipTo(relationship.getEndNode(), Relations.NORMAL);
+							newReading.createRelationshipTo(relationship.getEndNode(), ERelations.NORMAL);
 							relationship.delete();
 						}
 
@@ -407,7 +412,7 @@ public class Tradition implements IResource {
 						Long previousRank = (Long) previousReading.getProperty("dn14");
 						newReading.setProperty("dn14", previousRank + 1);
 
-						previousReading.createRelationshipTo(newReading, Relations.NORMAL);
+						previousReading.createRelationshipTo(newReading, ERelations.NORMAL);
 
 						previousReading = newReading;
 					}
@@ -504,11 +509,11 @@ public class Tradition implements IResource {
 			Node startNode = nodes.next();
 			
 			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
 				
-				Iterable<Relationship> rels = node.getRelationships(Relations.RELATIONSHIP,Direction.OUTGOING);
+				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
 				for(Relationship rel : rels)
 				{
 					RelationshipModel relMod = new RelationshipModel();
@@ -709,7 +714,7 @@ public class Tradition implements IResource {
 				return Response.status(Status.NOT_FOUND).entity("start node not found").build();
 
 			TraversalDescription td = db.traversalDescription().breadthFirst()
-					.relationships(Relations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
+					.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
 
 			Traverser traverser = td.traverse(startNode);
 			for (org.neo4j.graphdb.Path path : traverser) {
@@ -737,5 +742,45 @@ public class Tradition implements IResource {
 	private void deleteFile(String filename) {
 		File file = new File(filename);
 		file.delete();
+	}
+
+	/**
+	 * Returns GraphML file from specified tradition owned by user
+	 * 
+	 * @param userId
+	 * @param traditionName
+	 * @return XML data
+	 */
+	@GET
+	@Path("getdot/{tradId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getDot(@PathParam("tradId") String tradId) {
+		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		Neo4JToDotParser parser = new Neo4JToDotParser(db);
+		Response resp = parser.parseNeo4J(tradId);
+		
+		String filename = "upload/" + "output.dot";
+		
+		String everything = "";
+		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        while (line != null) {
+	            sb.append(line);
+	            sb.append(System.lineSeparator());
+	            line = br.readLine();
+	        }
+	        everything = sb.toString();
+	    } catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return Response.ok(everything).build();
 	}
 }
