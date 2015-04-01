@@ -57,23 +57,44 @@ public class Relation implements IResource {
 			@PathParam("textId") String textId) {
 
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-    	
-    	Node readingA = getNodeByTradIdAndReadingId(textId, relationshipModel.getSource(), db);
-    	Node readingB = getNodeByTradIdAndReadingId(textId, relationshipModel.getTarget(), db);
-    	
-    	Relationship relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
-    	relationshipAtoB.setProperty("type", relationshipModel.getDe11());
-    	relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getDe0());
-    	relationshipAtoB.setProperty("alters_meaning", relationshipModel.getDe1());
-    	relationshipAtoB.setProperty("b_derivable_from_a", relationshipModel.getDe3());
-    	relationshipAtoB.setProperty("extra", relationshipModel.getDe5());
-    	relationshipAtoB.setProperty("is_significant", relationshipModel.getDe6());
-    	relationshipAtoB.setProperty("non_independent", relationshipModel.getDe7());
-    	relationshipAtoB.setProperty("reading_a", relationshipModel.getDe8());
-    	relationshipAtoB.setProperty("reading_b", relationshipModel.getDe9());
-    	
+    
+    	try (Transaction tx = db.beginTx()) 
+    	{
+        	//Node readingA = getNodeByTradIdAndReadingId(textId, relationshipModel.getSource(), db);
+        	//Node readingB = getNodeByTradIdAndReadingId(textId, relationshipModel.getTarget(), db);
+        	
+    		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
+    		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
+    		
+        	Relationship relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
+        	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
+//        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
+        	relationshipAtoB.setProperty("de1", nullToEmptyString(relationshipModel.getDe1()));
+//        	relationshipAtoB.setProperty("de3", nullToEmptyString(relationshipModel.getDe3()));
+//        	relationshipAtoB.setProperty("de4", nullToEmptyString(relationshipModel.getDe5()));
+        	relationshipAtoB.setProperty("de6", nullToEmptyString(relationshipModel.getDe6()));
+//        	relationshipAtoB.setProperty("de7", nullToEmptyString(relationshipModel.getDe7()));
+        	relationshipAtoB.setProperty("de8", nullToEmptyString(relationshipModel.getDe8()));
+        	relationshipAtoB.setProperty("de9", nullToEmptyString(relationshipModel.getDe9()));
+        	relationshipAtoB.setProperty("de10", nullToEmptyString(relationshipModel.getDe10()));
+        	
+        	tx.success();
+    	} catch (Exception e){
+    		System.out.println(e.toString());
+    		return Response.serverError().build();
+    	} finally {	
+    		db.shutdown();
+    	}
+
 		return Response.status(Response.Status.CREATED).build();
 	}
+    
+    private String nullToEmptyString(String str){
+    	if(str == null)
+    		return "";
+    	else 
+    		return str;
+    }
     
     /**
      * 
@@ -112,7 +133,7 @@ public class Relation implements IResource {
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			db.shutdown();
+			//db.shutdown();
 		}
 		
 		return reading;
