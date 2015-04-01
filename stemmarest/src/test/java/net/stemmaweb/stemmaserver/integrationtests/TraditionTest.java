@@ -420,7 +420,36 @@ public class TraditionTest {
 		
 	}
 	
+	/**
+	 * Test if it is posibible to change the user of a Tradition
+	 */
+	@Test
+	public void changeOwnerOfATraditionTest(){
+		
+		/*
+		 * Create a second user with id 42
+		 */
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Iterator<Node> nodes = result.columnAs("n");
+			Node rootNode = nodes.next();
 
+			Node node = mockDbService.createNode(Nodes.USER);
+			node.setProperty("id", "42");
+			node.setProperty("isAdmin", "1");
+
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
+			tx.success();
+		}
+
+		/*
+		 * Change the owner of the tradition 
+		 */
+		
+	}
+	
+	
 	/**
 	 * Shut down the jersey server
 	 * 
