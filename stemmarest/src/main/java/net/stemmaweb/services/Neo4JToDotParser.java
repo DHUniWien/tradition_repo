@@ -11,13 +11,12 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.rest.IResource;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
@@ -30,28 +29,36 @@ import Exceptions.DataBaseException;
  * @author sevi
  * 
  */
-public class Neo4JToDotParser implements IResource
+public class Neo4JToDotParser
 {
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	private GraphDatabaseService db;
+	
 	OutputStream out = null;
+
+	public Neo4JToDotParser(GraphDatabaseService db){
+		this.db = db;
+	}
 
 	public Response parseNeo4J(String tradId)
 	{
-		String filename = "upload/" + "output.dot";
 		
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
+		String filename = "upload/" + "output.dot";
+    	
+    	DatabaseService service = new DatabaseService(db);
+		Node startNode = service.getStartNode(tradId);
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
     	try (Transaction tx = db.beginTx()) 
     	{
-    		DatabaseService service = new DatabaseService(db);
-    		Node startNode = service.getStartNode(tradId);
+    		
     		
     		if(startNode==null)
     			return Response.status(Status.NOT_FOUND).build();
     		
+    		
     		File file = new File(filename);
+    		
     		file.createNewFile();
     		out = new FileOutputStream(file);
     		
@@ -60,13 +67,13 @@ public class Neo4JToDotParser implements IResource
     		long edgeId = 0;
     		String subgraph = "";
     		for (Node node : db.traversalDescription().breadthFirst()
-					.relationships(Relations.NORMAL,Direction.OUTGOING)
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
     			
     			write("n" + node.getId() + " [label=\"" + node.getProperty("dn15").toString() + "\"];\n");
     			
-    			for(Relationship rel : node.getRelationships(Direction.OUTGOING,Relations.NORMAL))
+    			for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.NORMAL))
     			{
 	    			if(rel!=null && rel.hasProperty("lexemes"))
 	    			{
@@ -83,7 +90,7 @@ public class Neo4JToDotParser implements IResource
 	    				write("n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[label=\""+ lex_str +"\";id=\"e"+ edgeId++ +"\"];\n");
 	    			}
     			}
-    			for(Relationship rel : node.getRelationships(Direction.OUTGOING, Relations.RELATIONSHIP))
+    			for(Relationship rel : node.getRelationships(Direction.OUTGOING, ERelations.RELATIONSHIP))
     			{
     				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[style=dotted;label=\""+ rel.getProperty("de11").toString() +"\";id=\"e"+ edgeId++ +"\"];\n";
     			}

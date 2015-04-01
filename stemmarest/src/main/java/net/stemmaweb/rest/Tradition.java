@@ -1,7 +1,10 @@
 package net.stemmaweb.rest;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -721,9 +724,31 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDot(@PathParam("tradId") String tradId) {
 		
-		Neo4JToDotParser parser = new Neo4JToDotParser();
-		parser.parseNeo4J(tradId);
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		Neo4JToDotParser parser = new Neo4JToDotParser(db);
+		Response resp = parser.parseNeo4J(tradId);
 		
-		return Response.ok().build();
+		String filename = "upload/" + "output.dot";
+		
+		String everything = "";
+		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        while (line != null) {
+	            sb.append(line);
+	            sb.append(System.lineSeparator());
+	            line = br.readLine();
+	        }
+	        everything = sb.toString();
+	    } catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return Response.ok(everything).build();
 	}
 }

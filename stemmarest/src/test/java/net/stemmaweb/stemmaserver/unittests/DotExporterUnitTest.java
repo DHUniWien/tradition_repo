@@ -3,28 +3,17 @@ package net.stemmaweb.stemmaserver.unittests;
 import static org.junit.Assert.*;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Iterator;
 
-import javax.jms.Session;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relations;
-import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
-import org.eclipse.persistence.exceptions.DatabaseException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,8 +33,6 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import Exceptions.DataBaseException;
-
-import com.sun.jersey.test.framework.JerseyTest;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DotExporterUnitTest {
@@ -99,7 +86,7 @@ public class DotExporterUnitTest {
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
-			rootNode.createRelationshipTo(node, Relations.NORMAL);
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
 
