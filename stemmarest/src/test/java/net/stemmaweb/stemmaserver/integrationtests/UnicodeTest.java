@@ -1,7 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.*;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 
 import org.junit.After;
 import org.junit.Before;
@@ -54,7 +54,7 @@ public class UnicodeTest {
 			node2 = graphDb.createNode();
 			node2.setProperty("name", "עוד בדיקה");
 			
-			relationship = node1.createRelationshipTo(node2, Relations.NORMAL);
+			relationship = node1.createRelationshipTo(node2, ERelations.NORMAL);
 			relationship.setProperty("type", "יחס");
 			tx.success();
 		}

@@ -9,7 +9,7 @@ import java.util.Iterator;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -100,7 +100,7 @@ public class TraditionUnitTest {
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
-			rootNode.createRelationshipTo(node, Relations.NORMAL);
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
 

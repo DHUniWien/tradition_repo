@@ -14,7 +14,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relations;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -111,7 +111,7 @@ public class TraditionTest {
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
-			rootNode.createRelationshipTo(node, Relations.NORMAL);
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
 
@@ -185,13 +185,13 @@ public class TraditionTest {
 		try (Transaction tx = mockDbService.beginTx()) {
 			Node nextNode = mockDbService.getNodeById(16);
 			original = Reading.readingModelFromNode(nextNode);
-			Iterable<Relationship> rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
+			Iterable<Relationship> rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
 				assertEquals("A", relationship.getProperty("lexemes"));
 
 			nextNode = mockDbService.getNodeById(29);
 			duplicate = Reading.readingModelFromNode(nextNode);
-			rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
+			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
 				assertEquals("B,C", relationship.getProperty("lexemes"));
 			
@@ -227,7 +227,7 @@ public class TraditionTest {
 		try (Transaction tx = mockDbService.beginTx()) {
 			Node nextNode = mockDbService.getNodeById(16);
 			merged = Reading.readingModelFromNode(nextNode);
-			Iterable<Relationship> rels = nextNode.getRelationships(Relations.NORMAL, Direction.BOTH);
+			Iterable<Relationship> rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels)
 				assertEquals("ABC", relationship.getProperty("lexemes"));
 
