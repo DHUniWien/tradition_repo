@@ -526,6 +526,25 @@ public class TraditionTest {
 	 */
 	@Test
 	public void changeOwnerOfATraditionTestWithWrongUserDH44(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		/* Preconditon
+		 * The user with id 1 has tradition
+		 */
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			
+			tx.success();
+		}
+		
 		/*
 		 * Change the owner of the tradition 
 		 */
@@ -538,6 +557,24 @@ public class TraditionTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 		assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
+	
+		/* PostCondition
+		 * The user with id 1 has still tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			
+			tx.success();
+		}
 	}
 	
 	/**
