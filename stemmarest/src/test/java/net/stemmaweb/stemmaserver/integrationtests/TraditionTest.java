@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -446,6 +447,14 @@ public class TraditionTest {
 		/*
 		 * Change the owner of the tradition 
 		 */
+		TextInfoModel textInfo = new TextInfoModel();
+		textInfo.setName("RenamedTraditionName");
+		textInfo.setLanguage("nital");
+		textInfo.setIsPublic("0");
+		textInfo.setOwnerId("42");
+		
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
 	}
 	
