@@ -13,6 +13,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -425,7 +426,7 @@ public class TraditionTest {
 	 * Test if it is posibible to change the user of a Tradition
 	 */
 	@Test
-	public void changeOwnerOfATraditionTest(){
+	public void changeOwnerOfATraditionTestDH44(){
 		
 		/*
 		 * Create a second user with id 42
@@ -445,6 +446,37 @@ public class TraditionTest {
 		}
 
 		/*
+		 * The user with id 42 has no tradition
+		 */
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(!tradIterator.hasNext());
+
+			tx.success();
+
+		}
+		
+		/*
+		 * The user with id 1 has tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			//assertTrue
+			tx.success();
+		}
+		
+		/*
 		 * Change the owner of the tradition 
 		 */
 		TextInfoModel textInfo = new TextInfoModel();
@@ -456,6 +488,15 @@ public class TraditionTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(tradIterator.hasNext());
+
+			tx.success();
+
+		}
 	}
 	
 	
