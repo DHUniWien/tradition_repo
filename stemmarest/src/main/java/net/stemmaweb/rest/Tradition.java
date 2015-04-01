@@ -25,6 +25,7 @@ import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -706,5 +707,23 @@ public class Tradition implements IResource {
 	private void deleteFile(String filename) {
 		File file = new File(filename);
 		file.delete();
+	}
+
+	/**
+	 * Returns GraphML file from specified tradition owned by user
+	 * 
+	 * @param userId
+	 * @param traditionName
+	 * @return XML data
+	 */
+	@GET
+	@Path("getdot/{tradId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getDot(@PathParam("tradId") String tradId) {
+		
+		Neo4JToDotParser parser = new Neo4JToDotParser();
+		parser.parseNeo4J(tradId);
+		
+		return Response.ok().build();
 	}
 }
