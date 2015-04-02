@@ -250,7 +250,7 @@ public class Tradition implements IResource {
 				}
 			}
 			if (!foundReadings)
-				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+				return Response.status(Status.NOT_FOUND).entity("no reading with this ids found: " + readings).build();
 
 			tx.success();
 		} catch (Exception e) {
@@ -265,6 +265,8 @@ public class Tradition implements IResource {
 			GraphDatabaseService db, org.neo4j.graphdb.Path path) throws DatabaseException {
 		Node addedReading = db.createNode();
 		Node originalReading = path.endNode();
+
+		System.out.println(addedReading.getId());
 
 		// copy reading
 		Reading.copyReadingProperties(originalReading, addedReading);
