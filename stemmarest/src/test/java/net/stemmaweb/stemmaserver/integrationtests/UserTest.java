@@ -123,10 +123,27 @@ public class UserTest {
 	@Test
 	public void createUserTest(){
 
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertFalse(nodes.hasNext());
+			tx.success();
+		}
+		
         String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
         ClientResponse returnJSON = jerseyTest.resource().path("/user/create")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 		assertEquals(Response.status(Response.Status.CREATED).build().getStatus(), returnJSON.getStatus());
+		
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertTrue(nodes.hasNext());
+			tx.success();
+		}
 	}
 	
 	
