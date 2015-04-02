@@ -75,6 +75,9 @@ public class GraphMLToNeo4JParser implements IResource
     	LinkedList<String> leximes = new LinkedList<String>();
     								// a round-trip store for witness names of a single relationship
     	int last_inserted_id = 0;
+    	
+    	String stemmata = ""; // holds the stemmatas for this graphml
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
     		
@@ -199,7 +202,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        		}
 			        		else if(map.get(attr).equals("stemmata"))
 			        		{
-			        			// the stemma tree is available as 'text' here
+			        			stemmata = text;
 			        		}
 			        		else
 			        		{
@@ -382,6 +385,8 @@ public class GraphMLToNeo4JParser implements IResource
 	   	    								.next()
 	   	    								.setProperty("LAST_INSERTED_TRADITION_ID", prefix.substring(0, prefix.length()-1));
 	   		
+	   	    
+	   	    
 			tx.success();
 		}
 	    catch(Exception e)
@@ -394,6 +399,17 @@ public class GraphMLToNeo4JParser implements IResource
     	{
     		db.shutdown();
     	}
+    	
+    	
+    	String[] graphs = stemmata.split("\\}");
+   	    for(String graph : graphs)
+   	    {
+   	    	DotToNeo4JParser parser = new DotToNeo4JParser();
+   	    	parser.parseDot(graph, last_inserted_id + "");
+   	    }
+   	    
+   	    db.shutdown();
+    	
     	return Response.status(Response.Status.OK).entity("{\"tradId\":" + last_inserted_id + "}").build();
 	}
 	

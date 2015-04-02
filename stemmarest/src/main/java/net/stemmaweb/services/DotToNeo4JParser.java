@@ -32,30 +32,34 @@ import Exceptions.DataBaseException;
  * @author sevi
  * 
  */
-public class DotToNeo4JParser
+public class DotToNeo4JParser implements IResource
 {
-	private GraphDatabaseService db;
-	
+	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	GraphDatabaseService db = null;
 	String dot = "";
 	List<Node> nodes = new ArrayList<Node>();
 
-	public DotToNeo4JParser(GraphDatabaseService db){
-		this.db = db;
-	}
-
 	public void parseDot(String dot, String tradId)
 	{	
+		db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		this.dot = dot;
     	
     	try (Transaction tx = db.beginTx()) 
     	{
     		while(nextObject(tradId));
-    			
-    		nodes.get(0).createRelationshipTo(nodes.get(1), ERelations.NORMAL);
+    		if(nodes.size()>0)	
+    			nodes.get(0).createRelationshipTo(nodes.get(1), ERelations.STEMMA);
     		tx.success();
     	}
-    	
-    	db.shutdown();
+    	catch(Exception e)
+    	{
+    		db.shutdown();
+    		e.printStackTrace();
+    	}
+    	finally
+    	{
+    		db.shutdown();
+    	}
 	}
 	
 	/**
@@ -84,7 +88,7 @@ public class DotToNeo4JParser
 					Node source = findNodeById(splitted[0]);
 					Node target = findNodeById(splitted[1]);
 					if(source!=null && target!=null)
-						source.createRelationshipTo(target, ERelations.NORMAL);
+						source.createRelationshipTo(target, ERelations.STEMMA);
 				}
 				else
 				{
@@ -97,7 +101,7 @@ public class DotToNeo4JParser
 					Node source = findNodeById(splitted[0]);
 					Node target = findNodeById(splitted[1]);
 					if(source!=null && target!=null)
-						source.createRelationshipTo(target, ERelations.NORMAL);
+						source.createRelationshipTo(target, ERelations.STEMMA);
 				}
 			}
 			else if(tmp.length()>0)
@@ -126,7 +130,7 @@ public class DotToNeo4JParser
 					nodes.add(node);
 				}
 			}
-			dot = dot.substring(i+2);
+			dot = dot.substring(i+1);
 		}
 		else if((i = dot.indexOf('{'))<dot.indexOf(';') && i>0)
 		{ // this holds something like ' graph "stemma" ' or 'digraph "stem23423" '
@@ -148,9 +152,9 @@ public class DotToNeo4JParser
 			
 			Node trad = db.findNodesByLabelAndProperty(Nodes.TRADITION, "id", tradId).iterator().next();
 			if(trad!=null)
-				trad.createRelationshipTo(node, ERelations.NORMAL);
+				trad.createRelationshipTo(node, ERelations.STEMMA);
 			nodes.add(node);
-			dot = dot.substring(i+2);
+			dot = dot.substring(i+1);
 		}
 		else
 		{
