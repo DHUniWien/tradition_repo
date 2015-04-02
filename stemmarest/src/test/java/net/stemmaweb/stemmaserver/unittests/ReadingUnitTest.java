@@ -1,19 +1,14 @@
-package net.stemmaweb.stemmaserver.integrationtests;
+package net.stemmaweb.stemmaserver.unittests;
 
 import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import java.util.List;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
@@ -36,7 +31,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -45,7 +39,7 @@ import com.sun.jersey.test.framework.JerseyTest;
  *
  */
 @RunWith(MockitoJUnitRunner.class)
-public class ReadingTest {
+public class ReadingUnitTest {
 	private String tradId;
 	/*
 	 * Create a Mock object for the dbFactory.
@@ -70,12 +64,7 @@ public class ReadingTest {
 	@InjectMocks
 	private Reading reading;
 
-	/*
-	 * JerseyTest is the test environment to Test api calls it provides a
-	 * grizzly http service
-	 */
-	private JerseyTest jerseyTest;
-
+	
 	@Before
 	public void setUp() throws Exception {
 		
@@ -143,29 +132,11 @@ public class ReadingTest {
 			tx.success();
 		}
 
-		/*
-		 * Create a JersyTestServer serving the Resource under test
-		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(reading).create();
-		jerseyTest.setUp();
+		
 	}
 	
-	@Test
-	public void allReadingsOfTraditionTest() {
-		String[] texts = { "when", "april", "with", "his", "showers", "sweet",
-				"with", "fruit", "the", "drought", "of", "march", "has",
-				"pierced", "unto", "the", "root" };
-		List<ReadingModel> listOfReadings = jerseyTest.resource()
-				.path("/reading/" + tradId)
-				.get(new GenericType<List<ReadingModel>>() {
-				});
-		assertEquals(26, listOfReadings.size());
-	/*	for (int i = 0; i < listOfReadings.size(); i++) {
-			assertEquals(texts[i], listOfReadings.get(i).getDn15());
-		}*/
-	}
-
+	
+	
 	@Test
 	public void randomNodeExistsTest(){
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
@@ -215,7 +186,6 @@ public class ReadingTest {
 	@After
 	public void tearDown() throws Exception {
 		mockDbService.shutdown();
-		jerseyTest.tearDown();
 	}
 
 }
