@@ -174,6 +174,41 @@ public class TraditionTest {
 		assertEquals(expected, json);
 
 	}
+	
+	@Test
+	public void getAllTraditionsTest()
+	{
+		// import a second tradition into the db
+		String filename = "";
+		if (OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else
+			filename = "src/TestXMLFiles/testTradition.xml";
+		
+		try {
+			importResource.parseGraphML(filename, "1");
+		} catch (FileNotFoundException f) {
+			// this error should not occur
+			assertTrue(false);
+		}
+		
+		TraditionModel trad1 = new TraditionModel();
+		trad1.setId("1001");
+		trad1.setName("Tradition");
+		TraditionModel trad2 = new TraditionModel();
+		trad2.setId("1002");
+		trad2.setName("Tradition");
+		
+		List<TraditionModel> traditions = jerseyTest.resource().path("/tradition/all")
+    			.get(new GenericType<List<TraditionModel>>(){});
+    	TraditionModel firstTradition = traditions.get(0);
+    	assertEquals(trad1.getId(), firstTradition.getId());
+    	assertEquals(trad1.getName(), firstTradition.getName());
+    	
+    	TraditionModel lastTradition = traditions.get(traditions.size()-1);
+    	assertEquals(trad2.getId(), lastTradition.getId());
+    	assertEquals(trad2.getName(), lastTradition.getName());
+	}
 
 	@Test
 	public void duplicateReadingTest() {

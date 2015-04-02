@@ -29,6 +29,7 @@ import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -172,6 +173,41 @@ public class Tradition implements IResource {
 			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 
 		return Response.ok(reading).build();
+	}
+	
+	@GET
+	@Path("all")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getAllTraditions()
+	{
+		List<TraditionModel> traditionList = new ArrayList<TraditionModel>();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ExecutionEngine engine = new ExecutionEngine(db);
+		
+		try (Transaction tx = db.beginTx()) 
+		{
+			ExecutionResult result = engine.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
+			Iterator<Node> traditions = result.columnAs("n");
+			while(traditions.hasNext())
+			{
+				Node trad = traditions.next();
+				TraditionModel tradModel = new TraditionModel();
+				if(trad.hasProperty("id"))
+					tradModel.setId(trad.getProperty("id").toString());
+				if(trad.hasProperty("dg1"))	
+					tradModel.setName(trad.getProperty("dg1").toString());
+				traditionList.add(tradModel);
+			}
+			tx.success();
+		} catch (Exception e) {
+			e.printStackTrace();
+			db.shutdown();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			db.shutdown();
+		}
+		
+		return Response.ok().entity(traditionList).build();
 	}
 
 	/**
