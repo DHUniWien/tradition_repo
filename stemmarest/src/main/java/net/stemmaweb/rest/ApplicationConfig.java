@@ -27,6 +27,7 @@ public class ApplicationConfig extends Application {
         s.add(Witness.class);
         s.add(User.class);
         s.add(Tradition.class);
+        s.add(Relation.class);
         if(!init)
         	initializeApp();
         

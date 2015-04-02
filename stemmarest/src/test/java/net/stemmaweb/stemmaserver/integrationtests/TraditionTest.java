@@ -12,6 +12,9 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -170,6 +173,41 @@ public class TraditionTest {
 
 		assertEquals(expected, json);
 
+	}
+	
+	@Test
+	public void getAllTraditionsTest()
+	{
+		// import a second tradition into the db
+		String filename = "";
+		if (OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else
+			filename = "src/TestXMLFiles/testTradition.xml";
+		
+		try {
+			importResource.parseGraphML(filename, "1");
+		} catch (FileNotFoundException f) {
+			// this error should not occur
+			assertTrue(false);
+		}
+		
+		TraditionModel trad1 = new TraditionModel();
+		trad1.setId("1001");
+		trad1.setName("Tradition");
+		TraditionModel trad2 = new TraditionModel();
+		trad2.setId("1002");
+		trad2.setName("Tradition");
+		
+		List<TraditionModel> traditions = jerseyTest.resource().path("/tradition/all")
+    			.get(new GenericType<List<TraditionModel>>(){});
+    	TraditionModel firstTradition = traditions.get(0);
+    	assertEquals(trad1.getId(), firstTradition.getId());
+    	assertEquals(trad1.getName(), firstTradition.getName());
+    	
+    	TraditionModel lastTradition = traditions.get(traditions.size()-1);
+    	assertEquals(trad2.getId(), lastTradition.getId());
+    	assertEquals(trad2.getName(), lastTradition.getName());
 	}
 
 	@Test
@@ -348,6 +386,63 @@ public class TraditionTest {
 	}
 	
 	@Test
+	public void getAllWitnessesTest() {
+		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, jsonPayload);
+
+		WitnessModel witA = new WitnessModel();
+		witA.setId("A");
+		WitnessModel witB = new WitnessModel();
+		witB.setId("B");
+		WitnessModel witC = new WitnessModel();
+		witC.setId("C");
+
+		List<WitnessModel> witnesses = jerseyTest.resource()
+				.path("/tradition/witness/" + tradId)
+				.get(new GenericType<List<WitnessModel>>() {
+				});
+		WitnessModel witLoaded0 = witnesses.get(0);
+		WitnessModel witLoaded1 = witnesses.get(1);
+		WitnessModel witLoaded2 = witnesses.get(2);
+
+
+		assertEquals(witA.getId(),witLoaded0.getId());
+		assertEquals(witB.getId(),witLoaded1.getId());
+		assertEquals(witC.getId(),witLoaded2.getId());
+		
+
+	}
+	/**
+	 * Test whether all readings are returned correctly
+	 */
+	@Test
+	public void getTraditionReadings(){
+	   
+    	ReadingModel readFirst = new ReadingModel();
+    	readFirst.setDn15("when");
+    	readFirst.setDn11("Default");
+    	readFirst.setDn14(new Long(1));
+    	
+    	ReadingModel readLast = new ReadingModel();
+    	readLast.setDn15("root");
+    	readLast.setDn11("Default");
+    	readLast.setDn14(new Long(1));
+    	
+    	
+    	List<ReadingModel> readings = jerseyTest.resource().path("/tradition/readings/" + tradId)
+    			.get(new GenericType<List<ReadingModel>>(){});
+    	ReadingModel firstReading = readings.get(0);
+    	assertEquals(readFirst.getDn15(), firstReading.getDn15());
+    	assertEquals(readFirst.getDn11(), firstReading.getDn11());
+    	
+    	ReadingModel lastReading = readings.get(readings.size()-1);
+    	assertEquals(readLast.getDn15(), lastReading.getDn15());
+    	assertEquals(readLast.getDn11(), lastReading.getDn11());
+    	
+	}
+	
+	@Test
 	public void getDot()
 	{
 		String str = jerseyTest.resource().path("/tradition/getdot/" + tradId).type(MediaType.APPLICATION_JSON).get(String.class);
@@ -420,7 +515,266 @@ public class TraditionTest {
 		
 	}
 	
+	/**
+	 * Test if it is posibible to change the user of a Tradition
+	 */
+	@Test
+	public void changeOwnerOfATraditionTestDH44(){
+		
+		/*
+		 * Create a second user with id 42
+		 */
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Iterator<Node> nodes = result.columnAs("n");
+			Node rootNode = nodes.next();
 
+			Node node = mockDbService.createNode(Nodes.USER);
+			node.setProperty("id", "42");
+			node.setProperty("isAdmin", "1");
+
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
+			tx.success();
+		}
+
+		/*
+		 * The user with id 42 has no tradition
+		 */
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(!tradIterator.hasNext());
+
+			tx.success();
+
+		}
+		
+		/*
+		 * The user with id 1 has tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			
+			tx.success();
+		}
+		
+		/*
+		 * Change the owner of the tradition 
+		 */
+		TextInfoModel textInfo = new TextInfoModel();
+		textInfo.setName("RenamedTraditionName");
+		textInfo.setLanguage("nital");
+		textInfo.setIsPublic("0");
+		textInfo.setOwnerId("42");
+		
+		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
+		
+		/*
+		 * Test if user with id 42 has now the tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+
+			tx.success();
+
+		}
+		
+		/*
+		 * The user with id 1 has no tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(!tradIterator.hasNext());
+
+			tx.success();
+
+		}
+	}
+	
+	/**
+	 * Test if there is the correct error when trying to change a tradition with an invalid userid
+	 */
+	@Test
+	public void changeOwnerOfATraditionTestWithWrongUserDH44(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		/* Preconditon
+		 * The user with id 1 has tradition
+		 */
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			
+			tx.success();
+		}
+		
+		/*
+		 * Change the owner of the tradition 
+		 */
+		TextInfoModel textInfo = new TextInfoModel();
+		textInfo.setName("RenamedTraditionName");
+		textInfo.setLanguage("nital");
+		textInfo.setIsPublic("0");
+		textInfo.setOwnerId("1337");
+		
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+		assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
+	
+		/* PostCondition
+		 * The user with id 1 has still tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			
+			tx.success();
+		}
+	}
+	
+	/**
+	 * Test if it is posibible to change the user of a Tradition with invalid traditionid
+	 */
+	@Test
+	public void changeOwnerOfATraditionTestWithInvalidTradidDH44(){
+		
+		/*
+		 * Create a second user with id 42
+		 */
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Iterator<Node> nodes = result.columnAs("n");
+			Node rootNode = nodes.next();
+
+			Node node = mockDbService.createNode(Nodes.USER);
+			node.setProperty("id", "42");
+			node.setProperty("isAdmin", "1");
+
+			rootNode.createRelationshipTo(node, ERelations.NORMAL);
+			tx.success();
+		}
+
+		/*
+		 * The user with id 42 has no tradition
+		 */
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(!tradIterator.hasNext());
+
+			tx.success();
+
+		}
+		
+		/*
+		 * The user with id 1 has tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+			
+			tx.success();
+		}
+		
+		/*
+		 * Change the owner of the tradition 
+		 */
+		TextInfoModel textInfo = new TextInfoModel();
+		textInfo.setName("RenamedTraditionName");
+		textInfo.setLanguage("nital");
+		textInfo.setIsPublic("0");
+		textInfo.setOwnerId("42");
+		
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+		assertEquals(removalResponse.getEntity(String.class),"Tradition not found");
+		
+		/*
+		 * Post condition nothing has changed
+		 * 
+		 */
+		
+		/*
+		 * Test if user with id 1 has still the old tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			Node tradNode = tradIterator.next();
+			TraditionModel tradition = new TraditionModel();
+			tradition.setId(tradNode.getProperty("id").toString());
+			tradition.setName(tradNode.getProperty("dg1").toString());
+
+			assertTrue(tradition.getId().equals(tradId));
+			assertTrue(tradition.getName().equals("Tradition"));
+
+			tx.success();
+
+		}
+		
+		/*
+		 * The user with id 42 has still no tradition
+		 */
+		result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			Iterator<Node> tradIterator = result.columnAs("n");
+			assertTrue(!tradIterator.hasNext());
+
+			tx.success();
+
+		}
+	}
+	
 	/**
 	 * Shut down the jersey server
 	 * 

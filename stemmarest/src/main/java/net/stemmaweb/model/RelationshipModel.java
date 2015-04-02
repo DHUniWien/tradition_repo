@@ -2,6 +2,7 @@ package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
+
 @XmlRootElement
 public class RelationshipModel {
 	
