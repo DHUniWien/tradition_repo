@@ -14,6 +14,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -349,6 +350,34 @@ public class TraditionTest {
 
 	}
 	
+	@Test
+	public void getAllWitnessesTest() {
+		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, jsonPayload);
+
+		WitnessModel witA = new WitnessModel();
+		witA.setId("A");
+		WitnessModel witB = new WitnessModel();
+		witB.setId("B");
+		WitnessModel witC = new WitnessModel();
+		witC.setId("C");
+
+		List<WitnessModel> witnesses = jerseyTest.resource()
+				.path("/tradition/witness/" + tradId)
+				.get(new GenericType<List<WitnessModel>>() {
+				});
+		WitnessModel witLoaded0 = witnesses.get(0);
+		WitnessModel witLoaded1 = witnesses.get(1);
+		WitnessModel witLoaded2 = witnesses.get(2);
+
+
+		assertEquals(witA.getId(),witLoaded0.getId());
+		assertEquals(witB.getId(),witLoaded1.getId());
+		assertEquals(witC.getId(),witLoaded2.getId());
+		
+
+	}
 	/**
 	 * Test whether all readings are returned correctly
 	 */
