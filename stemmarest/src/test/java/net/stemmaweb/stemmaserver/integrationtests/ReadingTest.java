@@ -81,9 +81,9 @@ public class ReadingTest {
 		
 		String filename = "";
 		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
+			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
 		else 
-			filename = "src/TestXMLFiles/testTradition.xml";
+			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
