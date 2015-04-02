@@ -279,7 +279,68 @@ public class UserTest {
 	 */
 	@Test
 	public void deleteInvalidUserTest(){
+		/*
+		 * Create User 1
+		 */
+		UserModel userModel = new UserModel();
+		userModel.setId("1");
+		userModel.setIsAdmin("0");
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
 		
+		/*
+		 * Creat a testtradition for user 1
+		 */
+	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
+    	try(Transaction tx = mockDbService.beginTx())
+    	{
+    		// Add the new ownership
+    		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
+    		engine.execute(createTradition);
+    		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
+    				+ "MATCH(tradition: TRADITION {id:'842'}) "
+    						+ "SET tradition.dg1 = 'TestTradition' "
+    								+ "SET tradition.public = '0' "
+    										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+    		engine.execute(createNewRelationQuery);
+    		
+    		tx.success();
+    	} 
+    	
+		
+    	
+    	/*
+    	 * Remove user 2 with all his traditions
+    	 */
+    	ClientResponse actualResponse = jerseyTest.resource().path("/user/2").delete(ClientResponse.class);
+    	assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+        
+    	/*
+    	 * Check if user 1 still exists
+    	 */
+		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+		Iterator<Node> nodes = result.columnAs("userId");
+		assertTrue(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition 842 still exists
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertTrue(nodes.hasNext());
+		
+		/*
+		 * Check if user 2 does not exist
+		 */
+		result = engine.execute("match (userId:USER {id:'2'}) return userId");
+		nodes = result.columnAs("userId");
+		assertFalse(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition 843 does not exist
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertFalse(nodes.hasNext());
 	}
 	
 	/**
