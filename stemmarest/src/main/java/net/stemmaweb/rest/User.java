@@ -144,7 +144,6 @@ public class User implements IResource {
 	 */
 	@DELETE
 	@Path("{userId}")
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response deleteUserById(@PathParam("userId") String userId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
