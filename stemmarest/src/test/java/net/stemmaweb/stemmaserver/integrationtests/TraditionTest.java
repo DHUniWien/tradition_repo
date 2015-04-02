@@ -349,6 +349,35 @@ public class TraditionTest {
 
 	}
 	
+	/**
+	 * Test whether all readings are returned correctly
+	 */
+	@Test
+	public void getTraditionReadings(){
+	   
+    	ReadingModel readFirst = new ReadingModel();
+    	readFirst.setDn15("when");
+    	readFirst.setDn11("Default");
+    	readFirst.setDn14(new Long(1));
+    	
+    	ReadingModel readLast = new ReadingModel();
+    	readLast.setDn15("root");
+    	readLast.setDn11("Default");
+    	readLast.setDn14(new Long(1));
+    	
+    	
+    	List<ReadingModel> readings = jerseyTest.resource().path("/tradition/readings/" + tradId)
+    			.get(new GenericType<List<ReadingModel>>(){});
+    	ReadingModel firstReading = readings.get(0);
+    	assertEquals(readFirst.getDn15(), firstReading.getDn15());
+    	assertEquals(readFirst.getDn11(), firstReading.getDn11());
+    	
+    	ReadingModel lastReading = readings.get(readings.size()-1);
+    	assertEquals(readLast.getDn15(), lastReading.getDn15());
+    	assertEquals(readLast.getDn11(), lastReading.getDn11());
+    	
+	}
+	
 	@Test
 	public void getDot()
 	{
