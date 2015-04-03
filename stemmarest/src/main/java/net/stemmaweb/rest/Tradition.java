@@ -414,7 +414,6 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
 
-		System.out.println("TEST");
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node startNode = null;
