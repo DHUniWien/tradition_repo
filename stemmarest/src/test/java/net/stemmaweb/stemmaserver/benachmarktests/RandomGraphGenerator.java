@@ -145,8 +145,8 @@ public class RandomGraphGenerator {
             				Node wordNode = db.createNode(Nodes.WORD);
 
             				wordNode.setProperty("dn15", loremIpsumArray[randomGenerator.nextInt(loremIpsumArray.length)]);
-            				wordNode.setProperty("dn14", u);
-            				wordNode.setProperty("dn2", 0);
+            				wordNode.setProperty("dn14", Integer.toString(u));
+            				wordNode.setProperty("dn2", "0");
             				wordNode.setProperty("dn11", "latin");
             				
             				nodesOfCurrentRank.add(wordNode);
