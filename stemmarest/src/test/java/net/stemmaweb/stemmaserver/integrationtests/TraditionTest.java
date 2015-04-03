@@ -290,7 +290,7 @@ public class TraditionTest {
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId).type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class, jsonPayload);
 		// merge readings again
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/39")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 		// read result from database
@@ -324,12 +324,12 @@ public class TraditionTest {
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class);
 		// merge readings again
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/39")
 				.type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class);
 
 		try (Transaction tx = mockDbService.beginTx()) {
-			mockDbService.getNodeById(29);
+			mockDbService.getNodeById(39);
 
 			tx.success();
 		}
