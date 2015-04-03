@@ -11,9 +11,11 @@ import java.nio.file.StandardCopyOption;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.apache.commons.io.FileUtils;
@@ -28,8 +30,6 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
@@ -44,9 +44,10 @@ import com.sun.jersey.test.framework.JerseyTest;
  *
  */
 @RunWith(MockitoJUnitRunner.class)
+
 @AxisRange(min = 0, max = 1)
-@BenchmarkMethodChart(filePrefix = "benchmark/benchmark-600Nodes")
-public class BenachmarkTests {
+@BenchmarkMethodChart(filePrefix = "benchmark/benchmarkTestGenerating")
+public abstract class BenachmarkTests {
 	@ClassRule
 	public static TemporaryFolder tempFolder = new TemporaryFolder();
 	
@@ -56,29 +57,10 @@ public class BenachmarkTests {
 
 	private User userResource = new User();
 	private Tradition traditionResource = new Tradition();
+	private Witness witnessResource = new Witness();
+	private Reading readingResoruce = new Reading();
 	
 	private JerseyTest jerseyTest;
-	
-	@BeforeClass
-	public static void prepareTheDatabase(){
-
-		try {
-			tempFolder.create();
-			File dbPathFile = new File("database");
-			Files.move(dbPathFile.toPath(), tempFolder.getRoot().toPath(), StandardCopyOption.REPLACE_EXISTING);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		/*
-		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
-		 */
-		RandomGraphGenerator rgg = new RandomGraphGenerator();
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase("database");
-		
-		rgg.role(db, 3, 2, 10, 10);
-		db.shutdown();
-	}
 	
 	@Before
 	public void setUp() throws Exception {
@@ -86,21 +68,25 @@ public class BenachmarkTests {
 		 * Create a JersyTestServer serving the Resource under test
 		 * 
 		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(userResource).addResource(traditionResource).create();
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+				.addResource(userResource)
+				.addResource(traditionResource)
+				.addResource(witnessResource)
+				.addResource(readingResoruce).create();
 		jerseyTest.setUp();
 	}
 	
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
-	public void getUserByIdBenchmark(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/user/1").get(ClientResponse.class);
+	public void getUserById(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/0").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
-	public void getTraditionsOfAUserBenchmark(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/user/traditions/1").get(ClientResponse.class);
+	public void getTraditionsOfAUser(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/traditions/0").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -118,6 +104,40 @@ public class BenachmarkTests {
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getAllReadingsOfATradition(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/readings/1001").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+//	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+//	@Test
+//	public void getAReading(){
+//		ClientResponse actualResponse = jerseyTest.resource().path("/reading/1001/20").get(ClientResponse.class);
+//		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+//	}
+//	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getAWitnessAsString(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/string/1001/W0").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getAWitnessFromRankToRank(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/string/1001/W0/30/80").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getAWitnessAsList(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/list/1001/W0").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
 	/**
 	 * Shut down the jersey server
 	 * @throws Exception
@@ -127,17 +147,6 @@ public class BenachmarkTests {
 		jerseyTest.tearDown();
 	}
 	
-	@AfterClass 
-	public static void shutDown(){
-		try {
-			
-			File dbPathFile = new File("database");
-			FileUtils.deleteDirectory(dbPathFile);
-			Files.move(tempFolder.getRoot().toPath(), dbPathFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
+
 
 }
