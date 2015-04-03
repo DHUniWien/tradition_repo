@@ -145,4 +145,24 @@ public class DatabaseService {
     		tx.success();
     	} 
 	}
+	
+	/**
+	 * This method can be used to determine whether a user with given Id exists
+	 * in the DB
+	 * 
+	 * @param userId
+	 * @param db
+	 * @return
+	 */
+	public static boolean checkIfUserExists(String userId, GraphDatabaseService db) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine.execute("match (userId:USER {id:'" + userId + "'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			if (nodes.hasNext())
+				return true;
+			tx.success();
+		} 
+		return false;
+	}
 }

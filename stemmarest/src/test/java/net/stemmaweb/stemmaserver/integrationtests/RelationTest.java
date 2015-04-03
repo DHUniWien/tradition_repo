@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
+
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -13,6 +14,7 @@ import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
+import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -64,6 +66,7 @@ public class RelationTest {
 	 * The Resource under test. The mockDbFactory will be injected into this
 	 * resource.
 	 */
+	
 	@InjectMocks
 	private GraphMLToNeo4JParser importResource;
 

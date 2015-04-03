@@ -17,6 +17,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
+import net.stemmaweb.services.DatabaseService;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -49,7 +50,10 @@ public class User implements IResource {
 	 * 
 	 * @param userId
 	 * @return
+	 * 
+	 * @deprecated Use  DatabaseService.checkIfUserExists(String userId, GraphDatabaseService db) instead
 	 */
+	@Deprecated
 	public boolean checkUserExists(String userId) {
 		boolean userExists = false;
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -80,12 +84,12 @@ public class User implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response create(UserModel userModel) {
 
-		if (checkUserExists(userModel.getId())) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
 			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists")
 					.build();
 		}
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult rootNodeSearch = engine.execute("match (n:ROOT) return n");

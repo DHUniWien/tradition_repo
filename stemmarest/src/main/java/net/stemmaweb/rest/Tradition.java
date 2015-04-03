@@ -81,13 +81,13 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
 
-		User user = new User();
-		if (!user.checkUserExists(textInfo.getOwnerId())) {
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		if (DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
