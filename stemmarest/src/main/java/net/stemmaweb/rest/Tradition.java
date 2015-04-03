@@ -253,8 +253,10 @@ public class Tradition implements IResource {
 					}
 				}
 			}
-			if (!foundReadings)
+			if (!foundReadings) {
+				db.shutdown();
 				return Response.status(Status.NOT_FOUND).entity("no reading with this ids found: " + readings).build();
+			}
 
 			tx.success();
 		} catch (Exception e) {
@@ -364,9 +366,11 @@ public class Tradition implements IResource {
 				return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
 
 			if (!firstReading.getProperty("dn15").toString()
-					.equalsIgnoreCase(secondReading.getProperty("dn15").toString()))
+					.equalsIgnoreCase(secondReading.getProperty("dn15").toString())) {
+				db.shutdown();
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("Readings to be merged do not contain the same text").build();
+			}
 
 			// merging of readings happens here
 			copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
@@ -433,9 +437,12 @@ public class Tradition implements IResource {
 
 					String oldText = originalReading.getProperty("dn15").toString();
 					String[] splittedWords = oldText.split("\\s+");
-					if (splittedWords.length < 2)
+					if (splittedWords.length < 2) {
+						db.shutdown();
 						return Response.status(Status.INTERNAL_SERVER_ERROR)
 								.entity("A reading to be splitted has to contain at least 2 words").build();
+					}
+
 					originalReading.setProperty("dn15", splittedWords[0]);
 
 					Node previousReading = originalReading;
