@@ -417,6 +417,8 @@ public class Tradition implements IResource {
 			DatabaseService service = new DatabaseService(db);
 			startNode = service.getStartNode(tradId);
 		} catch (DataBaseException e) {
+			System.out.println(e.getMessage());
+			System.out.println("databaseexception");
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
 
@@ -463,11 +465,13 @@ public class Tradition implements IResource {
 					break;
 				}
 			}
-			if (!foundReading)
+			if (!foundReading) {
+				System.out.println("if");
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-
+			}
 			tx.success();
 		} catch (Exception e) {
+			System.out.println("catch");
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		} finally {
 			db.shutdown();

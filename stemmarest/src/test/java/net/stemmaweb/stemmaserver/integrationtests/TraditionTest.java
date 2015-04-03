@@ -337,19 +337,6 @@ public class TraditionTest {
 		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
 	}
 
-	// TODO not fully implemented yet waiting for compress to be implemented
-	@Test
-	public void splitReadingTest() {
-		// compress readings
-
-		// split reading again
-		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/16")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-		System.out.println(response);
-
-		// assertEquals(Status.OK, response.getClientResponseStatus());
-	}
-
 	@Test
 	public void getAllRelationshipsTest() {
 		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
