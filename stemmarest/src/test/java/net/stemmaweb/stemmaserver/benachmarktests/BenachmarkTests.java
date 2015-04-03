@@ -125,12 +125,12 @@ public abstract class BenachmarkTests {
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
-	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
-	@Test
-	public void getAWitnessFromRankToRank(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/witness/string/1001/W0/30/80").get(ClientResponse.class);
-		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
-	}
+//	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+//	@Test
+//	public void getAWitnessFromRankToRank(){
+//		ClientResponse actualResponse = jerseyTest.resource().path("/witness/string/1001/W0/30/80").get(ClientResponse.class);
+//		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+//	}
 	
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test

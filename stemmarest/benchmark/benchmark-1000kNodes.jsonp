@@ -1,0 +1,23 @@
+receiveJsonpData({
+"cols": [
+{"label": "method", "type": "string"},
+{"label": "Average time [s]", "type": "number"},
+{"label": "StdDev", "type": "number"},
+{"label": "GC time [s]", "type": "number"},
+{"label": "GC average [s]", "type": "number"},
+{"label": "StdDev", "type": "number"},
+{"label": "GC calls", "type": "number"},
+{"label": "benchmark rounds", "type": "number"},
+{"label": "warmup rounds", "type": "number"},
+{"label": "Total benchmark time", "type": "number"},
+{"label": "Total warmup time", "type": "number"}
+],
+"rows": [
+{"c": [{"v": "getAWitnessAsList"}, {"v": 0.25}, {"v": 0.02}, {"v": 0.03}, {"v": 0.0}, {"v": 0.0}, {"v": 2}, {"v": 15}, {"v": 5}, {"v": 3.81}, {"v": 1.77}]},
+{"c": [{"v": "getAcompleteTradition"}, {"v": 10.14}, {"v": 0.67}, {"v": 30.58}, {"v": 0.0}, {"v": 0.0}, {"v": 151}, {"v": 15}, {"v": 5}, {"v": 152.1}, {"v": 52.81}]},
+{"c": [{"v": "getAllWitnessesOfATradition"}, {"v": 0.21}, {"v": 0.02}, {"v": 0.11}, {"v": 0.0}, {"v": 0.0}, {"v": 3}, {"v": 15}, {"v": 5}, {"v": 3.16}, {"v": 1.18}]},
+{"c": [{"v": "getAllReadingsOfATradition"}, {"v": 0.21}, {"v": 0.03}, {"v": 0.05}, {"v": 0.0}, {"v": 0.0}, {"v": 2}, {"v": 15}, {"v": 5}, {"v": 3.11}, {"v": 1.17}]},
+{"c": [{"v": "getTraditionsOfAUser"}, {"v": 0.28}, {"v": 0.06}, {"v": 0.07}, {"v": 0.0}, {"v": 0.0}, {"v": 3}, {"v": 15}, {"v": 5}, {"v": 4.15}, {"v": 1.12}]},
+{"c": [{"v": "getUserById"}, {"v": 0.17}, {"v": 0.01}, {"v": 0.04}, {"v": 0.0}, {"v": 0.0}, {"v": 2}, {"v": 15}, {"v": 5}, {"v": 2.52}, {"v": 1.18}]},
+{"c": [{"v": "getAWitnessAsString"}, {"v": 0.21}, {"v": 0.01}, {"v": 0.05}, {"v": 0.0}, {"v": 0.0}, {"v": 2}, {"v": 15}, {"v": 5}, {"v": 3.22}, {"v": 1.22}]}
+]});
