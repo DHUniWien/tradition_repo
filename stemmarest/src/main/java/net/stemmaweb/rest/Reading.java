@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 
 import javax.ws.rs.Consumes;
@@ -142,18 +143,17 @@ public class Reading implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsAsList(startNode, db);
+		readingModels = getAllReadingsAsSortedList(startNode, db);
 
 		db.shutdown();
 		return Response.ok(readingModels).build();
 	}
 
-	private ArrayList<ReadingModel> getAllReadingsAsList(Node startNode,
+	private ArrayList<ReadingModel> getAllReadingsAsSortedList(Node startNode,
 			GraphDatabaseService db) {
 
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -166,22 +166,60 @@ public class Reading implements IResource {
 					.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
 					.nodes()) {
 				ReadingModel tempReading = Reading.readingModelFromNode(node);
-
-				if (readingModels.size() == 0) {
-					readingModels.add(tempReading);
-				} else {
-					// sort the list of reading by rank
-					int i = readingModels.size() - 1;
-					while (readingModels.get(i).getDn14() > tempReading
-							.getDn14() && i != 0) {
-						i--;
-					}
-					readingModels.add(i, tempReading);
-				}
-			}
+				readingModels.add(tempReading);
+				/*
+				 * if (readingModels.size() == 0) {
+				 * readingModels.add(tempReading); } else { // sort the list of
+				 * reading by rank int i = readingModels.size() - 1; while
+				 * (readingModels.get(i).getDn14() > tempReading .getDn14() && i
+				 * != 0) { i--; } readingModels.add(i, tempReading); }
+				 */}
 			tx.success();
 		}
+		Collections.sort(readingModels);
 		return readingModels;
 	}
 
+	@GET
+	@Path("identical/{tradId}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getIdenticalReadings(@PathParam("tradId") String tradId) {
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+		readingModels = getAllReadingsAsSortedList(startNode, db);
+
+		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+		identicalReadings = getIdenticalReadingsAsList(readingModels);
+
+		if (identicalReadings.size() == 0)
+			return Response.status(Status.NOT_FOUND)
+					.entity("no identical readings were found").build();
+
+		return Response.ok(identicalReadings).build();
+	}
+
+	private ArrayList<ReadingModel> getIdenticalReadingsAsList(
+			ArrayList<ReadingModel> readingModels) {
+		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+
+		for (int i = 0; i < readingModels.size() - 2; i++) {
+			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
+					.getDn14() && i + 1 < readingModels.size()) {
+				if (readingModels.get(i).getDn15()
+						.equals(readingModels.get(i + 1).getDn15())) {
+					identicalReadings.add(readingModels.get(i));
+					identicalReadings.add(readingModels.get(i + 1));
+				}
+				i++;
+			}
+		}
+		return identicalReadings;
+	}
 }

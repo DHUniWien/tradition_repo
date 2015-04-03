@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 @JsonInclude(Include.NON_NULL)
-public class ReadingModel {
+public class ReadingModel implements Comparable{
 	
 	private String dn0; // grammar_invalid
 	private String dn1; // id
@@ -121,5 +121,22 @@ public class ReadingModel {
 	public void setDn15(String dn15) {
 		this.dn15 = dn15;
 	}
+	
+	 /*@Override
+	    public int comparTo(ReadingModel comparestu) {
+	        int compareage=((ReadingModel)comparestu).getStudentage();
+	         For Ascending order
+	        return this.studentage-compareage;
+
+	         For Descending order do like this 
+	        //return compareage-this.studentage;
+	    }*/
+	
+	@Override
+	public int compareTo(Object o) {
+		Long compareRank = ((ReadingModel) o).getDn14();
+		return (int) (this.dn14 - compareRank);
+	}
+
 	
 }
