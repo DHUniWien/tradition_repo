@@ -147,8 +147,7 @@ public class Witness implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId,db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
