@@ -10,11 +10,14 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -66,6 +69,7 @@ public class Tradition implements IResource {
 
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
+
 	/**
 	 * 
 	 * @param textInfo
@@ -78,13 +82,13 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
 
-		User user = new User();
-		if (!user.checkUserExists(textInfo.getOwnerId())) {
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -651,6 +655,64 @@ public class Tradition implements IResource {
 		Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
 		return parser.parseNeo4J(tradId);
 	}
+	
+	/**
+	 * Removes a complete tradition
+	 * @param tradId
+	 * @return
+	 */
+	@DELETE
+	@Path("{tradId}")
+	public Response deleteUserById(@PathParam("tradId") String tradId) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return userId");
+			Iterator<Node> nodes = result.columnAs("tradId");
+
+			if (nodes.hasNext()) {
+				Node node = nodes.next();
+				
+				/*
+				 * Find all the nodes and relations to remove
+				 */
+				Set<Relationship> removableRelations = new HashSet<Relationship>();
+				Set<Node> removableNodes = new HashSet<Node>();
+				for (Node currentNode : db.traversalDescription()
+				        .depthFirst()
+				        .relationships( ERelations.NORMAL, Direction.OUTGOING)
+				        .relationships( ERelations.STEMMA, Direction.OUTGOING)
+				        .relationships( ERelations.RELATIONSHIP, Direction.OUTGOING)
+				        .uniqueness( Uniqueness.RELATIONSHIP_GLOBAL )
+				        .traverse( node )
+				        .nodes()) 
+				{
+					for(Relationship currentRelationship : currentNode.getRelationships()){
+						removableRelations.add(currentRelationship);
+					}
+					removableNodes.add(currentNode);
+				}
+				
+				/*
+				 * Remove the nodes and relations
+				 */
+				for(Relationship removableRel:removableRelations){
+		            removableRel.delete();
+		        }
+				for(Node remNode:removableNodes){
+		            remNode.delete();
+		        }
+			} else {
+				return Response.status(Response.Status.NOT_FOUND).entity("A tradition with this id was not found!").build();
+			}
+
+			tx.success();
+		} finally {
+			db.shutdown();
+		}
+		return Response.status(Response.Status.OK).build();
+	}
 
 	/**
 	 * Imports a tradition by given GraphML file and meta data
@@ -744,8 +806,8 @@ public class Tradition implements IResource {
 			while (relIt.hasNext()) {
 				Relationship rel = relIt.next();
 				startNode = rel.getEndNode();
-				if (startNode != null && startNode.hasProperty("text")) {
-					if (startNode.getProperty("text").equals("#START#")) {
+				if (startNode != null && startNode.hasProperty("dn15")) {
+					if (startNode.getProperty("dn15").equals("#START#")) {
 						rels = startNode.getRelationships(Direction.OUTGOING);
 						break;
 					}

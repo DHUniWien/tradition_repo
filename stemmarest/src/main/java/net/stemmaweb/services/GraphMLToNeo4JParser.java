@@ -402,9 +402,12 @@ public class GraphMLToNeo4JParser implements IResource
     	
     	
     	String[] graphs = stemmata.split("\\}");
+    	
    	    for(String graph : graphs)
    	    {
-   	    	DotToNeo4JParser parser = new DotToNeo4JParser();
+
+   	    	db = dbFactory.newEmbeddedDatabase(DB_PATH); // by Jakob as it was shutdown earlyer 
+   	    	DotToNeo4JParser parser = new DotToNeo4JParser(db);
    	    	parser.parseDot(graph, last_inserted_id + "");
    	    }
    	    

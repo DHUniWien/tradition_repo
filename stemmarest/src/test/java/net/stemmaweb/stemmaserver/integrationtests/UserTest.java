@@ -45,27 +45,28 @@ import com.sun.jersey.test.framework.JerseyTest;
 @RunWith(MockitoJUnitRunner.class)
 public class UserTest {
 	/*
-	 * Create a Mock object for the dbFactory. 
+	 * Create a Mock object for the dbFactory.
 	 */
 	@Mock
 	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
-	
-	
+
 	/*
 	 * Create a Spy object for dbService.
 	 */
 	@Spy
 	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
 
-		
 	/*
-	 * The Resource under test. The mockDbFactory will be injected into this resource.
+	 * The Resource under test. The mockDbFactory will be injected into this
+	 * resource.
 	 */
+
 	@InjectMocks
 	private User userResource;
-	
+
 	/*
-	 * JerseyTest is the test environment to Test api calls it provides a grizzly http service 
+	 * JerseyTest is the test environment to Test api calls it provides a
+	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
 	
@@ -123,10 +124,27 @@ public class UserTest {
 	@Test
 	public void createUserTest(){
 
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertFalse(nodes.hasNext());
+			tx.success();
+		}
+		
         String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
         ClientResponse returnJSON = jerseyTest.resource().path("/user/create")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 		assertEquals(Response.status(Response.Status.CREATED).build().getStatus(), returnJSON.getStatus());
+		
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertTrue(nodes.hasNext());
+			tx.success();
+		}
 	}
 	
 	
@@ -157,6 +175,172 @@ public class UserTest {
 		UserModel actualResponse = jerseyTest.resource().path("/user/43").get(UserModel.class);
 		assertEquals("43",actualResponse.getId());
 		assertEquals("0",actualResponse.getIsAdmin());
+		
+		
+	}
+	
+	/**
+	 * Test if a user is correctly removed with all his subgraphs
+	 */
+	@Test
+	public void deleteUserTest(){
+		
+		/*
+		 * Create User 1
+		 */
+		UserModel userModel = new UserModel();
+		userModel.setId("1");
+		userModel.setIsAdmin("0");
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
+		
+		/*
+		 * Create User 2
+		 */
+		userModel = new UserModel();
+		userModel.setId("2");
+		userModel.setIsAdmin("0");
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
+	
+		/*
+		 * Creat a testtradition for user 1
+		 */
+	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
+    	try(Transaction tx = mockDbService.beginTx())
+    	{
+    		// Add the new ownership
+    		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
+    		engine.execute(createTradition);
+    		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
+    				+ "MATCH(tradition: TRADITION {id:'842'}) "
+    						+ "SET tradition.dg1 = 'TestTradition' "
+    								+ "SET tradition.public = '0' "
+    										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+    		engine.execute(createNewRelationQuery);
+    		
+    		tx.success();
+    	} 
+    	
+		/*
+		 * Creat a testtradition for user 2
+		 */
+	    engine = new ExecutionEngine(mockDbService);
+    	try(Transaction tx = mockDbService.beginTx())
+    	{
+    		// Add the new ownership
+    		String createTradition = "CREATE (tradition:TRADITION { id:'843' })";
+    		engine.execute(createTradition);
+    		String createNewRelationQuery = "MATCH(user:USER {id:'2'}) "
+    				+ "MATCH(tradition: TRADITION {id:'843'}) "
+    						+ "SET tradition.dg1 = 'TestTradition' "
+    								+ "SET tradition.public = '0' "
+    										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+    		engine.execute(createNewRelationQuery);
+    		
+    		tx.success();
+    	}
+    	
+    	/*
+    	 * Remove user 1 with all his traditions
+    	 */
+    	ClientResponse actualResponse = jerseyTest.resource().path("/user/1").delete(ClientResponse.class);
+    	assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+        
+    	/*
+    	 * Check if user 1 is removed
+    	 */
+		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+		Iterator<Node> nodes = result.columnAs("userId");
+		assertFalse(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition 842 is removed
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertFalse(nodes.hasNext());
+		
+		/*
+		 * Check if user 2 still exists
+		 */
+		result = engine.execute("match (userId:USER {id:'2'}) return userId");
+		nodes = result.columnAs("userId");
+		assertTrue(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition 843 is removed
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertTrue(nodes.hasNext());
+	}
+	
+	/**
+	 * Test user Removal with invalid userId
+	 */
+	@Test
+	public void deleteInvalidUserTest(){
+		/*
+		 * Create User 1
+		 */
+		UserModel userModel = new UserModel();
+		userModel.setId("1");
+		userModel.setIsAdmin("0");
+		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
+		
+		/*
+		 * Creat a testtradition for user 1
+		 */
+	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
+    	try(Transaction tx = mockDbService.beginTx())
+    	{
+    		// Add the new ownership
+    		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
+    		engine.execute(createTradition);
+    		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
+    				+ "MATCH(tradition: TRADITION {id:'842'}) "
+    						+ "SET tradition.dg1 = 'TestTradition' "
+    								+ "SET tradition.public = '0' "
+    										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+    		engine.execute(createNewRelationQuery);
+    		
+    		tx.success();
+    	} 
+    	
+		
+    	
+    	/*
+    	 * Remove user 2 with all his traditions
+    	 */
+    	ClientResponse actualResponse = jerseyTest.resource().path("/user/2").delete(ClientResponse.class);
+    	assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+        
+    	/*
+    	 * Check if user 1 still exists
+    	 */
+		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+		Iterator<Node> nodes = result.columnAs("userId");
+		assertTrue(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition 842 still exists
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertTrue(nodes.hasNext());
+		
+		/*
+		 * Check if user 2 does not exist
+		 */
+		result = engine.execute("match (userId:USER {id:'2'}) return userId");
+		nodes = result.columnAs("userId");
+		assertFalse(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition 843 does not exist
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertFalse(nodes.hasNext());
 	}
 	
 	/**

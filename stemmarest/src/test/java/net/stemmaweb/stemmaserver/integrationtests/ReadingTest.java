@@ -7,12 +7,21 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 
+<<<<<<< HEAD
 import javax.ws.rs.core.MediaType;
+=======
+import javax.ws.rs.core.Response;
+>>>>>>> 465e49eacc9fe3502625bf1c48f2b81fcd5f97d6
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
+<<<<<<< HEAD
+=======
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Witness;
+>>>>>>> 465e49eacc9fe3502625bf1c48f2b81fcd5f97d6
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -72,6 +81,9 @@ public class ReadingTest {
 
 	@InjectMocks
 	private Reading reading;
+	
+	@InjectMocks
+	private Witness witness;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -163,10 +175,17 @@ public class ReadingTest {
 				.path("/reading/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
-		assertEquals(26, listOfReadings.size());
+		assertEquals(28, listOfReadings.size());
 	/*	for (int i = 0; i < listOfReadings.size(); i++) {
 			assertEquals(texts[i], listOfReadings.get(i).getDn15());
 		}*/
+	}
+	
+	@Test
+	public void witnessAsTextTestB() {
+		String expectedText = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedText, resp.getEntity());
 	}
 
 	@Test

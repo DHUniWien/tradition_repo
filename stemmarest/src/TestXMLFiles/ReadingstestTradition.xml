@@ -247,7 +247,7 @@
     <edge source="n1" target="n2" id="e2">
       <data key="de12">C</data>
     </edge>
-    <edge source="n2" target="n21" id="e3">
+    <edge source="n2" target="n24" id="e3">
       <data key="de12">B</data>
     </edge>
     <edge source="n2" target="n21" id="e4">
@@ -328,7 +328,7 @@
     <edge source="n15" target="n18" id="e30">
       <data key="de12">A</data>
     </edge>
-    <edge source="n16" target="n18" id="e31">
+    <edge source="n16" target="n27" id="e31">
       <data key="de12">B</data>
     </edge>
     <edge source="n17" target="n25" id="e32">
@@ -364,13 +364,13 @@
     <edge source="n23" target="n4" id="e43">
       <data key="de12">A</data>
     </edge>
-    <edge source="n23" target="n24" id="e44">
+    <edge source="n23" target="n4" id="e44">
       <data key="de12">B</data>
     </edge>
     <edge source="n23" target="n24" id="e45">
       <data key="de12">C</data>
     </edge>
-    <edge source="n24" target="n4" id="e46">
+    <edge source="n24" target="n26" id="e46">
       <data key="de12">B</data>
     </edge>
     <edge source="n24" target="n4" id="e47">
@@ -379,10 +379,10 @@
     <edge source="n25" target="n0" id="e48">
       <data key="de12">C</data>
     </edge>
-	 <edge source="n26" target="n26" id="e49">
+	<edge source="n26" target="n21" id="e49">
       <data key="de12">B</data>
     </edge>
-	 <edge source="n27" target="n27" id="e50">
+	<edge source="n27" target="n0" id="e50">
       <data key="de12">B</data>
     </edge>
   </graph>

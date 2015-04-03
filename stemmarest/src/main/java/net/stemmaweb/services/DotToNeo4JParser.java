@@ -34,14 +34,28 @@ import Exceptions.DataBaseException;
  */
 public class DotToNeo4JParser implements IResource
 {
+	
+	/*
+	 * comment by Jakob
+	 * 
+	 * This change might be ugly. but otherwise 90% of the tests fail. The dbfactory has to be mocked somehow
+	 * and because the this class is constructed within GraphMLToNeo4JParse this does not work at the current state
+	 * 
+	 * this is only a quickfix to get the tests green again. (they are read if you run the neo4j database in background and
+	 * it cant write in the real)
+	 */
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	GraphDatabaseService db = null;
 	String dot = "";
 	List<Node> nodes = new ArrayList<Node>();
 
+	public DotToNeo4JParser(GraphDatabaseService db){
+		this.db = db;
+	}
+	
 	public void parseDot(String dot, String tradId)
 	{	
-		db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		//db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		this.dot = dot;
     	
     	try (Transaction tx = db.beginTx()) 
