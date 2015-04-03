@@ -14,6 +14,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
+import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -220,22 +221,6 @@ public class ReadingTest {
 				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
-	}
-
-	// TODO not fully implemented yet waiting for compress to be implemented
-	@Test
-	public void splitReadingTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			mockDbService.getNodeById(30);
-
-			tx.success();
-		}
-
-		// split reading
-		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/30")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-
-		assertEquals(Status.OK.getStatusCode(), response.getStatus());
 	}
 
 	/**

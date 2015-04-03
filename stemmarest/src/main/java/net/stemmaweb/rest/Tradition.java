@@ -414,28 +414,30 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
 
+		System.out.println("TEST");
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node startNode = null;
 		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
+			startNode = DatabaseService.getStartNode(tradId,db);
 		} catch (DataBaseException e) {
 			System.out.println(e.getMessage());
-			System.out.println("databaseexception");
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+			return Response.status(Status.NOT_FOUND).entity("start node not found").build();
 		}
 
+		
 		try (Transaction tx = db.beginTx()) {
 			boolean foundReading = false;
-			Traverser traverser = getReading(startNode, db);
-			for (org.neo4j.graphdb.Path path : traverser) {
-				long id = path.endNode().getId();
-				if (id==readId) {
+			for (Node node : db.traversalDescription()
+			        .depthFirst()
+			        .relationships( ERelations.NORMAL, Direction.OUTGOING)
+			        .uniqueness( Uniqueness.RELATIONSHIP_GLOBAL )
+			        .traverse( startNode )
+			        .nodes())  {
+				
+				if (node.getId()==readId) {
 					// splitting of reading happens here
-					Node originalReading = path.endNode();
-
-					String oldText = originalReading.getProperty("dn15").toString();
+					String oldText = node.getProperty("dn15").toString();
 					String[] splittedWords = oldText.split("\\s+");
 					if (splittedWords.length < 2) {
 						db.shutdown();
@@ -443,29 +445,26 @@ public class Tradition implements IResource {
 								.entity("A reading to be splitted has to contain at least 2 words").build();
 					}
 
-					originalReading.setProperty("dn15", splittedWords[0]);
+					node.setProperty("dn15", splittedWords[0]);
 
-					Node previousReading = originalReading;
 					Node newReading = null;
 
 					for (int i = 1; i < splittedWords.length; i++) {
 						newReading = db.createNode();
 
-						Iterable<Relationship> rels = previousReading.getRelationships(ERelations.NORMAL,
+						Iterable<Relationship> rels = node.getRelationships(ERelations.NORMAL,
 								Direction.OUTGOING);
 						for (Relationship relationship : rels) {
 							newReading.createRelationshipTo(relationship.getEndNode(), ERelations.NORMAL);
 							relationship.delete();
 						}
 
-						Reading.copyReadingProperties(previousReading, newReading);
+						Reading.copyReadingProperties(node, newReading);
 						newReading.setProperty("dn15", splittedWords[i]);
-						Long previousRank = (Long) previousReading.getProperty("dn14");
+						Long previousRank = (Long) node.getProperty("dn14");
 						newReading.setProperty("dn14", previousRank + 1);
 
-						previousReading.createRelationshipTo(newReading, ERelations.NORMAL);
-
-						previousReading = newReading;
+						node.createRelationshipTo(newReading, ERelations.NORMAL);
 					}
 
 					foundReading = true;

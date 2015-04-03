@@ -799,6 +799,49 @@ public class TraditionTest {
 		assertTrue(nodes.hasNext());
 	}
 	
+	// TODO not fully implemented yet waiting for compress to be implemented
+	@Test
+	public void splitReadingTest() {
+		
+		String filename = "";
+		if(OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
+		else 
+			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
+		
+		Response resp = null;
+		/**
+		 * load a tradition to the test DB
+		 */
+		try {
+			resp = importResource.parseGraphML(filename, "1");
+		} catch (FileNotFoundException f) {
+			// this error should not occur
+			assertTrue(false);
+		}
+		
+		assert(resp.getEntity().toString().contains("1002"));
+
+		// split reading
+		ClientResponse response = jerseyTest.resource().path("/tradition/split/1002/67")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.OK.getStatusCode(), response.getStatus());
+		
+		try(Transaction tx = mockDbService.beginTx())
+		{
+			Node originalNode = mockDbService.getNodeById(67);
+			assert(originalNode.getProperty("dn15").equals("to"));
+			
+			Node newNode = mockDbService.getNodeById(68);
+			assert(newNode.getProperty("dn15").equals("root"));
+		}
+		catch(Exception e)
+		{
+			assert(false);
+		}
+	}
+	
 	/**
 	 * Shut down the jersey server
 	 * 
