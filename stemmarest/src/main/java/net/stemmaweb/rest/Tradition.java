@@ -802,8 +802,8 @@ public class Tradition implements IResource {
 			while (relIt.hasNext()) {
 				Relationship rel = relIt.next();
 				startNode = rel.getEndNode();
-				if (startNode != null && startNode.hasProperty("text")) {
-					if (startNode.getProperty("text").equals("#START#")) {
+				if (startNode != null && startNode.hasProperty("dn15")) {
+					if (startNode.getProperty("dn15").equals("#START#")) {
 						rels = startNode.getRelationships(Direction.OUTGOING);
 						break;
 					}
