@@ -5,8 +5,11 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
@@ -17,7 +20,6 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
@@ -34,6 +36,9 @@ import com.sun.jersey.test.framework.JerseyTest;
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-lists")
 public class BenachmarkTests {
+	@ClassRule
+	public static TemporaryFolder folder = new TemporaryFolder();
+	  
 	@Rule
 	public TestRule benchmarkRun = new BenchmarkRule();
 	/*
@@ -46,7 +51,7 @@ public class BenachmarkTests {
 	 * Create a Spy object for dbService.
 	 */
 	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
+	protected GraphDatabaseService mockDbService = mockDbFactory.newEmbeddedDatabase(folder.getRoot().getAbsolutePath());
 
 	/*
 	 * The Resource under test. The mockDbFactory will be injected into this
@@ -62,6 +67,19 @@ public class BenachmarkTests {
 	 */
 	private JerseyTest jerseyTest;
 	
+	@BeforeClass
+	public static void prepareTheDatabase(){
+		/*
+		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
+		 */
+		RandomGraphGenerator rgg = new RandomGraphGenerator();
+		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(folder.getRoot().getAbsolutePath());
+		
+		rgg.role(db, 9, 2, 5, 100);
+		db.shutdown();
+	}
+	
 	@Before
 	public void setUp() throws Exception {
     	
@@ -76,12 +94,6 @@ public class BenachmarkTests {
 		 * Avoid the Databaseservice to shutdown. (Override the shutdown method with nothing)
 		 */
 		Mockito.doNothing().when(mockDbService).shutdown();
-		
-		/*
-		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
-		 */
-		RandomGraphGenerator rgg = new RandomGraphGenerator();
-		rgg.role(mockDbService, 9, 2, 5, 10);
 		
 		/*
 		 * Create a JersyTestServer serving the Resource under test
