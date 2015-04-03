@@ -1,17 +1,18 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.ws.rs.core.MediaType;
+
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -36,6 +37,8 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
@@ -205,6 +208,22 @@ public class ReadingTest {
 				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
+	}
+
+	// TODO not fully implemented yet waiting for compress to be implemented
+	@Test
+	public void splitReadingTest() {
+		try (Transaction tx = mockDbService.beginTx()) {
+			mockDbService.getNodeById(30);
+
+			tx.success();
+		}
+
+		// split reading
+		ClientResponse response = jerseyTest.resource().path("/tradition/split/" + tradId + "/30")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.OK.getStatusCode(), response.getStatus());
 	}
 
 	/**
