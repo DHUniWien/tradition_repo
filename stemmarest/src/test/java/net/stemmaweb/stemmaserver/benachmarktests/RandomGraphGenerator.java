@@ -85,6 +85,14 @@ public class RandomGraphGenerator {
     		 * Create the Traditions
     		 */
         	for(int i=0;i<cardOfTraditionsPerUser;i++){
+        		int ind=0;
+        		System.out.print("Import User: " +(k+1)+"/"+cardOfUsers+"[");
+        		for( ;ind<(int)((double)i/cardOfTraditionsPerUser*20.0);ind++){
+        			System.out.print("#");
+        		}
+        		for(;ind<20;ind++)
+        			System.out.print(" ");
+        		System.out.println("]");
         		ArrayList<WitnessBranch> witnessUnconnectedBranchs = new ArrayList<RandomGraphGenerator.WitnessBranch>();
             	try (Transaction tx = db.beginTx()) {
             		String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
