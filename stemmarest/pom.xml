@@ -48,7 +48,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.8.2</version>
+            <version>4.12</version>
             <scope>test</scope>
         </dependency>
         <!--  The following is used for the database Neo4J, including tests Neo4J -->
@@ -106,7 +106,19 @@
       <version>${powermock.version}</version>
       <scope>test</scope>
    </dependency>
-		
+	<dependency>
+	    <groupId>com.carrotsearch</groupId>
+	    <artifactId>junit-benchmarks</artifactId>
+	    <version>0.7.2</version>
+	    <scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>com.h2database</groupId>
+		<artifactId>h2</artifactId>
+		<version>1.4.186</version>
+		<scope>test</scope>
+	</dependency>
+	
 	<dependency>
 		<groupId>javax.ws.rs</groupId>
 		<artifactId>javax.ws.rs-api</artifactId>
