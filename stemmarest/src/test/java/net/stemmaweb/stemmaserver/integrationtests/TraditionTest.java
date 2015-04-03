@@ -797,14 +797,13 @@ public class TraditionTest {
 		 */
 		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").delete(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-		assertEquals(removalResponse.getEntity(String.class),"A tradition with this id was not found");
 		
 		/*
 		 * Test if user 1 still exists
 		 */
 		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
 		Iterator<Node> nodes = result.columnAs("userId");
-		assertFalse(nodes.hasNext());
+		assertTrue(nodes.hasNext());
 		
     	/*
     	 * Check if tradition {tradId} still exists
