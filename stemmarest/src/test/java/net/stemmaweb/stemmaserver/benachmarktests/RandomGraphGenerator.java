@@ -73,8 +73,8 @@ public class RandomGraphGenerator {
     			Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
 
     			currentUser = db.createNode(Nodes.USER);
-    			currentUser.setProperty("id", k);
-    			currentUser.setProperty("isAdmin", randomGenerator.nextInt(2));
+    			currentUser.setProperty("id", Integer.toString(k));
+    			currentUser.setProperty("isAdmin", Integer.toString(randomGenerator.nextInt(2)));
 
     			rootNode.createRelationshipTo(currentUser, ERelations.NORMAL);
 
@@ -86,7 +86,7 @@ public class RandomGraphGenerator {
     		 */
         	for(int i=0;i<cardOfTraditionsPerUser;i++){
         		int ind=0;
-        		System.out.print("Import User: " +(k+1)+"/"+cardOfUsers+"[");
+        		System.out.print("Import User: " +(k+1)+"/"+cardOfUsers+" [");
         		for( ;ind<(int)((double)i/cardOfTraditionsPerUser*20.0);ind++){
         			System.out.print("#");
         		}
@@ -101,14 +101,13 @@ public class RandomGraphGenerator {
             							.getProperty("LAST_INSERTED_TRADITION_ID")
             							.toString();
 	            	Node traditionRootNode = db.createNode(Nodes.TRADITION);
-	            	
-	            	traditionRootNode.setProperty("id", prefix);
-	            	currentUser.createRelationshipTo(traditionRootNode, ERelations.NORMAL);
-	            	
 	            	Node rootNode = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node").iterator().next();
 	            	rootNode.setProperty("LAST_INSERTED_TRADITION_ID", 
-	            			(Integer.parseInt(prefix) + 1));
-	            	
+	            			Integer.toString(Integer.parseInt(prefix) + 1));
+
+	            	traditionRootNode.setProperty("dg1", "TestTradition_"+prefix);
+	            	traditionRootNode.setProperty("id", prefix);
+	            	currentUser.createRelationshipTo(traditionRootNode, ERelations.NORMAL);
 	            	
 	            	/**
 	            	 * Create start node
