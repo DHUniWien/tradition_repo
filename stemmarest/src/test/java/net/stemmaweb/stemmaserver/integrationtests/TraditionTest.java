@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
@@ -773,6 +774,44 @@ public class TraditionTest {
 			tx.success();
 
 		}
+	}
+	
+	/**
+	 * Remove a complete Tradition
+	 */
+	@Test
+	public void removeATraditionTest(){
+//		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+//		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+//		assertEquals(removalResponse.getEntity(String.class),"Tradition not found");
+	}
+	
+	/**
+	 * Remove a complete Tradition with invalid id
+	 */
+	@Test
+	public void removeATraditionWithInvalidIdTest(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		/*
+		 * Try to remove a tradition with invalid id
+		 */
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").delete(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+		assertEquals(removalResponse.getEntity(String.class),"A tradition with this id was not found");
+		
+		/*
+		 * Test if user 1 still exists
+		 */
+		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+		Iterator<Node> nodes = result.columnAs("userId");
+		assertFalse(nodes.hasNext());
+		
+    	/*
+    	 * Check if tradition {tradId} still exists
+    	 */
+		result = engine.execute("match (tradId:TRADITION {id:'"+tradId+"'}) return tradId");
+		nodes = result.columnAs("tradId");
+		assertTrue(nodes.hasNext());
 	}
 	
 	/**
