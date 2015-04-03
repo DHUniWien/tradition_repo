@@ -147,8 +147,7 @@ public class Tradition implements IResource {
 
 		Node startNode = null;
 		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
+			startNode = DatabaseService.getStartNode(tradId, db);
 		} catch (DataBaseException e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
@@ -231,8 +230,7 @@ public class Tradition implements IResource {
 
 		Node startNode = null;
 		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
+			startNode = DatabaseService.getStartNode(tradId, db);
 		} catch (DataBaseException e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
@@ -342,8 +340,7 @@ public class Tradition implements IResource {
 
 		Node startNode = null;
 		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
+			startNode = DatabaseService.getStartNode(tradId, db);
 		} catch (DataBaseException e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
@@ -418,8 +415,7 @@ public class Tradition implements IResource {
 
 		Node startNode = null;
 		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
+			startNode = DatabaseService.getStartNode(tradId, db);
 		} catch (DataBaseException e) {
 			System.out.println(e.getMessage());
 			System.out.println("databaseexception");
@@ -513,8 +509,7 @@ public class Tradition implements IResource {
 
 			startNode = null;
 			try {
-				DatabaseService service = new DatabaseService(db);
-				startNode = service.getStartNode(tradId);
+				startNode = DatabaseService.getStartNode(tradId, db);
 			} catch (DataBaseException e) {
 				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}
