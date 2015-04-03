@@ -7,21 +7,14 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 
-<<<<<<< HEAD
 import javax.ws.rs.core.MediaType;
-=======
 import javax.ws.rs.core.Response;
->>>>>>> 465e49eacc9fe3502625bf1c48f2b81fcd5f97d6
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-<<<<<<< HEAD
-=======
-import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Witness;
->>>>>>> 465e49eacc9fe3502625bf1c48f2b81fcd5f97d6
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
