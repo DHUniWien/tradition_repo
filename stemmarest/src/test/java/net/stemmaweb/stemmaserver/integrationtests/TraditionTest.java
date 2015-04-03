@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
@@ -236,15 +235,15 @@ public class TraditionTest {
 			assertEquals(2, original.getDn14().longValue());
 			assertEquals("april", original.getDn15());
 
-			nextNode = mockDbService.getNodeById(29);
+			nextNode = mockDbService.getNodeById(39);
 			duplicate = Reading.readingModelFromNode(nextNode);
 			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels) {
 				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[0]);
 				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[1]);
 			}
-			assertEquals(29, nextNode.getId());
-			assertEquals("29", duplicate.getDn1());
+			assertEquals(39, nextNode.getId());
+			assertEquals("39", duplicate.getDn1());
 			assertEquals("0", duplicate.getDn2());
 			assertEquals("Default", duplicate.getDn11());
 			assertEquals(2, duplicate.getDn14().longValue());
@@ -264,15 +263,15 @@ public class TraditionTest {
 			assertEquals(16, original.getDn14().longValue());
 			assertEquals("unto", original.getDn15());
 
-			nextNode = mockDbService.getNodeById(30);
+			nextNode = mockDbService.getNodeById(40);
 			duplicate = Reading.readingModelFromNode(nextNode);
 			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
 			for (Relationship relationship : rels) {
 				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[0]);
 				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[1]);
 			}
-			assertEquals(30, nextNode.getId());
-			assertEquals("30", duplicate.getDn1());
+			assertEquals(40, nextNode.getId());
+			assertEquals("40", duplicate.getDn1());
 			assertEquals("0", duplicate.getDn2());
 			assertEquals("Default", duplicate.getDn11());
 			assertEquals(16, duplicate.getDn14().longValue());
@@ -291,7 +290,7 @@ public class TraditionTest {
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId).type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class, jsonPayload);
 		// merge readings again
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/39")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 		// read result from database
@@ -325,12 +324,12 @@ public class TraditionTest {
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class);
 		// merge readings again
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/29")
+		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/39")
 				.type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class);
 
 		try (Transaction tx = mockDbService.beginTx()) {
-			mockDbService.getNodeById(29);
+			mockDbService.getNodeById(39);
 
 			tx.success();
 		}
