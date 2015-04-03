@@ -2,27 +2,21 @@ package net.stemmaweb.stemmaserver.benachmarktests;
 
 import static org.junit.Assert.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.CopyOption;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.io.FileNotFoundException;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.OSDetector;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -60,6 +54,9 @@ public abstract class BenachmarkTests {
 	private Witness witnessResource = new Witness();
 	private Reading readingResoruce = new Reading();
 	
+	String filename = "";
+
+	
 	private JerseyTest jerseyTest;
 	
 	@Before
@@ -74,6 +71,11 @@ public abstract class BenachmarkTests {
 				.addResource(witnessResource)
 				.addResource(readingResoruce).create();
 		jerseyTest.setUp();
+		
+		if (OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTradition.xml";
+		else
+			filename = "src/TestXMLFiles/testTradition.xml";
 	}
 	
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
@@ -94,6 +96,13 @@ public abstract class BenachmarkTests {
 	@Test
 	public void getAllWitnessesOfATradition(){
 		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/witness/1001").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getAllTraditions(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/all").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -138,6 +147,23 @@ public abstract class BenachmarkTests {
 		ClientResponse actualResponse = jerseyTest.resource().path("/witness/list/1001/W0").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
+	
+	
+	
+	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void importWithGraphMLParser(){
+		GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+	    
+		try {
+			importResource.parseGraphML(filename, "1");
+		} catch (FileNotFoundException f) {
+			// this error should not occur
+			assertTrue(false);
+		}
+	}
+	
 	/**
 	 * Shut down the jersey server
 	 * @throws Exception
