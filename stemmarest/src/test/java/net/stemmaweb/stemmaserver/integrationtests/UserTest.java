@@ -180,6 +180,15 @@ public class UserTest {
 	}
 	
 	/**
+	 * Test if the representation of a user is correct
+	 */
+	@Test
+	public void getInvalidUserTest(){	
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/43").get(ClientResponse.class);
+		assertEquals(Response.Status.NO_CONTENT.getStatusCode(), actualResponse.getStatus());	
+	}
+	
+	/**
 	 * Test if a user is correctly removed with all his subgraphs
 	 */
 	@Test

@@ -136,7 +136,6 @@ public class Reading implements IResource {
 
 	@GET
 	@Path("/{tradId}")
-	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllReadings(@PathParam("tradId") String tradId) {
 
@@ -182,7 +181,6 @@ public class Reading implements IResource {
 
 	@GET
 	@Path("identical/{tradId}/{startRank}/{endRank}")
-	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getIdenticalReadings(@PathParam("tradId") String tradId,
 			@PathParam("startRank") long startRank,

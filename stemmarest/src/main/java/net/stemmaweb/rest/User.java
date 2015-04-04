@@ -27,7 +27,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
@@ -81,7 +80,6 @@ public class User implements IResource {
 	@POST
 	@Path("create")
 	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response create(UserModel userModel) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -117,7 +115,7 @@ public class User implements IResource {
 	@GET
 	@Path("{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getUserById(@PathParam("userId") String userId) {
+	public UserModel getUserById(@PathParam("userId") String userId) {
 		UserModel userModel = new UserModel();
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -131,14 +129,14 @@ public class User implements IResource {
 				userModel.setId((String) node.getProperty("id"));
 				userModel.setIsAdmin((String) node.getProperty("isAdmin"));
 			} else {
-				return Response.status(Response.Status.NOT_FOUND).build();
+				return null;
 			}
 
 			tx.success();
 		} finally {
 			db.shutdown();
 		}
-		return Response.status(Response.Status.OK).entity(userModel).build();
+		return userModel;
 	}
 	
 	/**
@@ -202,15 +200,14 @@ public class User implements IResource {
 	@GET
 	@Path("traditions/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getTraditionsByUserId(@PathParam("userId") String userId) {
-		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
-		if (!checkUserExists(userId)) {
-			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist!")
-					.build();
-		}
+	public ArrayList<TraditionModel> getTraditionsByUserId(@PathParam("userId") String userId) {
 
-		System.out.println("ok");
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
+		
+		if (!DatabaseService.checkIfUserExists(userId, db)) {
+			return null;
+		}
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = null;
@@ -233,7 +230,7 @@ public class User implements IResource {
 			db.shutdown();
 		}
 
-		return Response.status(Response.Status.OK).entity(traditions).build();
+		return traditions;
 	}
 
 }

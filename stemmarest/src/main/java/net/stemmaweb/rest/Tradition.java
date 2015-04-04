@@ -504,7 +504,6 @@ public class Tradition implements IResource {
 
 	@GET
 	@Path("witness/{tradId}")
-	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 
@@ -560,7 +559,6 @@ public class Tradition implements IResource {
 
 	@GET
 	@Path("relation/{tradId}/relationships")
-	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 
@@ -799,7 +797,6 @@ public class Tradition implements IResource {
 
 	@GET
 	@Path("readings/{tradId}")
-	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllReadingsOfTradition(@PathParam("tradId") String tradId) {
 
