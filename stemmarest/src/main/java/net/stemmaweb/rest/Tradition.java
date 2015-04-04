@@ -144,28 +144,36 @@ public class Tradition implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ReadingModel reading = null;
+		Node readingNode;
 
-		Node startNode = null;
-		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
-		} catch (DataBaseException e) {
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-		}
+//		Node startNode = null;
+//		try {
+//			startNode = DatabaseService.getStartNode(tradId, db);
+//		} catch (DataBaseException e) {
+//			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+//		}
 
 		try (Transaction tx = db.beginTx()) {
-			if (startNode.getId()==readId) {
-				reading = Reading.readingModelFromNode(startNode);
-			} else {
-				Traverser traverser = getReading(startNode, db);
-				for (org.neo4j.graphdb.Path path : traverser) {
-					long id = path.endNode().getId();
-					if (id==readId) {
-						reading = Reading.readingModelFromNode(path.endNode());
-						break;
-					}
-				}
+			try {
+				readingNode = db.getNodeById(readId);
+			} catch (Exception e) {
+				db.shutdown();
+				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 			}
+			reading = Reading.readingModelFromNode(readingNode);
+
+//			if (startNode.getId()==readId) {
+//				reading = Reading.readingModelFromNode(startNode);
+//			} else {
+//				Traverser traverser = getReading(startNode, db);
+//				for (org.neo4j.graphdb.Path path : traverser) {
+//					long id = path.endNode().getId();
+//					if (id==readId) {
+//						reading = Reading.readingModelFromNode(path.endNode());
+//						break;
+//					}
+//				}
+//			}
 			tx.success();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -231,8 +239,7 @@ public class Tradition implements IResource {
 
 		Node startNode = null;
 		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
+			startNode = DatabaseService.getStartNode(tradId, db);
 		} catch (DataBaseException e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
@@ -340,30 +347,41 @@ public class Tradition implements IResource {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		Node startNode = null;
-		try {
-			DatabaseService service = new DatabaseService(db);
-			startNode = service.getStartNode(tradId);
-		} catch (DataBaseException e) {
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-		}
+		// Node startNode = null;
+		// try {
+		// startNode = DatabaseService.getStartNode(tradId, db);
+		// } catch (DataBaseException e) {
+		// return
+		// Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+		// }
 
 		try (Transaction tx = db.beginTx()) {
-			boolean foundReadings = false;
-			Traverser traverser = getReading(startNode, db);
-			for (org.neo4j.graphdb.Path path : traverser) {
-				long id = path.endNode().getId();
-				if (id==firstReadId)
-					firstReading = path.endNode();
-				if (id==secondReadId)
-					secondReading = path.endNode();
-				if (firstReading != null && secondReading != null) {
-					foundReadings = true;
-					break;
-				}
-			}
-			if (!foundReadings)
+			try {
+				firstReading = db.getNodeById(firstReadId);
+				secondReading = db.getNodeById(secondReadId);
+			} catch (Exception e) {
+				db.shutdown();
 				return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
+			}
+
+			// boolean foundReadings = false;
+			// Traverser traverser = getReading(startNode, db);
+			// for (org.neo4j.graphdb.Path path : traverser) {
+			// long id = path.endNode().getId();
+			// if (id==firstReadId)
+			// firstReading = path.endNode();
+			// if (id==secondReadId)
+			// secondReading = path.endNode();
+			// if (firstReading != null && secondReading != null) {
+			// foundReadings = true;
+			// break;
+			// }
+			// }
+			// if (!foundReadings) {
+			// db.shutdown();
+			// return
+			// Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
+			// }
 
 			if (!firstReading.getProperty("dn15").toString()
 					.equalsIgnoreCase(secondReading.getProperty("dn15").toString())) {
@@ -511,8 +529,7 @@ public class Tradition implements IResource {
 
 			startNode = null;
 			try {
-				DatabaseService service = new DatabaseService(db);
-				startNode = service.getStartNode(tradId);
+				startNode = DatabaseService.getStartNode(tradId, db);
 			} catch (DataBaseException e) {
 				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 			}

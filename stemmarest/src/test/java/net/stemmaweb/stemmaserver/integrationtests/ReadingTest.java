@@ -75,7 +75,7 @@ public class ReadingTest {
 
 	@InjectMocks
 	private Reading reading;
-	
+
 	@InjectMocks
 	private Witness witness;
 
@@ -87,11 +87,11 @@ public class ReadingTest {
 
 	@Before
 	public void setUp() throws Exception {
-		
+
 		String filename = "";
-		if(OSDetector.isWin())
+		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
-		else 
+		else
 			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
 
 		/*
@@ -159,42 +159,55 @@ public class ReadingTest {
 				.addResource(reading).create();
 		jerseyTest.setUp();
 	}
-	
+/**
+ * test that all readings of a tradition are returned sorted ascending according to rank
+ */
 	@Test
 	public void allReadingsOfTraditionTest() {
-		String[] texts = { "when", "april", "with", "his", "showers", "sweet",
-				"with", "fruit", "the", "drought", "of", "march", "has",
-				"pierced", "unto", "the", "root" };
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
 				.path("/reading/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		assertEquals(28, listOfReadings.size());
-	/*	for (int i = 0; i < listOfReadings.size(); i++) {
-			assertEquals(texts[i], listOfReadings.get(i).getDn15());
-		}*/
-	}
-	
-	@Test
-	public void witnessAsTextTestB() {
-		String expectedText = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedText, resp.getEntity());
-	}
 
-	@Test
-	public void randomNodeExistsTest(){
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			long rank = 2;
-			assertEquals(rank , nodes.next().getProperty("dn14"));
-			tx.success();
+		String expectedTest = "#START# when april april with his his showers sweet with fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
+		String text = "";
+		for (int i = 0; i < listOfReadings.size(); i++) {
+			text += listOfReadings.get(i).getDn15() + " ";
+		}
+		assertEquals(expectedTest, text.trim());
+		
+		int[]  expectedRanks= {0,1,2,2,3,4,4,5,6,7,9,10,10,11,11,12,13,13,14,15,16,16,16,17,17,17,18,19};
+		for (int i = 0; i < listOfReadings.size(); i++) {
+			assertEquals(expectedRanks[i], (int) (long)listOfReadings.get(i).getDn14());
 		}
 	}
 	
+	@Test
+	public void identicalReadingsTest(){
+		List<ReadingModel> listOfIdenticalReadings = jerseyTest.resource()
+				.path("/reading/identical/" + tradId + "/3/8")
+				.get(new GenericType<List<ReadingModel>>() {
+				});
+		assertEquals(2, listOfIdenticalReadings.size());
+		assertEquals(listOfIdenticalReadings.get(0).getDn15(), listOfIdenticalReadings.get(1).getDn15());
+		assertEquals("his", listOfIdenticalReadings.get(1).getDn15());
+	}
+
+	@Test
+	public void randomNodeExistsTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'april'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			long rank = 2;
+			assertEquals(rank, nodes.next().getProperty("dn14"));
+			tx.success();
+		}
+	}
+
 	/**
 	 * test if the tradition node exists
 	 */

@@ -5,9 +5,12 @@ import static org.junit.Assert.*;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
+import javax.ws.rs.core.Response;
+
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.OSDetector;
 
@@ -64,15 +67,17 @@ public class ReadingUnitTest {
 	@InjectMocks
 	private Reading reading;
 
-	
+	@InjectMocks
+	private Witness witness;
+
 	@Before
 	public void setUp() throws Exception {
-		
+
 		String filename = "";
-		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else 
-			filename = "src/TestXMLFiles/testTradition.xml";
+		if (OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
+		else
+			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -132,24 +137,29 @@ public class ReadingUnitTest {
 			tx.success();
 		}
 
-		
 	}
-	
-	
-	
+
 	@Test
-	public void randomNodeExistsTest(){
+	public void witnessAsTextTestB() {
+		String expectedText = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedText, resp.getEntity());
+	}
+
+	@Test
+	public void randomNodeExistsTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			long rank = 2;
-			assertEquals(rank , nodes.next().getProperty("dn14"));
+			assertEquals(rank, nodes.next().getProperty("dn14"));
 			tx.success();
 		}
 	}
-	
+
 	/**
 	 * test if the tradition node exists
 	 */

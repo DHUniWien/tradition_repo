@@ -48,7 +48,6 @@
 \input{structure} % Insert the commands.tex file which contains the majority of the structure behind the template
 
 \begin{document}
-
 %----------------------------------------------------------------------------------------
 %	TITLE PAGE
 %----------------------------------------------------------------------------------------
@@ -142,7 +141,24 @@ Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod 
 
 \chapter{Jersey}
 
-Lorem Ipsum
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 3
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Performance}
+
+The performance is tested by benchmark tests. Please consult the chapter Benchmark Tests in the part Testing of this documentation for further technical information.
+
+\begin{figure}[h!]
+  \caption{An example to show what will come here.}
+  \centering
+    \includegraphics[scale=0.6]{firstBenchmark.png}
+\end{figure}
+
 
 %----------------------------------------------------------------------------------------
 %	PART
@@ -270,6 +286,57 @@ public void SimpleTest(){
 
 \subsection*{Example}
 \url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserTest.java}
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 4
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Benchmark Testing}
+
+A main goal of the PSE2 stemmarest project is a good performance compared to the previous RESTful service. To measure the performance benchmark testing is needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this \textit{com.carrotsearch.junitbenchmarks} a handy JUnit benchmark test suite is used. This JUnitbenchmarks measure the time which is used to execute a test and can generate visual representations of the measurement.\\
+For the benchmark testing it is of interest to have a variety of different databases. Those databases should differ in their size from small to very huge. This allows to measure the algorithms in extreme situations.
+To generate valid graphs only limited by diskspace the class \textit{RandomGraphGenerator} can be used. By calling the static method role a graph is generated according to the parameters.\\
+\begin{remark}
+Please note that the response time highly depends on the hardware the tests are running on and the actual state of Javas virtual machine. 
+\end{remark}
+To reduce the influence of the virtual machine before the measurements 5 warm-up calls are done to bring the virtual machine to live. The hardware which was used for testing is represented in the report.
+
+\section*{Setup}
+All the classes related to the Benchmark Tests can be found in the package \\ \textit{net.stemmaweb.stemmaserver.benachmarktests}. The class BenchmarkTests contains all Tests. The classes Benchmark<n>Nodes contain the database generation. Here is configured how many nodes the database has. This are also the classes which are run with JUnit test. BenchmarkTests cant be run as a JUnit test as it is a abstract class. s
+
+\begin{center}
+\includegraphics[scale=0.4]{BenchmarkTestsClassOverview.jpg} 
+\end{center}
+
+Tests are simply implemented in the BenchmarkTests class with the @Test annotation. It is best practice only to implement the restcall in this method and only test if Response.Status is OK. This assures that as less as possible overhead time is measured. And the integration- and JUnit tests should be done on a other place.
+
+\begin{remark}
+JUnitBenchmarks measures the time to execute (@Before, @Test, @After). Heavy operations which should not be measured can be done in @BeforeClass and @AfterClass.
+\end{remark}
+
+To create a new database test-environment copy the class Benchmark600Nodes and rename it to the count of Nodes that should be inserted. In the class itself only two small adjustments need to be done. First change the name of the report file \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')}. Second adjust the properties of the database which should be generated \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
+
+\section*{Run Benchmarktests}
+The Benchmarktests can be run as every JUnit test. But to generate the report an argument needs to be passed by. 
+Create a JUnit Test as follows:
+
+\begin{center}
+\includegraphics[scale=0.4]{benchmarkTest.png} 
+\end{center}
+
+\begin{center}
+\includegraphics[scale=0.4]{benchmarkTestArgument.png} 
+\end{center}
+
+On the tab Arguments \textit{-Djub.consumers=CONSOLE,H2 -Djub.db.file=.benchmarks} has to be inserted into the VM Arguments input. After the test can be run as usual. After the test execution the reports are stored under \textit{benchmark/}.
+ 
+\begin{remark}
+The execution of the tests will take some time because of the generation of huge graphs. Its recommended not to use the computer during this tests.  
+\end{remark}
+
+
 %----------------------------------------------------------------------------------------
 %	PART
 %----------------------------------------------------------------------------------------
@@ -468,6 +535,58 @@ tradId: the id of the tradition \\
 \begin{return}[NOT\_FOUND]
 \textbf{application/json}\\
 Error: A tradition with this id does not exist!
+\end{return}
+
+\section{/tradition/reading/\{tradId\}/\{readId\}}
+\begin{get}
+/tradition/reading/\{tradId\}/\{readId\}
+\end{get}
+
+\subsection*{Summary}
+Get a specific reading of a tradition
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
+\end{parameter}
+\begin{parameter}\textbf{URL}\\
+readId: the id of the reading \\
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json} The reading in json\\
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A tradition with this id does not exist!
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A reading with this id does not exist!
+\end{return}
+
+\section{/tradition/duplicate/\{tradId\}}
+\begin{post}
+/tradition/duplicate/\{tradId\}
+\end{post}
+
+\subsection*{Summary}
+Duplicates readings in a tradition. Is the opposite method of merge.
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
+\end{parameter}
+\begin{parameter}
+\textbf{application/json}\\
+\{  'readings': [readId1, readId2], 'witnesses': ["wit1", "wit2"]\}
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json}\\
+\textit{Successfully duplicated readings}
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+\textit{If the tradition was not found. }
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+\textit{If one of the readings was not found. }
 \end{return}
 
 %----------------------------------------------------------------------------------------
