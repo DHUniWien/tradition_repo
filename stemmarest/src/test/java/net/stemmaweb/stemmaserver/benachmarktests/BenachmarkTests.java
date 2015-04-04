@@ -4,10 +4,13 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.UserModel;
+import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.rest.Reading;
+import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.rest.Witness;
@@ -53,6 +56,7 @@ public abstract class BenachmarkTests {
 	private Tradition traditionResource = new Tradition();
 	private Witness witnessResource = new Witness();
 	private Reading readingResoruce = new Reading();
+	private Relation relationResource = new Relation();
 	
 	String filename = "";
 
@@ -69,6 +73,7 @@ public abstract class BenachmarkTests {
 				.addResource(userResource)
 				.addResource(traditionResource)
 				.addResource(witnessResource)
+				.addResource(relationResource)
 				.addResource(readingResoruce).create();
 		jerseyTest.setUp();
 		
@@ -108,7 +113,7 @@ public abstract class BenachmarkTests {
 	
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
-	public void getAcompleteTradition(){
+	public void exportTraditionAsXML(){
 		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/get/1001").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
@@ -148,8 +153,25 @@ public abstract class BenachmarkTests {
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
-	
-	
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void createAndRemoveARelationShip(){
+		RelationshipModel relationship = new RelationshipModel();
+		String relationshipId = "";
+		relationship.setSource("16");
+		relationship.setTarget("23");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("april");
+		relationship.setDe9("showers");
+		relationship.setDe10("local");
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/1001/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
+		
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/1001/relationships/"+relationshipId).delete(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+	}
 	
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test

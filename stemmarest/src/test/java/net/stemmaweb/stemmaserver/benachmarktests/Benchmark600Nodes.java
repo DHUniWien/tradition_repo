@@ -36,10 +36,6 @@ public class Benchmark600Nodes extends BenachmarkTests {
 		/*
 		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
 		 */
-		initDatabase();
-	}
-
-	public static void initDatabase() {
 		RandomGraphGenerator rgg = new RandomGraphGenerator();
 		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase("database");
