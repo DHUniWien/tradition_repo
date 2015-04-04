@@ -1,0 +1,487 @@
+\chapter{Documentation}
+
+\section{Baseresource: }
+http://localhost:8080/
+
+\section{/user}
+
+\
+
+\textbf{Method Name: }getIt
+\begin{get}
+/
+\end{get}
+
+\begin{response}
+ as text/plain
+\end{response}
+
+\
+
+\textbf{Method Name: }create
+\begin{post}
+/create
+\end{post}
+
+\begin{request}
+userModel as application/json
+\end{request}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\
+
+\textbf{Method Name: }getUserById
+\begin{get}
+/\{userId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\
+
+\textbf{Method Name: }deleteUserById
+\begin{delete}
+/\{userId\}
+\end{delete}
+
+\begin{response}
+ as text/plain
+\end{response}
+
+\begin{parameter}
+userId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getTraditionsByUserId
+\begin{get}
+/traditions/\{userId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+userId as string
+\end{parameter}
+
+\section{/relation}
+
+\
+
+\textbf{Method Name: }getIt
+\begin{get}
+/
+\end{get}
+
+\begin{response}
+ as text/plain
+\end{response}
+
+\
+
+\textbf{Method Name: }delete
+\begin{post}
+/\{textId\}/relationships/delete
+\end{post}
+
+\begin{request}
+relationshipModel as application/json
+\end{request}
+
+\begin{response}
+ as text/plain
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }create
+\begin{post}
+/\{textId\}/relationships
+\end{post}
+
+\begin{request}
+relationshipModel as application/json
+\end{request}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }deleteById
+\begin{delete}
+/\{textId\}/relationships/\{relationshipId\}
+\end{delete}
+
+\begin{response}
+ as text/plain
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\begin{parameter}
+relationshipId as string
+\end{parameter}
+
+\section{/witness}
+
+\
+
+\textbf{Method Name: }getWitnssAsPlainText
+\begin{get}
+/string/rank/\{tradId\}/\{textId\}/\{startRank\}/\{endRank\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\begin{parameter}
+endRank as string
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\begin{parameter}
+startRank as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getWitnessAsPlainText
+\begin{get}
+/string/\{tradId\}/\{textId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getWitnessAsReadings
+\begin{get}
+/list/\{tradId\}/\{textId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getNextReadingInWitness
+\begin{get}
+/reading/next/\{tradId\}/\{textId\}/\{readId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\begin{parameter}
+readId as long
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getPreviousReadingInWitness
+\begin{get}
+/reading/previous/\{tradId\}/\{textId\}/\{readId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\begin{parameter}
+readId as long
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\section{/tradition}
+
+\
+
+\textbf{Method Name: }getAllRelationships
+\begin{get}
+/relation/\{tradId\}/relationships
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }deleteUserById
+\begin{delete}
+/\{tradId\}
+\end{delete}
+
+\begin{response}
+ as text/plain
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }changeOwnerOfATradition
+\begin{post}
+/\{textId\}
+\end{post}
+
+\begin{request}
+textInfoModel as application/json
+\end{request}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+textId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getReading
+\begin{get}
+/reading/\{tradId\}/\{readId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+readId as long
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getAllTraditions
+\begin{get}
+/all
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\
+
+\textbf{Method Name: }duplicateReading
+\begin{post}
+/duplicate/\{tradId\}
+\end{post}
+
+\begin{request}
+duplicateModel as application/json
+\end{request}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }mergeReadings
+\begin{post}
+/merge/\{tradId\}/\{firstReadId\}/\{secondReadId\}
+\end{post}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+secondReadId as long
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\begin{parameter}
+firstReadId as long
+\end{parameter}
+
+\
+
+\textbf{Method Name: }splitReading
+\begin{post}
+/split/\{tradId\}/\{readId\}
+\end{post}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+readId as long
+\end{parameter}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getAllWitnesses
+\begin{get}
+/witness/\{tradId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getTradition
+\begin{get}
+/get/\{tradId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }importGraphMl
+\begin{post}
+/new
+\end{post}
+
+\begin{request}
+ as multipart/form-data
+\end{request}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\
+
+\textbf{Method Name: }getAllReadingsOfTradition
+\begin{get}
+/readings/\{tradId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\
+
+\textbf{Method Name: }getDot
+\begin{get}
+/getdot/\{tradId\}
+\end{get}
+
+\begin{response}
+ as application/json
+\end{response}
+
+\begin{parameter}
+tradId as string
+\end{parameter}
+
+\section{/myresource}
+
+\
+
+\textbf{Method Name: }getIt
+\begin{get}
+/
+\end{get}
+
+\begin{response}
+ as text/plain
+\end{response}
+
