@@ -184,4 +184,16 @@ public class StemmaTest {
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), ownerChangeResponse.getStatus());
 
 	}
+	
+	/**
+	 * Shut down the jersey server
+	 * 
+	 * @throws Exception
+	 */
+	@After
+	public void tearDown() throws Exception {
+		mockDbService.shutdown();
+		jerseyTest.tearDown();
+	}
+
 }
