@@ -181,10 +181,12 @@ public class Reading implements IResource {
 	}
 
 	@GET
-	@Path("identical/{tradId}")
+	@Path("identical/{tradId}/{startRank}/{endRank}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getIdenticalReadings(@PathParam("tradId") String tradId) {
+	public Response getIdenticalReadings(@PathParam("tradId") String tradId,
+			@PathParam("startRank") long startRank,
+			@PathParam("endRank") long endRank) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -196,7 +198,8 @@ public class Reading implements IResource {
 		readingModels = getAllReadingsAsSortedList(startNode, db);
 
 		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
-		identicalReadings = getIdenticalReadingsAsList(readingModels);
+		identicalReadings = getIdenticalReadingsAsList(readingModels,
+				startRank, endRank);
 
 		if (identicalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
@@ -204,16 +207,24 @@ public class Reading implements IResource {
 
 		return Response.ok(identicalReadings).build();
 	}
-
+/**
+ * gets identical readings in a tradition between the given ranks
+ * @param readingModels list of all readings sorted according to rank
+ * @param startRank
+ * @param endRank
+ * @return list of the identical readings as readingModels
+ */
 	private ArrayList<ReadingModel> getIdenticalReadingsAsList(
-			ArrayList<ReadingModel> readingModels) {
+			ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
 		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
 		for (int i = 0; i < readingModels.size() - 2; i++) {
 			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
 					.getDn14() && i + 1 < readingModels.size()) {
 				if (readingModels.get(i).getDn15()
-						.equals(readingModels.get(i + 1).getDn15())) {
+						.equals(readingModels.get(i + 1).getDn15())
+						&& readingModels.get(i).getDn14() < endRank
+						&& readingModels.get(i).getDn14() > startRank) {
 					identicalReadings.add(readingModels.get(i));
 					identicalReadings.add(readingModels.get(i + 1));
 				}
