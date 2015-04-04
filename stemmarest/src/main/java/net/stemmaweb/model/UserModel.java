@@ -1,8 +1,11 @@
 package net.stemmaweb.model;
 
+import javax.xml.bind.annotation.XmlRootElement;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
+@XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class UserModel {
 	private String id;
