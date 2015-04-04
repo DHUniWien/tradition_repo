@@ -287,12 +287,16 @@
 \newtheorem{corollaryT}[dummy]{Corollary}
 \theoremstyle{blackbox}
 \newtheorem{paramT}{Parameter}
+\newtheorem{requestT}{Request}
+\newtheorem{responseT}{Response}
+\newtheorem{propertyT}{Property}
 \newtheorem{returnT}{Return}
 \theoremstyle{ocrenum}
 \newtheorem{proposition}[dummy]{Proposition}
 \theoremstyle{ocrebox}
 \newtheorem{getT}{GET}
 \newtheorem{postT}{POST}
+\newtheorem{deleteT}{DELETE}
 
 %----------------------------------------------------------------------------------------
 %	DEFINITION OF COLORED BOXES
@@ -366,7 +370,11 @@ innerbottommargin=5pt]{cBox}
 \newenvironment{theorem}{\begin{tBox}\begin{theoremeT}}{\end{theoremeT}\end{tBox}}
 \newenvironment{get}{\begin{tBox}\begin{getT}}{\end{getT}\end{tBox}}
 \newenvironment{post}{\begin{tBox}\begin{postT}}{\end{postT}\end{tBox}}
+\newenvironment{delete}{\begin{tBox}\begin{deleteT}}{\end{deleteT}\end{tBox}}
 \newenvironment{parameter}{\begin{dBox}\begin{paramT}}{\end{paramT}\end{dBox}}
+\newenvironment{request}{\begin{dBox}\begin{requestT}}{\end{requestT}\end{dBox}}
+\newenvironment{response}{\begin{dBox}\begin{responseT}}{\end{responseT}\end{dBox}}
+\newenvironment{property}{\begin{dBox}\begin{propertyT}}{\end{propertyT}\end{dBox}}
 \newenvironment{exercise}{\begin{eBox}\begin{exerciseT}}{\hfill{\color{ocre}\tiny\ensuremath{\blacksquare}}\end{exerciseT}\end{eBox}}				  
 \newenvironment{definition}{\begin{dBox}\begin{definitionT}}{\end{definitionT}\end{dBox}}	
 \newenvironment{return}{\begin{dBox}\begin{returnT}}{\end{returnT}\end{dBox}}	
