@@ -523,6 +523,58 @@ tradId: the id of the tradition \\
 Error: A tradition with this id does not exist!
 \end{return}
 
+\section{/tradition/reading/\{tradId\}/\{readId\}}
+\begin{get}
+/tradition/reading/\{tradId\}/\{readId\}
+\end{get}
+
+\subsection*{Summary}
+Get a specific reading of a tradition
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
+\end{parameter}
+\begin{parameter}\textbf{URL}\\
+readId: the id of the reading \\
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json} The reading in json\\
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A tradition with this id does not exist!
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+Error: A reading with this id does not exist!
+\end{return}
+
+\section{/tradition/duplicate/\{tradId\}}
+\begin{post}
+/tradition/duplicate/\{tradId\}
+\end{post}
+
+\subsection*{Summary}
+Duplicates readings in a tradition. Is the opposite method of merge.
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
+\end{parameter}
+\begin{parameter}
+\textbf{application/json}\\
+\{  'readings': [readId1, readId2], 'witnesses': ["wit1", "wit2"]\}
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json}\\
+\textit{Successfully duplicated readings}
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+\textit{If the tradition was not found. }
+\end{return}
+\begin{return}[NOT\_FOUND]
+\textbf{application/json}\\
+\textit{If one of the readings was not found. }
+\end{return}
+
 %----------------------------------------------------------------------------------------
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
