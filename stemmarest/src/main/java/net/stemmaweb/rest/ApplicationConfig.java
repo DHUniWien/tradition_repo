@@ -24,6 +24,7 @@ public class ApplicationConfig extends Application {
         s.add(User.class);
         s.add(Tradition.class);
         s.add(Relation.class);
+        s.add(Stemma.class);
         
         return s;
     }

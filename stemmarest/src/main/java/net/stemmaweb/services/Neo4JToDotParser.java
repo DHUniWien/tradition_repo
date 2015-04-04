@@ -7,6 +7,11 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -14,12 +19,15 @@ import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import Exceptions.DataBaseException;
@@ -44,8 +52,7 @@ public class Neo4JToDotParser
 		
 		String filename = "upload/" + "output.dot";
     	
-    	DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId,db);
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
@@ -115,6 +122,85 @@ public class Neo4JToDotParser
     	db.shutdown();
     	
 		return null;
+	}
+	
+	/**
+	 * Parses a stemma of a tradition in a JSON string in DOT format
+	 * don't throw error far enough
+	 * 
+	 * @param tradId
+	 * @param stemmaTitle
+	 * @return
+	 */
+	public Response parseNeo4JStemma(String tradId, String stemmaTitle)
+	{
+		    	
+		String output="";
+
+		ExecutionEngine engine = new ExecutionEngine(db);
+    	
+    	try (Transaction tx = db.beginTx()) 
+    	{
+    		ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ 
+    						tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
+    						stemmaTitle +"'}) return n");
+    		Iterator<Node> nodes = result.columnAs("n");
+    		
+    		if(!nodes.hasNext()) {
+    	    	db.shutdown();
+    			return Response.status(Status.NOT_FOUND).build();
+    		}
+			Node startNodeStemma = nodes.next();
+    		String stemmaType = startNodeStemma.getProperty("type").toString();
+    		
+    		
+    		if(stemmaType.equals("digraph"))
+	    		output+="digraph \"" + stemmaTitle + "\" { \n";
+    		else
+	    		output+="graph \"" + stemmaTitle + "\" { \n";
+    		
+	    		
+	    		Evaluator e = new Evaluator(){
+	    			@Override
+	    			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
+
+	    				if (path.length() == 0)
+	    					return Evaluation.EXCLUDE_AND_CONTINUE;
+
+	    				boolean includes = false;
+
+	    				if (path.endNode().hasProperty("class")) {
+	    					includes = true;
+	    				}
+	    				return Evaluation.of(includes,includes);
+	    			}
+	    		};
+	    		for (Relationship rel : db.traversalDescription().breadthFirst()
+						.relationships(ERelations.STEMMA)
+						.evaluator(e)
+						.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+						.traverse(startNodeStemma).relationships()) {
+	    			if(rel.getStartNode().hasProperty("id")) {
+		    			output += rel.getStartNode().getProperty("id").toString() + " [class=\"" + rel.getStartNode().getProperty("class").toString() + "\"];\n";
+		    			
+		    			
+			    			if(rel.getStartNode().hasProperty("id")) {
+			    				if(stemmaType.equals("digraph")) 
+			    					output += rel.getStartNode().getProperty("id") + "->" + rel.getEndNode().getProperty("id") + ";\n";
+			    				else 
+			    					output += rel.getStartNode().getProperty("id") + "--" + rel.getEndNode().getProperty("id") + ";\n";
+			    			}
+	    			}
+	    		}
+	    		
+	    	output += " }";
+    		
+    		tx.success();
+    	}
+    	
+    	db.shutdown();
+    	
+		return Response.ok(output).build();
 	}
 	
 	private void write(String str) throws IOException

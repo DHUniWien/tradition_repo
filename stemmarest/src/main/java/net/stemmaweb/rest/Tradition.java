@@ -854,9 +854,8 @@ public class Tradition implements IResource {
 	}
 
 	/**
-	 * Returns GraphML file from specified tradition owned by user
+	 * Returns DOT file from specified tradition owned by user
 	 * 
-	 * @param userId
 	 * @param traditionName
 	 * @return XML data
 	 */
