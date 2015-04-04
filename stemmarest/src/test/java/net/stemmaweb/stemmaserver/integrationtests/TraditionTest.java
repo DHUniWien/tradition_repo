@@ -430,7 +430,7 @@ public class TraditionTest {
 	}
 	
 	@Test
-	public void getDot()
+	public void getDotTest()
 	{
 		String str = jerseyTest.resource().path("/tradition/getdot/" + tradId).type(MediaType.APPLICATION_JSON).get(String.class);
 

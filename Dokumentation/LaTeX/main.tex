@@ -472,6 +472,20 @@ tradId: the id of the tradition \\
 Error: A tradition with this id does not exist!
 \end{return}
 
+\section{/tradition/relation/\{tradId\}/relationships}
+\begin{get}
+/tradition/relation/\{tradId\/relationships}
+\end{get}
+
+\subsection*{Summary}
+List all Relationships of a tradition
+\begin{parameter}\textbf{URL}\\
+tradId: the id of the tradition \\
+\end{parameter}
+\begin{return}[OK]
+\textbf{application/json}\\
+\end{return}
+
 \section{/tradition/new}
 \begin{post}
 /tradition/new
