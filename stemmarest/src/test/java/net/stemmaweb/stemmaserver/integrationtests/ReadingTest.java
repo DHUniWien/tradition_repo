@@ -186,14 +186,12 @@ public class ReadingTest {
 	@Test
 	public void identicalReadingsTest(){
 		List<ReadingModel> listOfIdenticalReadings = jerseyTest.resource()
-				.path("/reading/identical/" + tradId)
+				.path("/reading/identical/" + tradId + "/3/8")
 				.get(new GenericType<List<ReadingModel>>() {
 				});
-		assertEquals(4, listOfIdenticalReadings.size());
+		assertEquals(2, listOfIdenticalReadings.size());
 		assertEquals(listOfIdenticalReadings.get(0).getDn15(), listOfIdenticalReadings.get(1).getDn15());
-		assertEquals("april", listOfIdenticalReadings.get(1).getDn15());
-		assertEquals(listOfIdenticalReadings.get(2).getDn15(), listOfIdenticalReadings.get(3).getDn15());
-		assertEquals("his", listOfIdenticalReadings.get(2).getDn15());
+		assertEquals("his", listOfIdenticalReadings.get(1).getDn15());
 	}
 
 	@Test
