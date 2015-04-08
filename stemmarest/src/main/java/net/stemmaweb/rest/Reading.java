@@ -270,44 +270,44 @@ public class Reading implements IResource {
 	}
 
 	private void compress(Node read1, Node read2) {
-		// TODO Auto-generated method stub
+		String textRead1 = (String) read1.getProperty("dn15");
+		String textRead2 = (String) read2.getProperty("dn15");
+		String s = "";
+
+		read1.setProperty("dn15", textRead1 + " " + textRead2);
+		Node read3 = getNormalRealtionship(read2, s).getOtherNode(read2);
 
 	}
 
-	private boolean canCompress(Node read1, Node read2, String message) {
-		Iterable<Relationship> rel = read1.getRelationships(ERelations.NORMAL);
-		Iterator<Relationship> relFromRead1 = rel.iterator();
-		if (!relFromRead1.hasNext()){
-			message = "problem with the first reading. Could not compress";
-			return false;
-		}
+	private boolean canCompress(Node read1, Node read2, String message) {		
+	
+		Relationship normalFromRead1 = getNormalRealtionship(read1, message);
+		Relationship normalFromRead2 = getNormalRealtionship(read2, message);
 		
-		rel = read2.getRelationships(ERelations.NORMAL);
-		Iterator<Relationship> relFromRead2 = rel.iterator();
-		if (!relFromRead2.hasNext()){
-			message = "problem with the second reading. Could not compress";
+		if (normalFromRead1==null || normalFromRead2==null){
 			return false;
-		}
-		
-		Relationship normalFromRead1 = relFromRead1.next();
-		Relationship normalFromRead2 = relFromRead2.next();
-		
-		if (relFromRead1.hasNext()){
-			message = "The first reading has more than one normal realtionship. Could not compress";
-			return false;
-		}
-		
-		if (relFromRead2.hasNext()){
-			message = "The second reading has more than one normal realtionship. Could not compress";
-			return false;
-		}		
-
+		}	
 		if (!normalFromRead1.getOtherNode(read1).equals(read2)){
-			message = "The readings are not neighbours. Could not compress";
-			return false;
-		}		
+			message  = "reading are not neighbours. Could not compress.";
+			return false;			
+		}
 		
-		return false;
+		if ()	return true;
+	}
+	
+	private Relationship getNormalRealtionship(Node read, String message){
+		Iterable<Relationship> rel = read.getRelationships(ERelations.NORMAL);
+		Iterator<Relationship> relFromRead = rel.iterator();
+		if (!relFromRead.hasNext()){
+			message = "problem with a reading. Could not compress";
+			return null;
+		}
+		Relationship normalFromRead = relFromRead.next();
+		if (relFromRead.hasNext()){
+			message = "A reading has more than one normal realtionship. Could not compress";
+			return null;
+		}		
+		return normalFromRead;		
 	}
 	
 	private void swapReadings(Node read1, Node read2){

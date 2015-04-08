@@ -147,6 +147,35 @@ public class ReadingUnitTest {
 	}
 
 	@Test
+	public void compressReadingTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			Node showers = nodes.next();
+
+			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			Node sweet = nodes.next();
+
+			reading.compressReadings(tradId,
+					(String) showers.getProperty("id"),
+					(String) sweet.getProperty("id"));
+
+			assertEquals("showers sweet", showers.getProperty("nd15"));
+
+			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+			tx.success();
+		}
+	}
+
+	@Test
 	public void randomNodeExistsTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
