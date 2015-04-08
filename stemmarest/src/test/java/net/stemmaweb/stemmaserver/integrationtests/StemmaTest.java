@@ -167,24 +167,55 @@ public class StemmaTest {
 		String stemmaTitle = "stemma";
 		String str = jerseyTest.resource().path("/stemma/" + tradId + "/"+ stemmaTitle).type(MediaType.APPLICATION_JSON).get(String.class);
 
-		String expected = "digraph \"stemma\" { \n0 [class=\"hypothetical\"];\n"
-				+ "0->A;\n0 [class=\"hypothetical\"];\n0->B;\n"
-				+ "A [class=\"hypothetical\"];\nA->C;\n }";
+		String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "
+				+ "A [ class=hypothetical ];  B [ class=hypothetical ];  "
+				+ "C [ class=hypothetical ]; 0 -> A;  0 -> B;  A -> C; }";
 		assertEquals(expected, str);
 		
 		String stemmaTitle2 = "Semstem 1402333041_0";
 		String str2 = jerseyTest.resource().path("/stemma/" + tradId + "/"+ stemmaTitle2).type(MediaType.APPLICATION_JSON).get(String.class);
 		
-		String expected2 = "graph \"Semstem 1402333041_0\" { \n0 [class=\"hypothetical\"];\n"
-				+ "0--A;\nA [class=\"hypothetical\"];\nA--B;\nB [class=\"hypothetical\"];\n"
-				+ "B--C;\n }";
+		String expected2 = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  "
+				+ "A [ class=hypothetical ];  B [ class=hypothetical ];  "
+				+ "C [ class=hypothetical ]; 0 -- A;  A -- B;  B -- C; }";
 		assertEquals(expected2, str2);
 		
-		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/stemma/" + tradId + "/gugus").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), ownerChangeResponse.getStatus());
+		ClientResponse getStemmaResponse = jerseyTest.resource().path("/stemma/" + tradId + "/gugus").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getStemmaResponse.getStatus());
 
 	}
 	
+	@Test
+	public void setStemmaTest(){
+		
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res");
+			assertEquals(2L,result.columnAs("res").next());
+		
+			tx.success();
+		}
+		
+		String input="graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  "
+				+ "A [ class=hypothetical ];  B [ class=hypothetical ];  "
+				+ "C [ class=hypothetical ]; 0 -- A;  A -- B;  B -- C; }";
+		
+		ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,input);
+		assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+		
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result2 = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res2");
+			assertEquals(3L,result2.columnAs("res2").next());
+		
+			tx.success();
+		}
+		
+		String stemmaTitle = "Semstem 1402333041_1";
+		String str = jerseyTest.resource().path("/stemma/" + tradId + "/"+ stemmaTitle).type(MediaType.APPLICATION_JSON).get(String.class);
+		
+		assertEquals(input, str);
+
+	}
 	/**
 	 * Shut down the jersey server
 	 * 

@@ -53,7 +53,7 @@ public class DotToNeo4JParser implements IResource
 		this.db = db;
 	}
 	
-	public void parseDot(String dot, String tradId)
+	public Response parseDot(String dot, String tradId)
 	{	
 		//db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		this.dot = dot;
@@ -69,11 +69,14 @@ public class DotToNeo4JParser implements IResource
     	{
     		db.shutdown();
     		e.printStackTrace();
+    		return Response.status(Status.NOT_FOUND).build();
     	}
     	finally
     	{
     		db.shutdown();
     	}
+		return Response.ok().build();
+
 	}
 	
 	/**

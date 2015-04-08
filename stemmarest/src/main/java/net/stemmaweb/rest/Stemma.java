@@ -35,6 +35,7 @@ import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
@@ -70,11 +71,11 @@ public class Stemma implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	
 	/**
-	 * Returns GraphML file from specified tradition owned by user
+	 * Returns JSON string with a stemma of a tradition in DOT format
 	 * 
 	 * @param tratitionId
 	 * @param stemmaTitle
-	 * @return DOT data
+	 * @return DOT JSON string
 	 */
 	@GET
 	@Path("/{tradId}/{stemmaTitle}")
@@ -89,42 +90,20 @@ public class Stemma implements IResource {
 	}
 
 	/**
-	 * Returns GraphML file from specified tradition owned by user
+	 * Puts the stemma of a DOT file in the database
 	 * 
 	 * @param tratitionId
-	 * @param stemmaTitle
-	 * @return DOT data
+	 * @return 
 	 */
 	@POST
-	@Path("/{tradId}/{stemmaTitle}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response setStemma(@PathParam("tradId") String tradId) {
+	@Path("/{tradId}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response setStemma(@PathParam("tradId") String tradId, String dot) {
 		
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		Neo4JToDotParser parser = new Neo4JToDotParser(db);
-		Response resp = parser.parseNeo4J(tradId);
+		DotToNeo4JParser parser = new DotToNeo4JParser(db);
+		Response resp = parser.parseDot(dot,tradId);
 		
-		String filename = "upload/" + "output.dot";
-		
-		String everything = "";
-		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
-	        StringBuilder sb = new StringBuilder();
-	        String line = br.readLine();
-
-	        while (line != null) {
-	            sb.append(line);
-	            sb.append(System.lineSeparator());
-	            line = br.readLine();
-	        }
-	        everything = sb.toString();
-	    } catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		return Response.ok(everything).build();
+		return resp;
 	}
 }

@@ -4,12 +4,12 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
-import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -23,6 +23,7 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
@@ -69,7 +70,7 @@ public class Neo4JToDotParser
     		file.createNewFile();
     		out = new FileOutputStream(file);
     		
-    		write("digraph { \n");
+    		write("digraph { ");
     		
     		long edgeId = 0;
     		String subgraph = "";
@@ -78,7 +79,7 @@ public class Neo4JToDotParser
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
     			
-    			write("n" + node.getId() + " [label=\"" + node.getProperty("dn15").toString() + "\"];\n");
+    			write("n" + node.getId() + " [label=\"" + node.getProperty("dn15").toString() + "\"];");
     			
     			for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.NORMAL))
     			{
@@ -94,17 +95,17 @@ public class Neo4JToDotParser
 	    						lex_str += ",";
 	    				}
 	    			
-	    				write("n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[label=\""+ lex_str +"\";id=\"e"+ edgeId++ +"\"];\n");
+	    				write("n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[label=\""+ lex_str +"\";id=\"e"+ edgeId++ +"\"];");
 	    			}
     			}
     			for(Relationship rel : node.getRelationships(Direction.OUTGOING, ERelations.RELATIONSHIP))
     			{
-    				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[style=dotted;label=\""+ rel.getProperty("de11").toString() +"\";id=\"e"+ edgeId++ +"\"];\n";
+    				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[style=dotted;label=\""+ rel.getProperty("de11").toString() +"\";id=\"e"+ edgeId++ +"\"];";
     			}
     			
     		}
     		
-    		write("subgraph { edge [dir=none]\n");
+    		write("subgraph { edge [dir=none]");
     		
     		write(subgraph);
     		
@@ -134,8 +135,12 @@ public class Neo4JToDotParser
 	 */
 	public Response parseNeo4JStemma(String tradId, String stemmaTitle)
 	{
-		    	
 		String output="";
+		String outputNodes="";
+		String outputRelationships="";
+		ArrayList<Node> nodes = new ArrayList<Node>();
+		ArrayList<Relationship> relationships = new ArrayList<Relationship>();
+
 
 		ExecutionEngine engine = new ExecutionEngine(db);
     	
@@ -144,20 +149,21 @@ public class Neo4JToDotParser
     		ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ 
     						tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
     						stemmaTitle +"'}) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
+    		Iterator<Node> stNodes = result.columnAs("n");
     		
-    		if(!nodes.hasNext()) {
+    		
+    		if(!stNodes.hasNext()) {
     	    	db.shutdown();
     			return Response.status(Status.NOT_FOUND).build();
     		}
-			Node startNodeStemma = nodes.next();
+			Node startNodeStemma = stNodes.next();
     		String stemmaType = startNodeStemma.getProperty("type").toString();
     		
     		
     		if(stemmaType.equals("digraph"))
-	    		output+="digraph \"" + stemmaTitle + "\" { \n";
+	    		outputNodes+="digraph \"" + stemmaTitle + "\" {";
     		else
-	    		output+="graph \"" + stemmaTitle + "\" { \n";
+	    		outputNodes+="graph \"" + stemmaTitle + "\" {";
     		
 	    		
 	    		Evaluator e = new Evaluator(){
@@ -175,25 +181,35 @@ public class Neo4JToDotParser
 	    				return Evaluation.of(includes,includes);
 	    			}
 	    		};
-	    		for (Relationship rel : db.traversalDescription().breadthFirst()
+	    		for (Path path : db.traversalDescription().breadthFirst()
 						.relationships(ERelations.STEMMA)
 						.evaluator(e)
-						.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-						.traverse(startNodeStemma).relationships()) {
-	    			if(rel.getStartNode().hasProperty("id")) {
-		    			output += rel.getStartNode().getProperty("id").toString() + " [class=\"" + rel.getStartNode().getProperty("class").toString() + "\"];\n";
+						.uniqueness(Uniqueness.NODE_GLOBAL)
+						.traverse(startNodeStemma)) {
+	    			
+	    			if(!nodes.contains(path.endNode()))
+    					nodes.add(path.endNode());	
+	    		}
+	    		for(Node n : nodes) {
+		    			outputNodes += "  " + n.getProperty("id").toString() + " [ class=" + n.getProperty("class").toString() + " ];";
+		    			Iterable<Relationship> rels = n.getRelationships();
 		    			
-		    			
+		    			for(Relationship rel: rels){
+		    				if(!relationships.contains(rel))
+		    					relationships.add(rel);
+		    			}
+	    				
+    			}
+	    		for(Relationship rel: relationships) {
 			    			if(rel.getStartNode().hasProperty("id")) {
 			    				if(stemmaType.equals("digraph")) 
-			    					output += rel.getStartNode().getProperty("id") + "->" + rel.getEndNode().getProperty("id") + ";\n";
+			    					outputRelationships += " " + rel.getStartNode().getProperty("id") + " -> " + rel.getEndNode().getProperty("id") + "; ";
 			    				else 
-			    					output += rel.getStartNode().getProperty("id") + "--" + rel.getEndNode().getProperty("id") + ";\n";
+			    					outputRelationships += " " + rel.getStartNode().getProperty("id") + " -- " + rel.getEndNode().getProperty("id") + "; ";
 			    			}
-	    			}
-	    		}
-	    		
-	    	output += " }";
+			    		}
+	    	output = outputNodes + outputRelationships;
+	    	output += "}";
     		
     		tx.success();
     	}
