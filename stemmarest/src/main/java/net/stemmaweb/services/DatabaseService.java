@@ -2,13 +2,19 @@ package net.stemmaweb.services;
 
 import java.util.Iterator;
 
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 import Exceptions.DataBaseException;
 
@@ -164,5 +170,25 @@ public class DatabaseService {
 			tx.success();
 		} 
 		return false;
+	}
+	
+	public static Node getReadingById(String readId, Node startNode, GraphDatabaseService db){
+		
+		try (Transaction tx = db.beginTx()) {
+
+		for (Node node : db.traversalDescription().depthFirst()
+				.relationships(ERelations.NORMAL, Direction.OUTGOING)
+				.evaluator(Evaluators.all())
+				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+				.nodes()) {
+			if (node.getProperty("id").equals(readId)){
+				tx.success();
+				return node;
+			}
+		}		
+		tx.success();
+		Node node = null;
+		return node;
+		}
 	}
 }

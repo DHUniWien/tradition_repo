@@ -205,13 +205,16 @@ public class Reading implements IResource {
 
 		return Response.ok(identicalReadings).build();
 	}
-/**
- * gets identical readings in a tradition between the given ranks
- * @param readingModels list of all readings sorted according to rank
- * @param startRank
- * @param endRank
- * @return list of the identical readings as readingModels
- */
+
+	/**
+	 * gets identical readings in a tradition between the given ranks
+	 * 
+	 * @param readingModels
+	 *            list of all readings sorted according to rank
+	 * @param startRank
+	 * @param endRank
+	 * @return list of the identical readings as readingModels
+	 */
 	private ArrayList<ReadingModel> getIdenticalReadingsAsList(
 			ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
 		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
@@ -230,5 +233,86 @@ public class Reading implements IResource {
 			}
 		}
 		return identicalReadings;
+	}
+
+	/**
+	 * compress two readings into one
+	 * 
+	 * @param tradId
+	 * @param readId1
+	 * @param readId2
+	 * @return confirmation that the operation was completed
+	 */
+	@GET
+	@Path("compress/{tradId}/{readId1}/{readId2}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response compressReadings(@PathParam("tradId") String tradId,
+			@PathParam("readId1") String readId1,
+			@PathParam("readId2") String readId2) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		Node read1, read2;
+		String message = "";
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+		read1 = DatabaseService.getReadingById(readId1, startNode, db);
+		read2 = DatabaseService.getReadingById(readId2, startNode, db);
+		
+		if ((long)read1.getProperty("rank")>(long)read2.getProperty("rank"))
+			swapReadings(read1, read2);
+
+		if (canCompress(read1, read2, message)) {
+			compress(read1, read2);
+			return Response.ok("Successfully compressed readings").build();
+		} else
+			return Response.ok(message).build();
+	}
+
+	private void compress(Node read1, Node read2) {
+		// TODO Auto-generated method stub
+
+	}
+
+	private boolean canCompress(Node read1, Node read2, String message) {
+		Iterable<Relationship> rel = read1.getRelationships(ERelations.NORMAL);
+		Iterator<Relationship> relFromRead1 = rel.iterator();
+		if (!relFromRead1.hasNext()){
+			message = "problem with the first reading. Could not compress";
+			return false;
+		}
+		
+		rel = read2.getRelationships(ERelations.NORMAL);
+		Iterator<Relationship> relFromRead2 = rel.iterator();
+		if (!relFromRead2.hasNext()){
+			message = "problem with the second reading. Could not compress";
+			return false;
+		}
+		
+		Relationship normalFromRead1 = relFromRead1.next();
+		Relationship normalFromRead2 = relFromRead2.next();
+		
+		if (relFromRead1.hasNext()){
+			message = "The first reading has more than one normal realtionship. Could not compress";
+			return false;
+		}
+		
+		if (relFromRead2.hasNext()){
+			message = "The second reading has more than one normal realtionship. Could not compress";
+			return false;
+		}		
+
+		if (!normalFromRead1.getOtherNode(read1).equals(read2)){
+			message = "The readings are not neighbours. Could not compress";
+			return false;
+		}		
+		
+		return false;
+	}
+	
+	private void swapReadings(Node read1, Node read2){
+		Node tempRead = read1;
+		read1 = read2;
+		read2 = tempRead;
 	}
 }

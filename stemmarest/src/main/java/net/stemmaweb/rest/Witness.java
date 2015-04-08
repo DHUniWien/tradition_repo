@@ -93,8 +93,7 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId, db);
 
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
 
@@ -171,8 +170,7 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
@@ -204,8 +202,7 @@ public class Witness implements IResource {
 		final String WITNESS_ID = textId;
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
