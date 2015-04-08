@@ -258,8 +258,8 @@ public class Reading implements IResource {
 					.entity("Could not find tradition with this id").build();
 		read1 = DatabaseService.getReadingById(readId1, startNode, db);
 		read2 = DatabaseService.getReadingById(readId2, startNode, db);
-		
-		if ((long)read1.getProperty("rank")>(long)read2.getProperty("rank"))
+
+		if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank"))
 			swapReadings(read1, read2);
 
 		if (canCompress(read1, read2, message)) {
@@ -279,38 +279,37 @@ public class Reading implements IResource {
 
 	}
 
-	private boolean canCompress(Node read1, Node read2, String message) {		
-	
+	private boolean canCompress(Node read1, Node read2, String message) {
+
 		Relationship normalFromRead1 = getNormalRealtionship(read1, message);
 		Relationship normalFromRead2 = getNormalRealtionship(read2, message);
-		
-		if (normalFromRead1==null || normalFromRead2==null){
+
+		if (normalFromRead1 == null || normalFromRead2 == null) {
 			return false;
-		}	
-		if (!normalFromRead1.getOtherNode(read1).equals(read2)){
-			message  = "reading are not neighbours. Could not compress.";
-			return false;			
 		}
-		
-		if ()	return true;
+		if (!normalFromRead1.getOtherNode(read1).equals(read2)) {
+			message = "reading are not neighbours. Could not compress.";
+			return false;
+		}
+		return true;
 	}
-	
-	private Relationship getNormalRealtionship(Node read, String message){
+
+	private Relationship getNormalRealtionship(Node read, String message) {
 		Iterable<Relationship> rel = read.getRelationships(ERelations.NORMAL);
 		Iterator<Relationship> relFromRead = rel.iterator();
-		if (!relFromRead.hasNext()){
+		if (!relFromRead.hasNext()) {
 			message = "problem with a reading. Could not compress";
 			return null;
 		}
 		Relationship normalFromRead = relFromRead.next();
-		if (relFromRead.hasNext()){
+		if (relFromRead.hasNext()) {
 			message = "A reading has more than one normal realtionship. Could not compress";
 			return null;
-		}		
-		return normalFromRead;		
+		}
+		return normalFromRead;
 	}
-	
-	private void swapReadings(Node read1, Node read2){
+
+	private void swapReadings(Node read1, Node read2) {
 		Node tempRead = read1;
 		read1 = read2;
 		read2 = tempRead;
