@@ -136,7 +136,6 @@ public class ReadingUnitTest {
 
 			tx.success();
 		}
-
 	}
 
 	@Test

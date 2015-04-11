@@ -146,13 +146,13 @@ public class Reading implements IResource {
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsAsSortedList(startNode, db);
+		readingModels = getAllReadingsFromTradition(startNode, db);
 
 		db.shutdown();
 		return Response.ok(readingModels).build();
 	}
 
-	private ArrayList<ReadingModel> getAllReadingsAsSortedList(Node startNode,
+	private ArrayList<ReadingModel> getAllReadingsFromTradition(Node startNode,
 			GraphDatabaseService db) {
 
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
@@ -166,13 +166,33 @@ public class Reading implements IResource {
 					.nodes()) {
 				ReadingModel tempReading = Reading.readingModelFromNode(node);
 				readingModels.add(tempReading);
-				/*
-				 * if (readingModels.size() == 0) {
-				 * readingModels.add(tempReading); } else { // sort the list of
-				 * reading by rank int i = readingModels.size() - 1; while
-				 * (readingModels.get(i).getDn14() > tempReading .getDn14() && i
-				 * != 0) { i--; } readingModels.add(i, tempReading); }
-				 */}
+			}
+			tx.success();
+		}
+		return readingModels;
+	}
+
+	private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
+			Node startNode, long startRank, long endRank,
+			GraphDatabaseService db) {
+
+		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+
+		try (Transaction tx = db.beginTx()) {
+
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(Evaluators.all())
+					.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+					.nodes()) {
+				long nodeRank = (long) node.getProperty("dn14");
+
+				if (nodeRank < endRank && nodeRank > startRank) {
+					ReadingModel tempReading = Reading
+							.readingModelFromNode(node);
+					readingModels.add(tempReading);
+				}
+			}
 			tx.success();
 		}
 		Collections.sort(readingModels);
@@ -193,7 +213,8 @@ public class Reading implements IResource {
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsAsSortedList(startNode, db);
+		readingModels = getAllReadingsFromTraditionBetweenRanks(startNode,
+				startRank, endRank, db);
 
 		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
@@ -259,7 +280,7 @@ public class Reading implements IResource {
 		read1 = DatabaseService.getReadingById(readId1, startNode, db);
 		read2 = DatabaseService.getReadingById(readId2, startNode, db);
 
-		if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank"))
+		if ((long) read1.getProperty("dn14") > (long) read2.getProperty("dn14"))
 			swapReadings(read1, read2);
 
 		if (canCompress(read1, read2, message)) {
@@ -269,40 +290,58 @@ public class Reading implements IResource {
 			return Response.status(Status.NOT_MODIFIED).entity(message).build();
 	}
 
+	/**
+	 * compress two readings
+	 * 
+	 * @param read1
+	 *            the first reading
+	 * @param read2
+	 *            the second reading
+	 */
 	private void compress(Node read1, Node read2) {
 		String textRead1 = (String) read1.getProperty("dn15");
 		String textRead2 = (String) read2.getProperty("dn15");
 		read1.setProperty("dn15", textRead1 + " " + textRead2);
-		
-		Iterator<Relationship> normalFromRead1 = getNormalRealtionships(read1);
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2,
-				normalFromRead1);
+
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
 		from1to2.delete();
-		
+
 		copyRelationships(read1, read2);
-		read2.delete();		
+		read2.delete();
 	}
 
+	/**
+	 * copy all NORMAL relationship from one node to another
+	 * @param read1 the node which receives the relationships
+	 * @param read2 the node from which relationships are copied
+	 */
 	private void copyRelationships(Node read1, Node read2) {
-		
-		Iterator<Relationship> normalFromRead2 = getNormalRealtionships(read2);
-		while (normalFromRead2.hasNext()){
-			Relationship tempRel = normalFromRead2.next();
-			Node tempNode = tempRel.getOtherNode(read2);
-			read1.createRelationshipTo(tempNode,ERelations.NORMAL);			
+
+		for (Relationship tempRel2 : read2.getRelationships()) {
+			Node tempNode = tempRel2.getOtherNode(read2);
+			Relationship rel1 = read1.createRelationshipTo(tempNode,
+					ERelations.NORMAL);
+			for (String key : tempRel2.getPropertyKeys()) {
+				rel1.setProperty(key, tempRel2.getProperty(key));
+			}
 		}
 	}
 
+	/**
+	 * checks if two readings could be compressed
+	 * @param read1 the first reading
+	 * @param read2 the second reading
+	 * @param message the error message, in case the readings cannot be compressed
+	 * @return true if ok to compress, false otherwise
+	 */
 	private boolean canCompress(Node read1, Node read2, String message) {
-
-		Iterator<Relationship> normalFromRead1 = getNormalRealtionships(read1);
-		Iterator<Relationship> normalFromRead2 = getNormalRealtionships(read2);
-		if (!normalFromRead2.hasNext()){
+		Iterable<Relationship> rel = read2.getRelationships(ERelations.NORMAL);
+		Iterator<Relationship> normalFromRead2 = rel.iterator();
+		if (!normalFromRead2.hasNext()) {
 			message = "second readings is not connected. could not compress.";
 			return false;
 		}
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2,
-				normalFromRead1);
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
 		if (from1to2 == null) {
 			message = "reading are not neighbours. Could not compress.";
 			return false;
@@ -310,25 +349,20 @@ public class Reading implements IResource {
 		return true;
 	}
 
-	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2,
-			Iterator<Relationship> normalFromRead1) {
+	/**
+	 * get the normal relationship between two readings
+	 * @param read1 the first reading
+	 * @param read2 the second reading
+	 * @return the NORMAL relationship
+	 */
+	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2) {
 		Relationship from1to2 = null;
-		while (normalFromRead1.hasNext()) {
-			Relationship tempRel = normalFromRead1.next();
+		for (Relationship tempRel : read1.getRelationships()) {
 			if (tempRel.getOtherNode(read1).equals(read2)) {
 				from1to2 = tempRel;
 			}
 		}
 		return from1to2;
-	}
-
-	private Iterator<Relationship> getNormalRealtionships(Node read) {
-		Iterable<Relationship> rel = read.getRelationships(ERelations.NORMAL);
-		Iterator<Relationship> relFromRead = rel.iterator();
-		if (!relFromRead.hasNext()) {
-			return null;
-		}
-		return relFromRead;
 	}
 
 	private void swapReadings(Node read1, Node read2) {

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -168,6 +169,8 @@ public class ReadingTest {
 				.path("/reading/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
+		Collections.sort(listOfReadings);
+
 		assertEquals(28, listOfReadings.size());
 
 		String expectedTest = "#START# when april april with his his showers sweet with fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
