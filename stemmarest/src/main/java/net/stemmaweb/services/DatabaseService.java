@@ -12,6 +12,7 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -21,30 +22,33 @@ import Exceptions.DataBaseException;
 /**
  * 
  * Helper methods for the database
+ * 
  * @author jakob, ido
  *
  */
 public class DatabaseService {
 
 	private GraphDatabaseService db;
-	
+
 	/**
 	 * @Deprecated Use the static Methods instead
 	 * @param db
 	 */
 	@Deprecated
-	public DatabaseService(GraphDatabaseService db){
+	public DatabaseService(GraphDatabaseService db) {
 		this.db = db;
 	}
-	
+
 	/**
 	 * gets the "start" node of a tradition
+	 * 
 	 * @param traditionName
 	 * @param userId
 	 * 
 	 * @return the start node of a witness
 	 * 
-	 * @Deprecated use getStartNode(String tradId, GraphDatabaseService db) instead
+	 * @Deprecated use getStartNode(String tradId, GraphDatabaseService db)
+	 *             instead
 	 */
 	@Deprecated
 	public Node getStartNode(String tradId) throws DataBaseException {
@@ -65,8 +69,8 @@ public class DatabaseService {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(
-						problemFinder.findPathProblem(tradId,db));
+				throw new DataBaseException(problemFinder.findPathProblem(
+						tradId, db));
 			} else
 				startNode = nodes.next();
 
@@ -74,14 +78,15 @@ public class DatabaseService {
 		}
 		return startNode;
 	}
-	
+
 	/**
 	 * 
 	 * @param tradId
-	 * @param db the GraphDatabaseService where the tradition is stored
+	 * @param db
+	 *            the GraphDatabaseService where the tradition is stored
 	 * @return
 	 */
-	public static Node getStartNode(String tradId, GraphDatabaseService db){
+	public static Node getStartNode(String tradId, GraphDatabaseService db) {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService();
 		Node startNode = null;
@@ -98,8 +103,8 @@ public class DatabaseService {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(
-						problemFinder.findPathProblem(tradId,db));
+				throw new DataBaseException(problemFinder.findPathProblem(
+						tradId, db));
 			} else
 				startNode = nodes.next();
 
@@ -107,7 +112,7 @@ public class DatabaseService {
 		}
 		return startNode;
 	}
-	
+
 	/**
 	 * creates the root node
 	 * 
@@ -115,43 +120,40 @@ public class DatabaseService {
 	@Deprecated
 	public void createRootNode() {
 		ExecutionEngine engine = new ExecutionEngine(db);
-    	try(Transaction tx = db.beginTx())
-    	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		if(!nodes.hasNext())
-    		{
-    			Node node = db.createNode(Nodes.ROOT);
-    			node.setProperty("name", "Root node");
-    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-    		}
-    		tx.success();
-    	} finally {
-        	db.shutdown();
-    	}
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Iterator<Node> nodes = result.columnAs("n");
+			if (!nodes.hasNext()) {
+				Node node = db.createNode(Nodes.ROOT);
+				node.setProperty("name", "Root node");
+				node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
+			}
+			tx.success();
+		} finally {
+			db.shutdown();
+		}
 	}
-	
+
 	/**
 	 * 
-	 * @param db the GraphDatabaseService where the Database should be entered
+	 * @param db
+	 *            the GraphDatabaseService where the Database should be entered
 	 * 
 	 */
 	public static void createRootNode(GraphDatabaseService db) {
 		ExecutionEngine engine = new ExecutionEngine(db);
-    	try(Transaction tx = db.beginTx())
-    	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		if(!nodes.hasNext())
-    		{
-    			Node node = db.createNode(Nodes.ROOT);
-    			node.setProperty("name", "Root node");
-    			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-    		}
-    		tx.success();
-    	} 
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Iterator<Node> nodes = result.columnAs("n");
+			if (!nodes.hasNext()) {
+				Node node = db.createNode(Nodes.ROOT);
+				node.setProperty("name", "Root node");
+				node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
+			}
+			tx.success();
+		}
 	}
-	
+
 	/**
 	 * This method can be used to determine whether a user with given Id exists
 	 * in the DB
@@ -160,35 +162,38 @@ public class DatabaseService {
 	 * @param db
 	 * @return
 	 */
-	public static boolean checkIfUserExists(String userId, GraphDatabaseService db) {
+	public static boolean checkIfUserExists(String userId,
+			GraphDatabaseService db) {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (userId:USER {id:'" + userId + "'}) return userId");
+			ExecutionResult result = engine.execute("match (userId:USER {id:'"
+					+ userId + "'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			if (nodes.hasNext())
 				return true;
 			tx.success();
-		} 
+		}
 		return false;
 	}
-	
-	public static Node getReadingById(String readId, Node startNode, GraphDatabaseService db){
-		
+
+	public static Node getReadingById(String readId, Node startNode,
+			GraphDatabaseService db) {
+
 		try (Transaction tx = db.beginTx()) {
 
-		for (Node node : db.traversalDescription().depthFirst()
-				.relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.evaluator(Evaluators.all())
-				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-				.nodes()) {
-			if (node.getProperty("id").equals(readId)){
-				tx.success();
-				return node;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(Evaluators.all())
+					.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+					.nodes()) {
+				if (node.getProperty("id").equals(readId)) {
+					tx.success();
+					return node;
+				}
 			}
-		}		
-		tx.success();
-		Node node = null;
-		return node;
+			tx.success();
+			Node node = null;
+			return node;
 		}
 	}
 }

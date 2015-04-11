@@ -251,7 +251,7 @@ public class Reading implements IResource {
 			@PathParam("readId2") String readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
-		String message = "";
+		String message = "problem with a reading. Could not compress";
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
@@ -266,47 +266,69 @@ public class Reading implements IResource {
 			compress(read1, read2);
 			return Response.ok("Successfully compressed readings").build();
 		} else
-			return Response.ok(message).build();
+			return Response.status(Status.NOT_MODIFIED).entity(message).build();
 	}
 
 	private void compress(Node read1, Node read2) {
 		String textRead1 = (String) read1.getProperty("dn15");
 		String textRead2 = (String) read2.getProperty("dn15");
-		String s = "";
-
 		read1.setProperty("dn15", textRead1 + " " + textRead2);
-		Node read3 = getNormalRealtionship(read2, s).getOtherNode(read2);
+		
+		Iterator<Relationship> normalFromRead1 = getNormalRealtionships(read1);
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2,
+				normalFromRead1);
+		from1to2.delete();
+		
+		copyRelationships(read1, read2);
+		read2.delete();		
+	}
 
+	private void copyRelationships(Node read1, Node read2) {
+		
+		Iterator<Relationship> normalFromRead2 = getNormalRealtionships(read2);
+		while (normalFromRead2.hasNext()){
+			Relationship tempRel = normalFromRead2.next();
+			Node tempNode = tempRel.getOtherNode(read2);
+			read1.createRelationshipTo(tempNode,ERelations.NORMAL);			
+		}
 	}
 
 	private boolean canCompress(Node read1, Node read2, String message) {
 
-		Relationship normalFromRead1 = getNormalRealtionship(read1, message);
-		Relationship normalFromRead2 = getNormalRealtionship(read2, message);
-
-		if (normalFromRead1 == null || normalFromRead2 == null) {
+		Iterator<Relationship> normalFromRead1 = getNormalRealtionships(read1);
+		Iterator<Relationship> normalFromRead2 = getNormalRealtionships(read2);
+		if (!normalFromRead2.hasNext()){
+			message = "second readings is not connected. could not compress.";
 			return false;
 		}
-		if (!normalFromRead1.getOtherNode(read1).equals(read2)) {
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2,
+				normalFromRead1);
+		if (from1to2 == null) {
 			message = "reading are not neighbours. Could not compress.";
 			return false;
 		}
 		return true;
 	}
 
-	private Relationship getNormalRealtionship(Node read, String message) {
+	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2,
+			Iterator<Relationship> normalFromRead1) {
+		Relationship from1to2 = null;
+		while (normalFromRead1.hasNext()) {
+			Relationship tempRel = normalFromRead1.next();
+			if (tempRel.getOtherNode(read1).equals(read2)) {
+				from1to2 = tempRel;
+			}
+		}
+		return from1to2;
+	}
+
+	private Iterator<Relationship> getNormalRealtionships(Node read) {
 		Iterable<Relationship> rel = read.getRelationships(ERelations.NORMAL);
 		Iterator<Relationship> relFromRead = rel.iterator();
 		if (!relFromRead.hasNext()) {
-			message = "problem with a reading. Could not compress";
 			return null;
 		}
-		Relationship normalFromRead = relFromRead.next();
-		if (relFromRead.hasNext()) {
-			message = "A reading has more than one normal realtionship. Could not compress";
-			return null;
-		}
-		return normalFromRead;
+		return relFromRead;
 	}
 
 	private void swapReadings(Node read1, Node read2) {
