@@ -268,8 +268,8 @@ public class Reading implements IResource {
 	@Path("compress/{tradId}/{readId1}/{readId2}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response compressReadings(@PathParam("tradId") String tradId,
-			@PathParam("readId1") String readId1,
-			@PathParam("readId2") String readId2) {
+			@PathParam("readId1") long readId1,
+			@PathParam("readId2") long readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
 		String message = "problem with a reading. Could not compress";
@@ -280,11 +280,16 @@ public class Reading implements IResource {
 		read1 = DatabaseService.getReadingById(readId1, startNode, db);
 		read2 = DatabaseService.getReadingById(readId2, startNode, db);
 
-		if ((long) read1.getProperty("dn14") > (long) read2.getProperty("dn14"))
-			swapReadings(read1, read2);
+		try (Transaction tx = db.beginTx()) {
+			if ((long) read1.getProperty("dn14") > (long) read2
+					.getProperty("dn14"))
+				swapReadings(read1, read2);
 
-		if (canCompress(read1, read2, message)) {
-			compress(read1, read2);
+			tx.success();
+		}
+
+		if (canCompress(read1, read2, message, db)) {
+			compress(read1, read2, db);			
 			return Response.ok("Successfully compressed readings").build();
 		} else
 			return Response.status(Status.NOT_MODIFIED).entity(message).build();
@@ -298,50 +303,66 @@ public class Reading implements IResource {
 	 * @param read2
 	 *            the second reading
 	 */
-	private void compress(Node read1, Node read2) {
-		String textRead1 = (String) read1.getProperty("dn15");
-		String textRead2 = (String) read2.getProperty("dn15");
-		read1.setProperty("dn15", textRead1 + " " + textRead2);
+	private void compress(Node read1, Node read2, GraphDatabaseService db) {
+		try (Transaction tx = db.beginTx()) {
+			String textRead1 = (String) read1.getProperty("dn15");
+			String textRead2 = (String) read2.getProperty("dn15");
+			read1.setProperty("dn15", textRead1 + " " + textRead2);
 
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
-		from1to2.delete();
-
-		copyRelationships(read1, read2);
-		read2.delete();
-	}
-
-	/**
-	 * copy all NORMAL relationship from one node to another
-	 * @param read1 the node which receives the relationships
-	 * @param read2 the node from which relationships are copied
-	 */
-	private void copyRelationships(Node read1, Node read2) {
-
-		for (Relationship tempRel2 : read2.getRelationships()) {
-			Node tempNode = tempRel2.getOtherNode(read2);
-			Relationship rel1 = read1.createRelationshipTo(tempNode,
-					ERelations.NORMAL);
-			for (String key : tempRel2.getPropertyKeys()) {
-				rel1.setProperty(key, tempRel2.getProperty(key));
-			}
+			Relationship from1to2 = getRealtionshipBetweenReadings(read1,
+					read2, db);
+			from1to2.delete();
+			copyRelationships(read1, read2, db);
+			read2.delete();
+			tx.success();
 		}
 	}
 
 	/**
+	 * copy all NORMAL relationship from one node to another
+	 * 
+	 * @param read1
+	 *            the node which receives the relationships
+	 * @param read2
+	 *            the node from which relationships are copied
+	 */
+	private void copyRelationships(Node read1, Node read2,
+			GraphDatabaseService db) {
+			for (Relationship tempRel2 : read2.getRelationships()) {
+				Node tempNode = tempRel2.getOtherNode(read2);
+				Relationship rel1 = read1.createRelationshipTo(tempNode,
+						ERelations.NORMAL);
+				for (String key : tempRel2.getPropertyKeys()) {
+					rel1.setProperty(key, tempRel2.getProperty(key));
+				}
+				tempRel2.delete();
+			}
+	}
+
+	/**
 	 * checks if two readings could be compressed
-	 * @param read1 the first reading
-	 * @param read2 the second reading
-	 * @param message the error message, in case the readings cannot be compressed
+	 * 
+	 * @param read1
+	 *            the first reading
+	 * @param read2
+	 *            the second reading
+	 * @param message
+	 *            the error message, in case the readings cannot be compressed
 	 * @return true if ok to compress, false otherwise
 	 */
-	private boolean canCompress(Node read1, Node read2, String message) {
-		Iterable<Relationship> rel = read2.getRelationships(ERelations.NORMAL);
+	private boolean canCompress(Node read1, Node read2, String message,
+			GraphDatabaseService db) {
+		Iterable<Relationship> rel;
+		try (Transaction tx = db.beginTx()) {
+			rel = read2.getRelationships(ERelations.NORMAL);
+			tx.success();
+		}
 		Iterator<Relationship> normalFromRead2 = rel.iterator();
 		if (!normalFromRead2.hasNext()) {
 			message = "second readings is not connected. could not compress.";
 			return false;
 		}
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
 		if (from1to2 == null) {
 			message = "reading are not neighbours. Could not compress.";
 			return false;
@@ -351,16 +372,23 @@ public class Reading implements IResource {
 
 	/**
 	 * get the normal relationship between two readings
-	 * @param read1 the first reading
-	 * @param read2 the second reading
+	 * 
+	 * @param read1
+	 *            the first reading
+	 * @param read2
+	 *            the second reading
 	 * @return the NORMAL relationship
 	 */
-	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2) {
+	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2,
+			GraphDatabaseService db) {
 		Relationship from1to2 = null;
-		for (Relationship tempRel : read1.getRelationships()) {
-			if (tempRel.getOtherNode(read1).equals(read2)) {
-				from1to2 = tempRel;
+		try (Transaction tx = db.beginTx()) {
+			for (Relationship tempRel : read1.getRelationships()) {
+				if (tempRel.getOtherNode(read1).equals(read2)) {
+					from1to2 = tempRel;
+				}
 			}
+			tx.success();
 		}
 		return from1to2;
 	}

@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
@@ -44,6 +45,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -160,9 +162,11 @@ public class ReadingTest {
 				.addResource(reading).create();
 		jerseyTest.setUp();
 	}
-/**
- * test that all readings of a tradition are returned sorted ascending according to rank
- */
+
+	/**
+	 * test that all readings of a tradition are returned sorted ascending
+	 * according to rank
+	 */
 	@Test
 	public void allReadingsOfTraditionTest() {
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
@@ -179,22 +183,77 @@ public class ReadingTest {
 			text += listOfReadings.get(i).getDn15() + " ";
 		}
 		assertEquals(expectedTest, text.trim());
-		
-		int[]  expectedRanks= {0,1,2,2,3,4,4,5,6,7,9,10,10,11,11,12,13,13,14,15,16,16,16,17,17,17,18,19};
+
+		int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 6, 7, 9, 10, 10, 11,
+				11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
 		for (int i = 0; i < listOfReadings.size(); i++) {
-			assertEquals(expectedRanks[i], (int) (long)listOfReadings.get(i).getDn14());
+			assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
+					.getDn14());
 		}
 	}
-	
+
 	@Test
-	public void identicalReadingsTest(){
+	public void identicalReadingsTest() {
 		List<ReadingModel> listOfIdenticalReadings = jerseyTest.resource()
 				.path("/reading/identical/" + tradId + "/3/8")
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		assertEquals(2, listOfIdenticalReadings.size());
-		assertEquals(listOfIdenticalReadings.get(0).getDn15(), listOfIdenticalReadings.get(1).getDn15());
+		assertEquals(listOfIdenticalReadings.get(0).getDn15(),
+				listOfIdenticalReadings.get(1).getDn15());
 		assertEquals("his", listOfIdenticalReadings.get(1).getDn15());
+	}
+
+	@Test
+	public void compressReadingTest() {
+		Node showers, sweet;
+		long sweetId;
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			showers = nodes.next();
+
+			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			sweet = nodes.next();
+			sweetId = sweet.getId();
+
+			jerseyTest.resource().path(
+					"/reading/compress/" + tradId + "/" + showers.getId() + "/"
+							+ sweetId);
+
+			reading.compressReadings(tradId, showers.getId(), sweet.getId());
+			assertEquals("showers sweet", showers.getProperty("dn15"));
+
+			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+
+			String expectedText = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+			Response resp = witness.getWitnessAsPlainText(tradId, "A");
+			assertEquals(expectedText, resp.getEntity());
+
+			expectedText = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+			resp = witness.getWitnessAsPlainText(tradId, "B");
+			assertEquals(expectedText, resp.getEntity());
+
+			/*
+			 * Node test = mockDbService.getNodeById(sweetId);
+			 * assertEquals(null, test); for (String key :
+			 * test.getPropertyKeys()) System.out.println(key);
+			 * 
+			 * List<ReadingModel> listOfReadings = jerseyTest.resource()
+			 * .path("/reading/" + tradId) .get(new
+			 * GenericType<List<ReadingModel>>() { }); assertEquals(27,
+			 * listOfReadings.size());
+			 */
+
+			tx.success();
+		}
 	}
 
 	@Test

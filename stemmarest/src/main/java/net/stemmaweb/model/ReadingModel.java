@@ -123,19 +123,9 @@ public class ReadingModel implements Comparable{
 		this.dn15 = dn15;
 	}
 	
-	 /*@Override
-	    public int comparTo(ReadingModel comparestu) {
-	        int compareage=((ReadingModel)comparestu).getStudentage();
-	         For Ascending order
-	        return this.studentage-compareage;
-
-	         For Descending order do like this 
-	        //return compareage-this.studentage;
-	    }*/
-	
 	@Override
-	public int compareTo(Object o) {
-		Long compareRank = ((ReadingModel) o).getDn14();
+	public int compareTo(Object readingModel) {
+		Long compareRank = ((ReadingModel) readingModel).getDn14();
 		return (int) (this.dn14 - compareRank);
 	}
 

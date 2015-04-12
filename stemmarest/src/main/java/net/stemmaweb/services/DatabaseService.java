@@ -176,7 +176,7 @@ public class DatabaseService {
 		return false;
 	}
 
-	public static Node getReadingById(String readId, Node startNode,
+	public static Node getReadingById(long readId1, Node startNode,
 			GraphDatabaseService db) {
 
 		try (Transaction tx = db.beginTx()) {
@@ -186,7 +186,7 @@ public class DatabaseService {
 					.evaluator(Evaluators.all())
 					.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
 					.nodes()) {
-				if (node.getProperty("id").equals(readId)) {
+				if (node.getId()==readId1) {
 					tx.success();
 					return node;
 				}
@@ -195,5 +195,5 @@ public class DatabaseService {
 			Node node = null;
 			return node;
 		}
-	}
+	}	
 }
