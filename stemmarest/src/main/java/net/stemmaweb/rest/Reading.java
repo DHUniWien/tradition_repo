@@ -371,6 +371,7 @@ public class Reading implements IResource {
 
 		if (hasNotNormalRealtionships(read1)
 				|| hasNotNormalRealtionships(read2)) {
+			message = "reading has some other relations. could not compress";
 			return false;
 		}
 		return true;
