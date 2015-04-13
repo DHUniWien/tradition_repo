@@ -207,7 +207,6 @@ public class ReadingTest {
 	@Test
 	public void compressReadingTest() {
 		Node showers, sweet;
-		long sweetId;
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
@@ -220,13 +219,13 @@ public class ReadingTest {
 			nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			sweet = nodes.next();
-			sweetId = sweet.getId();
 
-			jerseyTest.resource().path(
+			ClientResponse res = jerseyTest.resource().path(
 					"/reading/compress/" + tradId + "/" + showers.getId() + "/"
-							+ sweetId);
-
-			reading.compressReadings(tradId, showers.getId(), sweet.getId());
+							+ sweet.getId()).get(ClientResponse.class);
+			
+			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+			
 			assertEquals("showers sweet", showers.getProperty("dn15"));
 			
 			result = engine.execute("match (w:WORD {dn15:'showers sweet'}) return w");
@@ -243,6 +242,7 @@ public class ReadingTest {
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
+			//both witnesses are still the same
 			String expectedText = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
 			Response resp = witness.getWitnessAsPlainText(tradId, "A");
 			assertEquals(expectedText, resp.getEntity());
@@ -257,6 +257,7 @@ public class ReadingTest {
 					});
 			Collections.sort(listOfReadings);
 
+			//tradition still has all the texts
 			String expectedTest = "#START# when april april with his his showers sweet with fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
 			String text = "";
 			for (int i = 0; i < listOfReadings.size(); i++) {
@@ -264,16 +265,96 @@ public class ReadingTest {
 			}
 			assertEquals(expectedTest, text.trim());			
 
-			//assertEquals(27, listOfReadings.size());
-			/*
-			 * Node test = mockDbService.getNodeById(sweetId);
-			 * assertEquals(null, test); for (String key :
-			 * test.getPropertyKeys()) System.out.println(key);			
-			 */
-
+			//there is one reading less in the tradition
+			assertEquals(27, listOfReadings.size());
+			
+			//no more reading with rank 6
+			int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 9, 10, 10, 11,
+					11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
+			for (int i = 0; i < listOfReadings.size(); i++) {
+				assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
+						.getDn14());
+			}			
 			tx.success();
 		}
 	}
+	
+	/**
+	 * the given reading are not neighbors
+	 * tests that readings were not compressed
+	 */
+	@Test
+	public void notNeighborsCompressReadingTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			Node showers = nodes.next();
+
+			result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			Node fruit = nodes.next();
+
+			ClientResponse res = jerseyTest.resource().path(
+					"/reading/compress/" + tradId + "/" + showers.getId() + "/"
+							+ fruit.getId()).get(ClientResponse.class);
+			
+			assertEquals(Response.Status.NOT_MODIFIED.getStatusCode(), res.getStatus());
+			
+			result = engine.execute("match (w:WORD {dn15:'showers sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+			
+			assertEquals("showers", showers.getProperty("dn15"));
+			assertEquals("fruit", fruit.getProperty("dn15"));
+
+			tx.success();
+		}		
+	}
+	
+	@Test
+	public void nextReadingTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		long readId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'with'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			readId = nodes.next().getId();
+
+			tx.success();
+		}
+
+		ReadingModel actualResponse = jerseyTest.resource()
+				.path("/reading/next/" + tradId + "/A/" + readId)
+				.get(ReadingModel.class);
+		assertEquals("his", actualResponse.getDn15());
+	}
+
+	@Test
+	public void previousReadingTest() {
+
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		long readId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'with'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			readId = nodes.next().getId();
+
+			tx.success();
+		}
+		ReadingModel actualResponse = jerseyTest.resource()
+				.path("/reading/previous/" + tradId + "/A/" + readId)
+				.get(ReadingModel.class);
+		assertEquals("april", actualResponse.getDn15());
+	}
+
 
 	@Test
 	public void randomNodeExistsTest() {

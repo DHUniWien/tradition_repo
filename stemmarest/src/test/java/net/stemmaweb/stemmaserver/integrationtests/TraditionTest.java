@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
@@ -285,6 +284,16 @@ public class TraditionTest {
 
 	@Test
 	public void mergeReadingsTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+
+		/*ExecutionResult result = engine
+				.execute("match (w:WORD {dn15:'april'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node1 = nodes.next();
+		Node node2 = nodes.next();
+		assertFalse(nodes.hasNext());
+*/		
 		// duplicate reading
 		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId).type(MediaType.APPLICATION_JSON)
@@ -399,34 +408,6 @@ public class TraditionTest {
 		assertEquals(witC.getId(),witLoaded2.getId());
 		
 
-	}
-	/**
-	 * Test whether all readings are returned correctly
-	 */
-	@Test
-	public void getTraditionReadings(){
-	   
-    	ReadingModel readFirst = new ReadingModel();
-    	readFirst.setDn15("when");
-    	readFirst.setDn11("Default");
-    	readFirst.setDn14(new Long(1));
-    	
-    	ReadingModel readLast = new ReadingModel();
-    	readLast.setDn15("root");
-    	readLast.setDn11("Default");
-    	readLast.setDn14(new Long(1));
-    	
-    	
-    	List<ReadingModel> readings = jerseyTest.resource().path("/tradition/readings/" + tradId)
-    			.get(new GenericType<List<ReadingModel>>(){});
-    	ReadingModel firstReading = readings.get(0);
-    	assertEquals(readFirst.getDn15(), firstReading.getDn15());
-    	assertEquals(readFirst.getDn11(), firstReading.getDn11());
-    	
-    	ReadingModel lastReading = readings.get(readings.size()-1);
-    	assertEquals(readLast.getDn15(), lastReading.getDn15());
-    	assertEquals(readLast.getDn11(), lastReading.getDn11());
-    	
 	}
 	
 	@Test
