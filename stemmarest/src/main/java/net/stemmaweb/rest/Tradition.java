@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -241,6 +240,7 @@ public class Tradition implements IResource {
 		try {
 			startNode = DatabaseService.getStartNode(tradId, db);
 		} catch (DataBaseException e) {
+			System.out.println(e.getMessage());
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		}
 
@@ -262,11 +262,13 @@ public class Tradition implements IResource {
 			}
 			if (!foundReadings) {
 				db.shutdown();
+				System.out.println("no reading with this ids found" + readings);
 				return Response.status(Status.NOT_FOUND).entity("no reading with this ids found: " + readings).build();
 			}
 
 			tx.success();
 		} catch (Exception e) {
+			System.out.println(e.getMessage());
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		} finally {
 			db.shutdown();
@@ -284,18 +286,20 @@ public class Tradition implements IResource {
 		// copy reading
 		Reading.copyReadingProperties(originalReading, addedReading);
 
+		Iterable<Relationship> rels = null;
+
 		// test if there are witnesses to be duplicated for which no witnesses
 		// in the readings relationships exist
-		List<String> allWitnesses = new LinkedList<String>();
-		String[] currentWitnesses;
-		Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL);
-		for (Relationship relationship : rels) {
-			currentWitnesses = (String[]) relationship.getProperty("lexemes");
-			for (String currentWitness : currentWitnesses)
-				if (!allWitnesses.contains(currentWitness))
-					allWitnesses.add(currentWitness);
-
-		}
+//		List<String> allWitnesses = new LinkedList<String>();
+//		String[] currentWitnesses;
+//		rels = originalReading.getRelationships(ERelations.NORMAL);
+//		for (Relationship relationship : rels) {
+//			currentWitnesses = (String[]) relationship.getProperty("lexemes");
+//			for (String currentWitness : currentWitnesses)
+//				if (!allWitnesses.contains(currentWitness))
+//					allWitnesses.add(currentWitness);
+		//
+		// }
 //		for (String newWitness : witnesses)
 //			if (!allWitnesses.contains(newWitness))
 //				throw new DataBaseException("The node to be duplicated has to be part of the new witnesses");
