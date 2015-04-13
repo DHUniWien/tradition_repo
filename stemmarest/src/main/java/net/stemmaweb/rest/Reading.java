@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.EvaluatorService;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -26,10 +27,14 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
+
+import Exceptions.DataBaseException;
 
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 @Path("reading")
@@ -84,7 +89,145 @@ public class Reading implements IResource {
 		newReading.addLabel(Nodes.WORD);
 		return newReading;
 	}
+	
+	/**
+	 * gets the next readings from a given readings in the same witness
+	 * 
+	 * @param tradId
+	 *            : tradition id
+	 * @param textId
+	 *            : witness id
+	 * @param readId
+	 *            : reading id
+	 * @return the requested reading
+	 */
+	@GET
+	@Path("next/{tradId}/{textId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getNextReadingInWitness(@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId,
+			@PathParam("readId") long readId) {
 
+		final String WITNESS_ID = textId;
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+
+		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode, db);
+
+		return Response.ok(reading).build();
+	}
+	
+	/**
+	 * gets the Next reading to a given reading and a witness help method
+	 * 
+	 * @param WITNESS_ID
+	 * @param readId
+	 * @param startNode
+	 * @return the Next reading to that of the readId
+	 */
+	private ReadingModel getNextReading(String WITNESS_ID, long readId,
+			Node startNode, GraphDatabaseService db) {
+
+		EvaluatorService evaService = new EvaluatorService();
+		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+
+		try (Transaction tx = db.beginTx()) {
+			int stop = 0;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).uniqueness(Uniqueness.NONE)
+					.traverse(startNode).nodes()) {
+				if (stop == 1) {
+					tx.success();
+					return Reading.readingModelFromNode(node);
+				}
+				if (node.getId()==readId) {
+					stop = 1;
+				}
+			}
+			db.shutdown();
+			throw new DataBaseException("given readings not found");
+		}
+	}
+	
+	/**
+	 * gets the next readings from a given readings in the same witness
+	 * 
+	 * @param tradId
+	 *            : tradition id
+	 * @param textId
+	 *            : witness id
+	 * @param readId
+	 *            : reading id
+	 * @return the requested reading
+	 */
+	@GET
+	@Path("/previous/{tradId}/{textId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getPreviousReadingInWitness(
+			@PathParam("tradId") String tradId,
+			@PathParam("textId") String textId,
+			@PathParam("readId") long readId) {
+
+		final String WITNESS_ID = textId;
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+
+		ReadingModel reading = getPreviousReading(WITNESS_ID, readId,
+				startNode, db);
+
+		return Response.ok(reading).build();
+	}
+
+	
+	
+	/**
+	 * gets the Previous reading to a given reading and a witness help method
+	 * 
+	 * @param WITNESS_ID
+	 * @param readId
+	 * @param startNode
+	 * @return the Previous reading to that of the readId
+	 */
+	private ReadingModel getPreviousReading(final String WITNESS_ID,
+			long readId, Node startNode, GraphDatabaseService db) {
+		Node previousNode = null;
+
+		EvaluatorService evaService = new EvaluatorService();
+		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+
+		try (Transaction tx = db.beginTx()) {
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).uniqueness(Uniqueness.NONE)
+					.traverse(startNode).nodes()) {
+
+				if (node.getId()==readId) {
+					tx.success();
+					if (previousNode != null)
+						return Reading.readingModelFromNode(previousNode);
+					else {
+						db.shutdown();
+						throw new DataBaseException(
+								"there is no previous reading to the given one");
+					}
+				}
+				previousNode = node;
+			}
+			db.shutdown();
+			throw new DataBaseException("given readings not found");
+		}
+	}
+
+	
 	// the new method (below) is probably more efficient. Still keeping this one
 	// for a team discussion
 	/*
@@ -365,32 +508,42 @@ public class Reading implements IResource {
 		}
 		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
 		if (from1to2 == null) {
-			message = "reading are not neighbors. Could not compress.";
+			message = "reading are not neighbors. could not compress.";
 			return false;
 		}
 
 		if (hasNotNormalRealtionships(read1, db)
 				|| hasNotNormalRealtionships(read2, db)) {
-			message = "reading has some other relations. could not compress";
+			message = "reading has other relations. could not compress";
 			return false;
 		}
 		return true;
 	}
 
+	/**
+	 * checks if a reading has relationships which are not NORMAL
+	 * 
+	 * @param read
+	 *            the reading
+	 * @param db
+	 *            the data base
+	 * @return true if it has, false otherwise
+	 */
 	private boolean hasNotNormalRealtionships(Node read, GraphDatabaseService db) {
 		String type = "", normal = "";
 		try (Transaction tx = db.beginTx()) {
 
-		for (Relationship rel : read.getRelationships()) {
-		 type = rel.getType().name();
-		 normal = ERelations.NORMAL.toString();
-		tx.success();
-		}
+			for (Relationship rel : read.getRelationships()) {
+				type = rel.getType().name();
+				normal = ERelations.NORMAL.toString();
 
-			if (!type.equals(normal))
-				return true;
+				if (!type.equals(normal))
+					return true;
+			}
+			tx.success();
+
+			return false;
 		}
-		return false;
 	}
 
 	/**

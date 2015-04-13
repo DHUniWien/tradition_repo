@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
@@ -11,6 +12,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.EvaluatorService;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -148,166 +150,7 @@ public class Witness implements IResource {
 		db.shutdown();
 		return Response.status(Status.OK).entity(readingModels).build();
 	}
-
-	/**
-	 * gets the next readings from a given readings in the same witness
-	 * 
-	 * @param tradId
-	 *            : tradition id
-	 * @param textId
-	 *            : witness id
-	 * @param readId
-	 *            : reading id
-	 * @return the requested reading
-	 */
-	@GET
-	@Path("reading/next/{tradId}/{textId}/{readId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getNextReadingInWitness(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId,
-			@PathParam("readId") long readId) {
-
-		final String WITNESS_ID = textId;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
-		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
-			return Response.status(Status.NOT_FOUND)
-					.entity("Could not find tradition with this id").build();
-
-		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode, db);
-
-		return Response.ok(reading).build();
-	}
-
-	/**
-	 * gets the next readings from a given readings in the same witness
-	 * 
-	 * @param tradId
-	 *            : tradition id
-	 * @param textId
-	 *            : witness id
-	 * @param readId
-	 *            : reading id
-	 * @return the requested reading
-	 */
-	@GET
-	@Path("reading/previous/{tradId}/{textId}/{readId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getPreviousReadingInWitness(
-			@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId,
-			@PathParam("readId") long readId) {
-
-		final String WITNESS_ID = textId;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
-		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
-			return Response.status(Status.NOT_FOUND)
-					.entity("Could not find tradition with this id").build();
-
-		ReadingModel reading = getPreviousReading(WITNESS_ID, readId,
-				startNode, db);
-
-		return Response.ok(reading).build();
-	}
-
-	/**
-	 * gets the Next reading to a given reading and a witness help method
-	 * 
-	 * @param WITNESS_ID
-	 * @param readId
-	 * @param startNode
-	 * @return the Next reading to that of the readId
-	 */
-	private ReadingModel getNextReading(String WITNESS_ID, long readId,
-			Node startNode, GraphDatabaseService db) {
-		Evaluator e = createEvalForWitness(WITNESS_ID);
-
-		try (Transaction tx = db.beginTx()) {
-			int stop = 0;
-			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE)
-					.traverse(startNode).nodes()) {
-				if (stop == 1) {
-					tx.success();
-					return Reading.readingModelFromNode(node);
-				}
-				if (node.getId()==readId) {
-					stop = 1;
-				}
-			}
-			db.shutdown();
-			throw new DataBaseException("given readings not found");
-		}
-	}
-
-	/**
-	 * gets the Previous reading to a given reading and a witness help method
-	 * 
-	 * @param WITNESS_ID
-	 * @param readId
-	 * @param startNode
-	 * @return the Previous reading to that of the readId
-	 */
-	private ReadingModel getPreviousReading(final String WITNESS_ID,
-			long readId, Node startNode, GraphDatabaseService db) {
-		Node previousNode = null;
-
-		Evaluator e = createEvalForWitness(WITNESS_ID);
-
-		try (Transaction tx = db.beginTx()) {
-			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE)
-					.traverse(startNode).nodes()) {
-
-				if (node.getId()==readId) {
-					tx.success();
-					if (previousNode != null)
-						return Reading.readingModelFromNode(previousNode);
-					else {
-						db.shutdown();
-						throw new DataBaseException(
-								"there is no previous reading to the given one");
-					}
-				}
-				previousNode = node;
-			}
-			db.shutdown();
-			throw new DataBaseException("given readings not found");
-		}
-	}
-
-	private Evaluator createEvalForWitness(final String WITNESS_ID) {
-		Evaluator e = new Evaluator() {
-			@Override
-			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
-
-				if (path.length() == 0)
-					return Evaluation.EXCLUDE_AND_CONTINUE;
-
-				boolean includes = false;
-				boolean continues = false;
-
-				if (path.lastRelationship().hasProperty("lexemes")) {
-					String[] arr = (String[]) path.lastRelationship()
-							.getProperty("lexemes");
-					for (String str : arr) {
-						if (str.equals(WITNESS_ID)) {
-							includes = true;
-							continues = true;
-						}
-					}
-				}
-				return Evaluation.of(includes, continues);
-			}
-		};
-		return e;
-	}
-
+	
 	/**
 	 * gets all readings of a single witness
 	 * 
@@ -319,8 +162,8 @@ public class Witness implements IResource {
 	private ArrayList<ReadingModel> getAllReadingsOfWitness(
 			final String WITNESS_ID, Node startNode, GraphDatabaseService db) {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-
-		Evaluator e = createEvalForWitness(WITNESS_ID);
+		EvaluatorService evaService = new EvaluatorService();
+		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
 		try (Transaction tx = db.beginTx()) {
 
 			for (Node startNodes : db.traversalDescription().depthFirst()

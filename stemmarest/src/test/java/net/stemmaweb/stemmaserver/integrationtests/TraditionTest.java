@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
@@ -285,6 +284,16 @@ public class TraditionTest {
 
 	@Test
 	public void mergeReadingsTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+
+		/*ExecutionResult result = engine
+				.execute("match (w:WORD {dn15:'april'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node1 = nodes.next();
+		Node node2 = nodes.next();
+		assertFalse(nodes.hasNext());
+*/		
 		// duplicate reading
 		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
 		jerseyTest.resource().path("/tradition/duplicate/" + tradId).type(MediaType.APPLICATION_JSON)
