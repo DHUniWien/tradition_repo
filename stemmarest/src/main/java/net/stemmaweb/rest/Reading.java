@@ -23,6 +23,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluators;
@@ -289,7 +290,7 @@ public class Reading implements IResource {
 		}
 
 		if (canCompress(read1, read2, message, db)) {
-			compress(read1, read2, db);			
+			compress(read1, read2, db);
 			return Response.ok("Successfully compressed readings").build();
 		} else
 			return Response.status(Status.NOT_MODIFIED).entity(message).build();
@@ -328,15 +329,15 @@ public class Reading implements IResource {
 	 */
 	private void copyRelationships(Node read1, Node read2,
 			GraphDatabaseService db) {
-			for (Relationship tempRel2 : read2.getRelationships()) {
-				Node tempNode = tempRel2.getOtherNode(read2);
-				Relationship rel1 = read1.createRelationshipTo(tempNode,
-						ERelations.NORMAL);
-				for (String key : tempRel2.getPropertyKeys()) {
-					rel1.setProperty(key, tempRel2.getProperty(key));
-				}
-				tempRel2.delete();
+		for (Relationship tempRel2 : read2.getRelationships()) {
+			Node tempNode = tempRel2.getOtherNode(read2);
+			Relationship rel1 = read1.createRelationshipTo(tempNode,
+					ERelations.NORMAL);
+			for (String key : tempRel2.getPropertyKeys()) {
+				rel1.setProperty(key, tempRel2.getProperty(key));
 			}
+			tempRel2.delete();
+		}
 	}
 
 	/**
@@ -367,7 +368,22 @@ public class Reading implements IResource {
 			message = "reading are not neighbours. Could not compress.";
 			return false;
 		}
+
+		if (hasNotNormalRealtionships(read1)
+				|| hasNotNormalRealtionships(read2)) {
+			return false;
+		}
 		return true;
+	}
+
+	private boolean hasNotNormalRealtionships(Node read) {
+		for (Relationship rel : read.getRelationships()) {
+		String type = rel.getType().name();
+		String normal = ERelations.NORMAL.toString();
+			if (!type.equals(normal))
+				return true;
+		}
+		return false;
 	}
 
 	/**

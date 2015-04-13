@@ -228,8 +228,18 @@ public class ReadingTest {
 
 			reading.compressReadings(tradId, showers.getId(), sweet.getId());
 			assertEquals("showers sweet", showers.getProperty("dn15"));
+			
+			result = engine.execute("match (w:WORD {dn15:'showers sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			nodes.next();
+			assertFalse(nodes.hasNext());
 
 			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+			
+			result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
@@ -241,15 +251,24 @@ public class ReadingTest {
 			resp = witness.getWitnessAsPlainText(tradId, "B");
 			assertEquals(expectedText, resp.getEntity());
 
+			List<ReadingModel> listOfReadings = jerseyTest.resource()
+					.path("/reading/" + tradId)
+					.get(new GenericType<List<ReadingModel>>() {
+					});
+			Collections.sort(listOfReadings);
+
+			String expectedTest = "#START# when april april with his his showers sweet with fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
+			String text = "";
+			for (int i = 0; i < listOfReadings.size(); i++) {
+				text += listOfReadings.get(i).getDn15() + " ";
+			}
+			assertEquals(expectedTest, text.trim());			
+
+			//assertEquals(27, listOfReadings.size());
 			/*
 			 * Node test = mockDbService.getNodeById(sweetId);
 			 * assertEquals(null, test); for (String key :
-			 * test.getPropertyKeys()) System.out.println(key);
-			 * 
-			 * List<ReadingModel> listOfReadings = jerseyTest.resource()
-			 * .path("/reading/" + tradId) .get(new
-			 * GenericType<List<ReadingModel>>() { }); assertEquals(27,
-			 * listOfReadings.size());
+			 * test.getPropertyKeys()) System.out.println(key);			
 			 */
 
 			tx.success();
