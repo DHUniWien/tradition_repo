@@ -365,22 +365,28 @@ public class Reading implements IResource {
 		}
 		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
 		if (from1to2 == null) {
-			message = "reading are not neighbours. Could not compress.";
+			message = "reading are not neighbors. Could not compress.";
 			return false;
 		}
 
-		if (hasNotNormalRealtionships(read1)
-				|| hasNotNormalRealtionships(read2)) {
+		if (hasNotNormalRealtionships(read1, db)
+				|| hasNotNormalRealtionships(read2, db)) {
 			message = "reading has some other relations. could not compress";
 			return false;
 		}
 		return true;
 	}
 
-	private boolean hasNotNormalRealtionships(Node read) {
+	private boolean hasNotNormalRealtionships(Node read, GraphDatabaseService db) {
+		String type = "", normal = "";
+		try (Transaction tx = db.beginTx()) {
+
 		for (Relationship rel : read.getRelationships()) {
-		String type = rel.getType().name();
-		String normal = ERelations.NORMAL.toString();
+		 type = rel.getType().name();
+		 normal = ERelations.NORMAL.toString();
+		tx.success();
+		}
+
 			if (!type.equals(normal))
 				return true;
 		}
