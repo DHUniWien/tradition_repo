@@ -44,12 +44,10 @@ import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import Exceptions.DataBaseException;
@@ -121,12 +119,6 @@ public class Tradition implements IResource {
 			db.shutdown();
 		}
 		return Response.status(Response.Status.OK).entity(textInfo).build();
-	}
-
-	private Traverser getReading(final Node reading, GraphDatabaseService db) {
-		TraversalDescription td = db.traversalDescription().breadthFirst()
-				.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
-		return td.traverse(reading);
 	}
 
 	/**
@@ -217,39 +209,20 @@ public class Tradition implements IResource {
 			DuplicateModel duplicateModel) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		Node startNode = null;
-		try {
-			startNode = DatabaseService.getStartNode(tradId, db);
-		} catch (DataBaseException e) {
-			System.out.println(e.getMessage());
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-		}
-
 		try (Transaction tx = db.beginTx()) {
-			boolean foundReadings = false;
 			List<Long> readings = duplicateModel.getReadings();
-			Traverser traverser = getReading(startNode, db);
-			for (org.neo4j.graphdb.Path path : traverser) {
-				long id = path.endNode().getId();
-				if (readings.contains(id)) {
-					duplicateReading(duplicateModel.getWitnesses(), db, path);
-
-					readings.remove(id);
-					if (readings.isEmpty()) {
-						foundReadings = true;
-						break;
-					}
+			for (Long readId : readings)
+				try{
+					Node originalReading = db.getNodeById(readId);
+					Node addedReading = db.createNode();
+					duplicateReading(duplicateModel.getWitnesses(), originalReading, addedReading);
+				} catch (NotFoundException e) {
+					db.shutdown();
+					return Response.status(Status.NOT_FOUND).entity("no reading with this id found: " + readId).build();
 				}
-			}
-			if (!foundReadings) {
-				db.shutdown();
-				System.out.println("no reading with this ids found" + readings);
-				return Response.status(Status.NOT_FOUND).entity("no reading with this ids found: " + readings).build();
-			}
 
 			tx.success();
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
 		} finally {
 			db.shutdown();
@@ -258,11 +231,7 @@ public class Tradition implements IResource {
 	}
 
 	private void duplicateReading(List<String> witnesses,
-			GraphDatabaseService db, org.neo4j.graphdb.Path path) throws DatabaseException {
-		Node addedReading = db.createNode();
-		Node originalReading = path.endNode();
-
-		System.out.println(addedReading.getId());
+			Node originalReading, Node addedReading) throws DatabaseException {
 
 		// copy reading
 		Reading.copyReadingProperties(originalReading, addedReading);
@@ -304,9 +273,8 @@ public class Tradition implements IResource {
 			if (newWitnesses.contains(oldWitness))
 				oldWitnesses.remove(oldWitness);
 
-		// if (oldWitnesses.isEmpty())
-		// throw new
-		// DataBaseException("The node to be duplicated has to have at least one witness.");
+		if (oldWitnesses.isEmpty())
+			throw new DataBaseException("The node to be duplicated has to have at least one witness.");
 
 		originalRelationship.setProperty("lexemes", oldWitnesses.toArray(new String[oldWitnesses.size()]));
 		Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
