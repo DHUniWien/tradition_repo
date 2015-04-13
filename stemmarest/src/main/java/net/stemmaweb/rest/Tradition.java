@@ -145,13 +145,6 @@ public class Tradition implements IResource {
 		ReadingModel reading = null;
 		Node readingNode;
 
-//		Node startNode = null;
-//		try {
-//			startNode = DatabaseService.getStartNode(tradId, db);
-//		} catch (DataBaseException e) {
-//			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-//		}
-
 		try (Transaction tx = db.beginTx()) {
 			try {
 				readingNode = db.getNodeById(readId);
@@ -161,18 +154,6 @@ public class Tradition implements IResource {
 			}
 			reading = Reading.readingModelFromNode(readingNode);
 
-//			if (startNode.getId()==readId) {
-//				reading = Reading.readingModelFromNode(startNode);
-//			} else {
-//				Traverser traverser = getReading(startNode, db);
-//				for (org.neo4j.graphdb.Path path : traverser) {
-//					long id = path.endNode().getId();
-//					if (id==readId) {
-//						reading = Reading.readingModelFromNode(path.endNode());
-//						break;
-//					}
-//				}
-//			}
 			tx.success();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -351,14 +332,6 @@ public class Tradition implements IResource {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
-		// Node startNode = null;
-		// try {
-		// startNode = DatabaseService.getStartNode(tradId, db);
-		// } catch (DataBaseException e) {
-		// return
-		// Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-		// }
-
 		try (Transaction tx = db.beginTx()) {
 			try {
 				firstReading = db.getNodeById(firstReadId);
@@ -368,25 +341,6 @@ public class Tradition implements IResource {
 				return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
 			}
 
-			// boolean foundReadings = false;
-			// Traverser traverser = getReading(startNode, db);
-			// for (org.neo4j.graphdb.Path path : traverser) {
-			// long id = path.endNode().getId();
-			// if (id==firstReadId)
-			// firstReading = path.endNode();
-			// if (id==secondReadId)
-			// secondReading = path.endNode();
-			// if (firstReading != null && secondReading != null) {
-			// foundReadings = true;
-			// break;
-			// }
-			// }
-			// if (!foundReadings) {
-			// db.shutdown();
-			// return
-			// Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
-			// }
-
 			if (!firstReading.getProperty("dn15").toString()
 					.equalsIgnoreCase(secondReading.getProperty("dn15").toString())) {
 				db.shutdown();
@@ -394,9 +348,16 @@ public class Tradition implements IResource {
 						.entity("Readings to be merged do not contain the same text").build();
 			}
 
+			if (doReadingsBelongToSameWitness(firstReading, secondReading)) {
+				db.shutdown();
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Readings to be merged belong to the same witness").build();
+			}
+
 			// merging of readings happens here
 			copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
 			copyRelationshipProperties(firstReading, secondReading, Direction.OUTGOING);
+			addRelationshipsToFirstReading(firstReading, secondReading);
 			secondReading.delete();
 
 			tx.success();
@@ -407,6 +368,35 @@ public class Tradition implements IResource {
 		}
 
 		return Response.ok("Successfully merged readings").build();
+	}
+
+	private boolean doReadingsBelongToSameWitness(Node firstReading, Node secondReading) {
+		Iterable<Relationship> firstRels = firstReading.getRelationships(ERelations.NORMAL);
+		ArrayList<String> firstWitnesses = new ArrayList<String>();
+		for (Relationship firstRel : firstRels) {
+			for (String witness : (String[]) firstRel.getProperty("lexemes"))
+				firstWitnesses.add(witness);
+		}
+		Iterable<Relationship> secondRels = secondReading.getRelationships(ERelations.NORMAL);
+		for (Relationship secondRel : secondRels)
+			for (String witness : (String[]) secondRel.getProperty("lexemes"))
+				if (firstWitnesses.contains(witness))
+					return true;
+		return false;
+	}
+
+	private void addRelationshipsToFirstReading(Node firstReading, Node secondReading) {
+		// copy relationships from secondReading to firstReading
+		Iterable<Relationship> rels = secondReading.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING);
+		for (Relationship rel : rels) {
+			firstReading.createRelationshipTo(rel.getEndNode(), ERelations.RELATIONSHIP);
+			rel.delete();
+		}
+		rels = secondReading.getRelationships(ERelations.RELATIONSHIP, Direction.INCOMING);
+		for (Relationship rel : rels) {
+			rel.getStartNode().createRelationshipTo(firstReading, ERelations.RELATIONSHIP);
+			rel.delete();
+		}
 	}
 
 	private void copyRelationshipProperties(Node firstReading, Node secondReading, Direction direction) {
