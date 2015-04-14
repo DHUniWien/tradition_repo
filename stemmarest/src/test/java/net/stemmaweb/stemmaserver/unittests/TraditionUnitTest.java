@@ -237,7 +237,7 @@ public class TraditionUnitTest {
 		duplicateModel.setWitnesses(witnesses);
 		tradition.duplicateReading(tradId, duplicateModel);
 
-		Response response = tradition.mergeReadings(tradId, 16, 29);
+		Response response = tradition.mergeReadings(tradId, 16, 39);
 
 		String expected = "Successfully merged readings";
 

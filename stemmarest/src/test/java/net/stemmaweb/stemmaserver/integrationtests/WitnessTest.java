@@ -215,46 +215,7 @@ public class WitnessTest {
 		}
 	}
 
-	@Test
-	public void nextReadingTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		long readId;
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'with'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			readId = nodes.next().getId();
-
-			tx.success();
-		}
-
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/next/" + tradId + "/A/" + readId)
-				.get(ReadingModel.class);
-		assertEquals("his", actualResponse.getDn15());
-	}
-
-	@Test
-	public void previousReadingTest() {
-
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		long readId;
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'with'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			readId = nodes.next().getId();
-
-			tx.success();
-		}
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/witness/reading/previous/" + tradId + "/A/" + readId)
-				.get(ReadingModel.class);
-		assertEquals("april", actualResponse.getDn15());
-	}
-
+	
 	/**
 	 * test if the tradition end node exists
 	 */

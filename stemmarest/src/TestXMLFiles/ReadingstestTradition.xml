@@ -36,7 +36,7 @@
   <key attr.name="scope" attr.type="string" for="edge" id="de10"/>
   <key attr.name="type" attr.type="string" for="edge" id="de11"/>
   <key attr.name="witness" attr.type="string" for="edge" id="de12"/>
-  <graph edgedefault="directed" id="Tradition" parse.edgeids="canonical" parse.edges="49" parse.nodeids="canonical" parse.nodes="26" parse.order="nodesfirst">
+  <graph edgedefault="directed" id="Tradition" parse.edgeids="canonical" parse.edges="51" parse.nodeids="canonical" parse.nodes="29" parse.order="nodesfirst">
     <data key="dg3"/>
     <data key="dg0">Default</data>
     <data key="dg6">3.2</data>
@@ -238,6 +238,13 @@
       <data key="dn14">17</data>
       <data key="dn2">0</data>
     </node>
+    <node id="n28">
+      <data key="dn15">fruit</data>
+      <data key="dn1">n28</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">8</data>
+      <data key="dn2">0</data>
+    </node>
     <edge source="n1" target="n2" id="e0">
       <data key="de12">A</data>
     </edge>
@@ -261,10 +268,7 @@
     </edge>
       <edge source="n4" target="n5" id="e8">
       <data key="de12">A</data>
-    </edge>
-    <edge source="n4" target="n5" id="e9">
-      <data key="de12">B</data>
-    </edge>
+    </edge>    
     <edge source="n4" target="n6" id="e10">
       <data key="de12">C</data>
     </edge>
@@ -364,7 +368,7 @@
     <edge source="n23" target="n4" id="e43">
       <data key="de12">A</data>
     </edge>
-    <edge source="n23" target="n4" id="e44">
+    <edge source="n23" target="n28" id="e44">
       <data key="de12">B</data>
     </edge>
     <edge source="n23" target="n24" id="e45">
@@ -385,8 +389,11 @@
 	<edge source="n27" target="n0" id="e50">
       <data key="de12">B</data>
     </edge>
+    <edge source="n28" target="n5" id="e51">
+      <data key="de12">B</data>
+    </edge>
   </graph>
-  <graph edgedefault="directed" id="relationships" parse.edgeids="canonical" parse.edges="3" parse.nodeids="canonical" parse.nodes="26" parse.order="nodesfirst">
+  <graph edgedefault="directed" id="relationships" parse.edgeids="canonical" parse.edges="3" parse.nodeids="canonical" parse.nodes="29" parse.order="nodesfirst">
     <node id="n0">
       <data key="dn1">__END__</data>
     </node>
@@ -449,6 +456,9 @@
     </node>
 	 <node id="n27">
       <data key="dn1">n27</data>
+    </node>
+     <node id="n28">
+      <data key="dn1">n28</data>
     </node>
     <node id="n3">
       <data key="dn1">n10</data>
