@@ -69,6 +69,7 @@ import com.sun.jersey.multipart.FormDataParam;
 public class Stemma implements IResource {
 	
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	private GraphDatabaseService db;
 	
 	/**
 	 * Returns JSON string with a stemma of a tradition in DOT format
@@ -106,4 +107,88 @@ public class Stemma implements IResource {
 		
 		return resp;
 	}
+	
+	/**
+	 * Reorients the stemma tree with a given new root node
+	 * 
+	 * @param tratitionId
+	 * @return 
+	 */
+	@POST
+	@Path("/reorient/{tradId}/{stemmaTitle}/{nodeId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response reorientStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle,
+			@PathParam("nodeId") String nodeId) {
+		
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ExecutionEngine engine = new ExecutionEngine(db);
+		
+		Response resp;
+
+		try (Transaction tx = db.beginTx()) 
+    	{
+    		ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
+    						tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
+    						stemmaTitle +"'}) return n");
+    		Iterator<Node> stNodes = result1.columnAs("n");
+    		
+    		if(!stNodes.hasNext()) {
+    	    	db.shutdown();
+    			return Response.status(Status.NOT_FOUND).build();
+    		}
+    		
+			Node startNodeStemma = stNodes.next();
+    		String stemmaType = startNodeStemma.getProperty("type").toString();
+    		
+    		Node newRootNode = null;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.STEMMA,Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(startNodeStemma).nodes()) {
+				if(node.hasProperty("id")) {
+	    			if(node.getProperty("id").equals(nodeId))
+	    				 newRootNode = node;
+				}
+    		}
+    		
+    		if(stemmaType.equals("digraph"))
+	    		resp = reorientDigraph(newRootNode,startNodeStemma);
+    		else
+    			resp = reorientGrap(newRootNode,startNodeStemma);
+		
+		
+		tx.success();
+		}
+		finally
+    	{
+    		db.shutdown();
+    	}
+		return resp;
+    	
+	}
+
+	private Response reorientDigraph(Node newRootNode, Node startNodeStemma) {
+		return null;
+		
+	}
+	
+	private Response reorientGrap(Node newRootNode, Node startNodeStemma) {
+		
+		Iterator<Relationship> rels = startNodeStemma.getRelationships().iterator();
+		
+		System.out.println("Here we are!");
+		
+		if(!rels.hasNext()) {
+			db.shutdown();
+		return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		Relationship rootRel = rels.next();
+		rootRel.delete();
+		
+		startNodeStemma.createRelationshipTo(newRootNode,ERelations.STEMMA);
+		return Response.ok().build();
+	}
+
+	
 }
