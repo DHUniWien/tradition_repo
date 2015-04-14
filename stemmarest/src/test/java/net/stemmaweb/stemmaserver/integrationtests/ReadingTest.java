@@ -175,16 +175,16 @@ public class ReadingTest {
 				});
 		Collections.sort(listOfReadings);
 
-		assertEquals(28, listOfReadings.size());
+		assertEquals(29, listOfReadings.size());
 
-		String expectedTest = "#START# when april april with his his showers sweet with fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
+		String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
 		String text = "";
 		for (int i = 0; i < listOfReadings.size(); i++) {
 			text += listOfReadings.get(i).getDn15() + " ";
 		}
 		assertEquals(expectedTest, text.trim());
 
-		int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 6, 7, 9, 10, 10, 11,
+		int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 10, 11,
 				11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
 		for (int i = 0; i < listOfReadings.size(); i++) {
 			assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
@@ -258,7 +258,7 @@ public class ReadingTest {
 			Collections.sort(listOfReadings);
 
 			//tradition still has all the texts
-			String expectedTest = "#START# when april april with his his showers sweet with fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
+			String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
 			String text = "";
 			for (int i = 0; i < listOfReadings.size(); i++) {
 				text += listOfReadings.get(i).getDn15() + " ";
@@ -266,10 +266,10 @@ public class ReadingTest {
 			assertEquals(expectedTest, text.trim());			
 
 			//there is one reading less in the tradition
-			assertEquals(27, listOfReadings.size());
+			assertEquals(28, listOfReadings.size());
 			
 			//no more reading with rank 6
-			int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 9, 10, 10, 11,
+			int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10, 11,
 					11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
 			for (int i = 0; i < listOfReadings.size(); i++) {
 				assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
