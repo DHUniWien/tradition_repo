@@ -191,6 +191,17 @@ public class ReadingTest {
 					.getDn14());
 		}
 	}
+	
+	@Test
+	public void allReadingsOfTraditionNotFoundTest() {
+		String falseTradId = tradId+1;
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/" + falseTradId)
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+				response.getStatus());
+		assertEquals("Could not find tradition with this id", response.getEntity(String.class));
+	}
 
 	@Test
 	public void identicalReadingsTest() {
@@ -203,6 +214,17 @@ public class ReadingTest {
 				listOfIdenticalReadings.get(1).getDn15());
 		assertEquals("his", listOfIdenticalReadings.get(1).getDn15());
 	}
+	
+	@Test
+	public void identicalReadingsNoResultTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/identical/" + tradId + "/10/15")
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+				response.getStatus());
+		assertEquals("no identical readings were found", response.getEntity(String.class));
+	}
+
 
 	@Test
 	public void compressReadingTest() {
@@ -220,15 +242,19 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			ClientResponse res = jerseyTest.resource().path(
-					"/reading/compress/" + tradId + "/" + showers.getId() + "/"
-							+ sweet.getId()).get(ClientResponse.class);
-			
+			ClientResponse res = jerseyTest
+					.resource()
+					.path("/reading/compress/" + tradId + "/" + showers.getId()
+							+ "/" + sweet.getId()).get(ClientResponse.class);
+
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-			
+			assertEquals("Successfully compressed readings", res.getEntity(String.class));
+
+
 			assertEquals("showers sweet", showers.getProperty("dn15"));
-			
-			result = engine.execute("match (w:WORD {dn15:'showers sweet'}) return w");
+
+			result = engine
+					.execute("match (w:WORD {dn15:'showers sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			nodes.next();
@@ -237,12 +263,12 @@ public class ReadingTest {
 			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
-			
+
 			result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
-			//both witnesses are still the same
+			// both witnesses are still the same
 			String expectedText = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
 			Response resp = witness.getWitnessAsPlainText(tradId, "A");
 			assertEquals(expectedText, resp.getEntity());
@@ -257,31 +283,31 @@ public class ReadingTest {
 					});
 			Collections.sort(listOfReadings);
 
-			//tradition still has all the texts
+			// tradition still has all the texts
 			String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the teh drought march of march drought has pierced teh to unto rood the root the root #END#";
 			String text = "";
 			for (int i = 0; i < listOfReadings.size(); i++) {
 				text += listOfReadings.get(i).getDn15() + " ";
 			}
-			assertEquals(expectedTest, text.trim());			
+			assertEquals(expectedTest, text.trim());
 
-			//there is one reading less in the tradition
+			// there is one reading less in the tradition
 			assertEquals(28, listOfReadings.size());
-			
-			//no more reading with rank 6
-			int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10, 11,
-					11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
+
+			// no more reading with rank 6
+			int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
+					11, 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
 			for (int i = 0; i < listOfReadings.size(); i++) {
-				assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
-						.getDn14());
-			}			
+				assertEquals(expectedRanks[i],
+						(int) (long) listOfReadings.get(i).getDn14());
+			}
 			tx.success();
 		}
 	}
-	
+
 	/**
-	 * the given reading are not neighbors
-	 * tests that readings were not compressed
+	 * the given reading are not neighbors tests that readings were not
+	 * compressed
 	 */
 	@Test
 	public void notNeighborsCompressReadingTest() {
@@ -298,23 +324,27 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			Node fruit = nodes.next();
 
-			ClientResponse res = jerseyTest.resource().path(
-					"/reading/compress/" + tradId + "/" + showers.getId() + "/"
-							+ fruit.getId()).get(ClientResponse.class);
-			
-			assertEquals(Response.Status.NOT_MODIFIED.getStatusCode(), res.getStatus());
-			
-			result = engine.execute("match (w:WORD {dn15:'showers sweet'}) return w");
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/compress/" + tradId + "/" + showers.getId()
+							+ "/" + fruit.getId()).get(ClientResponse.class);
+
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+					response.getStatus());
+			assertEquals("problem with a reading. Could not compress", response.getEntity(String.class));
+
+			result = engine
+					.execute("match (w:WORD {dn15:'showers sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
-			
+
 			assertEquals("showers", showers.getProperty("dn15"));
 			assertEquals("fruit", fruit.getProperty("dn15"));
 
 			tx.success();
-		}		
+		}
 	}
-	
+
 	@Test
 	public void nextReadingTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
@@ -336,6 +366,28 @@ public class ReadingTest {
 	}
 
 	@Test
+	public void nextReadingLastNodeTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		long readId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'the root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			readId = nodes.next().getId();
+
+			tx.success();
+		}
+
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/next/" + tradId + "/B/" + readId)
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+				response.getStatus());
+		assertEquals("this was the last reading of this witness", response.getEntity(String.class));
+	}
+
+	@Test
 	public void previousReadingTest() {
 
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
@@ -354,7 +406,28 @@ public class ReadingTest {
 				.get(ReadingModel.class);
 		assertEquals("april", actualResponse.getDn15());
 	}
+	
+	@Test
+	public void previousReadingFirstNodeTest() {
 
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		long readId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'when'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			readId = nodes.next().getId();
+
+			tx.success();
+		}
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/reading/previous/" + tradId + "/A/" + readId)
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+				actualResponse.getStatus());
+		assertEquals("there is no previous reading to this reading", actualResponse.getEntity(String.class));
+	}
 
 	@Test
 	public void randomNodeExistsTest() {
