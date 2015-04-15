@@ -379,42 +379,73 @@ public class Reading implements IResource {
 			@PathParam("endRank") long endRank) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+		ArrayList<Node> readings = new ArrayList<Node>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsFromTraditionBetweenRanks(startNode,
-				startRank, endRank, db);
+		
+		readings = getReadingsBetweenRanks(startRank, endRank, db, startNode);
+				
+		ArrayList<ReadingModel> couldBeIdenticalReadings = new ArrayList<ReadingModel>();
 
-		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
-		identicalReadings = getCouldBeIdenticalReadingsAsList(readingModels);
-
-		if (identicalReadings.size() == 0)
+		couldBeIdenticalReadings = getCouldBeIdenticalAsList(readings);
+		
+		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
 
-		return Response.ok(identicalReadings).build();
+		return Response.ok(couldBeIdenticalReadings).build();
 	}
 
-	private ArrayList<ReadingModel> getCouldBeIdenticalReadingsAsList(
-			ArrayList<ReadingModel> readingModels) {
+	/**
+	 * Makes seperate List for every group of Readings with identical text and different ranks 
+	 * and send the list for further test
+	 * @param readings
+	 * @return
+	 */
+	private ArrayList<ReadingModel> getCouldBeIdenticalAsList(
+			ArrayList<Node> readings) {
 			ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
-
-			for (int i = 0; i <=readingModels.size() - 2; i++) {
-				while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
-						.getDn14() && i + 1 < readingModels.size()) {
-					if (readingModels.get(i).getDn15()
-							.equals(readingModels.get(i + 1).getDn15())) {
-						identicalReadings.add(readingModels.get(i));
-						identicalReadings.add(readingModels.get(i + 1));
+			for (Node nodeA:readings) {
+				ArrayList<Node> sameText = new ArrayList<Node>();
+				sameText.add(nodeA);
+				for (Node nodeB: readings) {
+					if (nodeA.getProperty("dn15").toString()
+							.equals(nodeB.getProperty("dn15").toString()) && !nodeA.equals(nodeB)
+							&& !nodeA.getProperty("dn14").toString()
+							.equals(nodeB.getProperty("dn14").toString())) {
+						
+					sameText.add(nodeB);
+					
 					}
-					i++;
 				}
-			}
-		return identicalReadings;
+				if(sameText.size()>1)
+					couldBeCeck(sameText,identicalReadings);
+		}
 		
+		return identicalReadings;
+	}
+
+	private void couldBeCeck(ArrayList<Node> sameText,
+			ArrayList<ReadingModel> identicalReadings) {
+		for()
+	}
+
+	private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank,
+			GraphDatabaseService db, Node startNode) {
+		ArrayList<Node> readings = new ArrayList<Node>();
+
+		for (Node node : db.traversalDescription().depthFirst()
+				.relationships(ERelations.NORMAL,Direction.OUTGOING)
+				.uniqueness(Uniqueness.NODE_GLOBAL)
+				.traverse(startNode).nodes()) {
+			if((Long)node.getProperty("dn14")>startRank && (Long)node.getProperty("dn14")<endRank )
+				readings.add(node);
+			
+		}
+		return readings;
 	}
 
 	/**
