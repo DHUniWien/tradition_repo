@@ -117,6 +117,8 @@ public class Reading implements IResource {
 					.entity("Could not find tradition with this id").build();
 
 		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode, db);
+		if (reading.getDn15().equals("#END#"))
+			return Response.status(Status.NOT_FOUND).entity("this was the last reading of this witness").build();
 
 		return Response.ok(reading).build();
 	}
@@ -184,6 +186,9 @@ public class Reading implements IResource {
 		ReadingModel reading = getPreviousReading(WITNESS_ID, readId,
 				startNode, db);
 
+		if (reading==null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("there is no previous reading to this reading").build();
 		return Response.ok(reading).build();
 	}
 
@@ -216,8 +221,7 @@ public class Reading implements IResource {
 						return Reading.readingModelFromNode(previousNode);
 					else {
 						db.shutdown();
-						throw new DataBaseException(
-								"there is no previous reading to the given one");
+						return null;
 					}
 				}
 				previousNode = node;
@@ -287,9 +291,10 @@ public class Reading implements IResource {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
+		if (startNode == null){
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
+		}
 		readingModels = getAllReadingsFromTradition(startNode, db);
 
 		db.shutdown();
@@ -493,7 +498,7 @@ public class Reading implements IResource {
 			@PathParam("readId2") long readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
-		String message = "problem with a reading. Could not compress";
+		String errorMessage = "problem with a reading. Could not compress";
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
@@ -509,11 +514,11 @@ public class Reading implements IResource {
 			tx.success();
 		}
 
-		if (canCompress(read1, read2, message, db)) {
+		if (canCompress(read1, read2, errorMessage, db)) {
 			compress(read1, read2, db);
 			return Response.ok("Successfully compressed readings").build();
 		} else
-			return Response.status(Status.NOT_MODIFIED).entity(message).build();
+			return Response.status(Status.NOT_FOUND).entity(errorMessage).build();
 	}
 
 	/**
