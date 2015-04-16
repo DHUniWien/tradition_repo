@@ -103,8 +103,9 @@ public class DatabaseService {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(problemFinder.findPathProblem(
-						tradId, db));
+				return null;
+				/*throw new DataBaseException(problemFinder.findPathProblem(
+						tradId, db));*/
 			} else
 				startNode = nodes.next();
 

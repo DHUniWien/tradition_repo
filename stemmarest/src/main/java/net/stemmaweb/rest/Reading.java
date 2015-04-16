@@ -117,6 +117,8 @@ public class Reading implements IResource {
 					.entity("Could not find tradition with this id").build();
 
 		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode, db);
+		if (reading.getDn15().equals("#END#"))
+			return Response.status(Status.NOT_FOUND).entity("this was the last reading of this witness").build();
 
 		return Response.ok(reading).build();
 	}
@@ -184,6 +186,9 @@ public class Reading implements IResource {
 		ReadingModel reading = getPreviousReading(WITNESS_ID, readId,
 				startNode, db);
 
+		if (reading==null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("there is no previous reading to this reading").build();
 		return Response.ok(reading).build();
 	}
 
@@ -216,8 +221,7 @@ public class Reading implements IResource {
 						return Reading.readingModelFromNode(previousNode);
 					else {
 						db.shutdown();
-						throw new DataBaseException(
-								"there is no previous reading to the given one");
+						return null;
 					}
 				}
 				previousNode = node;
@@ -287,9 +291,10 @@ public class Reading implements IResource {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
+		if (startNode == null){
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
+		}
 		readingModels = getAllReadingsFromTradition(startNode, db);
 
 		db.shutdown();
@@ -370,6 +375,117 @@ public class Reading implements IResource {
 
 		return Response.ok(identicalReadings).build();
 	}
+	
+	@GET
+	@Path("couldBeIdentical/{tradId}/{startRank}/{endRank}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getCouldBeIdenticalReadings(@PathParam("tradId") String tradId,
+			@PathParam("startRank") long startRank,
+			@PathParam("endRank") long endRank) {
+
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ArrayList<Node> readings = new ArrayList<Node>();
+
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		if (startNode == null)
+			return Response.status(Status.NOT_FOUND)
+					.entity("Could not find tradition with this id").build();
+		
+		readings = getReadingsBetweenRanks(startRank, endRank, db, startNode);
+				
+		ArrayList<ReadingModel> couldBeIdenticalReadings = new ArrayList<ReadingModel>();
+
+		couldBeIdenticalReadings = getCouldBeIdenticalAsList(readings);
+		
+		if (couldBeIdenticalReadings.size() == 0)
+			return Response.status(Status.NOT_FOUND)
+					.entity("no identical readings were found").build();
+
+		return Response.ok(couldBeIdenticalReadings).build();
+	}
+
+	/**
+	 * Makes seperate List for every group of Readings with identical text and different ranks 
+	 * and send the list for further test
+	 * @param readings
+	 * @return
+	 */
+	private ArrayList<ReadingModel> getCouldBeIdenticalAsList(
+			ArrayList<Node> readings) {
+			ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+			for (Node nodeA:readings) {
+				ArrayList<Node> sameText = new ArrayList<Node>();
+				sameText.add(nodeA);
+				for (Node nodeB: readings) {
+					if (nodeA.getProperty("dn15").toString()
+							.equals(nodeB.getProperty("dn15").toString()) && !nodeA.equals(nodeB)
+							&& !nodeA.getProperty("dn14").toString()
+							.equals(nodeB.getProperty("dn14").toString())) {
+						
+					sameText.add(nodeB);
+					
+					}
+				}
+				if(sameText.size()>1)
+					couldBeCheck(sameText,identicalReadings);
+		}
+		
+		return identicalReadings;
+	}
+
+	private void couldBeCheck(ArrayList<Node> sameText,
+			ArrayList<ReadingModel> identicalReadings) {
+		
+		for(int i = 0; i<sameText.size()-1; i++) {
+			Node bigger;
+			Node smaller;
+
+			long rankA = (long) sameText.get(i).getProperty("dn14");
+			long rankB = (long) sameText.get(i+1).getProperty("dn14");
+			long delta,biggerRank,smallerRank;
+			
+			
+			if(rankA<rankB) {
+				bigger = sameText.get(i+1);
+				smaller = sameText.get(i);
+				delta = rankB-rankA;
+				smallerRank = rankA;
+				biggerRank = rankB;
+			}
+			else {
+				bigger = sameText.get(i);
+				smaller = sameText.get(i+1);
+				delta = rankA-rankB;
+				smallerRank = rankB;
+				biggerRank = rankA;
+			}
+			
+			long j = 0;
+			while(j <= biggerRank) {
+				Iterable<Relationship> rels = smaller.getRelationships(Direction.OUTGOING, ERelations.NORMAL);
+				
+				for(Relationship rel : rels) {
+					j = (long)rel.getEndNode().getProperty("dn14");
+				}
+			}
+
+		}
+	}
+
+	private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank,
+			GraphDatabaseService db, Node startNode) {
+		ArrayList<Node> readings = new ArrayList<Node>();
+
+		for (Node node : db.traversalDescription().depthFirst()
+				.relationships(ERelations.NORMAL,Direction.OUTGOING)
+				.uniqueness(Uniqueness.NODE_GLOBAL)
+				.traverse(startNode).nodes()) {
+			if((Long)node.getProperty("dn14")>startRank && (Long)node.getProperty("dn14")<endRank )
+				readings.add(node);
+			
+		}
+		return readings;
+	}
 
 	/**
 	 * gets identical readings in a tradition between the given ranks
@@ -384,7 +500,7 @@ public class Reading implements IResource {
 			ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
 		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
-		for (int i = 0; i < readingModels.size() - 2; i++) {
+		for (int i = 0; i <=readingModels.size() - 2; i++) {
 			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
 					.getDn14() && i + 1 < readingModels.size()) {
 				if (readingModels.get(i).getDn15()
@@ -416,7 +532,7 @@ public class Reading implements IResource {
 			@PathParam("readId2") long readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
-		String message = "problem with a reading. Could not compress";
+		String errorMessage = "problem with a reading. Could not compress";
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
@@ -432,11 +548,11 @@ public class Reading implements IResource {
 			tx.success();
 		}
 
-		if (canCompress(read1, read2, message, db)) {
+		if (canCompress(read1, read2, errorMessage, db)) {
 			compress(read1, read2, db);
 			return Response.ok("Successfully compressed readings").build();
 		} else
-			return Response.status(Status.NOT_MODIFIED).entity(message).build();
+			return Response.status(Status.NOT_FOUND).entity(errorMessage).build();
 	}
 
 	/**

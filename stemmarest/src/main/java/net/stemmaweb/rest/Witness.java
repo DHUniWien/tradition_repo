@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
+
 import net.stemmaweb.services.EvaluatorService;
 
 import org.neo4j.graphdb.Direction;
@@ -56,8 +57,7 @@ public class Witness implements IResource {
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-		DatabaseService service = new DatabaseService(db);
-		Node startNode = service.getStartNode(tradId);
+		Node startNode = DatabaseService.getStartNode(tradId,db);
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
 
 		for (ReadingModel readingModel : readingModels) {
