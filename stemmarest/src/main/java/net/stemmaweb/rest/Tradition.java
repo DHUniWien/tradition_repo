@@ -295,38 +295,38 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId, @PathParam("firstReadId") long firstReadId,
 			@PathParam("secondReadId") long secondReadId) {
-		Node firstReading = null;
-		Node secondReading = null;
+		Node stayingReading = null;
+		Node deletingReading = null;
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		try (Transaction tx = db.beginTx()) {
 			try {
-				firstReading = db.getNodeById(firstReadId);
-				secondReading = db.getNodeById(secondReadId);
+				stayingReading = db.getNodeById(firstReadId);
+				deletingReading = db.getNodeById(secondReadId);
 			} catch (Exception e) {
 				db.shutdown();
 				return Response.status(Status.NOT_FOUND).entity("no readings with this ids found").build();
 			}
 
-			if (!firstReading.getProperty("dn15").toString()
-					.equalsIgnoreCase(secondReading.getProperty("dn15").toString())) {
+			if (!stayingReading.getProperty("dn15").toString()
+					.equalsIgnoreCase(deletingReading.getProperty("dn15").toString())) {
 				db.shutdown();
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("Readings to be merged do not contain the same text").build();
 			}
 
-			if (doReadingsBelongToSameWitness(firstReading, secondReading)) {
+			if (doReadingsBelongToSameWitness(stayingReading, deletingReading)) {
 				db.shutdown();
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("Readings to be merged belong to the same witness").build();
 			}
 
 			// merging of readings happens here
-			copyRelationshipProperties(firstReading, secondReading, Direction.INCOMING);
-			copyRelationshipProperties(firstReading, secondReading, Direction.OUTGOING);
-			addRelationshipsToFirstReading(firstReading, secondReading);
-			secondReading.delete();
+			copyRelationshipProperties(stayingReading, deletingReading, Direction.INCOMING);
+			copyRelationshipProperties(stayingReading, deletingReading, Direction.OUTGOING);
+			addRelationshipsToFirstReading(stayingReading, deletingReading);
+			deletingReading.delete();
 
 			tx.success();
 		} catch (Exception e) {
@@ -338,47 +338,47 @@ public class Tradition implements IResource {
 		return Response.ok("Successfully merged readings").build();
 	}
 
-	private boolean doReadingsBelongToSameWitness(Node firstReading, Node secondReading) {
-		Iterable<Relationship> firstRels = firstReading.getRelationships(ERelations.NORMAL);
-		ArrayList<String> firstWitnesses = new ArrayList<String>();
-		for (Relationship firstRel : firstRels) {
-			for (String witness : (String[]) firstRel.getProperty("lexemes"))
-				firstWitnesses.add(witness);
+	private void copyRelationshipProperties(Node stayingReading, Node deletingReading, Direction direction) {
+		Relationship stayingRel = stayingReading.getSingleRelationship(ERelations.NORMAL, direction);
+		Relationship deletingRel = deletingReading.getSingleRelationship(ERelations.NORMAL, direction);
+		String[] firstWitnesses = (String[]) stayingRel.getProperty("lexemes");
+		String[] secondWitnesses = (String[]) deletingRel.getProperty("lexemes");
+		String[] combinedWitnesses = new String[firstWitnesses.length + secondWitnesses.length];
+		for (int i = 0; i < firstWitnesses.length; i++)
+			combinedWitnesses[i] = firstWitnesses[i];
+		for (int i = 0; i < secondWitnesses.length; i++)
+			combinedWitnesses[firstWitnesses.length + i] = secondWitnesses[i];
+		stayingRel.setProperty("lexemes", combinedWitnesses);
+		deletingRel.delete();
+	}
+
+	private boolean doReadingsBelongToSameWitness(Node stayingReading, Node deletingReading) {
+		Iterable<Relationship> stayingRels = stayingReading.getRelationships(ERelations.NORMAL);
+		ArrayList<String> stayingWitnesses = new ArrayList<String>();
+		for (Relationship stayingRel : stayingRels) {
+			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
+				stayingWitnesses.add(witness);
 		}
-		Iterable<Relationship> secondRels = secondReading.getRelationships(ERelations.NORMAL);
+		Iterable<Relationship> secondRels = deletingReading.getRelationships(ERelations.NORMAL);
 		for (Relationship secondRel : secondRels)
 			for (String witness : (String[]) secondRel.getProperty("lexemes"))
-				if (firstWitnesses.contains(witness))
+				if (stayingWitnesses.contains(witness))
 					return true;
 		return false;
 	}
 
-	private void addRelationshipsToFirstReading(Node firstReading, Node secondReading) {
+	private void addRelationshipsToFirstReading(Node stayingReading, Node deletingReading) {
 		// copy relationships from secondReading to firstReading
-		Iterable<Relationship> rels = secondReading.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING);
+		Iterable<Relationship> rels = deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING);
 		for (Relationship rel : rels) {
-			firstReading.createRelationshipTo(rel.getEndNode(), ERelations.RELATIONSHIP);
+			stayingReading.createRelationshipTo(rel.getEndNode(), ERelations.RELATIONSHIP);
 			rel.delete();
 		}
-		rels = secondReading.getRelationships(ERelations.RELATIONSHIP, Direction.INCOMING);
+		rels = deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.INCOMING);
 		for (Relationship rel : rels) {
-			rel.getStartNode().createRelationshipTo(firstReading, ERelations.RELATIONSHIP);
+			rel.getStartNode().createRelationshipTo(stayingReading, ERelations.RELATIONSHIP);
 			rel.delete();
 		}
-	}
-
-	private void copyRelationshipProperties(Node firstReading, Node secondReading, Direction direction) {
-		Relationship firstRel = firstReading.getSingleRelationship(ERelations.NORMAL, direction);
-		Relationship secondRel = secondReading.getSingleRelationship(ERelations.NORMAL, direction);
-		String[] firstWitnesses = (String[]) firstRel.getProperty("lexemes");
-		String[] secondWitnesses = (String[]) secondRel.getProperty("lexemes");
-		String[] combinedWitnesses = new String[firstWitnesses.length + secondWitnesses.length];
-		for(int i = 0; i < firstWitnesses.length; i++)
-			combinedWitnesses[i] = firstWitnesses[i];
-		for(int i = 0; i < secondWitnesses.length; i++)
-			combinedWitnesses[firstWitnesses.length + i] = secondWitnesses[i];
-		firstRel.setProperty("lexemes", combinedWitnesses);
-		secondRel.delete();
 	}
 
 	/**
