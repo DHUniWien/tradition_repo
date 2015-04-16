@@ -427,15 +427,49 @@ public class Reading implements IResource {
 					}
 				}
 				if(sameText.size()>1)
-					couldBeCeck(sameText,identicalReadings);
+					couldBeCheck(sameText,identicalReadings);
 		}
 		
 		return identicalReadings;
 	}
 
-	private void couldBeCeck(ArrayList<Node> sameText,
+	private void couldBeCheck(ArrayList<Node> sameText,
 			ArrayList<ReadingModel> identicalReadings) {
-		for()
+		
+		for(int i = 0; i<sameText.size()-1; i++) {
+			Node bigger;
+			Node smaller;
+
+			long rankA = (long) sameText.get(i).getProperty("dn14");
+			long rankB = (long) sameText.get(i+1).getProperty("dn14");
+			long delta,biggerRank,smallerRank;
+			
+			
+			if(rankA<rankB) {
+				bigger = sameText.get(i+1);
+				smaller = sameText.get(i);
+				delta = rankB-rankA;
+				smallerRank = rankA;
+				biggerRank = rankB;
+			}
+			else {
+				bigger = sameText.get(i);
+				smaller = sameText.get(i+1);
+				delta = rankA-rankB;
+				smallerRank = rankB;
+				biggerRank = rankA;
+			}
+			
+			long j = 0;
+			while(j <= biggerRank) {
+				Iterable<Relationship> rels = smaller.getRelationships(Direction.OUTGOING, ERelations.NORMAL);
+				
+				for(Relationship rel : rels) {
+					j = (long)rel.getEndNode().getProperty("dn14");
+				}
+			}
+
+		}
 	}
 
 	private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank,
