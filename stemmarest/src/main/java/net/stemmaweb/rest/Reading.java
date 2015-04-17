@@ -3,6 +3,7 @@ package net.stemmaweb.rest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -231,57 +232,6 @@ public class Reading implements IResource {
 		}
 	}
 
-	
-	// the new method (below) is probably more efficient. Still keeping this one
-	// for a team discussion
-	/*
-	 * public Response getAllReadingsOfTradition(@PathParam("tradId") String
-	 * tradId) {
-	 * 
-	 * ArrayList<ReadingModel> readList = new ArrayList<ReadingModel>();
-	 * GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-	 * ExecutionEngine engine = new ExecutionEngine(db);
-	 * 
-	 * try (Transaction tx = db.beginTx()) { Node traditionNode = null; Node
-	 * startNode = null; ExecutionResult result =
-	 * engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
-	 * Iterator<Node> nodes = result.columnAs("n");
-	 * 
-	 * if (!nodes.hasNext()) return
-	 * Response.status(Status.NOT_FOUND).entity("trad node not found").build();
-	 * 
-	 * traditionNode = nodes.next();
-	 * 
-	 * Iterable<Relationship> rels =
-	 * traditionNode.getRelationships(Direction.OUTGOING);
-	 * 
-	 * if (rels == null) return
-	 * Response.status(Status.NOT_FOUND).entity("rels not found").build();
-	 * 
-	 * Iterator<Relationship> relIt = rels.iterator();
-	 * 
-	 * while (relIt.hasNext()) { Relationship rel = relIt.next(); startNode =
-	 * rel.getEndNode(); if (startNode != null && startNode.hasProperty("text"))
-	 * { if (startNode.getProperty("text").equals("#START#")) { rels =
-	 * startNode.getRelationships(Direction.OUTGOING); break; } } }
-	 * 
-	 * if (rels == null) return
-	 * Response.status(Status.NOT_FOUND).entity("start node not found").build();
-	 * 
-	 * TraversalDescription td = db.traversalDescription().breadthFirst()
-	 * .relationships(ERelations.NORMAL,
-	 * Direction.OUTGOING).evaluator(Evaluators.excludeStartPosition());
-	 * 
-	 * Traverser traverser = td.traverse(startNode); for (org.neo4j.graphdb.Path
-	 * path : traverser) { Node nd = path.endNode(); ReadingModel rm =
-	 * Reading.readingModelFromNode(nd); readList.add(rm); }
-	 * 
-	 * tx.success(); } catch (Exception e) { e.printStackTrace(); } finally {
-	 * db.shutdown(); } // return Response.status(Status.NOT_FOUND).build();
-	 * 
-	 * return Response.ok(readList).build(); }
-	 */
-
 	@GET
 	@Path("/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -365,7 +315,7 @@ public class Reading implements IResource {
 		readingModels = getAllReadingsFromTraditionBetweenRanks(startNode,
 				startRank, endRank, db);
 
-		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+		ArrayList<List> identicalReadings = new ArrayList<List>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
 				startRank, endRank);
 
@@ -496,13 +446,15 @@ public class Reading implements IResource {
 	 * @param endRank
 	 * @return list of the identical readings as readingModels
 	 */
-	private ArrayList<ReadingModel> getIdenticalReadingsAsList(
+	private ArrayList<List> getIdenticalReadingsAsList(
 			ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
-		ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+		ArrayList<List> identicalReadingsList = new ArrayList<List>();
 
 		for (int i = 0; i <=readingModels.size() - 2; i++) {
 			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
 					.getDn14() && i + 1 < readingModels.size()) {
+				ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+
 				if (readingModels.get(i).getDn15()
 						.equals(readingModels.get(i + 1).getDn15())
 						&& readingModels.get(i).getDn14() < endRank
@@ -510,10 +462,11 @@ public class Reading implements IResource {
 					identicalReadings.add(readingModels.get(i));
 					identicalReadings.add(readingModels.get(i + 1));
 				}
+				identicalReadingsList.add(identicalReadings);
 				i++;
 			}
 		}
-		return identicalReadings;
+		return identicalReadingsList;
 	}
 
 	/**
