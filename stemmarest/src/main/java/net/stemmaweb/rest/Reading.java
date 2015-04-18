@@ -40,6 +40,7 @@ import Exceptions.DataBaseException;
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 @Path("reading")
 public class Reading implements IResource {
+	private String errorMessage;
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
 	public static ReadingModel readingModelFromNode(Node node) {
@@ -90,146 +91,94 @@ public class Reading implements IResource {
 		newReading.addLabel(Nodes.WORD);
 		return newReading;
 	}
-	
+
 	/**
 	 * gets the next readings from a given readings in the same witness
-	 * 
-	 * @param tradId
-	 *            : tradition id
 	 * @param textId
 	 *            : witness id
 	 * @param readId
 	 *            : reading id
+	 * 
 	 * @return the requested reading
 	 */
 	@GET
-	@Path("next/{tradId}/{textId}/{readId}")
+	@Path("next/{textId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getNextReadingInWitness(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId,
+	public Response getNextReadingInWitness(@PathParam("textId") String textId,
 			@PathParam("readId") long readId) {
 
 		final String WITNESS_ID = textId;
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
-		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
-			return Response.status(Status.NOT_FOUND)
-					.entity("Could not find tradition with this id").build();
-
-		ReadingModel reading = getNextReading(WITNESS_ID, readId, startNode, db);
-		if (reading.getDn15().equals("#END#"))
-			return Response.status(Status.NOT_FOUND).entity("this was the last reading of this witness").build();
-
-		return Response.ok(reading).build();
-	}
-	
-	/**
-	 * gets the Next reading to a given reading and a witness help method
-	 * 
-	 * @param WITNESS_ID
-	 * @param readId
-	 * @param startNode
-	 * @return the Next reading to that of the readId
-	 */
-	private ReadingModel getNextReading(String WITNESS_ID, long readId,
-			Node startNode, GraphDatabaseService db) {
-
 		EvaluatorService evaService = new EvaluatorService();
-		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator wintessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
-			int stop = 0;
+			Node read = db.getNodeById(readId);
+
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE)
-					.traverse(startNode).nodes()) {
-				if (stop == 1) {
-					tx.success();
-					return Reading.readingModelFromNode(node);
-				}
-				if (node.getId()==readId) {
-					stop = 1;
-				}
+					.evaluator(wintessEvaluator)
+					.evaluator(Evaluators.toDepth(1))
+					.uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
+				db.shutdown();
+				if (!Reading.readingModelFromNode(node).getDn15()
+						.equals("#END#"))
+					return Response.ok(Reading.readingModelFromNode(node))
+							.build();
+				else
+					return Response
+							.status(Status.NOT_FOUND)
+							.entity("this was the last reading of this witness")
+							.build();
 			}
-			db.shutdown();
-			throw new DataBaseException("given readings not found");
 		}
+		db.shutdown();
+		throw new DataBaseException("given readings not found");
 	}
-	
+
 	/**
 	 * gets the next readings from a given readings in the same witness
-	 * 
-	 * @param tradId
-	 *            : tradition id
 	 * @param textId
 	 *            : witness id
 	 * @param readId
 	 *            : reading id
+	 * 
 	 * @return the requested reading
 	 */
 	@GET
-	@Path("/previous/{tradId}/{textId}/{readId}")
+	@Path("/previous/{textId}/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getPreviousReadingInWitness(
-			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("readId") long readId) {
 
 		final String WITNESS_ID = textId;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
-		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
-			return Response.status(Status.NOT_FOUND)
-					.entity("Could not find tradition with this id").build();
-
-		ReadingModel reading = getPreviousReading(WITNESS_ID, readId,
-				startNode, db);
-
-		if (reading==null)
-			return Response.status(Status.NOT_FOUND)
-					.entity("there is no previous reading to this reading").build();
-		return Response.ok(reading).build();
-	}
-
-	
-	
-	/**
-	 * gets the Previous reading to a given reading and a witness help method
-	 * 
-	 * @param WITNESS_ID
-	 * @param readId
-	 * @param startNode
-	 * @return the Previous reading to that of the readId
-	 */
-	private ReadingModel getPreviousReading(final String WITNESS_ID,
-			long readId, Node startNode, GraphDatabaseService db) {
-		Node previousNode = null;
-
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);		
 		EvaluatorService evaService = new EvaluatorService();
-		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator wintessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
-			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.NONE)
-					.traverse(startNode).nodes()) {
+			Node read = db.getNodeById(readId);
 
-				if (node.getId()==readId) {
-					tx.success();
-					if (previousNode != null)
-						return Reading.readingModelFromNode(previousNode);
-					else {
-						db.shutdown();
-						return null;
-					}
-				}
-				previousNode = node;
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.INCOMING)
+					.evaluator(wintessEvaluator)
+					.evaluator(Evaluators.toDepth(1))
+					.uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
+				db.shutdown();
+				if (!Reading.readingModelFromNode(node).getDn15()
+						.equals("#START#"))
+					return Response.ok(Reading.readingModelFromNode(node))
+							.build();
+				else
+					return Response
+							.status(Status.NOT_FOUND)
+							.entity("there is no previous reading to this reading")
+							.build();
 			}
-			db.shutdown();
-			throw new DataBaseException("given readings not found");
 		}
+		db.shutdown();
+		throw new DataBaseException("given readings not found");
 	}
 
 	@GET
@@ -241,7 +190,7 @@ public class Reading implements IResource {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null){
+		if (startNode == null) {
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 		}
@@ -319,15 +268,21 @@ public class Reading implements IResource {
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
 				startRank, endRank);
 
-		if (identicalReadings.size() == 0)
+		Boolean isEmpty = true;
+		for (List list : identicalReadings) {
+			if (list.size() > 0)
+				isEmpty = false;
+		}
+		if (isEmpty)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
 
 		return Response.ok(identicalReadings).build();
 	}
-	
+
 	/**
-	 * Returns a list of a list of readingModels with could be one the same rank without problems
+	 * Returns a list of a list of readingModels with could be one the same rank
+	 * without problems
 	 * 
 	 * @param tradId
 	 * @param startRank
@@ -337,7 +292,8 @@ public class Reading implements IResource {
 	@GET
 	@Path("couldBeIdentical/{tradId}/{startRank}/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getCouldBeIdenticalReadings(@PathParam("tradId") String tradId,
+	public Response getCouldBeIdenticalReadings(
+			@PathParam("tradId") String tradId,
 			@PathParam("startRank") long startRank,
 			@PathParam("endRank") long endRank) {
 
@@ -347,148 +303,161 @@ public class Reading implements IResource {
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		
-		ArrayList<Node> questionedReadings = getReadingsBetweenRanks(startRank, endRank, db, startNode);
-						
-		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings,db);
-		
+
+		ArrayList<Node> questionedReadings = getReadingsBetweenRanks(startRank,
+				endRank, db, startNode);
+
+		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = getCouldBeIdenticalAsList(
+				questionedReadings, db);
+
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-		
+
 		return Response.ok(couldBeIdenticalReadings).build();
 	}
 
 	/**
-	 * Makes separate List for every group of Readings with identical text and different ranks 
-	 * and send the list for further test
+	 * Makes separate List for every group of Readings with identical text and
+	 * different ranks and send the list for further test
 	 * 
 	 * @param questionedReadings
-	 * @param db 
+	 * @param db
 	 * @return
 	 */
 	private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
 			ArrayList<Node> questionedReadings, GraphDatabaseService db) {
-		
-			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 
-			try (Transaction tx = db.beginTx()) {
+		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 
-			for (Node nodeA:questionedReadings) {
+		try (Transaction tx = db.beginTx()) {
+
+			for (Node nodeA : questionedReadings) {
 				ArrayList<Node> sameText = new ArrayList<Node>();
-				for (Node nodeB: questionedReadings) {
+				for (Node nodeB : questionedReadings) {
 					if (nodeA.getProperty("dn15").toString()
-							.equals(nodeB.getProperty("dn15").toString()) && !nodeA.equals(nodeB)
-							&& !nodeA.getProperty("dn14").toString()
-							.equals(nodeB.getProperty("dn14").toString())) {					
-					sameText.add(nodeB);
-					sameText.add(nodeA);					
+							.equals(nodeB.getProperty("dn15").toString())
+							&& !nodeA.equals(nodeB)
+							&& !nodeA
+									.getProperty("dn14")
+									.toString()
+									.equals(nodeB.getProperty("dn14")
+											.toString())) {
+						sameText.add(nodeB);
+						sameText.add(nodeA);
 					}
 				}
-				if(sameText.size()>0)
-					couldBeIdenticalCheck(sameText,couldBeIdenticalReadings,db);
+				if (sameText.size() > 0)
+					couldBeIdenticalCheck(sameText, couldBeIdenticalReadings,
+							db);
 			}
-		}
-		finally {
+		} finally {
 			db.shutdown();
 		}
-		
+
 		return couldBeIdenticalReadings;
 	}
 
 	/**
-	 * Adds all the words that could be on the same rank to the result list 
+	 * Adds all the words that could be on the same rank to the result list
 	 * 
 	 * @param sameText
 	 * @param couldBeIdenticalReadings
 	 * @param db
 	 */
 	private void couldBeIdenticalCheck(ArrayList<Node> sameText,
-			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings, GraphDatabaseService db) {
-		
+			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings,
+			GraphDatabaseService db) {
+
 		ArrayList<ReadingModel> couldBeIdentical = new ArrayList<ReadingModel>();
 		try (Transaction tx = db.beginTx()) {
 
-			for(int i = 0; i<sameText.size()-1; i++) {
+			for (int i = 0; i < sameText.size() - 1; i++) {
 				Node biggerRankNode;
 				Node smallerRankNode;
 				long rankA = (long) sameText.get(i).getProperty("dn14");
-				long rankB = (long) sameText.get(i+1).getProperty("dn14");
-				long biggerRank,smallerRank;
-				
-				if(rankA<rankB) {
-					biggerRankNode = sameText.get(i+1);
+				long rankB = (long) sameText.get(i + 1).getProperty("dn14");
+				long biggerRank, smallerRank;
+
+				if (rankA < rankB) {
+					biggerRankNode = sameText.get(i + 1);
 					smallerRankNode = sameText.get(i);
 					smallerRank = rankA;
 					biggerRank = rankB;
-				}
-				else {
+				} else {
 					biggerRankNode = sameText.get(i);
-					smallerRankNode = sameText.get(i+1);
+					smallerRankNode = sameText.get(i + 1);
 					smallerRank = rankB;
 					biggerRank = rankA;
 				}
-				
+
 				long rank = 0;
 				boolean gotOne = false;
-				
-				Iterable<Relationship> rels = smallerRankNode.getRelationships(Direction.OUTGOING, ERelations.NORMAL);
-				
-				for(Relationship rel : rels) {
-						rank = (long)rel.getEndNode().getProperty("dn14");
-						if(rank<=biggerRank){
+
+				Iterable<Relationship> rels = smallerRankNode.getRelationships(
+						Direction.OUTGOING, ERelations.NORMAL);
+
+				for (Relationship rel : rels) {
+					rank = (long) rel.getEndNode().getProperty("dn14");
+					if (rank <= biggerRank) {
+						gotOne = true;
+						break;
+					}
+				}
+
+				if (gotOne) {
+					rank = 0;
+					gotOne = false;
+
+					Iterable<Relationship> rels2 = biggerRankNode
+							.getRelationships(Direction.INCOMING,
+									ERelations.NORMAL);
+
+					for (Relationship rel : rels2) {
+						rank = (long) rel.getStartNode().getProperty("dn14");
+						if (rank >= smallerRank) {
 							gotOne = true;
 							break;
 						}
-				}
-				
-				if(gotOne) {
-					rank = 0;
-					gotOne=false;
-	
-					Iterable<Relationship> rels2 = biggerRankNode.getRelationships(Direction.INCOMING, ERelations.NORMAL);
-					
-					for(Relationship rel : rels2) {
-							rank = (long)rel.getStartNode().getProperty("dn14");
-							if(rank>=smallerRank){
-								gotOne = true;
-								break;
-							}
 					}
-				}	
-				if(!gotOne) {
-					if (!couldBeIdentical.contains(readingModelFromNode(smallerRankNode)))
-						couldBeIdentical.add(readingModelFromNode(smallerRankNode));
-					if(!couldBeIdentical.contains(readingModelFromNode(biggerRankNode)))
-						couldBeIdentical.add(readingModelFromNode(biggerRankNode));
 				}
-				
+				if (!gotOne) {
+					if (!couldBeIdentical
+							.contains(readingModelFromNode(smallerRankNode)))
+						couldBeIdentical
+								.add(readingModelFromNode(smallerRankNode));
+					if (!couldBeIdentical
+							.contains(readingModelFromNode(biggerRankNode)))
+						couldBeIdentical
+								.add(readingModelFromNode(biggerRankNode));
+				}
+
 			}
 			couldBeIdenticalReadings.add(couldBeIdentical);
 		}
-		
+
 		finally {
 			db.shutdown();
 		}
 
 	}
 
-	private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank,
-			GraphDatabaseService db, Node startNode) {
+	private ArrayList<Node> getReadingsBetweenRanks(long startRank,
+			long endRank, GraphDatabaseService db, Node startNode) {
 		ArrayList<Node> readings = new ArrayList<Node>();
 
 		try (Transaction tx = db.beginTx()) {
 
 			for (Node node : db.traversalDescription().breadthFirst()
-					.relationships(ERelations.NORMAL,Direction.OUTGOING)
-					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(startNode).nodes()) {
-				if((Long)node.getProperty("dn14")>startRank && (Long)node.getProperty("dn14")<endRank )
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+					.nodes()) {
+				if ((Long) node.getProperty("dn14") > startRank
+						&& (Long) node.getProperty("dn14") < endRank)
 					readings.add(node);
-				
+
 			}
-		}
-		finally {
+		} finally {
 			db.shutdown();
 		}
 		return readings;
@@ -507,7 +476,7 @@ public class Reading implements IResource {
 			ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
 		ArrayList<List> identicalReadingsList = new ArrayList<List>();
 
-		for (int i = 0; i <=readingModels.size() - 2; i++) {
+		for (int i = 0; i <= readingModels.size() - 2; i++) {
 			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
 					.getDn14() && i + 1 < readingModels.size()) {
 				ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
@@ -542,15 +511,15 @@ public class Reading implements IResource {
 			@PathParam("readId2") long readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
-		String errorMessage = "problem with a reading. Could not compress";
+		errorMessage = "problem with a reading. Could not compress";
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
-					.entity("Could not find tradition with this id").build();
-		read1 = DatabaseService.getReadingById(readId1, startNode, db);
-		read2 = DatabaseService.getReadingById(readId2, startNode, db);
+					.entity("Could not find tradition with this id").build();		
 
 		try (Transaction tx = db.beginTx()) {
+			read1 = db.getNodeById(readId1);
+			read2 = db.getNodeById(readId2);
 			if ((long) read1.getProperty("dn14") > (long) read2
 					.getProperty("dn14"))
 				swapReadings(read1, read2);
@@ -558,11 +527,12 @@ public class Reading implements IResource {
 			tx.success();
 		}
 
-		if (canCompress(read1, read2, errorMessage, db)) {
+		if (canCompress(read1, read2, db)) {
 			compress(read1, read2, db);
 			return Response.ok("Successfully compressed readings").build();
 		} else
-			return Response.status(Status.NOT_FOUND).entity(errorMessage).build();
+			return Response.status(Status.NOT_FOUND).entity(errorMessage)
+					.build();
 	}
 
 	/**
@@ -616,12 +586,9 @@ public class Reading implements IResource {
 	 *            the first reading
 	 * @param read2
 	 *            the second reading
-	 * @param message
-	 *            the error message, in case the readings cannot be compressed
 	 * @return true if ok to compress, false otherwise
 	 */
-	private boolean canCompress(Node read1, Node read2, String message,
-			GraphDatabaseService db) {
+	private boolean canCompress(Node read1, Node read2, GraphDatabaseService db) {
 		Iterable<Relationship> rel;
 		try (Transaction tx = db.beginTx()) {
 			rel = read2.getRelationships(ERelations.NORMAL);
@@ -629,18 +596,18 @@ public class Reading implements IResource {
 		}
 		Iterator<Relationship> normalFromRead2 = rel.iterator();
 		if (!normalFromRead2.hasNext()) {
-			message = "second readings is not connected. could not compress.";
+			errorMessage = "second readings is not connected. could not compress";
 			return false;
 		}
 		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
 		if (from1to2 == null) {
-			message = "reading are not neighbors. could not compress.";
+			errorMessage = "reading are not neighbors. could not compress";
 			return false;
 		}
 
 		if (hasNotNormalRealtionships(read1, db)
 				|| hasNotNormalRealtionships(read2, db)) {
-			message = "reading has other relations. could not compress";
+			errorMessage = "reading has other relations. could not compress";
 			return false;
 		}
 		return true;

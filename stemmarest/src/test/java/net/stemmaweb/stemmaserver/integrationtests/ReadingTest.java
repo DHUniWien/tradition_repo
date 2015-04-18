@@ -375,7 +375,7 @@ public class ReadingTest {
 
 			assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 					response.getStatus());
-			assertEquals("problem with a reading. Could not compress", response.getEntity(String.class));
+			assertEquals("reading are not neighbors. could not compress", response.getEntity(String.class));
 
 			result = engine
 					.execute("match (w:WORD {dn15:'showers sweet'}) return w");
@@ -392,21 +392,37 @@ public class ReadingTest {
 	@Test
 	public void nextReadingTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		long readId;
+		long withReadId, piercedReadId;
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
-			readId = nodes.next().getId();
+			withReadId = nodes.next().getId();
+			
+			result = engine
+					.execute("match (w:WORD {dn15:'pierced'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			piercedReadId = nodes.next().getId();
 
 			tx.success();
 		}
 
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/next/" + tradId + "/A/" + readId)
+				.path("/reading/next/A/" + withReadId)
 				.get(ReadingModel.class);
 		assertEquals("his", actualResponse.getDn15());
+		
+		actualResponse = jerseyTest.resource()
+				.path("/reading/next/A/" + piercedReadId)
+				.get(ReadingModel.class);
+		assertEquals("unto", actualResponse.getDn15());
+		
+		actualResponse = jerseyTest.resource()
+				.path("/reading/next/B/" + piercedReadId)
+				.get(ReadingModel.class);
+		assertEquals("to", actualResponse.getDn15());
 	}
 
 	@Test
@@ -424,7 +440,7 @@ public class ReadingTest {
 		}
 
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/next/" + tradId + "/B/" + readId)
+				.path("/reading/next/B/" + readId)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
@@ -446,7 +462,7 @@ public class ReadingTest {
 			tx.success();
 		}
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/previous/" + tradId + "/A/" + readId)
+				.path("/reading/previous/A/" + readId)
 				.get(ReadingModel.class);
 		assertEquals("april", actualResponse.getDn15());
 	}
@@ -466,7 +482,7 @@ public class ReadingTest {
 			tx.success();
 		}
 		ClientResponse actualResponse = jerseyTest.resource()
-				.path("/reading/previous/" + tradId + "/A/" + readId)
+				.path("/reading/previous/A/" + readId)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				actualResponse.getStatus());
