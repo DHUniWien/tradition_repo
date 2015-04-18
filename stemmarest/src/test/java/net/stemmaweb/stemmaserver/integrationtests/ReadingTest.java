@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -204,15 +205,43 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void identicalReadingsTest() {
-		List<ReadingModel> listOfIdenticalReadings = jerseyTest.resource()
+	public void identicalReadingsOneResultTest() {
+		List<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+
+		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest.resource()
 				.path("/reading/identical/" + tradId + "/3/8")
-				.get(new GenericType<List<ReadingModel>>() {
+				.get(new GenericType<List<List<ReadingModel>>>() {
+				});
+		assertEquals(1, listOfIdenticalReadings.size());
+		identicalReadings = listOfIdenticalReadings.get(0);
+		assertEquals(2, identicalReadings.size());
+		assertEquals("his", identicalReadings.get(1).getDn15());
+
+		assertEquals(identicalReadings.get(0).getDn15(),
+				identicalReadings.get(1).getDn15());
+	}
+	
+	@Test
+	public void identicalReadingsTwoResultsTest() {
+		List<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+
+		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest.resource()
+				.path("/reading/identical/" + tradId + "/1/8")
+				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, listOfIdenticalReadings.size());
-		assertEquals(listOfIdenticalReadings.get(0).getDn15(),
-				listOfIdenticalReadings.get(1).getDn15());
-		assertEquals("his", listOfIdenticalReadings.get(1).getDn15());
+		
+		identicalReadings = listOfIdenticalReadings.get(0);
+		assertEquals(2, identicalReadings.size());
+		assertEquals("april", identicalReadings.get(1).getDn15());
+		assertEquals(identicalReadings.get(0).getDn15(),
+				identicalReadings.get(1).getDn15());
+		
+		identicalReadings = listOfIdenticalReadings.get(1);
+		assertEquals(2, identicalReadings.size());
+		assertEquals("his", identicalReadings.get(1).getDn15());
+		assertEquals(identicalReadings.get(0).getDn15(),
+				identicalReadings.get(1).getDn15());
 	}
 	
 	@Test

@@ -3,6 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -18,6 +19,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -80,6 +82,12 @@ public class TraditionTest {
 
 	@InjectMocks
 	private Tradition tradition;
+	
+	@InjectMocks
+	private Witness witness;
+	
+	@InjectMocks
+	private Reading reading;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -210,7 +218,11 @@ public class TraditionTest {
 	}
 
 	@Test
-	public void duplicateReadingTest() {
+	public void duplicateReadingTest() {		
+		
+		String expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		
 		// duplicate reading
 		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
 		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId)
@@ -277,8 +289,12 @@ public class TraditionTest {
 			assertEquals("unto", duplicate.getDn15());
 
 			tx.success();
-		}
-
+		}		
+		
+		expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
+		resp = witness.getWitnessAsPlainText(tradId, "B");		
+		assertEquals(expectedText, resp.getEntity());	
+		
 		assertEquals(Status.OK, response.getClientResponseStatus());
 	}
 
