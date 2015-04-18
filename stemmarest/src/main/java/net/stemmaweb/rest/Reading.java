@@ -326,6 +326,14 @@ public class Reading implements IResource {
 		return Response.ok(identicalReadings).build();
 	}
 	
+	/**
+	 * Returns a list of a list of readingModels with could be one the same rank without problems
+	 * 
+	 * @param tradId
+	 * @param startRank
+	 * @param endRank
+	 * @return
+	 */
 	@GET
 	@Path("couldBeIdentical/{tradId}/{startRank}/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -334,99 +342,97 @@ public class Reading implements IResource {
 			@PathParam("endRank") long endRank) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ArrayList<Node> readings = new ArrayList<Node>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 		
-		readings = getReadingsBetweenRanks(startRank, endRank, db, startNode);
-				
-		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
-		
-		couldBeIdenticalReadings = getCouldBeIdenticalAsList(readings,db);
+		ArrayList<Node> questionedReadings = getReadingsBetweenRanks(startRank, endRank, db, startNode);
+						
+		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings,db);
 		
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
 		
-		
-
 		return Response.ok(couldBeIdenticalReadings).build();
 	}
 
 	/**
-	 * Makes seperate List for every group of Readings with identical text and different ranks 
+	 * Makes separate List for every group of Readings with identical text and different ranks 
 	 * and send the list for further test
-	 * @param readings
+	 * 
+	 * @param questionedReadings
 	 * @param db 
 	 * @return
 	 */
 	private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
-			ArrayList<Node> readings, GraphDatabaseService db) {
+			ArrayList<Node> questionedReadings, GraphDatabaseService db) {
 		
-			ArrayList<ArrayList<ReadingModel>> identicalReadings = new ArrayList<ArrayList<ReadingModel>>();
-			ArrayList<ReadingModel> couldBeId = new ArrayList<ReadingModel>();
+			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 
 			try (Transaction tx = db.beginTx()) {
 
-			for (Node nodeA:readings) {
+			for (Node nodeA:questionedReadings) {
 				ArrayList<Node> sameText = new ArrayList<Node>();
-				for (Node nodeB: readings) {
+				for (Node nodeB: questionedReadings) {
 					if (nodeA.getProperty("dn15").toString()
 							.equals(nodeB.getProperty("dn15").toString()) && !nodeA.equals(nodeB)
 							&& !nodeA.getProperty("dn14").toString()
-							.equals(nodeB.getProperty("dn14").toString())) {
-						
+							.equals(nodeB.getProperty("dn14").toString())) {					
 					sameText.add(nodeB);
-					sameText.add(nodeA);
-
-					
+					sameText.add(nodeA);					
 					}
 				}
 				if(sameText.size()>0)
-					couldBeCheck(sameText,identicalReadings,db);
+					couldBeIdenticalCheck(sameText,couldBeIdenticalReadings,db);
 			}
 		}
 		finally {
 			db.shutdown();
 		}
 		
-		return identicalReadings;
+		return couldBeIdenticalReadings;
 	}
 
-	private void couldBeCheck(ArrayList<Node> sameText,
-			ArrayList<ArrayList<ReadingModel>> identicalReadings, GraphDatabaseService db) {
-		ArrayList<ReadingModel> couldBeId = new ArrayList<ReadingModel>();
+	/**
+	 * Adds all the words that could be on the same rank to the result list 
+	 * 
+	 * @param sameText
+	 * @param couldBeIdenticalReadings
+	 * @param db
+	 */
+	private void couldBeIdenticalCheck(ArrayList<Node> sameText,
+			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings, GraphDatabaseService db) {
+		
+		ArrayList<ReadingModel> couldBeIdentical = new ArrayList<ReadingModel>();
 		try (Transaction tx = db.beginTx()) {
 
 			for(int i = 0; i<sameText.size()-1; i++) {
-				Node bigger;
-				Node smaller;
-	
+				Node biggerRankNode;
+				Node smallerRankNode;
 				long rankA = (long) sameText.get(i).getProperty("dn14");
 				long rankB = (long) sameText.get(i+1).getProperty("dn14");
 				long biggerRank,smallerRank;
 				
-				
 				if(rankA<rankB) {
-					bigger = sameText.get(i+1);
-					smaller = sameText.get(i);
-					smallerRank = (long) sameText.get(i).getProperty("dn14");
-					biggerRank = (long) sameText.get(i+1).getProperty("dn14");
+					biggerRankNode = sameText.get(i+1);
+					smallerRankNode = sameText.get(i);
+					smallerRank = rankA;
+					biggerRank = rankB;
 				}
 				else {
-					bigger = sameText.get(i);
-					smaller = sameText.get(i+1);
-					smallerRank = (long) sameText.get(i+1).getProperty("dn14");
-					biggerRank = (long) sameText.get(i).getProperty("dn14");
+					biggerRankNode = sameText.get(i);
+					smallerRankNode = sameText.get(i+1);
+					smallerRank = rankB;
+					biggerRank = rankA;
 				}
 				
 				long rank = 0;
 				boolean gotOne = false;
 				
-				Iterable<Relationship> rels = smaller.getRelationships(Direction.OUTGOING, ERelations.NORMAL);
+				Iterable<Relationship> rels = smallerRankNode.getRelationships(Direction.OUTGOING, ERelations.NORMAL);
 				
 				for(Relationship rel : rels) {
 						rank = (long)rel.getEndNode().getProperty("dn14");
@@ -440,7 +446,7 @@ public class Reading implements IResource {
 					rank = 0;
 					gotOne=false;
 	
-					Iterable<Relationship> rels2 = bigger.getRelationships(Direction.INCOMING, ERelations.NORMAL);
+					Iterable<Relationship> rels2 = biggerRankNode.getRelationships(Direction.INCOMING, ERelations.NORMAL);
 					
 					for(Relationship rel : rels2) {
 							rank = (long)rel.getStartNode().getProperty("dn14");
@@ -451,14 +457,14 @@ public class Reading implements IResource {
 					}
 				}	
 				if(!gotOne) {
-					if (!couldBeId.contains(readingModelFromNode(smaller)))
-						couldBeId.add(readingModelFromNode(smaller));
-					if(!couldBeId.contains(readingModelFromNode(bigger)))
-						couldBeId.add(readingModelFromNode(bigger));
+					if (!couldBeIdentical.contains(readingModelFromNode(smallerRankNode)))
+						couldBeIdentical.add(readingModelFromNode(smallerRankNode));
+					if(!couldBeIdentical.contains(readingModelFromNode(biggerRankNode)))
+						couldBeIdentical.add(readingModelFromNode(biggerRankNode));
 				}
 				
 			}
-			identicalReadings.add(couldBeId);
+			couldBeIdenticalReadings.add(couldBeIdentical);
 		}
 		
 		finally {
