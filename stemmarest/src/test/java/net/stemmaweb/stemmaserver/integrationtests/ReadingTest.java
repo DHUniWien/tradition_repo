@@ -224,7 +224,22 @@ public class ReadingTest {
 				response.getStatus());
 		assertEquals("no identical readings were found", response.getEntity(String.class));
 	}
-
+	
+	@Test
+	public void couldBeIdenticalReadingsTest() {
+		List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest.resource()
+				.path("/reading/couldBeIdentical/" + tradId + "/6/11")
+				.get(new GenericType<List<List<ReadingModel>>>() {
+				});
+		assertEquals(2, couldBeIdenticalReadings.size());
+		
+		assertEquals(couldBeIdenticalReadings.get(0).get(0).getDn15(),
+				couldBeIdenticalReadings.get(0).get(1).getDn15());
+		assertEquals("fruit", couldBeIdenticalReadings.get(0).get(0).getDn15());
+		
+		assertFalse(couldBeIdenticalReadings.get(0).get(0).getDn14()==
+				couldBeIdenticalReadings.get(0).get(1).getDn14());
+	}
 
 	@Test
 	public void compressReadingTest() {

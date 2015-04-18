@@ -393,13 +393,15 @@ public class Reading implements IResource {
 		
 		readings = getReadingsBetweenRanks(startRank, endRank, db, startNode);
 				
-		ArrayList<ReadingModel> couldBeIdenticalReadings = new ArrayList<ReadingModel>();
-
-		couldBeIdenticalReadings = getCouldBeIdenticalAsList(readings);
+		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
+		
+		couldBeIdenticalReadings = getCouldBeIdenticalAsList(readings,db);
 		
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
+		
+		
 
 		return Response.ok(couldBeIdenticalReadings).build();
 	}
@@ -408,14 +410,19 @@ public class Reading implements IResource {
 	 * Makes seperate List for every group of Readings with identical text and different ranks 
 	 * and send the list for further test
 	 * @param readings
+	 * @param db 
 	 * @return
 	 */
-	private ArrayList<ReadingModel> getCouldBeIdenticalAsList(
-			ArrayList<Node> readings) {
-			ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
+	private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
+			ArrayList<Node> readings, GraphDatabaseService db) {
+		
+			ArrayList<ArrayList<ReadingModel>> identicalReadings = new ArrayList<ArrayList<ReadingModel>>();
+			ArrayList<ReadingModel> couldBeId = new ArrayList<ReadingModel>();
+
+			try (Transaction tx = db.beginTx()) {
+
 			for (Node nodeA:readings) {
 				ArrayList<Node> sameText = new ArrayList<Node>();
-				sameText.add(nodeA);
 				for (Node nodeB: readings) {
 					if (nodeA.getProperty("dn15").toString()
 							.equals(nodeB.getProperty("dn15").toString()) && !nodeA.equals(nodeB)
@@ -423,66 +430,110 @@ public class Reading implements IResource {
 							.equals(nodeB.getProperty("dn14").toString())) {
 						
 					sameText.add(nodeB);
+					sameText.add(nodeA);
+
 					
 					}
 				}
-				if(sameText.size()>1)
-					couldBeCheck(sameText,identicalReadings);
+				if(sameText.size()>0)
+					couldBeCheck(sameText,identicalReadings,db);
+			}
+		}
+		finally {
+			db.shutdown();
 		}
 		
 		return identicalReadings;
 	}
 
 	private void couldBeCheck(ArrayList<Node> sameText,
-			ArrayList<ReadingModel> identicalReadings) {
-		
-		for(int i = 0; i<sameText.size()-1; i++) {
-			Node bigger;
-			Node smaller;
+			ArrayList<ArrayList<ReadingModel>> identicalReadings, GraphDatabaseService db) {
+		ArrayList<ReadingModel> couldBeId = new ArrayList<ReadingModel>();
+		try (Transaction tx = db.beginTx()) {
 
-			long rankA = (long) sameText.get(i).getProperty("dn14");
-			long rankB = (long) sameText.get(i+1).getProperty("dn14");
-			long delta,biggerRank,smallerRank;
-			
-			
-			if(rankA<rankB) {
-				bigger = sameText.get(i+1);
-				smaller = sameText.get(i);
-				delta = rankB-rankA;
-				smallerRank = rankA;
-				biggerRank = rankB;
-			}
-			else {
-				bigger = sameText.get(i);
-				smaller = sameText.get(i+1);
-				delta = rankA-rankB;
-				smallerRank = rankB;
-				biggerRank = rankA;
-			}
-			
-			long j = 0;
-			while(j <= biggerRank) {
+			for(int i = 0; i<sameText.size()-1; i++) {
+				Node bigger;
+				Node smaller;
+	
+				long rankA = (long) sameText.get(i).getProperty("dn14");
+				long rankB = (long) sameText.get(i+1).getProperty("dn14");
+				long biggerRank,smallerRank;
+				
+				
+				if(rankA<rankB) {
+					bigger = sameText.get(i+1);
+					smaller = sameText.get(i);
+					smallerRank = (long) sameText.get(i).getProperty("dn14");
+					biggerRank = (long) sameText.get(i+1).getProperty("dn14");
+				}
+				else {
+					bigger = sameText.get(i);
+					smaller = sameText.get(i+1);
+					smallerRank = (long) sameText.get(i+1).getProperty("dn14");
+					biggerRank = (long) sameText.get(i).getProperty("dn14");
+				}
+				
+				long rank = 0;
+				boolean gotOne = false;
+				
 				Iterable<Relationship> rels = smaller.getRelationships(Direction.OUTGOING, ERelations.NORMAL);
 				
 				for(Relationship rel : rels) {
-					j = (long)rel.getEndNode().getProperty("dn14");
+						rank = (long)rel.getEndNode().getProperty("dn14");
+						if(rank<=biggerRank){
+							gotOne = true;
+							break;
+						}
 				}
+				
+				if(gotOne) {
+					rank = 0;
+					gotOne=false;
+	
+					Iterable<Relationship> rels2 = bigger.getRelationships(Direction.INCOMING, ERelations.NORMAL);
+					
+					for(Relationship rel : rels2) {
+							rank = (long)rel.getStartNode().getProperty("dn14");
+							if(rank>=smallerRank){
+								gotOne = true;
+								break;
+							}
+					}
+				}	
+				if(!gotOne) {
+					if (!couldBeId.contains(readingModelFromNode(smaller)))
+						couldBeId.add(readingModelFromNode(smaller));
+					if(!couldBeId.contains(readingModelFromNode(bigger)))
+						couldBeId.add(readingModelFromNode(bigger));
+				}
+				
 			}
-
+			identicalReadings.add(couldBeId);
 		}
+		
+		finally {
+			db.shutdown();
+		}
+
 	}
 
 	private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank,
 			GraphDatabaseService db, Node startNode) {
 		ArrayList<Node> readings = new ArrayList<Node>();
 
-		for (Node node : db.traversalDescription().depthFirst()
-				.relationships(ERelations.NORMAL,Direction.OUTGOING)
-				.uniqueness(Uniqueness.NODE_GLOBAL)
-				.traverse(startNode).nodes()) {
-			if((Long)node.getProperty("dn14")>startRank && (Long)node.getProperty("dn14")<endRank )
-				readings.add(node);
-			
+		try (Transaction tx = db.beginTx()) {
+
+			for (Node node : db.traversalDescription().breadthFirst()
+					.relationships(ERelations.NORMAL,Direction.OUTGOING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(startNode).nodes()) {
+				if((Long)node.getProperty("dn14")>startRank && (Long)node.getProperty("dn14")<endRank )
+					readings.add(node);
+				
+			}
+		}
+		finally {
+			db.shutdown();
 		}
 		return readings;
 	}
