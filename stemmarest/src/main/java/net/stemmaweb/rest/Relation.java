@@ -1,5 +1,7 @@
 package net.stemmaweb.rest;
 
+import java.util.ArrayList;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -11,12 +13,16 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.services.DatabaseService;
+
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 
 /**
@@ -61,7 +67,6 @@ public class Relation implements IResource {
     		 * the id search is O(n) just go through all ids without care. And the 
     		 * 
     		 */
-    		System.out.println(relationshipModel.getSource());
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
@@ -93,6 +98,49 @@ public class Relation implements IResource {
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
     
+    /**
+     * Get a list of all readings
+     * @param textId
+     * @return relationships ArrayList
+     */
+    @GET
+    @Path("{textId}/relationships")
+    @Produces(MediaType.APPLICATION_JSON)
+	public ArrayList<RelationshipModel> getRelationships(@PathParam("textId") String textId) {
+    	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
+    	
+    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	try (Transaction tx = db.beginTx()) 
+    	{
+    		Node startNode = DatabaseService.getStartNode(textId, db);
+			for (Relationship rel: db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.relationships(ERelations.RELATIONSHIP, Direction.BOTH)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+					.traverse(startNode)
+					.relationships()
+					) {
+				if(rel.getType().name().equals(ERelations.RELATIONSHIP.name())){
+					RelationshipModel tempRel = new RelationshipModel(rel);
+					relationships.add(tempRel);
+				}
+			}
+        	tx.success();
+    	} 
+    	catch (Exception e) 
+    	{
+    		System.err.println(e.getMessage());
+    		return null;
+    	}
+    	finally {	
+    		db.shutdown();
+    	}
+
+		return relationships;
+	}
+    
+    
     
     /***
      *TODO needs clarification 
@@ -114,37 +162,73 @@ public class Relation implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
 	public Response delete(RelationshipModel relationshipModel,
 			@PathParam("textId") String textId) {
+    	if(relationshipModel.getDe10().equals("local")){
+    		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+        	try (Transaction tx = db.beginTx()) 
+        	{
+            	
+        		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
+        		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
+        		
+        		Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATIONSHIP);
 
-    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-    	try (Transaction tx = db.beginTx()) 
-    	{
-        	
-    		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
-    		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
-    		
-    		Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATIONSHIP);
-
-    		Relationship relationshipAtoB = null;
-    		for (Relationship relationship : relationships) {
-    			if((relationship.getStartNode().equals(readingA)||relationship.getEndNode().equals(readingA)) &&
-    					relationship.getStartNode().equals(readingB)||relationship.getEndNode().equals(readingB)){
-    				relationshipAtoB = relationship;
+        		Relationship relationshipAtoB = null;
+        		for (Relationship relationship : relationships) {
+        			if((relationship.getStartNode().equals(readingA)||relationship.getEndNode().equals(readingA)) &&
+        					relationship.getStartNode().equals(readingB)||relationship.getEndNode().equals(readingB)){
+        				relationshipAtoB = relationship;
+        			}
     			}
-			}
-    		
-    		if(relationshipAtoB != null)
-    			relationshipAtoB.delete();
-    		else 
-    			return Response.status(Response.Status.NOT_FOUND).build();
-    			
-        	tx.success();
-    	} catch (Exception e){
-    		System.out.println(e.toString());
-    		return Response.serverError().build();
-    	} finally {	
-    		db.shutdown();
+        		
+        		if(relationshipAtoB != null)
+        			relationshipAtoB.delete();
+        		else 
+        			return Response.status(Response.Status.NOT_FOUND).build();
+        			
+            	tx.success();
+        	} catch (Exception e){
+        		System.out.println(e.toString());
+        		return Response.serverError().build();
+        	} finally {	
+        		db.shutdown();
+        	}
+    	} else if(relationshipModel.getDe10().equals("document")){
+        	
+        	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+        	try (Transaction tx = db.beginTx()) 
+        	{
+        		Node startNode = DatabaseService.getStartNode(textId, db);
+    			for (Relationship rel: db.traversalDescription().depthFirst()
+    					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+    					.relationships(ERelations.RELATIONSHIP, Direction.BOTH)
+    					.uniqueness(Uniqueness.NODE_GLOBAL)
+    					.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+    					.traverse(startNode)
+    					.relationships()
+    					) {
+    				if(rel.getType().name().equals(ERelations.RELATIONSHIP.name())){
+    		     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
+    	        		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
+    	        		
+    	       			if((rel.getStartNode().getProperty("dn15").equals(readingA.getProperty("dn15"))||rel.getEndNode().getProperty("dn15").equals(readingA.getProperty("dn15"))) &&
+    	       					(rel.getStartNode().getProperty("dn15").equals(readingB.getProperty("dn15"))||rel.getEndNode().getProperty("dn15").equals(readingB.getProperty("dn15"))))
+    	       			{
+    	       				rel.delete();
+    	       			}
+    	        
+    				}
+    			}
+            	tx.success();
+        	} 
+        	catch (Exception e) 
+        	{
+        		System.err.println(e.getMessage());
+        		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        	}
+    	} else {
+    		return Response.status(Response.Status.BAD_REQUEST).entity("Undefined Scope").build();
     	}
-
+    	
 		return Response.status(Response.Status.OK).build();
 	}
     
@@ -173,6 +257,8 @@ public class Relation implements IResource {
     	}
     	return Response.ok().build();
     }
+    
+    
     
     private String nullToEmptyString(String str){
     	if(str == null)

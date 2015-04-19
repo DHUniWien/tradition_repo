@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -14,7 +15,6 @@ import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
-import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -40,6 +40,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -174,7 +175,6 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
-		relationship.setDe10("local");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
@@ -191,7 +191,6 @@ public class RelationTest {
     		assertEquals("true",loadedRelationship.getProperty("de6"));
     		assertEquals("april",loadedRelationship.getProperty("de8"));
     		assertEquals("showers",loadedRelationship.getProperty("de9"));
-    		assertEquals("local",loadedRelationship.getProperty("de10"));
     	} 
 	}
 	
@@ -209,7 +208,6 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
-		relationship.setDe10("local");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
@@ -229,7 +227,6 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
-		relationship.setDe10("local");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
@@ -328,6 +325,70 @@ public class RelationTest {
     		mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
     		mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
     	} 
+	}
+	
+	/**
+	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
+	 */
+	@Test(expected=NotFoundException.class)
+	public void removeRelationshipDocumentWideTestDH43(){
+		/*
+		 * Create a relationship
+		 */
+		RelationshipModel relationship = new RelationshipModel();
+		String relationshipId1 = "";
+		String relationshipId2 = "";
+		relationship.setSource("16");
+		relationship.setTarget("17");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("april");
+		relationship.setDe9("pierced");
+		relationship.setDe10("local");
+		
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		relationshipId1 = actualResponse.getEntity(ReturnIdModel.class).getId();
+		
+		relationship.setSource("27");
+		relationship.setTarget("17");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("april");
+		relationship.setDe9("pierced");
+		relationship.setDe10("local");
+		
+		actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		relationshipId2 = actualResponse.getEntity(ReturnIdModel.class).getId();
+		
+		relationship.setDe10("document");
+		
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships/delete").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+		
+		try (Transaction tx = mockDbService.beginTx()) 
+    	{
+    		mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+    	} 
+	}
+	
+	/**
+	 * Test if the get relationship method returns the correct value
+	 */
+	@Test
+	public void getRelationshipTest(){
+		ClientResponse response = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+		
+		List<RelationshipModel> relationships = jerseyTest.resource().path("/relation/"+tradId+"/relationships")
+				.get(new GenericType<List<RelationshipModel>>() {
+				});
+		for(RelationshipModel rel : relationships){
+			assertTrue(rel.getId().equals("34")||rel.getId().equals("35")||rel.getId().equals("36"));
+			assertTrue(rel.getDe9().equals("april")||rel.getDe9().equals("drought")||rel.getDe9().equals("march"));
+			assertTrue(rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition"));
+		}
 	}
 	
 	/**

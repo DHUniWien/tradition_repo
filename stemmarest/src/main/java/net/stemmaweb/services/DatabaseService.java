@@ -177,6 +177,8 @@ public class DatabaseService {
 		return false;
 	}
 
+	//should be exchanged with db.getNodeById(nodeId)
+	@Deprecated
 	public static Node getReadingById(long readId1, Node startNode,
 			GraphDatabaseService db) {
 

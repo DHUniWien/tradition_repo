@@ -1,6 +1,10 @@
 package net.stemmaweb.model;
 
+import java.util.Iterator;
+
 import javax.xml.bind.annotation.XmlRootElement;
+
+import org.neo4j.graphdb.Relationship;
 
 
 @XmlRootElement
@@ -22,6 +26,68 @@ public class RelationshipModel {
 	private String de10; // scope
 	private String de11; // type
 	private String de12; // witness
+	
+	public RelationshipModel(){
+		
+	}
+	
+	public RelationshipModel(Relationship rel){
+		Iterable<String> properties = rel.getPropertyKeys();
+		id = Long.toString(rel.getId());
+		Iterator<String> iterator = properties.iterator();
+		while(iterator.hasNext()){
+			
+			switch (iterator.next()){
+			case "target":
+				target = rel.getProperty("target").toString();
+				break;
+			case "source":
+				source = rel.getProperty("source").toString();
+				break;
+			case "de0":
+				de0 = rel.getProperty("de0").toString();				
+				break;
+			case "de1":
+				de1 = rel.getProperty("de1").toString();
+				break;
+			case "de2":
+				de2 = rel.getProperty("de2").toString();
+				break;
+			case "de3":
+				de3 = rel.getProperty("de3").toString();
+				break;
+			case "de4":
+				de4 = rel.getProperty("de4").toString();
+				break;
+			case "de5":
+				de5 = rel.getProperty("de5").toString();
+				break;
+			case "de6":
+				de6 = rel.getProperty("de6").toString();
+				break;
+			case "de7":
+				de7 = rel.getProperty("de7").toString();
+				break;
+			case "de8":
+				de8 = rel.getProperty("de8").toString();				
+				break;
+			case "de9":
+				de9 = rel.getProperty("de9").toString();
+				break;
+			case "de10":
+				de10 = rel.getProperty("de10").toString();
+				break;
+			case "de11":
+				de11 = rel.getProperty("de11").toString();
+				break;
+			case "de12":
+				de12 = rel.getProperty("de12").toString();
+				break;
+			default:
+				break;
+			}
+		}
+	}
 	
 	public String getSource() {
 		return source;
