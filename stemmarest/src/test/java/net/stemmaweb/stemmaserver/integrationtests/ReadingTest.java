@@ -258,6 +258,7 @@ public class ReadingTest {
 	public void couldBeIdenticalReadingsTest() {
 		List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest.resource()
 				.path("/reading/couldBeIdentical/" + tradId + "/10/18")
+
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, couldBeIdenticalReadings.size());
