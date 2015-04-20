@@ -222,7 +222,7 @@ public class Reading implements IResource {
 			}
 
 			// merging of readings happens here
-			copyRelationships(stayingReading, deletingReading);
+			copyAllRelationships(stayingReading, deletingReading);
 			deletingReading.delete();
 			copyWitnesses(stayingReading);
 
@@ -236,7 +236,7 @@ public class Reading implements IResource {
 		return Response.ok("Successfully merged readings").build();
 	}
 
-	private void copyRelationships(Node stayingReading, Node deletingReading) {
+	private void copyAllRelationships(Node stayingReading, Node deletingReading) {
 		for (Relationship deletingRel : deletingReading.getRelationships()) {
 			Node tempNode = deletingRel.getOtherNode(deletingReading);
 			Relationship newRel = stayingReading.createRelationshipTo(tempNode, deletingRel.getType());
