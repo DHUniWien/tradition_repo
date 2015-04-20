@@ -140,7 +140,7 @@ public class Tradition implements IResource {
 				db.shutdown();
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 			}
-			reading = Reading.readingModelFromNode(readingNode);
+			reading = new ReadingModel(readingNode);
 
 			tx.success();
 		} catch (Exception e) {
