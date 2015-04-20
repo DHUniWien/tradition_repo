@@ -5,12 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 
-import javax.ws.rs.core.Response;
-
-import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Tradition;
@@ -185,81 +180,6 @@ public class TraditionUnitTest {
 		ExecutionResult result = engine.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
-	}
-
-	@Test
-	public void duplicateReadingTest() {
-		DuplicateModel duplicateModel = new DuplicateModel();
-		List<Long> readings = new LinkedList<Long>();
-		readings.add(16L);
-		readings.add(18L);
-		duplicateModel.setReadings(readings);
-		List<String> witnesses = new LinkedList<String>();
-		witnesses.add("B");
-		witnesses.add("C");
-		duplicateModel.setWitnesses(witnesses);
-		Response response = tradition.duplicateReading(tradId, duplicateModel);
-
-		String expected = "Successfully duplicated readings";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	// @Test
-	// public void duplicateReadingWithNotAllowedWitnessTest() {
-	// DuplicateModel duplicateModel = new DuplicateModel();
-	// List<Long> readings = new LinkedList<Long>();
-	// readings.add(16L);
-	// readings.add(18L);
-	// duplicateModel.setReadings(readings);
-	// List<String> witnesses = new LinkedList<String>();
-	// witnesses.add("A");
-	// witnesses.add("B");
-	// duplicateModel.setWitnesses(witnesses);
-	// Response response = tradition.duplicateReading(tradId, duplicateModel);
-	//
-	// String expected =
-	// "The node to be duplicated has to be part of the new witnesses";
-	//
-	// assertEquals(expected, response.getEntity().toString());
-	// }
-
-	@Test
-	public void mergeReadingsTest() {
-		DuplicateModel duplicateModel = new DuplicateModel();
-		List<Long> readings = new LinkedList<Long>();
-		readings.add(16L);
-		readings.add(18L);
-		duplicateModel.setReadings(readings);
-		List<String> witnesses = new LinkedList<String>();
-		witnesses.add("B");
-		witnesses.add("C");
-		duplicateModel.setWitnesses(witnesses);
-		tradition.duplicateReading(tradId, duplicateModel);
-
-		Response response = tradition.mergeReadings(tradId, 16, 39);
-
-		String expected = "Successfully merged readings";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	@Test
-	public void mergeReadingsWithDifferentTextTest() {
-		Response response = tradition.mergeReadings(tradId, 16, 23);
-
-		String expected = "Readings to be merged do not contain the same text";
-
-		assertEquals(expected, response.getEntity().toString());
-	}
-
-	@Test
-	public void splitReadingContainingOnlyOneWordTest() {
-		Response response = tradition.splitReading(tradId, 16);
-
-		String expected = "A reading to be splitted has to contain at least 2 words";
-
-		assertEquals(expected, response.getEntity().toString());
 	}
 
 	/**

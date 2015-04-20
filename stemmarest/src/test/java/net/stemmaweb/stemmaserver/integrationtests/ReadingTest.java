@@ -17,7 +17,6 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -46,7 +45,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -162,6 +160,301 @@ public class ReadingTest {
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
 				.addResource(reading).create();
 		jerseyTest.setUp();
+	}
+
+	@Test
+	public void duplicateReadingTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node originalNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
+				.get(new GenericType<List<ReadingModel>>() {
+				});
+
+		assertEquals(29, listOfReadings.size());
+
+		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + originalNode.getId() + "], \"witnesses\":[\"B\"]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.OK, response.getClientResponseStatus());
+
+		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
+		});
+
+		assertEquals(30, listOfReadings.size());
+
+		resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+		result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node original = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node duplicated = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// compare original and duplicated
+
+
+		// // read result from database
+		// ReadingModel original = null;
+		// ReadingModel duplicate = null;
+
+		// try (Transaction tx = mockDbService.beginTx()) {
+		// Node nextNode = mockDbService.getNodeById(16);
+		// original = Reading.readingModelFromNode(nextNode);
+		// Iterable<Relationship> rels =
+		// nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+		// for (Relationship relationship : rels)
+		// assertEquals("A", ((String[])
+		// relationship.getProperty("lexemes"))[0]);
+		// assertEquals(16, nextNode.getId());
+		// assertEquals("16", original.getDn1());
+		// assertEquals("0", original.getDn2());
+		// assertEquals("Default", original.getDn11());
+		// assertEquals(2, original.getDn14().longValue());
+		// assertEquals("april", original.getDn15());
+		//
+		// nextNode = mockDbService.getNodeById(39);
+		// duplicate = Reading.readingModelFromNode(nextNode);
+		// rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+		// for (Relationship relationship : rels) {
+		// assertEquals("B", ((String[])
+		// relationship.getProperty("lexemes"))[0]);
+		// assertEquals("C", ((String[])
+		// relationship.getProperty("lexemes"))[1]);
+		// }
+		// assertEquals(39, nextNode.getId());
+		// assertEquals("39", duplicate.getDn1());
+		// assertEquals("0", duplicate.getDn2());
+		// assertEquals("Default", duplicate.getDn11());
+		// assertEquals(2, duplicate.getDn14().longValue());
+		// assertEquals("april", duplicate.getDn15());
+		//
+		// nextNode = mockDbService.getNodeById(18);
+		// original = Reading.readingModelFromNode(nextNode);
+		// rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+		//
+		// for (Relationship relationship : rels)
+		// assertEquals("A", ((String[])
+		// relationship.getProperty("lexemes"))[0]);
+		// assertEquals(18, nextNode.getId());
+		// assertEquals("18", original.getDn1());
+		// assertEquals("0", original.getDn2());
+		// assertEquals("Default", original.getDn11());
+		// assertEquals(16, original.getDn14().longValue());
+		// assertEquals("unto", original.getDn15());
+		//
+		// nextNode = mockDbService.getNodeById(40);
+		// duplicate = Reading.readingModelFromNode(nextNode);
+		// rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+		// for (Relationship relationship : rels) {
+		// assertEquals("B", ((String[])
+		// relationship.getProperty("lexemes"))[0]);
+		// assertEquals("C", ((String[])
+		// relationship.getProperty("lexemes"))[1]);
+		// }
+		// assertEquals(40, nextNode.getId());
+		// assertEquals("40", duplicate.getDn1());
+		// assertEquals("0", duplicate.getDn2());
+		// assertEquals("Default", duplicate.getDn11());
+		// assertEquals(16, duplicate.getDn14().longValue());
+		// assertEquals("unto", duplicate.getDn15());
+		//
+		// tx.success();
+		// }
+	}
+
+	@Test
+	public void mergeReadingsTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		Node secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
+				.get(new GenericType<List<ReadingModel>>() {
+				});
+		assertEquals(29, listOfReadings.size());
+
+		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+		// merge readings
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.OK, response.getClientResponseStatus());
+
+		// should contain one reading less now
+		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
+		});
+		assertEquals(28, listOfReadings.size());
+
+		// witnesses should look the same
+		resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+
+		// // read result from database
+		// ReadingModel merged = null;
+		//
+		// try (Transaction tx = mockDbService.beginTx()) {
+		// Node nextNode = mockDbService.getNodeById(16);
+		// merged = Reading.readingModelFromNode(nextNode);
+		// Iterable<Relationship> rels =
+		// nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
+		// for (Relationship relationship : rels) {
+		// assertEquals("A", ((String[])
+		// relationship.getProperty("lexemes"))[0]);
+		// assertEquals("B", ((String[])
+		// relationship.getProperty("lexemes"))[1]);
+		// assertEquals("C", ((String[])
+		// relationship.getProperty("lexemes"))[2]);
+		// }
+		// assertEquals(16, nextNode.getId());
+		// assertEquals("16", merged.getDn1());
+		// assertEquals("0", merged.getDn2());
+		// assertEquals("Default", merged.getDn11());
+		// assertEquals(2, merged.getDn14().longValue());
+		// assertEquals("april", merged.getDn15());
+		//
+		// tx.success();
+		// }
+
+	}
+
+	@Test
+	public void mergeReadingsWithDifferentTextTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+
+		result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
+
+		// merge readings
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+	}
+
+	@Test
+	public void splitReadingTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
+				.get(new GenericType<List<ReadingModel>>() {
+				});
+		assertEquals(29, listOfReadings.size());
+
+		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+		// split reading
+		ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.OK, response.getClientResponseStatus());
+
+		// should contain one reading more now
+		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
+		});
+		assertEquals(30, listOfReadings.size());
+
+		// witnesses should look the same
+		resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+	}
+
+	@Test
+	public void splitReadingWithOnlyOneWordTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
+				.get(new GenericType<List<ReadingModel>>() {
+				});
+		assertEquals(29, listOfReadings.size());
+
+		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+		// split reading
+		ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+
+		// should contain one reading more now
+		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
+		});
+		assertEquals(29, listOfReadings.size());
+
+		// witnesses should look the same
+		resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessB, resp.getEntity());
 	}
 
 	/**
