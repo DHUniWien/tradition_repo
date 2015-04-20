@@ -433,7 +433,8 @@ public class Reading implements IResource {
 				}
 
 			}
-			couldBeIdenticalReadings.add(couldBeIdentical);
+			if(couldBeIdentical.size()>0)
+				couldBeIdenticalReadings.add(couldBeIdentical);
 		}
 
 		finally {

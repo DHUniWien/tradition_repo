@@ -233,8 +233,8 @@ public class Tradition implements IResource {
 	private void duplicateReading(List<String> witnesses,
 			Node originalReading, Node addedReading) throws DatabaseException {
 
-		// copy reading
-		Reading.copyReadingProperties(originalReading, addedReading);
+		// copy reading properties to newly added reading
+		addedReading = Reading.copyReadingProperties(originalReading, addedReading);
 
 		Iterable<Relationship> rels = null;
 
@@ -267,8 +267,10 @@ public class Tradition implements IResource {
 
 	private void handleRelationships(List<String> newWitnesses, Relationship originalRelationship, Node originNode,
 			Node targetNode) throws DataBaseException {
+		// the witnesses of the reading to be duplicated
 		List<String> oldWitnesses = Arrays.asList((String[]) originalRelationship.getProperty("lexemes"));
 
+		// delete all witnesses from the old Witnesses
 		for (String oldWitness : oldWitnesses)
 			if (newWitnesses.contains(oldWitness))
 				oldWitnesses.remove(oldWitness);
@@ -325,7 +327,7 @@ public class Tradition implements IResource {
 			// merging of readings happens here
 			copyRelationshipProperties(stayingReading, deletingReading, Direction.INCOMING);
 			copyRelationshipProperties(stayingReading, deletingReading, Direction.OUTGOING);
-			addRelationshipsToFirstReading(stayingReading, deletingReading);
+			addRelationshipsToStayingReading(stayingReading, deletingReading);
 			deletingReading.delete();
 
 			tx.success();
@@ -339,36 +341,46 @@ public class Tradition implements IResource {
 	}
 
 	private void copyRelationshipProperties(Node stayingReading, Node deletingReading, Direction direction) {
+		// get Relationships
 		Relationship stayingRel = stayingReading.getSingleRelationship(ERelations.NORMAL, direction);
 		Relationship deletingRel = deletingReading.getSingleRelationship(ERelations.NORMAL, direction);
-		String[] firstWitnesses = (String[]) stayingRel.getProperty("lexemes");
-		String[] secondWitnesses = (String[]) deletingRel.getProperty("lexemes");
-		String[] combinedWitnesses = new String[firstWitnesses.length + secondWitnesses.length];
-		for (int i = 0; i < firstWitnesses.length; i++)
-			combinedWitnesses[i] = firstWitnesses[i];
-		for (int i = 0; i < secondWitnesses.length; i++)
-			combinedWitnesses[firstWitnesses.length + i] = secondWitnesses[i];
+
+		// get Witnesses
+		String[] stayingReadingWitnesses = (String[]) stayingRel.getProperty("lexemes");
+		String[] deletingReadingWitnesses = (String[]) deletingRel.getProperty("lexemes");
+
+		// combine witness lists into one list
+		String[] combinedWitnesses = new String[stayingReadingWitnesses.length + deletingReadingWitnesses.length];
+		for (int i = 0; i < stayingReadingWitnesses.length; i++)
+			combinedWitnesses[i] = stayingReadingWitnesses[i];
+		for (int i = 0; i < deletingReadingWitnesses.length; i++)
+			combinedWitnesses[stayingReadingWitnesses.length + i] = deletingReadingWitnesses[i];
 		stayingRel.setProperty("lexemes", combinedWitnesses);
+
 		deletingRel.delete();
 	}
 
 	private boolean doReadingsBelongToSameWitness(Node stayingReading, Node deletingReading) {
+		// write all witnesses of the staying reading into ArrayList
 		Iterable<Relationship> stayingRels = stayingReading.getRelationships(ERelations.NORMAL);
 		ArrayList<String> stayingWitnesses = new ArrayList<String>();
 		for (Relationship stayingRel : stayingRels) {
 			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
 				stayingWitnesses.add(witness);
 		}
-		Iterable<Relationship> secondRels = deletingReading.getRelationships(ERelations.NORMAL);
-		for (Relationship secondRel : secondRels)
-			for (String witness : (String[]) secondRel.getProperty("lexemes"))
+
+		// check if one of the witnesses of the reading to be deleted is already
+		// present in the ArrayList
+		Iterable<Relationship> deletingRels = deletingReading.getRelationships(ERelations.NORMAL);
+		for (Relationship deletingRel : deletingRels)
+			for (String witness : (String[]) deletingRel.getProperty("lexemes"))
 				if (stayingWitnesses.contains(witness))
 					return true;
 		return false;
 	}
 
-	private void addRelationshipsToFirstReading(Node stayingReading, Node deletingReading) {
-		// copy relationships from secondReading to firstReading
+	private void addRelationshipsToStayingReading(Node stayingReading, Node deletingReading) {
+		// copy relationships from deletingReading to stayingReading
 		Iterable<Relationship> rels = deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING);
 		for (Relationship rel : rels) {
 			stayingReading.createRelationshipTo(rel.getEndNode(), ERelations.RELATIONSHIP);
@@ -438,7 +450,9 @@ public class Tradition implements IResource {
 							relationship.delete();
 						}
 
-						Reading.copyReadingProperties(node, newReading);
+						// is this assignment necessary or does that function
+						// otherwise as well in this transaction?
+						newReading = Reading.copyReadingProperties(node, newReading);
 						newReading.setProperty("dn15", splittedWords[i]);
 						Long previousRank = (Long) node.getProperty("dn14");
 						newReading.setProperty("dn14", previousRank + 1);
