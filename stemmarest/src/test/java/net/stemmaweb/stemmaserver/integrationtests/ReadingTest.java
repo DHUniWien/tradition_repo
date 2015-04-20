@@ -180,7 +180,6 @@ public class ReadingTest {
 		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
-
 		assertEquals(29, listOfReadings.size());
 
 		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
@@ -201,8 +200,7 @@ public class ReadingTest {
 
 		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
 		});
-
-		assertEquals(30, listOfReadings.size());
+		assertEquals(31, listOfReadings.size());
 
 		resp = witness.getWitnessAsPlainText(tradId, "B");
 		assertEquals(expectedWitnessA, resp.getEntity());
@@ -288,6 +286,57 @@ public class ReadingTest {
 		//
 		// tx.success();
 		// }
+	}
+
+	@Test
+	public void duplicateReadingWithOnlyOneWitnessTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+	}
+
+	@Test
+	public void duplicateReadingWithNoWitnessesInJSONTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+	}
+
+	@Test
+	public void duplicateReadingWithNotAllowedWitnessesTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'root'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
 	}
 
 	@Test
