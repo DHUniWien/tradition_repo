@@ -168,7 +168,13 @@ public class ReadingTest {
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
-		Node originalNode = nodes.next();
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
 		assertFalse(nodes.hasNext());
 
 		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
@@ -186,7 +192,8 @@ public class ReadingTest {
 		assertEquals(expectedWitnessB, resp.getEntity());
 
 		// duplicate reading
-		String jsonPayload = "{\"readings\":[" + originalNode.getId() + "], \"witnesses\":[\"B\"]}";
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", " + secondNode.getId()
+				+ "], \"witnesses\":[\"A\",\"B\" ]}";
 		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 

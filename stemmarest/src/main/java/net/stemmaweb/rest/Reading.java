@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.ws.rs.Consumes;
@@ -111,6 +112,12 @@ public class Reading implements IResource {
 				try {
 					Node originalReading = db.getNodeById(readId);
 					Node addedReading = db.createNode();
+
+					if (!canBeDuplicated(originalReading, duplicateModel.getWitnesses())) {
+						db.shutdown();
+						return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Duplication not possible").build();
+					}
+
 					duplicateReading(duplicateModel.getWitnesses(), originalReading, addedReading);
 				} catch (NotFoundException e) {
 					db.shutdown();
@@ -126,6 +133,31 @@ public class Reading implements IResource {
 		return Response.ok("Successfully duplicated readings").build();
 	}
 
+	private boolean canBeDuplicated(Node originalReading, List<String> witnesses) {
+		if (witnesses.isEmpty())
+			return false;
+
+		// test if there are witnesses to be duplicated for which no witnesses
+		// in the readings relationships exist
+		List<String> allWitnesses = new LinkedList<String>();
+		String[] currentWitnesses;
+		for (Relationship relationship : originalReading.getRelationships(ERelations.NORMAL)) {
+			currentWitnesses = (String[]) relationship.getProperty("lexemes");
+			for (String currentWitness : currentWitnesses)
+				if (!allWitnesses.contains(currentWitness))
+					allWitnesses.add(currentWitness);
+		}
+		for (String newWitness : witnesses)
+			if (!allWitnesses.contains(newWitness))
+				return false;
+
+		// the reading must be in at least two witnesses
+		if (allWitnesses.size() < 2)
+			return false;
+
+		return true;
+	}
+
 	private void duplicateReading(List<String> witnesses, Node originalReading, Node addedReading)
 			throws DatabaseException {
 
@@ -133,23 +165,6 @@ public class Reading implements IResource {
 		addedReading = Reading.copyReadingProperties(originalReading, addedReading);
 
 		Iterable<Relationship> rels = null;
-
-		// test if there are witnesses to be duplicated for which no witnesses
-		// in the readings relationships exist
-		// List<String> allWitnesses = new LinkedList<String>();
-		// String[] currentWitnesses;
-		// rels = originalReading.getRelationships(ERelations.NORMAL);
-		// for (Relationship relationship : rels) {
-		// currentWitnesses = (String[]) relationship.getProperty("lexemes");
-		// for (String currentWitness : currentWitnesses)
-		// if (!allWitnesses.contains(currentWitness))
-		// allWitnesses.add(currentWitness);
-		//
-		// }
-		// for (String newWitness : witnesses)
-		// if (!allWitnesses.contains(newWitness))
-		// throw new
-		// DataBaseException("The node to be duplicated has to be part of the new witnesses");
 
 		// add witnesses to relationships
 		// Incoming
@@ -222,7 +237,8 @@ public class Reading implements IResource {
 			}
 
 			// merging of readings happens here
-			copyAllRelationships(stayingReading, deletingReading);
+			copyRelationships(stayingReading, deletingReading);
+			addRelationshipsToStayingReading(stayingReading, deletingReading);
 			deletingReading.delete();
 			copyWitnesses(stayingReading);
 
@@ -236,16 +252,18 @@ public class Reading implements IResource {
 		return Response.ok("Successfully merged readings").build();
 	}
 
-	private void copyAllRelationships(Node stayingReading, Node deletingReading) {
-		for (Relationship deletingRel : deletingReading.getRelationships()) {
-			Node tempNode = deletingRel.getOtherNode(deletingReading);
-			Relationship newRel = stayingReading.createRelationshipTo(tempNode, deletingRel.getType());
-			for (String key : deletingRel.getPropertyKeys()) {
-				newRel.setProperty(key, deletingRel.getProperty(key));
-			}
-			deletingRel.delete();
-		}
-	}
+	// private void copyAllRelationships(Node stayingReading, Node
+	// deletingReading) {
+	// for (Relationship deletingRel : deletingReading.getRelationships()) {
+	// Node tempNode = deletingRel.getOtherNode(deletingReading);
+	// Relationship newRel = stayingReading.createRelationshipTo(tempNode,
+	// deletingRel.getType());
+	// for (String key : deletingRel.getPropertyKeys()) {
+	// newRel.setProperty(key, deletingRel.getProperty(key));
+	// }
+	// deletingRel.delete();
+	// }
+	// }
 
 	private void copyWitnesses(Node stayingReading) {
 		for (Relationship firstRel : stayingReading.getRelationships(ERelations.NORMAL)) {
@@ -289,25 +307,19 @@ public class Reading implements IResource {
 		return false;
 	}
 
-	// private void addRelationshipsToStayingReading(Node stayingReading, Node
-	// deletingReading) {
-	// // copy relationships from deletingReading to stayingReading
-	// Iterable<Relationship> rels =
-	// deletingReading.getRelationships(ERelations.RELATIONSHIP,
-	// Direction.OUTGOING);
-	// for (Relationship rel : rels) {
-	// stayingReading.createRelationshipTo(rel.getEndNode(),
-	// ERelations.RELATIONSHIP);
-	// rel.delete();
-	// }
-	// rels = deletingReading.getRelationships(ERelations.RELATIONSHIP,
-	// Direction.INCOMING);
-	// for (Relationship rel : rels) {
-	// rel.getStartNode().createRelationshipTo(stayingReading,
-	// ERelations.RELATIONSHIP);
-	// rel.delete();
-	// }
-	// }
+	private void addRelationshipsToStayingReading(Node stayingReading, Node deletingReading) {
+		// copy relationships from deletingReading to stayingReading
+		Iterable<Relationship> rels = deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING);
+		for (Relationship rel : rels) {
+			stayingReading.createRelationshipTo(rel.getEndNode(), ERelations.RELATIONSHIP);
+			rel.delete();
+		}
+		rels = deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.INCOMING);
+		for (Relationship rel : rels) {
+			rel.getStartNode().createRelationshipTo(stayingReading, ERelations.RELATIONSHIP);
+			rel.delete();
+		}
+	}
 
 	/**
 	 * Splits up a single reading into several ones in a specific tradition.
