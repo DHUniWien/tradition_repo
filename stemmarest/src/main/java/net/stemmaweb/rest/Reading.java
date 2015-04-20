@@ -96,32 +96,59 @@ public class Reading implements IResource {
 		return Response.ok("Successfully duplicated readings").build();
 	}
 
-	private void duplicateReading(List<String> witnesses, Node originalReading, Node addedReading) {
+	private void duplicateReading(List<String> newWitnesses, Node originalReading, Node addedReading) {
 		// copy reading properties to newly added reading
 		addedReading = Reading.copyReadingProperties(originalReading, addedReading);
+
+		// copy relationships
+		for (Relationship originalRel : originalReading.getRelationships(ERelations.RELATIONSHIP)) {
+			Relationship newRel = addedReading.createRelationshipTo(originalRel.getOtherNode(originalReading),
+					ERelations.RELATIONSHIP);
+			for (String key : originalRel.getPropertyKeys())
+				newRel.setProperty(key, originalRel.getProperty(key));
+		}
 
 		// add witnesses to relationships
 		// Incoming
 		for (Relationship originalRelationship : originalReading
 				.getRelationships(ERelations.NORMAL, Direction.INCOMING))
-			handleRelationships(witnesses, originalRelationship, originalRelationship.getStartNode(), addedReading);
+			handleWitnesses(newWitnesses, originalRelationship, originalRelationship.getStartNode(), addedReading);
 		// Outgoing
 		for (Relationship originalRelationship : originalReading
 				.getRelationships(ERelations.NORMAL, Direction.OUTGOING))
-			handleRelationships(witnesses, originalRelationship, addedReading, originalRelationship.getEndNode());
+			handleWitnesses(newWitnesses, originalRelationship, addedReading, originalRelationship.getEndNode());
 	}
 
-	private void handleRelationships(List<String> newWitnesses, Relationship originalRelationship, Node originNode,
+	private void handleWitnesses(List<String> newWitnesses, Relationship originalRel, Node originNode,
 			Node targetNode) {
-		// add only those witnesses to oldWitnesses which are not in newWitnesses
-		ArrayList<String> oldWitnesses = new ArrayList<String>();
-		for(String oldWitness: (String[]) originalRelationship.getProperty("lexemes"))
-			if (!newWitnesses.contains(oldWitness))
-				oldWitnesses.add(oldWitness);
+		String[] oldWitnesses = (String[]) originalRel.getProperty("lexemes");
+		// if oldWitnesses only contains one witness and this one should be
+		// duplicated, create new relationship for addedReading and delete
+		// the one from the originalReading
+		if (oldWitnesses.length == 1) {
+			if (newWitnesses.contains(oldWitnesses[0])) {
+				Relationship newRel = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+				newRel.setProperty("lexemes", oldWitnesses);
+				originalRel.delete();
+			}
+			// if oldWitnesses contains more than one witnesses, create new
+			// relationship and add those witnesses which should be duplicated
+		} else {
+			// add only those witnesses to oldWitnesses which are
+			// not in newWitnesses
+			ArrayList<String> stayingWitnesses = new ArrayList<String>();
+			for (String oldWitness : oldWitnesses)
+				if (!newWitnesses.contains(oldWitness))
+					stayingWitnesses.add(oldWitness);
 
-		originalRelationship.setProperty("lexemes", oldWitnesses.toArray(new String[oldWitnesses.size()]));
-		Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
-		addedRelationship.setProperty("lexemes", newWitnesses.toArray(new String[newWitnesses.size()]));
+			Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+			addedRelationship.setProperty("lexemes", newWitnesses.toArray(new String[newWitnesses.size()]));
+
+			if (stayingWitnesses.isEmpty())
+				originalRel.delete();
+			else
+				originalRel.setProperty("lexemes", stayingWitnesses.toArray(new String[stayingWitnesses.size()]));
+		}
 	}
 
 	private boolean canBeDuplicated(Node originalReading, List<String> witnesses) {

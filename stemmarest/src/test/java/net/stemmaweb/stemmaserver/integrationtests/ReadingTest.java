@@ -211,81 +211,21 @@ public class ReadingTest {
 		result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
-		Node original = nodes.next();
+		Node originalShowers = nodes.next();
 		assertTrue(nodes.hasNext());
-		Node duplicated = nodes.next();
+		Node duplicatedShowers = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node originalSweet = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node duplicatedSweet = nodes.next();
 		assertFalse(nodes.hasNext());
 
 		// compare original and duplicated
 
-
-		// // read result from database
-		// ReadingModel original = null;
-		// ReadingModel duplicate = null;
-
-		// try (Transaction tx = mockDbService.beginTx()) {
-		// Node nextNode = mockDbService.getNodeById(16);
-		// original = Reading.readingModelFromNode(nextNode);
-		// Iterable<Relationship> rels =
-		// nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-		// for (Relationship relationship : rels)
-		// assertEquals("A", ((String[])
-		// relationship.getProperty("lexemes"))[0]);
-		// assertEquals(16, nextNode.getId());
-		// assertEquals("16", original.getDn1());
-		// assertEquals("0", original.getDn2());
-		// assertEquals("Default", original.getDn11());
-		// assertEquals(2, original.getDn14().longValue());
-		// assertEquals("april", original.getDn15());
-		//
-		// nextNode = mockDbService.getNodeById(39);
-		// duplicate = Reading.readingModelFromNode(nextNode);
-		// rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-		// for (Relationship relationship : rels) {
-		// assertEquals("B", ((String[])
-		// relationship.getProperty("lexemes"))[0]);
-		// assertEquals("C", ((String[])
-		// relationship.getProperty("lexemes"))[1]);
-		// }
-		// assertEquals(39, nextNode.getId());
-		// assertEquals("39", duplicate.getDn1());
-		// assertEquals("0", duplicate.getDn2());
-		// assertEquals("Default", duplicate.getDn11());
-		// assertEquals(2, duplicate.getDn14().longValue());
-		// assertEquals("april", duplicate.getDn15());
-		//
-		// nextNode = mockDbService.getNodeById(18);
-		// original = Reading.readingModelFromNode(nextNode);
-		// rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-		//
-		// for (Relationship relationship : rels)
-		// assertEquals("A", ((String[])
-		// relationship.getProperty("lexemes"))[0]);
-		// assertEquals(18, nextNode.getId());
-		// assertEquals("18", original.getDn1());
-		// assertEquals("0", original.getDn2());
-		// assertEquals("Default", original.getDn11());
-		// assertEquals(16, original.getDn14().longValue());
-		// assertEquals("unto", original.getDn15());
-		//
-		// nextNode = mockDbService.getNodeById(40);
-		// duplicate = Reading.readingModelFromNode(nextNode);
-		// rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-		// for (Relationship relationship : rels) {
-		// assertEquals("B", ((String[])
-		// relationship.getProperty("lexemes"))[0]);
-		// assertEquals("C", ((String[])
-		// relationship.getProperty("lexemes"))[1]);
-		// }
-		// assertEquals(40, nextNode.getId());
-		// assertEquals("40", duplicate.getDn1());
-		// assertEquals("0", duplicate.getDn2());
-		// assertEquals("Default", duplicate.getDn11());
-		// assertEquals(16, duplicate.getDn14().longValue());
-		// assertEquals("unto", duplicate.getDn15());
-		//
-		// tx.success();
-		// }
 	}
 
 	@Test
