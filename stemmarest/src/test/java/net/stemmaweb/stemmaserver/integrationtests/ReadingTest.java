@@ -550,7 +550,7 @@ public class ReadingTest {
 	@Test
 	public void couldBeIdenticalReadingsTest() {
 		List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest.resource()
-				.path("/reading/couldBeIdentical/" + tradId + "/10/18")
+				.path("/reading/couldBeIdentical/" + tradId + "/1/15")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, couldBeIdenticalReadings.size());
