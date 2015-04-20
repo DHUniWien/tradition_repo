@@ -512,11 +512,7 @@ public class Reading implements IResource {
 			@PathParam("readId2") long readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
-		errorMessage = "problem with a reading. Could not compress";
-		Node startNode = DatabaseService.getStartNode(tradId, db);
-		if (startNode == null)
-			return Response.status(Status.NOT_FOUND)
-					.entity("Could not find tradition with this id").build();		
+		errorMessage = "problem with a reading. Could not compress";		
 
 		try (Transaction tx = db.beginTx()) {
 			read1 = db.getNodeById(readId1);
@@ -553,7 +549,7 @@ public class Reading implements IResource {
 			Relationship from1to2 = getRealtionshipBetweenReadings(read1,
 					read2, db);
 			from1to2.delete();
-			copyRelationships(read1, read2, db);
+			copyRelationships(read1, read2);
 			read2.delete();
 			tx.success();
 		}
@@ -561,22 +557,34 @@ public class Reading implements IResource {
 
 	/**
 	 * copy all NORMAL relationship from one node to another
+	 * IMPORTANT: when called needs to be inside a try-catch
 	 * 
 	 * @param read1
 	 *            the node which receives the relationships
 	 * @param read2
 	 *            the node from which relationships are copied
 	 */
-	private void copyRelationships(Node read1, Node read2,
-			GraphDatabaseService db) {
-		for (Relationship tempRel2 : read2.getRelationships()) {
-			Node tempNode = tempRel2.getOtherNode(read2);
+	private void copyRelationships(Node read1, Node read2) {
+		for (Relationship tempRel : read2.getRelationships(Direction.OUTGOING)) {
+			Node tempNode = tempRel.getOtherNode(read2);
 			Relationship rel1 = read1.createRelationshipTo(tempNode,
 					ERelations.NORMAL);
-			for (String key : tempRel2.getPropertyKeys()) {
-				rel1.setProperty(key, tempRel2.getProperty(key));
+			
+			for (String key : tempRel.getPropertyKeys()) {
+				rel1.setProperty(key, tempRel.getProperty(key));
 			}
-			tempRel2.delete();
+			tempRel.delete();
+		}
+		
+		for (Relationship tempRel : read2.getRelationships(Direction.INCOMING)) {
+			Node tempNode = tempRel.getOtherNode(read2);
+			Relationship rel1 = tempNode.createRelationshipTo(read1,
+					ERelations.NORMAL);
+			
+			for (String key : tempRel.getPropertyKeys()) {
+				rel1.setProperty(key, tempRel.getProperty(key));
+			}
+			tempRel.delete();
 		}
 	}
 
