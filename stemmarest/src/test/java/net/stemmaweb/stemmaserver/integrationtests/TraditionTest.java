@@ -1,16 +1,15 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.TraditionModel;
@@ -36,11 +35,8 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
@@ -49,7 +45,6 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
@@ -215,151 +210,6 @@ public class TraditionTest {
     	TraditionModel lastTradition = traditions.get(traditions.size()-1);
     	assertEquals(trad2.getId(), lastTradition.getId());
     	assertEquals(trad2.getName(), lastTradition.getName());
-	}
-
-	@Test
-	public void duplicateReadingTest() {		
-		
-		String expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
-		
-		// duplicate reading
-		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
-		ClientResponse response = jerseyTest.resource().path("/tradition/duplicate/" + tradId)
-				.type(MediaType.APPLICATION_JSON)
-				.post(ClientResponse.class, jsonPayload);
-
-		// read result from database
-		ReadingModel original = null;
-		ReadingModel duplicate = null;
-
-		try (Transaction tx = mockDbService.beginTx()) {
-			Node nextNode = mockDbService.getNodeById(16);
-			original = Reading.readingModelFromNode(nextNode);
-			Iterable<Relationship> rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-			for (Relationship relationship : rels)
-				assertEquals("A", ((String[]) relationship.getProperty("lexemes"))[0]);
-			assertEquals(16, nextNode.getId());
-			assertEquals("16", original.getDn1());
-			assertEquals("0", original.getDn2());
-			assertEquals("Default", original.getDn11());
-			assertEquals(2, original.getDn14().longValue());
-			assertEquals("april", original.getDn15());
-
-			nextNode = mockDbService.getNodeById(39);
-			duplicate = Reading.readingModelFromNode(nextNode);
-			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-			for (Relationship relationship : rels) {
-				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[0]);
-				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[1]);
-			}
-			assertEquals(39, nextNode.getId());
-			assertEquals("39", duplicate.getDn1());
-			assertEquals("0", duplicate.getDn2());
-			assertEquals("Default", duplicate.getDn11());
-			assertEquals(2, duplicate.getDn14().longValue());
-			assertEquals("april", duplicate.getDn15());
-
-
-			nextNode = mockDbService.getNodeById(18);
-			original = Reading.readingModelFromNode(nextNode);
-			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-
-			for (Relationship relationship : rels)
-				assertEquals("A", ((String[]) relationship.getProperty("lexemes"))[0]);
-			assertEquals(18, nextNode.getId());
-			assertEquals("18", original.getDn1());
-			assertEquals("0", original.getDn2());
-			assertEquals("Default", original.getDn11());
-			assertEquals(16, original.getDn14().longValue());
-			assertEquals("unto", original.getDn15());
-
-			nextNode = mockDbService.getNodeById(40);
-			duplicate = Reading.readingModelFromNode(nextNode);
-			rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-			for (Relationship relationship : rels) {
-				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[0]);
-				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[1]);
-			}
-			assertEquals(40, nextNode.getId());
-			assertEquals("40", duplicate.getDn1());
-			assertEquals("0", duplicate.getDn2());
-			assertEquals("Default", duplicate.getDn11());
-			assertEquals(16, duplicate.getDn14().longValue());
-			assertEquals("unto", duplicate.getDn15());
-
-			tx.success();
-		}		
-		
-		expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
-		resp = witness.getWitnessAsPlainText(tradId, "B");		
-		assertEquals(expectedText, resp.getEntity());	
-		
-		assertEquals(Status.OK, response.getClientResponseStatus());
-	}
-
-	@Test
-	public void mergeReadingsTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-
-		/*ExecutionResult result = engine
-				.execute("match (w:WORD {dn15:'april'}) return w");
-		Iterator<Node> nodes = result.columnAs("w");
-		assertTrue(nodes.hasNext());
-		Node node1 = nodes.next();
-		Node node2 = nodes.next();
-		assertFalse(nodes.hasNext());
-*/		
-		// duplicate reading
-		String jsonPayload = "{\"readings\":[16, 18], \"witnesses\":[\"B\", \"C\"]}";
-		jerseyTest.resource().path("/tradition/duplicate/" + tradId).type(MediaType.APPLICATION_JSON)
-				.post(ClientResponse.class, jsonPayload);
-		// merge readings again
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/39")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-
-		// read result from database
-		ReadingModel merged = null;
-
-		try (Transaction tx = mockDbService.beginTx()) {
-			Node nextNode = mockDbService.getNodeById(16);
-			merged = Reading.readingModelFromNode(nextNode);
-			Iterable<Relationship> rels = nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-			for (Relationship relationship : rels) {
-				assertEquals("A", ((String[]) relationship.getProperty("lexemes"))[0]);
-				assertEquals("B", ((String[]) relationship.getProperty("lexemes"))[1]);
-				assertEquals("C", ((String[]) relationship.getProperty("lexemes"))[2]);
-			}
-			assertEquals(16, nextNode.getId());
-			assertEquals("16", merged.getDn1());
-			assertEquals("0", merged.getDn2());
-			assertEquals("Default", merged.getDn11());
-			assertEquals(2, merged.getDn14().longValue());
-			assertEquals("april", merged.getDn15());
-
-			tx.success();
-		}
-
-		assertEquals(Status.OK, response.getClientResponseStatus());
-	}
-
-	@Test(expected = NotFoundException.class)
-	public void mergeReadingsAbsenceOfMergedNodeTest() {
-		// duplicate reading
-		jerseyTest.resource().path("/tradition/duplicate/" + tradId + "/16/A/BC").type(MediaType.APPLICATION_JSON)
-				.post(ClientResponse.class);
-		// merge readings again
-		ClientResponse response = jerseyTest.resource().path("/tradition/merge/" + tradId + "/16/39")
-				.type(MediaType.APPLICATION_JSON)
-				.post(ClientResponse.class);
-
-		try (Transaction tx = mockDbService.beginTx()) {
-			mockDbService.getNodeById(39);
-
-			tx.success();
-		}
-
-		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
 	}
 
 	@Test
@@ -793,49 +643,6 @@ public class TraditionTest {
 		result = engine.execute("match (tradId:TRADITION {id:'"+tradId+"'}) return tradId");
 		nodes = result.columnAs("tradId");
 		assertTrue(nodes.hasNext());
-	}
-	
-	// TODO not fully implemented yet waiting for compress to be implemented
-	@Test
-	public void splitReadingTest() {
-		
-		String filename = "";
-		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
-		else 
-			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
-		
-		Response resp = null;
-		/**
-		 * load a tradition to the test DB
-		 */
-		try {
-			resp = importResource.parseGraphML(filename, "1");
-		} catch (FileNotFoundException f) {
-			// this error should not occur
-			assertTrue(false);
-		}
-		
-		assert(resp.getEntity().toString().contains("1002"));
-
-		// split reading
-		ClientResponse response = jerseyTest.resource().path("/tradition/split/1002/67")
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-
-		assertEquals(Status.OK.getStatusCode(), response.getStatus());
-		
-		try(Transaction tx = mockDbService.beginTx())
-		{
-			Node originalNode = mockDbService.getNodeById(67);
-			assert(originalNode.getProperty("dn15").equals("to"));
-			
-			Node newNode = mockDbService.getNodeById(68);
-			assert(newNode.getProperty("dn15").equals("root"));
-		}
-		catch(Exception e)
-		{
-			assert(false);
-		}
 	}
 	
 	/**
