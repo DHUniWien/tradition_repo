@@ -45,8 +45,7 @@ public class Reading implements IResource {
 		for (int i = 0; i < 16; i++) {
 			String key = "dn" + i;
 			if (oldReading.hasProperty(key))
-				newReading.setProperty(key, oldReading.getProperty(key)
-						.toString());
+				newReading.setProperty(key, oldReading.getProperty(key));
 		}
 		newReading.addLabel(Nodes.WORD);
 		return newReading;
@@ -67,7 +66,6 @@ public class Reading implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		Node originalReading = null;
-		Node addedReading = null;
 
 		try (Transaction tx = db.beginTx()) {
 			List<Long> readings = duplicateModel.getReadings();
@@ -136,13 +134,17 @@ public class Reading implements IResource {
 		} else {
 			// add only those witnesses to oldWitnesses which are
 			// not in newWitnesses
+			ArrayList<String> remainingWitnesses = new ArrayList<String>();
 			ArrayList<String> stayingWitnesses = new ArrayList<String>();
-			for (String oldWitness : oldWitnesses)
+			for (String oldWitness : oldWitnesses) {
 				if (!newWitnesses.contains(oldWitness))
 					stayingWitnesses.add(oldWitness);
+				else
+					remainingWitnesses.add(oldWitness);
+			}
 
 			Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
-			addedRelationship.setProperty("lexemes", newWitnesses.toArray(new String[newWitnesses.size()]));
+			addedRelationship.setProperty("lexemes", remainingWitnesses.toArray(new String[remainingWitnesses.size()]));
 
 			if (stayingWitnesses.isEmpty())
 				originalRel.delete();
@@ -232,19 +234,6 @@ public class Reading implements IResource {
 
 		return Response.ok("Successfully merged readings").build();
 	}
-
-	// private void copyAllRelationships(Node stayingReading, Node
-	// deletingReading) {
-	// for (Relationship deletingRel : deletingReading.getRelationships()) {
-	// Node tempNode = deletingRel.getOtherNode(deletingReading);
-	// Relationship newRel = stayingReading.createRelationshipTo(tempNode,
-	// deletingRel.getType());
-	// for (String key : deletingRel.getPropertyKeys()) {
-	// newRel.setProperty(key, deletingRel.getProperty(key));
-	// }
-	// deletingRel.delete();
-	// }
-	// }
 
 	private void copyWitnesses(Node stayingReading) {
 		for (Relationship firstRel : stayingReading.getRelationships(ERelations.NORMAL)) {
