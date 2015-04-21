@@ -886,7 +886,7 @@ public class Reading implements IResource {
 			compress(read1, read2, db);
 			return Response.ok("Successfully compressed readings").build();
 		} else
-			return Response.status(Status.NOT_FOUND).entity(errorMessage)
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorMessage)
 					.build();
 	}
 
