@@ -219,11 +219,21 @@ public class Reading implements IResource {
 						.entity("Readings to be merged belong to the same witness").build();
 			}
 
-			// merging of readings happens here
-			copyRelationships(stayingReading, deletingReading);
-			addRelationshipsToStayingReading(stayingReading, deletingReading);
-			deletingReading.delete();
-			copyWitnesses(stayingReading);
+			if (containClassTwoRelationships(stayingReading, deletingReading)) {
+				db.shutdown();
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Readings to be merged cannot contain class 2 relationships (transposition / repetition)")
+						.build();
+			}
+
+			if (containClassOneRelationships(stayingReading, deletingReading)) {
+				// graph has to stay acyclic
+				mergeReadings(stayingReading, deletingReading);
+				if (isCyclic())
+					tx.failure();
+			}
+
+			mergeReadings(stayingReading, deletingReading);
 
 			tx.success();
 		} catch (Exception e) {
@@ -233,6 +243,36 @@ public class Reading implements IResource {
 		}
 
 		return Response.ok("Successfully merged readings").build();
+	}
+
+	private boolean isCyclic() {
+		// TODO Auto-generated method stub
+		return true;
+	}
+
+	private void mergeReadings(Node stayingReading, Node deletingReading) {
+		copyRelationships(stayingReading, deletingReading);
+		addRelationshipsToStayingReading(stayingReading, deletingReading);
+		deletingReading.delete();
+		copyWitnesses(stayingReading);
+	}
+
+	private boolean containClassOneRelationships(Node stayingReading, Node deletingReading) {
+		for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATIONSHIP))
+			if (stayingRel.getOtherNode(stayingReading).equals(deletingReading))
+				if (!stayingRel.getProperty("de11").equals("transposition")
+						&& !stayingRel.getProperty("de11").equals("repetition"))
+					return true;
+		return false;
+	}
+
+	private boolean containClassTwoRelationships(Node stayingReading, Node deletingReading) {
+		for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATIONSHIP))
+			if(stayingRel.getOtherNode(stayingReading).equals(deletingReading))
+				if (stayingRel.getProperty("de11").equals("transposition")
+						|| stayingRel.getProperty("de11").equals("repetition"))
+					return true;
+		return false;
 	}
 
 	private void copyWitnesses(Node stayingReading) {
