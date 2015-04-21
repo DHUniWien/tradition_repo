@@ -84,7 +84,7 @@ public class Witness implements IResource {
 	@GET
 	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnssAsPlainText(@PathParam("tradId") String tradId,
+	public Response getWitnessAsPlainTextBetweenRanks(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRank,
 			@PathParam("endRank") String endRank) {

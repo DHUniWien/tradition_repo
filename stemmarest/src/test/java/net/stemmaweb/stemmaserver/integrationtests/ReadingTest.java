@@ -57,7 +57,7 @@ import com.sun.jersey.test.framework.JerseyTest;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class ReadingTest {
-	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
 	private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
 	private String expectedWitnessC = "{\"text\":\"when showers sweet with april fruit teh drought of march has pierced teh rood\"}";
 
@@ -231,6 +231,8 @@ public class ReadingTest {
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
+		assertEquals("no reading with this id found", response.getEntity(String.class));
+
 	}
 
 	@Test
@@ -287,7 +289,6 @@ public class ReadingTest {
 				assertEquals(originalShowers.getProperty(key), duplicatedShowers.getProperty(key));
 				assertEquals(originalSweet.getProperty(key), duplicatedSweet.getProperty(key));
 			}
-
 			tx.success();
 		}
 	}
@@ -330,7 +331,6 @@ public class ReadingTest {
 				String key = "dn" + i;
 				assertEquals(originalOf.getProperty(key), duplicatedOf.getProperty(key));
 			}
-
 			tx.success();
 		}
 	}
@@ -521,54 +521,11 @@ public class ReadingTest {
 			
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
 			
-			String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-			Response resp = witness.getWitnessAsPlainText(tradId, "A");
-			assertEquals(expectedWitnessA, resp.getEntity());
-			
-			String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-			resp = witness.getWitnessAsPlainText(tradId, "B");
-			assertEquals(expectedWitnessB, resp.getEntity());	
+			testWitnesses();	
 			
 			tx.success();
 		}
-	}
-	
-	/**
-	 * tests the merging of readings which should not be allowed to merge
-	 * should return error
-	 */
-	@Test
-	public void mergeReadingsNotAcceptedTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node with1 = nodes.next();
-			assertTrue(nodes.hasNext());
-			Node with2 = nodes.next();
-			assertFalse(nodes.hasNext());
-			
-			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + with1.getId() + "/" + with2.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-			
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			
-			String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-			Response resp = witness.getWitnessAsPlainText(tradId, "A");
-			assertEquals(expectedWitnessA, resp.getEntity());
-			
-			String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-			resp = witness.getWitnessAsPlainText(tradId, "B");
-			assertEquals(expectedWitnessB, resp.getEntity());	
-			
-			tx.success();
-		}
-	}
-
+	}	
 
 	@Test
 	public void mergeReadingsWithTranspositionRelationshipTest() {
@@ -958,13 +915,7 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// both witnesses are still the same
-			String expectedText = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-			Response resp = witness.getWitnessAsPlainText(tradId, "A");
-			assertEquals(expectedText, resp.getEntity());
-
-			expectedText = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-			resp = witness.getWitnessAsPlainText(tradId, "B");
-			assertEquals(expectedText, resp.getEntity());
+			testWitnesses();
 
 			List<ReadingModel> listOfReadings = jerseyTest.resource()
 					.path("/reading/" + tradId)
@@ -1018,7 +969,7 @@ public class ReadingTest {
 					.path("/reading/compress/" + tradId + "/" + showers.getId()
 							+ "/" + fruit.getId()).get(ClientResponse.class);
 
-			assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
 			assertEquals("reading are not neighbors. could not compress", response.getEntity(String.class));
 
@@ -1037,29 +988,36 @@ public class ReadingTest {
 	@Test
 	public void nextReadingTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		long withReadId, piercedReadId;
+		long withReadId;
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			withReadId = nodes.next().getId();
-			
-			result = engine
-					.execute("match (w:WORD {dn15:'pierced'}) return w");
-			nodes = result.columnAs("w");
-			assert (nodes.hasNext());
-			piercedReadId = nodes.next().getId();
-
 			tx.success();
 		}
 
 		ReadingModel actualResponse = jerseyTest.resource()
 				.path("/reading/next/A/" + withReadId)
 				.get(ReadingModel.class);
-		assertEquals("his", actualResponse.getDn15());
+		assertEquals("his", actualResponse.getDn15());		
+	}
+	
+	@Test
+	public void nextReadingWithTwoWitnessesTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		long piercedReadId;
+		try (Transaction tx = mockDbService.beginTx()) {		
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'pierced'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			piercedReadId = nodes.next().getId();
+			tx.success();
+		}
 		
-		actualResponse = jerseyTest.resource()
+		ReadingModel actualResponse = jerseyTest.resource()
 				.path("/reading/next/A/" + piercedReadId)
 				.get(ReadingModel.class);
 		assertEquals("unto me", actualResponse.getDn15());
@@ -1094,7 +1052,6 @@ public class ReadingTest {
 
 	@Test
 	public void previousReadingTest() {
-
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		long readId;
 		try (Transaction tx = mockDbService.beginTx()) {
@@ -1113,8 +1070,31 @@ public class ReadingTest {
 	}
 	
 	@Test
-	public void previousReadingFirstNodeTest() {
+	public void previousReadingTwoWitnessesTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		long ofId;
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'of'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			ofId = nodes.next().getId();
 
+			tx.success();
+		}
+		ReadingModel actualResponse = jerseyTest.resource()
+				.path("/reading/previous/A/" + ofId)
+				.get(ReadingModel.class);
+		assertEquals("drought", actualResponse.getDn15());
+		
+		actualResponse = jerseyTest.resource()
+				.path("/reading/previous/B/" + ofId)
+				.get(ReadingModel.class);
+		assertEquals("march", actualResponse.getDn15());
+	}
+	
+	@Test
+	public void previousReadingFirstNodeTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		long readId;
 		try (Transaction tx = mockDbService.beginTx()) {
