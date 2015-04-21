@@ -1,7 +1,8 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
@@ -10,7 +11,6 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.rest.ERelations;
@@ -410,7 +410,7 @@ public class RelationTest {
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
 		actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.CONFLICT, actualResponse.getStatus());
+		assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 		
     	try (Transaction tx = mockDbService.beginTx()) 

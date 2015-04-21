@@ -434,9 +434,9 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void mergeReadingsWithTranspositionRelationshipTest() {
+	public void mergeReadingsWithClassOneRelationshipGetsCyclicTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'drought'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node firstNode = nodes.next();
@@ -459,7 +459,7 @@ public class ReadingTest {
 
 		testWitnesses();
 
-		result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		result = engine.execute("match (w:WORD {dn15:'drought'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		firstNode = nodes.next();
@@ -468,47 +468,43 @@ public class ReadingTest {
 		assertFalse(nodes.hasNext());
 	}
 
-	// TODO include relationships of class one into ReadingTestTradition
-	// @Test
-	// public void mergeReadingsWithClassOneRelationshipTest() {
-	// ExecutionEngine engine = new ExecutionEngine(mockDbService);
-	// ExecutionResult result =
-	// engine.execute("match (w:WORD {dn15:'april'}) return w");
-	// Iterator<Node> nodes = result.columnAs("w");
-	// assertTrue(nodes.hasNext());
-	// Node firstNode = nodes.next();
-	// assertTrue(nodes.hasNext());
-	// Node secondNode = nodes.next();
-	// assertFalse(nodes.hasNext());
-	//
-	// testNumberOfReadings(29);
-	//
-	// testWitnesses();
-	//
-	// // merge readings
-	// ClientResponse response = jerseyTest.resource()
-	// .path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" +
-	// secondNode.getId())
-	// .type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-	//
-	// assertEquals(Status.INTERNAL_SERVER_ERROR,
-	// response.getClientResponseStatus());
-	//
-	// testNumberOfReadings(29);
-	//
-	// testWitnesses();
-	//
-	// result = engine.execute("match (w:WORD {dn15:'april'}) return w");
-	// nodes = result.columnAs("w");
-	// assertTrue(nodes.hasNext());
-	// firstNode = nodes.next();
-	// assertTrue(nodes.hasNext());
-	// secondNode = nodes.next();
-	// assertFalse(nodes.hasNext());
-	// }
+	// still fails: isCyclic() method in mergeReadings does always return true,
+	// but I do not know why.
+	@Test
+	public void mergeReadingsWithClassOneRelationshipStaysAcyclicTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'his'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		testNumberOfReadings(29);
+
+		testWitnesses();
+
+		// merge readings
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.OK, response.getClientResponseStatus());
+
+		testNumberOfReadings(28);
+
+		testWitnesses();
+
+		result = engine.execute("match (w:WORD {dn15:'his'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+	}
 
 	@Test
-	public void mergeReadingsEdgeCaseTest() {
+	public void mergeReadingsWithClassTwoRelationshipsTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");

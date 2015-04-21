@@ -230,6 +230,8 @@ public class Reading implements IResource {
 		Node stayingReading = null;
 		Node deletingReading = null;
 
+		boolean isCyclic = false;
+
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		try (Transaction tx = db.beginTx()) {
@@ -264,10 +266,11 @@ public class Reading implements IResource {
 			if (containClassOneRelationships(stayingReading, deletingReading)) {
 				// graph has to stay acyclic
 				mergeReadings(stayingReading, deletingReading);
-				if (isCyclic())
+				if (isCyclic(db, tradId)) {
 					tx.failure();
-			}
-
+					isCyclic = true;
+				}
+			} else
 			mergeReadings(stayingReading, deletingReading);
 
 			tx.success();
@@ -277,12 +280,28 @@ public class Reading implements IResource {
 			db.shutdown();
 		}
 
+		if (isCyclic)
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("Readings to be merged would make the graph cyclic").build();
+
 		return Response.ok("Successfully merged readings").build();
 	}
 
-	private boolean isCyclic() {
-		// TODO Auto-generated method stub
-		return true;
+	private boolean isCyclic(GraphDatabaseService db, String tradId) {
+		try (Transaction tx = db.beginTx()) {
+			Node startNode = DatabaseService.getStartNode(tradId, db);
+			ArrayList<Node> nodes = new ArrayList<Node>();
+			for (Node node : db.traversalDescription()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING).evaluator(Evaluators.all())
+					.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode).nodes()) {
+				if (!nodes.contains(node))
+					nodes.add(node);
+				else
+					return true;
+			}
+			tx.success();
+		}
+		return false;
 	}
 
 	private void mergeReadings(Node stayingReading, Node deletingReading) {
