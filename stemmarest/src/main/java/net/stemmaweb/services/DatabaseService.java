@@ -88,7 +88,6 @@ public class DatabaseService {
 	 */
 	public static Node getStartNode(String tradId, GraphDatabaseService db) {
 		ExecutionEngine engine = new ExecutionEngine(db);
-		DbPathProblemService problemFinder = new DbPathProblemService();
 		Node startNode = null;
 
 		/**

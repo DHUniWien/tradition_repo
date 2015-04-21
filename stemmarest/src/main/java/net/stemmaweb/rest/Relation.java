@@ -11,6 +11,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
@@ -106,10 +107,12 @@ public class Relation implements IResource {
     @GET
     @Path("{textId}/relationships")
     @Produces(MediaType.APPLICATION_JSON)
-	public ArrayList<RelationshipModel> getRelationships(@PathParam("textId") String textId) {
+	public Response getRelationships(@PathParam("textId") String textId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
+    	Response resp = null;
     	
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
     		Node startNode = DatabaseService.getStartNode(textId, db);
@@ -131,13 +134,16 @@ public class Relation implements IResource {
     	catch (Exception e) 
     	{
     		System.err.println(e.getMessage());
-    		return null;
+    		resp = Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
     	}
     	finally {	
     		db.shutdown();
     	}
 
-		return relationships;
+    	if(resp==null)
+    		resp = Response.ok().entity(relationships).build();
+    	
+		return resp;
 	}
     
     
