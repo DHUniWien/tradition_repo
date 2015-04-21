@@ -2,12 +2,14 @@ package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
+import org.neo4j.graphdb.Node;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
-public class ReadingModel implements Comparable{
+public class ReadingModel implements Comparable<ReadingModel> {
 	
 	private String dn0; // grammar_invalid
 	private String dn1; // id
@@ -22,9 +24,47 @@ public class ReadingModel implements Comparable{
 	private String dn10; // join_prior
 	private String dn11; // language
 	private String dn12; // lexemes
-	private String dn13; // normal_form
+	private String dn13; // nothisal_fothis
 	private Long dn14; // rank
 	private String dn15; // text
+
+	public ReadingModel(Node node) {
+		if (node.hasProperty("dn0"))
+			this.setDn0(node.getProperty("dn0").toString());
+		this.setDn1(String.valueOf(node.getId()));
+		if (node.hasProperty("dn2"))
+			this.setDn2(node.getProperty("dn2").toString());
+		if (node.hasProperty("dn3"))
+			this.setDn3(node.getProperty("dn3").toString());
+		if (node.hasProperty("dn4"))
+			this.setDn4(node.getProperty("dn4").toString());
+		if (node.hasProperty("dn5"))
+			this.setDn5(node.getProperty("dn5").toString());
+		if (node.hasProperty("dn6"))
+			this.setDn6(node.getProperty("dn6").toString());
+		if (node.hasProperty("dn7"))
+			this.setDn7(node.getProperty("dn7").toString());
+		if (node.hasProperty("dn8"))
+			this.setDn8(node.getProperty("dn8").toString());
+		if (node.hasProperty("dn9"))
+			this.setDn9(node.getProperty("dn9").toString());
+		if (node.hasProperty("dn10"))
+			this.setDn10(node.getProperty("dn10").toString());
+		if (node.hasProperty("dn11"))
+			this.setDn11(node.getProperty("dn11").toString());
+		if (node.hasProperty("dn12"))
+			this.setDn12(node.getProperty("dn12").toString());
+		if (node.hasProperty("dn13"))
+			this.setDn13(node.getProperty("dn13").toString());
+		if (node.hasProperty("dn14"))
+			this.setDn14(Long.parseLong(node.getProperty("dn14").toString()));
+		if (node.hasProperty("dn15"))
+			this.setDn15(node.getProperty("dn15").toString());
+	}
+
+	public ReadingModel() {
+
+	}
 
 	public String getDn0() {
 		return dn0;
@@ -124,7 +164,7 @@ public class ReadingModel implements Comparable{
 	}
 	
 	@Override
-	public int compareTo(Object readingModel) {
+	public int compareTo(ReadingModel readingModel) {
 		Long compareRank = ((ReadingModel) readingModel).getDn14();
 		return (int) (this.dn14 - compareRank);
 	}

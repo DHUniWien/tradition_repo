@@ -12,7 +12,6 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
-
 import net.stemmaweb.services.EvaluatorService;
 
 import org.neo4j.graphdb.Direction;
@@ -20,7 +19,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -170,8 +168,7 @@ public class Witness implements IResource {
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
 					.traverse(startNode).nodes()) {
-				ReadingModel tempReading = Reading
-						.readingModelFromNode(startNodes);
+				ReadingModel tempReading = new ReadingModel(startNodes);
 
 				readingModels.add(tempReading);
 			}

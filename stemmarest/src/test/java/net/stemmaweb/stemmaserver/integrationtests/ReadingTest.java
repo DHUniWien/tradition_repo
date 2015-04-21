@@ -49,11 +49,15 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Jakob
+ * @author Jakob, Ido
  *
  */
 @RunWith(MockitoJUnitRunner.class)
 public class ReadingTest {
+	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+	private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+	private String expectedWitnessC = "{\"text\":\"when showers sweet with april fruit teh drought of march has pierced teh rood\"}";
+
 	private String tradId;
 	/*
 	 * Create a Mock object for the dbFactory.
@@ -162,61 +166,136 @@ public class ReadingTest {
 		jerseyTest.setUp();
 	}
 
+	private void testNumberOfReadings(int number) {
+		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
+				.get(new GenericType<List<ReadingModel>>() {
+				});
+		assertEquals(number, listOfReadings.size());
+	}
+
+	private void testWitnesses() {
+		Response resp;
+
+		resp = witness.getWitnessAsPlainText(tradId, "A");
+		assertEquals(expectedWitnessA, resp.getEntity());
+
+		resp = witness.getWitnessAsPlainText(tradId, "B");
+		assertEquals(expectedWitnessB, resp.getEntity());
+
+		resp = witness.getWitnessAsPlainText(tradId, "C");
+		assertEquals(expectedWitnessC, resp.getEntity());
+	}
+
 	@Test
 	public void duplicateReadingTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
-		Node originalNode = nodes.next();
+		Node firstNode = nodes.next();
 		assertFalse(nodes.hasNext());
 
-		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
-				.get(new GenericType<List<ReadingModel>>() {
-				});
+		result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
 
-		assertEquals(29, listOfReadings.size());
+		testNumberOfReadings(29);
 
-		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
+		testWitnesses();
 
 		// duplicate reading
-		String jsonPayload = "{\"readings\":[" + originalNode.getId() + "], \"witnesses\":[\"B\"]}";
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", " + secondNode.getId()
+				+ "], \"witnesses\":[\"A\",\"B\" ]}";
 		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 		assertEquals(Status.OK, response.getClientResponseStatus());
 
-		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
-		});
+		testNumberOfReadings(31);
 
-		assertEquals(30, listOfReadings.size());
-
-		resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
+		testWitnesses();
 
 		result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
-		Node original = nodes.next();
+		Node originalShowers = nodes.next();
 		assertTrue(nodes.hasNext());
-		Node duplicated = nodes.next();
+		Node duplicatedShowers = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node originalSweet = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node duplicatedSweet = nodes.next();
 		assertFalse(nodes.hasNext());
 
 		// compare original and duplicated
+		try (Transaction tx = mockDbService.beginTx()) {
+			for (int i = 14; i < 16; i++) {
+				String key = "dn" + i;
+				assertEquals(originalShowers.getProperty(key), duplicatedShowers.getProperty(key));
+				assertEquals(originalSweet.getProperty(key), duplicatedSweet.getProperty(key));
+			}
 
+			tx.success();
+		}
+	}
 
-		// // read result from database
-		// ReadingModel original = null;
-		// ReadingModel duplicate = null;
+	@Test
+	public void duplicateReadingEdgeCaseTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'of'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		testNumberOfReadings(29);
+
+		testWitnesses();
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.OK, response.getClientResponseStatus());
+
+		testNumberOfReadings(30);
+
+		testWitnesses();
+
+		result = engine.execute("match (w:WORD {dn15:'of'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node originalOf = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node duplicatedOf = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// compare original and duplicated
+		try (Transaction tx = mockDbService.beginTx()) {
+			for (int i = 14; i < 16; i++) {
+				String key = "dn" + i;
+				assertEquals(originalOf.getProperty(key), duplicatedOf.getProperty(key));
+			}
+
+			tx.success();
+		}
+	}
+
+	@Test
+	public void duplicateReadingWithOnlyOneWitnessTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
 
 		// try (Transaction tx = mockDbService.beginTx()) {
 		// Node nextNode = mockDbService.getNodeById(16);
@@ -281,6 +360,46 @@ public class ReadingTest {
 		//
 		// tx.success();
 		// }
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+	}
+
+	@Test
+	public void duplicateReadingWithNoWitnessesInJSONTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+	}
+
+	@Test
+	public void duplicateReadingWithNotAllowedWitnessesTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'root'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		// duplicate reading
+		String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
+		ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
 	}
 
 	@Test
@@ -290,21 +409,13 @@ public class ReadingTest {
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node firstNode = nodes.next();
+		assertTrue(nodes.hasNext());
 		Node secondNode = nodes.next();
 		assertFalse(nodes.hasNext());
 
-		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
-				.get(new GenericType<List<ReadingModel>>() {
-				});
-		assertEquals(29, listOfReadings.size());
+		testNumberOfReadings(29);
 
-		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
+		testWitnesses();
 
 		// merge readings
 		ClientResponse response = jerseyTest.resource()
@@ -314,44 +425,28 @@ public class ReadingTest {
 		assertEquals(Status.OK, response.getClientResponseStatus());
 
 		// should contain one reading less now
-		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
-		});
-		assertEquals(28, listOfReadings.size());
+		testNumberOfReadings(28);
 
-		// witnesses should look the same
-		resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
+		testWitnesses();
 
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
-
-
-		// // read result from database
-		// ReadingModel merged = null;
-		//
+		result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node staying = nodes.next();
+		assertFalse(nodes.hasNext());
+		
 		// try (Transaction tx = mockDbService.beginTx()) {
-		// Node nextNode = mockDbService.getNodeById(16);
-		// merged = Reading.readingModelFromNode(nextNode);
-		// Iterable<Relationship> rels =
-		// nextNode.getRelationships(ERelations.NORMAL, Direction.BOTH);
-		// for (Relationship relationship : rels) {
-		// assertEquals("A", ((String[])
-		// relationship.getProperty("lexemes"))[0]);
-		// assertEquals("B", ((String[])
-		// relationship.getProperty("lexemes"))[1]);
-		// assertEquals("C", ((String[])
-		// relationship.getProperty("lexemes"))[2]);
-		// }
-		// assertEquals(16, nextNode.getId());
-		// assertEquals("16", merged.getDn1());
-		// assertEquals("0", merged.getDn2());
-		// assertEquals("Default", merged.getDn11());
-		// assertEquals(2, merged.getDn14().longValue());
-		// assertEquals("april", merged.getDn15());
+		//
+		// assertFalse(firstNode.hasRelationship(ERelations.RELATIONSHIP));
+		// assertTrue(secondNode.hasRelationship(ERelations.RELATIONSHIP));
+		//
+		// for (Relationship oldRel :
+		// firstNode.getRelationships(ERelations.RELATIONSHIP))
+		// for (Relationship stayingRel :
+		// staying.getRelationships(ERelations.RELATIONSHIP))
 		//
 		// tx.success();
 		// }
-
 	}
 	
 	/**
@@ -428,6 +523,45 @@ public class ReadingTest {
 	}
 
 
+	// should get green when constraints are implemented
+	// @Test
+	// public void mergeReadingsEdgeCaseTest() {
+	// ExecutionEngine engine = new ExecutionEngine(mockDbService);
+	// ExecutionResult result =
+	// engine.execute("match (w:WORD {dn15:'march'}) return w");
+	// Iterator<Node> nodes = result.columnAs("w");
+	// assertTrue(nodes.hasNext());
+	// Node firstNode = nodes.next();
+	// assertTrue(nodes.hasNext());
+	// Node secondNode = nodes.next();
+	// assertFalse(nodes.hasNext());
+	//
+	// testNumberOfReadings(29);
+	//
+	// testWitnesses();
+	//
+	// // merge readings
+	// ClientResponse response = jerseyTest.resource()
+	// .path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" +
+	// secondNode.getId())
+	// .type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+	//
+	// assertEquals(Status.INTERNAL_SERVER_ERROR,
+	// response.getClientResponseStatus());
+	//
+	// testNumberOfReadings(29);
+	//
+	// testWitnesses();
+	//
+	// result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+	// nodes = result.columnAs("w");
+	// assertTrue(nodes.hasNext());
+	// firstNode = nodes.next();
+	// assertTrue(nodes.hasNext());
+	// secondNode = nodes.next();
+	// assertFalse(nodes.hasNext());
+	// }
+
 	@Test
 	public void mergeReadingsWithDifferentTextTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
@@ -461,18 +595,9 @@ public class ReadingTest {
 		Node node = nodes.next();
 		assertFalse(nodes.hasNext());
 
-		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
-				.get(new GenericType<List<ReadingModel>>() {
-				});
-		assertEquals(29, listOfReadings.size());
+		testNumberOfReadings(29);
 
-		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
+		testWitnesses();
 
 		// split reading
 		ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
@@ -494,17 +619,9 @@ public class ReadingTest {
 		assertEquals((long)17, the3.getProperty("dn14"));
 
 		// should contain one reading more now
-		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
-		});
-		assertEquals(30, listOfReadings.size());
+		testNumberOfReadings(30);
 
-		// witnesses should look the same
-		resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
-		tx.success();
+		testWitnesses();
 		}
 	}
 	
@@ -546,18 +663,9 @@ public class ReadingTest {
 		Node node = nodes.next();
 		assertFalse(nodes.hasNext());
 
-		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
-				.get(new GenericType<List<ReadingModel>>() {
-				});
-		assertEquals(29, listOfReadings.size());
+		testNumberOfReadings(29);
 
-		String expectedWitnessA = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		String expectedWitnessB = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
+		testWitnesses();
 
 		// split reading
 		ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
@@ -565,17 +673,9 @@ public class ReadingTest {
 
 		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
 
-		// should contain one reading more now
-		listOfReadings = jerseyTest.resource().path("/reading/" + tradId).get(new GenericType<List<ReadingModel>>() {
-		});
-		assertEquals(29, listOfReadings.size());
+		testNumberOfReadings(29);
 
-		// witnesses should look the same
-		resp = witness.getWitnessAsPlainText(tradId, "B");
-		assertEquals(expectedWitnessA, resp.getEntity());
-
-		resp = witness.getWitnessAsPlainText(tradId, "A");
-		assertEquals(expectedWitnessB, resp.getEntity());
+		testWitnesses();
 	}
 
 	/**
