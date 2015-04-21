@@ -42,6 +42,9 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
@@ -184,6 +187,50 @@ public class ReadingTest {
 
 		resp = witness.getWitnessAsPlainText(tradId, "C");
 		assertEquals(expectedWitnessC, resp.getEntity());
+	}
+
+	@Test
+	public void getReadingJsonTest() throws JsonProcessingException {
+		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
+
+		Response resp = reading.getReading(tradId, 16);
+
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.setSerializationInclusion(Include.NON_NULL);
+		String json = mapper.writeValueAsString(resp.getEntity());
+
+		assertEquals(expected, json);
+	}
+
+	@Test
+	public void getReadingReadingModelTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		ReadingModel expectedReadingModel = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			expectedReadingModel = new ReadingModel(node);
+			tx.success();
+		}
+
+		ReadingModel readingModel = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + node.getId())
+				.type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
+
+		assertTrue(readingModel != null);
+		assertEquals(expectedReadingModel.getDn14(), readingModel.getDn14());
+		assertEquals(expectedReadingModel.getDn15(), readingModel.getDn15());
+	}
+
+	@Test
+	public void getReadingWithFalseIdTest() {
+		ClientResponse response = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + 200)
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+
+		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
 	}
 
 	@Test
@@ -405,7 +452,7 @@ public class ReadingTest {
 	@Test
 	public void mergeReadingsTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node firstNode = nodes.next();
@@ -429,7 +476,7 @@ public class ReadingTest {
 
 		testWitnesses();
 
-		result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node staying = nodes.next();
@@ -523,12 +570,47 @@ public class ReadingTest {
 	}
 
 
-	// should get green when constraints are implemented
+	@Test
+	public void mergeReadingsWithTranspositionRelationshipTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		testNumberOfReadings(29);
+
+		testWitnesses();
+
+		// merge readings
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+
+		testNumberOfReadings(29);
+
+		testWitnesses();
+
+		result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		firstNode = nodes.next();
+		assertTrue(nodes.hasNext());
+		secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+	}
+
+	// TODO include relationships of class one into ReadingTestTradition
 	// @Test
-	// public void mergeReadingsEdgeCaseTest() {
+	// public void mergeReadingsWithClassOneRelationshipTest() {
 	// ExecutionEngine engine = new ExecutionEngine(mockDbService);
 	// ExecutionResult result =
-	// engine.execute("match (w:WORD {dn15:'march'}) return w");
+	// engine.execute("match (w:WORD {dn15:'april'}) return w");
 	// Iterator<Node> nodes = result.columnAs("w");
 	// assertTrue(nodes.hasNext());
 	// Node firstNode = nodes.next();
@@ -553,7 +635,7 @@ public class ReadingTest {
 	//
 	// testWitnesses();
 	//
-	// result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+	// result = engine.execute("match (w:WORD {dn15:'april'}) return w");
 	// nodes = result.columnAs("w");
 	// assertTrue(nodes.hasNext());
 	// firstNode = nodes.next();
@@ -561,6 +643,41 @@ public class ReadingTest {
 	// secondNode = nodes.next();
 	// assertFalse(nodes.hasNext());
 	// }
+
+	@Test
+	public void mergeReadingsEdgeCaseTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		testNumberOfReadings(29);
+
+		testWitnesses();
+
+		// merge readings
+		ClientResponse response = jerseyTest.resource()
+				.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+		assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+
+		testNumberOfReadings(29);
+
+		testWitnesses();
+
+		result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		firstNode = nodes.next();
+		assertTrue(nodes.hasNext());
+		secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+	}
 
 	@Test
 	public void mergeReadingsWithDifferentTextTest() {

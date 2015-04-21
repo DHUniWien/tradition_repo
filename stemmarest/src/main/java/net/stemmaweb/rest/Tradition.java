@@ -26,7 +26,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.TraditionModel;
@@ -115,44 +114,6 @@ public class Tradition implements IResource {
 			db.shutdown();
 		}
 		return Response.status(Response.Status.OK).entity(textInfo).build();
-	}
-
-	/**
-	 * Returns a single reading in a specific tradition.
-	 * 
-	 * @param tradId
-	 * @param readId
-	 * @return
-	 */
-	@GET
-	@Path("reading/{tradId}/{readId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
-		ReadingModel reading = null;
-		Node readingNode;
-
-		try (Transaction tx = db.beginTx()) {
-			try {
-				readingNode = db.getNodeById(readId);
-			} catch (Exception e) {
-				db.shutdown();
-				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-			}
-			reading = new ReadingModel(readingNode);
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
-		}
-
-		if (reading == null)
-			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-
-		return Response.ok(reading).build();
 	}
 	
 	@GET

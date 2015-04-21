@@ -52,6 +52,41 @@ public class Reading implements IResource {
 	}
 
 	/**
+	 * Returns a single reading in a specific tradition.
+	 * 
+	 * @param tradId
+	 * @param readId
+	 * @return
+	 */
+	@GET
+	@Path("reading/{tradId}/{readId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		ReadingModel reading = null;
+		Node readingNode;
+
+		try (Transaction tx = db.beginTx()) {
+			try {
+				readingNode = db.getNodeById(readId);
+			} catch (Exception e) {
+				db.shutdown();
+				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+			}
+			reading = new ReadingModel(readingNode);
+
+			tx.success();
+		} catch (Exception e) {
+			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
+		} finally {
+			db.shutdown();
+		}
+
+		return Response.ok(reading).build();
+	}
+
+	/**
 	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
 	 * @param tradId
@@ -219,11 +254,21 @@ public class Reading implements IResource {
 						.entity("Readings to be merged belong to the same witness").build();
 			}
 
-			// merging of readings happens here
-			copyRelationships(stayingReading, deletingReading);
-			addRelationshipsToStayingReading(stayingReading, deletingReading);
-			deletingReading.delete();
-			copyWitnesses(stayingReading);
+			if (containClassTwoRelationships(stayingReading, deletingReading)) {
+				db.shutdown();
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Readings to be merged cannot contain class 2 relationships (transposition / repetition)")
+						.build();
+			}
+
+			if (containClassOneRelationships(stayingReading, deletingReading)) {
+				// graph has to stay acyclic
+				mergeReadings(stayingReading, deletingReading);
+				if (isCyclic())
+					tx.failure();
+			}
+
+			mergeReadings(stayingReading, deletingReading);
 
 			tx.success();
 		} catch (Exception e) {
@@ -233,6 +278,36 @@ public class Reading implements IResource {
 		}
 
 		return Response.ok("Successfully merged readings").build();
+	}
+
+	private boolean isCyclic() {
+		// TODO Auto-generated method stub
+		return true;
+	}
+
+	private void mergeReadings(Node stayingReading, Node deletingReading) {
+		copyRelationships(stayingReading, deletingReading);
+		addRelationshipsToStayingReading(stayingReading, deletingReading);
+		deletingReading.delete();
+		copyWitnesses(stayingReading);
+	}
+
+	private boolean containClassOneRelationships(Node stayingReading, Node deletingReading) {
+		for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATIONSHIP))
+			if (stayingRel.getOtherNode(stayingReading).equals(deletingReading))
+				if (!stayingRel.getProperty("de11").equals("transposition")
+						&& !stayingRel.getProperty("de11").equals("repetition"))
+					return true;
+		return false;
+	}
+
+	private boolean containClassTwoRelationships(Node stayingReading, Node deletingReading) {
+		for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATIONSHIP))
+			if(stayingRel.getOtherNode(stayingReading).equals(deletingReading))
+				if (stayingRel.getProperty("de11").equals("transposition")
+						|| stayingRel.getProperty("de11").equals("repetition"))
+					return true;
+		return false;
 	}
 
 	private void copyWitnesses(Node stayingReading) {
