@@ -41,9 +41,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
@@ -160,21 +157,6 @@ public class TraditionTest {
 		 */
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
 		jerseyTest.setUp();
-	}
-
-	@Test
-	public void getReadingTest() throws JsonProcessingException {
-
-		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
-
-		Response resp = tradition.getReading(tradId, 16);
-
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.setSerializationInclusion(Include.NON_NULL);
-		String json = mapper.writeValueAsString(resp.getEntity());
-
-		assertEquals(expected, json);
-
 	}
 	
 	@Test

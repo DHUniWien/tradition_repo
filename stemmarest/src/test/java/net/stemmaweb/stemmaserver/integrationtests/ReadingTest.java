@@ -42,6 +42,9 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
@@ -184,6 +187,19 @@ public class ReadingTest {
 
 		resp = witness.getWitnessAsPlainText(tradId, "C");
 		assertEquals(expectedWitnessC, resp.getEntity());
+	}
+
+	@Test
+	public void getReadingTest() throws JsonProcessingException {
+		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
+
+		Response resp = reading.getReading(tradId, 16);
+
+		ObjectMapper mapper = new ObjectMapper();
+		mapper.setSerializationInclusion(Include.NON_NULL);
+		String json = mapper.writeValueAsString(resp.getEntity());
+
+		assertEquals(expected, json);
 	}
 
 	@Test
@@ -421,7 +437,45 @@ public class ReadingTest {
 		assertFalse(nodes.hasNext());
 	}
 
-	// should get green when constraints are implemented
+	// TODO include relationships of class one into ReadingTestTradition
+	// @Test
+	// public void mergeReadingsWithClassOneRelationshipTest() {
+	// ExecutionEngine engine = new ExecutionEngine(mockDbService);
+	// ExecutionResult result =
+	// engine.execute("match (w:WORD {dn15:'april'}) return w");
+	// Iterator<Node> nodes = result.columnAs("w");
+	// assertTrue(nodes.hasNext());
+	// Node firstNode = nodes.next();
+	// assertTrue(nodes.hasNext());
+	// Node secondNode = nodes.next();
+	// assertFalse(nodes.hasNext());
+	//
+	// testNumberOfReadings(29);
+	//
+	// testWitnesses();
+	//
+	// // merge readings
+	// ClientResponse response = jerseyTest.resource()
+	// .path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" +
+	// secondNode.getId())
+	// .type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+	//
+	// assertEquals(Status.INTERNAL_SERVER_ERROR,
+	// response.getClientResponseStatus());
+	//
+	// testNumberOfReadings(29);
+	//
+	// testWitnesses();
+	//
+	// result = engine.execute("match (w:WORD {dn15:'april'}) return w");
+	// nodes = result.columnAs("w");
+	// assertTrue(nodes.hasNext());
+	// firstNode = nodes.next();
+	// assertTrue(nodes.hasNext());
+	// secondNode = nodes.next();
+	// assertFalse(nodes.hasNext());
+	// }
+
 	@Test
 	public void mergeReadingsEdgeCaseTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
