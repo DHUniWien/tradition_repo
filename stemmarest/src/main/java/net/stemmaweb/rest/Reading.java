@@ -78,13 +78,10 @@ public class Reading implements IResource {
 
 			tx.success();
 		} catch (Exception e) {
-			e.printStackTrace();
+			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 		} finally {
 			db.shutdown();
 		}
-
-		if (reading == null)
-			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 
 		return Response.ok(reading).build();
 	}

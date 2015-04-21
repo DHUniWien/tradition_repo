@@ -190,7 +190,7 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void getReadingTest() throws JsonProcessingException {
+	public void getReadingJsonTest() throws JsonProcessingException {
 		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
 		Response resp = reading.getReading(tradId, 16);
@@ -200,6 +200,37 @@ public class ReadingTest {
 		String json = mapper.writeValueAsString(resp.getEntity());
 
 		assertEquals(expected, json);
+	}
+
+	@Test
+	public void getReadingReadingModelTest() {
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		ReadingModel expectedReadingModel = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			expectedReadingModel = new ReadingModel(node);
+			tx.success();
+		}
+
+		ReadingModel readingModel = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + node.getId())
+				.type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
+
+		assertTrue(readingModel != null);
+		assertEquals(expectedReadingModel.getDn14(), readingModel.getDn14());
+		assertEquals(expectedReadingModel.getDn15(), readingModel.getDn15());
+	}
+
+	@Test
+	public void getReadingWithFalseIdTest() {
+		ClientResponse response = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + 200)
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+
+		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
 	}
 
 	@Test
