@@ -409,7 +409,6 @@ public class Reading implements IResource {
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 			}
 
-			// splitting of reading happens here
 			String oldText = originalReading.getProperty("dn15").toString();
 			String[] splittedWords = oldText.split("\\s+");
 			if (splittedWords.length < 2) {
@@ -418,34 +417,14 @@ public class Reading implements IResource {
 						.entity("A reading to be splitted has to contain at least 2 words").build();
 			}
 
-			originalReading.setProperty("dn15", splittedWords[0]);
-
-			Node newReading = null;
-
-			for (int i = 1; i < splittedWords.length; i++) {
-				newReading = db.createNode();
-
-				// is this assignment necessary or does that function
-				// otherwise as well in this transaction?
-				newReading = Reading.copyReadingProperties(originalReading, newReading);
-				newReading.setProperty("dn15", splittedWords[i]);
-				Long previousRank = (Long) originalReading.getProperty("dn14");
-				newReading.setProperty("dn14", previousRank + 1);
-
-				ArrayList<String> allWitnesses = new ArrayList<String>();
-				Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
-				for (Relationship relationship : rels) {
-					String[] witnesses = (String[]) relationship.getProperty("lexemes");
-					for (int j = 0; j < witnesses.length; j++)
-						allWitnesses.add(witnesses[j]);
-
-					newReading.createRelationshipTo(relationship.getEndNode(), ERelations.NORMAL);
-					relationship.delete();
-				}
-
-				Relationship relationship = originalReading.createRelationshipTo(newReading, ERelations.NORMAL);
-				relationship.setProperty("lexemes", allWitnesses.toArray(new String[allWitnesses.size()]));
+			if (!hasRankGap(originalReading, splittedWords.length)) {
+				db.shutdown();
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("There has to be a rank-gap after a reading to be splitted.").build();
 			}
+
+			splitReadings(db, originalReading, splittedWords);
+			
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
@@ -453,6 +432,49 @@ public class Reading implements IResource {
 			db.shutdown();
 		}
 		return Response.ok("Successfully split up reading").build();
+	}
+
+	private boolean hasRankGap(Node originalReading, int numberOfWords) {
+		String rankKey = "dn14";
+		Long rank = (Long) originalReading.getProperty(rankKey);
+		for (Relationship rel : originalReading.getRelationships(Direction.OUTGOING, ERelations.NORMAL)) {
+			Node nextNode = rel.getEndNode();
+			if (nextNode.hasProperty(rankKey)) {
+				Long nextRank = (Long) nextNode.getProperty(rankKey);
+				if (nextRank - rank >= numberOfWords)
+					return true;
+			}
+		}
+		return false;
+	}
+
+	private void splitReadings(GraphDatabaseService db, Node originalReading, String[] splittedWords) {
+		originalReading.setProperty("dn15", splittedWords[0]);
+
+		for (int i = 1; i < splittedWords.length; i++) {
+			Node newReading = db.createNode();
+
+			// is this assignment necessary or does that function
+			// otherwise as well in this transaction?
+			newReading = Reading.copyReadingProperties(originalReading, newReading);
+			newReading.setProperty("dn15", splittedWords[i]);
+			Long previousRank = (Long) originalReading.getProperty("dn14");
+			newReading.setProperty("dn14", previousRank + 1);
+
+			ArrayList<String> allWitnesses = new ArrayList<String>();
+			Iterable<Relationship> rels = originalReading.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
+			for (Relationship relationship : rels) {
+				String[] witnesses = (String[]) relationship.getProperty("lexemes");
+				for (int j = 0; j < witnesses.length; j++)
+					allWitnesses.add(witnesses[j]);
+
+				newReading.createRelationshipTo(relationship.getEndNode(), ERelations.NORMAL);
+				relationship.delete();
+			}
+
+			Relationship relationship = originalReading.createRelationshipTo(newReading, ERelations.NORMAL);
+			relationship.setProperty("lexemes", allWitnesses.toArray(new String[allWitnesses.size()]));
+		}
 	}
 
 	/**
