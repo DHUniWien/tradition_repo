@@ -53,15 +53,15 @@ public class Witness implements IResource {
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
-		Node startNode = DatabaseService.getStartNode(tradId,db);
+		Node startNode = DatabaseService.getStartNode(tradId, db);
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
-
+		if (readingModels == null || readingModels.size()==0)
+			return Response.status(Status.NOT_FOUND)
+					.entity("no witness with this id was found").build();
 		for (ReadingModel readingModel : readingModels) {
 			witnessAsText += readingModel.getDn15() + " ";
 		}
-		db.shutdown();
-		if (witnessAsText.length() == 0)
-			return Response.status(Status.NOT_FOUND).build();
+		db.shutdown();		
 		return Response.status(Response.Status.OK)
 				.entity("{\"text\":\"" + witnessAsText.trim() + "\"}").build();
 	}
@@ -81,25 +81,33 @@ public class Witness implements IResource {
 	 */
 	@GET
 	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnessAsPlainTextBetweenRanks(@PathParam("tradId") String tradId,
+	public Response getWitnessAsPlainTextBetweenRanks(
+			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
-			@PathParam("startRank") String startRank,
-			@PathParam("endRank") String endRank) {
+			@PathParam("startRank") String startRankAsString,
+			@PathParam("endRank") String endRankAsString) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
+		long startRank = Long.parseLong(startRankAsString);
+		long endRank = Long.parseLong(endRankAsString);
+		if (endRank <= startRank)
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("end-rank must be larger then start-rank").build();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
+		if (readingModels == null || readingModels.size()==0)
+			return Response.status(Status.NOT_FOUND)
+					.entity("no witness with this id was found").build();
 
 		int includeReading = 0;
 		for (ReadingModel readingModel : readingModels) {
-			if (readingModel.getDn14()==Long.parseLong(startRank))
+			if (readingModel.getDn14() == startRank)
 				includeReading = 1;
-			if (readingModel.getDn14()==Long.parseLong(endRank)) {
+			if (readingModel.getDn14() == endRank) {
 				witnessAsText += readingModel.getDn15();
 				includeReading = 0;
 			}
@@ -135,18 +143,18 @@ public class Witness implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
-		Node startNode = DatabaseService.getStartNode(tradId,db);
+		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
-		if (readingModels.size() == 0)
+		if (readingModels == null || readingModels.size()==0)
 			return Response.status(Status.NOT_FOUND)
-.entity("Could not find a witness with this id").build();
+					.entity("no witness with this id was found").build();
 		db.shutdown();
 		return Response.status(Status.OK).entity(readingModels).build();
 	}
-	
+
 	/**
 	 * gets all readings of a single witness
 	 * 
@@ -171,8 +179,12 @@ public class Witness implements IResource {
 				readingModels.add(tempReading);
 			}
 			tx.success();
+		} catch (Exception exception) {
+			return null;
 		}
 
+		if (readingModels.size()==0)
+			return null;
 		// remove the #END# node if it exists
 		if (readingModels.get(readingModels.size() - 1).getDn15()
 				.equals("#END#"))
