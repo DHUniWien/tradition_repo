@@ -22,8 +22,6 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import Exceptions.DataBaseException;
-
 /**
  * 
  * @author jakob/ido
@@ -49,7 +47,7 @@ public class Witness implements IResource {
 	@Path("string/{tradId}/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsPlainText(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId) throws DataBaseException {
+			@PathParam("textId") String textId) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";

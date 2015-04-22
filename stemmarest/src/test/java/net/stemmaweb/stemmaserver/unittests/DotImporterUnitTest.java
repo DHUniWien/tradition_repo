@@ -36,8 +36,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import Exceptions.DataBaseException;
-
 @RunWith(MockitoJUnitRunner.class)
 public class DotImporterUnitTest {
 	private String tradId;

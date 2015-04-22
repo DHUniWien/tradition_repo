@@ -31,8 +31,6 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import Exceptions.DataBaseException;
-
 /**
  * This class provides methods for exporting Dot File from Neo4J
  * @author sevi
@@ -117,7 +115,7 @@ public class Neo4JToDotParser
     		tx.success();
     	} catch (IOException e) {
 			e.printStackTrace();
-			throw new DataBaseException("Could not write file for export");
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Could not write file for export").build();
 		}
     	
     	db.shutdown();

@@ -8,6 +8,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Iterator;
 
+import javax.ws.rs.core.Response;
+
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -32,7 +34,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import Exceptions.DataBaseException;
+import com.sun.jersey.api.client.ClientResponse;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DotExporterUnitTest {
@@ -127,14 +129,10 @@ public class DotExporterUnitTest {
 	
 	@Test
 	public void testDotExportNotFoundException()
-	{
-		try {
-			parser.parseNeo4J("1002");
-		}
-		catch(DataBaseException e)
-		{
-			assert(true);
-		}
+	{		
+			Response response = parser.parseNeo4J("1002");
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+					response.getStatus());			
 	}
 
 	@Test

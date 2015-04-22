@@ -17,8 +17,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import Exceptions.DataBaseException;
-
 /**
  * 
  * Helper methods for the database
@@ -51,7 +49,7 @@ public class DatabaseService {
 	 *             instead
 	 */
 	@Deprecated
-	public Node getStartNode(String tradId) throws DataBaseException {
+	public Node getStartNode(String tradId) {
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService();
@@ -69,8 +67,7 @@ public class DatabaseService {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				throw new DataBaseException(problemFinder.findPathProblem(
-						tradId, db));
+				return null;
 			} else
 				startNode = nodes.next();
 
@@ -102,9 +99,7 @@ public class DatabaseService {
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				return null;
-				/*throw new DataBaseException(problemFinder.findPathProblem(
-						tradId, db));*/
+				return null;				
 			} else
 				startNode = nodes.next();
 

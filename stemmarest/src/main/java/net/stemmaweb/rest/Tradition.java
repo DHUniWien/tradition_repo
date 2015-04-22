@@ -45,8 +45,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import Exceptions.DataBaseException;
-
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 
@@ -169,18 +167,20 @@ public class Tradition implements IResource {
 
 			try {
 				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				// startNode = getStartNode(relationships);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+				relationships = getRelationships(traditionNode);								
+			
+			if (traditionNode == null){
+				return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+			}
+
+			if (relationships == null){
+				return Response.status(Status.NOT_FOUND).entity("relationships not found").build();
 			}
 
 			startNode = null;
-			try {
 				startNode = DatabaseService.getStartNode(tradId, db);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
+				if (startNode == null)
+				return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
 
 			relationships = startNode.getRelationships(Direction.OUTGOING);
 
@@ -204,6 +204,7 @@ public class Tradition implements IResource {
 		}
 
 		return Response.ok(witlist).build();
+	}
 	}
 
 	@GET
@@ -284,11 +285,8 @@ public class Tradition implements IResource {
 	 * @return
 	 * @throws DataBaseException
 	 */
-	private Iterable<Relationship> getRelationships(Node traditionNode) throws DataBaseException {
-		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);
-
-		if (relations == null)
-			throw new DataBaseException("relationships not found");
+	private Iterable<Relationship> getRelationships(Node traditionNode){
+		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);		
 		return relations;
 	}
 
@@ -300,13 +298,12 @@ public class Tradition implements IResource {
 	 * @return
 	 * @throws DataBaseException
 	 */
-	private Node getTraditionNode(String tradId, ExecutionEngine engine) throws DataBaseException {
+	private Node getTraditionNode(String tradId, ExecutionEngine engine) {
 		ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
 		Iterator<Node> nodes = result.columnAs("n");
 
 		if (!nodes.hasNext())
-			throw new DataBaseException("tradition node not found");
-
+			return null;
 		return nodes.next();
 	}
 

@@ -25,8 +25,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import Exceptions.DataBaseException;
-
 /**
  * This class provides methods for exporting Dot File from Neo4J
  * @author sevi
