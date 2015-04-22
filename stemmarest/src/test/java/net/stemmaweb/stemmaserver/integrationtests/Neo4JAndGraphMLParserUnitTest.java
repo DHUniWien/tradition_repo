@@ -7,12 +7,8 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 
 import javax.ws.rs.core.Response;
-import javax.xml.stream.XMLStreamException;
-
-import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 import net.stemmaweb.stemmaserver.OSDetector;

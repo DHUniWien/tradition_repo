@@ -8,14 +8,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -26,7 +21,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;

@@ -1,12 +1,6 @@
 package net.stemmaweb.services;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
@@ -16,11 +10,8 @@ import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;

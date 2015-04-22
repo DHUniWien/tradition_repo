@@ -2,6 +2,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
@@ -41,6 +42,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
@@ -410,7 +412,7 @@ public class RelationTest {
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
 		actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 		
     	try (Transaction tx = mockDbService.beginTx()) 
@@ -419,6 +421,50 @@ public class RelationTest {
     		Iterator<Relationship> rels = node28.getRelationships(ERelations.RELATIONSHIP).iterator();
     		
     		assertTrue(!rels.hasNext()); // make sure node 28 does not have a relationship now!
+    	} 
+	}
+	
+	@Test
+	public void createRelationshipTestWithCrossRelationConstraintDH39NotDirectlyCloseToEachOther(){
+		RelationshipModel relationship = new RelationshipModel();
+		relationship.setSource("6");
+		relationship.setTarget("20");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("root");
+		relationship.setDe9("teh");
+		
+		// This relationship should be makeable
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
+		
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'unto'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+		
+		relationship.setSource("21");
+		relationship.setTarget(node.getId() + "");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("rood");
+		relationship.setDe9("unto");
+		
+		// this one should not be makeable, due to the cross-relationship-constraint!
+		actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+		
+    	try (Transaction tx = mockDbService.beginTx()) 
+    	{
+    		Node node21 = mockDbService.getNodeById(21L);
+    		Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
+    		
+    		assertTrue(!rels.hasNext()); // make sure node 21 does not have a relationship now!
     	} 
 	}
 	

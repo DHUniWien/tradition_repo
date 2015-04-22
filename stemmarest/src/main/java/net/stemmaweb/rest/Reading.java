@@ -563,16 +563,16 @@ public class Reading implements IResource {
 		final String WITNESS_ID = textId;
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		EvaluatorService evaService = new EvaluatorService();
-		Evaluator wintessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator witnessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
-			Node read = db.getNodeById(readId);
+			Node reading = db.getNodeById(readId);
 
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(wintessEvaluator)
+					.evaluator(witnessEvaluator)
 					.evaluator(Evaluators.toDepth(1))
-					.uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
+					.uniqueness(Uniqueness.NONE).traverse(reading).nodes()) {
 				db.shutdown();
 				if (!new ReadingModel(node).getDn15().equals("#END#"))
 					return Response.ok(new ReadingModel(node)).build();

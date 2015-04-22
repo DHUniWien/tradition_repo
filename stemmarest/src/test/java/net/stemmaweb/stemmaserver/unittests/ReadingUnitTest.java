@@ -34,8 +34,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.sun.jersey.test.framework.JerseyTest;
-
 /**
  * 
  * @author Jakob

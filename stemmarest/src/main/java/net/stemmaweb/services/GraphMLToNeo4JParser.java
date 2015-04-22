@@ -15,10 +15,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -30,8 +28,6 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
