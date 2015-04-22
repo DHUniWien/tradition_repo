@@ -9,12 +9,9 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;

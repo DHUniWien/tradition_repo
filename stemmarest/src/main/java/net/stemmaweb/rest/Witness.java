@@ -144,7 +144,7 @@ public class Witness implements IResource {
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
 		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
-					.entity("Could not found a witness with this id").build();
+.entity("Could not find a witness with this id").build();
 		db.shutdown();
 		return Response.status(Status.OK).entity(readingModels).build();
 	}

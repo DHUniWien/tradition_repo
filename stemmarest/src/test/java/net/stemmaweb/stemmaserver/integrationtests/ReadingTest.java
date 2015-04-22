@@ -655,43 +655,42 @@ public class ReadingTest {
 
 	@Test
 	public void splitReadingTest() {
-		
 		try (Transaction tx = mockDbService.beginTx()) {
 
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
-		Iterator<Node> nodes = result.columnAs("w");
-		assertTrue(nodes.hasNext());
-		Node node = nodes.next();
-		assertFalse(nodes.hasNext());
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
 
-		testNumberOfReadings(29);
+			testNumberOfReadings(29);
 
-		testWitnesses();
+			testWitnesses();
 
-		// split reading
-		ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			// split reading
+			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
-		assertEquals(Status.OK, response.getClientResponseStatus());
-		
-		result = engine.execute("match (w:WORD {dn15:'the'}) return w");
-		nodes = result.columnAs("w");
-		assertTrue(nodes.hasNext());
-		Node the1 = nodes.next();
-		assertTrue(nodes.hasNext());
-		Node the2 = nodes.next();
-		assertTrue(nodes.hasNext());
-		Node the3 = nodes.next();
-		assertFalse(nodes.hasNext());
-		
-		assertEquals((long)17, the2.getProperty("dn14"));
-		assertEquals((long)17, the3.getProperty("dn14"));
+			assertEquals(Status.OK, response.getClientResponseStatus());
 
-		// should contain one reading more now
-		testNumberOfReadings(30);
+			result = engine.execute("match (w:WORD {dn15:'the'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node the1 = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node the2 = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node the3 = nodes.next();
+			assertFalse(nodes.hasNext());
 
-		testWitnesses();
+			assertEquals((long) 17, the2.getProperty("dn14"));
+			assertEquals((long) 17, the3.getProperty("dn14"));
+
+			// should contain one reading more now
+			testNumberOfReadings(30);
+
+			testWitnesses();
 		}
 	}
 	
