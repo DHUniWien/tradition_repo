@@ -71,6 +71,12 @@ public class Relation implements IResource {
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
+			if (wouldProduceCrossRelationship(readingA, readingB, db)) {
+				db.shutdown();
+				return Response.status(Status.CONFLICT)
+						.entity("This relationship creation is not allowed. Would produce cross-relationship.").build();
+			}
+
         	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
         	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
 //        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
@@ -99,6 +105,46 @@ public class Relation implements IResource {
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
     
+	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
+		if (didFindCrossRelationship(firstReading, secondReading, Direction.OUTGOING, Direction.INCOMING, db))
+			return true;
+		if (didFindCrossRelationship(firstReading, secondReading, Direction.INCOMING, Direction.OUTGOING, db))
+			return true;
+		return false;
+	}
+
+	private boolean didFindCrossRelationship(Node firstReading, Node secondReading, Direction firstDirection,
+			Direction secondDirection, GraphDatabaseService db) {
+		// for (Node firstReadingNextNode :
+		// db.traversalDescription().depthFirst()
+		// .relationships(ERelations.NORMAL,
+		// firstDirection).evaluator(Evaluators.excludeStartPosition())
+		// .uniqueness(Uniqueness.NONE).traverse(firstReading).nodes())
+		// for (Relationship rel :
+		// firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
+		// if (!rel.getProperty("de11").equals("transposition") &&
+		// !rel.getProperty("de11").equals("repetition"))
+		// for (Node secondReadingNextNode :
+		// db.traversalDescription().depthFirst()
+		// .relationships(ERelations.NORMAL, secondDirection)
+		// .evaluator(Evaluators.excludeStartPosition())
+		// .uniqueness(Uniqueness.NONE).traverse(secondReading).nodes())
+		// if
+		// (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode))
+		// return true;
+
+		for (Relationship firstNormalRel : firstReading.getRelationships(firstDirection, ERelations.NORMAL)) {
+			Node nextNode = firstNormalRel.getOtherNode(firstReading);
+			for (Relationship rel : nextNode.getRelationships(ERelations.RELATIONSHIP))
+				if (!rel.getProperty("de11").equals("transposition") && !rel.getProperty("de11").equals("repetition"))
+					for (Relationship secondNormalRel : secondReading.getRelationships(secondDirection,
+							ERelations.NORMAL))
+						if (rel.getOtherNode(nextNode).equals(secondNormalRel.getOtherNode(secondReading)))
+							return true;
+		}
+		return false;
+	}
+
     /**
      * Get a list of all readings
      * @param textId
