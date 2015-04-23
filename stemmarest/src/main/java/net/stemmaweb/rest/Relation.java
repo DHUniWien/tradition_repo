@@ -13,7 +13,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 
@@ -107,58 +106,37 @@ public class Relation implements IResource {
 
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
-    
-	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
 
-		if (didFindCrossRelationship(firstReading, Direction.OUTGOING, secondReading, Direction.INCOMING, db))
-			return true;
-		if (didFindCrossRelationship(firstReading, Direction.INCOMING, secondReading, Direction.OUTGOING, db))
-			return true;
+	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
+		Long firstRank = (Long) firstReading.getProperty("dn14");
+		Long secondRank = (Long) secondReading.getProperty("dn14");
+		Direction firstDirection, secondDirection;
+
+		if (firstRank > secondRank) {
+			firstDirection = Direction.INCOMING;
+			secondDirection = Direction.OUTGOING;
+		} else {
+			firstDirection = Direction.OUTGOING;
+			secondDirection = Direction.INCOMING;
+		}
+
+		int depth = (int) ((Long) firstReading.getProperty("dn14") - (Long) secondReading.getProperty("dn14")) + 1;
+
+		for (Node firstReadingNextNode : getNextNodes(firstReading, db, firstDirection, depth))
+			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
+				if (!rel.getProperty("de11").equals("transposition") && !rel.getProperty("de11").equals("repetition"))
+					for (Node secondReadingNextNode : getNextNodes(secondReading, db, secondDirection, depth))
+						if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode))
+							return true;
+
 		return false;
 	}
 
-	private boolean didFindCrossRelationship(Node firstReading, Direction firstDirection, Node secondReading,
-			Direction secondDirection, GraphDatabaseService db) {
-		int depth = (int) ((Long) firstReading.getProperty("dn14") - (Long) secondReading.getProperty("dn14")) + 1;
-		ResourceIterable<Node> firstReadingNodes = db.traversalDescription().breadthFirst()
-				.relationships(ERelations.NORMAL, firstDirection).evaluator(Evaluators.excludeStartPosition())
-				.evaluator(Evaluators.toDepth(depth)).uniqueness(Uniqueness.NODE_GLOBAL).traverse(firstReading).nodes();
-		ArrayList<String> firstTexts = new ArrayList<String>();
-		for (Node firstReadingNextNode : firstReadingNodes)
-			firstTexts.add(new ReadingModel(firstReadingNextNode).getDn15());
-		for (Node firstReadingNextNode : firstReadingNodes) {
-			ReadingModel readingModel = new ReadingModel(firstReadingNextNode);
-			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
-				if (!rel.getProperty("de11").equals("transposition") && !rel.getProperty("de11").equals("repetition")) {
-					ResourceIterable<Node> secondReadingNodes = db.traversalDescription().breadthFirst()
-							.relationships(ERelations.NORMAL, secondDirection)
-							.evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
-							.uniqueness(Uniqueness.NODE_GLOBAL).traverse(secondReading).nodes();
-					ArrayList<String> secondTexts = new ArrayList<String>();
-					for (Node secondReadingNode : secondReadingNodes)
-						secondTexts.add(new ReadingModel(secondReadingNode).getDn15());
-					for (Node secondReadingNextNode : secondReadingNodes)
-						if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode))
-							return true;
-				}
-
-		}
-
-		// for (Relationship firstNormalRel :
-		// firstReading.getRelationships(firstDirection, ERelations.NORMAL)) {
-		// Node nextNode = firstNormalRel.getOtherNode(firstReading);
-		// for (Relationship rel :
-		// nextNode.getRelationships(ERelations.RELATIONSHIP))
-		// if (!rel.getProperty("de11").equals("transposition") &&
-		// !rel.getProperty("de11").equals("repetition"))
-		// for (Relationship secondNormalRel :
-		// secondReading.getRelationships(secondDirection,
-		// ERelations.NORMAL))
-		// if
-		// (rel.getOtherNode(nextNode).equals(secondNormalRel.getOtherNode(secondReading)))
-		// return true;
-		// }
-		return false;
+	private ResourceIterable<Node> getNextNodes(Node firstReading, GraphDatabaseService db, Direction firstDirection,
+			int depth) {
+		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, firstDirection)
+				.evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
+				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(firstReading).nodes();
 	}
 
     /**
