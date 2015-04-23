@@ -439,6 +439,14 @@ public class RelationTest {
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
+		System.out.println(actualResponse.getEntity(String.class));
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			Relationship rel = mockDbService.getRelationshipById(48);
+			assertEquals("root", rel.getStartNode().getProperty("dn15"));
+			assertEquals("teh", rel.getEndNode().getProperty("dn15"));
+		}
+
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'unto'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
