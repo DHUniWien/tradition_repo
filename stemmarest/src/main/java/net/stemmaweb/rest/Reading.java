@@ -31,6 +31,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
@@ -292,17 +293,28 @@ public class Reading implements IResource {
 						.build();
 			}
 
-			if (containClassOneRelationships(stayingReading, deletingReading)) {
-				// graph has to stay acyclic
-				mergeReadings(stayingReading, deletingReading);
-				if (isCyclic(db, tradId)) {
-					tx.failure();
+			// if (containClassOneRelationships(stayingReading,
+			// deletingReading)) {
+			// // graph has to stay acyclic
+			// mergeReadings(stayingReading, deletingReading);
+			// if (isCyclic(db, tradId)) {
+			// tx.failure();
+			// db.shutdown();
+			// return Response.status(Status.INTERNAL_SERVER_ERROR)
+			// .entity("Readings to be merged would make the graph cyclic").build();
+			// }
+			// } else
+			// mergeReadings(stayingReading, deletingReading);
+
+			if (containClassOneRelationships(stayingReading, deletingReading))
+				if (wouldGetCyclic(db, tradId, stayingReading, deletingReading)) {
 					db.shutdown();
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("Readings to be merged would make the graph cyclic").build();
 				}
-			} else
-				mergeReadings(stayingReading, deletingReading);
+
+			// finally merge readings ;-)
+			mergeReadings(stayingReading, deletingReading);
 
 			tx.success();
 		} catch (Exception e) {
@@ -313,6 +325,34 @@ public class Reading implements IResource {
 		}
 
 		return Response.ok("Successfully merged readings").build();
+	}
+	
+	private boolean wouldGetCyclic(GraphDatabaseService db, String tradId, Node stayingReading, Node deletingReading) {
+		boolean foundStayingReading, foundDeletingReading;
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		Traverser traverser = db.traversalDescription().depthFirst()
+				.relationships(ERelations.NORMAL, Direction.OUTGOING).uniqueness(Uniqueness.NONE)
+				.evaluator(Evaluators.all()).traverse(startNode);
+		// Iterator it = traverser.iterator();
+		// int counter = 0;
+		// while (it.hasNext()) {
+		// it.next();
+		// counter++;
+		// }
+		for (org.neo4j.graphdb.Path path : traverser) {
+			foundStayingReading = false;
+			foundDeletingReading = false;
+			for (Node node : path.nodes()) {
+				if (node.equals(stayingReading))
+					foundStayingReading = true;
+				if (node.equals(stayingReading))
+					foundStayingReading = true;
+			}
+			if (foundStayingReading && foundDeletingReading)
+				return true;
+		}
+
+		return false;
 	}
 
 	private boolean isCyclic(GraphDatabaseService db, String tradId) {
