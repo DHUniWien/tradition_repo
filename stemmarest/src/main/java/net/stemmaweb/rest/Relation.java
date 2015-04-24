@@ -132,11 +132,11 @@ public class Relation implements IResource {
 		return false;
 	}
 
-	private ResourceIterable<Node> getNextNodes(Node firstReading, GraphDatabaseService db, Direction firstDirection,
+	private ResourceIterable<Node> getNextNodes(Node reading, GraphDatabaseService db, Direction direction,
 			int depth) {
-		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, firstDirection)
+		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, direction)
 				.evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
-				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(firstReading).nodes();
+				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(reading).nodes();
 	}
 
     /**

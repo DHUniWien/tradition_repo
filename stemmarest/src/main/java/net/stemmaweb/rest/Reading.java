@@ -124,18 +124,18 @@ public class Reading implements IResource {
 							.entity("The witness list has to contain at least one witness").build();
 				}
 
-				if (allWitnesses.size() < 2) {
-					db.shutdown();
-					return Response.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("The witness has to be in at least two witnesses").build();
-				}
-
 				for (String newWitness : newWitnesses)
 					if (!allWitnesses.contains(newWitness)) {
 						db.shutdown();
 						return Response.status(Status.INTERNAL_SERVER_ERROR)
 								.entity("The reading has to be in the witnesses to be duplicated").build();
 					}
+
+				if (allWitnesses.size() < 2) {
+					db.shutdown();
+					return Response.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("The witness has to be in at least two witnesses").build();
+				}
 
 				duplicateReading(duplicateModel.getWitnesses(),
 						originalReading, db.createNode());
@@ -252,8 +252,6 @@ public class Reading implements IResource {
 		Node stayingReading = null;
 		Node deletingReading = null;
 
-		boolean isCyclic = false;
-
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		try (Transaction tx = db.beginTx()) {
@@ -299,7 +297,9 @@ public class Reading implements IResource {
 				mergeReadings(stayingReading, deletingReading);
 				if (isCyclic(db, tradId)) {
 					tx.failure();
-					isCyclic = true;
+					db.shutdown();
+					return Response.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("Readings to be merged would make the graph cyclic").build();
 				}
 			} else
 				mergeReadings(stayingReading, deletingReading);
@@ -312,30 +312,18 @@ public class Reading implements IResource {
 			db.shutdown();
 		}
 
-		if (isCyclic)
-			return Response
-					.status(Status.INTERNAL_SERVER_ERROR)
-					.entity("Readings to be merged would make the graph cyclic")
-					.build();
-
 		return Response.ok("Successfully merged readings").build();
 	}
 
 	private boolean isCyclic(GraphDatabaseService db, String tradId) {
-		try (Transaction tx = db.beginTx()) {
-			Node startNode = DatabaseService.getStartNode(tradId, db);
-			ArrayList<Node> nodes = new ArrayList<Node>();
-			for (Node node : db.traversalDescription()
-					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(Evaluators.all())
-					.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-					.traverse(startNode).nodes()) {
-				if (!nodes.contains(node))
-					nodes.add(node);
-				else
-					return true;
-			}
-			tx.success();
+		Node startNode = DatabaseService.getStartNode(tradId, db);
+		ArrayList<Node> nodes = new ArrayList<Node>();
+		for (Node node : db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
+				.evaluator(Evaluators.all()).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode).nodes()) {
+			if (!nodes.contains(node))
+				nodes.add(node);
+			else
+				return true;
 		}
 		return false;
 	}
