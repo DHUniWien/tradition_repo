@@ -59,7 +59,7 @@ import com.sun.jersey.test.framework.JerseyTest;
 public class ReadingTest {
 	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
 	private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-	private String expectedWitnessC = "{\"text\":\"when showers sweet with april fruit teh drought of march has pierced teh rood\"}";
+	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit teh drought of march has pierced teh rood\"}";
 
 	private String tradId;
 	/*
