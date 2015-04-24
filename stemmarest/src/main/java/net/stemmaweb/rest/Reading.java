@@ -115,13 +115,27 @@ public class Reading implements IResource {
 							.entity("no reading with this id found: " + readId)
 							.build();
 				}
+				List<String> newWitnesses = duplicateModel.getWitnesses();
+				List<String> allWitnesses = allWitnessesOfReading(originalReading);
 
-				if (!canBeDuplicated(originalReading,
-						duplicateModel.getWitnesses())) {
+				if (newWitnesses.isEmpty()) {
 					db.shutdown();
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("Duplication not possible").build();
+							.entity("The witness list has to contain at least one witness").build();
 				}
+
+				if (allWitnesses.size() < 2) {
+					db.shutdown();
+					return Response.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("The witness has to be in at least two witnesses").build();
+				}
+
+				for (String newWitness : newWitnesses)
+					if (!allWitnesses.contains(newWitness)) {
+						db.shutdown();
+						return Response.status(Status.INTERNAL_SERVER_ERROR)
+								.entity("The reading has to be in the witnesses to be duplicated").build();
+					}
 
 				duplicateReading(duplicateModel.getWitnesses(),
 						originalReading, db.createNode());
@@ -135,6 +149,20 @@ public class Reading implements IResource {
 			db.shutdown();
 		}
 		return Response.ok("Successfully duplicated readings").build();
+	}
+
+	private List<String> allWitnessesOfReading(Node originalReading) {
+		// test if there are witnesses to be duplicated for which no witnesses
+		// in the readings relationships exist
+		List<String> allWitnesses = new LinkedList<String>();
+		String[] currentWitnesses;
+		for (Relationship relationship : originalReading.getRelationships(ERelations.NORMAL)) {
+			currentWitnesses = (String[]) relationship.getProperty("lexemes");
+			for (String currentWitness : currentWitnesses)
+				if (!allWitnesses.contains(currentWitness))
+					allWitnesses.add(currentWitness);
+		}
+		return allWitnesses;
 	}
 
 	private void duplicateReading(List<String> newWitnesses,
@@ -204,32 +232,6 @@ public class Reading implements IResource {
 				originalRel.setProperty("lexemes", stayingWitnesses
 						.toArray(new String[stayingWitnesses.size()]));
 		}
-	}
-
-	private boolean canBeDuplicated(Node originalReading, List<String> witnesses) {
-		if (witnesses.isEmpty())
-			return false;
-
-		// test if there are witnesses to be duplicated for which no witnesses
-		// in the readings relationships exist
-		List<String> allWitnesses = new LinkedList<String>();
-		String[] currentWitnesses;
-		for (Relationship relationship : originalReading
-				.getRelationships(ERelations.NORMAL)) {
-			currentWitnesses = (String[]) relationship.getProperty("lexemes");
-			for (String currentWitness : currentWitnesses)
-				if (!allWitnesses.contains(currentWitness))
-					allWitnesses.add(currentWitness);
-		}
-		for (String newWitness : witnesses)
-			if (!allWitnesses.contains(newWitness))
-				return false;
-
-		// the reading must be in at least two witnesses
-		if (allWitnesses.size() < 2)
-			return false;
-
-		return true;
 	}
 
 	/**
@@ -477,7 +479,7 @@ public class Reading implements IResource {
 				db.shutdown();
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("There has to be a rank-gap after a reading to be splitted.")
+						.entity("There has to be a rank-gap after a reading to be splitted")
 						.build();
 			}
 
