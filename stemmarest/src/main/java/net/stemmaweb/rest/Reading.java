@@ -143,7 +143,7 @@ public class Reading implements IResource {
 
 			tx.success();
 		} catch (Exception e) {
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage())
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage())
 					.build();
 		} finally {
 			db.shutdown();
@@ -306,7 +306,7 @@ public class Reading implements IResource {
 
 			tx.success();
 		} catch (Exception e) {
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage())
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage())
 					.build();
 		} finally {
 			db.shutdown();
@@ -475,7 +475,7 @@ public class Reading implements IResource {
 
 			tx.success();
 		} catch (Exception e) {
-			return Response.status(Status.NOT_FOUND).entity(e.getMessage())
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage())
 					.build();
 		} finally {
 			db.shutdown();

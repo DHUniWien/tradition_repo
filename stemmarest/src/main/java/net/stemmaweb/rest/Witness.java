@@ -41,7 +41,6 @@ public class Witness implements IResource {
 	 * @param textId
 	 *            : the id of the witness
 	 * @return a witness as a string
-	 * @throws DataBaseException
 	 */
 	@GET
 	@Path("string/{tradId}/{textId}")
@@ -77,10 +76,10 @@ public class Witness implements IResource {
 	 * @param textId
 	 *            : the id of the witness
 	 * @return a witness as a string
-	 * @throws DataBaseException
 	 */
 	@GET
 	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsPlainTextBetweenRanks(
 			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
@@ -131,7 +130,6 @@ public class Witness implements IResource {
 	 * @param textId
 	 *            : the id of the witness
 	 * @return a witness as a list of readings
-	 * @throws DataBaseException
 	 */
 	@GET
 	@Path("list/{tradId}/{textId}")

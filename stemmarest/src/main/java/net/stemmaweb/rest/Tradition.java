@@ -59,7 +59,6 @@ public class Tradition implements IResource {
 
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
-
 	/**
 	 * 
 	 * @param textInfo
@@ -72,13 +71,11 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
 
-
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
-
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
