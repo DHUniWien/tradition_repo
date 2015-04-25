@@ -160,48 +160,46 @@ public class Tradition implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			Node traditionNode = null;
 			Iterable<Relationship> relationships = null;
-			Node startNode = null;
+			Node startNode = DatabaseService.getStartNode(tradId, db);
 
 			try {
 				traditionNode = getTraditionNode(tradId, engine);
 				relationships = getRelationships(traditionNode);								
 			
-			if (traditionNode == null){
-				return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
-			}
-
-			if (relationships == null){
-				return Response.status(Status.NOT_FOUND).entity("relationships not found").build();
-			}
-
-			startNode = null;
-				startNode = DatabaseService.getStartNode(tradId, db);
-				if (startNode == null)
-				return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
-
-			relationships = startNode.getRelationships(Direction.OUTGOING);
-
-			if (relationships == null)
-				return Response.status(Status.NOT_FOUND).entity("start node not found").build();
-
-			for (Relationship rel : relationships) {
-				for (String id : ((String[]) rel.getProperty("lexemes"))) {
-					WitnessModel witM = new WitnessModel();
-					witM.setId(id);
-
-					witlist.add(witM);
+				if (traditionNode == null){
+					return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 				}
-			}
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
+	
+				if (relationships == null){
+					return Response.status(Status.NOT_FOUND).entity("relationships not found").build();
+				}
+	
+				if (startNode == null)
+					return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
+	
+				relationships = startNode.getRelationships(Direction.OUTGOING);
+	
+				if (relationships == null)
+					return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+	
+				for (Relationship rel : relationships) {
+					for (String id : ((String[]) rel.getProperty("lexemes"))) {
+						WitnessModel witM = new WitnessModel();
+						witM.setId(id);
+	
+						witlist.add(witM);
+					}
+				}
+	
+				tx.success();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} 
+		}finally {
 			db.shutdown();
 		}
-
+				
 		return Response.ok(witlist).build();
-	}
 	}
 
 	@GET
@@ -326,12 +324,12 @@ public class Tradition implements IResource {
 	 */
 	@DELETE
 	@Path("{tradId}")
-	public Response deleteUserById(@PathParam("tradId") String tradId) {
+	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return userId");
+			ExecutionResult result = engine.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return tradId");
 			Iterator<Node> nodes = result.columnAs("tradId");
 
 			if (nodes.hasNext()) {

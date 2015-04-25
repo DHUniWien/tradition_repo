@@ -34,8 +34,10 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
@@ -414,6 +416,16 @@ public class ReadingTest {
 			Node secondNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
+			assertTrue(firstNode.hasRelationship(ERelations.RELATIONSHIP));
+			Relationship firstRel = firstNode.getSingleRelationship(ERelations.RELATIONSHIP, Direction.BOTH);
+			assertEquals("grammatical", firstRel.getProperty("de11"));
+			assertEquals("when", firstRel.getOtherNode(firstNode).getProperty("dn15"));
+
+			assertTrue(secondNode.hasRelationship(ERelations.RELATIONSHIP));
+			Relationship secondRel = secondNode.getSingleRelationship(ERelations.RELATIONSHIP, Direction.BOTH);
+			assertEquals("transposition", secondRel.getProperty("de11"));
+			assertEquals("the root", secondRel.getOtherNode(secondNode).getProperty("dn15"));
+
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
 					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
@@ -429,20 +441,19 @@ public class ReadingTest {
 			result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
-			Node staying = nodes.next();
+			Node stayingNode = nodes.next();
 			assertFalse(nodes.hasNext());
+
+			// test relationships
+			for (Relationship rel : stayingNode.getRelationships(ERelations.RELATIONSHIP)) {
+				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("when"))
+					assertEquals("grammatical", rel.getProperty("de11"));
+				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("the root"))
+					assertEquals("transposition", rel.getProperty("de11"));
+			}
 
 			tx.success();
 		}
-		//
-		// assertFalse(firstNode.hasRelationship(ERelations.RELATIONSHIP));
-		// assertTrue(secondNode.hasRelationship(ERelations.RELATIONSHIP));
-		//
-		// for (Relationship oldRel :
-		// firstNode.getRelationships(ERelations.RELATIONSHIP))
-		// for (Relationship stayingRel :
-		// staying.getRelationships(ERelations.RELATIONSHIP))
-
 	}
 
 	/**
@@ -513,8 +524,6 @@ public class ReadingTest {
 		}
 	}
 
-	// still fails: isCyclic() method in mergeReadings does always return true,
-	// but I do not know why.
 	@Test
 	public void mergeReadingsWithClassOneRelationshipStaysAcyclicTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
