@@ -9,6 +9,7 @@ import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
@@ -194,6 +195,14 @@ public class TraditionTest {
     	assertEquals(trad2.getId(), lastTradition.getId());
     	assertEquals(trad2.getName(), lastTradition.getName());
 	}
+	
+	@Test
+	public void getAllTraditionsWithParameterNotFoundTest()
+	{
+		ClientResponse resp = jerseyTest.resource().path("/tradition/all/" + 2342)
+    			.get(ClientResponse.class);
+    	assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+	}
 
 	@Test
 	public void getAllRelationshipsTest() {
@@ -231,11 +240,20 @@ public class TraditionTest {
 	}
 	
 	@Test
-	public void getAllWitnessesTest() {
-		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
-		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)
-				.post(ClientResponse.class, jsonPayload);
+	public void getAllRelationshipsCorrectAmountTest() {
 
+		List<RelationshipModel> relationships = jerseyTest.resource()
+				.path("/tradition/relation/" + tradId + "/relationships")
+				.get(new GenericType<List<RelationshipModel>>() {
+				});
+
+		assertEquals(3, relationships.size());
+
+	}
+	
+	@Test
+	public void getAllWitnessesTest() {
+		
 		WitnessModel witA = new WitnessModel();
 		witA.setId("A");
 		WitnessModel witB = new WitnessModel();
@@ -257,6 +275,25 @@ public class TraditionTest {
 		assertEquals(witC.getId(),witLoaded2.getId());
 		
 
+	}
+	
+	@Test
+	public void getAllWitnessesTraditionNotFoundTest() {
+
+		ClientResponse resp = jerseyTest.resource()
+				.path("/tradition/witness/" + 10000)
+				.get(ClientResponse.class);
+		
+		assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+		
+	}
+	
+	@Test
+	public void getDotOfNonExistentTraditionTest()
+	{
+		ClientResponse resp = jerseyTest.resource().path("/tradition/getdot/" + 10000).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		
+		assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
 	}
 	
 	@Test

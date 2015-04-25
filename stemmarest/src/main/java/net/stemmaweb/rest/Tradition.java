@@ -163,17 +163,11 @@ public class Tradition implements IResource {
 			Node startNode = DatabaseService.getStartNode(tradId, db);
 
 			try {
-				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);								
+				traditionNode = getTraditionNode(tradId, engine);								
 			
 				if (traditionNode == null){
 					return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 				}
-	
-				if (relationships == null){
-					return Response.status(Status.NOT_FOUND).entity("relationships not found").build();
-				}
-	
 				if (startNode == null)
 					return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
 	
@@ -278,7 +272,6 @@ public class Tradition implements IResource {
 	 * 
 	 * @param traditionNode
 	 * @return
-	 * @throws DataBaseException
 	 */
 	private Iterable<Relationship> getRelationships(Node traditionNode){
 		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);		
@@ -291,7 +284,6 @@ public class Tradition implements IResource {
 	 * @param tradId
 	 * @param engine
 	 * @return
-	 * @throws DataBaseException
 	 */
 	private Node getTraditionNode(String tradId, ExecutionEngine engine) {
 		ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
@@ -457,11 +449,20 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDot(@PathParam("tradId") String tradId) {
 		
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		Neo4JToDotParser parser = new Neo4JToDotParser(db);
-		Response resp = parser.parseNeo4J(tradId);
-		
 		String filename = "upload/" + "output.dot";
+		
+		File file = new File(filename);
+		file.delete();
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		ExecutionEngine engine = new ExecutionEngine(db);
+		if(getTraditionNode(tradId,engine) == null)
+			return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+		
+
+		Neo4JToDotParser parser = new Neo4JToDotParser(db);
+		parser.parseNeo4J(tradId);
+
+		
 		
 		String everything = "";
 		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
