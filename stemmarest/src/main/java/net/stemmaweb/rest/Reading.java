@@ -33,6 +33,8 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+import scala.util.control.Exception.Finally;
+
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 @Path("reading")
 public class Reading implements IResource {
@@ -595,7 +597,7 @@ public class Reading implements IResource {
 					.evaluator(witnessEvaluator)
 					.evaluator(Evaluators.toDepth(1))
 					.uniqueness(Uniqueness.NONE).traverse(reading).nodes()) {
-				db.shutdown();
+
 				if (!new ReadingModel(node).getDn15().equals("#END#"))
 					return Response.ok(new ReadingModel(node)).build();
 				else
@@ -604,8 +606,11 @@ public class Reading implements IResource {
 							.entity("this was the last reading of this witness")
 							.build();
 			}
+		} catch(Exception e) {
+			System.out.println(e.getMessage());
+		}finally {
+			db.shutdown();
 		}
-		db.shutdown();
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
 	}
@@ -639,7 +644,7 @@ public class Reading implements IResource {
 					.evaluator(wintessEvaluator)
 					.evaluator(Evaluators.toDepth(1))
 					.uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
-				db.shutdown();
+
 				if (!new ReadingModel(node).getDn15().equals("#START#"))
 					return Response.ok(new ReadingModel(node)).build();
 				else
@@ -648,11 +653,16 @@ public class Reading implements IResource {
 							.entity("there is no previous reading to this reading")
 							.build();
 			}
-		}
-		db.shutdown();
-		return Response.status(Status.NOT_FOUND)
-				.entity("given readings not found").build();	}
+		} finally {
 
+			db.shutdown();
+		}
+		return Response.status(Status.NOT_FOUND)
+				.entity("given readings not found").build();	
+	}
+
+
+	
 	@GET
 	@Path("/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -747,7 +757,7 @@ public class Reading implements IResource {
 		if (isEmpty)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-
+		db.shutdown();
 		return Response.ok(identicalReadings).build();
 	}
 
@@ -784,7 +794,7 @@ public class Reading implements IResource {
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-
+		db.shutdown();
 		return Response.ok(couldBeIdenticalReadings).build();
 	}
 
@@ -822,9 +832,7 @@ public class Reading implements IResource {
 					couldBeIdenticalCheck(sameText, couldBeIdenticalReadings,
 							db);
 			}
-		} finally {
-			db.shutdown();
-		}
+		} 
 
 		return couldBeIdenticalReadings;
 	}
@@ -906,9 +914,7 @@ public class Reading implements IResource {
 				couldBeIdenticalReadings.add(couldBeIdentical);
 		}
 
-		finally {
-			db.shutdown();
-		}
+
 
 	}
 
@@ -927,9 +933,7 @@ public class Reading implements IResource {
 					readings.add(node);
 
 			}
-		} finally {
-			db.shutdown();
-		}
+		} 
 		return readings;
 	}
 

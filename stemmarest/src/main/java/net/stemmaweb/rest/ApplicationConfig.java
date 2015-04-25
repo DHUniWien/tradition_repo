@@ -25,6 +25,7 @@ public class ApplicationConfig extends Application {
         s.add(Tradition.class);
         s.add(Relation.class);
         s.add(Stemma.class);
+        s.add(Reading.class);
         
         return s;
     }
