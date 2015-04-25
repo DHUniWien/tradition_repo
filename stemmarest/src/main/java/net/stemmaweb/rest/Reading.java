@@ -33,8 +33,6 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import scala.util.control.Exception.Finally;
-
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 @Path("reading")
 public class Reading implements IResource {
@@ -495,6 +493,12 @@ public class Reading implements IResource {
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("A reading to be splitted has to contain at least 2 words")
 						.build();
+			}
+
+			if (originalReading.hasRelationship(ERelations.RELATIONSHIP)) {
+				db.shutdown();
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("A reading to be splitted cannot be part of any relationship").build();
 			}
 
 			if (!hasRankGap(originalReading, splittedWords.length)) {
