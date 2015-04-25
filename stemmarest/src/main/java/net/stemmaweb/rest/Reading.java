@@ -293,19 +293,6 @@ public class Reading implements IResource {
 						.build();
 			}
 
-			// if (containClassOneRelationships(stayingReading,
-			// deletingReading)) {
-			// // graph has to stay acyclic
-			// mergeReadings(stayingReading, deletingReading);
-			// if (isCyclic(db, tradId)) {
-			// tx.failure();
-			// db.shutdown();
-			// return Response.status(Status.INTERNAL_SERVER_ERROR)
-			// .entity("Readings to be merged would make the graph cyclic").build();
-			// }
-			// } else
-			// mergeReadings(stayingReading, deletingReading);
-
 			if (containClassOneRelationships(stayingReading, deletingReading))
 				if (wouldGetCyclic(db, tradId, stayingReading, deletingReading)) {
 					db.shutdown();
@@ -328,43 +315,36 @@ public class Reading implements IResource {
 	}
 	
 	private boolean wouldGetCyclic(GraphDatabaseService db, String tradId, Node stayingReading, Node deletingReading) {
-		boolean foundStayingReading, foundDeletingReading;
 		Node startNode = DatabaseService.getStartNode(tradId, db);
+
+		// get depth to significantly reduce number of paths
+		int depth = 0;
+		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
+				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(startNode).nodes()) {
+			depth++;
+			if (node.getProperty("dn15").equals("#END#"))
+				break;
+		}
+
+		boolean foundStayingReading, foundDeletingReading;
 		Traverser traverser = db.traversalDescription().depthFirst()
 				.relationships(ERelations.NORMAL, Direction.OUTGOING).uniqueness(Uniqueness.NONE)
-				.evaluator(Evaluators.all()).traverse(startNode);
-		// Iterator it = traverser.iterator();
-		// int counter = 0;
-		// while (it.hasNext()) {
-		// it.next();
-		// counter++;
-		// }
+				.evaluator(Evaluators.fromDepth(depth)).traverse(startNode);
+
 		for (org.neo4j.graphdb.Path path : traverser) {
 			foundStayingReading = false;
 			foundDeletingReading = false;
+			// check if both readings are present in the path
 			for (Node node : path.nodes()) {
 				if (node.equals(stayingReading))
 					foundStayingReading = true;
-				if (node.equals(stayingReading))
-					foundStayingReading = true;
+				if (node.equals(deletingReading))
+					foundDeletingReading = true;
 			}
 			if (foundStayingReading && foundDeletingReading)
 				return true;
 		}
 
-		return false;
-	}
-
-	private boolean isCyclic(GraphDatabaseService db, String tradId) {
-		Node startNode = DatabaseService.getStartNode(tradId, db);
-		ArrayList<Node> nodes = new ArrayList<Node>();
-		for (Node node : db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.evaluator(Evaluators.all()).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode).nodes()) {
-			if (!nodes.contains(node))
-				nodes.add(node);
-			else
-				return true;
-		}
 		return false;
 	}
 
