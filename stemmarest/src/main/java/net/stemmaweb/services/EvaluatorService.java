@@ -31,6 +31,32 @@ public class EvaluatorService {
 		};
 		return e;
 	}
+	
+	public Evaluator getEvaluatorForStemma(String nodeId) {
+		Evaluator e = new Evaluator() {
+			@Override
+			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
 
+				if (path.length() == 0)
+					return Evaluation.EXCLUDE_AND_CONTINUE;
+
+				boolean includes = false;
+				boolean continues = false;
+
+				if (path.lastRelationship().hasProperty("id")) {
+					String[] arg = (String[]) path.lastRelationship()
+							.getProperty("id");
+					for (String str : arg) {
+						if (str.equals(nodeId)) {
+							includes = true;
+							continues = true;
+						}
+					}
+				}
+				return Evaluation.of(includes, continues);
+			}
+		};
+		return e;
+	}
 
 }

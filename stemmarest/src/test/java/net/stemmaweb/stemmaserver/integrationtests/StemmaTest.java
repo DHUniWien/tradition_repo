@@ -216,6 +216,62 @@ public class StemmaTest {
 		assertEquals(input, str);
 
 	}
+	
+	@Test
+	public void reorientGraphStemmaTest()
+	{
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		
+		 String stemmaTitle = "Semstem 1402333041_0";
+		 String newNodeId = "C";
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
+					tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
+					stemmaTitle +"'}) return n");
+    		Iterator<Node> stNodes = result1.columnAs("n");
+    		assertTrue(stNodes.hasNext());
+			Node startNodeStemma = stNodes.next();
+			
+			Iterable<Relationship> rel1 = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
+			assertTrue(rel1.iterator().hasNext());
+			assertEquals("0",rel1.iterator().next().getEndNode().getProperty("id").toString());
+			
+			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ newNodeId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+			
+			Iterable<Relationship> rel2 = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
+			assertTrue(rel2.iterator().hasNext());
+			assertEquals(newNodeId,rel2.iterator().next().getEndNode().getProperty("id").toString());
+		
+			tx.success();
+		}
+
+	}
+	
+	@Test
+	public void reorientGraphStemmaNoNodesTest()
+	{
+		
+		 String stemmaTitle = "Semstem 1402333041_0";
+		 String falseNode = "X";
+		 String rightNode = "C";
+		 String falseTitle = "X";
+
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			
+			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ falseNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
+		
+			ClientResponse actualStemmaResponse2 = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+falseTitle+"/"+ rightNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse2.getStatus());
+			
+			tx.success();
+		}
+
+	}
+	
 	/**
 	 * Shut down the jersey server
 	 * 
