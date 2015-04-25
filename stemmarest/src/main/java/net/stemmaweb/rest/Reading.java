@@ -475,7 +475,7 @@ public class Reading implements IResource {
 	public Response splitReading(@PathParam("tradId") String tradId,
 			@PathParam("readId") long readId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
+		ArrayList<ReadingModel> createdNodes = null;
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
@@ -505,7 +505,7 @@ public class Reading implements IResource {
 						.build();
 			}
 
-			splitReadings(db, originalReading, splittedWords);
+			createdNodes = splitReadings(db, originalReading, splittedWords);
 
 			tx.success();
 		} catch (Exception e) {
@@ -514,7 +514,7 @@ public class Reading implements IResource {
 		} finally {
 			db.shutdown();
 		}
-		return Response.ok("Successfully split up reading").build();
+		return Response.ok(createdNodes).build();
 	}
 
 	private boolean hasRankGap(Node originalReading, int numberOfWords) {
@@ -532,10 +532,11 @@ public class Reading implements IResource {
 		return false;
 	}
 
-	private void splitReadings(GraphDatabaseService db, Node originalReading,
+	private ArrayList<ReadingModel> splitReadings(GraphDatabaseService db, Node originalReading,
 			String[] splittedWords) {
+		ArrayList<ReadingModel> createdNodes = new ArrayList<ReadingModel>();
 		originalReading.setProperty("dn15", splittedWords[0]);
-
+		createdNodes.add(new ReadingModel(originalReading));
 		for (int i = 1; i < splittedWords.length; i++) {
 			Node newReading = db.createNode();
 
@@ -565,7 +566,9 @@ public class Reading implements IResource {
 					newReading, ERelations.NORMAL);
 			relationship.setProperty("lexemes",
 					allWitnesses.toArray(new String[allWitnesses.size()]));
+			createdNodes.add(new ReadingModel(newReading));
 		}
+		return createdNodes;
 	}
 
 	/**
@@ -999,8 +1002,10 @@ public class Reading implements IResource {
 
 		if (canCompress(read1, read2, db)) {
 			compress(read1, read2, db);
+			db.shutdown();
 			return Response.ok("Successfully compressed readings").build();
 		} else
+			db.shutdown();
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity(errorMessage).build();
 	}
