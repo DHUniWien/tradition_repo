@@ -365,13 +365,6 @@ public class Reading implements IResource {
 //		return false;
 	}
 
-	private void mergeReadings(Node stayingReading, Node deletingReading) {
-		copyRelationships(stayingReading, deletingReading);
-		addRelationshipsToStayingReading(stayingReading, deletingReading);
-		deletingReading.delete();
-		copyWitnesses(stayingReading);
-	}
-
 	private boolean containClassOneRelationships(Node stayingReading,
 			Node deletingReading) {
 		for (Relationship stayingRel : stayingReading
@@ -394,11 +387,34 @@ public class Reading implements IResource {
 		return false;
 	}
 
+	private boolean doReadingsBelongToSameWitness(Node stayingReading, Node deletingReading) {
+		// write all witnesses of the staying reading into ArrayList
+		Iterable<Relationship> stayingRels = stayingReading.getRelationships(ERelations.NORMAL);
+		ArrayList<String> stayingWitnesses = new ArrayList<String>();
+		for (Relationship stayingRel : stayingRels)
+			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
+				stayingWitnesses.add(witness);
+
+		// check if one of the witnesses of the reading to be deleted is already
+		// present in the ArrayList
+		Iterable<Relationship> deletingRels = deletingReading.getRelationships(ERelations.NORMAL);
+		for (Relationship deletingRel : deletingRels)
+			for (String witness : (String[]) deletingRel.getProperty("lexemes"))
+				if (stayingWitnesses.contains(witness))
+					return true;
+		return false;
+	}
+
+	private void mergeReadings(Node stayingReading, Node deletingReading) {
+		copyRelationships(stayingReading, deletingReading);
+		addRelationshipsToStayingReading(stayingReading, deletingReading);
+		deletingReading.delete();
+		copyWitnesses(stayingReading);
+	}
+
 	private void copyWitnesses(Node stayingReading) {
-		for (Relationship firstRel : stayingReading
-				.getRelationships(ERelations.NORMAL)) {
-			for (Relationship secondRel : stayingReading
-					.getRelationships(ERelations.NORMAL)) {
+		for (Relationship firstRel : stayingReading.getRelationships(ERelations.NORMAL))
+			for (Relationship secondRel : stayingReading.getRelationships(ERelations.NORMAL))
 				if (!firstRel.equals(secondRel))
 					if (firstRel.getOtherNode(stayingReading).equals(
 							secondRel.getOtherNode(stayingReading))) {
@@ -419,30 +435,6 @@ public class Reading implements IResource {
 						firstRel.setProperty("lexemes", combinedWitnesses);
 						secondRel.delete();
 					}
-			}
-		}
-	}
-
-	private boolean doReadingsBelongToSameWitness(Node stayingReading,
-			Node deletingReading) {
-		// write all witnesses of the staying reading into ArrayList
-		Iterable<Relationship> stayingRels = stayingReading
-				.getRelationships(ERelations.NORMAL);
-		ArrayList<String> stayingWitnesses = new ArrayList<String>();
-		for (Relationship stayingRel : stayingRels) {
-			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
-				stayingWitnesses.add(witness);
-		}
-
-		// check if one of the witnesses of the reading to be deleted is already
-		// present in the ArrayList
-		Iterable<Relationship> deletingRels = deletingReading
-				.getRelationships(ERelations.NORMAL);
-		for (Relationship deletingRel : deletingRels)
-			for (String witness : (String[]) deletingRel.getProperty("lexemes"))
-				if (stayingWitnesses.contains(witness))
-					return true;
-		return false;
 	}
 
 	private void addRelationshipsToStayingReading(Node stayingReading,
