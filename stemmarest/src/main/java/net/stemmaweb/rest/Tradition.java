@@ -324,12 +324,12 @@ public class Tradition implements IResource {
 	 */
 	@DELETE
 	@Path("{tradId}")
-	public Response deleteUserById(@PathParam("tradId") String tradId) {
+	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return userId");
+			ExecutionResult result = engine.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return tradId");
 			Iterator<Node> nodes = result.columnAs("tradId");
 
 			if (nodes.hasNext()) {

@@ -19,6 +19,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -429,6 +430,7 @@ public class TraditionTest {
 		}
 	}
 	
+	
 	/**
 	 * Test if there is the correct error when trying to change a tradition with an invalid userid
 	 */
@@ -594,17 +596,25 @@ public class TraditionTest {
 	 * Remove a complete Tradition
 	 */
 	@Test
-	public void removeATraditionTest(){
-//		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
-//		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-//		assertEquals(removalResponse.getEntity(String.class),"Tradition not found");
+	public void deleteTraditionByIdTest(){
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).delete(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+		
+
+		Node startNode = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			startNode = DatabaseService.getStartNode(tradId, mockDbService);
+			
+		}
+		
+		assertTrue(startNode == null);
 	}
 	
 	/**
-	 * Remove a complete Tradition with invalid id
+	 * Test do delete a Tradition with an invalid id deletTraditionById
 	 */
 	@Test
-	public void removeATraditionWithInvalidIdTest(){
+	public void deleteATraditionWithInvalidIdTest(){
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		/*
 		 * Try to remove a tradition with invalid id
