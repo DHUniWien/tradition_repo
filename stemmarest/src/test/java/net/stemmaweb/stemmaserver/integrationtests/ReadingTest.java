@@ -196,11 +196,13 @@ public class ReadingTest {
 	public void getReadingJsonTest() throws JsonProcessingException {
 		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
-		Response resp = reading.getReading(tradId, 16);
+		//Response resp = reading.getReading(tradId, 16);
+		ClientResponse resp = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + 16)
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);
-		String json = mapper.writeValueAsString(resp.getEntity());
+		String json = mapper.writeValueAsString(resp.getEntity(ReadingModel.class));
 
 		assertEquals(expected, json);
 	}
