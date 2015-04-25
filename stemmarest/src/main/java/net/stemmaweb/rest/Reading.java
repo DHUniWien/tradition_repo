@@ -31,7 +31,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
@@ -294,7 +293,7 @@ public class Reading implements IResource {
 			}
 
 			if (containClassOneRelationships(stayingReading, deletingReading))
-				if (wouldGetCyclic(db, tradId, stayingReading, deletingReading)) {
+				if (wouldGetCyclic(db, stayingReading, deletingReading)) {
 					db.shutdown();
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("Readings to be merged would make the graph cyclic").build();
@@ -314,38 +313,56 @@ public class Reading implements IResource {
 		return Response.ok("Successfully merged readings").build();
 	}
 	
-	private boolean wouldGetCyclic(GraphDatabaseService db, String tradId, Node stayingReading, Node deletingReading) {
-		Node startNode = DatabaseService.getStartNode(tradId, db);
+	private boolean wouldGetCyclic(GraphDatabaseService db, Node stayingReading, Node deletingReading) {
+		Node lowerRankReading, higherRankReading;
+		if((Long) stayingReading.getProperty("dn14") < (Long) deletingReading.getProperty("dn14")) {
+			lowerRankReading = stayingReading;
+			higherRankReading = deletingReading;
+		} else {
+			lowerRankReading = deletingReading;
+			higherRankReading = stayingReading;
+		}
 
-		// get depth to significantly reduce number of paths
-		int depth = 0;
+		// check if both readings are present in the path
 		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(startNode).nodes()) {
-			depth++;
-			if (node.getProperty("dn15").equals("#END#"))
-				break;
-		}
-
-		boolean foundStayingReading, foundDeletingReading;
-		Traverser traverser = db.traversalDescription().depthFirst()
-				.relationships(ERelations.NORMAL, Direction.OUTGOING).uniqueness(Uniqueness.NONE)
-				.evaluator(Evaluators.fromDepth(depth)).traverse(startNode);
-
-		for (org.neo4j.graphdb.Path path : traverser) {
-			foundStayingReading = false;
-			foundDeletingReading = false;
-			// check if both readings are present in the path
-			for (Node node : path.nodes()) {
-				if (node.equals(stayingReading))
-					foundStayingReading = true;
-				if (node.equals(deletingReading))
-					foundDeletingReading = true;
-			}
-			if (foundStayingReading && foundDeletingReading)
+				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes())
+			if (node.equals(higherRankReading))
 				return true;
-		}
 
 		return false;
+		
+		
+//		Node startNode = DatabaseService.getStartNode(tradId, db);
+//
+//		// get depth to significantly reduce number of paths
+//		int depth = 0;
+//		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
+//				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(startNode).nodes()) {
+//			depth++;
+//			if (node.getProperty("dn15").equals("#END#"))
+//				break;
+//		}
+//
+//		boolean foundStayingReading, foundDeletingReading;
+//		Traverser traverser = db.traversalDescription().depthFirst()
+//				.relationships(ERelations.NORMAL, Direction.OUTGOING).uniqueness(Uniqueness.NONE)
+//				.evaluator(Evaluators.fromDepth(depth)).traverse(startNode);
+//
+//		for (org.neo4j.graphdb.Path path : traverser) {
+//			foundStayingReading = false;
+//			foundDeletingReading = false;
+//			// check if both readings are present in the path
+//			for (Node node : path.nodes()) {
+//				if (node.equals(stayingReading))
+//					foundStayingReading = true;
+//				if (node.equals(deletingReading))
+//					foundDeletingReading = true;
+//			}
+//			if (foundStayingReading && foundDeletingReading)
+//				return true;
+//		}
+//
+//		return false;
 	}
 
 	private void mergeReadings(Node stayingReading, Node deletingReading) {
