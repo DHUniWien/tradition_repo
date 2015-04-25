@@ -102,6 +102,8 @@ public class Reading implements IResource {
 			DuplicateModel duplicateModel) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
+		ArrayList<ReadingModel> createdReadings = new ArrayList<ReadingModel>();
+		
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
@@ -136,9 +138,10 @@ public class Reading implements IResource {
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("The witness has to be in at least two witnesses").build();
 				}
-
+				Node newNode = db.createNode();
 				duplicateReading(duplicateModel.getWitnesses(),
-						originalReading, db.createNode());
+						originalReading, newNode);
+				createdReadings.add(new ReadingModel(newNode));
 			}
 
 			tx.success();
@@ -148,7 +151,7 @@ public class Reading implements IResource {
 		} finally {
 			db.shutdown();
 		}
-		return Response.ok("Successfully duplicated readings").build();
+		return Response.ok(createdReadings).build();
 	}
 
 	private List<String> allWitnessesOfReading(Node originalReading) {
