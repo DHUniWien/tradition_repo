@@ -185,7 +185,7 @@ public class TraditionTest {
 		trad2.setId("1002");
 		trad2.setName("Tradition");
 		
-		List<TraditionModel> traditions = jerseyTest.resource().path("/tradition/all")
+		List<TraditionModel> traditions = jerseyTest.resource().path("/tradition/getalltraditions")
     			.get(new GenericType<List<TraditionModel>>(){});
     	TraditionModel firstTradition = traditions.get(0);
     	assertEquals(trad1.getId(), firstTradition.getId());
@@ -199,7 +199,7 @@ public class TraditionTest {
 	@Test
 	public void getAllTraditionsWithParameterNotFoundTest()
 	{
-		ClientResponse resp = jerseyTest.resource().path("/tradition/all/" + 2342)
+		ClientResponse resp = jerseyTest.resource().path("/tradition/getalltraditions/" + 2342)
     			.get(ClientResponse.class);
     	assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
 	}
@@ -222,7 +222,7 @@ public class TraditionTest {
 		rel.setDe10("local");
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/relation/" + tradId + "/relationships")
+				.path("/tradition/getallrealtionships/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 		RelationshipModel relLoaded = relationships.get(2);
@@ -243,7 +243,7 @@ public class TraditionTest {
 	public void getAllRelationshipsCorrectAmountTest() {
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/relation/" + tradId + "/relationships")
+				.path("/tradition/getallrealtionships/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 
@@ -262,7 +262,7 @@ public class TraditionTest {
 		witC.setId("C");
 
 		List<WitnessModel> witnesses = jerseyTest.resource()
-				.path("/tradition/witness/" + tradId)
+				.path("/tradition/getallwitnesses/fromtradition/" + tradId)
 				.get(new GenericType<List<WitnessModel>>() {
 				});
 		WitnessModel witLoaded0 = witnesses.get(0);
@@ -281,7 +281,7 @@ public class TraditionTest {
 	public void getAllWitnessesTraditionNotFoundTest() {
 
 		ClientResponse resp = jerseyTest.resource()
-				.path("/tradition/witness/" + 10000)
+				.path("/tradition/getallwitnesses/fromtradition/" + 10000)
 				.get(ClientResponse.class);
 		
 		assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
@@ -291,7 +291,7 @@ public class TraditionTest {
 	@Test
 	public void getDotOfNonExistentTraditionTest()
 	{
-		ClientResponse resp = jerseyTest.resource().path("/tradition/getdot/" + 10000).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		ClientResponse resp = jerseyTest.resource().path("/tradition/getdot/fromtradition/" + 10000).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 		
 		assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
 	}
@@ -299,7 +299,7 @@ public class TraditionTest {
 	@Test
 	public void getDotTest()
 	{
-		String str = jerseyTest.resource().path("/tradition/getdot/" + tradId).type(MediaType.APPLICATION_JSON).get(String.class);
+		String str = jerseyTest.resource().path("/tradition/getdot/fromtradition/" + tradId).type(MediaType.APPLICATION_JSON).get(String.class);
 
 		String[] exp = new String[60];
 		exp[1]= "digraph { n4 [label=\"#START#\"];n4->n5[label=\"A,B,C\";id=\"e0\"];";
@@ -369,7 +369,7 @@ public class TraditionTest {
 	} 
 	
 	/**
-	 * Test if it is posibible to change the user of a Tradition
+	 * Test if it is possible to change the user of a Tradition
 	 */
 	@Test
 	public void changeOwnerOfATraditionTestDH44(){
@@ -431,7 +431,7 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("42");
 		
-		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/changeowner/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 		
 		/*
@@ -501,7 +501,7 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("1337");
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changeowner/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 		assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
 	
@@ -587,7 +587,7 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("42");
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changeowner/fromtradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 		assertEquals(removalResponse.getEntity(String.class),"Tradition not found");
 		
@@ -634,7 +634,7 @@ public class TraditionTest {
 	 */
 	@Test
 	public void deleteTraditionByIdTest(){
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/"+tradId).type(MediaType.APPLICATION_JSON).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
 
@@ -656,7 +656,7 @@ public class TraditionTest {
 		/*
 		 * Try to remove a tradition with invalid id
 		 */
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/1337").delete(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 		
 		/*

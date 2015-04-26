@@ -292,7 +292,7 @@ public class Tradition implements IResource {
 	 * @return XML data
 	 */
 	@GET
-	@Path("get/{tradId}")
+	@Path("gettradition/withid/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getTradition(@PathParam("tradId") String tradId) {
 		Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
@@ -305,7 +305,7 @@ public class Tradition implements IResource {
 	 * @return
 	 */
 	@DELETE
-	@Path("{tradId}")
+	@Path("deletetradition/withid/{tradId}")
 	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -366,14 +366,15 @@ public class Tradition implements IResource {
 	@POST
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	@Produces(MediaType.APPLICATION_JSON)
-	@Path("new")
+	@Path("newtraditionwithgraphml")
 	public Response importGraphMl(@FormDataParam("name") String name, @FormDataParam("language") String language,
 			@FormDataParam("public") String is_public, @FormDataParam("userId") String userId,
 			@FormDataParam("file") InputStream uploadedInputStream,
 			@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
 
-		User user = new User();
-		if (!user.checkUserExists(userId)) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
+		if (!DatabaseService.checkIfUserExists(userId,db)) {
 			return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
 		}
 
@@ -435,7 +436,7 @@ public class Tradition implements IResource {
 	 * @return XML data
 	 */
 	@GET
-	@Path("getdot/{tradId}")
+	@Path("getdot/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getDot(@PathParam("tradId") String tradId) {
 		
