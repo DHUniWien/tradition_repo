@@ -204,51 +204,47 @@ public class Stemma implements IResource {
 	 */
 	private Response reorientDigraph(GraphDatabaseService db, Node newRootNode, Node startNodeStemma) {
 		
-		try (Transaction tx = db.beginTx()) 
-    	{
+		Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
 		
-			Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
-			
-			if(!stRels.hasNext()) {
+		if(!stRels.hasNext()) {
+			db.shutdown();
+		return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
+		
+		if(actualRootNodeId.equals(newRootNode.getProperty("id").toString())) {
 				db.shutdown();
-			return Response.status(Status.NOT_FOUND).build();
-			}
-			
-			String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
-			
-			if(actualRootNodeId.equals(newRootNode.getProperty("id").toString())) {
-					return Response.ok().build();
-			}
-			
-			ArrayList<Relationship> pathRels = new ArrayList<Relationship>();
-	
-			for (Relationship rel : db.traversalDescription().breadthFirst()
-					.relationships(ERelations.STEMMA,Direction.INCOMING)
-					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(newRootNode).relationships()) {
-				
-				pathRels.add(rel);
-				
-				if(rel.getStartNode().getProperty("id").toString().equals(actualRootNodeId))
-					break;
-				
-			}
-			
-			for(Relationship rela : pathRels) {
-				
-				Node startNode = rela.getStartNode();
-				Node endNode = rela.getEndNode();
-				
-				rela.delete();
-				
-				endNode.createRelationshipTo(startNode,ERelations.STEMMA);
-			}
-			
-			reorientGraph(newRootNode, startNodeStemma);
-			
-			tx.success();
-	}
+				return Response.ok().build();
+		}
 		
+		ArrayList<Relationship> pathRels = new ArrayList<Relationship>();
+
+		for (Relationship rel : db.traversalDescription().breadthFirst()
+				.relationships(ERelations.STEMMA,Direction.INCOMING)
+				.uniqueness(Uniqueness.NODE_GLOBAL)
+				.traverse(newRootNode).relationships()) {
+			
+			pathRels.add(rel);
+			
+			if(rel.getStartNode().getProperty("id").toString().equals(actualRootNodeId))
+				break;
+			
+		}
+		
+		for(Relationship rela : pathRels) {
+			
+			Node startNode = rela.getStartNode();
+			Node endNode = rela.getEndNode();
+			
+			rela.delete();
+			
+			endNode.createRelationshipTo(startNode,ERelations.STEMMA);
+		}
+		
+		reorientGraph(newRootNode, startNodeStemma);
+			
+
 		return Response.ok().build();
 		
 	}
