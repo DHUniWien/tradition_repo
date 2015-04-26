@@ -245,7 +245,7 @@ public class StemmaTest {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		
 		 String stemmaTitle = "Semstem 1402333041_0";
-		 String newNodeId = "C";
+		 String newNodeId = "A";
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
@@ -348,6 +348,27 @@ public class StemmaTest {
 		}
 
 	}
+	
+	@Test
+	public void reorientDigraphStemmaSameNodeAsBevorTest()
+	{
+		
+		 String stemmaTitle = "stemma";
+		 String newNode = "C";
+		
+		try (Transaction tx = mockDbService.beginTx()) {
+			
+			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ newNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+		
+			ClientResponse actualStemmaResponse2 = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ newNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.ok().build().getStatus(), actualStemmaResponse2.getStatus());
+			
+			tx.success();
+		}
+
+	}
+	
 	/**
 	 * Shut down the jersey server
 	 * 

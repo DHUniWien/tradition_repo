@@ -178,7 +178,7 @@ public class Stemma implements IResource {
 			Node newRootNode = nodes.next();
     		
     		if(stemmaType.equals("digraph"))
-	    		resp = reorientDigraph(newRootNode,startNodeStemma);
+	    		resp = reorientDigraph(db,newRootNode,startNodeStemma);
     		else
     			resp = reorientGraph(newRootNode,startNodeStemma);
 		
@@ -196,46 +196,58 @@ public class Stemma implements IResource {
 	/**
 	 * Reorients a digraph: Searches the path to the new rootnode; reverse the realtionships;
 	 * change the first relationship
+	 * @param db 
 	 * 
 	 * @param newRootNode
 	 * @param startNodeStemma
 	 * @return
 	 */
-	private Response reorientDigraph(Node newRootNode, Node startNodeStemma) {
+	private Response reorientDigraph(GraphDatabaseService db, Node newRootNode, Node startNodeStemma) {
 		
-		Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
+		try (Transaction tx = db.beginTx()) 
+    	{
 		
-		if(!stRels.hasNext()) {
-			db.shutdown();
-		return Response.status(Status.NOT_FOUND).build();
-		}
-		
-		String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
-		ArrayList<Relationship> pathRels = new ArrayList<Relationship>();
-
-		for (Relationship rel : db.traversalDescription().breadthFirst()
-				.relationships(ERelations.STEMMA,Direction.INCOMING)
-				.uniqueness(Uniqueness.NODE_GLOBAL)
-				.traverse(newRootNode).relationships()) {
+			Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
 			
-			pathRels.add(rel);
+			if(!stRels.hasNext()) {
+				db.shutdown();
+			return Response.status(Status.NOT_FOUND).build();
+			}
 			
-			if(rel.getEndNode().getProperty("id").toString().equals(actualRootNodeId))
-				break;
+			String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
 			
-		}
-		
-		for(Relationship rela : pathRels) {
+			if(actualRootNodeId.equals(newRootNode.getProperty("id").toString())) {
+					return Response.ok().build();
+			}
 			
-			Node startNode = rela.getStartNode();
-			Node endNode = rela.getEndNode();
+			ArrayList<Relationship> pathRels = new ArrayList<Relationship>();
+	
+			for (Relationship rel : db.traversalDescription().breadthFirst()
+					.relationships(ERelations.STEMMA,Direction.INCOMING)
+					.uniqueness(Uniqueness.NODE_GLOBAL)
+					.traverse(newRootNode).relationships()) {
+				
+				pathRels.add(rel);
+				
+				if(rel.getStartNode().getProperty("id").toString().equals(actualRootNodeId))
+					break;
+				
+			}
 			
-			rela.delete();
+			for(Relationship rela : pathRels) {
+				
+				Node startNode = rela.getStartNode();
+				Node endNode = rela.getEndNode();
+				
+				rela.delete();
+				
+				endNode.createRelationshipTo(startNode,ERelations.STEMMA);
+			}
 			
-			endNode.createRelationshipTo(startNode,ERelations.STEMMA);
-		}
-		
-		reorientGraph(newRootNode, startNodeStemma);
+			reorientGraph(newRootNode, startNodeStemma);
+			
+			tx.success();
+	}
 		
 		return Response.ok().build();
 		
