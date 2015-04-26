@@ -45,7 +45,7 @@ public class Witness implements IResource {
 	@GET
 	@Path("gettext/fromtradition/{tradId}/ofwitness/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnessAsPlainText(@PathParam("tradId") String tradId,
+	public Response getWitnessAsText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
@@ -80,7 +80,7 @@ public class Witness implements IResource {
 	@GET
 	@Path("gettext/fromtradition/{tradId}/ofwitness/{textId}/fromstartrank/{startRank}/toendrank/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnessAsPlainTextBetweenRanks(
+	public Response getWitnessAsTextBetweenRanks(
 			@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRankAsString,

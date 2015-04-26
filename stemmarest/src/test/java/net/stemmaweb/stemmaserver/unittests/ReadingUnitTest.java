@@ -139,7 +139,7 @@ public class ReadingUnitTest {
 	@Test
 	public void witnessAsTextTestB() {
 		String expectedText = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		Response resp = witness.getWitnessAsText(tradId, "B");
 		assertEquals(expectedText, resp.getEntity());
 	}
 

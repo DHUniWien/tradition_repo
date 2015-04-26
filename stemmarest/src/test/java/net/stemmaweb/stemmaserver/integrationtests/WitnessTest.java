@@ -158,7 +158,7 @@ public class WitnessTest {
 	public void witnessAsTextTestA() {
 		String expectedText = "{\"text\":\"when april with his showers sweet with "
 				+ "fruit the drought of march has pierced unto the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "A");
+		Response resp = witness.getWitnessAsText(tradId, "A");
 		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
@@ -181,7 +181,7 @@ public class WitnessTest {
 	public void witnessAsTextTestB() {
 		String expectedText = "{\"text\":\"when showers sweet with april fruit the march "
 				+ "of drought has pierced to the root\"}";
-		Response resp = witness.getWitnessAsPlainText(tradId, "B");
+		Response resp = witness.getWitnessAsText(tradId, "B");
 		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()

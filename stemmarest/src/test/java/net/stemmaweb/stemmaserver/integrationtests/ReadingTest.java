@@ -184,13 +184,13 @@ public class ReadingTest {
 	private void testWitnesses() {
 		Response resp;
 
-		resp = witness.getWitnessAsPlainText(tradId, "A");
+		resp = witness.getWitnessAsText(tradId, "A");
 		assertEquals(expectedWitnessA, resp.getEntity());
 
-		resp = witness.getWitnessAsPlainText(tradId, "B");
+		resp = witness.getWitnessAsText(tradId, "B");
 		assertEquals(expectedWitnessB, resp.getEntity());
 
-		resp = witness.getWitnessAsPlainText(tradId, "C");
+		resp = witness.getWitnessAsText(tradId, "C");
 		assertEquals(expectedWitnessC, resp.getEntity());
 	}
 
