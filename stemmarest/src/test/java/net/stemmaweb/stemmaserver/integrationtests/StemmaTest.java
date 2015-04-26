@@ -167,7 +167,6 @@ public class StemmaTest {
 		assertEquals(expected2, stemmata.get(1));
 	}
 	
-	
 	@Test
 	public void getStemmaTest()
 	{
