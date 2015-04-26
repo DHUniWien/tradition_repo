@@ -1,8 +1,6 @@
 package net.stemmaweb.rest;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -12,7 +10,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
 import net.stemmaweb.services.DotToNeo4JParser;
 <<<<<<< HEAD
 import net.stemmaweb.services.EvaluatorService;
@@ -20,7 +17,6 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 =======
 >>>>>>> 6dcb946f6f836477d0f84b30feb78458c70294fb
 import net.stemmaweb.services.Neo4JToDotParser;
-
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;

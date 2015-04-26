@@ -2,22 +2,16 @@ package net.stemmaweb.services;
 
 import java.util.Iterator;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
-
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
-
-import Exceptions.DataBaseException;
 
 /**
  * 
@@ -51,42 +45,8 @@ public class DatabaseService {
 	 *             instead
 	 */
 	@Deprecated
-	public Node getStartNode(String tradId) throws DataBaseException {
+	public Node getStartNode(String tradId) {
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-		DbPathProblemService problemFinder = new DbPathProblemService();
-		Node startNode = null;
-
-		/**
-		 * this quarry gets the "Start" node of the witness
-		 */
-		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
-				+ "'})-[:NORMAL]->(w:WORD) return w";
-
-		try (Transaction tx = db.beginTx()) {
-
-			ExecutionResult result = engine.execute(witnessQuarry);
-			Iterator<Node> nodes = result.columnAs("w");
-
-			if (!nodes.hasNext()) {
-				throw new DataBaseException(problemFinder.findPathProblem(
-						tradId, db));
-			} else
-				startNode = nodes.next();
-
-			tx.success();
-		}
-		return startNode;
-	}
-
-	/**
-	 * 
-	 * @param tradId
-	 * @param db
-	 *            the GraphDatabaseService where the tradition is stored
-	 * @return
-	 */
-	public static Node getStartNode(String tradId, GraphDatabaseService db) {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		DbPathProblemService problemFinder = new DbPathProblemService();
 		Node startNode = null;
@@ -104,8 +64,38 @@ public class DatabaseService {
 
 			if (!nodes.hasNext()) {
 				return null;
-				/*throw new DataBaseException(problemFinder.findPathProblem(
-						tradId, db));*/
+			} else
+				startNode = nodes.next();
+
+			tx.success();
+		}
+		return startNode;
+	}
+
+	/**
+	 * 
+	 * @param tradId
+	 * @param db
+	 *            the GraphDatabaseService where the tradition is stored
+	 * @return
+	 */
+	public static Node getStartNode(String tradId, GraphDatabaseService db) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		Node startNode = null;
+
+		/**
+		 * this quarry gets the "Start" node of the witness
+		 */
+		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
+				+ "'})-[:NORMAL]->(w:WORD) return w";
+
+		try (Transaction tx = db.beginTx()) {
+
+			ExecutionResult result = engine.execute(witnessQuarry);
+			Iterator<Node> nodes = result.columnAs("w");
+
+			if (!nodes.hasNext()) {
+				return null;				
 			} else
 				startNode = nodes.next();
 

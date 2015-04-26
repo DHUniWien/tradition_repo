@@ -11,6 +11,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
@@ -20,8 +21,10 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 
@@ -70,6 +73,12 @@ public class Relation implements IResource {
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
+			if (wouldProduceCrossRelationship(readingA, readingB, db)) {
+				db.shutdown();
+				return Response.status(Status.CONFLICT)
+						.entity("This relationship creation is not allowed. Would produce cross-relationship.").build();
+			}
+
         	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
         	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
 //        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
@@ -97,7 +106,39 @@ public class Relation implements IResource {
 
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
-    
+
+	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
+		Long firstRank = (Long) firstReading.getProperty("dn14");
+		Long secondRank = (Long) secondReading.getProperty("dn14");
+		Direction firstDirection, secondDirection;
+
+		if (firstRank > secondRank) {
+			firstDirection = Direction.INCOMING;
+			secondDirection = Direction.OUTGOING;
+		} else {
+			firstDirection = Direction.OUTGOING;
+			secondDirection = Direction.INCOMING;
+		}
+
+		int depth = (int) ((Long) firstReading.getProperty("dn14") - (Long) secondReading.getProperty("dn14")) + 1;
+
+		for (Node firstReadingNextNode : getNextNodes(firstReading, db, firstDirection, depth))
+			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
+				if (!rel.getProperty("de11").equals("transposition") && !rel.getProperty("de11").equals("repetition"))
+					for (Node secondReadingNextNode : getNextNodes(secondReading, db, secondDirection, depth))
+						if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode))
+							return true;
+
+		return false;
+	}
+
+	private ResourceIterable<Node> getNextNodes(Node reading, GraphDatabaseService db, Direction direction,
+			int depth) {
+		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, direction)
+				.evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
+				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(reading).nodes();
+	}
+
     /**
      * Get a list of all readings
      * @param textId
@@ -106,10 +147,12 @@ public class Relation implements IResource {
     @GET
     @Path("{textId}/relationships")
     @Produces(MediaType.APPLICATION_JSON)
-	public ArrayList<RelationshipModel> getRelationships(@PathParam("textId") String textId) {
+	public Response getRelationships(@PathParam("textId") String textId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
+    	Response resp = null;
     	
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
     		Node startNode = DatabaseService.getStartNode(textId, db);
@@ -131,13 +174,16 @@ public class Relation implements IResource {
     	catch (Exception e) 
     	{
     		System.err.println(e.getMessage());
-    		return null;
+    		resp = Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
     	}
     	finally {	
     		db.shutdown();
     	}
 
-		return relationships;
+    	if(resp==null)
+    		resp = Response.ok().entity(relationships).build();
+    	
+		return resp;
 	}
     
     

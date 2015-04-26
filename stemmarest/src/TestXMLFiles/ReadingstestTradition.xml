@@ -148,7 +148,7 @@
       <data key="dn2">1</data>
     </node>
     <node id="n15">
-      <data key="dn15">unto</data>
+      <data key="dn15">unto me</data>
       <data key="dn1">n21</data>
       <data key="dn11">Default</data>
       <data key="dn14">16</data>
@@ -368,28 +368,25 @@
     <edge source="n23" target="n4" id="e43">
       <data key="de12">A</data>
     </edge>
-    <edge source="n23" target="n28" id="e44">
-      <data key="de12">B</data>
-    </edge>
-    <edge source="n23" target="n24" id="e45">
+    <edge source="n23" target="n4" id="e44">
       <data key="de12">C</data>
+    </edge>
+    <edge source="n23" target="n28" id="e45">
+      <data key="de12">B</data>
     </edge>
     <edge source="n24" target="n26" id="e46">
       <data key="de12">B</data>
     </edge>
-    <edge source="n24" target="n4" id="e47">
+    <edge source="n25" target="n0" id="e47">
       <data key="de12">C</data>
     </edge>
-    <edge source="n25" target="n0" id="e48">
-      <data key="de12">C</data>
-    </edge>
-	<edge source="n26" target="n21" id="e49">
+	<edge source="n26" target="n21" id="e48">
       <data key="de12">B</data>
     </edge>
-	<edge source="n27" target="n0" id="e50">
+	<edge source="n27" target="n0" id="e49">
       <data key="de12">B</data>
     </edge>
-    <edge source="n28" target="n5" id="e51">
+    <edge source="n28" target="n5" id="e50">
       <data key="de12">B</data>
     </edge>
   </graph>
@@ -486,7 +483,7 @@
       <data key="de6">no</data>
       <data key="de9">march</data>
       <data key="de1">0</data>
-      <data key="de11">transposition</data>
+      <data key="de11">repetition</data>
       <data key="de10">local</data>
     </edge>
     <edge source="n8" target="n11" id="e1">
@@ -494,7 +491,7 @@
       <data key="de6">no</data>
       <data key="de9">drought</data>
       <data key="de1">0</data>
-      <data key="de11">transposition</data>
+      <data key="de11">orthographic</data>
       <data key="de10">local</data>
     </edge>
     <edge source="n13" target="n24" id="e2">
@@ -503,6 +500,22 @@
       <data key="de9">april</data>
       <data key="de1">0</data>
       <data key="de11">transposition</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n19" target="n23" id="e3">
+      <data key="de8">with</data>
+      <data key="de6">no</data>
+      <data key="de9">with</data>
+      <data key="de1">0</data>
+      <data key="de11">lexical</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n20" target="n26" id="e4">
+      <data key="de8">his</data>
+      <data key="de6">no</data>
+      <data key="de9">his</data>
+      <data key="de1">0</data>
+      <data key="de11">grammatical</data>
       <data key="de10">local</data>
     </edge>
   </graph>

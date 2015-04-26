@@ -2,17 +2,13 @@ package net.stemmaweb.stemmaserver.unittests;
 
 import static org.junit.Assert.*;
 
-import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.Iterator;
 
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
@@ -31,12 +27,9 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
-
-import Exceptions.DataBaseException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DotImporterUnitTest {

@@ -1,7 +1,9 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
@@ -40,12 +42,13 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Jakob
+ * @author Jakob, Severin
  *
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -369,7 +372,113 @@ public class RelationTest {
 		
 		try (Transaction tx = mockDbService.beginTx()) 
     	{
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+			Relationship rel1 = mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
+    		Relationship rel2 = mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+    		
+    		RelationshipModel relMod1 = new RelationshipModel(rel1);
+    		assertEquals(rel1, relMod1);
+    		
+    		RelationshipModel relMod2 = new RelationshipModel(rel2);
+    		assertEquals(rel2, relMod2);
+    	} 
+	}
+	
+	/**
+	 * Test that cross relations may not be made
+	 * IMPORTANT!! THIS TEST WILL BE GREEN AFTER DH-39 has been implemented!!
+	 */
+	@Test
+	public void createRelationshipTestWithCrossRelationConstraintDH39(){
+		RelationshipModel relationship = new RelationshipModel();
+		relationship.setSource("6");
+		relationship.setTarget("20");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("root");
+		relationship.setDe9("teh");
+		
+		// This relationship should be makeable
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+		
+		relationship.setSource("21");
+		relationship.setTarget("28");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("rood");
+		relationship.setDe9("the");
+		
+		// this one should not be makeable, due to the cross-relationship-constraint!
+		actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+		
+    	try (Transaction tx = mockDbService.beginTx()) 
+    	{
+    		Node node28 = mockDbService.getNodeById(28L);
+    		Iterator<Relationship> rels = node28.getRelationships(ERelations.RELATIONSHIP).iterator();
+    		
+    		assertTrue(!rels.hasNext()); // make sure node 28 does not have a relationship now!
+    	} 
+	}
+	
+	@Test
+	public void createRelationshipTestWithCrossRelationConstraintDH39NotDirectlyCloseToEachOther(){
+		RelationshipModel relationship = new RelationshipModel();
+		relationship.setSource("6");
+		relationship.setTarget("20");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("root");
+		relationship.setDe9("teh");
+		
+		// This relationship should be makeable
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
+		
+		try (Transaction tx = mockDbService.beginTx()) {
+			Relationship rel = mockDbService.getRelationshipById(48);
+			assertEquals("root", rel.getStartNode().getProperty("dn15"));
+			assertEquals("teh", rel.getEndNode().getProperty("dn15"));
+		}
+
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node node = nodes.next();
+		assertFalse(nodes.hasNext());
+		
+		relationship.setSource(node.getId() + "");
+
+		result = engine.execute("match (w:WORD {dn15:'unto'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		node = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		relationship.setTarget(node.getId() + "");
+
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("rood");
+		relationship.setDe9("unto");
+		
+		// this one should not be makeable, due to the cross-relationship-constraint!
+		actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+		
+    	try (Transaction tx = mockDbService.beginTx()) 
+    	{
+    		Node node21 = mockDbService.getNodeById(21L);
+    		Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
+    		
+    		assertTrue(!rels.hasNext()); // make sure node 21 does not have a relationship now!
     	} 
 	}
 	
@@ -378,17 +487,39 @@ public class RelationTest {
 	 */
 	@Test
 	public void getRelationshipTest(){
-		ClientResponse response = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-		assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 		
-		List<RelationshipModel> relationships = jerseyTest.resource().path("/relation/"+tradId+"/relationships")
+		ClientResponse response = jerseyTest.resource().path("/relation/"+tradId+"/relationships")
+				.get(ClientResponse.class);
+		List<RelationshipModel> relationships = jerseyTest.resource()
+				.path("/relation/"+tradId+"/relationships")
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
+		//assertEquals(Response.ok().build().getStatus(), response.getStatus());
 		for(RelationshipModel rel : relationships){
 			assertTrue(rel.getId().equals("34")||rel.getId().equals("35")||rel.getId().equals("36"));
 			assertTrue(rel.getDe9().equals("april")||rel.getDe9().equals("drought")||rel.getDe9().equals("march"));
 			assertTrue(rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition"));
 		}
+	}
+	
+	/**
+	 * Test if the get relationship method returns correct state
+	 */
+	@Test
+	public void getRelationshipCorrectStatusTest(){
+		
+		ClientResponse response = jerseyTest.resource().path("/relation/"+tradId+"/relationships")
+				.get(ClientResponse.class);
+		assertEquals(Response.ok().build().getStatus(), response.getStatus());
+	}
+	
+	/**
+	 * Test if the get relationship method returns the correct not found error on a non existing tradid
+	 */
+	@Test
+	public void getRelationshipExceptionTest(){
+		ClientResponse response = jerseyTest.resource().path("/relation/"+6999+"/relationships").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 	}
 	
 	/**

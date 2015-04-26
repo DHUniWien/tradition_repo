@@ -5,21 +5,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
-import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TextInfoModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Stemma;
-import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -36,21 +28,14 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.ClientResponse.Status;
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**

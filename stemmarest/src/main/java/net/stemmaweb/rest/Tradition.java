@@ -26,7 +26,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.TraditionModel;
@@ -46,8 +45,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import Exceptions.DataBaseException;
-
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 
@@ -62,7 +59,6 @@ public class Tradition implements IResource {
 
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
-
 	/**
 	 * 
 	 * @param textInfo
@@ -75,13 +71,11 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
 
-
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
-
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -115,44 +109,6 @@ public class Tradition implements IResource {
 			db.shutdown();
 		}
 		return Response.status(Response.Status.OK).entity(textInfo).build();
-	}
-
-	/**
-	 * Returns a single reading in a specific tradition.
-	 * 
-	 * @param tradId
-	 * @param readId
-	 * @return
-	 */
-	@GET
-	@Path("reading/{tradId}/{readId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getReading(@PathParam("tradId") String tradId, @PathParam("readId") long readId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
-		ReadingModel reading = null;
-		Node readingNode;
-
-		try (Transaction tx = db.beginTx()) {
-			try {
-				readingNode = db.getNodeById(readId);
-			} catch (Exception e) {
-				db.shutdown();
-				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-			}
-			reading = new ReadingModel(readingNode);
-
-			tx.success();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			db.shutdown();
-		}
-
-		if (reading == null)
-			return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
-
-		return Response.ok(reading).build();
 	}
 	
 	@GET
@@ -208,18 +164,20 @@ public class Tradition implements IResource {
 
 			try {
 				traditionNode = getTraditionNode(tradId, engine);
-				relationships = getRelationships(traditionNode);
-				// startNode = getStartNode(relationships);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
+				relationships = getRelationships(traditionNode);								
+			
+			if (traditionNode == null){
+				return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+			}
+
+			if (relationships == null){
+				return Response.status(Status.NOT_FOUND).entity("relationships not found").build();
 			}
 
 			startNode = null;
-			try {
 				startNode = DatabaseService.getStartNode(tradId, db);
-			} catch (DataBaseException e) {
-				return Response.status(Status.NOT_FOUND).entity(e.getMessage()).build();
-			}
+				if (startNode == null)
+				return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
 
 			relationships = startNode.getRelationships(Direction.OUTGOING);
 
@@ -243,6 +201,7 @@ public class Tradition implements IResource {
 		}
 
 		return Response.ok(witlist).build();
+	}
 	}
 
 	@GET
@@ -323,11 +282,8 @@ public class Tradition implements IResource {
 	 * @return
 	 * @throws DataBaseException
 	 */
-	private Iterable<Relationship> getRelationships(Node traditionNode) throws DataBaseException {
-		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);
-
-		if (relations == null)
-			throw new DataBaseException("relationships not found");
+	private Iterable<Relationship> getRelationships(Node traditionNode){
+		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);		
 		return relations;
 	}
 
@@ -339,13 +295,12 @@ public class Tradition implements IResource {
 	 * @return
 	 * @throws DataBaseException
 	 */
-	private Node getTraditionNode(String tradId, ExecutionEngine engine) throws DataBaseException {
+	private Node getTraditionNode(String tradId, ExecutionEngine engine) {
 		ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
 		Iterator<Node> nodes = result.columnAs("n");
 
 		if (!nodes.hasNext())
-			throw new DataBaseException("tradition node not found");
-
+			return null;
 		return nodes.next();
 	}
 

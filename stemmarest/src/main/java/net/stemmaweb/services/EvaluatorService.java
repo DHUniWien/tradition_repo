@@ -40,20 +40,18 @@ public class EvaluatorService {
 				if (path.length() == 0)
 					return Evaluation.EXCLUDE_AND_CONTINUE;
 
-				boolean includes = false;
-				boolean continues = false;
+				boolean includes = true;
 
 				if (path.lastRelationship().hasProperty("id")) {
 					String[] arg = (String[]) path.lastRelationship()
 							.getProperty("id");
 					for (String str : arg) {
 						if (str.equals(nodeId)) {
-							includes = true;
-							continues = true;
+							includes = false;
 						}
 					}
 				}
-				return Evaluation.of(includes, continues);
+				return Evaluation.of(includes, includes);
 			}
 		};
 		return e;

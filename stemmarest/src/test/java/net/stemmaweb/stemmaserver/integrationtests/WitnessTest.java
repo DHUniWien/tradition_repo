@@ -6,15 +6,13 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.DbPathProblemService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -39,7 +37,10 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -82,9 +83,9 @@ public class WitnessTest {
 	@Before
 	public void setUp() throws Exception {
 		String filename = "";
-		if(OSDetector.isWin())
+		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else 
+		else
 			filename = "src/TestXMLFiles/testTradition.xml";
 
 		/*
@@ -165,6 +166,17 @@ public class WitnessTest {
 	}
 
 	@Test
+	public void witnessAsTextNotExistingTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/witness/string/" + tradId + "/D")
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+				response.getStatus());
+		assertEquals("no witness with this id was found",
+				response.getEntity(String.class));
+	}
+
+	@Test
 	public void witnessAsTextTestB() {
 		String expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
 		Response resp = witness.getWitnessAsPlainText(tradId, "B");
@@ -201,6 +213,34 @@ public class WitnessTest {
 	}
 
 	/**
+	 * gives first the larger rank should return error
+	 */
+	@Test
+	public void witnessBetweenRanksWrongWayTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/witness/string/rank/" + tradId + "/A/5/2")
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+				response.getStatus());
+		assertEquals("end-rank must be larger then start-rank",
+				response.getEntity(String.class));
+	}
+
+	/**
+	 * gives same ranks for start and end should return error
+	 */
+	@Test
+	public void witnessBetweenRanksSameRanksTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/witness/string/rank/" + tradId + "/A/5/5")
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+				response.getStatus());
+		assertEquals("end-rank must be larger then start-rank",
+				response.getEntity(String.class));
+	}
+
+	/**
 	 * test if the tradition node exists
 	 */
 	@Test
@@ -215,7 +255,6 @@ public class WitnessTest {
 		}
 	}
 
-	
 	/**
 	 * test if the tradition end node exists
 	 */
