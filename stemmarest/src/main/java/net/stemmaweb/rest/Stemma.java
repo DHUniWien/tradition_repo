@@ -1,6 +1,8 @@
 package net.stemmaweb.rest;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -10,8 +12,14 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+
 import net.stemmaweb.services.DotToNeo4JParser;
+
+import net.stemmaweb.services.EvaluatorService;
+import net.stemmaweb.services.GraphMLToNeo4JParser;
+
 import net.stemmaweb.services.Neo4JToDotParser;
+
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
@@ -20,6 +28,12 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.Traverser;
+
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
@@ -107,16 +121,17 @@ public class Stemma implements IResource {
 			Node startNodeStemma = stNodes.next();
     		String stemmaType = startNodeStemma.getProperty("type").toString();
     		
-    		Node newRootNode = null;
-			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(ERelations.STEMMA,Direction.OUTGOING)
-					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(startNodeStemma).nodes()) {
-				if(node.hasProperty("id")) {
-	    			if(node.getProperty("id").equals(nodeId))
-	    				 newRootNode = node;
-				}
+    		ExecutionResult result2 = engine.execute("match (s:STEMMA { name:'" + 
+					stemmaTitle +"'})-[:STEMMA]->(w:WITNESS { id:'" + 
+					nodeId +"'}) return w");
+    		Iterator<Node> nodes = result2.columnAs("w");
+    		
+    		if(!nodes.hasNext()) {
+    	    	db.shutdown();
+    			return Response.status(Status.NOT_FOUND).build();
     		}
+    		
+			Node newRootNode = stNodes.next();
     		
     		if(stemmaType.equals("digraph"))
 	    		resp = reorientDigraph(newRootNode,startNodeStemma);
@@ -135,7 +150,40 @@ public class Stemma implements IResource {
 	}
 
 	private Response reorientDigraph(Node newRootNode, Node startNodeStemma) {
-		return null;
+		
+		Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
+		
+		if(!stRels.hasNext()) {
+			db.shutdown();
+		return Response.status(Status.NOT_FOUND).build();
+		}
+		
+		String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
+		ArrayList<Relationship> pathRels = new ArrayList<Relationship>();
+
+		for (Relationship rel : db.traversalDescription().breadthFirst()
+				.relationships(ERelations.STEMMA,Direction.INCOMING)
+				.uniqueness(Uniqueness.NODE_GLOBAL)
+				.traverse(newRootNode).relationships()) {
+			
+			pathRels.add(rel);
+			
+			if(rel.getEndNode().getProperty("id").toString().equals(actualRootNodeId))
+				break;
+			
+		}
+		
+		for(Relationship rela : pathRels) {
+			
+			Node startNode = rela.getStartNode();
+			Node endNode = rela.getEndNode();
+			
+			rela.delete();
+			
+			endNode.createRelationshipTo(startNode,ERelations.STEMMA);
+		}
+		
+		return Response.ok().build();
 		
 	}
 	
@@ -143,14 +191,13 @@ public class Stemma implements IResource {
 		
 		Iterator<Relationship> rels = startNodeStemma.getRelationships().iterator();
 		
-		System.out.println("Here we are!");
-		
 		if(!rels.hasNext()) {
 			db.shutdown();
 		return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		Relationship rootRel = rels.next();
+		
 		rootRel.delete();
 		
 		startNodeStemma.createRelationshipTo(newRootNode,ERelations.STEMMA);

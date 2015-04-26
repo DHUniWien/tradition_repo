@@ -114,7 +114,7 @@ public class Neo4JToDotParser
     	
     	db.shutdown();
     	
-		return null;
+		return Response.ok().build();
 	}
 	
 	/**
