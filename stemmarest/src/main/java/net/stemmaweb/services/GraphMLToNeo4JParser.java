@@ -56,6 +56,8 @@ public class GraphMLToNeo4JParser implements IResource
 		InputStream in = new FileInputStream(file);
 		factory = XMLInputFactory.newInstance();
 		
+		HashMap<String, Long> idToNeo4jId = new HashMap<String, Long>();
+		
 		int depth = 0; 
 		// 0 root, 1 <graphml>, 2 <graph>, 3 <node>, 4 <data>
 		int type_nd = 0;
@@ -216,73 +218,60 @@ public class GraphMLToNeo4JParser implements IResource
 			        		if(!(from.getProperty("id").equals(fromNodeName) 
 				        			&& to.getProperty("id").equals(toNodeName)))
 				        	{
-				        		ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", fromNodeName);
-					        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", toNodeName);
-					        	Iterator<Node> st_it = startNodes.iterator();
-					        	Iterator<Node> en_it = endNodes.iterator();
-					        	if(st_it.hasNext() && en_it.hasNext())
-					        	{
-					        		Node fromTmp = st_it.next();
-					        		Node toTmp = en_it.next();
-					        		if(!(fromTmp.equals(from) && toTmp.equals(to)))
-					        		{
-					        			to = toTmp;
-					        			from = fromTmp;
-					        			if(rel!=null)
-					        			{
-					        				//System.out.println(leximes.toString());
-					        				String[] leximArray = new String[leximes.size()];
-					        				leximArray = leximes.toArray(leximArray);
-					        				if(leximArray.length>0)
-					        					rel.setProperty("lexemes", leximArray);
-					        				leximes.clear();
-					        			}
-					        			if(graphNumber<=1)
-					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.NORMAL);
-					        			}
-					        			else
-					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.RELATIONSHIP);
-					        			}
-					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
-					        		}
-					        	}
+				        		Node fromTmp = db.getNodeById(idToNeo4jId.get(fromNodeName));
+				        		Node toTmp = db.getNodeById(idToNeo4jId.get(toNodeName));
+						        if(!(fromTmp.equals(from) && toTmp.equals(to)))
+						        {
+						        	to = toTmp;
+						        	from = fromTmp;
+						        	if(rel!=null)
+						        	{
+						        		//System.out.println(leximes.toString());
+						        		String[] leximArray = new String[leximes.size()];
+						        		leximArray = leximes.toArray(leximArray);
+						        		if(leximArray.length>0)
+						        			rel.setProperty("lexemes", leximArray);
+						        		leximes.clear();
+						        	}
+						        	if(graphNumber<=1)
+						        	{
+						        		rel = fromTmp.createRelationshipTo(toTmp, ERelations.NORMAL);
+						        	}
+						        	else
+						        	{
+						        		rel = fromTmp.createRelationshipTo(toTmp, ERelations.RELATIONSHIP);
+						        	}
+						        	rel.setProperty("id", prefix + reader.getAttributeValue(2));
+						        }
 				        	}
 			        	}
 			        	else
 			        	{
-				        		ResourceIterable<Node> startNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", fromNodeName);
-					        	ResourceIterable<Node> endNodes = db.findNodesByLabelAndProperty(Nodes.WORD, "id", toNodeName);
-					        	Iterator<Node> st_it = startNodes.iterator();
-					        	Iterator<Node> en_it = endNodes.iterator();
-					        	if(st_it.hasNext() && en_it.hasNext())
+			        		Node fromTmp = db.getNodeById(idToNeo4jId.get(fromNodeName));
+			        		Node toTmp = db.getNodeById(idToNeo4jId.get(toNodeName));
+
+					        if(!(fromTmp.equals(from) && toTmp.equals(to)))
+					        {
+					        	to = toTmp;
+					        	from = fromTmp;
+					        	if(rel!=null)
 					        	{
-					        		Node fromTmp = st_it.next();
-					        		Node toTmp = en_it.next();
-					        		if(!(fromTmp.equals(from) && toTmp.equals(to)))
-					        		{
-					        			to = toTmp;
-					        			from = fromTmp;
-					        			if(rel!=null)
-					        			{
-					        				//System.out.println(leximes.toString());
-					        				String[] leximArray = new String[leximes.size()];
-					        				leximArray = leximes.toArray(leximArray);
-					        				rel.setProperty("leximes", leximArray);
-					        				leximes.clear();
-					        			}
-					        			if(graphNumber<=1)
-					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.NORMAL);
-					        			}
-					        			else
-					        			{
-					        				rel = fromTmp.createRelationshipTo(toTmp, ERelations.RELATIONSHIP);
-					        			}
-					        			rel.setProperty("id", prefix + reader.getAttributeValue(2));
-					        		}
+					        		//System.out.println(leximes.toString());
+					        		String[] leximArray = new String[leximes.size()];
+					        		leximArray = leximes.toArray(leximArray);
+					        		rel.setProperty("leximes", leximArray);
+					        		leximes.clear();
 					        	}
+					        	if(graphNumber<=1)
+					        	{
+					        		rel = fromTmp.createRelationshipTo(toTmp, ERelations.NORMAL);
+					        	}
+					        	else
+					        	{
+					        		rel = fromTmp.createRelationshipTo(toTmp, ERelations.RELATIONSHIP);
+					        	}
+					        	rel.setProperty("id", prefix + reader.getAttributeValue(2));
+					        }
 			        	}
 			        	
 			        		
@@ -297,7 +286,8 @@ public class GraphMLToNeo4JParser implements IResource
 			        		currNode = db.createNode(Nodes.WORD);
 			        	
 			        		currNode.setProperty("id", prefix + reader.getAttributeValue(0));
-			        	
+			        		
+			        		idToNeo4jId.put(prefix + reader.getAttributeValue(0), currNode.getId());
 			        		
 			        		if(firstNode==1)
 			        		{
@@ -402,7 +392,7 @@ public class GraphMLToNeo4JParser implements IResource
    	    for(String graph : graphs)
    	    {
 
-   	    	db = dbFactory.newEmbeddedDatabase(DB_PATH); // by Jakob as it was shutdown earlyer 
+   	    	db = dbFactory.newEmbeddedDatabase(DB_PATH); 
    	    	DotToNeo4JParser parser = new DotToNeo4JParser(db);
    	    	parser.parseDot(graph, last_inserted_id + "");
    	    }
