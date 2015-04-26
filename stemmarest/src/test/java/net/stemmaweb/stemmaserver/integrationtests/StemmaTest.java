@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -38,6 +39,7 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -147,6 +149,24 @@ public class StemmaTest {
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(stemma).create();
 		jerseyTest.setUp();
 	}
+	
+	@Test
+	public void getAllStemmataTest()
+	{
+		List<String> stemmata = jerseyTest.resource().path("/stemma/all/" + tradId).type(MediaType.APPLICATION_JSON).get(new GenericType<List<String>>() {});
+		assertEquals(2,stemmata.size());
+		
+		String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "
+				+ "A [ class=hypothetical ];  B [ class=hypothetical ];  "
+				+ "C [ class=hypothetical ]; 0 -> A;  0 -> B;  A -> C; }";
+		assertEquals(expected, stemmata.get(0));
+		
+		String expected2 = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  "
+				+ "A [ class=hypothetical ];  B [ class=hypothetical ];  "
+				+ "C [ class=hypothetical ]; 0 -- A;  A -- B;  B -- C; }";
+		assertEquals(expected2, stemmata.get(1));
+	}
+	
 	
 	@Test
 	public void getStemmaTest()
@@ -287,6 +307,29 @@ public class StemmaTest {
 			assertTrue(relAfter.iterator().hasNext());
 			assertEquals(newNodeId,relAfter.iterator().next().getEndNode().getProperty("id").toString());
 		
+			tx.success();
+		}
+
+	}
+	
+	@Test
+	public void reorientDigraphStemmaNoNodesTest()
+	{
+		
+		 String stemmaTitle = "stemma";
+		 String falseNode = "X";
+		 String rightNode = "C";
+		 String falseTitle = "X";
+
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			
+			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ falseNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
+		
+			ClientResponse actualStemmaResponse2 = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+falseTitle+"/"+ rightNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse2.getStatus());
+			
 			tx.success();
 		}
 
