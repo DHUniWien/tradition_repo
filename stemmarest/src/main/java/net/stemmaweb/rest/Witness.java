@@ -43,7 +43,7 @@ public class Witness implements IResource {
 	 * @return a witness as a string
 	 */
 	@GET
-	@Path("string/{tradId}/{textId}")
+	@Path("gettext/fromtradition/{tradId}/ofwitness/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsPlainText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) {
@@ -78,7 +78,7 @@ public class Witness implements IResource {
 	 * @return a witness as a string
 	 */
 	@GET
-	@Path("string/rank/{tradId}/{textId}/{startRank}/{endRank}")
+	@Path("gettext/fromtradition/{tradId}/ofwitness/{textId}/fromstartrank/{startRank}/toendrank/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsPlainTextBetweenRanks(
 			@PathParam("tradId") String tradId,
@@ -121,7 +121,7 @@ public class Witness implements IResource {
 	}
 
 	/**
-	 * finds a witness in data base and return it as a list of readings
+	 * finds a witness in database and return it as a list of readings
 	 * 
 	 * @param userId
 	 *            : the id of the user who owns the witness
@@ -132,7 +132,7 @@ public class Witness implements IResource {
 	 * @return a witness as a list of readings
 	 */
 	@GET
-	@Path("list/{tradId}/{textId}")
+	@Path("getreadinglist/fromtradition/{tradId}/ofwitness/{textId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) {

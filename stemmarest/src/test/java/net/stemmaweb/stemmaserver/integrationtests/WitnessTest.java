@@ -156,19 +156,20 @@ public class WitnessTest {
 
 	@Test
 	public void witnessAsTextTestA() {
-		String expectedText = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto the root\"}";
+		String expectedText = "{\"text\":\"when april with his showers sweet with "
+				+ "fruit the drought of march has pierced unto the root\"}";
 		Response resp = witness.getWitnessAsPlainText(tradId, "A");
 		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
-				.path("/witness/string/" + tradId + "/A").get(String.class);
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A").get(String.class);
 		assertEquals(expectedText, returnedText);
 	}
 
 	@Test
 	public void witnessAsTextNotExistingTest() {
 		ClientResponse response = jerseyTest.resource()
-				.path("/witness/string/" + tradId + "/D")
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/D")
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
@@ -178,12 +179,13 @@ public class WitnessTest {
 
 	@Test
 	public void witnessAsTextTestB() {
-		String expectedText = "{\"text\":\"when showers sweet with april fruit the march of drought has pierced to the root\"}";
+		String expectedText = "{\"text\":\"when showers sweet with april fruit the march "
+				+ "of drought has pierced to the root\"}";
 		Response resp = witness.getWitnessAsPlainText(tradId, "B");
 		assertEquals(expectedText, resp.getEntity());
 
 		String returnedText = jerseyTest.resource()
-				.path("/witness/string/" + tradId + "/B").get(String.class);
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/B").get(String.class);
 		assertEquals(expectedText, returnedText);
 	}
 
@@ -193,7 +195,7 @@ public class WitnessTest {
 				"with", "fruit", "the", "drought", "of", "march", "has",
 				"pierced", "unto", "the", "root" };
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
-				.path("/witness/list/" + tradId + "/A")
+				.path("/witness/getreadinglist/fromtradition/" + tradId + "/ofwitness/A")
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		assertEquals(texts.length, listOfReadings.size());
@@ -207,7 +209,8 @@ public class WitnessTest {
 
 		String expectedText = "{\"text\":\"april with his showers\"}";
 		String actualResponse = jerseyTest.resource()
-				.path("/witness/string/rank/" + tradId + "/A/2/5")
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
+						+ "fromstartrank/2/toendrank/5")
 				.get(String.class);
 		assertEquals(expectedText, actualResponse);
 	}
@@ -218,7 +221,8 @@ public class WitnessTest {
 	@Test
 	public void witnessBetweenRanksWrongWayTest() {
 		ClientResponse response = jerseyTest.resource()
-				.path("/witness/string/rank/" + tradId + "/A/5/2")
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
+						+ "fromstartrank/5/toendrank/2")
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 				response.getStatus());
@@ -232,7 +236,8 @@ public class WitnessTest {
 	@Test
 	public void witnessBetweenRanksSameRanksTest() {
 		ClientResponse response = jerseyTest.resource()
-				.path("/witness/string/rank/" + tradId + "/A/5/5")
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
+						+ "fromstartrank/5/toendrank/5")
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 				response.getStatus());
