@@ -245,7 +245,7 @@ public class StemmaTest {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		
 		 String stemmaTitle = "Semstem 1402333041_0";
-		 String newNodeId = "A";
+		 String newNodeId = "0";
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
