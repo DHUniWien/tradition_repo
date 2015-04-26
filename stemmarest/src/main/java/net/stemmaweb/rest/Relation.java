@@ -108,8 +108,8 @@ public class Relation implements IResource {
 	}
 
 	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
-		Long firstRank = (Long) firstReading.getProperty("dn14");
-		Long secondRank = (Long) secondReading.getProperty("dn14");
+		Long firstRank = Long.parseLong(firstReading.getProperty("dn14").toString());
+		Long secondRank = Long.parseLong(secondReading.getProperty("dn14").toString());
 		Direction firstDirection, secondDirection;
 
 		if (firstRank > secondRank) {
@@ -120,7 +120,7 @@ public class Relation implements IResource {
 			secondDirection = Direction.INCOMING;
 		}
 
-		int depth = (int) ((Long) firstReading.getProperty("dn14") - (Long) secondReading.getProperty("dn14")) + 1;
+		int depth = (int) (Long.parseLong(firstReading.getProperty("dn14").toString()) - (Long.parseLong( secondReading.getProperty("dn14").toString()))) + 1;
 
 		for (Node firstReadingNextNode : getNextNodes(firstReading, db, firstDirection, depth))
 			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))

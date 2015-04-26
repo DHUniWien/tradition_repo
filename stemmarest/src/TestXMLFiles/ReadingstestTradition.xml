@@ -518,5 +518,21 @@
       <data key="de11">grammatical</data>
       <data key="de10">local</data>
     </edge>
+    <edge source="n2" target="n4" id="e5">
+      <data key="de8">when</data>
+      <data key="de6">no</data>
+      <data key="de9">fruit</data>
+      <data key="de1">0</data>
+      <data key="de11">grammatical</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n28" target="n27" id="e6">
+      <data key="de8">fruit</data>
+      <data key="de6">no</data>
+      <data key="de9">the root</data>
+      <data key="de1">0</data>
+      <data key="de11">transposition</data>
+      <data key="de10">local</data>
+    </edge>
   </graph>
 </graphml>

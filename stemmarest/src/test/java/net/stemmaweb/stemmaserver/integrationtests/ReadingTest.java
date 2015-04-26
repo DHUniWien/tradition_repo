@@ -34,8 +34,10 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
@@ -196,11 +198,13 @@ public class ReadingTest {
 	public void getReadingJsonTest() throws JsonProcessingException {
 		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
-		Response resp = reading.getReading(tradId, 16);
+		//Response resp = reading.getReading(tradId, 16);
+		ClientResponse resp = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + 16)
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);
-		String json = mapper.writeValueAsString(resp.getEntity());
+		String json = mapper.writeValueAsString(resp.getEntity(ReadingModel.class));
 
 		assertEquals(expected, json);
 	}
@@ -412,6 +416,16 @@ public class ReadingTest {
 			Node secondNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
+			assertTrue(firstNode.hasRelationship(ERelations.RELATIONSHIP));
+			Relationship firstRel = firstNode.getSingleRelationship(ERelations.RELATIONSHIP, Direction.BOTH);
+			assertEquals("grammatical", firstRel.getProperty("de11"));
+			assertEquals("when", firstRel.getOtherNode(firstNode).getProperty("dn15"));
+
+			assertTrue(secondNode.hasRelationship(ERelations.RELATIONSHIP));
+			Relationship secondRel = secondNode.getSingleRelationship(ERelations.RELATIONSHIP, Direction.BOTH);
+			assertEquals("transposition", secondRel.getProperty("de11"));
+			assertEquals("the root", secondRel.getOtherNode(secondNode).getProperty("dn15"));
+
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
 					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
@@ -427,20 +441,19 @@ public class ReadingTest {
 			result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
-			Node staying = nodes.next();
+			Node stayingNode = nodes.next();
 			assertFalse(nodes.hasNext());
+
+			// test relationships
+			for (Relationship rel : stayingNode.getRelationships(ERelations.RELATIONSHIP)) {
+				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("when"))
+					assertEquals("grammatical", rel.getProperty("de11"));
+				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("the root"))
+					assertEquals("transposition", rel.getProperty("de11"));
+			}
 
 			tx.success();
 		}
-		//
-		// assertFalse(firstNode.hasRelationship(ERelations.RELATIONSHIP));
-		// assertTrue(secondNode.hasRelationship(ERelations.RELATIONSHIP));
-		//
-		// for (Relationship oldRel :
-		// firstNode.getRelationships(ERelations.RELATIONSHIP))
-		// for (Relationship stayingRel :
-		// staying.getRelationships(ERelations.RELATIONSHIP))
-
 	}
 
 	/**
@@ -511,8 +524,6 @@ public class ReadingTest {
 		}
 	}
 
-	// still fails: isCyclic() method in mergeReadings does always return true,
-	// but I do not know why.
 	@Test
 	public void mergeReadingsWithClassOneRelationshipStaysAcyclicTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
@@ -611,15 +622,29 @@ public class ReadingTest {
 
 	@Test
 	public void splitReadingTest() {
+		Node node;
+		ExecutionEngine engine;
+		ExecutionResult result;
+		Iterator<Node> nodes;
 		try (Transaction tx = mockDbService.beginTx()) {
-
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
+			engine = new ExecutionEngine(mockDbService);
+			result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
-			Node node = nodes.next();
+			node = nodes.next();
 			assertFalse(nodes.hasNext());
 
+			assertTrue(node.hasRelationship(ERelations.RELATIONSHIP));
+
+			// delete relationship, so that splitting is possible
+			node.getSingleRelationship(ERelations.RELATIONSHIP, Direction.INCOMING).delete();
+
+			assertFalse(node.hasRelationship(ERelations.RELATIONSHIP));
+
+			tx.success();
+		}
+
+		try (Transaction tx = mockDbService.beginTx()) {
 			// split reading
 			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
@@ -639,10 +664,50 @@ public class ReadingTest {
 			assertEquals((long) 17, the2.getProperty("dn14"));
 			assertEquals((long) 17, the3.getProperty("dn14"));
 
+			result = engine.execute("match (w:WORD {dn15:'root'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node root1 = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node root2 = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			assertEquals((long) 18, root1.getProperty("dn14"));
+			assertEquals((long) 18, root2.getProperty("dn14"));
+
 			// should contain one reading more now
 			testNumberOfReadings(30);
 
 			testWitnesses();
+
+			tx.success();
+		}
+	}
+
+	@Test
+	public void splitReadingWithRelationshipTest() {
+		try (Transaction tx = mockDbService.beginTx()) {
+
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+			assertEquals("A reading to be splitted cannot be part of any relationship",
+					response.getEntity(String.class));
+
+			testNumberOfReadings(29);
+
+			testWitnesses();
+
+			tx.success();
 		}
 	}
 
@@ -667,9 +732,7 @@ public class ReadingTest {
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
 			assertEquals("There has to be a rank-gap after a reading to be splitted", response.getEntity(String.class));
 
-			String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-			Response resp = witness.getWitnessAsPlainText(tradId, "A");
-			assertEquals(expectedWitnessA, resp.getEntity());
+			testWitnesses();
 
 			tx.success();
 		}

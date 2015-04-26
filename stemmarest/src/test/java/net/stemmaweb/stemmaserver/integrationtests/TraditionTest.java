@@ -9,6 +9,7 @@ import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TextInfoModel;
@@ -19,6 +20,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -193,6 +195,14 @@ public class TraditionTest {
     	assertEquals(trad2.getId(), lastTradition.getId());
     	assertEquals(trad2.getName(), lastTradition.getName());
 	}
+	
+	@Test
+	public void getAllTraditionsWithParameterNotFoundTest()
+	{
+		ClientResponse resp = jerseyTest.resource().path("/tradition/all/" + 2342)
+    			.get(ClientResponse.class);
+    	assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+	}
 
 	@Test
 	public void getAllRelationshipsTest() {
@@ -230,11 +240,20 @@ public class TraditionTest {
 	}
 	
 	@Test
-	public void getAllWitnessesTest() {
-		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
-		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)
-				.post(ClientResponse.class, jsonPayload);
+	public void getAllRelationshipsCorrectAmountTest() {
 
+		List<RelationshipModel> relationships = jerseyTest.resource()
+				.path("/tradition/relation/" + tradId + "/relationships")
+				.get(new GenericType<List<RelationshipModel>>() {
+				});
+
+		assertEquals(3, relationships.size());
+
+	}
+	
+	@Test
+	public void getAllWitnessesTest() {
+		
 		WitnessModel witA = new WitnessModel();
 		witA.setId("A");
 		WitnessModel witB = new WitnessModel();
@@ -256,6 +275,25 @@ public class TraditionTest {
 		assertEquals(witC.getId(),witLoaded2.getId());
 		
 
+	}
+	
+	@Test
+	public void getAllWitnessesTraditionNotFoundTest() {
+
+		ClientResponse resp = jerseyTest.resource()
+				.path("/tradition/witness/" + 10000)
+				.get(ClientResponse.class);
+		
+		assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
+		
+	}
+	
+	@Test
+	public void getDotOfNonExistentTraditionTest()
+	{
+		ClientResponse resp = jerseyTest.resource().path("/tradition/getdot/" + 10000).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		
+		assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
 	}
 	
 	@Test
@@ -429,6 +467,7 @@ public class TraditionTest {
 		}
 	}
 	
+	
 	/**
 	 * Test if there is the correct error when trying to change a tradition with an invalid userid
 	 */
@@ -594,17 +633,25 @@ public class TraditionTest {
 	 * Remove a complete Tradition
 	 */
 	@Test
-	public void removeATraditionTest(){
-//		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
-//		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-//		assertEquals(removalResponse.getEntity(String.class),"Tradition not found");
+	public void deleteTraditionByIdTest(){
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/"+tradId).type(MediaType.APPLICATION_JSON).delete(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+		
+
+		Node startNode = null;
+		try (Transaction tx = mockDbService.beginTx()) {
+			startNode = DatabaseService.getStartNode(tradId, mockDbService);
+			
+		}
+		
+		assertTrue(startNode == null);
 	}
 	
 	/**
-	 * Remove a complete Tradition with invalid id
+	 * Test do delete a Tradition with an invalid id deletTraditionById
 	 */
 	@Test
-	public void removeATraditionWithInvalidIdTest(){
+	public void deleteATraditionWithInvalidIdTest(){
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		/*
 		 * Try to remove a tradition with invalid id
