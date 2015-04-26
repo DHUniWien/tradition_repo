@@ -168,6 +168,22 @@ public class StemmaTest {
 	}
 	
 	@Test
+	public void getAllStemmataNotFoundErrorTest()
+	{
+		ClientResponse getStemmaResponse = jerseyTest.resource().path("/stemma/all/" + 100000).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getStemmaResponse.getStatus());
+	}
+	
+	@Test
+	public void getAllStemmataStatusTest()
+	{
+		ClientResponse resp = jerseyTest.resource().path("/stemma/all/" + tradId).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+
+		Response expectedResponse = Response.ok().build();
+		assertEquals(expectedResponse.getStatus(), resp.getStatus());
+	}
+	
+	@Test
 	public void getStemmaTest()
 	{
 		String stemmaTitle = "stemma";
@@ -249,7 +265,6 @@ public class StemmaTest {
 			Iterable<Relationship> rel2 = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
 			assertTrue(rel2.iterator().hasNext());
 			assertEquals(newNodeId,rel2.iterator().next().getEndNode().getProperty("id").toString());
-			assertFalse("0".equals(rel1.iterator().next().getEndNode().getProperty("id").toString()));
 
 			tx.success();
 		}
