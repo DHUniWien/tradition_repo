@@ -14,11 +14,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.services.DotToNeo4JParser;
-<<<<<<< HEAD
+
 import net.stemmaweb.services.EvaluatorService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
-=======
->>>>>>> 6dcb946f6f836477d0f84b30feb78458c70294fb
+
 import net.stemmaweb.services.Neo4JToDotParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -29,13 +28,12 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-<<<<<<< HEAD
+
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
-=======
->>>>>>> 6dcb946f6f836477d0f84b30feb78458c70294fb
+
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
