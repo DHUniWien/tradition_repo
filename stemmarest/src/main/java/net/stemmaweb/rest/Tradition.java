@@ -66,7 +66,7 @@ public class Tradition implements IResource {
 	 * @return OK on success or an ERROR as JSON
 	 */
 	@POST
-	@Path("{textId}")
+	@Path("changeowner/fromtradition/{textId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
@@ -112,7 +112,7 @@ public class Tradition implements IResource {
 	}
 	
 	@GET
-	@Path("all")
+	@Path("getalltraditions")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllTraditions()
 	{
@@ -147,7 +147,7 @@ public class Tradition implements IResource {
 	}
 
 	@GET
-	@Path("witness/{tradId}")
+	@Path("getallwitnesses/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 
@@ -197,7 +197,7 @@ public class Tradition implements IResource {
 	}
 
 	@GET
-	@Path("relation/{tradId}/relationships")
+	@Path("getallrealtionships/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 
@@ -267,16 +267,6 @@ public class Tradition implements IResource {
 		return Response.ok(relList).build();
 	}
 
-	/**
-	 * Helper method for getting all outgoing relationships of a node
-	 * 
-	 * @param traditionNode
-	 * @return
-	 */
-	private Iterable<Relationship> getRelationships(Node traditionNode){
-		Iterable<Relationship> relations = traditionNode.getRelationships(Direction.OUTGOING);		
-		return relations;
-	}
 
 	/**
 	 * Helper method for getting the tradition node with a given tradition id
