@@ -175,7 +175,7 @@ public class ReadingTest {
 	 * Contains 29 readings at the beginning.
 	 */
 	private void testNumberOfReadings(int number) {
-		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/" + tradId)
+		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/getallreadings/fromtradition/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		assertEquals(number, listOfReadings.size());
@@ -199,7 +199,8 @@ public class ReadingTest {
 		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
 		//Response resp = reading.getReading(tradId, 16);
-		ClientResponse resp = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + 16)
+		ClientResponse resp = jerseyTest.resource().path("/reading/getreading/fromtradition/" + tradId + 
+				"/withreadingid/"+ 16)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -223,7 +224,8 @@ public class ReadingTest {
 			expectedReadingModel = new ReadingModel(node);
 
 
-			ReadingModel readingModel = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + node.getId())
+			ReadingModel readingModel = jerseyTest.resource().path("/reading/getreading/fromtradition/" + tradId + 
+				"/withreadingid/"+ node.getId())
 					.type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
 			assertTrue(readingModel != null);
@@ -236,7 +238,8 @@ public class ReadingTest {
 
 	@Test
 	public void getReadingWithFalseIdTest() {
-		ClientResponse response = jerseyTest.resource().path("/reading/reading/" + tradId + "/" + 200)
+		ClientResponse response = jerseyTest.resource().path("/reading/getreading/fromtradition/" + tradId + 
+				"/withreadingid/"+ 200)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
@@ -263,7 +266,7 @@ public class ReadingTest {
 			// duplicate reading
 			String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", " + secondNode.getId()
 					+ "], \"witnesses\":[\"A\",\"B\" ]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -311,7 +314,7 @@ public class ReadingTest {
 
 			// duplicate reading
 			String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -350,7 +353,7 @@ public class ReadingTest {
 
 			// duplicate reading
 			String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -372,7 +375,7 @@ public class ReadingTest {
 
 			// duplicate reading
 			String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -394,7 +397,7 @@ public class ReadingTest {
 
 			// duplicate reading
 			String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicate/" + tradId)
+			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -428,7 +431,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -476,7 +480,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + with1.getId() + "/" + with2.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ with1.getId() + "/secondReading/" + with2.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -502,7 +507,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -538,7 +544,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -571,7 +578,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -610,7 +618,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/merge/" + tradId + "/" + firstNode.getId() + "/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -646,7 +655,8 @@ public class ReadingTest {
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
+					"/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -696,7 +706,8 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
+					"/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -726,7 +737,8 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + untoMe.getId())
+			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
+					"/ofreading/" + untoMe.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -749,7 +761,8 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/split/" + tradId + "/" + node.getId())
+			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
+					"/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -770,7 +783,7 @@ public class ReadingTest {
 	@Test
 	public void allReadingsOfTraditionTest() {
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
-				.path("/reading/" + tradId)
+				.path("/reading/getallreadings/fromtradition/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		Collections.sort(listOfReadings);
@@ -796,7 +809,7 @@ public class ReadingTest {
 	public void allReadingsOfTraditionNotFoundTest() {
 		String falseTradId = tradId+1;
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/" + falseTradId)
+				.path("/reading/getallreadings/fromtradition/" + falseTradId)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
@@ -808,7 +821,8 @@ public class ReadingTest {
 		List<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
 		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest.resource()
-				.path("/reading/identical/" + tradId + "/3/8")
+				.path("/reading/getidenticalreadings/fromtradition/" + tradId + 
+						"/fromstartrank/3/toendrank/8")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(1, listOfIdenticalReadings.size());
@@ -825,7 +839,8 @@ public class ReadingTest {
 		List<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
 		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest.resource()
-				.path("/reading/identical/" + tradId + "/1/8")
+				.path("/reading/getidenticalreadings/fromtradition/" + tradId + 
+						"/fromstartrank/1/toendrank/8")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, listOfIdenticalReadings.size());
@@ -846,7 +861,8 @@ public class ReadingTest {
 	@Test
 	public void identicalReadingsNoResultTest() {
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/identical/" + tradId + "/10/15")
+				.path("/reading/getidenticalreadings/fromtradition/" + tradId + 
+						"/fromstartrank/10/toendrank/15")
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
@@ -856,7 +872,8 @@ public class ReadingTest {
 	@Test
 	public void couldBeIdenticalReadingsTest() {
 		List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest.resource()
-				.path("/reading/couldBeIdentical/" + tradId + "/1/15")
+				.path("/reading/couldbeidenticalreadings/fromtradition/" + tradId + 
+						"/fromstartrank/1/toendrank/15")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, couldBeIdenticalReadings.size());
@@ -875,7 +892,8 @@ public class ReadingTest {
 	@Test
 	public void couldBeIdenticalReadingsNoResultTest() {
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/couldBeIdentical/" + tradId + "/1/9")
+				.path("/reading/couldbeidenticalreadings/fromtradition/" + tradId + 
+						"/fromstartrank/1/toendrank/9")
 				.get(ClientResponse.class);
 		
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
@@ -901,8 +919,9 @@ public class ReadingTest {
 
 			ClientResponse res = jerseyTest
 					.resource()
-					.path("/reading/compress/" + tradId + "/" + showers.getId()
-							+ "/" + sweet.getId()).get(ClientResponse.class);
+					.path("/reading/compressreadings/fromtradition/" + tradId + 
+							"/readingone/" + showers.getId()
+							+ "/readingtwo/" + sweet.getId()).get(ClientResponse.class);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("Successfully compressed readings", res.getEntity(String.class));
@@ -929,7 +948,7 @@ public class ReadingTest {
 			testWitnesses();
 
 			List<ReadingModel> listOfReadings = jerseyTest.resource()
-					.path("/reading/" + tradId)
+					.path("/reading/getallreadings/fromtradition/" + tradId)
 					.get(new GenericType<List<ReadingModel>>() {
 					});
 			Collections.sort(listOfReadings);
@@ -977,8 +996,9 @@ public class ReadingTest {
 
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/compress/" + tradId + "/" + showers.getId()
-							+ "/" + fruit.getId()).get(ClientResponse.class);
+					.path("/reading/compressreadings/fromtradition/" + tradId + 
+							"/readingone/" + showers.getId()
+							+ "/readingtwo/" + fruit.getId()).get(ClientResponse.class);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
@@ -1010,7 +1030,7 @@ public class ReadingTest {
 		}
 
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/next/A/" + withReadId)
+				.path("/reading/getnextreading/fromwitness/A/ofreading/" + withReadId)
 				.get(ReadingModel.class);
 		assertEquals("his", actualResponse.getDn15());		
 	}
@@ -1029,12 +1049,12 @@ public class ReadingTest {
 		}
 		
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/next/A/" + piercedReadId)
+				.path("/reading/getnextreading/fromwitness/A/ofreading/" + piercedReadId)
 				.get(ReadingModel.class);
 		assertEquals("unto me", actualResponse.getDn15());
 		
 		actualResponse = jerseyTest.resource()
-				.path("/reading/next/B/" + piercedReadId)
+				.path("/reading/getnextreading/fromwitness/B/ofreading/" + piercedReadId)
 				.get(ReadingModel.class);
 		assertEquals("to", actualResponse.getDn15());
 	}
@@ -1054,7 +1074,7 @@ public class ReadingTest {
 		}
 
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/next/B/" + readId)
+				.path("/reading/getnextreading/fromwitness/B/ofreading/" + readId)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
@@ -1075,7 +1095,7 @@ public class ReadingTest {
 			tx.success();
 		}
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/previous/A/" + readId)
+				.path("/reading/getpreviousreading/fromwitness/A/ofreading/" + readId)
 				.get(ReadingModel.class);
 		assertEquals("april", actualResponse.getDn15());
 	}
@@ -1094,12 +1114,12 @@ public class ReadingTest {
 			tx.success();
 		}
 		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/previous/A/" + ofId)
+				.path("/reading/getpreviousreading/fromwitness/A/ofreading/" + ofId)
 				.get(ReadingModel.class);
 		assertEquals("drought", actualResponse.getDn15());
 		
 		actualResponse = jerseyTest.resource()
-				.path("/reading/previous/B/" + ofId)
+				.path("/reading/getpreviousreading/fromwitness/B/ofreading/" + ofId)
 				.get(ReadingModel.class);
 		assertEquals("march", actualResponse.getDn15());
 	}
@@ -1118,7 +1138,7 @@ public class ReadingTest {
 			tx.success();
 		}
 		ClientResponse actualResponse = jerseyTest.resource()
-				.path("/reading/previous/A/" + readId)
+				.path("/reading/getpreviousreading/fromwitness/A/ofreading/" + readId)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				actualResponse.getStatus());

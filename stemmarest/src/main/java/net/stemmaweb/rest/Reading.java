@@ -34,7 +34,7 @@ import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
-@Path("reading")
+@Path("/reading")
 public class Reading implements IResource {
 	private String errorMessage;
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
@@ -57,7 +57,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@GET
-	@Path("reading/{tradId}/{readId}")
+	@Path("getreading/fromtradition/{tradId}/withreadingid/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getReading(@PathParam("tradId") String tradId,
 			@PathParam("readId") long readId) {
@@ -95,7 +95,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@POST
-	@Path("duplicate/{tradId}")
+	@Path("duplicatereading/fromtradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(@PathParam("tradId") String tradId,
@@ -247,7 +247,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@POST
-	@Path("merge/{tradId}/{firstReadId}/{secondReadId}")
+	@Path("mergereadings/fromtradition/{tradId}/firstReading/{firstReadId}/secondReading/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId,
 			@PathParam("firstReadId") long firstReadId,
@@ -469,7 +469,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@POST
-	@Path("split/{tradId}/{readId}")
+	@Path("splitreading/fromtradition/{tradId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId,
 			@PathParam("readId") long readId) {
@@ -587,7 +587,7 @@ public class Reading implements IResource {
 	 * @return the requested reading
 	 */
 	@GET
-	@Path("next/{textId}/{readId}")
+	@Path("getnextreading/fromwitness/{textId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getNextReadingInWitness(@PathParam("textId") String textId,
 			@PathParam("readId") long readId) {
@@ -634,7 +634,7 @@ public class Reading implements IResource {
 	 * @return the requested reading
 	 */
 	@GET
-	@Path("/previous/{textId}/{readId}")
+	@Path("getpreviousreading/fromwitness/{textId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getPreviousReadingInWitness(
 			@PathParam("textId") String textId, @PathParam("readId") long readId) {
@@ -672,7 +672,7 @@ public class Reading implements IResource {
 
 	
 	@GET
-	@Path("/{tradId}")
+	@Path("getallreadings/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllReadings(@PathParam("tradId") String tradId) {
 
@@ -737,7 +737,7 @@ public class Reading implements IResource {
 	}
 
 	@GET
-	@Path("identical/{tradId}/{startRank}/{endRank}")
+	@Path("getidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getIdenticalReadings(@PathParam("tradId") String tradId,
 			@PathParam("startRank") long startRank,
@@ -779,7 +779,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@GET
-	@Path("couldBeIdentical/{tradId}/{startRank}/{endRank}")
+	@Path("couldbeidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getCouldBeIdenticalReadings(
 			@PathParam("tradId") String tradId,
@@ -986,7 +986,7 @@ public class Reading implements IResource {
 	 * @return confirmation that the operation was completed
 	 */
 	@GET
-	@Path("compress/{tradId}/{readId1}/{readId2}")
+	@Path("compressreadings/fromtradition/{tradId}/readingone/{readId1}/readingtwo/{readId2}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response compressReadings(@PathParam("tradId") String tradId,
 			@PathParam("readId1") long readId1,
