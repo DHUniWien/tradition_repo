@@ -120,19 +120,23 @@ public class Stemma implements IResource {
     		
 			Node startNodeStemma = stNodes.next();
     		String stemmaType = startNodeStemma.getProperty("type").toString();
+    				
+    		Node newRootNode = null;
+    		for (Node node : db.traversalDescription().depthFirst()
+    				.relationships(ERelations.STEMMA,Direction.OUTGOING)
+    				.uniqueness(Uniqueness.NODE_GLOBAL)
+    				.traverse(startNodeStemma).nodes()) {
+    			
+    			if(node.getProperty("id").toString().equals(nodeId))
+    				newRootNode = node;
+    			
+    		}
     		
-    		ExecutionResult result2 = engine.execute("match (s:STEMMA { name:'" + 
-					stemmaTitle +"'})-[:STEMMA]->(w:WITNESS { id:'" + 
-					nodeId +"'}) return w");
-    		Iterator<Node> nodes = result2.columnAs("w");
-    		
-    		if(!nodes.hasNext()) {
+    		if(newRootNode == null) {
     	    	db.shutdown();
     			return Response.status(Status.NOT_FOUND).build();
     		}
-    		
-			Node newRootNode = stNodes.next();
-    		
+    		    		
     		if(stemmaType.equals("digraph"))
 	    		resp = reorientDigraph(newRootNode,startNodeStemma);
     		else

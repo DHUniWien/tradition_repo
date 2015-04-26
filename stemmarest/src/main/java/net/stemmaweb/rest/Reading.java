@@ -327,7 +327,8 @@ public class Reading implements IResource {
 		}
 
 		// check if both readings are present in the path
-		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
+		for (Node node : db.traversalDescription().depthFirst()
+				.relationships(ERelations.NORMAL, Direction.OUTGOING)
 				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes())
 			if (node.equals(higherRankReading))
 				return true;
