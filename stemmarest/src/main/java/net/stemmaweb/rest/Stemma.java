@@ -193,6 +193,14 @@ public class Stemma implements IResource {
     	
 	}
 
+	/**
+	 * Reorients a digraph: Searches the path to the new rootnode; reverse the realtionships;
+	 * change the first relationship
+	 * 
+	 * @param newRootNode
+	 * @param startNodeStemma
+	 * @return
+	 */
 	private Response reorientDigraph(Node newRootNode, Node startNodeStemma) {
 		
 		Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
@@ -233,6 +241,14 @@ public class Stemma implements IResource {
 		
 	}
 	
+	/**
+	 * Reorients a graph: deletes first relationship to node and exchange with a relationship to 
+	 * the new root node
+	 * 
+	 * @param newRootNode
+	 * @param startNodeStemma
+	 * @return
+	 */
 	private Response reorientGraph(Node newRootNode, Node startNodeStemma) {
 		
 		Iterator<Relationship> rels = startNodeStemma.getRelationships().iterator();
