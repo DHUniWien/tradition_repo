@@ -13,11 +13,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DotToNeo4JParser;
-
 import net.stemmaweb.services.EvaluatorService;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
-
 import net.stemmaweb.services.Neo4JToDotParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -28,12 +27,10 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Traverser;
-
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
@@ -51,6 +48,53 @@ public class Stemma implements IResource {
 	
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 	private GraphDatabaseService db;
+	
+	/**
+	 * Gets a list of all stemmata available, as dot format
+	 * @param tradId
+	 * @return list of dot
+	 */
+	@GET
+	@Path("/all/{tradId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getAllStemmata(@PathParam("tradId") String tradId)
+	{
+		Response resp = null;
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
+		// check if tradition exists
+		if(DatabaseService.getStartNode(tradId, db)!=null)
+		{
+			try(Transaction tx = db.beginTx())
+			{
+			ExecutionEngine engine = new ExecutionEngine(db);
+			// find all stemmata associated with this tradition
+			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
+			
+			Iterator<Node> stemmata = result.columnAs("s");
+			Neo4JToDotParser parser = new Neo4JToDotParser(db);
+			ArrayList<String> stemmataList = new ArrayList<String>();
+			while(stemmata.hasNext())
+			{
+				Node stemma = stemmata.next();
+				System.out.println(stemma.getProperty("name"));
+				Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name").toString());
+				String dot = (String) localResp.getEntity();
+				stemmataList.add(dot);
+			}
+		
+			resp = Response.ok(stemmataList).build();
+			tx.success();
+			}
+		}
+		else
+		{
+			resp = Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+		}
+		return resp;
+	}
+	
+	
 	
 	/**
 	 * Returns JSON string with a stemma of a tradition in DOT format
