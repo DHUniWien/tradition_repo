@@ -180,7 +180,7 @@ public class Stemma implements IResource {
     		if(stemmaType.equals("digraph"))
 	    		resp = reorientDigraph(newRootNode,startNodeStemma);
     		else
-    			resp = reorientGrap(newRootNode,startNodeStemma);
+    			resp = reorientGraph(newRootNode,startNodeStemma);
 		
 		
 		tx.success();
@@ -227,11 +227,13 @@ public class Stemma implements IResource {
 			endNode.createRelationshipTo(startNode,ERelations.STEMMA);
 		}
 		
+		reorientGraph(newRootNode, startNodeStemma);
+		
 		return Response.ok().build();
 		
 	}
 	
-	private Response reorientGrap(Node newRootNode, Node startNodeStemma) {
+	private Response reorientGraph(Node newRootNode, Node startNodeStemma) {
 		
 		Iterator<Relationship> rels = startNodeStemma.getRelationships().iterator();
 		

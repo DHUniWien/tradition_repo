@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
@@ -229,7 +230,8 @@ public class StemmaTest {
 			Iterable<Relationship> rel2 = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
 			assertTrue(rel2.iterator().hasNext());
 			assertEquals(newNodeId,rel2.iterator().next().getEndNode().getProperty("id").toString());
-		
+			assertFalse("0".equals(rel1.iterator().next().getEndNode().getProperty("id").toString()));
+
 			tx.success();
 		}
 
@@ -258,6 +260,37 @@ public class StemmaTest {
 
 	}
 	
+	@Test
+	public void reorientDigraphStemmaTest()
+	{
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		
+		 String stemmaTitle = "stemma";
+		 String newNodeId = "C";
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
+					tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
+					stemmaTitle +"'}) return n");
+    		Iterator<Node> stNodes = result1.columnAs("n");
+    		assertTrue(stNodes.hasNext());
+			Node startNodeStemma = stNodes.next();
+			
+			Iterable<Relationship> relBevor = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
+			assertTrue(relBevor.iterator().hasNext());
+			assertEquals("0",relBevor.iterator().next().getEndNode().getProperty("id").toString());
+			
+			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ newNodeId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+			
+			Iterable<Relationship> relAfter = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
+			assertTrue(relAfter.iterator().hasNext());
+			assertEquals(newNodeId,relAfter.iterator().next().getEndNode().getProperty("id").toString());
+		
+			tx.success();
+		}
+
+	}
 	/**
 	 * Shut down the jersey server
 	 * 
