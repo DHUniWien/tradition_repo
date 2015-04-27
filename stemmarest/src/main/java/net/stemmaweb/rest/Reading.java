@@ -247,7 +247,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@POST
-	@Path("mergereadings/fromtradition/{tradId}/firstReading/{firstReadId}/secondReading/{secondReadId}")
+	@Path("mergereadings/fromtradition/{tradId}/firstreading/{firstReadId}/secondreading/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId,
 			@PathParam("firstReadId") long firstReadId,

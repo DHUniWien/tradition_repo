@@ -431,8 +431,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -480,8 +480,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ with1.getId() + "/secondReading/" + with2.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ with1.getId() + "/secondreading/" + with2.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -507,8 +507,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -544,8 +544,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -578,8 +578,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -616,8 +616,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
@@ -656,8 +656,8 @@ public class ReadingTest {
 
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
+							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
