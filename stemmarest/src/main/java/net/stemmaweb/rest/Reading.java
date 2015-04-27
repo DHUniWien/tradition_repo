@@ -70,7 +70,6 @@ public class Reading implements IResource {
 			try {
 				readingNode = db.getNodeById(readId);
 			} catch (Exception e) {
-				db.shutdown();
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 			}
 			reading = new ReadingModel(readingNode);
@@ -110,29 +109,26 @@ public class Reading implements IResource {
 				try {
 					originalReading = db.getNodeById(readId);
 				} catch (NotFoundException e) {
-					db.shutdown();
 					return Response.status(Status.NOT_FOUND)
 							.entity("no reading with this id found: " + readId)
 							.build();
 				}
+
 				List<String> newWitnesses = duplicateModel.getWitnesses();
 				List<String> allWitnesses = allWitnessesOfReading(originalReading);
 
-				if (newWitnesses.isEmpty()) {
+				if (newWitnesses.isEmpty())
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("The witness list has to contain at least one witness").build();
-				}
 
 				for (String newWitness : newWitnesses)
-					if (!allWitnesses.contains(newWitness)) {
+					if (!allWitnesses.contains(newWitness))
 						return Response.status(Status.INTERNAL_SERVER_ERROR)
 								.entity("The reading has to be in the witnesses to be duplicated").build();
-					}
 
-				if (allWitnesses.size() < 2) {
+				if (allWitnesses.size() < 2)
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("The witness has to be in at least two witnesses").build();
-				}
+							.entity("The reading has to be in at least two witnesses").build();
 
 				Node newNode = db.createNode();
 				duplicateReading(duplicateModel.getWitnesses(),
@@ -213,12 +209,11 @@ public class Reading implements IResource {
 			// not in newWitnesses
 			ArrayList<String> remainingWitnesses = new ArrayList<String>();
 			ArrayList<String> stayingWitnesses = new ArrayList<String>();
-			for (String oldWitness : oldWitnesses) {
+			for (String oldWitness : oldWitnesses)
 				if (!newWitnesses.contains(oldWitness))
 					stayingWitnesses.add(oldWitness);
 				else
 					remainingWitnesses.add(oldWitness);
-			}
 
 			Relationship addedRelationship = originNode.createRelationshipTo(
 					targetNode, ERelations.NORMAL);
@@ -248,17 +243,18 @@ public class Reading implements IResource {
 	public Response mergeReadings(@PathParam("tradId") String tradId,
 			@PathParam("firstReadId") long firstReadId,
 			@PathParam("secondReadId") long secondReadId) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+		ArrayList<ReadingModel> stayingReadings = new ArrayList<ReadingModel>();
+
 		Node stayingReading = null;
 		Node deletingReading = null;
-
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		try (Transaction tx = db.beginTx()) {
 			try {
 				stayingReading = db.getNodeById(firstReadId);
 				deletingReading = db.getNodeById(secondReadId);
 			} catch (Exception e) {
-				db.shutdown();
 				return Response.status(Status.NOT_FOUND)
 						.entity("no readings with those ids found").build();
 			}
@@ -300,10 +296,13 @@ public class Reading implements IResource {
 			// return Response.status(Status.INTERNAL_SERVER_ERROR)
 			// .entity("Readings to be merged has to contain class 1 relationship").build();
 
-
+			ReadingModel staying = new ReadingModel(stayingReading);
+			ReadingModel deleting = new ReadingModel(deletingReading);
 
 			// finally merge readings ;-)
 			mergeReadings(stayingReading, deletingReading);
+
+			stayingReadings.add(new ReadingModel(stayingReading));
 
 			tx.success();
 		} catch (Exception e) {
@@ -313,7 +312,7 @@ public class Reading implements IResource {
 			db.shutdown();
 		}
 
-		return Response.ok("Successfully merged readings").build();
+		return Response.ok(stayingReadings).build();
 	}
 
 	private boolean doNotContainSameText(Node stayingReading, Node deletingReading) {
@@ -395,6 +394,27 @@ public class Reading implements IResource {
 	// return false;
 	// }
 
+	// private boolean doReadingsBelongToSameWitness(Node stayingReading, Node
+	// deletingReading) {
+	// // write all witnesses of the staying reading into ArrayList
+	// Iterable<Relationship> stayingRels =
+	// stayingReading.getRelationships(ERelations.NORMAL);
+	// ArrayList<String> stayingWitnesses = new ArrayList<String>();
+	// for (Relationship stayingRel : stayingRels)
+	// for (String witness : (String[]) stayingRel.getProperty("lexemes"))
+	// stayingWitnesses.add(witness);
+	//
+	// // check if one of the witnesses of the reading to be deleted is already
+	// // present in the ArrayList
+	// Iterable<Relationship> deletingRels =
+	// deletingReading.getRelationships(ERelations.NORMAL);
+	// for (Relationship deletingRel : deletingRels)
+	// for (String witness : (String[]) deletingRel.getProperty("lexemes"))
+	// if (stayingWitnesses.contains(witness))
+	// return true;
+	// return false;
+	// }
+
 	private boolean containClassTwoRelationships(Node stayingReading,
 			Node deletingReading) {
 		for (Relationship stayingRel : stayingReading
@@ -405,24 +425,6 @@ public class Reading implements IResource {
 					return true;
 		return false;
 	}
-
-//	private boolean doReadingsBelongToSameWitness(Node stayingReading, Node deletingReading) {
-//		// write all witnesses of the staying reading into ArrayList
-//		Iterable<Relationship> stayingRels = stayingReading.getRelationships(ERelations.NORMAL);
-//		ArrayList<String> stayingWitnesses = new ArrayList<String>();
-//		for (Relationship stayingRel : stayingRels)
-//			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
-//				stayingWitnesses.add(witness);
-//
-//		// check if one of the witnesses of the reading to be deleted is already
-//		// present in the ArrayList
-//		Iterable<Relationship> deletingRels = deletingReading.getRelationships(ERelations.NORMAL);
-//		for (Relationship deletingRel : deletingRels)
-//			for (String witness : (String[]) deletingRel.getProperty("lexemes"))
-//				if (stayingWitnesses.contains(witness))
-//					return true;
-//		return false;
-//	}
 
 	private void mergeReadings(Node stayingReading, Node deletingReading) {
 		copyWitnesses(stayingReading, deletingReading);
@@ -509,26 +511,23 @@ public class Reading implements IResource {
 						.entity("no reading with this id found").build();
 			}
 
-			String oldText = originalReading.getProperty("dn15").toString();
-			String[] splittedWords = oldText.split("\\s+");
-			if (splittedWords.length < 2) {
+			String[] splittedWords = originalReading.getProperty("dn15").toString().split("\\s+");
+
+			if (splittedWords.length < 2)
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("A reading to be splitted has to contain at least 2 words")
 						.build();
-			}
 
-			if (originalReading.hasRelationship(ERelations.RELATIONSHIP)) {
+			if (originalReading.hasRelationship(ERelations.RELATIONSHIP))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("A reading to be splitted cannot be part of any relationship").build();
-			}
 
-			if (!hasRankGap(originalReading, splittedWords.length)) {
+			if (!hasRankGap(originalReading, splittedWords.length))
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("There has to be a rank-gap after a reading to be splitted")
 						.build();
-			}
 
 			createdNodes = splitReadings(db, originalReading, splittedWords);
 

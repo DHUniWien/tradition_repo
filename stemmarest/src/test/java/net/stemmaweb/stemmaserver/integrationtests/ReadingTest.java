@@ -379,7 +379,7 @@ public class ReadingTest {
 					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("The witness has to be in at least two witnesses", response.getEntity(String.class));
+			assertEquals("The reading has to be in at least two witnesses", response.getEntity(String.class));
 
 			tx.success();
 		}
