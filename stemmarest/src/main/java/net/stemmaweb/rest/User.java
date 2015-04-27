@@ -84,6 +84,7 @@ public class User implements IResource {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
+			db.shutdown();
 			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists")
 					.build();
 		}
