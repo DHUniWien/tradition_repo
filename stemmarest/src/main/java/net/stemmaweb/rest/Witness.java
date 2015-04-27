@@ -51,16 +51,27 @@ public class Witness implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
-		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 		Node startNode = DatabaseService.getStartNode(tradId, db);
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
-		if (readingModels == null || readingModels.size()==0)
+		EvaluatorService evaService = new EvaluatorService();
+		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+
+		try (Transaction tx = db.beginTx()) {
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
+					.traverse(startNode).nodes()) {
+				if (!node.getProperty("dn15").equals("#END#"))
+					witnessAsText += (String) node.getProperty("dn15") + " ";
+			}
+			tx.success();
+		} catch (Exception exception) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("could not complete task").build();
+		}
+		db.shutdown();
+		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
 					.entity("no witness with this id was found").build();
-		for (ReadingModel readingModel : readingModels) {
-			witnessAsText += readingModel.getDn15() + " ";
-		}
-		db.shutdown();		
 		return Response.status(Response.Status.OK)
 				.entity("{\"text\":\"" + witnessAsText.trim() + "\"}").build();
 	}
@@ -68,6 +79,8 @@ public class Witness implements IResource {
 	/**
 	 * find a requested witness in the data base and return it as a string
 	 * according to define start and end readings
+	 * (including the readings in those ranks)
+	 * if end-rank is too high or start-rank too low will return till the end/from the start of the wintess
 	 * 
 	 * @param userId
 	 *            : the id of the user who owns the witness
@@ -88,36 +101,48 @@ public class Witness implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
-		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 		long startRank = Long.parseLong(startRankAsString);
 		long endRank = Long.parseLong(endRankAsString);
-		if (endRank <= startRank)
+		if (endRank < startRank)
+			swapRanks(startRank, endRank);
+		if (endRank == startRank)
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
-					.entity("end-rank must be larger then start-rank").build();
+					.entity("end-rank is equal to start-rank").build();
 
+		EvaluatorService evaService = new EvaluatorService();
+		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
-		if (readingModels == null || readingModels.size()==0)
-			return Response.status(Status.NOT_FOUND)
-					.entity("no witness with this id was found").build();
-
-		int includeReading = 0;
-		for (ReadingModel readingModel : readingModels) {
-			if (readingModel.getDn14() == startRank)
-				includeReading = 1;
-			if (readingModel.getDn14() == endRank) {
-				witnessAsText += readingModel.getDn15();
-				includeReading = 0;
+		try (Transaction tx = db.beginTx()) {
+			for (Node node : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
+					.traverse(startNode).nodes()) {
+				long nodeRank = (long) node.getProperty("dn14");
+				if (nodeRank >= startRank && nodeRank <= endRank) {
+					if (!node.getProperty("dn15").equals("#END#"))
+						witnessAsText += (String) node.getProperty("dn15")
+								+ " ";
+				}
 			}
-			if (includeReading == 1)
-				witnessAsText += readingModel.getDn15() + " ";
+			tx.success();
+		} catch (Exception exception) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("could not complete task").build();
 		}
 		db.shutdown();
 		if (witnessAsText.equals(""))
-			return Response.status(Status.NOT_FOUND).build();
+			return Response.status(Status.NOT_FOUND)
+					.entity("no witness with this id was found").build();
 		return Response.status(Response.Status.OK)
 				.entity("{\"text\":\"" + witnessAsText.trim() + "\"}").build();
+
+	}
+
+	private void swapRanks(long startRank, long endRank) {
+		long tempRank = endRank;
+		endRank = startRank;
+		startRank = tempRank;
 	}
 
 	/**
@@ -146,7 +171,7 @@ public class Witness implements IResource {
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
-		if (readingModels == null || readingModels.size()==0)
+		if (readingModels == null || readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no witness with this id was found").build();
 		db.shutdown();
@@ -181,7 +206,7 @@ public class Witness implements IResource {
 			return null;
 		}
 
-		if (readingModels.size()==0)
+		if (readingModels.size() == 0)
 			return null;
 		// remove the #END# node if it exists
 		if (readingModels.get(readingModels.size() - 1).getDn15()
