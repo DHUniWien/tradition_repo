@@ -179,7 +179,7 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
     	try (Transaction tx = mockDbService.beginTx()) 
@@ -212,7 +212,7 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
 	}
 	
@@ -231,7 +231,7 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/"+tradId+"/relationships").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
 	}
 	
@@ -488,7 +488,7 @@ public class RelationTest {
 	@Test
 	public void getRelationshipTest(){
 		
-		ClientResponse response = jerseyTest.resource().path("/relation/"+tradId+"/relationships")
+		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/formtradition/"+tradId)
 				.get(ClientResponse.class);
 		List<RelationshipModel> relationships = jerseyTest.resource()
 				.path("/relation/"+tradId+"/relationships")
