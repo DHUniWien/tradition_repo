@@ -986,7 +986,7 @@ public class Reading implements IResource {
 	 * @param readId2
 	 * @return confirmation that the operation was completed
 	 */
-	@GET
+	@POST
 	@Path("compressreadings/fromtradition/{tradId}/readingone/{readId1}/readingtwo/{readId2}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response compressReadings(@PathParam("tradId") String tradId,

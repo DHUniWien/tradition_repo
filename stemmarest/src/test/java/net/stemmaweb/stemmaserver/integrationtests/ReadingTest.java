@@ -959,7 +959,7 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/compressreadings/fromtradition/" + tradId + 
 							"/readingone/" + showers.getId()
-							+ "/readingtwo/" + sweet.getId()).get(ClientResponse.class);
+							+ "/readingtwo/" + sweet.getId()).post(ClientResponse.class);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("successfully compressed readings", res.getEntity(String.class));
@@ -1036,7 +1036,7 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/compressreadings/fromtradition/" + tradId + 
 							"/readingone/" + showers.getId()
-							+ "/readingtwo/" + fruit.getId()).get(ClientResponse.class);
+							+ "/readingtwo/" + fruit.getId()).post(ClientResponse.class);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
