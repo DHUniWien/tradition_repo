@@ -78,7 +78,7 @@ public class User implements IResource {
 	 * @return OK on success or an ERROR as JSON
 	 */
 	@POST
-	@Path("create")
+	@Path("createuser")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response create(UserModel userModel) {
 
@@ -114,7 +114,7 @@ public class User implements IResource {
 	 * @return UserModel as JSON
 	 */
 	@GET
-	@Path("{userId}")
+	@Path("getuser/wihtid/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public UserModel getUserById(@PathParam("userId") String userId) {
 		UserModel userModel = new UserModel();
@@ -146,7 +146,7 @@ public class User implements IResource {
 	 * @return
 	 */
 	@DELETE
-	@Path("{userId}")
+	@Path("deleteuser/wihtid/{userId}")
 	public Response deleteUserById(@PathParam("userId") String userId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -199,7 +199,7 @@ public class User implements IResource {
 	}
 
 	@GET
-	@Path("traditions/{userId}")
+	@Path("gettraditions/ofuser/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public ArrayList<TraditionModel> getTraditionsByUserId(@PathParam("userId") String userId) {
 

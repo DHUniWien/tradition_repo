@@ -197,7 +197,7 @@ public class Tradition implements IResource {
 	}
 
 	@GET
-	@Path("getallrealtionships/{tradId}")
+	@Path("getallrelationships/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 

@@ -207,7 +207,7 @@ public class TraditionTest {
 	@Test
 	public void getAllRelationshipsTest() {
 		String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
-		jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON)
+		jerseyTest.resource().path("/user/createuser").type(MediaType.APPLICATION_JSON)
 				.post(ClientResponse.class, jsonPayload);
 
 		RelationshipModel rel = new RelationshipModel();
@@ -222,7 +222,7 @@ public class TraditionTest {
 		rel.setDe10("local");
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/getallrealtionships/" + tradId)
+				.path("/tradition/getallrelationships/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 		RelationshipModel relLoaded = relationships.get(2);
@@ -243,7 +243,7 @@ public class TraditionTest {
 	public void getAllRelationshipsCorrectAmountTest() {
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/getallrealtionships/" + tradId)
+				.path("/tradition/getallrelationships/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 
