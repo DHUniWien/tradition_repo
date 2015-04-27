@@ -243,7 +243,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@POST
-	@Path("mergereadings/fromtradition/{tradId}/firstReading/{firstReadId}/secondReading/{secondReadId}")
+	@Path("mergereadings/fromtradition/{tradId}/firstreading/{firstReadId}/secondreading/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("tradId") String tradId,
 			@PathParam("firstReadId") long firstReadId,
@@ -834,8 +834,8 @@ public class Reading implements IResource {
 	 * @param db
 	 * @return
 	 */
-	private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
-			ArrayList<Node> questionedReadings, GraphDatabaseService db) {
+	private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList( ArrayList<Node> questionedReadings, 
+														GraphDatabaseService db) {
 
 		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 
@@ -873,8 +873,8 @@ public class Reading implements IResource {
 	 * @param db
 	 */
 	private void couldBeIdenticalCheck(ArrayList<Node> sameText,
-			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings,
-			GraphDatabaseService db) {
+						ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings,
+						GraphDatabaseService db) {
 
 		ArrayList<ReadingModel> couldBeIdentical = new ArrayList<ReadingModel>();
 		try (Transaction tx = db.beginTx()) {
@@ -1005,7 +1005,7 @@ public class Reading implements IResource {
 	 * @param readId2
 	 * @return confirmation that the operation was completed
 	 */
-	@GET
+	@POST
 	@Path("compressreadings/fromtradition/{tradId}/readingone/{readId1}/readingtwo/{readId2}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response compressReadings(@PathParam("tradId") String tradId,

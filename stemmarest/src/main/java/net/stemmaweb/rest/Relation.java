@@ -145,7 +145,7 @@ public class Relation implements IResource {
      * @return relationships ArrayList
      */
     @GET
-    @Path("getallrelationships/formtradition/{textId}")
+    @Path("getallrelationships/fromtradition/{textId}")
     @Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("textId") String textId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
@@ -285,7 +285,7 @@ public class Relation implements IResource {
      * @return HTTP Response 404 when no Relationship was found with id, 200 when the Relationship was removed
      */
     @DELETE
-    @Path("deleterelationshipsbyid/fromtradition/{textId}/withrealtionship/{relationshipId}")
+    @Path("deleterelationshipsbyid/fromtradition/{textId}/withrelationship/{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId,
 			@PathParam("textId") String textId) {
     	

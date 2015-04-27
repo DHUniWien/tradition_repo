@@ -257,7 +257,7 @@ public class RelationTest {
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrealtionship/"+relationshipId).delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
 		try (Transaction tx = mockDbService.beginTx()) 
@@ -272,7 +272,7 @@ public class RelationTest {
 	 */
 	@Test
 	public void removeRelationshipThatDoesNotExistTestDH43(){
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrealtionship/1337").delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/1337").delete(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 	}
 	
@@ -487,10 +487,10 @@ public class RelationTest {
 	@Test
 	public void getRelationshipTest(){
 		
-		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/formtradition/"+tradId)
+		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+tradId)
 				.get(ClientResponse.class);
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/relation/getallrelationships/formtradition/"+tradId)
+				.path("/relation/getallrelationships/fromtradition/"+tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 		//assertEquals(Response.ok().build().getStatus(), response.getStatus());
@@ -507,7 +507,7 @@ public class RelationTest {
 	@Test
 	public void getRelationshipCorrectStatusTest(){
 		
-		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/formtradition/"+tradId)
+		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+tradId)
 				.get(ClientResponse.class);
 		assertEquals(Response.ok().build().getStatus(), response.getStatus());
 	}
@@ -517,7 +517,7 @@ public class RelationTest {
 	 */
 	@Test
 	public void getRelationshipExceptionTest(){
-		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/formtradition/"+6999).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+6999).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 	}
 	
