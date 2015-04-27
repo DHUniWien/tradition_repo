@@ -69,7 +69,7 @@ public class Reading implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			try {
 				readingNode = db.getNodeById(readId);
-			} catch (Exception e) {
+			} catch (NotFoundException e) {
 				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 			}
 			reading = new ReadingModel(readingNode);
@@ -284,7 +284,7 @@ public class Reading implements IResource {
 			try {
 				stayingReading = db.getNodeById(firstReadId);
 				deletingReading = db.getNodeById(secondReadId);
-			} catch (Exception e) {
+			} catch (NotFoundException e) {
 				return Response.status(Status.NOT_FOUND)
 						.entity("no readings with those ids found").build();
 			}
@@ -447,7 +447,7 @@ public class Reading implements IResource {
 
 	/**
 	 * Checks if the two readings have a relationship between each other which
-	 * is of class two (transposition / repetition)
+	 * is of class two (transposition / repetition).
 	 * 
 	 * @param stayingReading
 	 * @param deletingReading
@@ -568,7 +568,7 @@ public class Reading implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			try {
 				originalReading = db.getNodeById(readId);
-			} catch (Exception e) {
+			} catch (NotFoundException e) {
 				db.shutdown();
 				return Response.status(Status.NOT_FOUND)
 						.entity("no reading with this id found").build();
@@ -728,8 +728,8 @@ public class Reading implements IResource {
 							.build();
 			}
 		} catch(Exception e) {
-			System.out.println(e.getMessage());
-		}finally {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+		} finally {
 			db.shutdown();
 		}
 		return Response.status(Status.NOT_FOUND)
@@ -774,16 +774,15 @@ public class Reading implements IResource {
 							.entity("there is no previous reading to this reading")
 							.build();
 			}
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
 		} finally {
-
 			db.shutdown();
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();	
 	}
 
-
-	
 	@GET
 	@Path("getallreadings/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
