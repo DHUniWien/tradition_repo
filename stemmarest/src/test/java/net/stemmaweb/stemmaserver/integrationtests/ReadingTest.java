@@ -419,16 +419,6 @@ public class ReadingTest {
 			Node secondNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			assertTrue(firstNode.hasRelationship(ERelations.RELATIONSHIP));
-			Relationship firstRel = firstNode.getSingleRelationship(ERelations.RELATIONSHIP, Direction.BOTH);
-			assertEquals("grammatical", firstRel.getProperty("de11"));
-			assertEquals("when", firstRel.getOtherNode(firstNode).getProperty("dn15"));
-
-			assertTrue(secondNode.hasRelationship(ERelations.RELATIONSHIP));
-			Relationship secondRel = secondNode.getSingleRelationship(ERelations.RELATIONSHIP, Direction.BOTH);
-			assertEquals("transposition", secondRel.getProperty("de11"));
-			assertEquals("the root", secondRel.getOtherNode(secondNode).getProperty("dn15"));
-
 			// merge readings
 			ClientResponse response = jerseyTest.resource()
 					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
@@ -448,53 +438,70 @@ public class ReadingTest {
 			Node stayingNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			// test relationships
+			int numberOfRelationships = 0;
 			for (Relationship rel : stayingNode.getRelationships(ERelations.RELATIONSHIP)) {
-				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("when"))
+				numberOfRelationships++;
+				// test that relationships have been copied
+				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("when")) {
 					assertEquals("grammatical", rel.getProperty("de11"));
-				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("the root"))
+					assertEquals("when", rel.getOtherNode(stayingNode).getProperty("dn15"));
+				}
+				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("the root")) {
 					assertEquals("transposition", rel.getProperty("de11"));
+					assertEquals("the root", rel.getOtherNode(stayingNode).getProperty("dn15"));
+				}
+
+				// test that relationship between the two readings has been
+				// deleted
+				assertTrue(rel.getOtherNode(stayingNode) != stayingNode);
 			}
+			// assertEquals(2, numberOfRelationships);
+
+
+			// test witnesses
 
 			tx.success();
 		}
 	}
 
-	/**
-	 * tests the merging of readings which should not be allowed to merge
-	 * as they belong to the same witness
-	 * should return error
-	 */
+	// /**
+	// * tests the merging of readings which should not be allowed to merge
+	// * as they belong to the same witness
+	// * should return error
+	// */
+	// @Test
+	// public void mergeReadingsSameWitnessTest() {
+	// try (Transaction tx = mockDbService.beginTx()) {
+	//
+	// ExecutionEngine engine = new ExecutionEngine(mockDbService);
+	// ExecutionResult result =
+	// engine.execute("match (w:WORD {dn15:'with'}) return w");
+	// Iterator<Node> nodes = result.columnAs("w");
+	// assertTrue(nodes.hasNext());
+	// Node with1 = nodes.next();
+	// assertTrue(nodes.hasNext());
+	// Node with2 = nodes.next();
+	// assertFalse(nodes.hasNext());
+	//
+	// // merge readings
+	// ClientResponse response = jerseyTest.resource()
+	// .path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+	// + with1.getId() + "/secondReading/" + with2.getId())
+	// .type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+	//
+	// assertEquals(Status.INTERNAL_SERVER_ERROR,
+	// response.getClientResponseStatus());
+	// assertEquals("Readings to be merged belong to the same witness",
+	// response.getEntity(String.class));
+	//
+	// testWitnesses();
+	//
+	// tx.success();
+	// }
+	// }
+
 	@Test
-	public void mergeReadingsSameWitnessTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'with'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node with1 = nodes.next();
-			assertTrue(nodes.hasNext());
-			Node with2 = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ with1.getId() + "/secondReading/" + with2.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("Readings to be merged belong to the same witness", response.getEntity(String.class));
-
-			testWitnesses();	
-
-			tx.success();
-		}
-	}	
-
-	@Test
-	public void mergeReadingsWithClassOneRelationshipGetsCyclicTest() {
+	public void mergeReadingsGetsCyclicTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
 			ExecutionResult result = engine.execute("match (w:WORD {dn15:'drought'}) return w");
@@ -531,41 +538,7 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void mergeReadingsWithClassOneRelationshipStaysAcyclicTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'his'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node firstNode = nodes.next();
-			assertTrue(nodes.hasNext());
-			Node secondNode = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
-							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
-
-			assertEquals(Status.OK, response.getClientResponseStatus());
-
-			testNumberOfReadings(28);
-
-			testWitnesses();
-
-			result = engine.execute("match (w:WORD {dn15:'his'}) return w");
-			nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			firstNode = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			tx.success();
-		}
-	}
-	
-	@Test
-	public void mergeReadingsWithClassOneRelationshipGetsCyclic2Test() {
+	public void mergeReadingsGetsCyclicWithNodesFarApartTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
 			ExecutionResult result = engine.execute("match (w:WORD {dn15:'to'}) return w");
@@ -600,6 +573,45 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
+
+	@Test
+	public void mergeReadingsWithoutRelationshipBetweenEachOtherTest() {
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'his'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node firstNode = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node secondNode = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// merge readings
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+			assertEquals("Readings to be merged have to be connected with each other through a relationship",
+					response.getEntity(String.class));
+
+			testNumberOfReadings(29);
+
+			testWitnesses();
+
+			result = engine.execute("match (w:WORD {dn15:'his'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			firstNode = nodes.next();
+			assertTrue(nodes.hasNext());
+			secondNode = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			tx.success();
+		}
+	}
+
 
 
 	@Test

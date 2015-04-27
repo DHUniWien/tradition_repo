@@ -263,40 +263,44 @@ public class Reading implements IResource {
 						.entity("no readings with those ids found").build();
 			}
 
-			if (!stayingReading
-					.getProperty("dn15")
-					.toString()
-					.equalsIgnoreCase(
-							deletingReading.getProperty("dn15").toString())) {
-				db.shutdown();
+			if (doNotContainSameText(stayingReading, deletingReading))
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("Readings to be merged do not contain the same text")
 						.build();
-			}
 
-			if (doReadingsBelongToSameWitness(stayingReading, deletingReading)) {
-				db.shutdown();
-				return Response
-						.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("Readings to be merged belong to the same witness")
+
+			if (doNotContainRelationshipBetweenEachOther(stayingReading, deletingReading))
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Readings to be merged have to be connected with each other through a relationship")
 						.build();
-			}
 
-			if (containClassTwoRelationships(stayingReading, deletingReading)) {
-				db.shutdown();
+			if (containClassTwoRelationships(stayingReading, deletingReading))
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("Readings to be merged cannot contain class 2 relationships (transposition / repetition)")
 						.build();
-			}
 
-			if (containClassOneRelationships(stayingReading, deletingReading))
-				if (wouldGetCyclic(db, stayingReading, deletingReading)) {
-					db.shutdown();
-					return Response.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("Readings to be merged would make the graph cyclic").build();
-				}
+			if (wouldGetCyclic(tradId, db, stayingReading, deletingReading))
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("Readings to be merged would make the graph cyclic").build();
+
+
+			// if (doReadingsBelongToSameWitness(stayingReading,
+			// deletingReading)) {
+			// db.shutdown();
+			// return Response
+			// .status(Status.INTERNAL_SERVER_ERROR)
+			// .entity("Readings to be merged belong to the same witness")
+			// .build();
+			// }
+
+			// if (!containClassOneRelationships(stayingReading,
+			// deletingReading))
+			// return Response.status(Status.INTERNAL_SERVER_ERROR)
+			// .entity("Readings to be merged has to contain class 1 relationship").build();
+
+
 
 			// finally merge readings ;-)
 			mergeReadings(stayingReading, deletingReading);
@@ -311,10 +315,14 @@ public class Reading implements IResource {
 
 		return Response.ok("Successfully merged readings").build();
 	}
+
+	private boolean doNotContainSameText(Node stayingReading, Node deletingReading) {
+		return !stayingReading.getProperty("dn15").toString().equals(deletingReading.getProperty("dn15").toString());
+	}
 	
-	private boolean wouldGetCyclic(GraphDatabaseService db, Node stayingReading, Node deletingReading) {
+	private boolean wouldGetCyclic(String tradId, GraphDatabaseService db, Node stayingReading, Node deletingReading) {
 		Node lowerRankReading, higherRankReading;
-		if((Long) stayingReading.getProperty("dn14") < (Long) deletingReading.getProperty("dn14")) {
+		if ((Long) stayingReading.getProperty("dn14") < (Long) deletingReading.getProperty("dn14")) {
 			lowerRankReading = stayingReading;
 			higherRankReading = deletingReading;
 		} else {
@@ -322,60 +330,70 @@ public class Reading implements IResource {
 			higherRankReading = stayingReading;
 		}
 
-		// check if both readings are present in the path
-		for (Node node : db.traversalDescription().depthFirst()
-				.relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes()){
+		// check if higherRankReading is found in one of the paths
+		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
+				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes()) {
 			if (node.equals(higherRankReading))
 				return true;
 		}
 
 		return false;
-		
-		
-//		Node startNode = DatabaseService.getStartNode(tradId, db);
-//
-//		// get depth to significantly reduce number of paths
-//		int depth = 0;
-//		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
-//				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(startNode).nodes()) {
-//			depth++;
-//			if (node.getProperty("dn15").equals("#END#"))
-//				break;
-//		}
-//
-//		boolean foundStayingReading, foundDeletingReading;
-//		Traverser traverser = db.traversalDescription().depthFirst()
-//				.relationships(ERelations.NORMAL, Direction.OUTGOING).uniqueness(Uniqueness.NONE)
-//				.evaluator(Evaluators.fromDepth(depth)).traverse(startNode);
-//
-//		for (org.neo4j.graphdb.Path path : traverser) {
-//			foundStayingReading = false;
-//			foundDeletingReading = false;
-//			// check if both readings are present in the path
-//			for (Node node : path.nodes()) {
-//				if (node.equals(stayingReading))
-//					foundStayingReading = true;
-//				if (node.equals(deletingReading))
-//					foundDeletingReading = true;
-//			}
-//			if (foundStayingReading && foundDeletingReading)
-//				return true;
-//		}
-//
-//		return false;
+
+		// Node startNode = DatabaseService.getStartNode(tradId, db);
+		//
+		// // get depth to significantly reduce number of paths
+		// int depth = 0;
+		// for (Node node :
+		// db.traversalDescription().depthFirst().relationships(ERelations.NORMAL,
+		// Direction.OUTGOING)
+		// .uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(startNode).nodes())
+		// {
+		// depth++;
+		// if (node.getProperty("dn15").equals("#END#"))
+		// break;
+		// }
+		//
+		// boolean foundStayingReading, foundDeletingReading;
+		// Traverser traverser = db.traversalDescription().depthFirst()
+		// .relationships(ERelations.NORMAL,
+		// Direction.OUTGOING).uniqueness(Uniqueness.NONE)
+		// .evaluator(Evaluators.all()).traverse(startNode);
+		//
+		// for (org.neo4j.graphdb.Path path : traverser) {
+		// foundStayingReading = false;
+		// foundDeletingReading = false;
+		// // check if both readings are present in the path
+		// for (Node node : path.nodes()) {
+		// if (node.equals(stayingReading))
+		// foundStayingReading = true;
+		// if (node.equals(deletingReading))
+		// foundDeletingReading = true;
+		// }
+		// if (foundStayingReading && foundDeletingReading)
+		// return true;
+		// }
+		//
+		// return false;
+	}
+	
+	private boolean doNotContainRelationshipBetweenEachOther(Node stayingReading, Node deletingReading) {
+		for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATIONSHIP))
+			for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATIONSHIP))
+				if (firstRel.equals(secondRel))
+					return false;
+		return true;
 	}
 
-	private boolean containClassOneRelationships(Node stayingReading,
-			Node deletingReading) {
-		for (Relationship stayingRel : stayingReading
-				.getRelationships(ERelations.RELATIONSHIP))
-			if (stayingRel.getOtherNode(stayingReading).equals(deletingReading))
-				if (!stayingRel.getProperty("de11").equals("transposition")
-						&& !stayingRel.getProperty("de11").equals("repetition"))
-					return true;
-		return false;
-	}
+	// private boolean containClassOneRelationships(Node stayingReading,
+	// Node deletingReading) {
+	// for (Relationship stayingRel : stayingReading
+	// .getRelationships(ERelations.RELATIONSHIP))
+	// if (stayingRel.getOtherNode(stayingReading).equals(deletingReading))
+	// if (!stayingRel.getProperty("de11").equals("transposition")
+	// && !stayingRel.getProperty("de11").equals("repetition"))
+	// return true;
+	// return false;
+	// }
 
 	private boolean containClassTwoRelationships(Node stayingReading,
 			Node deletingReading) {
@@ -388,37 +406,45 @@ public class Reading implements IResource {
 		return false;
 	}
 
-	private boolean doReadingsBelongToSameWitness(Node stayingReading, Node deletingReading) {
-		// write all witnesses of the staying reading into ArrayList
-		Iterable<Relationship> stayingRels = stayingReading.getRelationships(ERelations.NORMAL);
-		ArrayList<String> stayingWitnesses = new ArrayList<String>();
-		for (Relationship stayingRel : stayingRels)
-			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
-				stayingWitnesses.add(witness);
-
-		// check if one of the witnesses of the reading to be deleted is already
-		// present in the ArrayList
-		Iterable<Relationship> deletingRels = deletingReading.getRelationships(ERelations.NORMAL);
-		for (Relationship deletingRel : deletingRels)
-			for (String witness : (String[]) deletingRel.getProperty("lexemes"))
-				if (stayingWitnesses.contains(witness))
-					return true;
-		return false;
-	}
+//	private boolean doReadingsBelongToSameWitness(Node stayingReading, Node deletingReading) {
+//		// write all witnesses of the staying reading into ArrayList
+//		Iterable<Relationship> stayingRels = stayingReading.getRelationships(ERelations.NORMAL);
+//		ArrayList<String> stayingWitnesses = new ArrayList<String>();
+//		for (Relationship stayingRel : stayingRels)
+//			for (String witness : (String[]) stayingRel.getProperty("lexemes"))
+//				stayingWitnesses.add(witness);
+//
+//		// check if one of the witnesses of the reading to be deleted is already
+//		// present in the ArrayList
+//		Iterable<Relationship> deletingRels = deletingReading.getRelationships(ERelations.NORMAL);
+//		for (Relationship deletingRel : deletingRels)
+//			for (String witness : (String[]) deletingRel.getProperty("lexemes"))
+//				if (stayingWitnesses.contains(witness))
+//					return true;
+//		return false;
+//	}
 
 	private void mergeReadings(Node stayingReading, Node deletingReading) {
+		copyWitnesses(stayingReading, deletingReading);
 		copyRelationships(stayingReading, deletingReading);
 		addRelationshipsToStayingReading(stayingReading, deletingReading);
+		deleteRelationshipBetweenReadings(stayingReading, deletingReading);
 		deletingReading.delete();
-		copyWitnesses(stayingReading);
+	}
+	
+	private void deleteRelationshipBetweenReadings(Node stayingReading, Node deletingReading) {
+		for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATIONSHIP))
+			for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATIONSHIP))
+				if (firstRel.equals(secondRel))
+					firstRel.delete();
 	}
 
-	private void copyWitnesses(Node stayingReading) {
+	private void copyWitnesses(Node stayingReading, Node deletingReading) {
 		for (Relationship firstRel : stayingReading.getRelationships(ERelations.NORMAL))
-			for (Relationship secondRel : stayingReading.getRelationships(ERelations.NORMAL))
+			for (Relationship secondRel : deletingReading.getRelationships(ERelations.NORMAL))
 				if (!firstRel.equals(secondRel))
 					if (firstRel.getOtherNode(stayingReading).equals(
-							secondRel.getOtherNode(stayingReading))) {
+							secondRel.getOtherNode(deletingReading))) {
 						// get Witnesses
 						String[] stayingReadingWitnesses = (String[]) firstRel
 								.getProperty("lexemes");

@@ -510,14 +510,6 @@
       <data key="de11">lexical</data>
       <data key="de10">local</data>
     </edge>
-    <edge source="n20" target="n26" id="e4">
-      <data key="de8">his</data>
-      <data key="de6">no</data>
-      <data key="de9">his</data>
-      <data key="de1">0</data>
-      <data key="de11">grammatical</data>
-      <data key="de10">local</data>
-    </edge>
     <edge source="n2" target="n4" id="e5">
       <data key="de8">when</data>
       <data key="de6">no</data>
@@ -532,6 +524,22 @@
       <data key="de9">the root</data>
       <data key="de1">0</data>
       <data key="de11">transposition</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n6" target="n16" id="e7">
+      <data key="de8">to</data>
+      <data key="de6">no</data>
+      <data key="de9">to</data>
+      <data key="de1">0</data>
+      <data key="de11">lexical</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n4" target="n28" id="e8">
+      <data key="de8">fruit</data>
+      <data key="de6">no</data>
+      <data key="de9">fruit</data>
+      <data key="de1">0</data>
+      <data key="de11">grammatical</data>
       <data key="de10">local</data>
     </edge>
   </graph>
