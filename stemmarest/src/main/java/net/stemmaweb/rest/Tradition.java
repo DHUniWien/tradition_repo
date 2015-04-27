@@ -377,6 +377,7 @@ public class Tradition implements IResource {
 		if (!DatabaseService.checkIfUserExists(userId,db)) {
 			return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
 		}
+		db.shutdown();
 
 		// Boolean is_public_bool = is_public.equals("on")? true : false;
 		String uploadedFileLocation = "upload/" + fileDetail.getFileName();
