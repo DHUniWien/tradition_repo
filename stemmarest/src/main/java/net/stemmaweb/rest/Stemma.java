@@ -158,7 +158,6 @@ public class Stemma implements IResource {
     		Iterator<Node> stNodes = result1.columnAs("n");
     		
     		if(!stNodes.hasNext()) {
-    	    	db.shutdown();
     			return Response.status(Status.NOT_FOUND).build();
     		}
     		
@@ -166,12 +165,11 @@ public class Stemma implements IResource {
     		String stemmaType = startNodeStemma.getProperty("type").toString();
     		
     		ExecutionResult result2 = engine.execute("match (s:STEMMA { name:'"+
-    						stemmaTitle+"'})-[:STEMMA*..]->(w:WITNESS { id:'" +
+    						stemmaTitle+"'})-[:STEMMA*..]-(w:WITNESS { id:'" +
     						nodeId + "'}) return w");
     		Iterator<Node> nodes = result2.columnAs("w");
     		
     		if(!nodes.hasNext()) {
-    	    	db.shutdown();
     			return Response.status(Status.NOT_FOUND).build();
     		}
     		
@@ -207,14 +205,12 @@ public class Stemma implements IResource {
 		Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
 		
 		if(!stRels.hasNext()) {
-			db.shutdown();
-		return Response.status(Status.NOT_FOUND).build();
+			return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
 		
 		if(actualRootNodeId.equals(newRootNode.getProperty("id").toString())) {
-				db.shutdown();
 				return Response.ok().build();
 		}
 		
@@ -262,8 +258,7 @@ public class Stemma implements IResource {
 		Iterator<Relationship> rels = startNodeStemma.getRelationships().iterator();
 		
 		if(!rels.hasNext()) {
-			db.shutdown();
-		return Response.status(Status.NOT_FOUND).build();
+			return Response.status(Status.NOT_FOUND).build();
 		}
 		
 		Relationship rootRel = rels.next();

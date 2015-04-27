@@ -245,7 +245,9 @@ public class StemmaTest {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		
 		 String stemmaTitle = "Semstem 1402333041_0";
-		 String newNodeId = "0";
+		 String newNodeId = "C";
+		 String secondNodeId = "0";
+
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
@@ -265,6 +267,9 @@ public class StemmaTest {
 			Iterable<Relationship> rel2 = startNodeStemma.getRelationships(Direction.OUTGOING,ERelations.STEMMA);
 			assertTrue(rel2.iterator().hasNext());
 			assertEquals(newNodeId,rel2.iterator().next().getEndNode().getProperty("id").toString());
+			
+			ClientResponse actualStemmaResponseSecond = jerseyTest.resource().path("/stemma/reorient/"+tradId+"/"+stemmaTitle+"/"+ secondNodeId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			assertEquals(Response.ok().build().getStatus(), actualStemmaResponseSecond.getStatus());
 
 			tx.success();
 		}
