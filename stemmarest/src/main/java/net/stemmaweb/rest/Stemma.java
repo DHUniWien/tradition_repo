@@ -55,7 +55,7 @@ public class Stemma implements IResource {
 	 * @return list of dot
 	 */
 	@GET
-	@Path("/all/{tradId}")
+	@Path("getallstemmata/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllStemmata(@PathParam("tradId") String tradId)
 	{
@@ -104,7 +104,7 @@ public class Stemma implements IResource {
 	 * @return DOT JSON string
 	 */
 	@GET
-	@Path("/{tradId}/{stemmaTitle}")
+	@Path("getstemma/fromtradition/{tradId}/withtitle/{stemmaTitle}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle) {
 		
@@ -122,7 +122,7 @@ public class Stemma implements IResource {
 	 * @return 
 	 */
 	@POST
-	@Path("/{tradId}")
+	@Path("newstemma/intradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response setStemma(@PathParam("tradId") String tradId, String dot) {
 		
@@ -140,7 +140,7 @@ public class Stemma implements IResource {
 	 * @return 
 	 */
 	@POST
-	@Path("/reorient/{tradId}/{stemmaTitle}/{nodeId}")
+	@Path("reorientstemma/fromtradition/{tradId}/withtitle/{stemmaTitle}/withnewrootnode/{nodeId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response reorientStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle,
 			@PathParam("nodeId") String nodeId) {
