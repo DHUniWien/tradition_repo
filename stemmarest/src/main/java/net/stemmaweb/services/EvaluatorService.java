@@ -32,7 +32,7 @@ public class EvaluatorService {
 		return e;
 	}
 	
-	public Evaluator getEvaluatorForStemma(String nodeId) {
+	public Evaluator getEvaluatorForStemma(final String nodeId) {
 		Evaluator e = new Evaluator() {
 			@Override
 			public Evaluation evaluate(org.neo4j.graphdb.Path path) {

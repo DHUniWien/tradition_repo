@@ -264,7 +264,7 @@ public class Reading implements IResource {
 			} catch (Exception e) {
 				db.shutdown();
 				return Response.status(Status.NOT_FOUND)
-						.entity("no readings with this ids found").build();
+						.entity("no readings with those ids found").build();
 			}
 
 			if (!stayingReading
@@ -329,9 +329,10 @@ public class Reading implements IResource {
 		// check if both readings are present in the path
 		for (Node node : db.traversalDescription().depthFirst()
 				.relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes())
+				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes()){
 			if (node.equals(higherRankReading))
 				return true;
+		}
 
 		return false;
 		
@@ -993,7 +994,7 @@ public class Reading implements IResource {
 			@PathParam("readId2") long readId2) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		Node read1, read2;
-		errorMessage = "problem with a reading. Could not compress";
+		errorMessage = "problem with a reading. could not compress";
 
 		try (Transaction tx = db.beginTx()) {
 			read1 = db.getNodeById(readId1);
@@ -1008,7 +1009,7 @@ public class Reading implements IResource {
 		if (canCompress(read1, read2, db)) {
 			compress(read1, read2, db);
 			db.shutdown();
-			return Response.ok("Successfully compressed readings").build();
+			return Response.ok("successfully compressed readings").build();
 		} else
 			db.shutdown();
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
@@ -1052,7 +1053,6 @@ public class Reading implements IResource {
 			Node tempNode = tempRel.getOtherNode(read2);
 			Relationship rel1 = read1.createRelationshipTo(tempNode,
 					ERelations.NORMAL);
-
 			for (String key : tempRel.getPropertyKeys()) {
 				rel1.setProperty(key, tempRel.getProperty(key));
 			}
@@ -1063,7 +1063,6 @@ public class Reading implements IResource {
 			Node tempNode = tempRel.getOtherNode(read2);
 			Relationship rel1 = tempNode.createRelationshipTo(read1,
 					ERelations.NORMAL);
-
 			for (String key : tempRel.getPropertyKeys()) {
 				rel1.setProperty(key, tempRel.getProperty(key));
 			}

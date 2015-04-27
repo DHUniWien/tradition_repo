@@ -61,7 +61,7 @@ import com.sun.jersey.test.framework.JerseyTest;
 public class ReadingTest {
 	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
 	private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit teh drought of march has pierced teh rood\"}";
+	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood\"}";
 
 	private String tradId;
 	/*
@@ -563,6 +563,44 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
+	
+	@Test
+	public void mergeReadingsWithClassOneRelationshipGetsCyclic2Test() {
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'to'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node firstNode = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node secondNode = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// merge readings
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstReading/"
+							+ firstNode.getId() + "/secondReading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+
+			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
+			assertEquals("Readings to be merged would make the graph cyclic", response.getEntity(String.class));
+
+			testNumberOfReadings(29);
+
+			testWitnesses();
+
+			result = engine.execute("match (w:WORD {dn15:'to'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			firstNode = nodes.next();
+			assertTrue(nodes.hasNext());
+			secondNode = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			tx.success();
+		}
+	}
+
 
 	@Test
 	public void mergeReadingsWithClassTwoRelationshipsTest() {
@@ -790,7 +828,7 @@ public class ReadingTest {
 
 		assertEquals(29, listOfReadings.size());
 
-		String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the teh drought march of march drought has pierced teh to unto me rood the root the root #END#";
+		String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood the root the root #END#";
 		String text = "";
 		for (int i = 0; i < listOfReadings.size(); i++) {
 			text += listOfReadings.get(i).getDn15() + " ";
@@ -924,7 +962,7 @@ public class ReadingTest {
 							+ "/readingtwo/" + sweet.getId()).get(ClientResponse.class);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-			assertEquals("Successfully compressed readings", res.getEntity(String.class));
+			assertEquals("successfully compressed readings", res.getEntity(String.class));
 
 
 			assertEquals("showers sweet", showers.getProperty("dn15"));
@@ -954,7 +992,7 @@ public class ReadingTest {
 			Collections.sort(listOfReadings);
 
 			// tradition still has all the texts
-			String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the teh drought march of march drought has pierced teh to unto me rood the root the root #END#";
+			String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood the root the root #END#";
 			String text = "";
 			for (int i = 0; i < listOfReadings.size(); i++) {
 				text += listOfReadings.get(i).getDn15() + " ";

@@ -203,31 +203,40 @@ public class WitnessTest {
 			assertEquals(texts[i], listOfReadings.get(i).getDn15());
 		}
 	}
+	
+	@Test
+	public void witnessAsListNotExistingTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/witness/getreadinglist/fromtradition/" + tradId + "/ofwitness/D")
+				.get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
+				response.getStatus());
+		assertEquals("no witness with this id was found",
+				response.getEntity(String.class));
+	}
 
 	@Test
 	public void witnessBetweenRanksTest() {
 
 		String expectedText = "{\"text\":\"april with his showers\"}";
-		String actualResponse = jerseyTest.resource()
+		String response = jerseyTest.resource()
 				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
 						+ "fromstartrank/2/toendrank/5")
 				.get(String.class);
-		assertEquals(expectedText, actualResponse);
+		assertEquals(expectedText, response);
 	}
 
 	/**
-	 * gives first the larger rank should return error
+	 * as ranks are adjusted should give same result as previous test
 	 */
 	@Test
 	public void witnessBetweenRanksWrongWayTest() {
-		ClientResponse response = jerseyTest.resource()
+		String expectedText = "{\"text\":\"april with his showers\"}";
+		String response = jerseyTest.resource()
 				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
-						+ "fromstartrank/5/toendrank/2")
-				.get(ClientResponse.class);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-				response.getStatus());
-		assertEquals("end-rank must be larger then start-rank",
-				response.getEntity(String.class));
+						+ "fromstartrank/2/toendrank/5")
+				.get(String.class);
+		assertEquals(expectedText, response);
 	}
 
 	/**
@@ -241,8 +250,20 @@ public class WitnessTest {
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 				response.getStatus());
-		assertEquals("end-rank must be larger then start-rank",
+		assertEquals("end-rank is equal to start-rank",
 				response.getEntity(String.class));
+	}
+	
+	//if the end rank is too high, will return all the readings between start rank to end of witness
+	@Test
+	public void witnessBetweenRanksTooHighEndRankTest() {
+		String expectedText = "{\"text\":\"showers sweet with fruit the drought of march has pierced unto the root\"}";
+		String response = jerseyTest.resource()
+				.path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
+						+ "fromstartrank/5/toendrank/30")
+				.get(String.class);
+		assertEquals(expectedText, response);
+
 	}
 
 	/**
