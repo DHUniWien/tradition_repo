@@ -71,15 +71,13 @@ public class Reading implements IResource {
 				readingNode = db.getNodeById(readId);
 			} catch (Exception e) {
 				db.shutdown();
-				return Response.status(Status.NOT_FOUND)
-						.entity("no reading with this id found").build();
+				return Response.status(Status.NOT_FOUND).entity("no reading with this id found").build();
 			}
 			reading = new ReadingModel(readingNode);
 
 			tx.success();
 		} catch (Exception e) {
-			return Response.status(Status.NOT_FOUND)
-					.entity("no reading with this id found").build();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
 		} finally {
 			db.shutdown();
 		}
@@ -121,23 +119,21 @@ public class Reading implements IResource {
 				List<String> allWitnesses = allWitnessesOfReading(originalReading);
 
 				if (newWitnesses.isEmpty()) {
-					db.shutdown();
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("The witness list has to contain at least one witness").build();
 				}
 
 				for (String newWitness : newWitnesses)
 					if (!allWitnesses.contains(newWitness)) {
-						db.shutdown();
 						return Response.status(Status.INTERNAL_SERVER_ERROR)
 								.entity("The reading has to be in the witnesses to be duplicated").build();
 					}
 
 				if (allWitnesses.size() < 2) {
-					db.shutdown();
 					return Response.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("The witness has to be in at least two witnesses").build();
 				}
+
 				Node newNode = db.createNode();
 				duplicateReading(duplicateModel.getWitnesses(),
 						originalReading, newNode);
@@ -490,7 +486,6 @@ public class Reading implements IResource {
 			String oldText = originalReading.getProperty("dn15").toString();
 			String[] splittedWords = oldText.split("\\s+");
 			if (splittedWords.length < 2) {
-				db.shutdown();
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("A reading to be splitted has to contain at least 2 words")
@@ -498,13 +493,11 @@ public class Reading implements IResource {
 			}
 
 			if (originalReading.hasRelationship(ERelations.RELATIONSHIP)) {
-				db.shutdown();
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("A reading to be splitted cannot be part of any relationship").build();
 			}
 
 			if (!hasRankGap(originalReading, splittedWords.length)) {
-				db.shutdown();
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("There has to be a rank-gap after a reading to be splitted")

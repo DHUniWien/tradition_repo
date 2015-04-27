@@ -385,7 +385,6 @@ public class RelationTest {
 	
 	/**
 	 * Test that cross relations may not be made
-	 * IMPORTANT!! THIS TEST WILL BE GREEN AFTER DH-39 has been implemented!!
 	 */
 	@Test
 	public void createRelationshipTestWithCrossRelationConstraintDH39(){
