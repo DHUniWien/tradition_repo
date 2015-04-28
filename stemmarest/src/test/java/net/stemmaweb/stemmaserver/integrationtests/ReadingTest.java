@@ -609,8 +609,6 @@ public class ReadingTest {
 		}
 	}
 
-
-
 	@Test
 	public void mergeReadingsWithClassTwoRelationshipsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {

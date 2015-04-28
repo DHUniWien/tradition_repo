@@ -20,6 +20,7 @@ import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
+import net.stemmaweb.services.ReadingService;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.neo4j.graphdb.Direction;
@@ -350,7 +351,7 @@ public class Reading implements IResource {
 			return true;
 		}
 
-		if (wouldGetCyclic(db, stayingReading, deletingReading)) {
+		if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
 			errorMessage = "Readings to be merged would make the graph cyclic";
 			return true;
 		}
@@ -367,35 +368,6 @@ public class Reading implements IResource {
 	 */
 	private boolean doNotContainSameText(Node stayingReading, Node deletingReading) {
 		return !stayingReading.getProperty("dn15").toString().equals(deletingReading.getProperty("dn15").toString());
-	}
-	
-	/**
-	 * Checks if both readings can be found in the same path through the
-	 * tradition. If yes when merging these nodes the graph would get cyclic.
-	 * 
-	 * @param db
-	 * @param stayingReading
-	 * @param deletingReading
-	 * @return
-	 */
-	private boolean wouldGetCyclic(GraphDatabaseService db, Node stayingReading, Node deletingReading) {
-		Node lowerRankReading, higherRankReading;
-		if ((Long) stayingReading.getProperty("dn14") < (Long) deletingReading.getProperty("dn14")) {
-			lowerRankReading = stayingReading;
-			higherRankReading = deletingReading;
-		} else {
-			lowerRankReading = deletingReading;
-			higherRankReading = stayingReading;
-		}
-
-		// check if higherRankReading is found in one of the paths
-		for (Node node : db.traversalDescription().depthFirst().relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.uniqueness(Uniqueness.NONE).evaluator(Evaluators.all()).traverse(lowerRankReading).nodes()) {
-			if (node.equals(higherRankReading))
-				return true;
-		}
-
-		return false;
 	}
 	
 	/**

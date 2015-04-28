@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.ReadingService;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -73,11 +74,17 @@ public class Relation implements IResource {
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
-			if (wouldProduceCrossRelationship(readingA, readingB, db)) {
-				db.shutdown();
+			if (wouldProduceCrossRelationship(db, readingA, readingB))
 				return Response.status(Status.CONFLICT)
 						.entity("This relationship creation is not allowed. Would produce cross-relationship.").build();
-			}
+
+			if (!relationshipModel.getDe11().equals("transposition")
+					&& !relationshipModel.getDe11().equals("repetition"))
+				if (ReadingService.wouldGetCyclic(db, readingA, readingB))
+					return Response
+							.status(Status.CONFLICT)
+							.entity("This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.")
+							.build();
 
         	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
         	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
@@ -107,7 +114,7 @@ public class Relation implements IResource {
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
 
-	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
+	private boolean wouldProduceCrossRelationship(GraphDatabaseService db, Node firstReading, Node secondReading) {
 		Long firstRank = Long.parseLong(firstReading.getProperty("dn14").toString());
 		Long secondRank = Long.parseLong(secondReading.getProperty("dn14").toString());
 		Direction firstDirection, secondDirection;

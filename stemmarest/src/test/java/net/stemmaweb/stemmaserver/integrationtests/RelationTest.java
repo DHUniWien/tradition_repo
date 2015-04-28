@@ -173,7 +173,7 @@ public class RelationTest {
 		String relationshipId = "";
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("grammatical");
+		relationship.setDe11("repetition");
 		relationship.setDe1("0");
 		relationship.setDe6("true");
 		relationship.setDe8("april");
@@ -189,7 +189,7 @@ public class RelationTest {
     		
     		assertEquals(16L, loadedRelationship.getStartNode().getId());
     		assertEquals(24L, loadedRelationship.getEndNode().getId());
-    		assertEquals("grammatical",loadedRelationship.getProperty("de11"));
+			assertEquals("repetition", loadedRelationship.getProperty("de11"));
     		assertEquals("0",loadedRelationship.getProperty("de1"));
     		assertEquals("true",loadedRelationship.getProperty("de6"));
     		assertEquals("april",loadedRelationship.getProperty("de8"));
@@ -247,7 +247,7 @@ public class RelationTest {
 		String relationshipId = "";
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("grammatical");
+		relationship.setDe11("transposition");
 		relationship.setDe1("0");
 		relationship.setDe6("true");
 		relationship.setDe8("april");
@@ -260,7 +260,7 @@ public class RelationTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
-		try (Transaction tx = mockDbService.beginTx()) 
+		try (Transaction tx = mockDbService.beginTx())
     	{
     		mockDbService.getRelationshipById(Long.parseLong(relationshipId));
     	} 
@@ -289,7 +289,7 @@ public class RelationTest {
 		String relationshipId2 = "";
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("grammatical");
+		relationship.setDe11("transposition");
 		relationship.setDe1("0");
 		relationship.setDe6("true");
 		relationship.setDe8("april");
@@ -302,7 +302,7 @@ public class RelationTest {
 		relationship = new RelationshipModel();
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("others");
+		relationship.setDe11("repetition");
 		relationship.setDe1("0");
 		relationship.setDe6("true");
 		relationship.setDe8("april");
@@ -343,7 +343,7 @@ public class RelationTest {
 		String relationshipId2 = "";
 		relationship.setSource("16");
 		relationship.setTarget("17");
-		relationship.setDe11("grammatical");
+		relationship.setDe11("transposition");
 		relationship.setDe1("0");
 		relationship.setDe6("true");
 		relationship.setDe8("april");
@@ -355,7 +355,7 @@ public class RelationTest {
 		
 		relationship.setSource("27");
 		relationship.setTarget("17");
-		relationship.setDe11("grammatical");
+		relationship.setDe11("transposition");
 		relationship.setDe1("0");
 		relationship.setDe6("true");
 		relationship.setDe8("april");
@@ -410,9 +410,13 @@ public class RelationTest {
 		relationship.setDe9("the");
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
+				actualResponse.getEntity(String.class));
 		
     	try (Transaction tx = mockDbService.beginTx()) 
     	{
@@ -469,15 +473,68 @@ public class RelationTest {
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
 		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
+				actualResponse.getEntity(String.class));
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			Node node21 = mockDbService.getNodeById(21L);
+			Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
+
+			assertTrue(!rels.hasNext()); // make sure node 21 does not have a
+											// relationship now!
+		}
+	}
+
+	@Test
+	public void createRelationshipTestWithCyclicConstraintDH39() {
+		RelationshipModel relationship = new RelationshipModel();
+
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		Iterator<Node> nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node firstNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		result = engine.execute("match (w:WORD {dn15:'pierced'}) return w");
+		nodes = result.columnAs("w");
+		assertTrue(nodes.hasNext());
+		Node secondNode = nodes.next();
+		assertFalse(nodes.hasNext());
+
+		relationship.setSource(firstNode.getId() + "");
+		relationship.setTarget(secondNode.getId() + "");
+		relationship.setDe11("grammatical");
+		relationship.setDe1("0");
+		relationship.setDe6("true");
+		relationship.setDe8("showers");
+		relationship.setDe9("pierced");
+
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
+
+		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+		assertEquals(
+				"This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.",
+				actualResponse.getEntity(String.class));
 		
     	try (Transaction tx = mockDbService.beginTx()) 
     	{
-    		Node node21 = mockDbService.getNodeById(21L);
-    		Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
+			Node node1 = mockDbService.getNodeById(firstNode.getId());
+			Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATIONSHIP).iterator();
+
+			assertTrue(!rels.hasNext()); // make sure node does not have a
+											// relationship now!
+
+			Node node2 = mockDbService.getNodeById(secondNode.getId());
+			rels = node2.getRelationships(ERelations.RELATIONSHIP).iterator();
     		
-    		assertTrue(!rels.hasNext()); // make sure node 21 does not have a relationship now!
+			assertTrue(!rels.hasNext()); // make sure node does not have a
+											// relationship now!
     	} 
 	}
 	
@@ -485,15 +542,14 @@ public class RelationTest {
 	 * Test if the get relationship method returns the correct value
 	 */
 	@Test
-	public void getRelationshipTest(){
-		
+	public void getRelationshipTest() {
 		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+tradId)
 				.get(ClientResponse.class);
 		List<RelationshipModel> relationships = jerseyTest.resource()
 				.path("/relation/getallrelationships/fromtradition/"+tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
-		//assertEquals(Response.ok().build().getStatus(), response.getStatus());
+		assertEquals(Status.OK, response.getClientResponseStatus());
 		for(RelationshipModel rel : relationships){
 			assertTrue(rel.getId().equals("34")||rel.getId().equals("35")||rel.getId().equals("36"));
 			assertTrue(rel.getDe9().equals("april")||rel.getDe9().equals("drought")||rel.getDe9().equals("march"));
@@ -506,7 +562,6 @@ public class RelationTest {
 	 */
 	@Test
 	public void getRelationshipCorrectStatusTest(){
-		
 		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+tradId)
 				.get(ClientResponse.class);
 		assertEquals(Response.ok().build().getStatus(), response.getStatus());
