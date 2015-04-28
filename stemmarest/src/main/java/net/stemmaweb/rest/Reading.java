@@ -21,6 +21,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
 import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.RelationshipService;
 
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.neo4j.graphdb.Direction;
@@ -40,15 +41,7 @@ public class Reading implements IResource {
 	private String errorMessage;
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
-	public static Node copyReadingProperties(Node oldReading, Node newReading) {
-		for (int i = 0; i < 16; i++) {
-			String key = "dn" + i;
-			if (oldReading.hasProperty(key))
-				newReading.setProperty(key, oldReading.getProperty(key));
-		}
-		newReading.addLabel(Nodes.WORD);
-		return newReading;
-	}
+
 
 	/**
 	 * Returns a single reading in a specific tradition.
@@ -194,7 +187,7 @@ public class Reading implements IResource {
 	private void duplicate(List<String> newWitnesses,
 			Node originalReading, Node addedReading) {
 		// copy reading properties to newly added reading
-		addedReading = Reading.copyReadingProperties(originalReading,
+		addedReading = ReadingService.copyReadingProperties(originalReading,
 				addedReading);
 
 		// copy relationships
@@ -293,23 +286,6 @@ public class Reading implements IResource {
 			if (cannotBeMerged(db, stayingReading, deletingReading))
 				return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorMessage).build();
 
-			// if (doReadingsBelongToSameWitness(stayingReading,
-			// deletingReading)) {
-			// db.shutdown();
-			// return Response
-			// .status(Status.INTERNAL_SERVER_ERROR)
-			// .entity("Readings to be merged belong to the same witness")
-			// .build();
-			// }
-
-			// if (!containClassOneRelationships(stayingReading,
-			// deletingReading))
-			// return Response.status(Status.INTERNAL_SERVER_ERROR)
-			// .entity("Readings to be merged has to contain class 1 relationship").build();
-
-			ReadingModel staying = new ReadingModel(stayingReading);
-			ReadingModel deleting = new ReadingModel(deletingReading);
-
 			// finally merge readings ;-)
 			merge(stayingReading, deletingReading);
 
@@ -385,38 +361,6 @@ public class Reading implements IResource {
 		return true;
 	}
 
-	// private boolean containClassOneRelationships(Node stayingReading,
-	// Node deletingReading) {
-	// for (Relationship stayingRel : stayingReading
-	// .getRelationships(ERelations.RELATIONSHIP))
-	// if (stayingRel.getOtherNode(stayingReading).equals(deletingReading))
-	// if (!stayingRel.getProperty("de11").equals("transposition")
-	// && !stayingRel.getProperty("de11").equals("repetition"))
-	// return true;
-	// return false;
-	// }
-
-	// private boolean doReadingsBelongToSameWitness(Node stayingReading, Node
-	// deletingReading) {
-	// // write all witnesses of the staying reading into ArrayList
-	// Iterable<Relationship> stayingRels =
-	// stayingReading.getRelationships(ERelations.NORMAL);
-	// ArrayList<String> stayingWitnesses = new ArrayList<String>();
-	// for (Relationship stayingRel : stayingRels)
-	// for (String witness : (String[]) stayingRel.getProperty("lexemes"))
-	// stayingWitnesses.add(witness);
-	//
-	// // check if one of the witnesses of the reading to be deleted is already
-	// // present in the ArrayList
-	// Iterable<Relationship> deletingRels =
-	// deletingReading.getRelationships(ERelations.NORMAL);
-	// for (Relationship deletingRel : deletingRels)
-	// for (String witness : (String[]) deletingRel.getProperty("lexemes"))
-	// if (stayingWitnesses.contains(witness))
-	// return true;
-	// return false;
-	// }
-
 	/**
 	 * Checks if the two readings have a relationship between each other which
 	 * is of class two (transposition / repetition).
@@ -443,10 +387,10 @@ public class Reading implements IResource {
 	 * @param deletingReading
 	 */
 	private void merge(Node stayingReading, Node deletingReading) {
-		copyWitnesses(stayingReading, deletingReading);
-		copyRelationships(stayingReading, deletingReading);
-		addRelationshipsToStayingReading(stayingReading, deletingReading);
 		deleteRelationshipBetweenReadings(stayingReading, deletingReading);
+		copyWitnesses(stayingReading, deletingReading, Direction.INCOMING);
+		copyWitnesses(stayingReading, deletingReading, Direction.OUTGOING);
+		addRelationshipsToStayingReading(stayingReading, deletingReading);
 		deletingReading.delete();
 	}
 	
@@ -464,34 +408,38 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * copy the witnesses from the reading to be deleted to the staying reading.
+	 * Copies the witnesses from the reading to be deleted to the staying
+	 * reading.
 	 * 
 	 * @param stayingReading
 	 * @param deletingReading
 	 */
-	private void copyWitnesses(Node stayingReading, Node deletingReading) {
-		for (Relationship firstRel : stayingReading.getRelationships(ERelations.NORMAL))
-			for (Relationship secondRel : deletingReading.getRelationships(ERelations.NORMAL))
-				if (!firstRel.equals(secondRel))
-					if (firstRel.getOtherNode(stayingReading).equals(
-							secondRel.getOtherNode(deletingReading))) {
-						// get Witnesses
-						String[] stayingReadingWitnesses = (String[]) firstRel
-								.getProperty("lexemes");
-						String[] deletingReadingWitnesses = (String[]) secondRel
-								.getProperty("lexemes");
+	private void copyWitnesses(Node stayingReading, Node deletingReading, Direction direction) {
+		for (Relationship stayingRel : stayingReading.getRelationships(ERelations.NORMAL, direction))
+			for (Relationship deletingRel : deletingReading.getRelationships(ERelations.NORMAL, direction)) {
+				// if (!firstRel.equals(secondRel))
+				if (stayingRel.getOtherNode(stayingReading).equals(deletingRel.getOtherNode(deletingReading))) {
+					// get Witnesses
+					String[] stayingReadingWitnesses = (String[]) stayingRel.getProperty("lexemes");
+					String[] deletingReadingWitnesses = (String[]) deletingRel.getProperty("lexemes");
 
-						// combine witness lists into one list
-						String[] combinedWitnesses = new String[stayingReadingWitnesses.length
-								+ deletingReadingWitnesses.length];
-						for (int i = 0; i < stayingReadingWitnesses.length; i++)
-							combinedWitnesses[i] = stayingReadingWitnesses[i];
-						for (int i = 0; i < deletingReadingWitnesses.length; i++)
-							combinedWitnesses[stayingReadingWitnesses.length
-									+ i] = deletingReadingWitnesses[i];
-						firstRel.setProperty("lexemes", combinedWitnesses);
-						secondRel.delete();
-					}
+					// combine witness lists into one list
+					String[] combinedWitnesses = new String[stayingReadingWitnesses.length
+					                                        + deletingReadingWitnesses.length];
+					for (int i = 0; i < stayingReadingWitnesses.length; i++)
+						combinedWitnesses[i] = stayingReadingWitnesses[i];
+					for (int i = 0; i < deletingReadingWitnesses.length; i++)
+						combinedWitnesses[stayingReadingWitnesses.length
+						                  + i] = deletingReadingWitnesses[i];
+					stayingRel.setProperty("lexemes", combinedWitnesses);
+
+				} else {
+					Relationship newRel = stayingReading.createRelationshipTo(
+							deletingRel.getOtherNode(deletingReading), ERelations.NORMAL);
+					newRel.setProperty("lexemes", deletingRel.getProperty("lexemes"));
+				}
+				deletingRel.delete();
+			}
 	}
 
 	/**
@@ -504,19 +452,17 @@ public class Reading implements IResource {
 	private void addRelationshipsToStayingReading(Node stayingReading,
 			Node deletingReading) {
 		// copy relationships from deletingReading to stayingReading
-		Iterable<Relationship> rels = deletingReading.getRelationships(
-				ERelations.RELATIONSHIP, Direction.OUTGOING);
-		for (Relationship rel : rels) {
-			stayingReading.createRelationshipTo(rel.getEndNode(),
+		for (Relationship oldRel : deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING)) {
+			Relationship newRel = stayingReading.createRelationshipTo(oldRel.getEndNode(),
 					ERelations.RELATIONSHIP);
-			rel.delete();
+			newRel = RelationshipService.copyRelationshipProperties(oldRel, newRel);
+			oldRel.delete();
 		}
-		rels = deletingReading.getRelationships(ERelations.RELATIONSHIP,
-				Direction.INCOMING);
-		for (Relationship rel : rels) {
-			rel.getStartNode().createRelationshipTo(stayingReading,
+		for (Relationship oldRel : deletingReading.getRelationships(ERelations.RELATIONSHIP, Direction.INCOMING)) {
+			Relationship newRel = oldRel.getStartNode().createRelationshipTo(stayingReading,
 					ERelations.RELATIONSHIP);
-			rel.delete();
+			newRel = RelationshipService.copyRelationshipProperties(oldRel, newRel);
+			oldRel.delete();
 		}
 	}
 
@@ -632,7 +578,7 @@ public class Reading implements IResource {
 
 			// is this assignment necessary or does that function
 			// otherwise as well in this transaction?
-			newReading = Reading.copyReadingProperties(originalReading,
+			newReading = ReadingService.copyReadingProperties(originalReading,
 					newReading);
 			newReading.setProperty("dn15", splittedWords[i]);
 			Long previousRank = (Long) originalReading.getProperty("dn14");
