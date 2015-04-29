@@ -9,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 
-import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.BeforeClass;
@@ -17,7 +16,6 @@ import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;

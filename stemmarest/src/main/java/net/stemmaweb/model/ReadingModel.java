@@ -24,7 +24,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
 	private String dn10; // join_prior
 	private String dn11; // language
 	private String dn12; // lexemes
-	private String dn13; // nothisal_fothis
+	private String dn13; // normal_form
 	private Long dn14; // rank
 	private String dn15; // text
 

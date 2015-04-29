@@ -1,14 +1,16 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
 import javax.ws.rs.core.Response;
-import net.stemmaweb.rest.Nodes;
+
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 import net.stemmaweb.stemmaserver.OSDetector;

@@ -24,9 +24,9 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * 
- * @author jakob/ido
+ * Comprises all the api calls related to a witness.
  *
- **/
+ */
 @Path("/witness")
 public class Witness implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();

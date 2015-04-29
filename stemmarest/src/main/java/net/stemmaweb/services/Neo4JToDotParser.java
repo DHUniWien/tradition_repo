@@ -1,7 +1,10 @@
 package net.stemmaweb.services;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -11,6 +14,7 @@ import java.util.Iterator;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -46,13 +50,9 @@ public class Neo4JToDotParser
 		String filename = "upload/" + "output.dot";
     	
 		Node startNode = DatabaseService.getStartNode(tradId,db);
-    	
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	
+
     	try (Transaction tx = db.beginTx()) 
-    	{
-    		
-    		
+    	{	
     		if(startNode==null)
     			return Response.status(Status.NOT_FOUND).build();
     		
@@ -113,6 +113,7 @@ public class Neo4JToDotParser
 		}
     	
     	db.shutdown();
+    	writePNGFromDotFile(filename,"upload/file");
     	
 		return Response.ok().build();
 	}
@@ -207,7 +208,7 @@ public class Neo4JToDotParser
     	}
     	
     	db.shutdown();
-    	
+    	writePNGFromDot(output,"upload/file");
 		return Response.ok(output).build();
 	}
 	
@@ -215,4 +216,42 @@ public class Neo4JToDotParser
 	{
 		out.write(str.getBytes());
 	}
+	
+	
+	public void writePNGFromDot(String dot, String outFile)
+	{
+		GraphViz gv = new GraphViz();
+		gv.add(dot);
+	    
+	    String type = "png";
+//	      String type = "plain";
+	    File out = new File(outFile + "." + type);   // Linux
+//	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
+	    gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
+	}
+	
+	public void writePNGFromDotFile(String inFile, String outFile)
+	{	
+		String everything = "";
+		try(BufferedReader br = new BufferedReader(new FileReader(inFile))) {
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        while (line != null) {
+	            sb.append(line);
+	            sb.append(System.lineSeparator());
+	            line = br.readLine();
+	        }
+	        everything = sb.toString();
+	    } catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		writePNGFromDot(everything, outFile);
+	}
+
 }

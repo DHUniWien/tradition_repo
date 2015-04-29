@@ -1,7 +1,9 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
 import java.util.List;
@@ -172,7 +174,7 @@ public class UserTest {
 		userModel.setIsAdmin("0");
 		jerseyTest.resource().path("/user/createuser").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, userModel);
 		
-		UserModel actualResponse = jerseyTest.resource().path("/user/getuser/wihtid/43").get(UserModel.class);
+		UserModel actualResponse = jerseyTest.resource().path("/user/getuser/withid/43").get(UserModel.class);
 		assertEquals("43",actualResponse.getId());
 		assertEquals("0",actualResponse.getIsAdmin());
 		
@@ -184,7 +186,7 @@ public class UserTest {
 	 */
 	@Test
 	public void getInvalidUserTest(){	
-		ClientResponse actualResponse = jerseyTest.resource().path("/user/getuser/wihtid/43").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/getuser/withid/43").get(ClientResponse.class);
 		assertEquals(Response.Status.NO_CONTENT.getStatusCode(), actualResponse.getStatus());	
 	}
 	
@@ -251,7 +253,8 @@ public class UserTest {
     	/*
     	 * Remove user 1 with all his traditions
     	 */
-    	ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/wihtid/1").delete(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
+				.delete(ClientResponse.class);
     	assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
         
     	/*

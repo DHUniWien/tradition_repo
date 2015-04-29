@@ -31,8 +31,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * 
- * @author jakob, severin
- *
+ * Comprises all the api calls related to a user.
+ * 
  */
 @Path("/user")
 public class User implements IResource {
@@ -114,7 +114,7 @@ public class User implements IResource {
 	 * @return UserModel as JSON
 	 */
 	@GET
-	@Path("getuser/wihtid/{userId}")
+	@Path("getuser/withid/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public UserModel getUserById(@PathParam("userId") String userId) {
 		UserModel userModel = new UserModel();
@@ -146,7 +146,7 @@ public class User implements IResource {
 	 * @return
 	 */
 	@DELETE
-	@Path("deleteuser/wihtid/{userId}")
+	@Path("deleteuser/withid/{userId}")
 	public Response deleteUserById(@PathParam("userId") String userId) {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 

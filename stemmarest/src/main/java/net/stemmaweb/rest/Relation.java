@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.ReadingService;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -30,7 +31,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * 
- * @author jakob
+ * Comprises all the api calls related to a relation.
  *
  */
 @Path("/relation")
@@ -48,11 +49,12 @@ public class Relation implements IResource {
     }
     
     /**
-     * 
-     * @param relationshipModel
-     * @param textId
-     * @return
-     */
+	 * Creates a new relationship between the two nodes specified.
+	 * 
+	 * @param relationshipModel
+	 * @param textId
+	 * @return
+	 */
     @POST
     @Path("createrelationship/intradition/{texId}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -62,9 +64,9 @@ public class Relation implements IResource {
     	
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
     	Relationship relationshipAtoB = null;
+
     	try (Transaction tx = db.beginTx()) 
     	{
-        	
     		/*
     		 * Currently search by id search because is much faster by measurement. Because 
     		 * the id search is O(n) just go through all ids without care. And the 
@@ -73,11 +75,17 @@ public class Relation implements IResource {
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
-			if (wouldProduceCrossRelationship(readingA, readingB, db)) {
-				db.shutdown();
+			if (wouldProduceCrossRelationship(db, readingA, readingB))
 				return Response.status(Status.CONFLICT)
 						.entity("This relationship creation is not allowed. Would produce cross-relationship.").build();
-			}
+
+			if (!relationshipModel.getDe11().equals("transposition")
+					&& !relationshipModel.getDe11().equals("repetition"))
+				if (ReadingService.wouldGetCyclic(db, readingA, readingB))
+					return Response
+							.status(Status.CONFLICT)
+							.entity("This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.")
+							.build();
 
         	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
         	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
@@ -107,7 +115,17 @@ public class Relation implements IResource {
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
 
-	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading, GraphDatabaseService db) {
+	/**
+	 * Checks if a relationship between the two nodes specified would produce a
+	 * cross-relationship or not. A cross relationship is a relationship that
+	 * crosses another one created before which is not allowed.
+	 * 
+	 * @param db
+	 * @param firstReading
+	 * @param secondReading
+	 * @return
+	 */
+	private boolean wouldProduceCrossRelationship(GraphDatabaseService db, Node firstReading, Node secondReading) {
 		Long firstRank = Long.parseLong(firstReading.getProperty("dn14").toString());
 		Long secondRank = Long.parseLong(secondReading.getProperty("dn14").toString());
 		Direction firstDirection, secondDirection;
@@ -132,6 +150,15 @@ public class Relation implements IResource {
 		return false;
 	}
 
+	/**
+	 * Gets all the next nodes with the given constraints.
+	 * 
+	 * @param reading
+	 * @param db
+	 * @param direction
+	 * @param depth
+	 * @return
+	 */
 	private ResourceIterable<Node> getNextNodes(Node reading, GraphDatabaseService db, Direction direction,
 			int depth) {
 		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, direction)
@@ -145,7 +172,7 @@ public class Relation implements IResource {
      * @return relationships ArrayList
      */
     @GET
-    @Path("getallrelationships/formtradition/{textId}")
+    @Path("getallrelationships/fromtradition/{textId}")
     @Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("textId") String textId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
@@ -261,7 +288,6 @@ public class Relation implements IResource {
     	       			{
     	       				rel.delete();
     	       			}
-    	        
     				}
     			}
             	tx.success();
@@ -285,7 +311,7 @@ public class Relation implements IResource {
      * @return HTTP Response 404 when no Relationship was found with id, 200 when the Relationship was removed
      */
     @DELETE
-    @Path("deleterelationshipsbyid/fromtradition/{textId}/withrealtionship/{relationshipId}")
+    @Path("deleterelationshipsbyid/fromtradition/{textId}/withrelationship/{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId,
 			@PathParam("textId") String textId) {
     	
@@ -303,8 +329,6 @@ public class Relation implements IResource {
     	}
     	return Response.ok().build();
     }
-    
-    
     
     private String nullToEmptyString(String str){
     	if(str == null)
