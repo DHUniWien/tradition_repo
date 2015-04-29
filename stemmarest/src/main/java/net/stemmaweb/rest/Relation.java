@@ -31,7 +31,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * 
- * @author jakob
+ * Comprises all the api calls related to a relation.
  *
  */
 @Path("/relation")
@@ -49,11 +49,12 @@ public class Relation implements IResource {
     }
     
     /**
-     * 
-     * @param relationshipModel
-     * @param textId
-     * @return
-     */
+	 * Creates a new relationship between the two nodes specified.
+	 * 
+	 * @param relationshipModel
+	 * @param textId
+	 * @return
+	 */
     @POST
     @Path("createrelationship/intradition/{texId}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -63,9 +64,9 @@ public class Relation implements IResource {
     	
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
     	Relationship relationshipAtoB = null;
+
     	try (Transaction tx = db.beginTx()) 
     	{
-        	
     		/*
     		 * Currently search by id search because is much faster by measurement. Because 
     		 * the id search is O(n) just go through all ids without care. And the 
@@ -114,6 +115,16 @@ public class Relation implements IResource {
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
 
+	/**
+	 * Checks if a relationship between the two nodes specified would produce a
+	 * cross-relationship or not. A cross relationship is a relationship that
+	 * crosses another one created before which is not allowed.
+	 * 
+	 * @param db
+	 * @param firstReading
+	 * @param secondReading
+	 * @return
+	 */
 	private boolean wouldProduceCrossRelationship(GraphDatabaseService db, Node firstReading, Node secondReading) {
 		Long firstRank = Long.parseLong(firstReading.getProperty("dn14").toString());
 		Long secondRank = Long.parseLong(secondReading.getProperty("dn14").toString());
@@ -139,6 +150,15 @@ public class Relation implements IResource {
 		return false;
 	}
 
+	/**
+	 * Gets all the next nodes with the given constraints.
+	 * 
+	 * @param reading
+	 * @param db
+	 * @param direction
+	 * @param depth
+	 * @return
+	 */
 	private ResourceIterable<Node> getNextNodes(Node reading, GraphDatabaseService db, Direction direction,
 			int depth) {
 		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, direction)
@@ -268,7 +288,6 @@ public class Relation implements IResource {
     	       			{
     	       				rel.delete();
     	       			}
-    	        
     				}
     			}
             	tx.success();
@@ -310,8 +329,6 @@ public class Relation implements IResource {
     	}
     	return Response.ok().build();
     }
-    
-    
     
     private String nullToEmptyString(String str){
     	if(str == null)

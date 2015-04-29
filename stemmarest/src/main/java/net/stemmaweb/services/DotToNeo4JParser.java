@@ -6,15 +6,14 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * This class provides methods for exporting Dot File from Neo4J

@@ -31,8 +31,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * 
- * @author jakob, severin
- *
+ * Comprises all the api calls related to a user.
+ * 
  */
 @Path("/user")
 public class User implements IResource {

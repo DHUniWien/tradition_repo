@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.unittests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -10,8 +11,8 @@ import java.util.Iterator;
 
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -34,7 +35,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import com.sun.jersey.api.client.ClientResponse;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DotExporterUnitTest {

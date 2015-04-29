@@ -4,6 +4,7 @@ import java.util.Iterator;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
@@ -48,7 +49,7 @@ public class DatabaseService {
 	public Node getStartNode(String tradId) {
 
 		ExecutionEngine engine = new ExecutionEngine(db);
-		DbPathProblemService problemFinder = new DbPathProblemService();
+		// DbPathProblemService problemFinder = new DbPathProblemService();
 		Node startNode = null;
 
 		/**

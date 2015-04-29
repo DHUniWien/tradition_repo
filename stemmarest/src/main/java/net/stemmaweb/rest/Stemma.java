@@ -15,8 +15,6 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DotToNeo4JParser;
-import net.stemmaweb.services.EvaluatorService;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -27,27 +25,17 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
-
-import com.sun.jersey.core.header.FormDataContentDisposition;
-import com.sun.jersey.multipart.FormDataParam;
-
 
 /**
  * 
- * @author ramona
+ * Comprises all the api calls related to a stemma.
  *
- **/
-
+ */
 @Path("/stemma")
 public class Stemma implements IResource {
 	
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-	private GraphDatabaseService db;
 	
 	/**
 	 * Gets a list of all stemmata available, as dot format

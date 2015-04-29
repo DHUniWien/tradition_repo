@@ -50,13 +50,9 @@ public class Neo4JToDotParser
 		String filename = "upload/" + "output.dot";
     	
 		Node startNode = DatabaseService.getStartNode(tradId,db);
-    	
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	
+
     	try (Transaction tx = db.beginTx()) 
-    	{
-    		
-    		
+    	{	
     		if(startNode==null)
     			return Response.status(Status.NOT_FOUND).build();
     		

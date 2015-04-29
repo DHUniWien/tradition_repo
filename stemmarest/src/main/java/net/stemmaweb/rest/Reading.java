@@ -23,7 +23,6 @@ import net.stemmaweb.services.EvaluatorService;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
 
-import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -35,13 +34,17 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-@JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
+/**
+ * 
+ * Comprises all the api calls related to a reading.
+ *
+ */
+// @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 @Path("/reading")
 public class Reading implements IResource {
+
 	private String errorMessage;
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-
-
 
 	/**
 	 * Returns a single reading in a specific tradition.
@@ -160,7 +163,7 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * get all the witnesses of a reading in all its normal relationships.
+	 * Gets all the witnesses of a reading in all its normal relationships.
 	 * 
 	 * @param originalReading
 	 * @return
@@ -200,20 +203,29 @@ public class Reading implements IResource {
 				newRel.setProperty(key, originalRel.getProperty(key));
 		}
 
-		// add witnesses to relationships
+		// add witnesses to normal relationships
 		// Incoming
 		for (Relationship originalRelationship : originalReading
 				.getRelationships(ERelations.NORMAL, Direction.INCOMING))
-			handleWitnesses(newWitnesses, originalRelationship,
+			transferNewWitnessesFromOriginalReadingToAddedReading(newWitnesses, originalRelationship,
 					originalRelationship.getStartNode(), addedReading);
 		// Outgoing
 		for (Relationship originalRelationship : originalReading
 				.getRelationships(ERelations.NORMAL, Direction.OUTGOING))
-			handleWitnesses(newWitnesses, originalRelationship, addedReading,
+			transferNewWitnessesFromOriginalReadingToAddedReading(newWitnesses, originalRelationship, addedReading,
 					originalRelationship.getEndNode());
 	}
 
-	private void handleWitnesses(List<String> newWitnesses,
+	/**
+	 * Transfers all the new witnesses from the relationships of the original
+	 * reading to the relationships of the newly added reading.
+	 * 
+	 * @param newWitnesses
+	 * @param originalRel
+	 * @param originNode
+	 * @param targetNode
+	 */
+	private void transferNewWitnessesFromOriginalReadingToAddedReading(List<String> newWitnesses,
 			Relationship originalRel, Node originNode, Node targetNode) {
 		String[] oldWitnesses = (String[]) originalRel.getProperty("lexemes");
 		// if oldWitnesses only contains one witness and this one should be
@@ -320,7 +332,6 @@ public class Reading implements IResource {
 			errorMessage = "Readings to be merged have to be connected with each other through a relationship";
 			return true;
 		}
-
 
 		if (containClassTwoRelationships(stayingReading, deletingReading)) {
 			errorMessage = "Readings to be merged cannot contain class 2 relationships (transposition / repetition)";
@@ -783,12 +794,12 @@ public class Reading implements IResource {
 		readingModels = getAllReadingsFromTraditionBetweenRanks(startNode,
 				startRank, endRank, db);
 
-		ArrayList<List> identicalReadings = new ArrayList<List>();
+		ArrayList<List<ReadingModel>> identicalReadings = new ArrayList<List<ReadingModel>>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
 				startRank, endRank);
 
 		Boolean isEmpty = true;
-		for (List list : identicalReadings) {
+		for (List<ReadingModel> list : identicalReadings) {
 			if (list.size() > 0)
 				isEmpty = false;
 		}
@@ -984,9 +995,9 @@ public class Reading implements IResource {
 	 * @param endRank
 	 * @return list of the identical readings as readingModels
 	 */
-	private ArrayList<List> getIdenticalReadingsAsList(
+	private ArrayList<List<ReadingModel>> getIdenticalReadingsAsList(
 			ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
-		ArrayList<List> identicalReadingsList = new ArrayList<List>();
+		ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<List<ReadingModel>>();
 
 		for (int i = 0; i <= readingModels.size() - 2; i++) {
 			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)

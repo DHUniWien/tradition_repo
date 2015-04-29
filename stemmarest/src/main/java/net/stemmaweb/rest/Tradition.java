@@ -48,12 +48,12 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 
+
 /**
  * 
- * @author ramona, sevi, joel
+ * Comprises all the api calls related to a tradition.
  *
- **/
-
+ */
 @Path("/tradition")
 public class Tradition implements IResource {
 
@@ -111,11 +111,15 @@ public class Tradition implements IResource {
 		return Response.status(Response.Status.OK).entity(textInfo).build();
 	}
 	
+	/**
+	 * Gets a list of all the complete traditions in the database.
+	 * 
+	 * @return
+	 */
 	@GET
 	@Path("getalltraditions")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getAllTraditions()
-	{
+	public Response getAllTraditions() {
 		List<TraditionModel> traditionList = new ArrayList<TraditionModel>();
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
@@ -136,8 +140,6 @@ public class Tradition implements IResource {
 			}
 			tx.success();
 		} catch (Exception e) {
-			e.printStackTrace();
-			db.shutdown();
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 			db.shutdown();
@@ -164,31 +166,33 @@ public class Tradition implements IResource {
 
 			try {
 				traditionNode = getTraditionNode(tradId, engine);								
-			
+
 				if (traditionNode == null){
 					return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 				}
 				if (startNode == null)
 					return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
-	
+
 				relationships = startNode.getRelationships(Direction.OUTGOING);
-	
+
 				if (relationships == null)
 					return Response.status(Status.NOT_FOUND).entity("start node not found").build();
-	
+
 				for (Relationship rel : relationships) {
 					for (String id : ((String[]) rel.getProperty("lexemes"))) {
 						WitnessModel witM = new WitnessModel();
 						witM.setId(id);
-	
+
 						witlist.add(witM);
 					}
 				}
-	
+
 				tx.success();
 			} catch (Exception e) {
 				e.printStackTrace();
 			} 
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
 			db.shutdown();
 		}
@@ -260,7 +264,7 @@ public class Tradition implements IResource {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 			db.shutdown();
 		}
@@ -351,6 +355,8 @@ public class Tradition implements IResource {
 			}
 
 			tx.success();
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 			db.shutdown();
 		}
