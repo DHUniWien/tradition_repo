@@ -7,3 +7,4 @@ stemmarest/.project
 stemmarest/.*
 stemmarest/upload/*
 !stemmarest/upload/notempty
+Tests/*
