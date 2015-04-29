@@ -98,7 +98,7 @@ public class Tradition implements IResource {
 				System.out.println(result.dumpToString());
 
 			} else {
-				// Tradition no found
+				// Tradition not found
 				return Response.status(Response.Status.NOT_FOUND).entity("Tradition not found").build();
 			}
 
@@ -148,6 +148,12 @@ public class Tradition implements IResource {
 		return Response.ok().entity(traditionList).build();
 	}
 
+	/**
+	 * Gets a list of all the witnesses of a tradition with the given id.
+	 * 
+	 * @param tradId
+	 * @return
+	 */
 	@GET
 	@Path("getallwitnesses/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -200,6 +206,12 @@ public class Tradition implements IResource {
 		return Response.ok(witlist).build();
 	}
 
+	/**
+	 * Gets a list of all relationships of a tradition with the given id.
+	 * 
+	 * @param tradId
+	 * @return
+	 */
 	@GET
 	@Path("getallrelationships/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -426,7 +438,7 @@ public class Tradition implements IResource {
 
 	}
 
-		/**
+	/**
 	 * Helper method for deleting a file by given name
 	 * 
 	 * @param filename

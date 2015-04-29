@@ -1,17 +1,17 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -39,8 +39,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**

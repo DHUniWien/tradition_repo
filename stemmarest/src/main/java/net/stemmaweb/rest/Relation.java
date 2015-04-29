@@ -167,10 +167,11 @@ public class Relation implements IResource {
 	}
 
     /**
-     * Get a list of all readings
-     * @param textId
-     * @return relationships ArrayList
-     */
+	 * Get a list of all readings
+	 * 
+	 * @param textId
+	 * @return relationships ArrayList
+	 */
     @GET
     @Path("getallrelationships/fromtradition/{textId}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -305,11 +306,13 @@ public class Relation implements IResource {
 	}
     
     /**
-     * Removes a relationship by ID
-     * @param relationshipId
-     * @param textId
-     * @return HTTP Response 404 when no Relationship was found with id, 200 when the Relationship was removed
-     */
+	 * Removes a relationship by ID
+	 * 
+	 * @param relationshipId
+	 * @param textId
+	 * @return HTTP Response 404 when no Relationship was found with id, 200
+	 *         when the Relationship was removed
+	 */
     @DELETE
     @Path("deleterelationshipsbyid/fromtradition/{textId}/withrelationship/{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId,

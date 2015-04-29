@@ -72,6 +72,7 @@ public class User implements IResource {
 	}
 
 	/**
+	 * Creates a user based on the parameters submitted in JSON.
 	 * 
 	 * @param userModel
 	 *            in JSON Format
@@ -109,6 +110,7 @@ public class User implements IResource {
 	}
 
 	/**
+	 * Gets a user by the id.
 	 * 
 	 * @param userId
 	 * @return UserModel as JSON
