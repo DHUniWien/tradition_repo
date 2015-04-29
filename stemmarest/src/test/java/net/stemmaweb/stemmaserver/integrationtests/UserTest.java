@@ -323,7 +323,7 @@ public class UserTest {
     	/*
     	 * Remove user 2 with all his traditions
     	 */
-    	ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/wihtid/2").delete(ClientResponse.class);
+    	ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/2").delete(ClientResponse.class);
     	assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
         
     	/*
