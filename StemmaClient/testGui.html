@@ -1,0 +1,437 @@
+<html>
+<head>
+	<script src="jquery-2.1.3.min.js"></script>
+	<link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+	<link href="style.css" rel="stylesheet">
+	<script src="bootstrap/js/bootstrap.min.js"></script>
+	<script src="jquery.runner-min.js"></script>
+	<script type="text/javascript">
+	
+	var baseurl = "http://localhost:8080/";
+	
+		$(document).ready(function(){
+			// do jQuery
+			$('#runner').runner();
+		});
+		
+		function xmlToString(xmlData) { 
+
+		    var xmlString;
+		    //IE
+		    if (window.ActiveXObject){
+		        xmlString = xmlData.xml;
+		    }
+		    // code for Mozilla, Firefox, Opera, etc.
+		    else{
+		        xmlString = (new XMLSerializer()).serializeToString(xmlData);
+		    }
+		    return xmlString;
+		}   
+		
+		function post(url, form){
+			url = baseurl + url;
+			var formJSON = "{";
+			var selects = "form#"+ form +" :input";
+			$(selects).each(function(index){
+			
+			 var input = $(this);
+			 if(input.attr('type')=="text")
+			 {
+				 formJSON = formJSON + '"' + input.attr("name") + '":"' + input.val() + '"';
+			 }
+			 else if(input.attr('type')=="number")
+			 {
+	 			 formJSON = formJSON + '"' + input.attr("name") + '":' + input.val();
+			 }
+			 else 
+			 {				 
+				 formJSON = formJSON + '"' + 'isAdmin' + '":' + 1;
+			 }
+ 			if(index < (selects.length - 18)) {
+ 				formJSON += ',';
+ 			}
+			 
+			});
+			formJSON += '}';
+			$(".send" + form).text("POST " + formJSON);
+			$(".send" + form).css("color","red");
+			setTimeout(function(){
+				$(".send" + form).css("color", "black");
+			}, 800);
+			$('#runner').runner('reset');
+			$('#runner').runner('start');
+			$.ajax({
+			    url: url,
+			    data: formJSON,
+			    cache: false,
+			    contentType: "application/json",
+			    processData: false,
+				dataType: 'text',
+			    type: 'POST',
+			    success: function(xhr){
+					$('#runner').runner('stop');
+					$(".return" + form).text("OK");
+					$(".return" + form).css("color","red");
+					setTimeout(function(){
+						$(".return" + form).css("color", "black");
+					}, 1000);
+			    },
+				error: function(xhr) {
+					$('#runner').runner('stop');
+					if(xhr.responseText!="")
+						$(".return" + form).text(xhr.responseText);
+					else
+						$(".return" + form).text("NO CONNECTION TO DATABASE");
+					$(".return" + form).css("color","red");
+					
+				}
+			});
+			
+		}
+		
+		function postWithfile(url, form)
+		{
+			url = baseurl + url;
+			var data = new FormData();
+			
+			$("form#"+ form +" :input").each(function(){
+			 var input = $(this);
+			 if(input.attr('type')!="file")
+			 {
+				 data.append(input.attr("name"),input.val());
+			 }
+			 else
+			 {
+	 			 data.append(input[0].name, input[0].files[0]);
+			 }
+			});
+			
+			$(".send" + form).text("POST " + $( "#" + form ).serialize());
+			$(".send" + form).css("color","red");
+			setTimeout(function(){
+				$(".send" + form).css("color", "black");
+			}, 800);
+			$('#runner').runner('reset');
+			$('#runner').runner('start');
+			$.ajax({
+			    url: url,
+			    data: data,
+			    cache: false,
+			    contentType: false,
+			    processData: false,
+			    type: 'POST',
+			    success: function(xhr){
+					$('#runner').runner('stop');
+					$(".return" + form).text(JSON.stringify(xhr));
+					$(".return" + form).css("color","red");
+					setTimeout(function(){
+						$(".return" + form).css("color", "black");
+					}, 1000);
+			    },
+				error: function(xhr) {
+					$('#runner').runner('stop');
+					if(xhr.responseText!="")
+						$(".return" + form).text(xhr.responseText);
+					else
+						$(".return" + form).text("NO CONNECTION TO DATABASE");
+					$(".return" + form).css("color","red");					
+				}
+			});
+		}
+		
+		function getByPath(url, form, datatype){
+			url = baseurl + url;
+			var selects = "form#"+ form +" :input";
+			$(selects).each(function(index){
+			
+			 	var input = $(this);
+   			 if(input.attr('type')=="text")
+   			 {
+				 url += "/" + input.val();
+			 }
+			 
+			});
+			$(".send" + form).text("GET " + url);
+			$(".send" + form).css("color","red");
+			setTimeout(function(){
+				$(".send" + form).css("color", "black");
+			}, 800);
+			$('#runner').runner('reset');
+			$('#runner').runner('start');
+			$.get(url,function(data){
+				$('#runner').runner('stop');
+				if(datatype=='xml')
+					$(".return" + form).text(/*JSON.stringify(data)*/xmlToString(data));
+				else
+					$(".return" + form).text(JSON.stringify(data));
+				$(".return" + form).css("color","red");
+				setTimeout(function(){
+					$(".return" + form).css("color", "black");
+				}, 1000);
+			}, datatype).fail(function(xhr){
+				$('#runner').runner('stop');
+				if(xhr.responseText!="")
+					$(".return" + form).text(xhr.responseText);
+				else
+					$(".return" + form).text("NO CONNECTION TO DATABASE");
+				$(".return" + form).css("color","red");
+			});
+		}
+		
+		function customRequest(){
+			
+			if($("input[name='optradio']:checked").val()=="POST")
+			{
+				var url = baseurl + $("#customurl").val();
+				$(".sendcustom").text("POST " + $("#customurl").val() + " " + $("#customtext").val());
+				$(".sendcustom").css("color","red");
+				setTimeout(function(){
+					$(".sendcustom").css("color", "black");
+				}, 800);
+				$('#runner').runner('reset');
+				$('#runner').runner('start');
+				$.ajax({
+				  type: "POST",
+				  url: url,
+				  data: $("#customtext").val(),
+				  success: function(data){
+					  $('#runner').runner('stop');
+  					var ret = JSON.stringify(data);
+  					$(".returncustom").text(ret);
+  					$(".returncustom").css("color","red");
+  					setTimeout(function(){
+  						$(".returncustom").css("color", "black");
+  					}, 1000);
+				  },
+				  error: function(XMLHttpRequest, textStatus, errorThrown) {
+					  $('#runner').runner('stop');
+					  if(errorThrown == "Not Found" || errorThrown == "Method Not Allowed")
+					  	$(".returncustom").text("NOT SUPPORTED CALL");
+					  else
+						$(".returncustom").text("NO CONNECTION TO SERVER");
+ 					
+ 					$(".returncustom").css("color","red");
+				  }
+				});
+
+			}
+			else
+			{
+				var url = baseurl + $("#customurl").val();
+				if($("#customtext").val()=="")
+				{
+					$(".sendcustom").text("GET " + $("#customurl").val());
+				}
+				else
+				{
+					$(".sendcustom").text("GET " + $("#customurl").val() + "?" + $("#customtext").val());
+				}
+				$(".sendcustom").css("color","red");
+				setTimeout(function(){
+					$(".sendcustom").css("color", "black");
+				}, 800);
+				$('#runner').runner('reset');
+				$('#runner').runner('start');
+				$.ajax({
+				  type: "GET",
+				  url: url,
+				  data: $("#customtext").val(),
+					dataType: "json",
+				  success: function(data){
+					  $('#runner').runner('stop');
+					  var ret = "";
+					if(typeof(data) == "string") {
+						ret = JSON.stringify(data);
+					    } else {
+							
+						ret = JSON.stringify(data);
+					//	ret = xmlToString(data);
+				
+					}
+  					$(".returncustom").text(ret);
+  					$(".returncustom").css("color","red");
+  					setTimeout(function(){
+  						$(".returncustom").css("color", "black");
+  					}, 1000);
+				  },
+  				error: function(xhr) {
+					
+  					$('#runner').runner('stop');
+  					if(xhr.responseText!="")
+  						$(".returncustom").text(xhr.responseText);
+  					else
+  						$(".returncustom").text("NO CONNECTION TO DATABASE");
+  					$(".returncustom").css("color","red");
+					
+  				}	
+				});
+			}
+			
+			
+		}
+		
+		
+	</script>
+</head>
+<body>
+	   
+	    <div class="container">
+
+	      <div class="starter-template">
+	        <h2>Test GUI</h2>			
+			<h3><a name="user">Create User  {/user/createuser}</a></h3>
+			<form method="post" name="newuser" id="newuser">
+				<div class="form-group">
+				  <div class="row">
+					<label class="col-sm-2 control-label">User ID</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="id" placeholder="e.g. 1">
+				    </div>
+				 </div>
+				  <div class="row">
+					<div class="col-sm-2">
+					</div>
+					
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="post('user/createuser','newuser')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendnewuser"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returnnewuser"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>
+		
+			<h3><a name="traditions">Import Graph  {/tradition/new}</a></h3>
+			<form method="post" name="newtrad" id="newtrad" enctype="multipart/form-data" action="http://localhost:8080/tradition/new">
+				<div class="form-group">
+   				  <div class="row">
+   					<label class="col-sm-2 control-label">User ID</label>
+   					<div class="col-sm-8">
+   				    	<input class="form-control" type="text" name="userId" placeholder="e.g. 1 (use the ID of the user you have previously created)">
+   				    </div>
+   				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Name</label>
+					<div class="col-sm-8">
+				    	<input class="form-control" type="text" name="name" placeholder="(not required)">
+				    </div>
+				 </div>
+				  <div class="row">
+					<label class="col-sm-2 control-label">Language</label>
+					<div class="col-sm-5">
+				    	<input class="form-control" type="text" name="language" placeholder="(not required)">
+				    </div>
+					<div class="col-sm-5">
+						
+					</div>
+				 </div>
+			  	<div class="row">
+					<label class="col-sm-2 control-label">File</label>
+					<div class="col-sm-8">
+				 	   <input type="file" name="file" id="file" size="50" maxlength="100000" accept="text/xml">
+					</div>
+				</div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden"  onclick="postWithfile('tradition/new','newtrad')"/>
+					
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendnewtrad"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returnnewtrad"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>				
+			
+			<h3><a name="Customform">Send a custom request</a></h3>
+			<hr>
+			<form method="post" id="custom" name="custom">
+				<div class="form-group">
+   				 <div class="row">
+					 
+   					<label class="col-sm-2 control-label" >URL</label>
+   					
+					<div class="col-sm-8">
+   					 <div class="input-group">
+   					 <span class="input-group-addon" id="basic-addon1">http://localhost:8080/</span>
+   				      <input class="form-control" type="text" id="customurl" name="customurl" placeholder="e.g. user/createuser" aria-describedby="basic-addon1" />	
+					  </div>
+   				  </div>
+				 </div>
+				 <div class="row">
+					<label class="col-sm-2 control-label">Request</label>
+					<div class="col-sm-8">
+				      <input class="form-control" type="text" id="customtext" name="customtext" placeholder="(not required)">	
+				  </div>
+				
+				 </div>
+				 <div class="row radio">
+					 <label class="col-sm-2 control-label">Type</label>
+					 <label class="radio-inline"><input type="radio" name="optradio" value="POST" checked>POST</label>
+					 <label class="radio-inline"><input type="radio" name="optradio" value="GET">GET</label>
+				 </div>
+				 <div class="row send">
+ 					<div class="col-sm-2">
+ 					  <input type="button" class="btn btn-default" value="Senden" onclick="customRequest()" />
+ 					</div>
+					<div class="col-sm-8 output">
+					  <label>Send</label>
+					  <samp><span class="sendcustom"></span></samp>
+					  <br/>
+   					  <label>Return</label>
+   					  <samp><span class="returncustom"></span></samp>
+					</div>
+				 </div>
+			 </div>
+			</form>			
+			
+			<div id="timebox" style="position:fixed;top:100px;left:100px;width:150px">
+		  		<div class="row">
+					<label class="col-sm-5 control-label">Time taken</label>
+					<div class="col-sm-8">
+			 		   <span id="runner"></span>s
+					</div>
+				</div>
+			</div>
+	      </div>		 
+
+	    </div><!-- /.container -->
+  
+		<button id="goFS">Go fullscreen</button>
+		<script>
+  
+		var viewFullScreen = document.getElementById("goFS");
+		    if (viewFullScreen) {
+		        viewFullScreen.addEventListener("click", function () {
+		            var docElm = document.documentElement;
+		            if (docElm.requestFullscreen) {
+		                docElm.requestFullscreen();
+		            }
+		            else if (docElm.msRequestFullscreen) {
+		                docElm.msRequestFullscreen();
+		            }
+		            else if (docElm.mozRequestFullScreen) {
+		                docElm.mozRequestFullScreen();
+		            }
+		            else if (docElm.webkitRequestFullScreen) {
+		                docElm.webkitRequestFullScreen();
+		            }
+		        }, false);
+		    }
+  
+		</script>
+	
+</body>
+</html>
