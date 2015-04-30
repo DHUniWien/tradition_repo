@@ -39,6 +39,7 @@ public class Stemma implements IResource {
 	
 	/**
 	 * Gets a list of all stemmata available, as dot format
+	 * 
 	 * @param tradId
 	 * @return list of dot
 	 */
@@ -180,10 +181,10 @@ public class Stemma implements IResource {
 	}
 
 	/**
-	 * Reorients a digraph: Searches the path to the new rootnode; reverse the realtionships;
-	 * change the first relationship
-	 * @param db 
+	 * Reorients a digraph: Searches the path to the new rootnode; reverse the
+	 * realtionships; change the first relationship
 	 * 
+	 * @param db
 	 * @param newRootNode
 	 * @param startNodeStemma
 	 * @return

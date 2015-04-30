@@ -67,8 +67,9 @@ public class Witness implements IResource {
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity("could not complete task").build();
+		} finally {
+			db.shutdown();
 		}
-		db.shutdown();
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
 					.entity("no witness with this id was found").build();
@@ -129,8 +130,9 @@ public class Witness implements IResource {
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity("could not complete task").build();
+		} finally {
+			db.shutdown();
 		}
-		db.shutdown();
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
 					.entity("no witness with this id was found").build();

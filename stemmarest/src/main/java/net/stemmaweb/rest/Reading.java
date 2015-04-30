@@ -39,7 +39,6 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * Comprises all the api calls related to a reading.
  *
  */
-// @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
 @Path("/reading")
 public class Reading implements IResource {
 
