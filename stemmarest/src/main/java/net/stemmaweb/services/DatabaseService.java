@@ -101,6 +101,8 @@ public class DatabaseService {
 				startNode = nodes.next();
 
 			tx.success();
+		}catch (Exception e){
+			return null;
 		}
 		return startNode;
 	}

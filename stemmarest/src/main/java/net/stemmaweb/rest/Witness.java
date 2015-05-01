@@ -65,10 +65,7 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		} catch (Exception exception) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR)
-					.entity("could not complete task").build();
-		} finally {
-			db.shutdown();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
@@ -79,9 +76,9 @@ public class Witness implements IResource {
 
 	/**
 	 * find a requested witness in the data base and return it as a string
-	 * according to define start and end readings
-	 * (including the readings in those ranks)
-	 * if end-rank is too high or start-rank too low will return till the end/from the start of the wintess
+	 * according to define start and end readings (including the readings in
+	 * those ranks) if end-rank is too high or start-rank too low will return
+	 * till the end/from the start of the wintess
 	 * 
 	 * @param userId
 	 *            : the id of the user who owns the witness
@@ -128,10 +125,7 @@ public class Witness implements IResource {
 			}
 			tx.success();
 		} catch (Exception exception) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR)
-					.entity("could not complete task").build();
-		} finally {
-			db.shutdown();
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
@@ -172,7 +166,14 @@ public class Witness implements IResource {
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-		readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
+
+		try (Transaction tx = db.beginTx()) {
+			readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
+			tx.success();
+		} catch (Exception exception) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		
 		if (readingModels == null || readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no witness with this id was found").build();
@@ -193,19 +194,14 @@ public class Witness implements IResource {
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 		EvaluatorService evaService = new EvaluatorService();
 		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
-		try (Transaction tx = db.beginTx()) {
 
-			for (Node startNodes : db.traversalDescription().depthFirst()
-					.relationships(ERelations.NORMAL, Direction.OUTGOING)
-					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-					.traverse(startNode).nodes()) {
-				ReadingModel tempReading = new ReadingModel(startNodes);
+		for (Node startNodes : db.traversalDescription().depthFirst()
+				.relationships(ERelations.NORMAL, Direction.OUTGOING)
+				.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+				.traverse(startNode).nodes()) {
+			ReadingModel tempReading = new ReadingModel(startNodes);
 
-				readingModels.add(tempReading);
-			}
-			tx.success();
-		} catch (Exception exception) {
-			return null;
+			readingModels.add(tempReading);
 		}
 
 		if (readingModels.size() == 0)

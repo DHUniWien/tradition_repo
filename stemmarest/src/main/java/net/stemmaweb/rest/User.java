@@ -14,6 +14,7 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
@@ -102,10 +103,9 @@ public class User implements IResource {
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 
 			tx.success();
-		} finally {
-			db.shutdown();
-		}
-
+		} catch (Exception e) {
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+		} 
 		return Response.status(Response.Status.CREATED).build();
 	}
 
@@ -118,7 +118,7 @@ public class User implements IResource {
 	@GET
 	@Path("getuser/withid/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public UserModel getUserById(@PathParam("userId") String userId) {
+	public Response getUserById(@PathParam("userId") String userId) {
 		UserModel userModel = new UserModel();
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
@@ -136,10 +136,10 @@ public class User implements IResource {
 			}
 
 			tx.success();
-		} finally {
-			db.shutdown();
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		return userModel;
+		return Response.ok(userModel).build();
 	}
 	
 	/**
@@ -194,8 +194,8 @@ public class User implements IResource {
 			}
 
 			tx.success();
-		} finally {
-			db.shutdown();
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		return Response.status(Response.Status.OK).build();
 	}
@@ -203,7 +203,7 @@ public class User implements IResource {
 	@GET
 	@Path("gettraditions/ofuser/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public ArrayList<TraditionModel> getTraditionsByUserId(@PathParam("userId") String userId) {
+	public Response getTraditionsByUserId(@PathParam("userId") String userId) {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
@@ -226,14 +226,11 @@ public class User implements IResource {
 					traditions.add(tradition);
 				}
 			}
-
 			tx.success();
 
-		} finally {
-			db.shutdown();
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-
-		return traditions;
+		return Response.ok(traditions).build();
 	}
-
 }

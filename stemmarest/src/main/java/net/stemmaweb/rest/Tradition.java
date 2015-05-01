@@ -105,9 +105,7 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			db.shutdown();
-		}
+		} 
 		return Response.status(Response.Status.OK).entity(textInfo).build();
 	}
 	
@@ -124,8 +122,8 @@ public class Tradition implements IResource {
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ExecutionEngine engine = new ExecutionEngine(db);
 		
-		try (Transaction tx = db.beginTx()) 
-		{
+		try (Transaction tx = db.beginTx()) {
+			
 			ExecutionResult result = engine.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
 			Iterator<Node> traditions = result.columnAs("n");
 			while(traditions.hasNext())
@@ -141,10 +139,7 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			db.shutdown();
-		}
-		
+		} 
 		return Response.ok().entity(traditionList).build();
 	}
 
@@ -199,10 +194,7 @@ public class Tradition implements IResource {
 			} 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			db.shutdown();
-		}
-				
+		}	
 		return Response.ok(witlist).build();
 	}
 
@@ -277,9 +269,7 @@ public class Tradition implements IResource {
 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			db.shutdown();
-		}
+		} 
 		return Response.ok(relList).build();
 	}
 
@@ -369,9 +359,7 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			db.shutdown();
-		}
+		} 
 		return Response.status(Response.Status.OK).build();
 	}
 

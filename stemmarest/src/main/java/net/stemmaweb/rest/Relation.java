@@ -65,8 +65,7 @@ public class Relation implements IResource {
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
     	Relationship relationshipAtoB = null;
 
-    	try (Transaction tx = db.beginTx()) 
-    	{
+    	try (Transaction tx = db.beginTx()) {
     		/*
     		 * Currently search by id search because is much faster by measurement. Because 
     		 * the id search is O(n) just go through all ids without care. And the 
@@ -101,17 +100,9 @@ public class Relation implements IResource {
         	
         	tx.success();
     	} 
-    	catch (NotFoundException nfe) 
-    	{
-    		return Response.status(Response.Status.NOT_FOUND).tag(nfe.toString()).build();
-    	}
-    	catch (Exception e)
-    	{
-    		return Response.serverError().build();
-    	} finally {	
-    		db.shutdown();
-    	}
-
+    	catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
 		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
 	}
 
@@ -177,12 +168,11 @@ public class Relation implements IResource {
     @Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("textId") String textId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
-    	Response resp = null;
     	
     	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
     	
-    	try (Transaction tx = db.beginTx()) 
-    	{
+    	try (Transaction tx = db.beginTx()) {
+    		
     		Node startNode = DatabaseService.getStartNode(textId, db);
 			for (Relationship rel: db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
@@ -198,23 +188,14 @@ public class Relation implements IResource {
 				}
 			}
         	tx.success();
-    	} 
-    	catch (Exception e) 
-    	{
-    		System.err.println(e.getMessage());
-    		resp = Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-    	}
-    	finally {	
-    		db.shutdown();
-    	}
-
-    	if(resp==null)
-    		resp = Response.ok().entity(relationships).build();
+    	} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+    	if (relationships.size() ==0)
+    		return Response.status(Status.NOT_FOUND).entity("no relationships were found").build();
     	
-		return resp;
-	}
-    
-    
+    	return Response.ok().entity(relationships).build();    	
+	}     
     
     /***
      *TODO needs clarification 
@@ -238,8 +219,7 @@ public class Relation implements IResource {
 			@PathParam("textId") String textId) {
     	if(relationshipModel.getDe10().equals("local")){
     		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-        	try (Transaction tx = db.beginTx()) 
-        	{
+        	try (Transaction tx = db.beginTx()) {
             	
         		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
         		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
@@ -260,18 +240,16 @@ public class Relation implements IResource {
         			return Response.status(Response.Status.NOT_FOUND).build();
         			
             	tx.success();
-        	} catch (Exception e){
-        		System.out.println(e.toString());
-        		return Response.serverError().build();
-        	} finally {	
-        		db.shutdown();
-        	}
+        	} catch (Exception e) {
+    			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+    		}
     	} else if(relationshipModel.getDe10().equals("document")){
         	
         	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    		Node startNode = DatabaseService.getStartNode(textId, db);
+
         	try (Transaction tx = db.beginTx()) 
         	{
-        		Node startNode = DatabaseService.getStartNode(textId, db);
     			for (Relationship rel: db.traversalDescription().depthFirst()
     					.relationships(ERelations.NORMAL, Direction.OUTGOING)
     					.relationships(ERelations.RELATIONSHIP, Direction.BOTH)
@@ -293,15 +271,12 @@ public class Relation implements IResource {
     			}
             	tx.success();
         	} 
-        	catch (Exception e) 
-        	{
-        		System.err.println(e.getMessage());
-        		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-        	}
+        	catch (Exception e) {
+    			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+    		}
     	} else {
     		return Response.status(Response.Status.BAD_REQUEST).entity("Undefined Scope").build();
-    	}
-    	
+    	}    	
 		return Response.status(Response.Status.OK).build();
 	}
     
@@ -324,12 +299,9 @@ public class Relation implements IResource {
     		Relationship relationship = db.getRelationshipById(Long.parseLong(relationshipId));
     		relationship.delete();
     		tx.success();
-    	} catch (NotFoundException e) {
-    		return Response.status(Response.Status.NOT_FOUND).build();
-    	}
-    	finally {
-    		db.shutdown();
-    	}
+    	} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
     	return Response.ok().build();
     }
     

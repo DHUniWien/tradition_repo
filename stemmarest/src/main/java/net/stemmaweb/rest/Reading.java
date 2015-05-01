@@ -75,7 +75,6 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-
 		return Response.ok(reading).build();
 	}
 

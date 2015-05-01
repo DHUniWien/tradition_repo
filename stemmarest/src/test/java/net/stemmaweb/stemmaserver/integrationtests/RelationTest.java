@@ -17,6 +17,7 @@ import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -33,6 +34,7 @@ import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
@@ -76,6 +78,9 @@ public class RelationTest {
 
 	@InjectMocks
 	private Relation relation;
+	
+	@InjectMocks
+	private Witness witness;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -213,7 +218,7 @@ public class RelationTest {
 		relationship.setDe9("showers");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
 	}
 	
 	/**
@@ -232,7 +237,7 @@ public class RelationTest {
 		relationship.setDe9("showers");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
 	}
 	
 	/**
@@ -266,6 +271,65 @@ public class RelationTest {
     	} 
 	}
 	
+	@Test
+	public void deleteRealtionsTest(){
+		
+		try (Transaction tx = mockDbService.beginTx()) {
+			
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node march1 = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node march2 = nodes.next();
+			assertFalse(nodes.hasNext());
+			
+			Relationship rel = null;
+			int relCounter = 0;
+			for (Relationship tempRel : march1.getRelationships(ERelations.RELATIONSHIP)) {
+					rel = tempRel;
+					relCounter++;
+			}
+			//checks that the correcht realtionship has been found
+			assertEquals(1, relCounter);
+			assertEquals(march2.getId(), rel.getOtherNode(march1).getId());
+			
+			ClientResponse removalResponse = jerseyTest
+					.resource()
+					.path("/relation/deleterelationshipsbyid/fromtradition/"
+							+ tradId + "/withrelationship/" + rel.getId())
+					.delete(ClientResponse.class);
+			assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
+
+			result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			 nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			march1 = nodes.next();
+			assertTrue(nodes.hasNext());
+			march2 = nodes.next();
+			assertFalse(nodes.hasNext());
+			
+			relCounter = 0;
+			for (Relationship tempRel : march1.getRelationships(ERelations.RELATIONSHIP)) {
+				relCounter++;
+		}
+			assertEquals(0, relCounter);
+			String expectedText = "{\"text\":\"when april with his showers sweet with "
+					+ "fruit the drought of march has pierced unto the root\"}";
+			Response resp = witness.getWitnessAsText(tradId, "A");
+			assertEquals(expectedText, resp.getEntity());
+			
+			expectedText = "{\"text\":\"when showers sweet with april fruit the march "
+					+ "of drought has pierced to the root\"}";
+			resp = witness.getWitnessAsText(tradId, "B");
+			assertEquals(expectedText, resp.getEntity());
+			
+			tx.success();
+		}
+		
+	}
+	
 	/**
 	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
 	 * Try to remove a relationship that does not exist
@@ -273,7 +337,7 @@ public class RelationTest {
 	@Test
 	public void removeRelationshipThatDoesNotExistTestDH43(){
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/1337").delete(ClientResponse.class);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), removalResponse.getStatus());
 	}
 	
 	/**
@@ -573,8 +637,48 @@ public class RelationTest {
 	@Test
 	public void getRelationshipExceptionTest(){
 		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+6999).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
 	}
+	
+	@Test
+	public void getNoRelationshipTest(){
+		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		String newTradId;
+		/**
+		 * load a tradition with no Realtionships to the test DB
+		 */
+		String filename = "";
+		if (OSDetector.isWin())
+			filename = "src\\TestXMLFiles\\testTraditionNoRealtions.xml";
+		else
+			filename = "src/TestXMLFiles/testTraditionNoRealtions.xml";
+		try {
+			importResource.parseGraphML(filename, "1");
+		} catch (FileNotFoundException f) {
+			// this error should not occur
+			assertTrue(false);
+		}		
+		/**
+		 * gets the generated id of the new inserted tradition
+		 */
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			Iterator<Node> nodes = result.columnAs("t");
+			assertTrue(nodes.hasNext());
+			String tradId1 = (String) nodes.next().getProperty("id");
+			assertTrue(nodes.hasNext());
+			String tradId2 = (String) nodes.next().getProperty("id");
+			if (tradId1.equals(tradId))
+				newTradId = tradId2;
+			else
+				newTradId = tradId1;
+			tx.success();
+		}
+		ClientResponse response = jerseyTest.resource()
+				.path("/relation/getallrelationships/fromtradition/"+(newTradId))
+				.get(ClientResponse.class);
+		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
+		assertEquals("no relationships were found", response.getEntity(String.class));	}
 	
 	/**
 	 * Shut down the jersey server
