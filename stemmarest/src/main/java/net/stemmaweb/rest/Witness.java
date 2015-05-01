@@ -77,7 +77,7 @@ public class Witness implements IResource {
 	/**
 	 * find a requested witness in the data base and return it as a string
 	 * according to define start and end readings (including the readings in
-	 * those ranks) if end-rank is too high or start-rank too low will return
+	 * those ranks). if end-rank is too high or start-rank too low will return
 	 * till the end/from the start of the wintess
 	 * 
 	 * @param userId
@@ -166,50 +166,29 @@ public class Witness implements IResource {
 		if (startNode == null)
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
-
-		try (Transaction tx = db.beginTx()) {
-			readingModels = getAllReadingsOfWitness(WITNESS_ID, startNode, db);
-			tx.success();
-		} catch (Exception exception) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
 		
-		if (readingModels == null || readingModels.size() == 0)
-			return Response.status(Status.NOT_FOUND)
-					.entity("no witness with this id was found").build();
-		db.shutdown();
-		return Response.status(Status.OK).entity(readingModels).build();
-	}
-
-	/**
-	 * gets all readings of a single witness
-	 * 
-	 * @param WITNESS_ID
-	 * @param startNode
-	 *            : the start node of the tradition
-	 * @return a list of the readings as readingModels
-	 */
-	private ArrayList<ReadingModel> getAllReadingsOfWitness(
-			final String WITNESS_ID, Node startNode, GraphDatabaseService db) {
-		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 		EvaluatorService evaService = new EvaluatorService();
 		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
 
-		for (Node startNodes : db.traversalDescription().depthFirst()
-				.relationships(ERelations.NORMAL, Direction.OUTGOING)
-				.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-				.traverse(startNode).nodes()) {
-			ReadingModel tempReading = new ReadingModel(startNodes);
+		try (Transaction tx = db.beginTx()) {			
 
-			readingModels.add(tempReading);
-		}
+			for (Node startNodes : db.traversalDescription().depthFirst()
+					.relationships(ERelations.NORMAL, Direction.OUTGOING)
+					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+					.traverse(startNode).nodes()) {
+				ReadingModel tempReading = new ReadingModel(startNodes);
 
+				readingModels.add(tempReading);
+			}
+			tx.success();
+		} catch (Exception exception) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}		
 		if (readingModels.size() == 0)
-			return null;
-		// remove the #END# node if it exists
+			return Response.status(Status.NOT_FOUND)
+					.entity("no witness with this id was found").build();
 		if (readingModels.get(readingModels.size() - 1).getDn15()
 				.equals("#END#"))
-			readingModels.remove(readingModels.size() - 1);
-		return readingModels;
+			readingModels.remove(readingModels.size() - 1);		return Response.status(Status.OK).entity(readingModels).build();
 	}
 }
