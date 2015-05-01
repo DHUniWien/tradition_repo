@@ -79,6 +79,37 @@ public class Reading implements IResource {
 	}
 
 	/**
+	 * change property of a reading according to their keys
+	 * 
+	 * @param readId the id of th reading 
+	 * @return response with the modified reading
+	 */
+	@POST
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Path("changeproperties/ofreading/{readId}")
+	public Response changeReadingProperties(@PathParam("readId") long readId,
+			String key, String newProperty) {
+		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		Node reading;
+		try (Transaction tx = db.beginTx()) {
+			reading = db.getNodeById(readId);
+
+			if (!reading.hasProperty(key))
+				return Response.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("the reading does not have such property")
+						.build();
+			else{
+				reading.setProperty(key, newProperty);	
+			}
+
+			tx.success();
+		} catch (Exception e) {
+			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}
+		return Response.ok(reading).build();
+	}
+
+	/**
 	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
 	 * @param tradId
@@ -891,9 +922,8 @@ public class Reading implements IResource {
 					sameText.add(nodeA);
 				}
 			}
-				if (sameText.size() > 0)
-					couldBeIdenticalCheck(sameText, couldBeIdenticalReadings,
-							db);
+			if (sameText.size() > 0)
+				couldBeIdenticalCheck(sameText, couldBeIdenticalReadings, db);
 		}
 		return couldBeIdenticalReadings;
 	}
@@ -1050,8 +1080,7 @@ public class Reading implements IResource {
 				return Response.ok("successfully compressed readings").build();
 			}
 			tx.success();
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
 		return Response.status(Status.INTERNAL_SERVER_ERROR)

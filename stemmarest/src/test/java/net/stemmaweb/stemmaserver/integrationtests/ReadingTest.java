@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import javax.persistence.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -175,7 +176,8 @@ public class ReadingTest {
 	 * Contains 29 readings at the beginning.
 	 */
 	private void testNumberOfReadings(int number) {
-		List<ReadingModel> listOfReadings = jerseyTest.resource().path("/reading/getallreadings/fromtradition/" + tradId)
+		List<ReadingModel> listOfReadings = jerseyTest.resource()
+				.path("/reading/getallreadings/fromtradition/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		assertEquals(number, listOfReadings.size());
@@ -194,17 +196,45 @@ public class ReadingTest {
 		assertEquals(expectedWitnessC, resp.getEntity());
 	}
 
+	//not working yes
+	//TODO fix json payload
+	@Test
+	public void changeReadingPropertiesTest() {
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node firstNode = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			String jsonPayload = "{\"key\":\"dn15\",\"newProperty\":\"snow\"}";
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/changeproperties/ofreading/"+firstNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
+			
+			//assertEquals(Status.OK, response.getClientResponseStatus());			
+			//assertEquals("snow", (String)firstNode.getProperty("dn15"));
+		}
+	}
+
 	@Test
 	public void getReadingJsonTest() throws JsonProcessingException {
 		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
 
-		ClientResponse resp = jerseyTest.resource().path("/reading/getreading/fromtradition/" + tradId + 
-				"/withreadingid/"+ 16)
+		ClientResponse resp = jerseyTest
+				.resource()
+				.path("/reading/getreading/fromtradition/" + tradId
+						+ "/withreadingid/" + 16)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.setSerializationInclusion(Include.NON_NULL);
-		String json = mapper.writeValueAsString(resp.getEntity(ReadingModel.class));
+		String json = mapper.writeValueAsString(resp
+				.getEntity(ReadingModel.class));
 
 		assertEquals(expected, json);
 	}
@@ -213,7 +243,8 @@ public class ReadingTest {
 	public void getReadingReadingModelTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -222,9 +253,10 @@ public class ReadingTest {
 			ReadingModel expectedReadingModel = null;
 			expectedReadingModel = new ReadingModel(node);
 
-
-			ReadingModel readingModel = jerseyTest.resource().path("/reading/getreading/fromtradition/" + tradId + 
-				"/withreadingid/"+ node.getId())
+			ReadingModel readingModel = jerseyTest
+					.resource()
+					.path("/reading/getreading/fromtradition/" + tradId
+							+ "/withreadingid/" + node.getId())
 					.type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
 			assertTrue(readingModel != null);
@@ -237,12 +269,15 @@ public class ReadingTest {
 
 	@Test
 	public void getReadingWithFalseIdTest() {
-		ClientResponse response = jerseyTest.resource().path("/reading/getreading/fromtradition/" + tradId + 
-				"/withreadingid/"+ 200)
+		ClientResponse response = jerseyTest
+				.resource()
+				.path("/reading/getreading/fromtradition/" + tradId
+						+ "/withreadingid/" + 200)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
-		assertEquals("no reading with this id found", response.getEntity(String.class));
+		assertEquals("no reading with this id found",
+				response.getEntity(String.class));
 
 	}
 
@@ -250,7 +285,8 @@ public class ReadingTest {
 	public void duplicateReadingTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -263,10 +299,12 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// duplicate reading
-			String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", " + secondNode.getId()
-					+ "], \"witnesses\":[\"A\",\"B\" ]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+			String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", "
+					+ secondNode.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -293,8 +331,10 @@ public class ReadingTest {
 			// compare original and duplicated
 			for (int i = 14; i < 16; i++) {
 				String key = "dn" + i;
-				assertEquals(originalShowers.getProperty(key), duplicatedShowers.getProperty(key));
-				assertEquals(originalSweet.getProperty(key), duplicatedSweet.getProperty(key));
+				assertEquals(originalShowers.getProperty(key),
+						duplicatedShowers.getProperty(key));
+				assertEquals(originalSweet.getProperty(key),
+						duplicatedSweet.getProperty(key));
 			}
 
 			tx.success();
@@ -305,16 +345,20 @@ public class ReadingTest {
 	public void duplicateReadingWitnessCrossingTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'of'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'of'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// duplicate reading
-			String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+			String jsonPayload = "{\"readings\":[" + node.getId()
+					+ "], \"witnesses\":[\"A\",\"B\" ]}";
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -333,7 +377,8 @@ public class ReadingTest {
 			// compare original and duplicated
 			for (int i = 14; i < 16; i++) {
 				String key = "dn" + i;
-				assertEquals(originalOf.getProperty(key), duplicatedOf.getProperty(key));
+				assertEquals(originalOf.getProperty(key),
+						duplicatedOf.getProperty(key));
 			}
 
 			tx.success();
@@ -344,19 +389,26 @@ public class ReadingTest {
 	public void duplicateReadingWithNoWitnessesInJSONTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'rood'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// duplicate reading
-			String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+			String jsonPayload = "{\"readings\":[" + firstNode.getId()
+					+ "], \"witnesses\":[]}";
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("The witness list has to contain at least one witness", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"The witness list has to contain at least one witness",
+					response.getEntity(String.class));
 
 			tx.success();
 		}
@@ -366,19 +418,25 @@ public class ReadingTest {
 	public void duplicateReadingWithOnlyOneWitnessTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'rood'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// duplicate reading
-			String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+			String jsonPayload = "{\"readings\":[" + firstNode.getId()
+					+ "], \"witnesses\":[\"C\"]}";
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("The reading has to be in at least two witnesses", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals("The reading has to be in at least two witnesses",
+					response.getEntity(String.class));
 
 			tx.success();
 		}
@@ -388,19 +446,26 @@ public class ReadingTest {
 	public void duplicateReadingWithNotAllowedWitnessesTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'root'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// duplicate reading
-			String jsonPayload = "{\"readings\":[" + firstNode.getId() + "], \"witnesses\":[\"C\"]}";
-			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading/fromtradition/" + tradId)
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+			String jsonPayload = "{\"readings\":[" + firstNode.getId()
+					+ "], \"witnesses\":[\"C\"]}";
+			ClientResponse response = jerseyTest.resource()
+					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("The reading has to be in the witnesses to be duplicated", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"The reading has to be in the witnesses to be duplicated",
+					response.getEntity(String.class));
 
 			tx.success();
 		}
@@ -410,7 +475,8 @@ public class ReadingTest {
 	public void mergeReadingsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'fruit'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -419,10 +485,13 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
-							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId
+							+ "/firstreading/" + firstNode.getId()
+							+ "/secondreading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -438,33 +507,45 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// test witnesses
-			Relationship incoming = stayingNode.getSingleRelationship(ERelations.NORMAL, Direction.INCOMING);
+			Relationship incoming = stayingNode.getSingleRelationship(
+					ERelations.NORMAL, Direction.INCOMING);
 			assertEquals("A", ((String[]) incoming.getProperty("lexemes"))[0]);
 			assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[1]);
 			assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[2]);
 
-			for (Relationship outgoing : stayingNode.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
-				if (outgoing.getOtherNode(stayingNode).getProperty("dn15").equals("the")) {
-					assertEquals("A", ((String[]) outgoing.getProperty("lexemes"))[0]);
-					assertEquals("B", ((String[]) outgoing.getProperty("lexemes"))[1]);
+			for (Relationship outgoing : stayingNode.getRelationships(
+					ERelations.NORMAL, Direction.OUTGOING)) {
+				if (outgoing.getOtherNode(stayingNode).getProperty("dn15")
+						.equals("the")) {
+					assertEquals("A",
+							((String[]) outgoing.getProperty("lexemes"))[0]);
+					assertEquals("B",
+							((String[]) outgoing.getProperty("lexemes"))[1]);
 				}
-				if (outgoing.getOtherNode(stayingNode).getProperty("dn15").equals("to")) {
-					assertEquals("C", ((String[]) outgoing.getProperty("lexemes"))[0]);
+				if (outgoing.getOtherNode(stayingNode).getProperty("dn15")
+						.equals("to")) {
+					assertEquals("C",
+							((String[]) outgoing.getProperty("lexemes"))[0]);
 				}
 			}
 
 			// test relationships
 			int numberOfRelationships = 0;
-			for (Relationship rel : stayingNode.getRelationships(ERelations.RELATIONSHIP)) {
+			for (Relationship rel : stayingNode
+					.getRelationships(ERelations.RELATIONSHIP)) {
 				numberOfRelationships++;
 				// test that relationships have been copied
-				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("when")) {
+				if (rel.getOtherNode(stayingNode).getProperty("dn15")
+						.equals("when")) {
 					assertEquals("grammatical", rel.getProperty("de11"));
-					assertEquals("when", rel.getOtherNode(stayingNode).getProperty("dn15"));
+					assertEquals("when", rel.getOtherNode(stayingNode)
+							.getProperty("dn15"));
 				}
-				if (rel.getOtherNode(stayingNode).getProperty("dn15").equals("the root")) {
+				if (rel.getOtherNode(stayingNode).getProperty("dn15")
+						.equals("the root")) {
 					assertEquals("transposition", rel.getProperty("de11"));
-					assertEquals("the root", rel.getOtherNode(stayingNode).getProperty("dn15"));
+					assertEquals("the root", rel.getOtherNode(stayingNode)
+							.getProperty("dn15"));
 				}
 
 				// test that relationship between the two readings has been
@@ -481,7 +562,8 @@ public class ReadingTest {
 	public void mergeReadingsGetsCyclicTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'drought'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'drought'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -490,13 +572,18 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
-							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId
+							+ "/firstreading/" + firstNode.getId()
+							+ "/secondreading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("Readings to be merged would make the graph cyclic", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals("Readings to be merged would make the graph cyclic",
+					response.getEntity(String.class));
 
 			testNumberOfReadings(29);
 
@@ -518,7 +605,8 @@ public class ReadingTest {
 	public void mergeReadingsGetsCyclicWithNodesFarApartTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'to'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'to'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -527,13 +615,18 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
-							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId
+							+ "/firstreading/" + firstNode.getId()
+							+ "/secondreading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("Readings to be merged would make the graph cyclic", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals("Readings to be merged would make the graph cyclic",
+					response.getEntity(String.class));
 
 			testNumberOfReadings(29);
 
@@ -555,7 +648,8 @@ public class ReadingTest {
 	public void mergeReadingsWithoutRelationshipBetweenEachOtherTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'his'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'his'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -564,13 +658,18 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
-							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId
+							+ "/firstreading/" + firstNode.getId()
+							+ "/secondreading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("Readings to be merged have to be connected with each other through a relationship",
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"Readings to be merged have to be connected with each other through a relationship",
 					response.getEntity(String.class));
 
 			testNumberOfReadings(29);
@@ -593,7 +692,8 @@ public class ReadingTest {
 	public void mergeReadingsWithClassTwoRelationshipsTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -602,13 +702,18 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
-							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId
+							+ "/firstreading/" + firstNode.getId()
+							+ "/secondreading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("Readings to be merged cannot contain class 2 relationships (transposition / repetition)",
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"Readings to be merged cannot contain class 2 relationships (transposition / repetition)",
 					response.getEntity(String.class));
 
 			testNumberOfReadings(29);
@@ -631,7 +736,8 @@ public class ReadingTest {
 	public void mergeReadingsWithDifferentTextTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -642,13 +748,18 @@ public class ReadingTest {
 			Node secondNode = nodes.next();
 
 			// merge readings
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId + "/firstreading/"
-							+ firstNode.getId() + "/secondreading/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/mergereadings/fromtradition/" + tradId
+							+ "/firstreading/" + firstNode.getId()
+							+ "/secondreading/" + secondNode.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("Readings to be merged do not contain the same text", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals("Readings to be merged do not contain the same text",
+					response.getEntity(String.class));
 
 			tx.success();
 		}
@@ -662,7 +773,8 @@ public class ReadingTest {
 		Iterator<Node> nodes;
 		try (Transaction tx = mockDbService.beginTx()) {
 			engine = new ExecutionEngine(mockDbService);
-			result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+			result = engine
+					.execute("match (w:WORD {dn15:'the root'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			node = nodes.next();
@@ -671,7 +783,8 @@ public class ReadingTest {
 			assertTrue(node.hasRelationship(ERelations.RELATIONSHIP));
 
 			// delete relationship, so that splitting is possible
-			node.getSingleRelationship(ERelations.RELATIONSHIP, Direction.INCOMING).delete();
+			node.getSingleRelationship(ERelations.RELATIONSHIP,
+					Direction.INCOMING).delete();
 
 			assertFalse(node.hasRelationship(ERelations.RELATIONSHIP));
 
@@ -680,9 +793,12 @@ public class ReadingTest {
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
-					"/ofreading/" + node.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/fromtradition/" + tradId
+							+ "/ofreading/" + node.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -724,19 +840,25 @@ public class ReadingTest {
 		try (Transaction tx = mockDbService.beginTx()) {
 
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'the root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
-					"/ofreading/" + node.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/fromtradition/" + tradId
+							+ "/ofreading/" + node.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("A reading to be splitted cannot be part of any relationship",
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"A reading to be splitted cannot be part of any relationship",
 					response.getEntity(String.class));
 
 			testNumberOfReadings(29);
@@ -755,19 +877,26 @@ public class ReadingTest {
 	public void splitReadingNoAvailableRankTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'unto me'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'unto me'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node untoMe = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
-					"/ofreading/" + untoMe.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/fromtradition/" + tradId
+							+ "/ofreading/" + untoMe.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("There has to be a rank-gap after a reading to be splitted", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"There has to be a rank-gap after a reading to be splitted",
+					response.getEntity(String.class));
 
 			testWitnesses();
 
@@ -779,19 +908,26 @@ public class ReadingTest {
 	public void splitReadingWithOnlyOneWordTest() {
 		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			ClientResponse response = jerseyTest.resource().path("/reading/splitreading/fromtradition/" + tradId + 
-					"/ofreading/" + node.getId())
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/fromtradition/" + tradId
+							+ "/ofreading/" + node.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
-			assertEquals(Status.INTERNAL_SERVER_ERROR, response.getClientResponseStatus());
-			assertEquals("A reading to be splitted has to contain at least 2 words", response.getEntity(String.class));
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"A reading to be splitted has to contain at least 2 words",
+					response.getEntity(String.class));
 
 			testNumberOfReadings(29);
 
@@ -829,25 +965,27 @@ public class ReadingTest {
 					.getDn14());
 		}
 	}
-	
+
 	@Test
 	public void allReadingsOfTraditionNotFoundTest() {
-		String falseTradId = tradId+1;
+		String falseTradId = tradId + 1;
 		ClientResponse response = jerseyTest.resource()
 				.path("/reading/getallreadings/fromtradition/" + falseTradId)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
-		assertEquals("Could not find tradition with this id", response.getEntity(String.class));
+		assertEquals("Could not find tradition with this id",
+				response.getEntity(String.class));
 	}
 
 	@Test
 	public void identicalReadingsOneResultTest() {
 		List<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
-		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest.resource()
-				.path("/reading/getidenticalreadings/fromtradition/" + tradId + 
-						"/fromstartrank/3/toendrank/8")
+		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
+				.resource()
+				.path("/reading/getidenticalreadings/fromtradition/" + tradId
+						+ "/fromstartrank/3/toendrank/8")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(1, listOfIdenticalReadings.size());
@@ -858,74 +996,80 @@ public class ReadingTest {
 		assertEquals(identicalReadings.get(0).getDn15(),
 				identicalReadings.get(1).getDn15());
 	}
-	
+
 	@Test
 	public void identicalReadingsTwoResultsTest() {
 		List<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
-		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest.resource()
-				.path("/reading/getidenticalreadings/fromtradition/" + tradId + 
-						"/fromstartrank/1/toendrank/8")
+		List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
+				.resource()
+				.path("/reading/getidenticalreadings/fromtradition/" + tradId
+						+ "/fromstartrank/1/toendrank/8")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, listOfIdenticalReadings.size());
-		
+
 		identicalReadings = listOfIdenticalReadings.get(0);
 		assertEquals(2, identicalReadings.size());
 		assertEquals("april", identicalReadings.get(1).getDn15());
 		assertEquals(identicalReadings.get(0).getDn15(),
 				identicalReadings.get(1).getDn15());
-		
+
 		identicalReadings = listOfIdenticalReadings.get(1);
 		assertEquals(2, identicalReadings.size());
 		assertEquals("his", identicalReadings.get(1).getDn15());
 		assertEquals(identicalReadings.get(0).getDn15(),
 				identicalReadings.get(1).getDn15());
 	}
-	
+
 	@Test
 	public void identicalReadingsNoResultTest() {
-		ClientResponse response = jerseyTest.resource()
-				.path("/reading/getidenticalreadings/fromtradition/" + tradId + 
-						"/fromstartrank/10/toendrank/15")
+		ClientResponse response = jerseyTest
+				.resource()
+				.path("/reading/getidenticalreadings/fromtradition/" + tradId
+						+ "/fromstartrank/10/toendrank/15")
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
-		assertEquals("no identical readings were found", response.getEntity(String.class));
+		assertEquals("no identical readings were found",
+				response.getEntity(String.class));
 	}
-	
+
 	@Test
 	public void couldBeIdenticalReadingsTest() {
-		List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest.resource()
-				.path("/reading/couldbeidenticalreadings/fromtradition/" + tradId + 
-						"/fromstartrank/1/toendrank/15")
+		List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest
+				.resource()
+				.path("/reading/couldbeidenticalreadings/fromtradition/"
+						+ tradId + "/fromstartrank/1/toendrank/15")
 				.get(new GenericType<List<List<ReadingModel>>>() {
 				});
 		assertEquals(2, couldBeIdenticalReadings.size());
-		
+
 		assertEquals(couldBeIdenticalReadings.get(0).get(0).getDn15(),
 				couldBeIdenticalReadings.get(0).get(1).getDn15());
 		assertEquals("fruit", couldBeIdenticalReadings.get(0).get(0).getDn15());
-		
-		assertFalse(couldBeIdenticalReadings.get(0).get(0).getDn14()==
-				couldBeIdenticalReadings.get(0).get(1).getDn14());
-	}	
-	
+
+		assertFalse(couldBeIdenticalReadings.get(0).get(0).getDn14() == couldBeIdenticalReadings
+				.get(0).get(1).getDn14());
+	}
+
 	/**
 	 * should not find any could-be identical readings
 	 */
 	@Test
 	public void couldBeIdenticalReadingsNoResultTest() {
-		ClientResponse response = jerseyTest.resource()
-				.path("/reading/couldbeidenticalreadings/fromtradition/" + tradId + 
-						"/fromstartrank/1/toendrank/9")
+		ClientResponse response = jerseyTest
+				.resource()
+				.path("/reading/couldbeidenticalreadings/fromtradition/"
+						+ tradId + "/fromstartrank/1/toendrank/9")
 				.get(ClientResponse.class);
-		
+
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
-		assertEquals("no identical readings were found", response.getEntity(String.class));		
+		assertEquals("no identical readings were found",
+				response.getEntity(String.class));
 	}
-	
+
 	@Test
 	public void compressReadingTest() {
 		Node showers, sweet;
@@ -944,13 +1088,13 @@ public class ReadingTest {
 
 			ClientResponse res = jerseyTest
 					.resource()
-					.path("/reading/compressreadings/fromtradition/" + tradId + 
-							"/readingone/" + showers.getId()
-							+ "/readingtwo/" + sweet.getId()).post(ClientResponse.class);
+					.path("/reading/compressreadings/fromtradition/" + tradId
+							+ "/readingone/" + showers.getId() + "/readingtwo/"
+							+ sweet.getId()).post(ClientResponse.class);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-			assertEquals("successfully compressed readings", res.getEntity(String.class));
-
+			assertEquals("successfully compressed readings",
+					res.getEntity(String.class));
 
 			assertEquals("showers sweet", showers.getProperty("dn15"));
 
@@ -1021,13 +1165,14 @@ public class ReadingTest {
 
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/compressreadings/fromtradition/" + tradId + 
-							"/readingone/" + showers.getId()
-							+ "/readingtwo/" + fruit.getId()).post(ClientResponse.class);
+					.path("/reading/compressreadings/fromtradition/" + tradId
+							+ "/readingone/" + showers.getId() + "/readingtwo/"
+							+ fruit.getId()).post(ClientResponse.class);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
-			assertEquals("reading are not neighbors. could not compress", response.getEntity(String.class));
+			assertEquals("reading are not neighbors. could not compress",
+					response.getEntity(String.class));
 
 			result = engine
 					.execute("match (w:WORD {dn15:'showers sweet'}) return w");
@@ -1054,17 +1199,18 @@ public class ReadingTest {
 			tx.success();
 		}
 
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/getnextreading/fromwitness/A/ofreading/" + withReadId)
-				.get(ReadingModel.class);
-		assertEquals("his", actualResponse.getDn15());		
+		ReadingModel actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getnextreading/fromwitness/A/ofreading/"
+						+ withReadId).get(ReadingModel.class);
+		assertEquals("his", actualResponse.getDn15());
 	}
-	
+
 	@Test
 	public void nextReadingWithTwoWitnessesTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		long piercedReadId;
-		try (Transaction tx = mockDbService.beginTx()) {		
+		try (Transaction tx = mockDbService.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'pierced'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1072,15 +1218,17 @@ public class ReadingTest {
 			piercedReadId = nodes.next().getId();
 			tx.success();
 		}
-		
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/getnextreading/fromwitness/A/ofreading/" + piercedReadId)
-				.get(ReadingModel.class);
+
+		ReadingModel actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getnextreading/fromwitness/A/ofreading/"
+						+ piercedReadId).get(ReadingModel.class);
 		assertEquals("unto me", actualResponse.getDn15());
-		
-		actualResponse = jerseyTest.resource()
-				.path("/reading/getnextreading/fromwitness/B/ofreading/" + piercedReadId)
-				.get(ReadingModel.class);
+
+		actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getnextreading/fromwitness/B/ofreading/"
+						+ piercedReadId).get(ReadingModel.class);
 		assertEquals("to", actualResponse.getDn15());
 	}
 
@@ -1098,12 +1246,14 @@ public class ReadingTest {
 			tx.success();
 		}
 
-		ClientResponse response = jerseyTest.resource()
-				.path("/reading/getnextreading/fromwitness/B/ofreading/" + readId)
-				.get(ClientResponse.class);
+		ClientResponse response = jerseyTest
+				.resource()
+				.path("/reading/getnextreading/fromwitness/B/ofreading/"
+						+ readId).get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				response.getStatus());
-		assertEquals("this was the last reading of this witness", response.getEntity(String.class));
+		assertEquals("this was the last reading of this witness",
+				response.getEntity(String.class));
 	}
 
 	@Test
@@ -1119,12 +1269,13 @@ public class ReadingTest {
 
 			tx.success();
 		}
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/getpreviousreading/fromwitness/A/ofreading/" + readId)
-				.get(ReadingModel.class);
+		ReadingModel actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getpreviousreading/fromwitness/A/ofreading/"
+						+ readId).get(ReadingModel.class);
 		assertEquals("april", actualResponse.getDn15());
 	}
-	
+
 	@Test
 	public void previousReadingTwoWitnessesTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
@@ -1138,17 +1289,19 @@ public class ReadingTest {
 
 			tx.success();
 		}
-		ReadingModel actualResponse = jerseyTest.resource()
-				.path("/reading/getpreviousreading/fromwitness/A/ofreading/" + ofId)
-				.get(ReadingModel.class);
+		ReadingModel actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getpreviousreading/fromwitness/A/ofreading/"
+						+ ofId).get(ReadingModel.class);
 		assertEquals("drought", actualResponse.getDn15());
-		
-		actualResponse = jerseyTest.resource()
-				.path("/reading/getpreviousreading/fromwitness/B/ofreading/" + ofId)
-				.get(ReadingModel.class);
+
+		actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getpreviousreading/fromwitness/B/ofreading/"
+						+ ofId).get(ReadingModel.class);
 		assertEquals("march", actualResponse.getDn15());
 	}
-	
+
 	@Test
 	public void previousReadingFirstNodeTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
@@ -1162,12 +1315,14 @@ public class ReadingTest {
 
 			tx.success();
 		}
-		ClientResponse actualResponse = jerseyTest.resource()
-				.path("/reading/getpreviousreading/fromwitness/A/ofreading/" + readId)
-				.get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest
+				.resource()
+				.path("/reading/getpreviousreading/fromwitness/A/ofreading/"
+						+ readId).get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
 				actualResponse.getStatus());
-		assertEquals("there is no previous reading to this reading", actualResponse.getEntity(String.class));
+		assertEquals("there is no previous reading to this reading",
+				actualResponse.getEntity(String.class));
 	}
 
 	@Test
