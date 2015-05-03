@@ -12,6 +12,7 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -38,7 +39,9 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 @Path("/user")
 public class User implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-
+	@Context
+	GraphDatabaseService db;
+	
 	@GET
 	public String getIt() {
 		return "User!";
@@ -56,10 +59,12 @@ public class User implements IResource {
 	@Path("createuser")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response create(UserModel userModel) {
+		
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
+		////GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
-			db.shutdown();
+			//db.shutdown()();
 			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists")
 					.build();
 		}
@@ -79,7 +84,7 @@ public class User implements IResource {
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
-			db.shutdown();
+			//db.shutdown()();
 		}
 		return Response.status(Response.Status.CREATED).build();
 	}
@@ -95,7 +100,7 @@ public class User implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getUserById(@PathParam("userId") String userId) {
 		UserModel userModel = new UserModel();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		//GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -114,7 +119,7 @@ public class User implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally { 
-			db.shutdown();
+			//db.shutdown()();
 		}
 		return Response.ok(userModel).build();
 	}
@@ -127,7 +132,7 @@ public class User implements IResource {
 	@DELETE
 	@Path("deleteuser/withid/{userId}")
 	public Response deleteUserById(@PathParam("userId") String userId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		//GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -174,7 +179,7 @@ public class User implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
-			db.shutdown();
+			//db.shutdown()();
 		}
 		return Response.status(Response.Status.OK).build();
 	}
@@ -190,11 +195,11 @@ public class User implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getTraditionsByUserId(@PathParam("userId") String userId) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		//GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
 		
 		if (!DatabaseService.checkIfUserExists(userId, db)) {
-			db.shutdown();
+			//db.shutdown()();
 			return null;
 		}
 
@@ -217,7 +222,7 @@ public class User implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
-			db.shutdown();
+			//db.shutdown()();
 		}
 		return Response.ok(traditions).build();
 	}
