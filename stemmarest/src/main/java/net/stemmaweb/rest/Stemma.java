@@ -35,7 +35,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 @Path("/stemma")
 public class Stemma implements IResource {
 	
-	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 	
 	/**
 	 * Gets a list of all stemmata available, as dot format

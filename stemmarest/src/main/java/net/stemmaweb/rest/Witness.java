@@ -30,7 +30,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 @Path("/witness")
 public class Witness implements IResource {
 	
-	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	/**
 	 * find a requested witness in the data base and return it as a string

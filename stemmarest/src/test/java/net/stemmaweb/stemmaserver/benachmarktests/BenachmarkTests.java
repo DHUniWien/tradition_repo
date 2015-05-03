@@ -1,8 +1,13 @@
 package net.stemmaweb.stemmaserver.benachmarktests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
@@ -20,6 +25,8 @@ import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
+import org.apache.commons.io.FileDeleteStrategy;
+import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -35,8 +42,8 @@ import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.api.client.ClientResponse.Status;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -363,6 +370,16 @@ public abstract class BenachmarkTests {
 	@AfterClass
 	public static void tearDownJersey() throws Exception{
 		//jerseyTest.tearDown();
-		
+		try {
+			File dbPathFile = new File("database");
+			for (File file : dbPathFile.listFiles()) {
+			    FileDeleteStrategy.FORCE.delete(file);
+			} 
+			//FileUtils.deleteDirectory(dbPathFile);
+			Files.move(tempFolder.getRoot().toPath(), dbPathFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			FileUtils.deleteDirectory(tempFolder.getRoot());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

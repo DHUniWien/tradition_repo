@@ -13,7 +13,6 @@ import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
  * This class provides methods for exporting Dot File from Neo4J
@@ -32,8 +31,8 @@ public class DotToNeo4JParser implements IResource
 	 * this is only a quickfix to get the tests green again. (they are read if you run the neo4j database in background and
 	 * it cant write in the real)
 	 */
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-	GraphDatabaseService db = null;
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 	String dot = "";
 	List<Node> nodes = new ArrayList<Node>();
 
@@ -55,13 +54,13 @@ public class DotToNeo4JParser implements IResource
     	}
     	catch(Exception e)
     	{
-    		db.shutdown();
+    		
     		e.printStackTrace();
     		return Response.status(Status.NOT_FOUND).build();
     	}
     	finally
     	{
-    		db.shutdown();
+    		
     	}
 		return Response.ok().build();
 

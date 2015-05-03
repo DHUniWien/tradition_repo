@@ -56,8 +56,8 @@ import com.sun.jersey.multipart.FormDataParam;
  */
 @Path("/tradition")
 public class Tradition implements IResource {
-
-	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	/**
 	 * 

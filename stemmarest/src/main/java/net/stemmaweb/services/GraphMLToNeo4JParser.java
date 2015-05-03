@@ -26,7 +26,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
@@ -36,7 +35,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 public class GraphMLToNeo4JParser implements IResource
 {
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 	/**
 	 * Reads xml file and imports it into Neo4J Database 
 	 * @param filename - the graphMl file
@@ -48,7 +48,7 @@ public class GraphMLToNeo4JParser implements IResource
 	 */
 	public Response parseGraphML(String filename, String userId) throws FileNotFoundException
 	{
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		XMLInputFactory factory;
 		XMLStreamReader reader;
 		File file = new File(filename);
@@ -377,12 +377,12 @@ public class GraphMLToNeo4JParser implements IResource
 	    catch(Exception e)
 	    {
 	    	e.printStackTrace();
-	    	db.shutdown();
+	    	
 	    	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error: Tradition could not be imported!").build();
 	    }
     	finally
     	{
-    		db.shutdown();
+    		
     	}
     	
     	
@@ -390,13 +390,11 @@ public class GraphMLToNeo4JParser implements IResource
     	
    	    for(String graph : graphs)
    	    {
-
-   	    	db = dbFactory.newEmbeddedDatabase(DB_PATH); 
    	    	DotToNeo4JParser parser = new DotToNeo4JParser(db);
    	    	parser.parseDot(graph, last_inserted_id + "");
    	    }
    	    
-   	    db.shutdown();
+   	    
     	
     	return Response.status(Response.Status.OK).entity("{\"tradId\":" + last_inserted_id + "}").build();
 	}

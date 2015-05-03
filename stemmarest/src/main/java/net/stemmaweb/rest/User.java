@@ -37,8 +37,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 @Path("/user")
 public class User implements IResource {
-	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
-	
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();	
 	@GET
 	public String getIt() {
 		return "User!";

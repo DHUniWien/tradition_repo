@@ -43,7 +43,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 public class Reading implements IResource {
 
 	private String errorMessage;
-	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	/**
 	 * Returns a single reading in a specific tradition.
