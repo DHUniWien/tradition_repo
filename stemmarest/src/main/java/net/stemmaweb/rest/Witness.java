@@ -13,12 +13,12 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -29,7 +29,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 @Path("/witness")
 public class Witness implements IResource {
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	
+	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
 
 	/**
 	 * find a requested witness in the data base and return it as a string
@@ -48,7 +49,7 @@ public class Witness implements IResource {
 	public Response getWitnessAsText(@PathParam("tradId") String tradId,
 			@PathParam("textId") String textId) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -96,7 +97,7 @@ public class Witness implements IResource {
 			@PathParam("textId") String textId,
 			@PathParam("startRank") String startRankAsString,
 			@PathParam("endRank") String endRankAsString) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		long startRank = Long.parseLong(startRankAsString);
@@ -159,7 +160,7 @@ public class Witness implements IResource {
 			@PathParam("textId") String textId) {
 		final String WITNESS_ID = textId;
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);

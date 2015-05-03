@@ -31,6 +31,7 @@ import net.stemmaweb.model.TextInfoModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
@@ -42,7 +43,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
@@ -57,7 +57,7 @@ import com.sun.jersey.multipart.FormDataParam;
 @Path("/tradition")
 public class Tradition implements IResource {
 
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
 
 	/**
 	 * 
@@ -71,7 +71,7 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
@@ -119,7 +119,7 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllTraditions() {
 		List<TraditionModel> traditionList = new ArrayList<TraditionModel>();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ExecutionEngine engine = new ExecutionEngine(db);
 		
 		try (Transaction tx = db.beginTx()) {
@@ -156,7 +156,7 @@ public class Tradition implements IResource {
 
 		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 
@@ -211,7 +211,7 @@ public class Tradition implements IResource {
 
 		ArrayList<RelationshipModel> relList = new ArrayList<RelationshipModel>();
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 
@@ -313,7 +313,7 @@ public class Tradition implements IResource {
 	@DELETE
 	@Path("deletetradition/withid/{tradId}")
 	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -378,12 +378,12 @@ public class Tradition implements IResource {
 			@FormDataParam("file") InputStream uploadedInputStream,
 			@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		
 		if (!DatabaseService.checkIfUserExists(userId,db)) {
 			return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
 		}
-		db.shutdown();
+		
 
 		// Boolean is_public_bool = is_public.equals("on")? true : false;
 		String uploadedFileLocation = "upload/" + fileDetail.getFileName();
@@ -451,7 +451,7 @@ public class Tradition implements IResource {
 		
 		File file = new File(filename);
 		file.delete();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ExecutionEngine engine = new ExecutionEngine(db);
 		if(getTraditionNode(tradId,engine) == null)
 			return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();

@@ -15,16 +15,15 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -36,7 +35,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 @Path("/relation")
 public class Relation implements IResource {
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	
+	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
 	
 	/**
 	 * 
@@ -62,7 +62,7 @@ public class Relation implements IResource {
 	public Response create(RelationshipModel relationshipModel,
 			@PathParam("textId") String textId) {
     	
-    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	
     	Relationship relationshipAtoB = null;
 
     	try (Transaction tx = db.beginTx()) {
@@ -169,7 +169,7 @@ public class Relation implements IResource {
 	public Response getAllRelationships(@PathParam("textId") String textId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
     	
-    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	
     	
     	try (Transaction tx = db.beginTx()) {
     		
@@ -218,7 +218,7 @@ public class Relation implements IResource {
 	public Response delete(RelationshipModel relationshipModel,
 			@PathParam("textId") String textId) {
     	if(relationshipModel.getDe10().equals("local")){
-    		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    		
         	try (Transaction tx = db.beginTx()) {
             	
         		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
@@ -245,7 +245,7 @@ public class Relation implements IResource {
     		}
     	} else if(relationshipModel.getDe10().equals("document")){
         	
-        	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+        	
     		Node startNode = DatabaseService.getStartNode(textId, db);
 
         	try (Transaction tx = db.beginTx()) 
@@ -293,7 +293,7 @@ public class Relation implements IResource {
     public Response deleteById(@PathParam("relationshipId") String relationshipId,
 			@PathParam("textId") String textId) {
     	
-    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
     		Relationship relationship = db.getRelationshipById(Long.parseLong(relationshipId));
