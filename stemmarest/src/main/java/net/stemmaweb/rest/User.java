@@ -12,7 +12,6 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -20,6 +19,7 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -38,9 +38,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 @Path("/user")
 public class User implements IResource {
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-	@Context
-	GraphDatabaseService db;
+	GraphDatabaseService db = GraphDatabaseServiceProvider.getDatabase();
 	
 	@GET
 	public String getIt() {
