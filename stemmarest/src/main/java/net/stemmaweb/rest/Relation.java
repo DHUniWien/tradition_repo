@@ -14,6 +14,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.ReadingService;
 
@@ -102,8 +103,12 @@ public class Relation implements IResource {
     	} 
     	catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			db.shutdown();
 		}
-		return Response.status(Response.Status.CREATED).entity("{\"id\":\""+relationshipAtoB.getId()+"\"}").build();
+    	ReturnIdModel relId = new ReturnIdModel();
+    	relId.setId(relationshipAtoB.getId()+"");
+		return Response.status(Response.Status.CREATED).entity(relId).build();
 	}
 
 	/**
