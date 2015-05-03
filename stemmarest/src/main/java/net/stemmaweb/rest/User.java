@@ -44,33 +44,6 @@ public class User implements IResource {
 		return "User!";
 	}
 
-	/**
-	 * This method can be used to determine whether a user with given Id exists
-	 * in the DB
-	 * 
-	 * @param userId
-	 * @return
-	 * 
-	 * @deprecated Use  DatabaseService.checkIfUserExists(String userId, GraphDatabaseService db) instead
-	 */
-	@Deprecated
-	public boolean checkUserExists(String userId) {
-		boolean userExists = false;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-		ExecutionEngine engine = new ExecutionEngine(db);
-		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (userId:USER {id:'" + userId + "'}) return userId");
-			Iterator<Node> nodes = result.columnAs("userId");
-			if (nodes.hasNext())
-				userExists = true;
-			else
-				userExists = false;
-			tx.success();
-		} finally {
-			db.shutdown();
-		}
-		return userExists;
-	}
 
 	/**
 	 * Creates a user based on the parameters submitted in JSON.
@@ -105,7 +78,9 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} 
+		} finally {
+			db.shutdown();
+		}
 		return Response.status(Response.Status.CREATED).build();
 	}
 
@@ -138,6 +113,8 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally { 
+			db.shutdown();
 		}
 		return Response.ok(userModel).build();
 	}
@@ -196,10 +173,18 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			db.shutdown();
 		}
 		return Response.status(Response.Status.OK).build();
 	}
 
+	/**
+	 * Get all Traditions of a user 
+	 * 
+	 * @param userId
+	 * @return
+	 */
 	@GET
 	@Path("gettraditions/ofuser/{userId}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -209,6 +194,7 @@ public class User implements IResource {
 		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
 		
 		if (!DatabaseService.checkIfUserExists(userId, db)) {
+			db.shutdown();
 			return null;
 		}
 
@@ -230,6 +216,8 @@ public class User implements IResource {
 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			db.shutdown();
 		}
 		return Response.ok(traditions).build();
 	}
