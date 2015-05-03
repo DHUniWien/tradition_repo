@@ -329,7 +329,6 @@ public class RelationTest {
 					.delete(ClientResponse.class);
 			assertEquals(Response.Status.OK.getStatusCode(),
 					removalResponse.getStatus());
-
 			result = engine.execute("match (w:WORD {dn15:'march'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
@@ -378,7 +377,7 @@ public class RelationTest {
 							+ tradId + "/withrelationship/" + rel.getId())
 					.delete(ClientResponse.class);
 			
-			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+			assertEquals(Response.Status.FORBIDDEN.getStatusCode(),
 					removalResponse.getStatus());
 			tx.success();
 		}
@@ -404,7 +403,7 @@ public class RelationTest {
 							+ tradId + "/withrelationship/" + rel.getId())
 					.delete(ClientResponse.class);			
 			
-			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+			assertEquals(Response.Status.FORBIDDEN.getStatusCode(),
 					removalResponse.getStatus());
 			tx.success();
 		}

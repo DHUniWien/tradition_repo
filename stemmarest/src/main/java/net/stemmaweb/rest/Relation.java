@@ -297,10 +297,17 @@ public class Relation implements IResource {
     	try (Transaction tx = db.beginTx()) 
     	{
     		Relationship relationship = db.getRelationshipById(Long.parseLong(relationshipId));
-    		relationship.delete();
-    		tx.success();
+    		if(relationship.getType().name().equals("RELATIONSHIP")){
+        		relationship.delete();
+        		tx.success();
+    		} else {
+    			return Response.status(Status.FORBIDDEN).build();
+    		}
+    		
     	} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			db.shutdown();
 		}
     	return Response.ok().build();
     }
