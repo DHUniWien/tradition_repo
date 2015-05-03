@@ -372,7 +372,7 @@ public class Tradition implements IResource {
 	@POST
 	@Consumes(MediaType.MULTIPART_FORM_DATA)
 	@Produces(MediaType.APPLICATION_JSON)
-	@Path("new")
+	@Path("/newtraditionwithgraphml")
 	public Response importGraphMl(@FormDataParam("name") String name, @FormDataParam("language") String language,
 			@FormDataParam("public") String is_public, @FormDataParam("userId") String userId,
 			@FormDataParam("file") InputStream uploadedInputStream,

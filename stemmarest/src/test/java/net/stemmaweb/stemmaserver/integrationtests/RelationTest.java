@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -66,19 +65,20 @@ public class RelationTest {
 	 * Create a Spy object for dbService.
 	 */
 	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
+	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory()
+			.newImpermanentDatabase();
 
 	/*
 	 * The Resource under test. The mockDbFactory will be injected into this
 	 * resource.
 	 */
-	
+
 	@InjectMocks
 	private GraphMLToNeo4JParser importResource;
 
 	@InjectMocks
 	private Relation relation;
-	
+
 	@InjectMocks
 	private Witness witness;
 
@@ -124,7 +124,8 @@ public class RelationTest {
 		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
 		 * instead of dbFactory.newEmbeddedDatabase("database");
 		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
+		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
+				.thenReturn(mockDbService);
 
 		/*
 		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
@@ -145,7 +146,8 @@ public class RelationTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			ExecutionResult result = engine
+					.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -156,24 +158,26 @@ public class RelationTest {
 		/*
 		 * Create a JersyTestServer serving the Resource under test
 		 */
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(relation).create();
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+				.addResource(relation).create();
 		jerseyTest.setUp();
 	}
-	
+
 	/**
 	 * Test if the Resource is up and running
 	 */
 	@Test
-	public void SimpleTest(){
-		String actualResponse = jerseyTest.resource().path("/relation").get(String.class);
-		assertEquals("The relation api is up and running",actualResponse);
+	public void SimpleTest() {
+		String actualResponse = jerseyTest.resource().path("/relation")
+				.get(String.class);
+		assertEquals("The relation api is up and running", actualResponse);
 	}
-	
+
 	/**
 	 * Test if a relation is created properly
 	 */
 	@Test
-	public void createRelationshipTestDH41(){
+	public void createRelationshipTestDH41() {
 		RelationshipModel relationship = new RelationshipModel();
 		String relationshipId = "";
 		relationship.setSource("16");
@@ -183,30 +187,35 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
-		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-		
-    	try (Transaction tx = mockDbService.beginTx()) 
-    	{
-    		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
-    		Relationship loadedRelationship = mockDbService.getRelationshipById(Long.parseLong(relationshipId));
-    		
-    		assertEquals(16L, loadedRelationship.getStartNode().getId());
-    		assertEquals(24L, loadedRelationship.getEndNode().getId());
+
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		assertEquals(Response.Status.CREATED.getStatusCode(),
+				actualResponse.getStatus());
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			relationshipId = actualResponse.getEntity(ReturnIdModel.class)
+					.getId();
+			Relationship loadedRelationship = mockDbService
+					.getRelationshipById(Long.parseLong(relationshipId));
+
+			assertEquals(16L, loadedRelationship.getStartNode().getId());
+			assertEquals(24L, loadedRelationship.getEndNode().getId());
 			assertEquals("repetition", loadedRelationship.getProperty("de11"));
-    		assertEquals("0",loadedRelationship.getProperty("de1"));
-    		assertEquals("true",loadedRelationship.getProperty("de6"));
-    		assertEquals("april",loadedRelationship.getProperty("de8"));
-    		assertEquals("showers",loadedRelationship.getProperty("de9"));
-    	} 
+			assertEquals("0", loadedRelationship.getProperty("de1"));
+			assertEquals("true", loadedRelationship.getProperty("de6"));
+			assertEquals("april", loadedRelationship.getProperty("de8"));
+			assertEquals("showers", loadedRelationship.getProperty("de9"));
+		}
 	}
-	
+
 	/**
 	 * Test if an 404 error occurs when an invalid target node was tested
 	 */
 	@Test
-	public void createRelationshipWithInvalidTargetIdTestDH41(){
+	public void createRelationshipWithInvalidTargetIdTestDH41() {
 		RelationshipModel relationship = new RelationshipModel();
 
 		relationship.setSource("16");
@@ -216,16 +225,20 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
-		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
+
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+				actualResponse.getStatus());
 	}
-	
+
 	/**
 	 * Test if an 404 error occurs when an invalid source node was tested
 	 */
 	@Test
-	public void createRelationshipWithInvalidSourceIdTestDH41(){
+	public void createRelationshipWithInvalidSourceIdTestDH41() {
 		RelationshipModel relationship = new RelationshipModel();
 
 		relationship.setSource("1337");
@@ -235,16 +248,21 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
-		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
+
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+				actualResponse.getStatus());
 	}
-	
+
 	/**
-	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
+	 * Test the removal method DELETE
+	 * /relationship/{tradidtionId}/relationships/{relationshipId}
 	 */
-	@Test(expected=NotFoundException.class)
-	public void removeRelationshipTestDH43(){
+	@Test(expected = NotFoundException.class)
+	public void removeRelationshipTestDH43() {
 		/*
 		 * Create a relationship
 		 */
@@ -258,93 +276,163 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		relationship.setDe10("local");
-		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
-		
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
-		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
-		
-		try (Transaction tx = mockDbService.beginTx())
-    	{
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId));
-    	} 
-	}
-	
-	@Test
-	public void deleteRealtionsTest(){
-		
+
+		ClientResponse removalResponse = jerseyTest
+				.resource()
+				.path("/relation/deleterelationshipsbyid/fromtradition/"
+						+ tradId + "/withrelationship/" + relationshipId)
+				.delete(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),
+				removalResponse.getStatus());
+
 		try (Transaction tx = mockDbService.beginTx()) {
-			
+			mockDbService.getRelationshipById(Long.parseLong(relationshipId));
+		}
+	}
+
+	@Test
+	public void deleteRealtionsTest() {
+
+		try (Transaction tx = mockDbService.beginTx()) {
+
 			ExecutionEngine engine = new ExecutionEngine(mockDbService);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node march1 = nodes.next();
 			assertTrue(nodes.hasNext());
 			Node march2 = nodes.next();
 			assertFalse(nodes.hasNext());
-			
+
 			Relationship rel = null;
 			int relCounter = 0;
-			for (Relationship tempRel : march1.getRelationships(ERelations.RELATIONSHIP)) {
-					rel = tempRel;
-					relCounter++;
+			for (Relationship tempRel : march1
+					.getRelationships(ERelations.RELATIONSHIP)) {
+				rel = tempRel;
+				relCounter++;
 			}
-			//checks that the correcht realtionship has been found
+			// checks that the correcht realtionship has been found
 			assertEquals(1, relCounter);
 			assertEquals(march2.getId(), rel.getOtherNode(march1).getId());
+
+			ClientResponse removalResponse = jerseyTest
+					.resource()
+					.path("/relation/deleterelationshipsbyid/fromtradition/"
+							+ tradId + "/withrelationship/" + rel.getId())
+					.delete(ClientResponse.class);
+			assertEquals(Response.Status.OK.getStatusCode(),
+					removalResponse.getStatus());
+
+			result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			march1 = nodes.next();
+			assertTrue(nodes.hasNext());
+			march2 = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			relCounter = 0;
+			for (Relationship tempRel : march1
+					.getRelationships(ERelations.RELATIONSHIP)) {
+				relCounter++;
+			}
+			assertEquals(0, relCounter);
+			String expectedText = "{\"text\":\"when april with his showers sweet with "
+					+ "fruit the drought of march has pierced unto the root\"}";
+			Response resp = witness.getWitnessAsText(tradId, "A");
+			assertEquals(expectedText, resp.getEntity());
+
+			expectedText = "{\"text\":\"when showers sweet with april fruit the march "
+					+ "of drought has pierced to the root\"}";
+			resp = witness.getWitnessAsText(tradId, "B");
+			assertEquals(expectedText, resp.getEntity());
+
+			tx.success();
+		}
+	}
+
+	@Test
+	public void deleteRealtionsNormalRealtionIncomingTest() {
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'when'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node when = nodes.next();			
+			assertFalse(nodes.hasNext());			
+			
+			Relationship rel=  when.getSingleRelationship(ERelations.NORMAL, Direction.INCOMING);		
 			
 			ClientResponse removalResponse = jerseyTest
 					.resource()
 					.path("/relation/deleterelationshipsbyid/fromtradition/"
 							+ tradId + "/withrelationship/" + rel.getId())
 					.delete(ClientResponse.class);
-			assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
-
-			result = engine.execute("match (w:WORD {dn15:'march'}) return w");
-			 nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			march1 = nodes.next();
-			assertTrue(nodes.hasNext());
-			march2 = nodes.next();
-			assertFalse(nodes.hasNext());
 			
-			relCounter = 0;
-			for (Relationship tempRel : march1.getRelationships(ERelations.RELATIONSHIP)) {
-				relCounter++;
-		}
-			assertEquals(0, relCounter);
-			String expectedText = "{\"text\":\"when april with his showers sweet with "
-					+ "fruit the drought of march has pierced unto the root\"}";
-			Response resp = witness.getWitnessAsText(tradId, "A");
-			assertEquals(expectedText, resp.getEntity());
-			
-			expectedText = "{\"text\":\"when showers sweet with april fruit the march "
-					+ "of drought has pierced to the root\"}";
-			resp = witness.getWitnessAsText(tradId, "B");
-			assertEquals(expectedText, resp.getEntity());
-			
+			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+					removalResponse.getStatus());
 			tx.success();
 		}
-		
 	}
+
+	@Test
+	public void deleteRealtionsNormalRealtionOutgoingTest() {
+		
+		try (Transaction tx = mockDbService.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {dn15:'sweet'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node sweet = nodes.next();			
+			assertFalse(nodes.hasNext());			
+			
+			Relationship rel=  sweet.getSingleRelationship(ERelations.NORMAL, Direction.OUTGOING);		
+			
+			ClientResponse removalResponse = jerseyTest
+					.resource()
+					.path("/relation/deleterelationshipsbyid/fromtradition/"
+							+ tradId + "/withrelationship/" + rel.getId())
+					.delete(ClientResponse.class);			
+			
+			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+					removalResponse.getStatus());
+			tx.success();
+		}
+	}
+
 	
 	/**
-	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
-	 * Try to remove a relationship that does not exist
+	 * Test the removal method DELETE
+	 * /relationship/{tradidtionId}/relationships/{relationshipId} Try to remove
+	 * a relationship that does not exist
 	 */
 	@Test
-	public void removeRelationshipThatDoesNotExistTestDH43(){
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/1337").delete(ClientResponse.class);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), removalResponse.getStatus());
+	public void removeRelationshipThatDoesNotExistTestDH43() {
+		ClientResponse removalResponse = jerseyTest
+				.resource()
+				.path("/relation/deleterelationshipsbyid/fromtradition/"
+						+ tradId + "/withrelationship/1337")
+				.delete(ClientResponse.class);
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+				removalResponse.getStatus());
 	}
-	
+
 	/**
-	 * Test the removal method by posting two nodes to /relation/{textid}/relationships/delete
+	 * Test the removal method by posting two nodes to
+	 * /relation/{textid}/relationships/delete
 	 */
-	@Test(expected=NotFoundException.class)
-	public void removeRelationshipTestRemoveAllDH43(){
+	@Test(expected = NotFoundException.class)
+	public void removeRelationshipTestRemoveAllDH43() {
 		/*
 		 * Create two relationships between two nodes
 		 */
@@ -359,10 +447,14 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		relationship.setDe10("local");
-		
-		ClientResponse actualResponse1 = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId1 = actualResponse1.getEntity(ReturnIdModel.class).getId();
-		
+
+		ClientResponse actualResponse1 = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		relationshipId1 = actualResponse1.getEntity(ReturnIdModel.class)
+				.getId();
+
 		relationship = new RelationshipModel();
 		relationship.setSource("16");
 		relationship.setTarget("24");
@@ -372,10 +464,14 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		relationship.setDe10("local");
-		
-		ClientResponse actualResponse2 = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class).getId();
-		
+
+		ClientResponse actualResponse2 = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class)
+				.getId();
+
 		/*
 		 * Create the model to remove
 		 */
@@ -383,22 +479,26 @@ public class RelationTest {
 		removeModel.setSource("16");
 		removeModel.setTarget("24");
 		removeModel.setDe10("local");
-		
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,removeModel);
-		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
-		
-		try (Transaction tx = mockDbService.beginTx()) 
-    	{
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
-    	} 
+
+		ClientResponse removalResponse = jerseyTest.resource()
+				.path("/relation/deleterelationship/fromtradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, removeModel);
+		assertEquals(Response.Status.OK.getStatusCode(),
+				removalResponse.getStatus());
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
+			mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+		}
 	}
-	
+
 	/**
-	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
+	 * Test the removal method DELETE
+	 * /relationship/{tradidtionId}/relationships/{relationshipId}
 	 */
-	@Test(expected=NotFoundException.class)
-	public void removeRelationshipDocumentWideTestDH43(){
+	@Test(expected = NotFoundException.class)
+	public void removeRelationshipDocumentWideTestDH43() {
 		/*
 		 * Create a relationship
 		 */
@@ -413,10 +513,13 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("pierced");
 		relationship.setDe10("local");
-		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 		relationshipId1 = actualResponse.getEntity(ReturnIdModel.class).getId();
-		
+
 		relationship.setSource("27");
 		relationship.setTarget("17");
 		relationship.setDe11("transposition");
@@ -425,33 +528,41 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("pierced");
 		relationship.setDe10("local");
-		
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+
+		actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 		relationshipId2 = actualResponse.getEntity(ReturnIdModel.class).getId();
-		
+
 		relationship.setDe10("document");
-		
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
-		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
-		
-		try (Transaction tx = mockDbService.beginTx()) 
-    	{
-			Relationship rel1 = mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
-    		Relationship rel2 = mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
-    		
-    		RelationshipModel relMod1 = new RelationshipModel(rel1);
-    		assertEquals(rel1, relMod1);
-    		
-    		RelationshipModel relMod2 = new RelationshipModel(rel2);
-    		assertEquals(rel2, relMod2);
-    	} 
+
+		ClientResponse removalResponse = jerseyTest.resource()
+				.path("/relation/deleterelationship/fromtradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		assertEquals(Response.Status.OK.getStatusCode(),
+				removalResponse.getStatus());
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			Relationship rel1 = mockDbService.getRelationshipById(Long
+					.parseLong(relationshipId1));
+			Relationship rel2 = mockDbService.getRelationshipById(Long
+					.parseLong(relationshipId2));
+
+			RelationshipModel relMod1 = new RelationshipModel(rel1);
+			assertEquals(rel1, relMod1);
+
+			RelationshipModel relMod2 = new RelationshipModel(rel2);
+			assertEquals(rel2, relMod2);
+		}
 	}
-	
+
 	/**
 	 * Test that cross relations may not be made
 	 */
 	@Test
-	public void createRelationshipTestWithCrossRelationConstraintDH39(){
+	public void createRelationshipTestWithCrossRelationConstraintDH39() {
 		RelationshipModel relationship = new RelationshipModel();
 		relationship.setSource("6");
 		relationship.setTarget("20");
@@ -460,11 +571,15 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("root");
 		relationship.setDe9("teh");
-		
+
 		// This relationship should be makeable
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-		
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
+		assertEquals(Response.Status.CREATED.getStatusCode(),
+				actualResponse.getStatus());
+
 		relationship.setSource("21");
 		relationship.setTarget("28");
 		relationship.setDe11("grammatical");
@@ -472,27 +587,32 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("rood");
 		relationship.setDe9("the");
-		
-		// this one should not be makeable, due to the cross-relationship-constraint!
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/" + tradId)
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
+
+		// this one should not be makeable, due to the
+		// cross-relationship-constraint!
+		actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 
 		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
-		assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
+		assertEquals(
+				"This relationship creation is not allowed. Would produce cross-relationship.",
 				actualResponse.getEntity(String.class));
-		
-    	try (Transaction tx = mockDbService.beginTx()) 
-    	{
-    		Node node28 = mockDbService.getNodeById(28L);
-    		Iterator<Relationship> rels = node28.getRelationships(ERelations.RELATIONSHIP).iterator();
-    		
-    		assertTrue(!rels.hasNext()); // make sure node 28 does not have a relationship now!
-    	} 
+
+		try (Transaction tx = mockDbService.beginTx()) {
+			Node node28 = mockDbService.getNodeById(28L);
+			Iterator<Relationship> rels = node28.getRelationships(
+					ERelations.RELATIONSHIP).iterator();
+
+			assertTrue(!rels.hasNext()); // make sure node 28 does not have a
+											// relationship now!
+		}
 	}
-	
+
 	@Test
-	public void createRelationshipTestWithCrossRelationConstraintDH39NotDirectlyCloseToEachOther(){
+	public void createRelationshipTestWithCrossRelationConstraintDH39NotDirectlyCloseToEachOther() {
 		RelationshipModel relationship = new RelationshipModel();
 		relationship.setSource("6");
 		relationship.setTarget("20");
@@ -501,11 +621,14 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("root");
 		relationship.setDe9("teh");
-		
+
 		// This relationship should be makeable
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 		assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
-		
+
 		try (Transaction tx = mockDbService.beginTx()) {
 			Relationship rel = mockDbService.getRelationshipById(48);
 			assertEquals("root", rel.getStartNode().getProperty("dn15"));
@@ -513,12 +636,13 @@ public class RelationTest {
 		}
 
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		ExecutionResult result = engine
+				.execute("match (w:WORD {dn15:'rood'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node node = nodes.next();
 		assertFalse(nodes.hasNext());
-		
+
 		relationship.setSource(node.getId() + "");
 
 		result = engine.execute("match (w:WORD {dn15:'unto'}) return w");
@@ -534,18 +658,24 @@ public class RelationTest {
 		relationship.setDe6("true");
 		relationship.setDe8("rood");
 		relationship.setDe9("unto");
-		
-		// this one should not be makeable, due to the cross-relationship-constraint!
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+
+		// this one should not be makeable, due to the
+		// cross-relationship-constraint!
+		actualResponse = jerseyTest.resource()
+				.path("/relation/createrelationship/intradition/" + tradId)
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 
 		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
-		assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
+		assertEquals(
+				"This relationship creation is not allowed. Would produce cross-relationship.",
 				actualResponse.getEntity(String.class));
 
 		try (Transaction tx = mockDbService.beginTx()) {
 			Node node21 = mockDbService.getNodeById(21L);
-			Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
+			Iterator<Relationship> rels = node21.getRelationships(
+					ERelations.RELATIONSHIP).iterator();
 
 			assertTrue(!rels.hasNext()); // make sure node 21 does not have a
 											// relationship now!
@@ -557,7 +687,8 @@ public class RelationTest {
 		RelationshipModel relationship = new RelationshipModel();
 
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		ExecutionResult result = engine
+				.execute("match (w:WORD {dn15:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node firstNode = nodes.next();
@@ -579,69 +710,81 @@ public class RelationTest {
 
 		ClientResponse actualResponse = jerseyTest.resource()
 				.path("/relation/createrelationship/intradition/" + tradId)
-				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
+				.type(MediaType.APPLICATION_JSON)
+				.post(ClientResponse.class, relationship);
 
 		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
 		assertEquals(
 				"This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.",
 				actualResponse.getEntity(String.class));
-		
-    	try (Transaction tx = mockDbService.beginTx()) 
-    	{
+
+		try (Transaction tx = mockDbService.beginTx()) {
 			Node node1 = mockDbService.getNodeById(firstNode.getId());
-			Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATIONSHIP).iterator();
+			Iterator<Relationship> rels = node1.getRelationships(
+					ERelations.RELATIONSHIP).iterator();
 
 			assertTrue(!rels.hasNext()); // make sure node does not have a
 											// relationship now!
 
 			Node node2 = mockDbService.getNodeById(secondNode.getId());
 			rels = node2.getRelationships(ERelations.RELATIONSHIP).iterator();
-    		
+
 			assertTrue(!rels.hasNext()); // make sure node does not have a
 											// relationship now!
-    	} 
+		}
 	}
-	
+
 	/**
 	 * Test if the get relationship method returns the correct value
 	 */
 	@Test
 	public void getRelationshipTest() {
-		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+tradId)
+		ClientResponse response = jerseyTest.resource()
+				.path("/relation/getallrelationships/fromtradition/" + tradId)
 				.get(ClientResponse.class);
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/relation/getallrelationships/fromtradition/"+tradId)
+				.path("/relation/getallrelationships/fromtradition/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 		assertEquals(Status.OK, response.getClientResponseStatus());
-		for(RelationshipModel rel : relationships){
-			assertTrue(rel.getId().equals("34")||rel.getId().equals("35")||rel.getId().equals("36"));
-			assertTrue(rel.getDe9().equals("april")||rel.getDe9().equals("drought")||rel.getDe9().equals("march"));
-			assertTrue(rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition"));
+		for (RelationshipModel rel : relationships) {
+			assertTrue(rel.getId().equals("34") || rel.getId().equals("35")
+					|| rel.getId().equals("36"));
+			assertTrue(rel.getDe9().equals("april")
+					|| rel.getDe9().equals("drought")
+					|| rel.getDe9().equals("march"));
+			assertTrue(rel.getDe11().equals("transposition")
+					|| rel.getDe11().equals("transposition")
+					|| rel.getDe11().equals("transposition"));
 		}
 	}
-	
+
 	/**
 	 * Test if the get relationship method returns correct state
 	 */
 	@Test
-	public void getRelationshipCorrectStatusTest(){
-		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+tradId)
+	public void getRelationshipCorrectStatusTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/relation/getallrelationships/fromtradition/" + tradId)
 				.get(ClientResponse.class);
 		assertEquals(Response.ok().build().getStatus(), response.getStatus());
 	}
-	
+
 	/**
-	 * Test if the get relationship method returns the correct not found error on a non existing tradid
+	 * Test if the get relationship method returns the correct not found error
+	 * on a non existing tradid
 	 */
 	@Test
-	public void getRelationshipExceptionTest(){
-		ClientResponse response = jerseyTest.resource().path("/relation/getallrelationships/fromtradition/"+6999).type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+	public void getRelationshipExceptionTest() {
+		ClientResponse response = jerseyTest.resource()
+				.path("/relation/getallrelationships/fromtradition/" + 6999)
+				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+				response.getStatus());
 	}
-	
+
 	@Test
-	public void getNoRelationshipTest(){
+	public void getNoRelationshipTest() {
 		ExecutionEngine engine = new ExecutionEngine(mockDbService);
 		String newTradId;
 		/**
@@ -657,12 +800,13 @@ public class RelationTest {
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
-		}		
+		}
 		/**
 		 * gets the generated id of the new inserted tradition
 		 */
 		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			ExecutionResult result = engine
+					.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			String tradId1 = (String) nodes.next().getProperty("id");
@@ -674,14 +818,18 @@ public class RelationTest {
 				newTradId = tradId1;
 			tx.success();
 		}
-		ClientResponse response = jerseyTest.resource()
-				.path("/relation/getallrelationships/fromtradition/"+(newTradId))
-				.get(ClientResponse.class);
+		ClientResponse response = jerseyTest
+				.resource()
+				.path("/relation/getallrelationships/fromtradition/"
+						+ (newTradId)).get(ClientResponse.class);
 		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
-		assertEquals("no relationships were found", response.getEntity(String.class));	}
-	
+		assertEquals("no relationships were found",
+				response.getEntity(String.class));
+	}
+
 	/**
 	 * Shut down the jersey server
+	 * 
 	 * @throws Exception
 	 */
 	@After
