@@ -3,20 +3,9 @@ package net.stemmaweb.stemmaserver;
 import java.util.Collection;
 import java.util.HashSet;
 
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.config.ClientConfig;
-import com.sun.jersey.api.client.config.DefaultClientConfig;
-import com.sun.jersey.api.client.filter.LoggingFilter;
-import com.sun.jersey.api.core.DefaultResourceConfig;
-import com.sun.jersey.test.framework.AppDescriptor;
-import com.sun.jersey.test.framework.JerseyTest;
-import com.sun.jersey.test.framework.LowLevelAppDescriptor;
-import com.sun.jersey.test.framework.spi.client.ClientFactory;
-import com.sun.jersey.test.framework.spi.container.TestContainerException;
-import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
-import com.sun.jersey.test.framework.spi.container.grizzly2.GrizzlyTestContainerFactory;
+import javax.ws.rs.client.Client;
 
-import com.sun.jersey.api.json.JSONConfiguration;
+
 
 
 public class JerseyTestServerFactory {

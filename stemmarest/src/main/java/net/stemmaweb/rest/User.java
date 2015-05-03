@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+import javax.annotation.Resource;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -12,7 +13,6 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -39,8 +39,9 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 @Path("/user")
 public class User implements IResource {
 	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-	@Context
-	GraphDatabaseService db;
+	
+	
+	private GraphDatabaseService db;
 	
 	@GET
 	public String getIt() {

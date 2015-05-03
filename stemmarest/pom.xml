@@ -22,28 +22,22 @@
             <plugin>
                 <groupId>org.glassfish</groupId>
                 <artifactId>maven-glassfish-plugin</artifactId>
-                
-               
             </plugin>
         </plugins>
     </build>
     <dependencies>
-        <dependency>
-            <groupId>com.sun.jersey</groupId>
-            <artifactId>jersey-server</artifactId>
-            <version>${jersey-version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.jersey</groupId>
-            <artifactId>jersey-json</artifactId>
-            <version>${jersey-version}</version>
-        </dependency>
-        
-        <dependency>
-			<groupId>com.sun.jersey.contribs</groupId>
-			<artifactId>jersey-multipart</artifactId>
-			<version>${jersey-version}</version>
-		</dependency>
+
+<dependency>
+	<groupId>org.glassfish.jersey.core</groupId>
+	<artifactId>jersey-server</artifactId>
+	<version>${jersey-version}</version>
+</dependency>
+<dependency>
+	<groupId>org.glassfish.jersey.core</groupId>
+	<artifactId>jersey-client</artifactId>
+	<version>${jersey-version}</version>
+</dependency>
+
 	
         <dependency>
             <groupId>junit</groupId>
@@ -71,7 +65,7 @@
 	   <scope>test</scope>
 	  </dependency>
         <dependency>
-            <groupId>com.sun.jersey</groupId>
+            <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-client</artifactId>
             <version>${jersey-version}</version>
             <scope>test</scope>
@@ -89,8 +83,8 @@
             <scope>test</scope>
         </dependency>
 		<dependency>
-			<groupId>com.sun.jersey.jersey-test-framework</groupId>
-			<artifactId>jersey-test-framework-grizzly2</artifactId>
+			<groupId>org.glassfish.jersey.test-framework</groupId>
+			<artifactId>jersey-test-framework-core</artifactId>
 			<version>${jersey-version}</version>
 			<scope>test</scope>
 		</dependency>
@@ -155,13 +149,16 @@
 		<version>2.2.3</version>
 	</dependency>
 	-->
-	
+	<dependency>
+	<groupId>org.glassfish.jersey.media</groupId>
+	<artifactId>jersey-media-multipart</artifactId>
+	<version>2.17</version>
+</dependency>
 
     </dependencies>
     <properties>
         <powermock.version>1.6.1</powermock.version>
-    
-        <jersey-version>1.9</jersey-version>
+        <jersey-version>2.17</jersey-version>
     </properties>
    
      <repositories>

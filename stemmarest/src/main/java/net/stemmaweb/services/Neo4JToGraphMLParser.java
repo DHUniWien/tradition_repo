@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.Iterator;
+
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -13,6 +14,7 @@ import javax.xml.stream.XMLStreamWriter;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.ERelations;
 
+import org.jvnet.hk2.config.IndentingXMLStreamWriter;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
@@ -23,7 +25,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
+
 
 /**
  * This class provides methods for exporting GraphMl (XML) File from Neo4J
