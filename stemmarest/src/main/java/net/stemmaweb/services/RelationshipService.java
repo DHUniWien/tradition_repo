@@ -13,11 +13,9 @@ public class RelationshipService {
 	 * @return
 	 */
 	public static Relationship copyRelationshipProperties(Relationship oldRelationship, Relationship newRelationship) {
-		for (int i = 0; i < 13; i++) {
-			String key = "de" + i;
+		for (String key : oldRelationship.getPropertyKeys())
 			if (oldRelationship.hasProperty(key))
 				newRelationship.setProperty(key, oldRelationship.getProperty(key));
-		}
 		return newRelationship;
 	}
 }
