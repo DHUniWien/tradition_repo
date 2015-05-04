@@ -36,6 +36,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 /**
  * 
  * Comprises all the api calls related to a reading.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @Path("/reading")
@@ -366,8 +368,8 @@ public class Reading implements IResource {
 	 */
 	private boolean doNotContainSameText(Node stayingReading,
 			Node deletingReading) {
-		return !stayingReading.getProperty("dn15").toString()
-				.equals(deletingReading.getProperty("dn15").toString());
+		return !stayingReading.getProperty("text").toString()
+				.equals(deletingReading.getProperty("text").toString());
 	}
 
 	/**
@@ -401,8 +403,8 @@ public class Reading implements IResource {
 		for (Relationship stayingRel : stayingReading
 				.getRelationships(ERelations.RELATIONSHIP))
 			if (stayingRel.getOtherNode(stayingReading).equals(deletingReading))
-				if (stayingRel.getProperty("de11").equals("transposition")
-						|| stayingRel.getProperty("de11").equals("repetition"))
+				if (stayingRel.getProperty("type").equals("transposition")
+						|| stayingRel.getProperty("type").equals("repetition"))
 					return true;
 		return false;
 	}
@@ -525,7 +527,7 @@ public class Reading implements IResource {
 
 		try (Transaction tx = db.beginTx()) {
 				originalReading = db.getNodeById(readId);
-			String[] splittedWords = originalReading.getProperty("dn15")
+			String[] splittedWords = originalReading.getProperty("text")
 					.toString().split("\\s+");
 
 			if (cannotBeSplitted(originalReading, splittedWords))
@@ -581,7 +583,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	private boolean hasRankGap(Node originalReading, int numberOfWords) {
-		String rankKey = "dn14";
+		String rankKey = "rank";
 		Long rank = (Long) originalReading.getProperty(rankKey);
 		for (Relationship rel : originalReading.getRelationships(
 				Direction.OUTGOING, ERelations.NORMAL)) {
@@ -606,7 +608,7 @@ public class Reading implements IResource {
 	private ArrayList<ReadingModel> split(GraphDatabaseService db,
 			Node originalReading, String[] splittedWords) {
 		ArrayList<ReadingModel> createdNodes = new ArrayList<ReadingModel>();
-		originalReading.setProperty("dn15", splittedWords[0]);
+		originalReading.setProperty("text", splittedWords[0]);
 		createdNodes.add(new ReadingModel(originalReading));
 		for (int i = 1; i < splittedWords.length; i++) {
 			Node newReading = db.createNode();
@@ -615,9 +617,9 @@ public class Reading implements IResource {
 			// otherwise as well in this transaction?
 			newReading = ReadingService.copyReadingProperties(originalReading,
 					newReading);
-			newReading.setProperty("dn15", splittedWords[i]);
-			Long previousRank = (Long) originalReading.getProperty("dn14");
-			newReading.setProperty("dn14", previousRank + 1);
+			newReading.setProperty("text", splittedWords[i]);
+			Long previousRank = (Long) originalReading.getProperty("rank");
+			newReading.setProperty("rank", previousRank + 1);
 
 			ArrayList<String> allWitnesses = new ArrayList<String>();
 			Iterable<Relationship> rels = originalReading.getRelationships(
@@ -671,7 +673,7 @@ public class Reading implements IResource {
 					.evaluator(Evaluators.toDepth(1))
 					.uniqueness(Uniqueness.NONE).traverse(reading).nodes()) {
 
-				if (!new ReadingModel(node).getDn15().equals("#END#"))
+				if (!new ReadingModel(node).getText().equals("#END#"))
 					return Response.ok(new ReadingModel(node)).build();
 				else
 					return Response
@@ -717,7 +719,7 @@ public class Reading implements IResource {
 					.evaluator(Evaluators.toDepth(1))
 					.uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
 
-				if (!new ReadingModel(node).getDn15().equals("#START#"))
+				if (!new ReadingModel(node).getText().equals("#START#"))
 					return Response.ok(new ReadingModel(node)).build();
 				else
 					return Response
@@ -784,7 +786,7 @@ public class Reading implements IResource {
 				.relationships(ERelations.NORMAL, Direction.OUTGOING)
 				.evaluator(Evaluators.all()).uniqueness(Uniqueness.NODE_GLOBAL)
 				.traverse(startNode).nodes()) {
-			long nodeRank = (long) node.getProperty("dn14");
+			long nodeRank = (long) node.getProperty("rank");
 
 			if (nodeRank < endRank && nodeRank > startRank) {
 				ReadingModel tempReading = new ReadingModel(node);
@@ -894,11 +896,11 @@ public class Reading implements IResource {
 		for (Node nodeA : questionedReadings) {
 			ArrayList<Node> sameText = new ArrayList<Node>();
 			for (Node nodeB : questionedReadings) {
-				if (nodeA.getProperty("dn15").toString()
-						.equals(nodeB.getProperty("dn15").toString())
+				if (nodeA.getProperty("text").toString()
+						.equals(nodeB.getProperty("text").toString())
 						&& !nodeA.equals(nodeB)
-						&& !nodeA.getProperty("dn14").toString()
-								.equals(nodeB.getProperty("dn14").toString())) {
+						&& !nodeA.getProperty("rank").toString()
+								.equals(nodeB.getProperty("rank").toString())) {
 					sameText.add(nodeB);
 					sameText.add(nodeA);
 				}
@@ -925,8 +927,8 @@ public class Reading implements IResource {
 		for (int i = 0; i < sameText.size() - 1; i++) {
 			Node biggerRankNode;
 			Node smallerRankNode;
-			long rankA = (long) sameText.get(i).getProperty("dn14");
-			long rankB = (long) sameText.get(i + 1).getProperty("dn14");
+			long rankA = (long) sameText.get(i).getProperty("rank");
+			long rankB = (long) sameText.get(i + 1).getProperty("rank");
 			long biggerRank, smallerRank;
 
 			if (rankA < rankB) {
@@ -948,7 +950,7 @@ public class Reading implements IResource {
 					Direction.OUTGOING, ERelations.NORMAL);
 
 			for (Relationship rel : rels) {
-				rank = (long) rel.getEndNode().getProperty("dn14");
+				rank = (long) rel.getEndNode().getProperty("rank");
 				if (rank <= biggerRank) {
 					gotOne = true;
 					break;
@@ -963,7 +965,7 @@ public class Reading implements IResource {
 						Direction.INCOMING, ERelations.NORMAL);
 
 				for (Relationship rel : rels2) {
-					rank = (long) rel.getStartNode().getProperty("dn14");
+					rank = (long) rel.getStartNode().getProperty("rank");
 					if (rank >= smallerRank) {
 						gotOne = true;
 						break;
@@ -990,8 +992,8 @@ public class Reading implements IResource {
 		for (Node node : db.traversalDescription().breadthFirst()
 				.relationships(ERelations.NORMAL, Direction.OUTGOING)
 				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode).nodes()) {
-			if ((Long) node.getProperty("dn14") > startRank
-					&& (Long) node.getProperty("dn14") < endRank)
+			if ((Long) node.getProperty("rank") > startRank
+					&& (Long) node.getProperty("rank") < endRank)
 				readings.add(node);
 
 		}
@@ -1012,14 +1014,14 @@ public class Reading implements IResource {
 		ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<List<ReadingModel>>();
 
 		for (int i = 0; i <= readingModels.size() - 2; i++) {
-			while (readingModels.get(i).getDn14() == readingModels.get(i + 1)
-					.getDn14() && i + 1 < readingModels.size()) {
+			while (readingModels.get(i).getRank() == readingModels.get(i + 1)
+					.getRank() && i + 1 < readingModels.size()) {
 				ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
-				if (readingModels.get(i).getDn15()
-						.equals(readingModels.get(i + 1).getDn15())
-						&& readingModels.get(i).getDn14() < endRank
-						&& readingModels.get(i).getDn14() > startRank) {
+				if (readingModels.get(i).getText()
+						.equals(readingModels.get(i + 1).getText())
+						&& readingModels.get(i).getRank() < endRank
+						&& readingModels.get(i).getRank() > startRank) {
 					identicalReadings.add(readingModels.get(i));
 					identicalReadings.add(readingModels.get(i + 1));
 				}
@@ -1049,8 +1051,8 @@ public class Reading implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			read1 = db.getNodeById(readId1);
 			read2 = db.getNodeById(readId2);
-			if ((long) read1.getProperty("dn14") > (long) read2
-					.getProperty("dn14"))
+			if ((long) read1.getProperty("rank") > (long) read2
+					.getProperty("rank"))
 				swapReadings(read1, read2);
 
 			if (canCompress(read1, read2, db)) {
@@ -1077,9 +1079,9 @@ public class Reading implements IResource {
 	 *            the second reading
 	 */
 	private void compress(Node read1, Node read2, GraphDatabaseService db) {
-		String textRead1 = (String) read1.getProperty("dn15");
-		String textRead2 = (String) read2.getProperty("dn15");
-		read1.setProperty("dn15", textRead1 + " " + textRead2);
+		String textRead1 = (String) read1.getProperty("text");
+		String textRead2 = (String) read2.getProperty("text");
+		read1.setProperty("text", textRead1 + " " + textRead2);
 
 		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
 		from1to2.delete();

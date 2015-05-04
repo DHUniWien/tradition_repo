@@ -5,6 +5,11 @@ import javax.xml.bind.annotation.XmlRootElement;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class TraditionModel {

@@ -12,7 +12,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.ReturnIdModel;
-import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
@@ -37,7 +37,7 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author jakob
+ * @author PSE FS 2015 Team2
  *
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -75,22 +75,22 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void changeTheOwnerOfATradition(){
-		TextInfoModel textInfo = new TextInfoModel();
+		TraditionMetadataModel textInfo = new TraditionMetadataModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("1");
 		
-		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/1001").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/1001").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 	
-		textInfo = new TextInfoModel();
+		textInfo = new TraditionMetadataModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("0");
 		
-		ownerChangeResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/1001").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ownerChangeResponse = jerseyTest.resource().path("/tradition/1001").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 	
 	}
@@ -101,7 +101,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getReading(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/reading/getreading/withreadingid/20").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/reading/getreading/fromtradition/1001/withreadingid/20").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -122,12 +122,12 @@ public abstract class BenachmarkTests {
 	@Test
 	public void duplicateAndMergeReading(){
 		String jsonPayload = "{\"readings\":[" + duplicateReadingNodeId+ "], \"witnesses\":[\"A\",\"B\" ]}";
-		List<ReadingModel> duplicatedReadings = jerseyTest.resource().path("/reading/duplicatereading")
+		List<ReadingModel> duplicatedReadings = jerseyTest.resource().path("/reading/duplicate/" + tradId)
 				.type(MediaType.APPLICATION_JSON).post(new GenericType<List<ReadingModel>>() {
 				}, jsonPayload);
 
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/mergereadings/first/" + duplicateReadingNodeId + "/second/" + duplicatedReadings.get(0).getDn1())
+				.path("/reading/merge/" + tradId + "/" + duplicateReadingNodeId + "/" + duplicatedReadings.get(0).getId())
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 		assertEquals(Status.OK, response.getClientResponseStatus());
@@ -154,7 +154,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getAllWitnessesOfATradition(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/getallwitnesses/fromtradition/1001").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/witness/1001").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -164,7 +164,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getAllRelationships(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/getallrelationships/fromtradition/1001").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/getallrelationships/formtradition/1001").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -175,7 +175,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void exportTraditionAsXML(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/gettradition/withid/1001").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/get/1001").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -201,7 +201,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getNextReadingOfAWitness(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/reading/getnextreading/fromwitness/A/ofreading/"+untoMe).get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/reading/next/A/"+untoMe).get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -211,7 +211,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getpreviousReadingOfAWitness(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/reading/getpreviousreading/fromwitness/A/ofreading/" +untoMe).get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/reading/previous/A/" +untoMe).get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -221,7 +221,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getAllReadingsOfATradition(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/reading/getallreadings/fromtradition/1001").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/reading/1001").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -251,7 +251,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getAWitnessAsPlainText(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/witness/gettext/fromtradition/1001/ofwitness/W0").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/string/1001/W0").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -261,8 +261,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getAPartOfAWitnessAsPlainText(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/witness/gettext/fromtradition/1001/ofwitness/W0"
-				+ "/fromstartrank/2/toendrank/5").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/string/rank/1001/W0/2/5").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -286,17 +285,17 @@ public abstract class BenachmarkTests {
 		String relationshipId = "";
 		relationship.setSource(theRoot + "");
 		relationship.setTarget(untoMe + "");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("the root");
-		relationship.setDe9("unto me");
-		relationship.setDe10("local");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("the root");
+		relationship.setReading_b("unto me");
+		relationship.setScope("local");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("reaterelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
 
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/withrelationship/"+relationshipId).delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 	}
 	
@@ -306,7 +305,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getUserById(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/user/getuser/withid/0").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/0").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -317,7 +316,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getTraditionsOfAUser(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/user/gettraditions/ofuser/0").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/user/traditions/0").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
@@ -328,10 +327,10 @@ public abstract class BenachmarkTests {
 	@Test
 	public void createAndDeleteAUser(){
 	    String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
-	    ClientResponse response = jerseyTest.resource().path("/user/createuser").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+	    ClientResponse response = jerseyTest.resource().path("/user/create").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 	    assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     	
-	    ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1337").delete(ClientResponse.class);
+	    ClientResponse actualResponse = jerseyTest.resource().path("/user/1337").delete(ClientResponse.class);
     	assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
 
 	}

@@ -3,6 +3,11 @@ package net.stemmaweb.services;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class EvaluatorService {
 	
 	public static Evaluator getEvalForWitness(final String WITNESS_ID) {

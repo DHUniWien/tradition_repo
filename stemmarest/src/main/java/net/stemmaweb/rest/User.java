@@ -34,6 +34,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * 
  * Comprises all the api calls related to a user.
  * 
+ * @author PSE FS 2015 Team2
+ * 
  */
 @Path("/user")
 public class User implements IResource {
@@ -209,7 +211,7 @@ public class User implements IResource {
 					Node tradNode = tradIterator.next();
 					TraditionModel tradition = new TraditionModel();
 					tradition.setId(tradNode.getProperty("id").toString());
-					tradition.setName(tradNode.getProperty("dg1").toString());
+					tradition.setName(tradNode.getProperty("name").toString());
 					traditions.add(tradition);
 				}
 			}

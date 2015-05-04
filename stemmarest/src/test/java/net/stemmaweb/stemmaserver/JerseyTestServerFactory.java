@@ -8,6 +8,7 @@ import com.sun.jersey.api.client.config.ClientConfig;
 import com.sun.jersey.api.client.config.DefaultClientConfig;
 import com.sun.jersey.api.client.filter.LoggingFilter;
 import com.sun.jersey.api.core.DefaultResourceConfig;
+import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.test.framework.AppDescriptor;
 import com.sun.jersey.test.framework.JerseyTest;
 import com.sun.jersey.test.framework.LowLevelAppDescriptor;
@@ -16,9 +17,11 @@ import com.sun.jersey.test.framework.spi.container.TestContainerException;
 import com.sun.jersey.test.framework.spi.container.TestContainerFactory;
 import com.sun.jersey.test.framework.spi.container.grizzly2.GrizzlyTestContainerFactory;
 
-import com.sun.jersey.api.json.JSONConfiguration;
-
-
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class JerseyTestServerFactory {
 	private final Collection<Object> resources = new HashSet<>();
 	private Integer port;

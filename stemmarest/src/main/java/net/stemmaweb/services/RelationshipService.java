@@ -2,6 +2,13 @@ package net.stemmaweb.services;
 
 import org.neo4j.graphdb.Relationship;
 
+/**
+ * 
+ * Provides helper methods related to relationships.
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class RelationshipService {
 	
 	/**

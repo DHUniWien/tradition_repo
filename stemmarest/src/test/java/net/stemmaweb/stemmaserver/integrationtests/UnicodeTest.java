@@ -1,6 +1,8 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import net.stemmaweb.rest.ERelations;
 
 import org.junit.After;
@@ -12,6 +14,13 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+/**
+ * 
+ * Contains all tests for the api calls related to unicode compatibility.
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class UnicodeTest {
 
 	GraphDatabaseService graphDb;

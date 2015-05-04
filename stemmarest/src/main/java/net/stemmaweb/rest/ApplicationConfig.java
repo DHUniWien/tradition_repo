@@ -11,7 +11,11 @@ import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
-
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class ApplicationConfig extends Application {
 	
 	public static final String DB_PATH = "database"; // this is the local path to StemmaServer/database

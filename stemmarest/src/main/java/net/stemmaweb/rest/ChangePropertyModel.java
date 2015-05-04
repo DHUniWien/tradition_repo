@@ -2,6 +2,11 @@ package net.stemmaweb.rest;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @XmlRootElement
 public class ChangePropertyModel {
 	

@@ -7,12 +7,12 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
  * 
- * @author Jakob
+ * @author PSE FS 2015 Team2
  *
  */
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
-public class TextInfoModel {
+public class TraditionMetadataModel {
 	private String name;
 	private String language;
 	private String isPublic;

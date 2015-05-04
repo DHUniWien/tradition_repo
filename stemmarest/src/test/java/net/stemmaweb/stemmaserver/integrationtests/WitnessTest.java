@@ -37,7 +37,9 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Jakob
+ * Contains all tests for the api calls related to witnesses.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -175,7 +177,7 @@ public class WitnessTest {
 				});
 		assertEquals(texts.length, listOfReadings.size());
 		for (int i = 0; i < listOfReadings.size(); i++) {
-			assertEquals(texts[i], listOfReadings.get(i).getDn15());
+			assertEquals(texts[i], listOfReadings.get(i).getText());
 		}
 	}
 	
@@ -248,7 +250,7 @@ public class WitnessTest {
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
 			ResourceIterable<Node> tradNodes = db
-					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
+					.findNodesByLabelAndProperty(Nodes.TRADITION, "name",
 							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
@@ -264,7 +266,7 @@ public class WitnessTest {
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
+				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}

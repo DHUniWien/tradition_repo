@@ -25,6 +25,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 /**
  * 
  * Comprises all the api calls related to a witness.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @Path("/witness")
@@ -61,8 +63,8 @@ public class Witness implements IResource {
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
 					.traverse(startNode).nodes()) {
-				if (!node.getProperty("dn15").equals("#END#"))
-					witnessAsText += (String) node.getProperty("dn15") + " ";
+				if (!node.getProperty("text").equals("#END#"))
+					witnessAsText += (String) node.getProperty("text") + " ";
 			}
 			tx.success();
 		} catch (Exception exception) {
@@ -118,10 +120,10 @@ public class Witness implements IResource {
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
 					.traverse(startNode).nodes()) {
-				long nodeRank = (long) node.getProperty("dn14");
+				long nodeRank = (long) node.getProperty("rank");
 				if (nodeRank >= startRank && nodeRank <= endRank) {
-					if (!node.getProperty("dn15").equals("#END#"))
-						witnessAsText += (String) node.getProperty("dn15")
+					if (!node.getProperty("text").equals("#END#"))
+						witnessAsText += (String) node.getProperty("text")
 								+ " ";
 				}
 			}
@@ -190,8 +192,9 @@ public class Witness implements IResource {
 		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no witness with this id was found").build();
-		if (readingModels.get(readingModels.size() - 1).getDn15()
+		if (readingModels.get(readingModels.size() - 1).getText()
 				.equals("#END#"))
-			readingModels.remove(readingModels.size() - 1);		return Response.status(Status.OK).entity(readingModels).build();
+			readingModels.remove(readingModels.size() - 1);		
+		return Response.status(Status.OK).entity(readingModels).build();
 	}
 }

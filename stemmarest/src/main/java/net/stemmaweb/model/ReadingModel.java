@@ -7,166 +7,205 @@ import org.neo4j.graphdb.Node;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
+/**
+ * 
+ * Provides a model for a reading outside of the database. Can be parsed into a
+ * json object.
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class ReadingModel implements Comparable<ReadingModel> {
-	
-	private String dn0; // grammar_invalid
-	private String dn1; // id
-	private String dn2; // is_common
-	private String dn3; // is_end
-	private String dn4; // is_lacuna
-	private String dn5; // is_lemma
-	private String dn6; // is_nonsense
-	private String dn7; // is_ph
-	private String dn8; // is_start
-	private String dn9; // join_next
-	private String dn10; // join_prior
-	private String dn11; // language
-	private String dn12; // lexemes
-	private String dn13; // normal_form
-	private Long dn14; // rank
-	private String dn15; // text
+
+	private String grammar_invalid; // grammar_invalid
+	private String id; // id
+	private String is_common; // is_common
+	private String is_end; // is_end
+	private String is_lacuna; // is_lacuna
+	private String is_lemma; // is_lemma
+	private String is_nonsense; // is_nonsense
+	private String is_ph; // is_ph
+	private String is_start; // is_start
+	private String join_next; // join_next
+	private String join_prior; // join_prior
+	private String language; // language
+	private String lexemes; // lexemes
+	private String normal_form; // normal_form
+	private Long rank; // rank
+	private String text; // text
 
 	public ReadingModel(Node node) {
-		if (node.hasProperty("dn0"))
-			this.setDn0(node.getProperty("dn0").toString());
-		this.setDn1(String.valueOf(node.getId()));
-		if (node.hasProperty("dn2"))
-			this.setDn2(node.getProperty("dn2").toString());
-		if (node.hasProperty("dn3"))
-			this.setDn3(node.getProperty("dn3").toString());
-		if (node.hasProperty("dn4"))
-			this.setDn4(node.getProperty("dn4").toString());
-		if (node.hasProperty("dn5"))
-			this.setDn5(node.getProperty("dn5").toString());
-		if (node.hasProperty("dn6"))
-			this.setDn6(node.getProperty("dn6").toString());
-		if (node.hasProperty("dn7"))
-			this.setDn7(node.getProperty("dn7").toString());
-		if (node.hasProperty("dn8"))
-			this.setDn8(node.getProperty("dn8").toString());
-		if (node.hasProperty("dn9"))
-			this.setDn9(node.getProperty("dn9").toString());
-		if (node.hasProperty("dn10"))
-			this.setDn10(node.getProperty("dn10").toString());
-		if (node.hasProperty("dn11"))
-			this.setDn11(node.getProperty("dn11").toString());
-		if (node.hasProperty("dn12"))
-			this.setDn12(node.getProperty("dn12").toString());
-		if (node.hasProperty("dn13"))
-			this.setDn13(node.getProperty("dn13").toString());
-		if (node.hasProperty("dn14"))
-			this.setDn14(Long.parseLong(node.getProperty("dn14").toString()));
-		if (node.hasProperty("dn15"))
-			this.setDn15(node.getProperty("dn15").toString());
+		if (node.hasProperty("grammar_invalid"))
+			this.setGrammar_invalid(node.getProperty("grammar_invalid").toString());
+		this.setId(String.valueOf(node.getId()));
+		if (node.hasProperty("is_common"))
+			this.setIs_common(node.getProperty("is_common").toString());
+		if (node.hasProperty("is_end"))
+			this.setIs_end(node.getProperty("is_end").toString());
+		if (node.hasProperty("is_lacuna"))
+			this.setIs_lacuna(node.getProperty("is_lacuna").toString());
+		if (node.hasProperty("is_lemma"))
+			this.setIs_lemma(node.getProperty("is_lemma").toString());
+		if (node.hasProperty("is_nonsense"))
+			this.setIs_nonsense(node.getProperty("is_nonsense").toString());
+		if (node.hasProperty("is_ph"))
+			this.setIs_ph(node.getProperty("is_ph").toString());
+		if (node.hasProperty("is_start"))
+			this.setIs_start(node.getProperty("is_start").toString());
+		if (node.hasProperty("join_next"))
+			this.setJoin_next(node.getProperty("join_next").toString());
+		if (node.hasProperty("join_prior"))
+			this.setJoin_prior(node.getProperty("join_prior").toString());
+		if (node.hasProperty("language"))
+			this.setLanguage(node.getProperty("language").toString());
+		if (node.hasProperty("lexemes"))
+			this.setLexemes(node.getProperty("lexemes").toString());
+		if (node.hasProperty("normal_form"))
+			this.setNormal_form(node.getProperty("normal_form").toString());
+		if (node.hasProperty("rank"))
+			this.setRank(Long.parseLong(node.getProperty("rank").toString()));
+		if (node.hasProperty("text"))
+			this.setText(node.getProperty("text").toString());
 	}
 
 	public ReadingModel() {
 
 	}
 
-	public String getDn0() {
-		return dn0;
+	public String getGrammar_invalid() {
+		return grammar_invalid;
 	}
-	public void setDn0(String dn0) {
-		this.dn0 = dn0;
+
+	public void setGrammar_invalid(String grammar_invalid) {
+		this.grammar_invalid = grammar_invalid;
 	}
-	public String getDn1() {
-		return dn1;
+
+	public String getId() {
+		return id;
 	}
-	public void setDn1(String dn1) {
-		this.dn1 = dn1;
+
+	public void setId(String id) {
+		this.id = id;
 	}
-	public String getDn2() {
-		return dn2;
+
+	public String getIs_common() {
+		return is_common;
 	}
-	public void setDn2(String dn2) {
-		this.dn2 = dn2;
+
+	public void setIs_common(String is_common) {
+		this.is_common = is_common;
 	}
-	public String getDn3() {
-		return dn3;
+
+	public String getIs_end() {
+		return is_end;
 	}
-	public void setDn3(String dn3) {
-		this.dn3 = dn3;
+
+	public void setIs_end(String is_end) {
+		this.is_end = is_end;
 	}
-	public String getDn4() {
-		return dn4;
+
+	public String getIs_lacuna() {
+		return is_lacuna;
 	}
-	public void setDn4(String dn4) {
-		this.dn4 = dn4;
+
+	public void setIs_lacuna(String is_lacuna) {
+		this.is_lacuna = is_lacuna;
 	}
-	public String getDn5() {
-		return dn5;
+
+	public String getIs_lemma() {
+		return is_lemma;
 	}
-	public void setDn5(String dn5) {
-		this.dn5 = dn5;
+
+	public void setIs_lemma(String is_lemma) {
+		this.is_lemma = is_lemma;
 	}
-	public String getDn6() {
-		return dn6;
+
+	public String getIs_nonsense() {
+		return is_nonsense;
 	}
-	public void setDn6(String dn6) {
-		this.dn6 = dn6;
+
+	public void setIs_nonsense(String is_nonsense) {
+		this.is_nonsense = is_nonsense;
 	}
-	public String getDn7() {
-		return dn7;
+
+	public String getIs_ph() {
+		return is_ph;
 	}
-	public void setDn7(String dn7) {
-		this.dn7 = dn7;
+
+	public void setIs_ph(String is_ph) {
+		this.is_ph = is_ph;
 	}
-	public String getDn8() {
-		return dn8;
+
+	public String getIs_start() {
+		return is_start;
 	}
-	public void setDn8(String dn8) {
-		this.dn8 = dn8;
+
+	public void setIs_start(String is_start) {
+		this.is_start = is_start;
 	}
-	public String getDn9() {
-		return dn9;
+
+	public String getJoin_next() {
+		return join_next;
 	}
-	public void setDn9(String dn9) {
-		this.dn9 = dn9;
+
+	public void setJoin_next(String join_next) {
+		this.join_next = join_next;
 	}
-	public String getDn10() {
-		return dn10;
+
+	public String getJoin_prior() {
+		return join_prior;
 	}
-	public void setDn10(String dn10) {
-		this.dn10 = dn10;
+
+	public void setJoin_prior(String join_prior) {
+		this.join_prior = join_prior;
 	}
-	public String getDn11() {
-		return dn11;
+
+	public String getLanguage() {
+		return language;
 	}
-	public void setDn11(String dn11) {
-		this.dn11 = dn11;
+
+	public void setLanguage(String language) {
+		this.language = language;
 	}
-	public String getDn12() {
-		return dn12;
+
+	public String getLexemes() {
+		return lexemes;
 	}
-	public void setDn12(String dn12) {
-		this.dn12 = dn12;
+
+	public void setLexemes(String lexemes) {
+		this.lexemes = lexemes;
 	}
-	public String getDn13() {
-		return dn13;
+
+	public String getNormal_form() {
+		return normal_form;
 	}
-	public void setDn13(String dn13) {
-		this.dn13 = dn13;
+
+	public void setNormal_form(String normal_form) {
+		this.normal_form = normal_form;
 	}
-	public Long getDn14() {
-		return dn14;
+
+	public Long getRank() {
+		return rank;
 	}
-	public void setDn14(Long dn14) {
-		this.dn14 = dn14;
+
+	public void setRank(Long rank) {
+		this.rank = rank;
 	}
-	public String getDn15() {
-		return dn15;
+
+	public String getText() {
+		return text;
 	}
-	public void setDn15(String dn15) {
-		this.dn15 = dn15;
+
+	public void setText(String text) {
+		this.text = text;
 	}
 	
 	@Override
 	public int compareTo(ReadingModel readingModel) {
-		Long compareRank = ((ReadingModel) readingModel).getDn14();
-		return (int) (this.dn14 - compareRank);
+		Long compareRank = ((ReadingModel) readingModel).getRank();
+		return (int) (this.rank - compareRank);
 	}
 
 	

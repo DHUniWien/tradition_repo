@@ -18,7 +18,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * 
  * Helper methods for the database
  * 
- * @author jakob, ido
+ * @author PSE FS 2015 Team2
  *
  */
 public class DatabaseService {

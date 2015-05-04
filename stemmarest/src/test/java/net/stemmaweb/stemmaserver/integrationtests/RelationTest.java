@@ -43,7 +43,9 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Jakob, Severin
+ * Contains all tests for the api calls related to relations between readings.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -150,11 +152,11 @@ public class RelationTest {
 		String relationshipId = "";
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("repetition");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("showers");
+		relationship.setType("repetition");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("showers");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
@@ -166,11 +168,11 @@ public class RelationTest {
     		
     		assertEquals(16L, loadedRelationship.getStartNode().getId());
     		assertEquals(24L, loadedRelationship.getEndNode().getId());
-			assertEquals("repetition", loadedRelationship.getProperty("de11"));
-    		assertEquals("0",loadedRelationship.getProperty("de1"));
-    		assertEquals("true",loadedRelationship.getProperty("de6"));
-    		assertEquals("april",loadedRelationship.getProperty("de8"));
-    		assertEquals("showers",loadedRelationship.getProperty("de9"));
+			assertEquals("repetition", loadedRelationship.getProperty("type"));
+    		assertEquals("0",loadedRelationship.getProperty("alters_meaning"));
+    		assertEquals("true",loadedRelationship.getProperty("is_significant"));
+    		assertEquals("april",loadedRelationship.getProperty("reading_a"));
+    		assertEquals("showers",loadedRelationship.getProperty("reading_b"));
     	} 
 	}
 	
@@ -183,11 +185,11 @@ public class RelationTest {
 
 		relationship.setSource("16");
 		relationship.setTarget("1337");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("showers");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("showers");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
@@ -202,11 +204,11 @@ public class RelationTest {
 
 		relationship.setSource("1337");
 		relationship.setTarget("24");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("showers");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("showers");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
@@ -224,12 +226,13 @@ public class RelationTest {
 		String relationshipId = "";
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("transposition");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("showers");
-		relationship.setDe10("local");
+		relationship.setType("transposition");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("showers");
+		relationship.setScope("local");
+		
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
@@ -250,7 +253,7 @@ public class RelationTest {
 		try (Transaction tx = db.beginTx()) {
 			
 			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			ExecutionResult result = engine.execute("match (w:WORD {text:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node march1 = nodes.next();
@@ -274,7 +277,7 @@ public class RelationTest {
 					.delete(ClientResponse.class);
 			assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
-			result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			result = engine.execute("match (w:WORD {text:'march'}) return w");
 			 nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			march1 = nodes.next();
@@ -324,12 +327,12 @@ public class RelationTest {
 		String relationshipId2 = "";
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("transposition");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("showers");
-		relationship.setDe10("local");
+		relationship.setType("transposition");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("showers");
+		relationship.setScope("local");
 		
 		ClientResponse actualResponse1 = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId1 = actualResponse1.getEntity(ReturnIdModel.class).getId();
@@ -337,12 +340,12 @@ public class RelationTest {
 		relationship = new RelationshipModel();
 		relationship.setSource("16");
 		relationship.setTarget("24");
-		relationship.setDe11("repetition");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("showers");
-		relationship.setDe10("local");
+		relationship.setType("repetition");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("showers");
+		relationship.setScope("local");
 		
 		ClientResponse actualResponse2 = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class).getId();
@@ -353,7 +356,7 @@ public class RelationTest {
 		RelationshipModel removeModel = new RelationshipModel();
 		removeModel.setSource("16");
 		removeModel.setTarget("24");
-		removeModel.setDe10("local");
+		removeModel.setScope("local");
 		
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,removeModel);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
@@ -376,29 +379,30 @@ public class RelationTest {
 		String relationshipId2 = "";
 		relationship.setSource("16");
 		relationship.setTarget("17");
-		relationship.setDe11("transposition");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("pierced");
-		relationship.setDe10("local");
+		relationship.setType("transposition");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("pierced");
+		relationship.setScope("local");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId1 = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
 		relationship.setSource("27");
 		relationship.setTarget("17");
-		relationship.setDe11("transposition");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("april");
-		relationship.setDe9("pierced");
-		relationship.setDe10("local");
+		relationship.setType("transposition");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("april");
+		relationship.setReading_b("pierced");
+		relationship.setScope("local");
+		
 		
 		actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId2 = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
-		relationship.setDe10("document");
+		relationship.setScope("document");
 		
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
@@ -424,11 +428,12 @@ public class RelationTest {
 		RelationshipModel relationship = new RelationshipModel();
 		relationship.setSource("6");
 		relationship.setTarget("20");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("root");
-		relationship.setDe9("teh");
+		
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("root");
+		relationship.setReading_b("teh");
 		
 		// This relationship should be makeable
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
@@ -436,11 +441,11 @@ public class RelationTest {
 		
 		relationship.setSource("21");
 		relationship.setTarget("28");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("rood");
-		relationship.setDe9("the");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("root");
+		relationship.setReading_b("the");
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
 		actualResponse = jerseyTest.resource().path("/relation/createrelationship")
@@ -465,11 +470,11 @@ public class RelationTest {
 		RelationshipModel relationship = new RelationshipModel();
 		relationship.setSource("6");
 		relationship.setTarget("20");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("root");
-		relationship.setDe9("teh");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("root");
+		relationship.setReading_b("teh");
 		
 		// This relationship should be makeable
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
@@ -477,12 +482,12 @@ public class RelationTest {
 		
 		try (Transaction tx = db.beginTx()) {
 			Relationship rel = db.getRelationshipById(48);
-			assertEquals("root", rel.getStartNode().getProperty("dn15"));
-			assertEquals("teh", rel.getEndNode().getProperty("dn15"));
+			assertEquals("root", rel.getStartNode().getProperty("text"));
+			assertEquals("teh", rel.getEndNode().getProperty("text"));
 		}
 
 		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
+		ExecutionResult result = engine.execute("match (w:WORD {text:'rood'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node node = nodes.next();
@@ -490,7 +495,7 @@ public class RelationTest {
 		
 		relationship.setSource(node.getId() + "");
 
-		result = engine.execute("match (w:WORD {dn15:'unto'}) return w");
+		result = engine.execute("match (w:WORD {text:'unto'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		node = nodes.next();
@@ -498,11 +503,11 @@ public class RelationTest {
 
 		relationship.setTarget(node.getId() + "");
 
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("rood");
-		relationship.setDe9("unto");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("rood");
+		relationship.setReading_b("unto");
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
 		actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
@@ -526,13 +531,13 @@ public class RelationTest {
 		RelationshipModel relationship = new RelationshipModel();
 
 		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		ExecutionResult result = engine.execute("match (w:WORD {text:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node firstNode = nodes.next();
 		assertFalse(nodes.hasNext());
 
-		result = engine.execute("match (w:WORD {dn15:'pierced'}) return w");
+		result = engine.execute("match (w:WORD {text:'pierced'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node secondNode = nodes.next();
@@ -540,11 +545,11 @@ public class RelationTest {
 
 		relationship.setSource(firstNode.getId() + "");
 		relationship.setTarget(secondNode.getId() + "");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("showers");
-		relationship.setDe9("pierced");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("showers");
+		relationship.setReading_b("pierced");
 
 		ClientResponse actualResponse = jerseyTest.resource()
 				.path("/relation/createrelationship")
@@ -585,8 +590,8 @@ public class RelationTest {
 		assertEquals(Status.OK, response.getClientResponseStatus());
 		for(RelationshipModel rel : relationships){
 			assertTrue(rel.getId().equals("34")||rel.getId().equals("35")||rel.getId().equals("36"));
-			assertTrue(rel.getDe9().equals("april")||rel.getDe9().equals("drought")||rel.getDe9().equals("march"));
-			assertTrue(rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition")||rel.getDe11().equals("transposition"));
+			assertTrue(rel.getReading_b().equals("april")||rel.getReading_b().equals("drought")||rel.getReading_b().equals("march"));
+			assertTrue(rel.getType().equals("transposition")||rel.getType().equals("transposition")||rel.getType().equals("transposition"));
 		}
 	}
 	

@@ -27,7 +27,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
@@ -52,6 +52,8 @@ import com.sun.jersey.multipart.FormDataParam;
 /**
  * 
  * Comprises all the api calls related to a tradition.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @Path("/tradition")
@@ -66,14 +68,12 @@ public class Tradition implements IResource {
 	 * @return OK on success or an ERROR as JSON
 	 */
 	@POST
-	@Path("changemetadata/fromtradition/{witnessId}")
+	@Path("changemetadata/fromtradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("witnessId") String witnessId) {
-
+	public Response changeOwnerOfATradition(TraditionMetadataModel textInfo, @PathParam("tradId") String witnessId) {
 		
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
-			
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
@@ -133,15 +133,13 @@ public class Tradition implements IResource {
 				TraditionModel tradModel = new TraditionModel();
 				if(trad.hasProperty("id"))
 					tradModel.setId(trad.getProperty("id").toString());
-				if(trad.hasProperty("dg1"))	
-					tradModel.setName(trad.getProperty("dg1").toString());
+				if(trad.hasProperty("name"))	
+					tradModel.setName(trad.getProperty("name").toString());
 				traditionList.add(tradModel);
 			}
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
 		return Response.ok().entity(traditionList).build();
 	}
@@ -158,8 +156,6 @@ public class Tradition implements IResource {
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 
 		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
-
-		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 
@@ -197,9 +193,7 @@ public class Tradition implements IResource {
 			} 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
-		}	
+		}
 		return Response.ok(witlist).build();
 	}
 
@@ -210,7 +204,7 @@ public class Tradition implements IResource {
 	 * @return
 	 */
 	@GET
-	@Path("getallrelationships/fromtradition/{tradId}")
+	@Path("getallrelationships/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 
@@ -222,7 +216,6 @@ public class Tradition implements IResource {
 
 			Node startNode = DatabaseService.getStartNode(tradId, db);
 
-			
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
@@ -238,32 +231,32 @@ public class Tradition implements IResource {
 					if (rel.getEndNode() != null)
 						relMod.setTarget(String.valueOf(rel.getEndNode().getId()));
 					relMod.setId(String.valueOf(rel.getId()));
-					if (rel.hasProperty("de0"))
-						relMod.setDe0(rel.getProperty("de0").toString());
-					if (rel.hasProperty("de1"))
-						relMod.setDe1(rel.getProperty("de1").toString());
-					if (rel.hasProperty("de2"))
-						relMod.setDe2(rel.getProperty("de2").toString());
-					if (rel.hasProperty("de3"))
-						relMod.setDe3(rel.getProperty("de3").toString());
-					if (rel.hasProperty("de4"))
-						relMod.setDe4(rel.getProperty("de4").toString());
-					if (rel.hasProperty("de5"))
-						relMod.setDe5(rel.getProperty("de5").toString());
-					if (rel.hasProperty("de6"))
-						relMod.setDe6(rel.getProperty("de6").toString());
-					if (rel.hasProperty("de7"))
-						relMod.setDe7(rel.getProperty("de7").toString());
-					if (rel.hasProperty("de8"))
-						relMod.setDe8(rel.getProperty("de8").toString());
-					if (rel.hasProperty("de9"))
-						relMod.setDe9(rel.getProperty("de9").toString());
-					if (rel.hasProperty("de10"))
-						relMod.setDe10(rel.getProperty("de10").toString());
-					if (rel.hasProperty("de11"))
-						relMod.setDe11(rel.getProperty("de11").toString());
-					if (rel.hasProperty("de12"))
-						relMod.setDe12(rel.getProperty("de12").toString());
+					if (rel.hasProperty("a_derivable_from_b"))
+						relMod.setA_derivable_from_b(rel.getProperty("a_derivable_from_b").toString());
+					if (rel.hasProperty("alters_meaning"))
+						relMod.setAlters_meaning(rel.getProperty("alters_meaning").toString());
+					if (rel.hasProperty("annotation"))
+						relMod.setAnnotation(rel.getProperty("annotation").toString());
+					if (rel.hasProperty("b_derivable_from_a"))
+						relMod.setB_derivable_from_a(rel.getProperty("b_derivable_from_a").toString());
+					if (rel.hasProperty("displayform"))
+						relMod.setDisplayform(rel.getProperty("displayform").toString());
+					if (rel.hasProperty("extra"))
+						relMod.setExtra(rel.getProperty("extra").toString());
+					if (rel.hasProperty("is_significant"))
+						relMod.setIs_significant(rel.getProperty("is_significant").toString());
+					if (rel.hasProperty("non_independent"))
+						relMod.setNon_independent(rel.getProperty("non_independent").toString());
+					if (rel.hasProperty("reading_a"))
+						relMod.setReading_a(rel.getProperty("reading_a").toString());
+					if (rel.hasProperty("reading_b"))
+						relMod.setReading_b(rel.getProperty("reading_b").toString());
+					if (rel.hasProperty("scope"))
+						relMod.setScope(rel.getProperty("scope").toString());
+					if (rel.hasProperty("type"))
+						relMod.setType(rel.getProperty("type").toString());
+					if (rel.hasProperty("witness"))
+						relMod.setWitness(rel.getProperty("witness").toString());
 	
 					relList.add(relMod);
 				}
@@ -271,8 +264,6 @@ public class Tradition implements IResource {
 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
 		return Response.ok(relList).build();
 	}
@@ -317,7 +308,6 @@ public class Tradition implements IResource {
 	@DELETE
 	@Path("deletetradition/withid/{tradId}")
 	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
-		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -363,8 +353,6 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
 		return Response.status(Response.Status.OK).build();
 	}
@@ -461,12 +449,9 @@ public class Tradition implements IResource {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		if(getTraditionNode(tradId,engine) == null)
 			return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-		
 
 		Neo4JToDotParser parser = new Neo4JToDotParser(db);
 		parser.parseNeo4J(tradId);
-
-		
 		
 		String everything = "";
 		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
@@ -480,10 +465,8 @@ public class Tradition implements IResource {
 	        }
 	        everything = sb.toString();
 	    }catch  (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

@@ -35,7 +35,9 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Jakob
+ * Contains all tests for the api calls related to the user.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @RunWith(MockitoJUnitRunner.class)
@@ -198,7 +200,7 @@ public class UserTest {
     		engine.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
-    						+ "SET tradition.dg1 = 'TestTradition' "
+    						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
@@ -217,7 +219,7 @@ public class UserTest {
     		engine.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'2'}) "
     				+ "MATCH(tradition: TRADITION {id:'843'}) "
-    						+ "SET tradition.dg1 = 'TestTradition' "
+    						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
@@ -285,7 +287,7 @@ public class UserTest {
     		engine.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
-    						+ "SET tradition.dg1 = 'TestTradition' "
+    						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
@@ -346,7 +348,7 @@ public class UserTest {
     		engine.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
-    						+ "SET tradition.dg1 = 'TestTradition' "
+    						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
