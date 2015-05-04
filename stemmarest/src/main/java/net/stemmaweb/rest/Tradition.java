@@ -66,7 +66,7 @@ public class Tradition implements IResource {
 	 * @return OK on success or an ERROR as JSON
 	 */
 	@POST
-	@Path("changeowner/fromtradition/{witnessId}")
+	@Path("changemetadata/fromtradition/{witnessId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("witnessId") String witnessId) {
@@ -210,7 +210,7 @@ public class Tradition implements IResource {
 	 * @return
 	 */
 	@GET
-	@Path("getallrelationships/{tradId}")
+	@Path("getallrelationships/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 

@@ -188,7 +188,7 @@ public class TraditionTest {
 		rel.setDe10("local");
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/getallrelationships/" + tradId)
+				.path("/tradition/getallrelationships/fromtradition/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 		RelationshipModel relLoaded = relationships.get(2);
@@ -209,7 +209,7 @@ public class TraditionTest {
 	public void getAllRelationshipsCorrectAmountTest() {
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/getallrelationships/" + tradId)
+				.path("/tradition/getallrelationships/fromtradition/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 
@@ -397,7 +397,7 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("42");
 		
-		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/changeowner/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 		
 		/*
@@ -467,7 +467,7 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("1337");
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changeowner/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 		assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
 	
@@ -556,7 +556,7 @@ public class TraditionTest {
 		textInfo.setIsPublic("0");
 		textInfo.setOwnerId("42");
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changeowner/fromtradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
+		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
 		assertEquals(removalResponse.getEntity(String.class),"Tradition not found");
 		
