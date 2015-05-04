@@ -156,7 +156,7 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
     	try (Transaction tx = db.beginTx()) 
@@ -189,7 +189,7 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
 	}
 	
@@ -208,7 +208,7 @@ public class RelationTest {
 		relationship.setDe8("april");
 		relationship.setDe9("showers");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
 	}
 	
@@ -231,10 +231,10 @@ public class RelationTest {
 		relationship.setDe9("showers");
 		relationship.setDe10("local");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
 		try (Transaction tx = db.beginTx())
@@ -270,8 +270,7 @@ public class RelationTest {
 			
 			ClientResponse removalResponse = jerseyTest
 					.resource()
-					.path("/relation/deleterelationshipsbyid/fromtradition/"
-							+ tradId + "/withrelationship/" + rel.getId())
+					.path("/relation/deleterelationshipsbyid/withrelationship/" + rel.getId())
 					.delete(ClientResponse.class);
 			assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
@@ -308,7 +307,7 @@ public class RelationTest {
 	 */
 	@Test
 	public void deleteRelationshipThatDoesNotExistTestDH43(){
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/1337").delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/withrelationship/1337").delete(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), removalResponse.getStatus());
 	}
 	
@@ -332,7 +331,7 @@ public class RelationTest {
 		relationship.setDe9("showers");
 		relationship.setDe10("local");
 		
-		ClientResponse actualResponse1 = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse1 = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId1 = actualResponse1.getEntity(ReturnIdModel.class).getId();
 		
 		relationship = new RelationshipModel();
@@ -345,7 +344,7 @@ public class RelationTest {
 		relationship.setDe9("showers");
 		relationship.setDe10("local");
 		
-		ClientResponse actualResponse2 = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse2 = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class).getId();
 		
 		/*
@@ -384,7 +383,7 @@ public class RelationTest {
 		relationship.setDe9("pierced");
 		relationship.setDe10("local");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId1 = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
 		relationship.setSource("27");
@@ -396,7 +395,7 @@ public class RelationTest {
 		relationship.setDe9("pierced");
 		relationship.setDe10("local");
 		
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId2 = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
 		relationship.setDe10("document");
@@ -432,7 +431,7 @@ public class RelationTest {
 		relationship.setDe9("teh");
 		
 		// This relationship should be makeable
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
 		relationship.setSource("21");
@@ -444,7 +443,7 @@ public class RelationTest {
 		relationship.setDe9("the");
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/" + tradId)
+		actualResponse = jerseyTest.resource().path("/relation/createrelationship")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 
@@ -473,7 +472,7 @@ public class RelationTest {
 		relationship.setDe9("teh");
 		
 		// This relationship should be makeable
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
 		try (Transaction tx = db.beginTx()) {
@@ -506,7 +505,7 @@ public class RelationTest {
 		relationship.setDe9("unto");
 		
 		// this one should not be makeable, due to the cross-relationship-constraint!
-		actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
+		actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		// RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 
 		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
@@ -548,7 +547,7 @@ public class RelationTest {
 		relationship.setDe9("pierced");
 
 		ClientResponse actualResponse = jerseyTest.resource()
-				.path("/relation/createrelationship/intradition/" + tradId)
+				.path("/relation/createrelationship")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
 
 		assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());

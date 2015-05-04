@@ -54,15 +54,13 @@ public class Relation implements IResource {
 	 * Creates a new relationship between the two nodes specified.
 	 * 
 	 * @param relationshipModel
-	 * @param tradId
 	 * @return
 	 */
     @POST
-    @Path("createrelationship/intradition/{tradId}")
+    @Path("createrelationship")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-	public Response create(RelationshipModel relationshipModel,
-			@PathParam("tradId") String tradId) {
+	public Response create(RelationshipModel relationshipModel) {
     	
     	
     	Relationship relationshipAtoB = null;
@@ -90,12 +88,12 @@ public class Relation implements IResource {
 
         	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
         	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
-//        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
+        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
         	relationshipAtoB.setProperty("de1", nullToEmptyString(relationshipModel.getDe1()));
-//        	relationshipAtoB.setProperty("de3", nullToEmptyString(relationshipModel.getDe3()));
-//        	relationshipAtoB.setProperty("de4", nullToEmptyString(relationshipModel.getDe5()));
+        	relationshipAtoB.setProperty("de3", nullToEmptyString(relationshipModel.getDe3()));
+        	relationshipAtoB.setProperty("de4", nullToEmptyString(relationshipModel.getDe5()));
         	relationshipAtoB.setProperty("de6", nullToEmptyString(relationshipModel.getDe6()));
-//        	relationshipAtoB.setProperty("de7", nullToEmptyString(relationshipModel.getDe7()));
+        	relationshipAtoB.setProperty("de7", nullToEmptyString(relationshipModel.getDe7()));
         	relationshipAtoB.setProperty("de8", nullToEmptyString(relationshipModel.getDe8()));
         	relationshipAtoB.setProperty("de9", nullToEmptyString(relationshipModel.getDe9()));
         	relationshipAtoB.setProperty("de10", nullToEmptyString(relationshipModel.getDe10()));
@@ -284,14 +282,12 @@ public class Relation implements IResource {
 	 * Removes a relationship by ID
 	 * 
 	 * @param relationshipId
-	 * @param tradId
 	 * @return HTTP Response 404 when no Relationship was found with id, 200
 	 *         when the Relationship was removed
 	 */
     @DELETE
-    @Path("deleterelationshipsbyid/fromtradition/{tradId}/withrelationship/{relationshipId}")
-    public Response deleteById(@PathParam("relationshipId") String relationshipId,
-			@PathParam("tradId") String tradId) {
+    @Path("deleterelationshipsbyid/withrelationship/{relationshipId}")
+    public Response deleteById(@PathParam("relationshipId") String relationshipId) {
     	
     	
     	try (Transaction tx = db.beginTx()) 
