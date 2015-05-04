@@ -58,7 +58,7 @@ public class ReadingTest {
 	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood\"}";
 
 	private String tradId;
-	
+
 	GraphDatabaseService db;
 
 	/*
@@ -66,24 +66,22 @@ public class ReadingTest {
 	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
-	
-	
+
 	private Reading reading;
 	private Witness witness;
 	private GraphMLToNeo4JParser importResource;
-
 
 	@Before
 	public void setUp() throws Exception {
 
 		GraphDatabaseServiceProvider.setImpermanentDatabase();
-		
+
 		db = new GraphDatabaseServiceProvider().getDatabase();
-		
+
 		reading = new Reading();
 		witness = new Witness();
 		importResource = new GraphMLToNeo4JParser();
-		
+
 		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
@@ -171,26 +169,26 @@ public class ReadingTest {
 	@Test
 	public void changeReadingPropertiesTest() {
 
+		Node node;
+		ClientResponse response;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
-			Node firstNode = nodes.next();
+			node = nodes.next();
 			assertFalse(nodes.hasNext());
-
+			
 			String jsonPayload = "{\"key\":\"dn15\",\"newProperty\":\"snow\"}";
-			ClientResponse response = jerseyTest
-					.resource()
-					.path("/reading/changeproperties/ofreading/"
-							+ firstNode.getId())
+			response = jerseyTest.resource()
+					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
-			// assertEquals(Status.OK, response.getClientResponseStatus());
-			// assertEquals("snow", (String)firstNode.getProperty("dn15"));
-		}
+			assertEquals("snow", (String) node.getProperty("dn15"));
+			tx.success();
+		}		
 	}
 
 	@Test
@@ -199,8 +197,7 @@ public class ReadingTest {
 
 		ClientResponse resp = jerseyTest
 				.resource()
-				.path("/reading/getreading/fromtradition/" + tradId
-						+ "/withreadingid/" + 16)
+				.path("/reading/getreading/withreadingid/" + 16)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		ObjectMapper mapper = new ObjectMapper();
@@ -227,8 +224,7 @@ public class ReadingTest {
 
 			ReadingModel readingModel = jerseyTest
 					.resource()
-					.path("/reading/getreading/fromtradition/" + tradId
-							+ "/withreadingid/" + node.getId())
+					.path("/reading/getreading/withreadingid/" + node.getId())
 					.type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
 			assertTrue(readingModel != null);
@@ -242,8 +238,7 @@ public class ReadingTest {
 	public void getReadingWithFalseIdTest() {
 		ClientResponse response = jerseyTest
 				.resource()
-				.path("/reading/getreading/fromtradition/" + tradId
-						+ "/withreadingid/" + 200)
+				.path("/reading/getreading/withreadingid/" + 200)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
 		assertEquals(Status.INTERNAL_SERVER_ERROR,
@@ -271,7 +266,7 @@ public class ReadingTest {
 			String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", "
 					+ secondNode.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.path("/reading/duplicatereading")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
@@ -325,7 +320,7 @@ public class ReadingTest {
 			String jsonPayload = "{\"readings\":[" + node.getId()
 					+ "], \"witnesses\":[\"A\",\"B\" ]}";
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.path("/reading/duplicatereading")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
@@ -369,7 +364,7 @@ public class ReadingTest {
 			String jsonPayload = "{\"readings\":[" + firstNode.getId()
 					+ "], \"witnesses\":[]}";
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.path("/reading/duplicatereading")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
@@ -398,7 +393,7 @@ public class ReadingTest {
 			String jsonPayload = "{\"readings\":[" + firstNode.getId()
 					+ "], \"witnesses\":[\"C\"]}";
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.path("/reading/duplicatereading")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
@@ -426,7 +421,7 @@ public class ReadingTest {
 			String jsonPayload = "{\"readings\":[" + firstNode.getId()
 					+ "], \"witnesses\":[\"C\"]}";
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/duplicatereading/fromtradition/" + tradId)
+					.path("/reading/duplicatereading")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
@@ -456,9 +451,8 @@ public class ReadingTest {
 			// merge readings
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId
-							+ "/firstreading/" + firstNode.getId()
-							+ "/secondreading/" + secondNode.getId())
+					.path("/reading/mergereadings/first/" + firstNode.getId()
+							+ "/second/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -543,9 +537,8 @@ public class ReadingTest {
 			// merge readings
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId
-							+ "/firstreading/" + firstNode.getId()
-							+ "/secondreading/" + secondNode.getId())
+					.path("/reading/mergereadings/first/" + firstNode.getId()
+							+ "/second/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -586,9 +579,8 @@ public class ReadingTest {
 			// merge readings
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId
-							+ "/firstreading/" + firstNode.getId()
-							+ "/secondreading/" + secondNode.getId())
+					.path("/reading/mergereadings/first/" + firstNode.getId()
+							+ "/second/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -629,9 +621,8 @@ public class ReadingTest {
 			// merge readings
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId
-							+ "/firstreading/" + firstNode.getId()
-							+ "/secondreading/" + secondNode.getId())
+					.path("/reading/mergereadings/first/" + firstNode.getId()
+							+ "/second/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -673,9 +664,8 @@ public class ReadingTest {
 			// merge readings
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId
-							+ "/firstreading/" + firstNode.getId()
-							+ "/secondreading/" + secondNode.getId())
+					.path("/reading/mergereadings/first/" + firstNode.getId()
+							+ "/second/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -719,9 +709,8 @@ public class ReadingTest {
 			// merge readings
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/mergereadings/fromtradition/" + tradId
-							+ "/firstreading/" + firstNode.getId()
-							+ "/secondreading/" + secondNode.getId())
+					.path("/reading/mergereadings/first/" + firstNode.getId()
+							+ "/second/" + secondNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -764,8 +753,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/fromtradition/" + tradId
-							+ "/ofreading/" + node.getId())
+					.path("/reading/splitreading/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -819,8 +807,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/fromtradition/" + tradId
-							+ "/ofreading/" + node.getId())
+					.path("/reading/splitreading/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -856,8 +843,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/fromtradition/" + tradId
-							+ "/ofreading/" + untoMe.getId())
+					.path("/reading/splitreading/ofreading/" + untoMe.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -887,8 +873,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/fromtradition/" + tradId
-							+ "/ofreading/" + node.getId())
+					.path("/reading/splitreading/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -1057,9 +1042,8 @@ public class ReadingTest {
 
 			ClientResponse res = jerseyTest
 					.resource()
-					.path("/reading/compressreadings/fromtradition/" + tradId
-							+ "/readingone/" + showers.getId() + "/readingtwo/"
-							+ sweet.getId()).post(ClientResponse.class);
+					.path("/reading/compressreadings/first/" + showers.getId()
+							+ "/second/" + sweet.getId()).post(ClientResponse.class);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("successfully compressed readings",
@@ -1134,9 +1118,8 @@ public class ReadingTest {
 
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/compressreadings/fromtradition/" + tradId
-							+ "/readingone/" + showers.getId() + "/readingtwo/"
-							+ fruit.getId()).post(ClientResponse.class);
+					.path("/reading/compressreadings/first/" + showers.getId() 
+							+ "/second/" + fruit.getId()).post(ClientResponse.class);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
@@ -1314,9 +1297,8 @@ public class ReadingTest {
 	@Test
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
-			ResourceIterable<Node> tradNodes = db
-					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
-							"Tradition");
+			ResourceIterable<Node> tradNodes = db.findNodesByLabelAndProperty(
+					Nodes.TRADITION, "dg1", "Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();

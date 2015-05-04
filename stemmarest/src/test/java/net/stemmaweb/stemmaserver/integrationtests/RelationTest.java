@@ -216,7 +216,7 @@ public class RelationTest {
 	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
 	 */
 	@Test(expected=NotFoundException.class)
-	public void removeRelationshipTestDH43(){
+	public void deleteRelationshipTestDH43(){
 		/*
 		 * Create a relationship
 		 */
@@ -243,6 +243,7 @@ public class RelationTest {
     	} 
 	}
 	
+	//also tests the delete method: with the testTradition
 	@Test
 	public void deleteRealtionsTest(){
 		
@@ -298,16 +299,15 @@ public class RelationTest {
 			assertEquals(expectedText, resp.getEntity());
 			
 			tx.success();
-		}
-		
+		}		
 	}
 	
 	/**
 	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
-	 * Try to remove a relationship that does not exist
+	 * Try to delete a relationship that does not exist
 	 */
 	@Test
-	public void removeRelationshipThatDoesNotExistTestDH43(){
+	public void deleteRelationshipThatDoesNotExistTestDH43(){
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/1337").delete(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), removalResponse.getStatus());
 	}
@@ -316,7 +316,7 @@ public class RelationTest {
 	 * Test the removal method by posting two nodes to /relation/{textid}/relationships/delete
 	 */
 	@Test(expected=NotFoundException.class)
-	public void removeRelationshipTestRemoveAllDH43(){
+	public void deleteRelationshipTestdeleteAllDH43(){
 		/*
 		 * Create two relationships between two nodes
 		 */
@@ -349,7 +349,7 @@ public class RelationTest {
 		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class).getId();
 		
 		/*
-		 * Create the model to remove
+		 * Create the model to delete
 		 */
 		RelationshipModel removeModel = new RelationshipModel();
 		removeModel.setSource("16");
@@ -366,11 +366,9 @@ public class RelationTest {
     	} 
 	}
 	
-	/**
-	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
-	 */
+	
 	@Test(expected=NotFoundException.class)
-	public void removeRelationshipDocumentWideTestDH43(){
+	public void deleteRelationshipDocumentWideTestDH43(){
 		/*
 		 * Create a relationship
 		 */
