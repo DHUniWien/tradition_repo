@@ -29,8 +29,10 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
+ * 
  * This class provides a method for importing Graphml (XML) File into Neo4J
- * @author sevi
+ * 
+ * @author PSE FS 2015 Team2
  * 
  */
 public class GraphMLToNeo4JParser implements IResource

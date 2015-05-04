@@ -8,8 +8,12 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class DbPathProblemService {
-
 
 	public String findPathProblem(String tradId, GraphDatabaseService db) {
 

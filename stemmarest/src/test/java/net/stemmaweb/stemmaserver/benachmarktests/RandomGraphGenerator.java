@@ -18,7 +18,7 @@ import org.neo4j.graphdb.Transaction;
 /**
  * A helper class which helps to populate a complete random graph
  * 
- * @author jakob
+ * @author PSE FS 2015 Team2
  *
  */
 public class RandomGraphGenerator {

@@ -5,7 +5,9 @@ import org.neo4j.graphdb.RelationshipType;
 
 /**
  * 
- * Lists all possible relationshiptypes we give to relatinoships in neo4j.
+ * Lists all possible relationship types we give to relatinoships in neo4j.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 public enum ERelations implements RelationshipType{

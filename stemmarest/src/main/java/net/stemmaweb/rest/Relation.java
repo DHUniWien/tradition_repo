@@ -32,6 +32,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 /**
  * 
  * Comprises all the api calls related to a relation.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @Path("/relation")

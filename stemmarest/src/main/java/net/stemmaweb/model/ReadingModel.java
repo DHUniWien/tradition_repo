@@ -7,6 +7,14 @@ import org.neo4j.graphdb.Node;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
+/**
+ * 
+ * Provides a model for a reading outside of the database. Can be parsed into a
+ * json object.
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class ReadingModel implements Comparable<ReadingModel> {

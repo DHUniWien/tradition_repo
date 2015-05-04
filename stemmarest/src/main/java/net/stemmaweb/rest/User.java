@@ -34,6 +34,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * 
  * Comprises all the api calls related to a user.
  * 
+ * @author PSE FS 2015 Team2
+ * 
  */
 @Path("/user")
 public class User implements IResource {

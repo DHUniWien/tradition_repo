@@ -52,6 +52,8 @@ import com.sun.jersey.multipart.FormDataParam;
 /**
  * 
  * Comprises all the api calls related to a tradition.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @Path("/tradition")

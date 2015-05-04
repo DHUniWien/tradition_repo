@@ -43,7 +43,9 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
- * @author Jakob, Severin
+ * Contains all tests for the api calls related to relations between readings.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @RunWith(MockitoJUnitRunner.class)

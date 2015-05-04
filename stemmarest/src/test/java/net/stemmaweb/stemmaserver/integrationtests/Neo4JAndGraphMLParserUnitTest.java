@@ -28,12 +28,15 @@ import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @RunWith(MockitoJUnitRunner.class)
 public class Neo4JAndGraphMLParserUnitTest {
 
-	
 	GraphDatabaseService db;
-
 
 	private GraphMLToNeo4JParser importResource;
 	private Neo4JToGraphMLParser exportResource;

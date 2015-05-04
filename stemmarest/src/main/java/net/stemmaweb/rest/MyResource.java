@@ -6,7 +6,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 
 /**
+ * 
  * Example resource class hosted at the URI path "/myresource"
+ * 
+ * @author PSE FS 2015 Team2
+ * 
  */
 @Path("/myresource")
 public class MyResource implements IResource{

@@ -6,7 +6,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.neo4j.graphdb.Relationship;
 
-
+/**
+ * 
+ * Provides a model for a relationship outside of the database. Can be parsed
+ * into a json object.
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @XmlRootElement
 public class RelationshipModel {
 	

@@ -26,8 +26,10 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 /**
+ * 
  * This class provides methods for exporting GraphMl (XML) File from Neo4J
- * @author sevi
+ * 
+ * @author PSE FS 2015 Team2
  * 
  */
 public class Neo4JToGraphMLParser implements IResource

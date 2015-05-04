@@ -25,6 +25,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 /**
  * 
  * Comprises all the api calls related to a witness.
+ * 
+ * @author PSE FS 2015 Team2
  *
  */
 @Path("/witness")

@@ -26,7 +26,7 @@ import org.neo4j.graphdb.Transaction;
 
 /**
  * 
- * @author Severin
+ * @author PSE FS 2015 Team2
  *
  */
 @RunWith(MockitoJUnitRunner.class)

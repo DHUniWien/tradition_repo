@@ -24,6 +24,11 @@ import org.neo4j.graphdb.Node;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmark-100kNodes")
 public class Benchmark100kNodes extends BenachmarkTests {

@@ -1,9 +1,8 @@
 package net.stemmaweb.rest;
 
-
 /**
  * 
- * @author jakob
+ * @author PSE FS 2015 Team2
  *
  */
 public interface IResource {

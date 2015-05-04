@@ -9,6 +9,13 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+/**
+ * 
+ * Provides helper methods related to readings.
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 public class ReadingService {
 	
 	/**

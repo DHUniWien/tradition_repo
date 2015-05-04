@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
  * 
- * @author Jakob
+ * @author PSE FS 2015 Team2
  *
  */
 @XmlRootElement

@@ -28,6 +28,11 @@ import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 
+/**
+ * 
+ * @author PSE FS 2015 Team2
+ *
+ */
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmark-1kNodes")
 public class Benchmark1kNodes extends BenachmarkTests {

@@ -41,6 +41,8 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 /**
  * 
+ * Contains all tests for the api calls related to the tradition.
+ * 
  * @author PSE FS 2015 Team2
  *
  */

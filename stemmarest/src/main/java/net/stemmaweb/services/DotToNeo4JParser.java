@@ -15,8 +15,10 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
 /**
+ * 
  * This class provides methods for exporting Dot File from Neo4J
- * @author sevi
+ * 
+ * @author PSE FS 2015 Team2
  * 
  */
 public class DotToNeo4JParser implements IResource
