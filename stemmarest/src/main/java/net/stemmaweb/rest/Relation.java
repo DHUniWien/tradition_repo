@@ -135,7 +135,7 @@ public class Relation implements IResource {
 			secondDirection = Direction.INCOMING;
 		}
 
-		int depth = (int) (Long.parseLong(firstReading.getProperty("rank").toString()) - (Long.parseLong( secondReading.getProperty("id4").toString()))) + 1;
+		int depth = (int) (Long.parseLong(firstReading.getProperty("rank").toString()) - (Long.parseLong( secondReading.getProperty("rank").toString()))) + 1;
 
 		for (Node firstReadingNextNode : getNextNodes(firstReading, db, firstDirection, depth))
 			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
