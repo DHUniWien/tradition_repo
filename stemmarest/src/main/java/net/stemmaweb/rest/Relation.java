@@ -54,15 +54,15 @@ public class Relation implements IResource {
 	 * Creates a new relationship between the two nodes specified.
 	 * 
 	 * @param relationshipModel
-	 * @param textId
+	 * @param tradId
 	 * @return
 	 */
     @POST
-    @Path("createrelationship/intradition/{texId}")
+    @Path("createrelationship/intradition/{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
 	public Response create(RelationshipModel relationshipModel,
-			@PathParam("textId") String textId) {
+			@PathParam("tradId") String tradId) {
     	
     	
     	Relationship relationshipAtoB = null;
@@ -166,20 +166,20 @@ public class Relation implements IResource {
     /**
 	 * Get a list of all readings
 	 * 
-	 * @param textId
+	 * @param tradId
 	 * @return relationships ArrayList
 	 */
     @GET
-    @Path("getallrelationships/fromtradition/{textId}")
+    @Path("getallrelationships/fromtradition/{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
-	public Response getAllRelationships(@PathParam("textId") String textId) {
+	public Response getAllRelationships(@PathParam("tradId") String tradId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
     	
     	
     	
     	try (Transaction tx = db.beginTx()) {
     		
-    		Node startNode = DatabaseService.getStartNode(textId, db);
+    		Node startNode = DatabaseService.getStartNode(tradId, db);
 			for (Relationship rel: db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
 					.relationships(ERelations.RELATIONSHIP, Direction.BOTH)
@@ -203,26 +203,20 @@ public class Relation implements IResource {
     	return Response.ok().entity(relationships).build();    	
 	}     
     
-    /***
-     *TODO needs clarification 
-     *
-     *DELETE Does not suport parameters according to RFC2616 9.7. So the method is here implemented 
-     *with post and {textId}/relationships/delete 
-     *source and target node as parameters like in https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271
-     */
+  
     /**
      * Remove all like https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271)
      *  in Relationships of type RELATIONSHIP between the two nodes.
      * @param relationshipModel
-     * @param textId
+     * @param tradId
      * @return HTTP Response 404 when no node was found, 200 When relationships where removed
      */
     //@DELETE 
     @POST
-    @Path("deleterelationship/fromtradition/{textId}")
+    @Path("deleterelationship/fromtradition/{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)
 	public Response delete(RelationshipModel relationshipModel,
-			@PathParam("textId") String textId) {
+			@PathParam("tradId") String tradId) {
     	if(relationshipModel.getDe10().equals("local")){
     		
         	try (Transaction tx = db.beginTx()) {
@@ -252,7 +246,7 @@ public class Relation implements IResource {
     	} else if(relationshipModel.getDe10().equals("document")){
         	
         	
-    		Node startNode = DatabaseService.getStartNode(textId, db);
+    		Node startNode = DatabaseService.getStartNode(tradId, db);
 
         	try (Transaction tx = db.beginTx()) 
         	{
@@ -290,14 +284,14 @@ public class Relation implements IResource {
 	 * Removes a relationship by ID
 	 * 
 	 * @param relationshipId
-	 * @param textId
+	 * @param tradId
 	 * @return HTTP Response 404 when no Relationship was found with id, 200
 	 *         when the Relationship was removed
 	 */
     @DELETE
-    @Path("deleterelationshipsbyid/fromtradition/{textId}/withrelationship/{relationshipId}")
+    @Path("deleterelationshipsbyid/fromtradition/{tradId}/withrelationship/{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId,
-			@PathParam("textId") String textId) {
+			@PathParam("tradId") String tradId) {
     	
     	
     	try (Transaction tx = db.beginTx()) 

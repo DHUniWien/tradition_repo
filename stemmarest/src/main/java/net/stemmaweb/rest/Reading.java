@@ -85,26 +85,24 @@ public class Reading implements IResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("changeproperties/ofreading/{readId}")
 	public Response changeReadingProperties(@PathParam("readId") long readId,
-			String key, String newProperty) {
+			ChangePropertyModel changeModel) {
 		
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
 			reading = db.getNodeById(readId);
 
-			if (!reading.hasProperty(key))
+			if (!reading.hasProperty(changeModel.getKey()))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("the reading does not have such property")
 						.build();
 			else{
-				reading.setProperty(key, newProperty);	
+				reading.setProperty(changeModel.getKey(), changeModel.getNewProperty());	
 			}
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
-		}
+		} 
 		return Response.ok(reading).build();
 	}
 
