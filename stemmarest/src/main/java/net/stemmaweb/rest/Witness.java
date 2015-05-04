@@ -54,8 +54,7 @@ public class Witness implements IResource {
 		String witnessAsText = "";
 		final String WITNESS_ID = textId;
 		Node startNode = DatabaseService.getStartNode(tradId, db);
-		EvaluatorService evaService = new EvaluatorService();
-		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator e = EvaluatorService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			for (Node node : db.traversalDescription().depthFirst()
@@ -111,8 +110,7 @@ public class Witness implements IResource {
 			return Response.status(Status.INTERNAL_SERVER_ERROR)
 					.entity("end-rank is equal to start-rank").build();
 
-		EvaluatorService evaService = new EvaluatorService();
-		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator e = EvaluatorService.getEvalForWitness(WITNESS_ID);
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 
 		try (Transaction tx = db.beginTx()) {
@@ -173,8 +171,7 @@ public class Witness implements IResource {
 			return Response.status(Status.NOT_FOUND)
 					.entity("Could not find tradition with this id").build();
 		
-		EvaluatorService evaService = new EvaluatorService();
-		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator e = EvaluatorService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {			
 
