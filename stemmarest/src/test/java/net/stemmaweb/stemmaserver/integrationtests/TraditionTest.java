@@ -182,12 +182,12 @@ public class TraditionTest {
 		rel.setSource("16");
 		rel.setTarget("27");
 		rel.setId("36");
-		rel.setDe8("april");
-		rel.setDe6("no");
-		rel.setDe9("april");
-		rel.setDe1("0");
-		rel.setDe11("transposition");
-		rel.setDe10("local");
+		rel.setReading_a("april");
+		rel.setIs_significant("no");
+		rel.setReading_b("april");
+		rel.setAlters_meaning("0");
+		rel.setType("transposition");
+		rel.setScope("local");
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
 				.path("/tradition/getallrelationships/" + tradId)
@@ -198,12 +198,12 @@ public class TraditionTest {
 		assertEquals(rel.getSource(), relLoaded.getSource());
 		assertEquals(rel.getTarget(), relLoaded.getTarget());
 		assertEquals(rel.getId(), relLoaded.getId());
-		assertEquals(rel.getDe8(), relLoaded.getDe8());
-		assertEquals(rel.getDe6(), relLoaded.getDe6());
-		assertEquals(rel.getDe9(), relLoaded.getDe9());
-		assertEquals(rel.getDe1(), relLoaded.getDe1());
-		assertEquals(rel.getDe11(), relLoaded.getDe11());
-		assertEquals(rel.getDe10(), relLoaded.getDe10());
+		assertEquals(rel.getReading_a(), relLoaded.getReading_a());
+		assertEquals(rel.getIs_significant(), relLoaded.getIs_significant());
+		assertEquals(rel.getReading_b(), relLoaded.getReading_b());
+		assertEquals(rel.getAlters_meaning(), relLoaded.getAlters_meaning());
+		assertEquals(rel.getType(), relLoaded.getType());
+		assertEquals(rel.getScope(), relLoaded.getScope());
 
 	}
 	
@@ -382,7 +382,7 @@ public class TraditionTest {
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
 			tradition.setId(tradNode.getProperty("id").toString());
-			tradition.setName(tradNode.getProperty("dg1").toString());
+			tradition.setName(tradNode.getProperty("name").toString());
 
 			assertTrue(tradition.getId().equals(tradId));
 			assertTrue(tradition.getName().equals("Tradition"));
@@ -412,10 +412,10 @@ public class TraditionTest {
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
 			tradition.setId(tradNode.getProperty("id").toString());
-			tradition.setName(tradNode.getProperty("dg1").toString());
+			tradition.setName(tradNode.getProperty("name").toString());
 
 			assertTrue(tradition.getId().equals(tradId));
-			assertTrue(tradition.getName().equals("Tradition"));
+			assertTrue(tradition.getName().equals("RenamedTraditionName"));
 
 			tx.success();
 
@@ -452,7 +452,7 @@ public class TraditionTest {
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
 			tradition.setId(tradNode.getProperty("id").toString());
-			tradition.setName(tradNode.getProperty("dg1").toString());
+			tradition.setName(tradNode.getProperty("name").toString());
 
 			assertTrue(tradition.getId().equals(tradId));
 			assertTrue(tradition.getName().equals("Tradition"));
@@ -484,7 +484,7 @@ public class TraditionTest {
 			Node tradNode = tradIterator.next();
 
 			tradition.setId(tradNode.getProperty("id").toString());
-			tradition.setName(tradNode.getProperty("dg1").toString());
+			tradition.setName(tradNode.getProperty("name").toString());
 
 
 			tx.success();
@@ -541,7 +541,7 @@ public class TraditionTest {
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
 			tradition.setId(tradNode.getProperty("id").toString());
-			tradition.setName(tradNode.getProperty("dg1").toString());
+			tradition.setName(tradNode.getProperty("name").toString());
 
 			assertTrue(tradition.getId().equals(tradId));
 			assertTrue(tradition.getName().equals("Tradition"));
@@ -577,7 +577,7 @@ public class TraditionTest {
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
 			tradition.setId(tradNode.getProperty("id").toString());
-			tradition.setName(tradNode.getProperty("dg1").toString());
+			tradition.setName(tradNode.getProperty("name").toString());
 
 			assertTrue(tradition.getId().equals(tradId));
 			assertTrue(tradition.getName().equals("Tradition"));

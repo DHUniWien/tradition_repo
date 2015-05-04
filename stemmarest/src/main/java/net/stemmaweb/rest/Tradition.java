@@ -133,8 +133,8 @@ public class Tradition implements IResource {
 				TraditionModel tradModel = new TraditionModel();
 				if(trad.hasProperty("id"))
 					tradModel.setId(trad.getProperty("id").toString());
-				if(trad.hasProperty("dg1"))	
-					tradModel.setName(trad.getProperty("dg1").toString());
+				if(trad.hasProperty("name"))	
+					tradModel.setName(trad.getProperty("name").toString());
 				traditionList.add(tradModel);
 			}
 			tx.success();
@@ -231,32 +231,32 @@ public class Tradition implements IResource {
 					if (rel.getEndNode() != null)
 						relMod.setTarget(String.valueOf(rel.getEndNode().getId()));
 					relMod.setId(String.valueOf(rel.getId()));
-					if (rel.hasProperty("de0"))
-						relMod.setDe0(rel.getProperty("de0").toString());
-					if (rel.hasProperty("de1"))
-						relMod.setDe1(rel.getProperty("de1").toString());
-					if (rel.hasProperty("de2"))
-						relMod.setDe2(rel.getProperty("de2").toString());
-					if (rel.hasProperty("de3"))
-						relMod.setDe3(rel.getProperty("de3").toString());
-					if (rel.hasProperty("de4"))
-						relMod.setDe4(rel.getProperty("de4").toString());
-					if (rel.hasProperty("de5"))
-						relMod.setDe5(rel.getProperty("de5").toString());
-					if (rel.hasProperty("de6"))
-						relMod.setDe6(rel.getProperty("de6").toString());
-					if (rel.hasProperty("de7"))
-						relMod.setDe7(rel.getProperty("de7").toString());
-					if (rel.hasProperty("de8"))
-						relMod.setDe8(rel.getProperty("de8").toString());
-					if (rel.hasProperty("de9"))
-						relMod.setDe9(rel.getProperty("de9").toString());
-					if (rel.hasProperty("de10"))
-						relMod.setDe10(rel.getProperty("de10").toString());
-					if (rel.hasProperty("de11"))
-						relMod.setDe11(rel.getProperty("de11").toString());
-					if (rel.hasProperty("de12"))
-						relMod.setDe12(rel.getProperty("de12").toString());
+					if (rel.hasProperty("a_derivable_from_b"))
+						relMod.setA_derivable_from_b(rel.getProperty("a_derivable_from_b").toString());
+					if (rel.hasProperty("alters_meaning"))
+						relMod.setAlters_meaning(rel.getProperty("alters_meaning").toString());
+					if (rel.hasProperty("annotation"))
+						relMod.setAnnotation(rel.getProperty("annotation").toString());
+					if (rel.hasProperty("b_derivable_from_a"))
+						relMod.setB_derivable_from_a(rel.getProperty("b_derivable_from_a").toString());
+					if (rel.hasProperty("displayform"))
+						relMod.setDisplayform(rel.getProperty("displayform").toString());
+					if (rel.hasProperty("extra"))
+						relMod.setExtra(rel.getProperty("extra").toString());
+					if (rel.hasProperty("is_significant"))
+						relMod.setIs_significant(rel.getProperty("is_significant").toString());
+					if (rel.hasProperty("non_independent"))
+						relMod.setNon_independent(rel.getProperty("non_independent").toString());
+					if (rel.hasProperty("reading_a"))
+						relMod.setReading_a(rel.getProperty("reading_a").toString());
+					if (rel.hasProperty("reading_b"))
+						relMod.setReading_b(rel.getProperty("reading_b").toString());
+					if (rel.hasProperty("scope"))
+						relMod.setScope(rel.getProperty("scope").toString());
+					if (rel.hasProperty("type"))
+						relMod.setType(rel.getProperty("type").toString());
+					if (rel.hasProperty("witness"))
+						relMod.setWitness(rel.getProperty("witness").toString());
 	
 					relList.add(relMod);
 				}
@@ -465,10 +465,8 @@ public class Tradition implements IResource {
 	        }
 	        everything = sb.toString();
 	    }catch  (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

@@ -149,7 +149,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        					}
 			        					else
 			        					{
-			        						rel.setProperty(attr,val);
+			        						rel.setProperty(map.get(attr),val);
 			        					//System.out.println(map.get(reader.getElementText()));
 			        					}
 			        				}
@@ -162,16 +162,17 @@ public class GraphMLToNeo4JParser implements IResource
 			        				if(map.get(reader.getAttributeValue(0)).equals("id"))
 			        				{
 			        					//System.out.println(currNode.getProperty("id"));
-			        					currNode.setProperty(reader.getAttributeValue(0), reader.getElementText());
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)),
+			        											reader.getElementText());
 			        				}
 			        				else if(map.get(reader.getAttributeValue(0)).equals("rank"))
 			        				{
-			        					currNode.setProperty(reader.getAttributeValue(0), 
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
 			        							Long.parseLong(reader.getElementText()));
 			        				}
 			        				else
 			        				{
-			        					currNode.setProperty(reader.getAttributeValue(0), 
+			        					currNode.setProperty(map.get(reader.getAttributeValue(0)), 
 			        							reader.getElementText());
 			        				}
 			        			}
@@ -197,7 +198,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        			//System.out.println(prefix);
 			        			currNode.setProperty("id", prefix.substring(0, prefix.length()-1));
 			        			
-			        			currNode.setProperty(attr, text);
+			        			currNode.setProperty(map.get(attr), text);
 			        		}
 			        		else if(map.get(attr).equals("stemmata"))
 			        		{
@@ -205,7 +206,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        		}
 			        		else
 			        		{
-			        			currNode.setProperty(attr,text);
+			        			currNode.setProperty(map.get(attr),text);
 			        		}
 			        		
 			        	}
@@ -345,9 +346,9 @@ public class GraphMLToNeo4JParser implements IResource
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
-				if(node.hasProperty("dn1"))
+				if(node.hasProperty("id"))
 				{
-					node.removeProperty("dn1");
+					node.removeProperty("id");
 				}
 				if(node.hasProperty("id"))
 				{

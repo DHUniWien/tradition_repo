@@ -127,7 +127,7 @@ public abstract class BenachmarkTests {
 				}, jsonPayload);
 
 		ClientResponse response = jerseyTest.resource()
-				.path("/reading/merge/" + tradId + "/" + duplicateReadingNodeId + "/" + duplicatedReadings.get(0).getDn1())
+				.path("/reading/merge/" + tradId + "/" + duplicateReadingNodeId + "/" + duplicatedReadings.get(0).getId())
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 
 		assertEquals(Status.OK, response.getClientResponseStatus());
@@ -285,12 +285,12 @@ public abstract class BenachmarkTests {
 		String relationshipId = "";
 		relationship.setSource(theRoot + "");
 		relationship.setTarget(untoMe + "");
-		relationship.setDe11("grammatical");
-		relationship.setDe1("0");
-		relationship.setDe6("true");
-		relationship.setDe8("the root");
-		relationship.setDe9("unto me");
-		relationship.setDe10("local");
+		relationship.setType("grammatical");
+		relationship.setAlters_meaning("0");
+		relationship.setIs_significant("true");
+		relationship.setReading_a("the root");
+		relationship.setReading_b("unto me");
+		relationship.setScope("local");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("reaterelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();

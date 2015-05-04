@@ -44,7 +44,7 @@ public class ReadingService {
 	 */
 	public static boolean wouldGetCyclic(GraphDatabaseService db, Node firstReading, Node secondReading) {
 		Node lowerRankReading, higherRankReading;
-		if ((Long) firstReading.getProperty("dn14") < (Long) secondReading.getProperty("dn14")) {
+		if ((Long) firstReading.getProperty("rank") < (Long) secondReading.getProperty("rank")) {
 			lowerRankReading = firstReading;
 			higherRankReading = secondReading;
 		} else {
