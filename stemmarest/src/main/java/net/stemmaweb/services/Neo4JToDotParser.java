@@ -223,6 +223,7 @@ public class Neo4JToDotParser
 	    
 	    String type = "png";
 //	      String type = "plain";
+	    
 	    File out = new File(outFile + "." + type);   // Linux
 //	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
 	    gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
@@ -251,5 +252,42 @@ public class Neo4JToDotParser
 		
 		writePNGFromDot(everything, outFile);
 	}
+	
+	public void writeSVGFromDot(String dot, String outFile)
+	{
+		GraphViz gv = new GraphViz();
+		gv.add(dot);
+	    
+	    String type = "svg";
+//	      String type = "plain";
+	    
+	    File out = new File(outFile + "." + type);   // Linux
+//	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
+	    gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
+	}
 
+	public void writeSVGFromDotFile(String inFile, String outFile)
+	{	
+		String everything = "";
+		try(BufferedReader br = new BufferedReader(new FileReader(inFile))) {
+	        StringBuilder sb = new StringBuilder();
+	        String line = br.readLine();
+
+	        while (line != null) {
+	            sb.append(line);
+	            sb.append(System.lineSeparator());
+	            line = br.readLine();
+	        }
+	        everything = sb.toString();
+	    } catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		writeSVGFromDot(everything, outFile);
+	}
+	
 }

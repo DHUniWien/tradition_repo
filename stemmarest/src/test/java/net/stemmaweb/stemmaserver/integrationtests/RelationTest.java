@@ -312,7 +312,7 @@ public class RelationTest {
 	}
 	
 	/**
-	 * Test the removal method by posting two nodes to /relation/{textid}/relationships/delete
+	 * Test the removal method by posting two nodes to /relation/{witnessId}/relationships/delete
 	 */
 	@Test(expected=NotFoundException.class)
 	public void deleteRelationshipTestdeleteAllDH43(){

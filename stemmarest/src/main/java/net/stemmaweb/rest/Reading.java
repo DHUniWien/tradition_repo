@@ -645,7 +645,7 @@ public class Reading implements IResource {
 	/**
 	 * gets the next readings from a given readings in the same witness
 	 * 
-	 * @param textId
+	 * @param witnessId
 	 *            : witness id
 	 * @param readId
 	 *            : reading id
@@ -653,12 +653,12 @@ public class Reading implements IResource {
 	 * @return the requested reading
 	 */
 	@GET
-	@Path("getnextreading/fromwitness/{textId}/ofreading/{readId}")
+	@Path("getnextreading/fromwitness/{witnessId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getNextReadingInWitness(@PathParam("textId") String textId,
+	public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
 			@PathParam("readId") long readId) {
 
-		final String WITNESS_ID = textId;
+		final String WITNESS_ID = witnessId;
 		
 		Evaluator witnessEvaluator = EvaluatorService.getEvalForWitness(WITNESS_ID);
 
@@ -691,7 +691,7 @@ public class Reading implements IResource {
 	/**
 	 * gets the next readings from a given readings in the same witness
 	 * 
-	 * @param textId
+	 * @param witnessId
 	 *            : witness id
 	 * @param readId
 	 *            : reading id
@@ -699,12 +699,12 @@ public class Reading implements IResource {
 	 * @return the requested reading
 	 */
 	@GET
-	@Path("getpreviousreading/fromwitness/{textId}/ofreading/{readId}")
+	@Path("getpreviousreading/fromwitness/{witnessId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getPreviousReadingInWitness(
-			@PathParam("textId") String textId, @PathParam("readId") long readId) {
+			@PathParam("witnessId") String witnessId, @PathParam("readId") long readId) {
 
-		final String WITNESS_ID = textId;
+		final String WITNESS_ID = witnessId;
 		
 		Evaluator wintessEvaluator = EvaluatorService.getEvalForWitness(WITNESS_ID);
 
