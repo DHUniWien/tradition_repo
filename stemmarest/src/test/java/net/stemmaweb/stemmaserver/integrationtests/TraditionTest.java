@@ -190,7 +190,7 @@ public class TraditionTest {
 		rel.setScope("local");
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/getallrelationships/" + tradId)
+				.path("/tradition/getallrelationships/fromtradition/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 		RelationshipModel relLoaded = relationships.get(2);
@@ -211,7 +211,7 @@ public class TraditionTest {
 	public void getAllRelationshipsCorrectAmountTest() {
 
 		List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/getallrelationships/" + tradId)
+				.path("/tradition/getallrelationships/fromtradition/" + tradId)
 				.get(new GenericType<List<RelationshipModel>>() {
 				});
 
