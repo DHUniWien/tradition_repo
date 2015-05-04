@@ -38,10 +38,6 @@ public class Benchmark1kNodes extends BenachmarkTests {
 	@BeforeClass
 	public static void prepareTheDatabase(){
 
-
-		/*
-		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
-		 */
 		RandomGraphGenerator rgg = new RandomGraphGenerator();
 
 		GraphDatabaseServiceProvider.setImpermanentDatabase();
