@@ -40,19 +40,19 @@ public class Witness implements IResource {
 	 *            : the id of the user who owns the witness
 	 * @param traditionName
 	 *            : the name of the tradition which the witness is in
-	 * @param textId
+	 * @param witnessId
 	 *            : the id of the witness
 	 * @return a witness as a string
 	 */
 	@GET
-	@Path("gettext/fromtradition/{tradId}/ofwitness/{textId}")
+	@Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsText(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId) {
+			@PathParam("witnessId") String witnessId) {
 
 		
 		String witnessAsText = "";
-		final String WITNESS_ID = textId;
+		final String WITNESS_ID = witnessId;
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		EvaluatorService evaService = new EvaluatorService();
 		Evaluator e = evaService.getEvalForWitness(WITNESS_ID);
@@ -88,21 +88,21 @@ public class Witness implements IResource {
 	 *            : the id of the user who owns the witness
 	 * @param traditionName
 	 *            : the name of the tradition which the witness is in
-	 * @param textId
+	 * @param witnessId
 	 *            : the id of the witness
 	 * @return a witness as a string
 	 */
 	@GET
-	@Path("gettext/fromtradition/{tradId}/ofwitness/{textId}/fromstartrank/{startRank}/toendrank/{endRank}")
+	@Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}/fromstartrank/{startRank}/toendrank/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsTextBetweenRanks(
 			@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId,
+			@PathParam("witnessId") String witnessId,
 			@PathParam("startRank") String startRankAsString,
 			@PathParam("endRank") String endRankAsString) {
 		
 		String witnessAsText = "";
-		final String WITNESS_ID = textId;
+		final String WITNESS_ID = witnessId;
 		long startRank = Long.parseLong(startRankAsString);
 		long endRank = Long.parseLong(endRankAsString);
 		if (endRank < startRank)
@@ -154,16 +154,16 @@ public class Witness implements IResource {
 	 *            : the id of the user who owns the witness
 	 * @param traditionName
 	 *            : the name of the tradition which the witness is in
-	 * @param textId
+	 * @param witnessId
 	 *            : the id of the witness
 	 * @return a witness as a list of readings
 	 */
 	@GET
-	@Path("getreadinglist/fromtradition/{tradId}/ofwitness/{textId}")
+	@Path("getreadinglist/fromtradition/{tradId}/ofwitness/{witnessId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
-			@PathParam("textId") String textId) {
-		final String WITNESS_ID = textId;
+			@PathParam("witnessId") String witnessId) {
+		final String WITNESS_ID = witnessId;
 
 		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();

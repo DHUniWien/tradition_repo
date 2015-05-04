@@ -66,10 +66,10 @@ public class Tradition implements IResource {
 	 * @return OK on success or an ERROR as JSON
 	 */
 	@POST
-	@Path("changeowner/fromtradition/{textId}")
+	@Path("changeowner/fromtradition/{witnessId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("textId") String textId) {
+	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("witnessId") String witnessId) {
 
 		
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
@@ -80,19 +80,19 @@ public class Tradition implements IResource {
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (textId:TRADITION {id:'" + textId + "'}) return textId");
-			Iterator<Node> nodes = result.columnAs("textId");
+			ExecutionResult result = engine.execute("match (witnessId:TRADITION {id:'" + witnessId + "'}) return witnessId");
+			Iterator<Node> nodes = result.columnAs("witnessId");
 
 			if (nodes.hasNext()) {
 				// Remove the old ownership
-				String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + textId + "'}) "
+				String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + witnessId + "'}) "
 						+ "MATCH tradition<-[r:NORMAL]-(:USER) DELETE r";
 				result = engine.execute(removeRelationQuery);
 				System.out.println(result.dumpToString());
 
 				// Add the new ownership
 				String createNewRelationQuery = "MATCH(user:USER {id:'" + textInfo.getOwnerId() + "'}) "
-						+ "MATCH(tradition: TRADITION {id:'" + textId + "'}) " + "SET tradition.name = '"
+						+ "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) " + "SET tradition.name = '"
 						+ textInfo.getName() + "' " + "SET tradition.public = '" + textInfo.getIsPublic() + "' "
 						+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
 				result = engine.execute(createNewRelationQuery);
@@ -106,9 +106,7 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
-		}
+		} 
 		return Response.status(Response.Status.OK).entity(textInfo).build();
 	}
 	
