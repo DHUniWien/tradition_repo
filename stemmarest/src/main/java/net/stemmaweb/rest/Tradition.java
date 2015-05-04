@@ -73,6 +73,7 @@ public class Tradition implements IResource {
 
 		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
+			db.shutdown();
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
