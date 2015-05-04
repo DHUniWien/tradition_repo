@@ -85,15 +85,15 @@ public class Benchmark1000kNodes extends BenachmarkTests {
 		}
 		
 		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+		ExecutionResult result = engine.execute("match (w:WORD {id5:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		duplicateReadingNodeId = nodes.next().getId();
 
-		result = engine.execute("match (w:WORD {dn15:'the root'}) return w");
+		result = engine.execute("match (w:WORD {id5:'the root'}) return w");
 		nodes = result.columnAs("w");
 		theRoot = nodes.next().getId();
 		
-		result = engine.execute("match (w:WORD {dn15:'unto me'}) return w");
+		result = engine.execute("match (w:WORD {id5:'unto me'}) return w");
 		nodes = result.columnAs("w");
 		untoMe = nodes.next().getId();
 		

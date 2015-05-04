@@ -209,7 +209,7 @@ public class User implements IResource {
 					Node tradNode = tradIterator.next();
 					TraditionModel tradition = new TraditionModel();
 					tradition.setId(tradNode.getProperty("id").toString());
-					tradition.setName(tradNode.getProperty("dg1").toString());
+					tradition.setName(tradNode.getProperty("name").toString());
 					traditions.add(tradition);
 				}
 			}

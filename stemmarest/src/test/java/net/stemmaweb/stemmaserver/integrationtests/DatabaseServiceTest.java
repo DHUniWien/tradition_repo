@@ -108,7 +108,7 @@ public class DatabaseServiceTest {
 	public void getStartNodeTest(){
 		try(Transaction tx = db.beginTx())
 		{
-			assertEquals("#START#", service.getStartNode("1001").getProperty("dn15").toString());
+			assertEquals("#START#", service.getStartNode("1001").getProperty("text").toString());
 		}
 	}
 	

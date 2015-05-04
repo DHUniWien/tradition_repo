@@ -113,10 +113,10 @@ public class RandomGraphGenerator {
 	            	 * Create start node
 	            	 */
 	            	Node startNode = db.createNode(Nodes.WORD);
-	            	startNode.setProperty("dn15", "#START#");
+	            	startNode.setProperty("id5", "#START#");
 	            	startNode.setProperty("dn8", "1");
-	            	startNode.setProperty("dn14", "0");
-	            	startNode.setProperty("dn2", "0");
+	            	startNode.setProperty("id4", "0");
+	            	startNode.setProperty("is_common", "0");
 	            	
 	            	traditionRootNode.createRelationshipTo(startNode, ERelations.NORMAL);
 	            	
@@ -144,10 +144,10 @@ public class RandomGraphGenerator {
             			for(int m=0;m<numberOfNodesOnThisRank;m++){
             				Node wordNode = db.createNode(Nodes.WORD);
 
-            				wordNode.setProperty("dn15", loremIpsumArray[randomGenerator.nextInt(loremIpsumArray.length)]);
-            				wordNode.setProperty("dn14", Integer.toString(u));
-            				wordNode.setProperty("dn2", "0");
-            				wordNode.setProperty("dn11", "latin");
+            				wordNode.setProperty("id5", loremIpsumArray[randomGenerator.nextInt(loremIpsumArray.length)]);
+            				wordNode.setProperty("id4", Integer.toString(u));
+            				wordNode.setProperty("is_common", "0");
+            				wordNode.setProperty("id1", "latin");
             				
             				nodesOfCurrentRank.add(wordNode);
             			}
@@ -206,10 +206,10 @@ public class RandomGraphGenerator {
         		Node endNode;
         		try(Transaction tx = db.beginTx()){
 	            	endNode = db.createNode(Nodes.WORD);
-	            	endNode.setProperty("dn15", "#END#");
+	            	endNode.setProperty("id5", "#END#");
 	            	endNode.setProperty("dn8", maxRank);
-	            	endNode.setProperty("dn14", "0");
-	            	endNode.setProperty("dn2", "0");
+	            	endNode.setProperty("id4", "0");
+	            	endNode.setProperty("is_common", "0");
 	            	tx.success();
         		}
             	

@@ -78,8 +78,8 @@ public class Relation implements IResource {
 				return Response.status(Status.CONFLICT)
 						.entity("This relationship creation is not allowed. Would produce cross-relationship.").build();
 
-			if (!relationshipModel.getDe11().equals("transposition")
-					&& !relationshipModel.getDe11().equals("repetition"))
+			if (!relationshipModel.getType().equals("transposition")
+					&& !relationshipModel.getType().equals("repetition"))
 				if (ReadingService.wouldGetCyclic(db, readingA, readingB))
 					return Response
 							.status(Status.CONFLICT)
@@ -87,16 +87,16 @@ public class Relation implements IResource {
 							.build();
 
         	relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
-        	relationshipAtoB.setProperty("de11", nullToEmptyString(relationshipModel.getDe11()));
-        	relationshipAtoB.setProperty("de0", nullToEmptyString(relationshipModel.getDe0()));
-        	relationshipAtoB.setProperty("de1", nullToEmptyString(relationshipModel.getDe1()));
-        	relationshipAtoB.setProperty("de3", nullToEmptyString(relationshipModel.getDe3()));
-        	relationshipAtoB.setProperty("de4", nullToEmptyString(relationshipModel.getDe5()));
-        	relationshipAtoB.setProperty("de6", nullToEmptyString(relationshipModel.getDe6()));
-        	relationshipAtoB.setProperty("de7", nullToEmptyString(relationshipModel.getDe7()));
-        	relationshipAtoB.setProperty("de8", nullToEmptyString(relationshipModel.getDe8()));
-        	relationshipAtoB.setProperty("de9", nullToEmptyString(relationshipModel.getDe9()));
-        	relationshipAtoB.setProperty("de10", nullToEmptyString(relationshipModel.getDe10()));
+        	relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
+        	relationshipAtoB.setProperty("a_derivable_from_b", nullToEmptyString(relationshipModel.getA_derivable_from_b()));
+        	relationshipAtoB.setProperty("alters_meaning", nullToEmptyString(relationshipModel.getAlters_meaning()));
+        	relationshipAtoB.setProperty("b_derivable_from_a", nullToEmptyString(relationshipModel.getB_derivable_from_a()));
+        	relationshipAtoB.setProperty("displayform", nullToEmptyString(relationshipModel.getDisplayform()));
+        	relationshipAtoB.setProperty("is_significant", nullToEmptyString(relationshipModel.getIs_significant()));
+        	relationshipAtoB.setProperty("non_independent", nullToEmptyString(relationshipModel.getNon_independent()));
+        	relationshipAtoB.setProperty("reading_a", nullToEmptyString(relationshipModel.getReading_a()));
+        	relationshipAtoB.setProperty("reading_b", nullToEmptyString(relationshipModel.getReading_b()));
+        	relationshipAtoB.setProperty("scope", nullToEmptyString(relationshipModel.getScope()));
         	
         	tx.success();
     	} 
@@ -121,8 +121,8 @@ public class Relation implements IResource {
 	 * @return
 	 */
 	private boolean wouldProduceCrossRelationship(GraphDatabaseService db, Node firstReading, Node secondReading) {
-		Long firstRank = Long.parseLong(firstReading.getProperty("dn14").toString());
-		Long secondRank = Long.parseLong(secondReading.getProperty("dn14").toString());
+		Long firstRank = Long.parseLong(firstReading.getProperty("rank").toString());
+		Long secondRank = Long.parseLong(secondReading.getProperty("rank").toString());
 		Direction firstDirection, secondDirection;
 
 		if (firstRank > secondRank) {
@@ -133,11 +133,11 @@ public class Relation implements IResource {
 			secondDirection = Direction.INCOMING;
 		}
 
-		int depth = (int) (Long.parseLong(firstReading.getProperty("dn14").toString()) - (Long.parseLong( secondReading.getProperty("dn14").toString()))) + 1;
+		int depth = (int) (Long.parseLong(firstReading.getProperty("rank").toString()) - (Long.parseLong( secondReading.getProperty("id4").toString()))) + 1;
 
 		for (Node firstReadingNextNode : getNextNodes(firstReading, db, firstDirection, depth))
 			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
-				if (!rel.getProperty("de11").equals("transposition") && !rel.getProperty("de11").equals("repetition"))
+				if (!rel.getProperty("type").equals("transposition") && !rel.getProperty("type").equals("repetition"))
 					for (Node secondReadingNextNode : getNextNodes(secondReading, db, secondDirection, depth))
 						if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode))
 							return true;
@@ -215,7 +215,7 @@ public class Relation implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
 	public Response delete(RelationshipModel relationshipModel,
 			@PathParam("tradId") String tradId) {
-    	if(relationshipModel.getDe10().equals("local")){
+    	if(relationshipModel.getScope().equals("local")){
     		
         	try (Transaction tx = db.beginTx()) {
             	
@@ -241,7 +241,7 @@ public class Relation implements IResource {
         	} catch (Exception e) {
     			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
     		}
-    	} else if(relationshipModel.getDe10().equals("document")){
+    	} else if(relationshipModel.getScope().equals("document")){
         	
         	
     		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -260,8 +260,8 @@ public class Relation implements IResource {
     		     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     	        		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     	        		
-    	       			if((rel.getStartNode().getProperty("dn15").equals(readingA.getProperty("dn15"))||rel.getEndNode().getProperty("dn15").equals(readingA.getProperty("dn15"))) &&
-    	       					(rel.getStartNode().getProperty("dn15").equals(readingB.getProperty("dn15"))||rel.getEndNode().getProperty("dn15").equals(readingB.getProperty("dn15"))))
+    	       			if((rel.getStartNode().getProperty("text").equals(readingA.getProperty("text"))||rel.getEndNode().getProperty("text").equals(readingA.getProperty("text"))) &&
+    	       					(rel.getStartNode().getProperty("text").equals(readingB.getProperty("text"))||rel.getEndNode().getProperty("text").equals(readingB.getProperty("text"))))
     	       			{
     	       				rel.delete();
     	       			}

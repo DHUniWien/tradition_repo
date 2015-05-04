@@ -117,25 +117,25 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("attr.name", "grammar_invalid");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn0");
+    		writer.writeAttribute("id", "grammar_invalid");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "id");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn1");
+    		writer.writeAttribute("id", "id");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "is_common");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn2");
+    		writer.writeAttribute("id", "is_common");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "is_end");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn3");
+    		writer.writeAttribute("id", "is_end");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "is_lacuna");
@@ -177,37 +177,37 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("attr.name", "join_prior");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn10");
+    		writer.writeAttribute("id", "id0");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "language");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn11");
+    		writer.writeAttribute("id", "id1");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "lexemes");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn12");
+    		writer.writeAttribute("id", "id2");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "normal_form");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn13");
+    		writer.writeAttribute("id", "id3");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "rank");
     		writer.writeAttribute("attr.type", "int");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn14");
+    		writer.writeAttribute("id", "id4");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "text");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "dn15");
+    		writer.writeAttribute("id", "id5");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "a_derivable_from_b");
@@ -339,7 +339,7 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", String.valueOf(node.getId()));
     			writer.writeStartElement("data");
-    			writer.writeAttribute("key","dn1");
+    			writer.writeAttribute("key","id");
     			writer.writeCharacters("n" + nodeId++);
     			writer.writeEndElement();
         		for(String prop : props)
@@ -425,7 +425,7 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", node.getId() + "");
 	        	writer.writeStartElement("data");
-	        	writer.writeAttribute("key","dn1");
+	        	writer.writeAttribute("key","id");
 	        	writer.writeCharacters("n" + nodeId++);
 	        	writer.writeEndElement();
         		writer.writeEndElement(); // end node

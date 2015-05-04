@@ -13,19 +13,19 @@ public class RelationshipModel {
 	private String source;
 	private String target;
 	private String id;
-	private String de0; // a_derivable_from_b
-	private String de1; // alters_meaning
-	private String de2; // annotation
-	private String de3; // b_derivable_from_a
-	private String de4; // displayform
-	private String de5; // extra
-	private String de6; // is_significant
-	private String de7; // non_independent
-	private String de8; // reading_a
-	private String de9; // reading_b
-	private String de10; // scope
-	private String de11; // type
-	private String de12; // witness
+	private String a_derivable_from_b;
+	private String alters_meaning;
+	private String annotation;
+	private String b_derivable_from_a;
+	private String displayform;
+	private String extra;
+	private String is_significant;
+	private String non_independent;
+	private String reading_a;
+	private String reading_b;
+	private String scope;
+	private String type;
+	private String witness;
 	
 	public RelationshipModel(){
 		
@@ -44,152 +44,179 @@ public class RelationshipModel {
 			case "source":
 				source = rel.getProperty("source").toString();
 				break;
-			case "de0":
-				de0 = rel.getProperty("de0").toString();				
+			case "a_derivable_from_b":
+				a_derivable_from_b = rel.getProperty("a_derivable_from_b").toString();				
 				break;
-			case "de1":
-				de1 = rel.getProperty("de1").toString();
+			case "alters_meaning":
+				alters_meaning = rel.getProperty("alters_meaning").toString();
 				break;
-			case "de2":
-				de2 = rel.getProperty("de2").toString();
+			case "annotation":
+				annotation = rel.getProperty("annotation").toString();
 				break;
-			case "de3":
-				de3 = rel.getProperty("de3").toString();
+			case "b_derivable_from_a":
+				b_derivable_from_a = rel.getProperty("b_derivable_from_a").toString();
 				break;
-			case "de4":
-				de4 = rel.getProperty("de4").toString();
+			case "displayform":
+				displayform = rel.getProperty("displayform").toString();
 				break;
-			case "de5":
-				de5 = rel.getProperty("de5").toString();
+			case "extra":
+				extra = rel.getProperty("extra").toString();
 				break;
-			case "de6":
-				de6 = rel.getProperty("de6").toString();
+			case "is_significant":
+				is_significant = rel.getProperty("is_significant").toString();
 				break;
-			case "de7":
-				de7 = rel.getProperty("de7").toString();
+			case "non_independent":
+				non_independent = rel.getProperty("non_independent").toString();
 				break;
-			case "de8":
-				de8 = rel.getProperty("de8").toString();				
+			case "reading_a":
+				reading_a = rel.getProperty("reading_a").toString();				
 				break;
-			case "de9":
-				de9 = rel.getProperty("de9").toString();
+			case "reading_b":
+				reading_b = rel.getProperty("reading_b").toString();
 				break;
-			case "de10":
-				de10 = rel.getProperty("de10").toString();
+			case "scope":
+				scope = rel.getProperty("scope").toString();
 				break;
-			case "de11":
-				de11 = rel.getProperty("de11").toString();
+			case "type":
+				type = rel.getProperty("type").toString();
 				break;
-			case "de12":
-				de12 = rel.getProperty("de12").toString();
+			case "witness":
+				witness = rel.getProperty("witness").toString();
 				break;
 			default:
 				break;
 			}
 		}
 	}
-	
+
 	public String getSource() {
 		return source;
 	}
+
 	public void setSource(String source) {
 		this.source = source;
 	}
+
 	public String getTarget() {
 		return target;
 	}
+
 	public void setTarget(String target) {
 		this.target = target;
 	}
+
 	public String getId() {
 		return id;
 	}
+
 	public void setId(String id) {
 		this.id = id;
 	}
+
+	public String getA_derivable_from_b() {
+		return a_derivable_from_b;
+	}
+
+	public void setA_derivable_from_b(String a_derivable_from_b) {
+		this.a_derivable_from_b = a_derivable_from_b;
+	}
+
+	public String getAlters_meaning() {
+		return alters_meaning;
+	}
+
+	public void setAlters_meaning(String alters_meaning) {
+		this.alters_meaning = alters_meaning;
+	}
+
+	public String getAnnotation() {
+		return annotation;
+	}
+
+	public void setAnnotation(String annotation) {
+		this.annotation = annotation;
+	}
+
+	public String getB_derivable_from_a() {
+		return b_derivable_from_a;
+	}
+
+	public void setB_derivable_from_a(String b_derivable_from_a) {
+		this.b_derivable_from_a = b_derivable_from_a;
+	}
+
+	public String getDisplayform() {
+		return displayform;
+	}
+
+	public void setDisplayform(String displayform) {
+		this.displayform = displayform;
+	}
+
+	public String getExtra() {
+		return extra;
+	}
+
+	public void setExtra(String extra) {
+		this.extra = extra;
+	}
+
+	public String getIs_significant() {
+		return is_significant;
+	}
+
+	public void setIs_significant(String is_significant) {
+		this.is_significant = is_significant;
+	}
+
+	public String getNon_independent() {
+		return non_independent;
+	}
+
+	public void setNon_independent(String non_independent) {
+		this.non_independent = non_independent;
+	}
+
+	public String getReading_a() {
+		return reading_a;
+	}
+
+	public void setReading_a(String reading_a) {
+		this.reading_a = reading_a;
+	}
+
+	public String getReading_b() {
+		return reading_b;
+	}
+
+	public void setReading_b(String reading_b) {
+		this.reading_b = reading_b;
+	}
+
+	public String getScope() {
+		return scope;
+	}
+
+	public void setScope(String scope) {
+		this.scope = scope;
+	}
+
+	public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public String getWitness() {
+		return witness;
+	}
+
+	public void setWitness(String witness) {
+		this.witness = witness;
+	}
 	
-	public String getDe0() {
-		return de0;
-	}
-	public void setDe0(String de0) {
-		this.de0 = de0;
-	}
-	
-	public String getDe2() {
-		return de2;
-	}
-	public void setDe2(String de2) {
-		this.de2 = de2;
-	}
-	
-	public String getDe4() {
-		return de4;
-	}
-	public void setDe4(String de4) {
-		this.de4 = de4;
-	}
-	
-	public String getDe6() {
-		return de6;
-	}
-	public void setDe6(String de6) {
-		this.de6 = de6;
-	}
-	
-	public String getDe1() {
-		return de1;
-	}
-	public void setDe1(String de1) {
-		this.de1 = de1;
-	}
-	public String getDe3() {
-		return de3;
-	}
-	public void setDe3(String de3) {
-		this.de3 = de3;
-	}
-	public String getDe5() {
-		return de5;
-	}
-	public void setDe5(String de5) {
-		this.de5 = de5;
-	}
-	public String getDe7() {
-		return de7;
-	}
-	public void setDe7(String de7) {
-		this.de7 = de7;
-	}
-	public String getDe8() {
-		return de8;
-	}
-	public void setDe8(String de8) {
-		this.de8 = de8;
-	}
-	public String getDe9() {
-		return de9;
-	}
-	public void setDe9(String de9) {
-		this.de9 = de9;
-	}
-	public String getDe10() {
-		return de10;
-	}
-	public void setDe10(String de10) {
-		this.de10 = de10;
-	}
-	public String getDe11() {
-		return de11;
-	}
-	public void setDe11(String de11) {
-		this.de11 = de11;
-	}
-	public String getDe12() {
-		return de12;
-	}
-	public void setDe12(String de12) {
-		this.de12 = de12;
-	}
 
 	
 }

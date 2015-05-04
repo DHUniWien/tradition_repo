@@ -46,7 +46,6 @@ public class Neo4JToDotParser
 
 	public Response parseNeo4J(String tradId)
 	{
-		
 		String filename = "upload/" + "output.dot";
     	
 		Node startNode = DatabaseService.getStartNode(tradId,db);
@@ -55,7 +54,6 @@ public class Neo4JToDotParser
     	{	
     		if(startNode==null)
     			return Response.status(Status.NOT_FOUND).build();
-    		
     		
     		File file = new File(filename);
     		
@@ -71,7 +69,7 @@ public class Neo4JToDotParser
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNode).nodes()) {
     			
-    			write("n" + node.getId() + " [label=\"" + node.getProperty("dn15").toString() + "\"];");
+    			write("n" + node.getId() + " [label=\"" + node.getProperty("text").toString() + "\"];");
     			
     			for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.NORMAL))
     			{
@@ -92,9 +90,8 @@ public class Neo4JToDotParser
     			}
     			for(Relationship rel : node.getRelationships(Direction.OUTGOING, ERelations.RELATIONSHIP))
     			{
-    				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[style=dotted;label=\""+ rel.getProperty("de11").toString() +"\";id=\"e"+ edgeId++ +"\"];";
+    				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[style=dotted;label=\""+ rel.getProperty("type").toString() +"\";id=\"e"+ edgeId++ +"\"];";
     			}
-    			
     		}
     		
     		write("subgraph { edge [dir=none]");
@@ -245,10 +242,8 @@ public class Neo4JToDotParser
 	        }
 	        everything = sb.toString();
 	    } catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -282,10 +277,8 @@ public class Neo4JToDotParser
 	        }
 	        everything = sb.toString();
 	    } catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

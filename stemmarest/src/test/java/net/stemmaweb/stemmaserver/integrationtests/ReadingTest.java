@@ -174,26 +174,26 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			node = nodes.next();
 			assertFalse(nodes.hasNext());
 			
-			String jsonPayload = "{\"key\":\"dn15\",\"newProperty\":\"snow\"}";
+			String jsonPayload = "{\"key\":\"text\",\"newProperty\":\"snow\"}";
 			response = jerseyTest.resource()
 					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
 
-			assertEquals("snow", (String) node.getProperty("dn15"));
+			assertEquals("snow", (String) node.getProperty("text"));
 			tx.success();
 		}		
 	}
 
 	@Test
 	public void getReadingJsonTest() throws JsonProcessingException {
-		String expected = "{\"dn1\":\"16\",\"dn2\":\"0\",\"dn11\":\"Default\",\"dn14\":2,\"dn15\":\"april\"}";
+		String expected = "{\"id\":\"16\",\"is_common\":\"0\",\"language\":\"Default\",\"rank\":2,\"text\":\"april\"}";
 
 		ClientResponse resp = jerseyTest
 				.resource()
@@ -213,7 +213,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -228,8 +228,8 @@ public class ReadingTest {
 					.type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
 			assertTrue(readingModel != null);
-			assertEquals(expectedReadingModel.getDn14(), readingModel.getDn14());
-			assertEquals(expectedReadingModel.getDn15(), readingModel.getDn15());
+			assertEquals(expectedReadingModel.getRank(), readingModel.getRank());
+			assertEquals(expectedReadingModel.getText(), readingModel.getText());
 			tx.success();
 		}
 	}
@@ -250,13 +250,13 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node secondNode = nodes.next();
@@ -276,7 +276,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+			result = engine.execute("match (w:WORD {text:'showers'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node originalShowers = nodes.next();
@@ -284,7 +284,7 @@ public class ReadingTest {
 			Node duplicatedShowers = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node originalSweet = nodes.next();
@@ -293,12 +293,20 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// compare original and duplicated
-			for (int i = 14; i < 16; i++) {
-				String key = "dn" + i;
-				assertEquals(originalShowers.getProperty(key),
-						duplicatedShowers.getProperty(key));
-				assertEquals(originalSweet.getProperty(key),
-						duplicatedSweet.getProperty(key));
+			Iterable<String> keys = originalShowers.getPropertyKeys();
+			for(String key : keys)
+			{
+				String val1 = originalShowers.getProperty(key).toString();
+				String val2 = duplicatedShowers.getProperty(key).toString();
+				assertEquals(val1, val2);
+			}
+			
+			keys = originalSweet.getPropertyKeys();
+			for(String key : keys)
+			{
+				String val1 = originalSweet.getProperty(key).toString();
+				String val2 = duplicatedSweet.getProperty(key).toString();
+				assertEquals(val1, val2);
 			}
 
 			tx.success();
@@ -310,7 +318,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'of'}) return w");
+					.execute("match (w:WORD {text:'of'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -330,7 +338,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'of'}) return w");
+			result = engine.execute("match (w:WORD {text:'of'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node originalOf = nodes.next();
@@ -339,10 +347,12 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// compare original and duplicated
-			for (int i = 14; i < 16; i++) {
-				String key = "dn" + i;
-				assertEquals(originalOf.getProperty(key),
-						duplicatedOf.getProperty(key));
+			Iterable<String> keys = originalOf.getPropertyKeys();
+			for(String key : keys)
+			{
+				String val1 = originalOf.getProperty(key).toString();
+				String val2 = duplicatedOf.getProperty(key).toString();
+				assertEquals(val1, val2);
 			}
 
 			tx.success();
@@ -354,7 +364,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'rood'}) return w");
+					.execute("match (w:WORD {text:'rood'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -383,7 +393,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'rood'}) return w");
+					.execute("match (w:WORD {text:'rood'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -411,7 +421,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'root'}) return w");
+					.execute("match (w:WORD {text:'root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -440,7 +450,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'fruit'}) return w");
+					.execute("match (w:WORD {text:'fruit'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -463,7 +473,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
+			result = engine.execute("match (w:WORD {text:'fruit'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node stayingNode = nodes.next();
@@ -478,14 +488,14 @@ public class ReadingTest {
 
 			for (Relationship outgoing : stayingNode.getRelationships(
 					ERelations.NORMAL, Direction.OUTGOING)) {
-				if (outgoing.getOtherNode(stayingNode).getProperty("dn15")
+				if (outgoing.getOtherNode(stayingNode).getProperty("text")
 						.equals("the")) {
 					assertEquals("A",
 							((String[]) outgoing.getProperty("lexemes"))[0]);
 					assertEquals("B",
 							((String[]) outgoing.getProperty("lexemes"))[1]);
 				}
-				if (outgoing.getOtherNode(stayingNode).getProperty("dn15")
+				if (outgoing.getOtherNode(stayingNode).getProperty("text")
 						.equals("to")) {
 					assertEquals("C",
 							((String[]) outgoing.getProperty("lexemes"))[0]);
@@ -498,17 +508,17 @@ public class ReadingTest {
 					.getRelationships(ERelations.RELATIONSHIP)) {
 				numberOfRelationships++;
 				// test that relationships have been copied
-				if (rel.getOtherNode(stayingNode).getProperty("dn15")
+				if (rel.getOtherNode(stayingNode).getProperty("text")
 						.equals("when")) {
-					assertEquals("grammatical", rel.getProperty("de11"));
+					assertEquals("grammatical", rel.getProperty("type"));
 					assertEquals("when", rel.getOtherNode(stayingNode)
-							.getProperty("dn15"));
+							.getProperty("text"));
 				}
-				if (rel.getOtherNode(stayingNode).getProperty("dn15")
+				if (rel.getOtherNode(stayingNode).getProperty("text")
 						.equals("the root")) {
-					assertEquals("transposition", rel.getProperty("de11"));
+					assertEquals("transposition", rel.getProperty("type"));
 					assertEquals("the root", rel.getOtherNode(stayingNode)
-							.getProperty("dn15"));
+							.getProperty("text"));
 				}
 
 				// test that relationship between the two readings has been
@@ -526,7 +536,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'drought'}) return w");
+					.execute("match (w:WORD {text:'drought'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -551,7 +561,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'drought'}) return w");
+			result = engine.execute("match (w:WORD {text:'drought'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			firstNode = nodes.next();
@@ -568,7 +578,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'to'}) return w");
+					.execute("match (w:WORD {text:'to'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -593,7 +603,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'to'}) return w");
+			result = engine.execute("match (w:WORD {text:'to'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			firstNode = nodes.next();
@@ -610,7 +620,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'his'}) return w");
+					.execute("match (w:WORD {text:'his'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -636,7 +646,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'his'}) return w");
+			result = engine.execute("match (w:WORD {text:'his'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			firstNode = nodes.next();
@@ -653,7 +663,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'march'}) return w");
+					.execute("match (w:WORD {text:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
@@ -679,7 +689,7 @@ public class ReadingTest {
 
 			testWitnesses();
 
-			result = engine.execute("match (w:WORD {dn15:'march'}) return w");
+			result = engine.execute("match (w:WORD {text:'march'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			firstNode = nodes.next();
@@ -696,12 +706,12 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node firstNode = nodes.next();
 
-			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node secondNode = nodes.next();
@@ -732,7 +742,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			engine = new ExecutionEngine(db);
 			result = engine
-					.execute("match (w:WORD {dn15:'the root'}) return w");
+					.execute("match (w:WORD {text:'the root'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			node = nodes.next();
@@ -759,7 +769,7 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			result = engine.execute("match (w:WORD {dn15:'the'}) return w");
+			result = engine.execute("match (w:WORD {text:'the'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node the1 = nodes.next();
@@ -769,10 +779,10 @@ public class ReadingTest {
 			Node the3 = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			assertEquals((long) 17, the2.getProperty("dn14"));
-			assertEquals((long) 17, the3.getProperty("dn14"));
+			assertEquals((long) 17, the2.getProperty("rank"));
+			assertEquals((long) 17, the3.getProperty("rank"));
 
-			result = engine.execute("match (w:WORD {dn15:'root'}) return w");
+			result = engine.execute("match (w:WORD {text:'root'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node root1 = nodes.next();
@@ -780,8 +790,8 @@ public class ReadingTest {
 			Node root2 = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			assertEquals((long) 18, root1.getProperty("dn14"));
-			assertEquals((long) 18, root2.getProperty("dn14"));
+			assertEquals((long) 18, root1.getProperty("rank"));
+			assertEquals((long) 18, root2.getProperty("rank"));
 
 			// should contain one reading more now
 			testNumberOfReadings(30);
@@ -798,7 +808,7 @@ public class ReadingTest {
 
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'the root'}) return w");
+					.execute("match (w:WORD {text:'the root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -834,7 +844,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'unto me'}) return w");
+					.execute("match (w:WORD {text:'unto me'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node untoMe = nodes.next();
@@ -864,7 +874,7 @@ public class ReadingTest {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -908,7 +918,7 @@ public class ReadingTest {
 		String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood the root the root #END#";
 		String text = "";
 		for (int i = 0; i < listOfReadings.size(); i++) {
-			text += listOfReadings.get(i).getDn15() + " ";
+			text += listOfReadings.get(i).getText() + " ";
 		}
 		assertEquals(expectedTest, text.trim());
 
@@ -916,7 +926,7 @@ public class ReadingTest {
 				11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
 		for (int i = 0; i < listOfReadings.size(); i++) {
 			assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
-					.getDn14());
+					.getRank());
 		}
 	}
 
@@ -945,10 +955,10 @@ public class ReadingTest {
 		assertEquals(1, listOfIdenticalReadings.size());
 		identicalReadings = listOfIdenticalReadings.get(0);
 		assertEquals(2, identicalReadings.size());
-		assertEquals("his", identicalReadings.get(1).getDn15());
+		assertEquals("his", identicalReadings.get(1).getText());
 
-		assertEquals(identicalReadings.get(0).getDn15(),
-				identicalReadings.get(1).getDn15());
+		assertEquals(identicalReadings.get(0).getText(),
+				identicalReadings.get(1).getText());
 	}
 
 	@Test
@@ -965,15 +975,15 @@ public class ReadingTest {
 
 		identicalReadings = listOfIdenticalReadings.get(0);
 		assertEquals(2, identicalReadings.size());
-		assertEquals("april", identicalReadings.get(1).getDn15());
-		assertEquals(identicalReadings.get(0).getDn15(),
-				identicalReadings.get(1).getDn15());
+		assertEquals("april", identicalReadings.get(1).getText());
+		assertEquals(identicalReadings.get(0).getText(),
+				identicalReadings.get(1).getText());
 
 		identicalReadings = listOfIdenticalReadings.get(1);
 		assertEquals(2, identicalReadings.size());
-		assertEquals("his", identicalReadings.get(1).getDn15());
-		assertEquals(identicalReadings.get(0).getDn15(),
-				identicalReadings.get(1).getDn15());
+		assertEquals("his", identicalReadings.get(1).getText());
+		assertEquals(identicalReadings.get(0).getText(),
+				identicalReadings.get(1).getText());
 	}
 
 	@Test
@@ -999,12 +1009,12 @@ public class ReadingTest {
 				});
 		assertEquals(2, couldBeIdenticalReadings.size());
 
-		assertEquals(couldBeIdenticalReadings.get(0).get(0).getDn15(),
-				couldBeIdenticalReadings.get(0).get(1).getDn15());
-		assertEquals("fruit", couldBeIdenticalReadings.get(0).get(0).getDn15());
+		assertEquals(couldBeIdenticalReadings.get(0).get(0).getText(),
+				couldBeIdenticalReadings.get(0).get(1).getText());
+		assertEquals("fruit", couldBeIdenticalReadings.get(0).get(0).getText());
 
-		assertFalse(couldBeIdenticalReadings.get(0).get(0).getDn14() == couldBeIdenticalReadings
-				.get(0).get(1).getDn14());
+		assertFalse(couldBeIdenticalReadings.get(0).get(0).getRank() == couldBeIdenticalReadings
+				.get(0).get(1).getRank());
 	}
 
 	/**
@@ -1030,12 +1040,12 @@ public class ReadingTest {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			showers = nodes.next();
 
-			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
 			nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			sweet = nodes.next();
@@ -1049,20 +1059,20 @@ public class ReadingTest {
 			assertEquals("successfully compressed readings",
 					res.getEntity(String.class));
 
-			assertEquals("showers sweet", showers.getProperty("dn15"));
+			assertEquals("showers sweet", showers.getProperty("text"));
 
 			result = engine
-					.execute("match (w:WORD {dn15:'showers sweet'}) return w");
+					.execute("match (w:WORD {text:'showers sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			nodes.next();
 			assertFalse(nodes.hasNext());
 
-			result = engine.execute("match (w:WORD {dn15:'sweet'}) return w");
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
-			result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
+			result = engine.execute("match (w:WORD {text:'showers'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
@@ -1079,7 +1089,7 @@ public class ReadingTest {
 			String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood the root the root #END#";
 			String text = "";
 			for (int i = 0; i < listOfReadings.size(); i++) {
-				text += listOfReadings.get(i).getDn15() + " ";
+				text += listOfReadings.get(i).getText() + " ";
 			}
 			assertEquals(expectedTest, text.trim());
 
@@ -1091,7 +1101,7 @@ public class ReadingTest {
 					11, 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 19 };
 			for (int i = 0; i < listOfReadings.size(); i++) {
 				assertEquals(expectedRanks[i],
-						(int) (long) listOfReadings.get(i).getDn14());
+						(int) (long) listOfReadings.get(i).getRank());
 			}
 			tx.success();
 		}
@@ -1106,12 +1116,12 @@ public class ReadingTest {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'showers'}) return w");
+					.execute("match (w:WORD {text:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			Node showers = nodes.next();
 
-			result = engine.execute("match (w:WORD {dn15:'fruit'}) return w");
+			result = engine.execute("match (w:WORD {text:'fruit'}) return w");
 			nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			Node fruit = nodes.next();
@@ -1127,12 +1137,12 @@ public class ReadingTest {
 					response.getEntity(String.class));
 
 			result = engine
-					.execute("match (w:WORD {dn15:'showers sweet'}) return w");
+					.execute("match (w:WORD {text:'showers sweet'}) return w");
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
-			assertEquals("showers", showers.getProperty("dn15"));
-			assertEquals("fruit", fruit.getProperty("dn15"));
+			assertEquals("showers", showers.getProperty("text"));
+			assertEquals("fruit", fruit.getProperty("text"));
 
 			tx.success();
 		}
@@ -1144,7 +1154,7 @@ public class ReadingTest {
 		long withReadId;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'with'}) return w");
+					.execute("match (w:WORD {text:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			withReadId = nodes.next().getId();
@@ -1155,7 +1165,7 @@ public class ReadingTest {
 				.resource()
 				.path("/reading/getnextreading/fromwitness/A/ofreading/"
 						+ withReadId).get(ReadingModel.class);
-		assertEquals("his", actualResponse.getDn15());
+		assertEquals("his", actualResponse.getText());
 	}
 
 	@Test
@@ -1164,7 +1174,7 @@ public class ReadingTest {
 		long piercedReadId;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'pierced'}) return w");
+					.execute("match (w:WORD {text:'pierced'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			piercedReadId = nodes.next().getId();
@@ -1175,13 +1185,13 @@ public class ReadingTest {
 				.resource()
 				.path("/reading/getnextreading/fromwitness/A/ofreading/"
 						+ piercedReadId).get(ReadingModel.class);
-		assertEquals("unto me", actualResponse.getDn15());
+		assertEquals("unto me", actualResponse.getText());
 
 		actualResponse = jerseyTest
 				.resource()
 				.path("/reading/getnextreading/fromwitness/B/ofreading/"
 						+ piercedReadId).get(ReadingModel.class);
-		assertEquals("to", actualResponse.getDn15());
+		assertEquals("to", actualResponse.getText());
 	}
 
 	@Test
@@ -1190,7 +1200,7 @@ public class ReadingTest {
 		long readId;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'the root'}) return w");
+					.execute("match (w:WORD {text:'the root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			readId = nodes.next().getId();
@@ -1214,7 +1224,7 @@ public class ReadingTest {
 		long readId;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'with'}) return w");
+					.execute("match (w:WORD {text:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			readId = nodes.next().getId();
@@ -1225,7 +1235,7 @@ public class ReadingTest {
 				.resource()
 				.path("/reading/getpreviousreading/fromwitness/A/ofreading/"
 						+ readId).get(ReadingModel.class);
-		assertEquals("april", actualResponse.getDn15());
+		assertEquals("april", actualResponse.getText());
 	}
 
 	@Test
@@ -1234,7 +1244,7 @@ public class ReadingTest {
 		long ofId;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'of'}) return w");
+					.execute("match (w:WORD {text:'of'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			ofId = nodes.next().getId();
@@ -1245,13 +1255,13 @@ public class ReadingTest {
 				.resource()
 				.path("/reading/getpreviousreading/fromwitness/A/ofreading/"
 						+ ofId).get(ReadingModel.class);
-		assertEquals("drought", actualResponse.getDn15());
+		assertEquals("drought", actualResponse.getText());
 
 		actualResponse = jerseyTest
 				.resource()
 				.path("/reading/getpreviousreading/fromwitness/B/ofreading/"
 						+ ofId).get(ReadingModel.class);
-		assertEquals("march", actualResponse.getDn15());
+		assertEquals("march", actualResponse.getText());
 	}
 
 	@Test
@@ -1260,7 +1270,7 @@ public class ReadingTest {
 		long readId;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'when'}) return w");
+					.execute("match (w:WORD {text:'when'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			readId = nodes.next().getId();
@@ -1282,11 +1292,11 @@ public class ReadingTest {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
-					.execute("match (w:WORD {dn15:'april'}) return w");
+					.execute("match (w:WORD {text:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assert (nodes.hasNext());
 			long rank = 2;
-			assertEquals(rank, nodes.next().getProperty("dn14"));
+			assertEquals(rank, nodes.next().getProperty("rank"));
 			tx.success();
 		}
 	}
@@ -1298,7 +1308,7 @@ public class ReadingTest {
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
 			ResourceIterable<Node> tradNodes = db.findNodesByLabelAndProperty(
-					Nodes.TRADITION, "dg1", "Tradition");
+					Nodes.TRADITION, "name", "Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
@@ -1313,7 +1323,7 @@ public class ReadingTest {
 		ExecutionEngine engine = new ExecutionEngine(db);
 
 		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
+				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}
