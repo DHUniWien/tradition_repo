@@ -1,13 +1,14 @@
 package net.stemmaweb.stemmaserver.unittests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DotToNeo4JParser;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.OSDetector;
 
@@ -15,11 +16,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -28,36 +24,27 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DotImporterUnitTest {
 	private String tradId;
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	@InjectMocks
-	private GraphMLToNeo4JParser importResource;
+	GraphDatabaseService db;
 	
-	@InjectMocks
-	private DotToNeo4JParser parser;
 
+	private GraphMLToNeo4JParser importResource;
+	private DotToNeo4JParser parser;
+	
 	@Before
 	public void setUp() throws Exception {
+		
+		
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		importResource = new GraphMLToNeo4JParser();
+		parser = new DotToNeo4JParser(db);
 
 		String filename = "";
 		if (OSDetector.isWin())
@@ -68,37 +55,24 @@ public class DotImporterUnitTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
-				rootNode = mockDbService.createNode(Nodes.ROOT);
+				rootNode = db.createNode(Nodes.ROOT);
 				rootNode.setProperty("name", "Root node");
 				rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
 			}
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
-
-		/*
-		 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to
-		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
-		 * instead of dbFactory.newEmbeddedDatabase("database");
-		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
-
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
-		 * with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 
 		/**
 		 * load a tradition to the test DB
@@ -112,7 +86,7 @@ public class DotImporterUnitTest {
 		/**
 		 * gets the generated id of the inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
@@ -158,17 +132,17 @@ public class DotImporterUnitTest {
 		
 		parser.parseDot(dot,tradId);
 		
-		try(Transaction tx = mockDbService.beginTx())
+		try(Transaction tx = db.beginTx())
 		{
-			Node stemmaNode = mockDbService.findNodesByLabelAndProperty(Nodes.STEMMA, "name", "stemma").iterator().next();
+			Node stemmaNode = db.findNodesByLabelAndProperty(Nodes.STEMMA, "name", "stemma").iterator().next();
 		
 			assert(stemmaNode!=null);
 			
-			Node firstNode = mockDbService.findNodesByLabelAndProperty(Nodes.WITNESS, "id", "0").iterator().next();
+			Node firstNode = db.findNodesByLabelAndProperty(Nodes.WITNESS, "id", "0").iterator().next();
 			
 			assert(firstNode!=null);
 			
-			Node nodeB = mockDbService.findNodesByLabelAndProperty(Nodes.WITNESS, "id", "b").iterator().next();
+			Node nodeB = db.findNodesByLabelAndProperty(Nodes.WITNESS, "id", "b").iterator().next();
 			
 			assert(nodeB!=null);
 			
@@ -180,11 +154,11 @@ public class DotImporterUnitTest {
 			}
 			assert(checker==true);
 			
-			stemmaNode = mockDbService.findNodesByLabelAndProperty(Nodes.STEMMA, "name", "Semstem 1402333041_0").iterator().next();
+			stemmaNode = db.findNodesByLabelAndProperty(Nodes.STEMMA, "name", "Semstem 1402333041_0").iterator().next();
 			
 			assert(stemmaNode!=null);
 			
-			Iterator<Node> nodes = mockDbService.findNodesByLabelAndProperty(Nodes.WITNESS, "id", "0").iterator();
+			Iterator<Node> nodes = db.findNodesByLabelAndProperty(Nodes.WITNESS, "id", "0").iterator();
 			nodes.next();
 			assert(nodes.next()!=null);
 		}
@@ -199,7 +173,7 @@ public class DotImporterUnitTest {
 	@After
 	public void destroyTestDatabase()
 	{
-	    mockDbService.shutdown();
+	    db.shutdown();
 	    // destroy the test database
 	}
 }

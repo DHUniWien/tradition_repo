@@ -9,6 +9,14 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 
+import net.stemmaweb.rest.Reading;
+import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.User;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.BeforeClass;
@@ -28,13 +36,6 @@ public class Benchmark1000kNodes extends BenachmarkTests {
 	@BeforeClass
 	public static void prepareTheDatabase(){
 
-		try {
-			tempFolder.create();
-			File dbPathFile = new File("database");
-			Files.move(dbPathFile.toPath(), tempFolder.getRoot().toPath(), StandardCopyOption.REPLACE_EXISTING);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		/*
 		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
 		 */
@@ -43,11 +44,33 @@ public class Benchmark1000kNodes extends BenachmarkTests {
 
 	public static void initDatabase() {
 		RandomGraphGenerator rgg = new RandomGraphGenerator();
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase("database");
+
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
 		
+		GraphDatabaseService db = dbServiceProvider.getDatabase();
+		
+		
+		userResource = new User();
+		traditionResource = new Tradition();
+		witnessResource = new Witness();
+		readingResoruce = new Reading();
+		relationResource = new Relation();
+		importResource = new GraphMLToNeo4JParser();
+		
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+				.addResource(userResource)
+				.addResource(traditionResource)
+				.addResource(witnessResource)
+				.addResource(relationResource)
+				.addResource(readingResoruce).create();
+		try {
+			jerseyTest.setUp();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		rgg.role(db, 10, 100, 10, 100);
-		db.shutdown();
 		
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
@@ -61,7 +84,6 @@ public class Benchmark1000kNodes extends BenachmarkTests {
 			assertTrue(false);
 		}
 		
-		db = dbFactory.newEmbeddedDatabase("database");
 		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
@@ -74,8 +96,6 @@ public class Benchmark1000kNodes extends BenachmarkTests {
 		result = engine.execute("match (w:WORD {dn15:'unto me'}) return w");
 		nodes = result.columnAs("w");
 		untoMe = nodes.next().getId();
-		
-		db.shutdown();
 		
 	}
 	

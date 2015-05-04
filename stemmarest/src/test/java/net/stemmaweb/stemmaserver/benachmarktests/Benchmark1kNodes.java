@@ -2,16 +2,19 @@ package net.stemmaweb.stemmaserver.benachmarktests;
 
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 
+import net.stemmaweb.rest.Reading;
+import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.User;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -20,7 +23,6 @@ import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
@@ -36,23 +38,35 @@ public class Benchmark1kNodes extends BenachmarkTests {
 	@BeforeClass
 	public static void prepareTheDatabase(){
 
+		RandomGraphGenerator rgg = new RandomGraphGenerator();
+
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+		
+		GraphDatabaseService db = dbServiceProvider.getDatabase();
+		
+		
+		userResource = new User();
+		traditionResource = new Tradition();
+		witnessResource = new Witness();
+		readingResoruce = new Reading();
+		relationResource = new Relation();
+		importResource = new GraphMLToNeo4JParser();
+		
+		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+				.addResource(userResource)
+				.addResource(traditionResource)
+				.addResource(witnessResource)
+				.addResource(relationResource)
+				.addResource(readingResoruce).create();
 		try {
-			tempFolder.create();
-			File dbPathFile = new File("database");
-			Files.move(dbPathFile.toPath(), tempFolder.getRoot().toPath(), StandardCopyOption.REPLACE_EXISTING);
-		} catch (IOException e) {
+			jerseyTest.setUp();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		/*
-		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
-		 */
-		RandomGraphGenerator rgg = new RandomGraphGenerator();
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase("database");
-		
 		rgg.role(db, 2, 1, 5, 100);
 
-		db.shutdown();
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
 		else
@@ -65,7 +79,6 @@ public class Benchmark1kNodes extends BenachmarkTests {
 			assertTrue(false);
 		}
 		
-		db = dbFactory.newEmbeddedDatabase("database");
 		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
@@ -78,25 +91,12 @@ public class Benchmark1kNodes extends BenachmarkTests {
 		result = engine.execute("match (w:WORD {dn15:'unto me'}) return w");
 		nodes = result.columnAs("w");
 		untoMe = nodes.next().getId();
-		
-		db.shutdown();
-		
-
-		
-		
 	}
 	
-	
-	@AfterClass 
-	public static void shutDown(){
-		try {
-			File dbPathFile = new File("database");
-			FileUtils.deleteDirectory(dbPathFile);
-			Files.move(tempFolder.getRoot().toPath(), dbPathFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	@AfterClass
+	public static void shutdown(){
+		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+		dbServiceProvider.getDatabase().shutdown();
 	}
 	
 }

@@ -1,16 +1,19 @@
 package net.stemmaweb.stemmaserver.unittests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.OSDetector;
 
@@ -18,11 +21,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -31,8 +29,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * 
@@ -42,34 +38,24 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 @RunWith(MockitoJUnitRunner.class)
 public class ReadingUnitTest {
 	private String tradId;
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory()
-			.newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	@InjectMocks
+	GraphDatabaseService db;
+	
 	private GraphMLToNeo4JParser importResource;
-
-	@InjectMocks
 	private Reading reading;
-
-	@InjectMocks
 	private Witness witness;
 
 	@Before
 	public void setUp() throws Exception {
+		
+		
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		importResource = new GraphMLToNeo4JParser();
+		reading = new Reading();
+		witness = new Witness();
 
 		String filename = "";
 		if (OSDetector.isWin())
@@ -80,38 +66,24 @@ public class ReadingUnitTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
-				rootNode = mockDbService.createNode(Nodes.ROOT);
+				rootNode = db.createNode(Nodes.ROOT);
 				rootNode.setProperty("name", "Root node");
 				rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
 			}
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
-
-		/*
-		 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to
-		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
-		 * instead of dbFactory.newEmbeddedDatabase("database");
-		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
-				.thenReturn(mockDbService);
-
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
-		 * with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 
 		/**
 		 * load a tradition to the test DB
@@ -125,7 +97,7 @@ public class ReadingUnitTest {
 		/**
 		 * gets the generated id of the inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
@@ -145,9 +117,9 @@ public class ReadingUnitTest {
 
 	@Test
 	public void compressReadingTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		Node showers, sweet;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -171,8 +143,8 @@ public class ReadingUnitTest {
 
 	@Test
 	public void randomNodeExistsTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -188,8 +160,8 @@ public class ReadingUnitTest {
 	 */
 	@Test
 	public void traditionNodeExistsTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ResourceIterable<Node> tradNodes = mockDbService
+		try (Transaction tx = db.beginTx()) {
+			ResourceIterable<Node> tradNodes = db
 					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
 							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
@@ -203,7 +175,7 @@ public class ReadingUnitTest {
 	 */
 	@Test
 	public void traditionEndNodeExistsTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 
 		ExecutionResult result = engine
 				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
@@ -218,7 +190,7 @@ public class ReadingUnitTest {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		mockDbService.shutdown();
+		db.shutdown();
 	}
 
 }

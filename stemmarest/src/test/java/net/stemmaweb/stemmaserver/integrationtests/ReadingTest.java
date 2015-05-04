@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.persistence.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -19,6 +18,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -27,11 +27,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -42,8 +37,6 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -65,41 +58,32 @@ public class ReadingTest {
 	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood\"}";
 
 	private String tradId;
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
-
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory()
-			.newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	@InjectMocks
-	private GraphMLToNeo4JParser importResource;
-
-	@InjectMocks
-	private Reading reading;
-
-	@InjectMocks
-	private Witness witness;
+	
+	GraphDatabaseService db;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
 	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
+	
+	
+	private Reading reading;
+	private Witness witness;
+	private GraphMLToNeo4JParser importResource;
+
 
 	@Before
 	public void setUp() throws Exception {
 
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		reading = new Reading();
+		witness = new Witness();
+		importResource = new GraphMLToNeo4JParser();
+		
 		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
@@ -109,38 +93,24 @@ public class ReadingTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
-				rootNode = mockDbService.createNode(Nodes.ROOT);
+				rootNode = db.createNode(Nodes.ROOT);
 				rootNode.setProperty("name", "Root node");
 				rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
 			}
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
-
-		/*
-		 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to
-		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
-		 * instead of dbFactory.newEmbeddedDatabase("database");
-		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
-				.thenReturn(mockDbService);
-
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
-		 * with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 
 		/**
 		 * load a tradition to the test DB
@@ -154,7 +124,7 @@ public class ReadingTest {
 		/**
 		 * gets the generated id of the inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
@@ -201,8 +171,8 @@ public class ReadingTest {
 	@Test
 	public void changeReadingPropertiesTest() {
 
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -243,8 +213,8 @@ public class ReadingTest {
 
 	@Test
 	public void getReadingReadingModelTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -282,8 +252,8 @@ public class ReadingTest {
 
 	@Test
 	public void duplicateReadingTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -342,8 +312,8 @@ public class ReadingTest {
 
 	@Test
 	public void duplicateReadingWitnessCrossingTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'of'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -386,8 +356,8 @@ public class ReadingTest {
 
 	@Test
 	public void duplicateReadingWithNoWitnessesInJSONTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'rood'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -415,8 +385,8 @@ public class ReadingTest {
 
 	@Test
 	public void duplicateReadingWithOnlyOneWitnessTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'rood'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -443,8 +413,8 @@ public class ReadingTest {
 
 	@Test
 	public void duplicateReadingWithNotAllowedWitnessesTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -472,8 +442,8 @@ public class ReadingTest {
 
 	@Test
 	public void mergeReadingsTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'fruit'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -559,8 +529,8 @@ public class ReadingTest {
 
 	@Test
 	public void mergeReadingsGetsCyclicTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'drought'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -602,8 +572,8 @@ public class ReadingTest {
 
 	@Test
 	public void mergeReadingsGetsCyclicWithNodesFarApartTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'to'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -645,8 +615,8 @@ public class ReadingTest {
 
 	@Test
 	public void mergeReadingsWithoutRelationshipBetweenEachOtherTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'his'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -689,8 +659,8 @@ public class ReadingTest {
 
 	@Test
 	public void mergeReadingsWithClassTwoRelationshipsTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -733,8 +703,8 @@ public class ReadingTest {
 
 	@Test
 	public void mergeReadingsWithDifferentTextTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -770,8 +740,8 @@ public class ReadingTest {
 		ExecutionEngine engine;
 		ExecutionResult result;
 		Iterator<Node> nodes;
-		try (Transaction tx = mockDbService.beginTx()) {
-			engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			engine = new ExecutionEngine(db);
 			result = engine
 					.execute("match (w:WORD {dn15:'the root'}) return w");
 			nodes = result.columnAs("w");
@@ -790,7 +760,7 @@ public class ReadingTest {
 			tx.success();
 		}
 
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
@@ -836,9 +806,9 @@ public class ReadingTest {
 
 	@Test
 	public void splitReadingWithRelationshipTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'the root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -874,8 +844,8 @@ public class ReadingTest {
 	 */
 	@Test
 	public void splitReadingNoAvailableRankTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'unto me'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -905,8 +875,8 @@ public class ReadingTest {
 
 	@Test
 	public void splitReadingWithOnlyOneWordTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1072,8 +1042,8 @@ public class ReadingTest {
 	@Test
 	public void compressReadingTest() {
 		Node showers, sweet;
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1149,8 +1119,8 @@ public class ReadingTest {
 	 */
 	@Test
 	public void notNeighborsCompressReadingTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'showers'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1187,9 +1157,9 @@ public class ReadingTest {
 
 	@Test
 	public void nextReadingTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		long withReadId;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1207,9 +1177,9 @@ public class ReadingTest {
 
 	@Test
 	public void nextReadingWithTwoWitnessesTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		long piercedReadId;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'pierced'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1233,9 +1203,9 @@ public class ReadingTest {
 
 	@Test
 	public void nextReadingLastNodeTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		long readId;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'the root'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1257,9 +1227,9 @@ public class ReadingTest {
 
 	@Test
 	public void previousReadingTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		long readId;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'with'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1277,9 +1247,9 @@ public class ReadingTest {
 
 	@Test
 	public void previousReadingTwoWitnessesTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		long ofId;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'of'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1303,9 +1273,9 @@ public class ReadingTest {
 
 	@Test
 	public void previousReadingFirstNodeTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		long readId;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'when'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1326,8 +1296,8 @@ public class ReadingTest {
 
 	@Test
 	public void randomNodeExistsTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine
 					.execute("match (w:WORD {dn15:'april'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
@@ -1343,8 +1313,8 @@ public class ReadingTest {
 	 */
 	@Test
 	public void traditionNodeExistsTest() {
-		try (Transaction tx = mockDbService.beginTx()) {
-			ResourceIterable<Node> tradNodes = mockDbService
+		try (Transaction tx = db.beginTx()) {
+			ResourceIterable<Node> tradNodes = db
 					.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1",
 							"Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
@@ -1358,7 +1328,7 @@ public class ReadingTest {
 	 */
 	@Test
 	public void traditionEndNodeExistsTest() {
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 
 		ExecutionResult result = engine
 				.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
@@ -1373,7 +1343,7 @@ public class ReadingTest {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		mockDbService.shutdown();
+		db.shutdown();
 		jerseyTest.tearDown();
 	}
 
