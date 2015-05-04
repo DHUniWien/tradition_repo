@@ -211,6 +211,29 @@ public class Neo4JToDotParser
 		return Response.ok(output).build();
 	}
 	
+	public String getAllStemmataAsDot(String tradId)
+	{
+		String dot = "";
+		
+		try(Transaction tx = db.beginTx())
+		{
+			ExecutionEngine engine = new ExecutionEngine(db);
+			// find all stemmata associated with this tradition
+			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
+			
+			Iterator<Node> stemmata = result.columnAs("s");
+			while(stemmata.hasNext())
+			{
+				String stemma = stemmata.next().getProperty("name").toString();
+				Response resp = parseNeo4JStemma(tradId, stemma);
+				
+				dot = dot + resp.getEntity();
+			}
+		}
+		
+		return dot;
+	}
+	
 	private void write(String str) throws IOException
 	{
 		out.write(str.getBytes());

@@ -3,6 +3,7 @@ package net.stemmaweb.services;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import javax.ws.rs.core.MediaType;
@@ -73,6 +74,49 @@ public class Neo4JToGraphMLParser implements IResource
     		
     		// ####### KEYS START #######################################
     		
+    		HashMap<String, String> nodeMap = new HashMap<String, String>();
+    		HashMap<String, String> relationMap = new HashMap<String, String>();
+    		HashMap<String, String> graphMap = new HashMap<String, String>();
+    		
+    		nodeMap.put("grammar_invalid", "dn0");
+    		nodeMap.put("id", "dn1");
+    		nodeMap.put("is_common", "dn2");
+    		nodeMap.put("is_end", "dn3");
+    		nodeMap.put("is_lacuna", "dn4");
+    		nodeMap.put("is_lemma", "dn5");
+    		nodeMap.put("is_nonsense", "dn6");
+    		nodeMap.put("is_ph", "dn7");
+    		nodeMap.put("is_start", "dn8");
+    		nodeMap.put("join_next", "dn9");
+    		nodeMap.put("join_prior", "dn10");
+    		nodeMap.put("language", "dn11");
+    		nodeMap.put("lexemes", "dn12");
+    		nodeMap.put("normal_form", "dn13");
+    		nodeMap.put("rank", "dn14");
+    		nodeMap.put("text", "dn15");
+    		
+    		relationMap.put("a_derivable_from_b", "de0");
+    		relationMap.put("alters_meaning", "de1");
+    		relationMap.put("annotation", "de2");
+    		relationMap.put("b_derivable_from_a", "de3");
+    		relationMap.put("displayform", "de4");
+    		relationMap.put("extra", "de5");
+    		relationMap.put("is_significant", "de6");
+    		relationMap.put("non_independent", "de7");
+    		relationMap.put("reading_a", "de8");
+    		relationMap.put("reading_b", "de9");
+    		relationMap.put("scope", "de10");
+    		relationMap.put("type", "de11");
+    		relationMap.put("witness", "de12");
+    		
+    		graphMap.put("language", "dg0");
+    		graphMap.put("name", "dg1");
+    		graphMap.put("public", "dg2");
+    		graphMap.put("stemmata", "dg3");
+    		graphMap.put("stemweb_jobid", "dg4");
+    		graphMap.put("user", "dg5");
+    		graphMap.put("version", "dg6");
+    		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "language");
     		writer.writeAttribute("attr.type", "string");
@@ -119,25 +163,25 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("attr.name", "grammar_invalid");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "grammar_invalid");
+    		writer.writeAttribute("id", "dn0");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "id");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id");
+    		writer.writeAttribute("id", "dn1");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "is_common");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "is_common");
+    		writer.writeAttribute("id", "dn2");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "is_end");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "is_end");
+    		writer.writeAttribute("id", "dn3");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "is_lacuna");
@@ -179,37 +223,37 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("attr.name", "join_prior");
     		writer.writeAttribute("attr.type", "boolean");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id0");
+    		writer.writeAttribute("id", "dn10");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "language");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id1");
+    		writer.writeAttribute("id", "dn11");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "lexemes");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id2");
+    		writer.writeAttribute("id", "dn12");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "normal_form");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id3");
+    		writer.writeAttribute("id", "dn13");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "rank");
     		writer.writeAttribute("attr.type", "int");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id4");
+    		writer.writeAttribute("id", "dn14");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "text");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
-    		writer.writeAttribute("id", "id5");
+    		writer.writeAttribute("id", "dn15");
     		
     		writer.writeEmptyElement("key");
     		writer.writeAttribute("attr.name", "a_derivable_from_b");
@@ -321,11 +365,19 @@ public class Neo4JToGraphMLParser implements IResource
     			if(val!=null && !val.equals("id"))
     			{
     				writer.writeStartElement("data");
-    				writer.writeAttribute("key",val);
+    				writer.writeAttribute("key",graphMap.get(val));
     				writer.writeCharacters(traditionNode.getProperty(prop).toString());
     				writer.writeEndElement();
     			}
     		}
+    		// extract stemmata
+    		writer.writeStartElement("data");
+			writer.writeAttribute("key","dg3");
+			
+			Neo4JToDotParser parser = new Neo4JToDotParser(db);
+			
+			writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
+			writer.writeEndElement();
     		
     		result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
 			nodes = result.columnAs("s");
@@ -341,7 +393,7 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", String.valueOf(node.getId()));
     			writer.writeStartElement("data");
-    			writer.writeAttribute("key","id");
+    			writer.writeAttribute("key","dn1");
     			writer.writeCharacters("n" + nodeId++);
     			writer.writeEndElement();
         		for(String prop : props)
@@ -351,7 +403,7 @@ public class Neo4JToGraphMLParser implements IResource
         			if(val!=null)
         			{
 	        			writer.writeStartElement("data");
-	        			writer.writeAttribute("key",val);
+	        			writer.writeAttribute("key",nodeMap.get(val));
 	        			writer.writeCharacters(node.getProperty(prop).toString());
 	        			writer.writeEndElement();
         			}
@@ -427,7 +479,7 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", node.getId() + "");
 	        	writer.writeStartElement("data");
-	        	writer.writeAttribute("key","id");
+	        	writer.writeAttribute("key","dn1");
 	        	writer.writeCharacters("n" + nodeId++);
 	        	writer.writeEndElement();
         		writer.writeEndElement(); // end node
@@ -455,10 +507,10 @@ public class Neo4JToGraphMLParser implements IResource
 	    			for(String prop : props)
 	        		{
 	        			String val = prop;			
-	        			if(val!=null)
+	        			if(val!=null && !val.equals("leximes"))
 	        			{
 		        			writer.writeStartElement("data");
-		        			writer.writeAttribute("key",val);
+		        			writer.writeAttribute("key",relationMap.get(val));
 		        			writer.writeCharacters(rel.getProperty(prop).toString());
 		        			writer.writeEndElement();
 	        			}

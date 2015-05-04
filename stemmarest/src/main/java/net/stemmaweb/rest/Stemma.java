@@ -89,8 +89,6 @@ public class Stemma implements IResource {
 		return resp;
 	}
 	
-	
-	
 	/**
 	 * Returns JSON string with a stemma of a tradition in DOT format
 	 * 
