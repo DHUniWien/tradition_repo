@@ -48,15 +48,13 @@ public class Reading implements IResource {
 	/**
 	 * Returns a single reading in a specific tradition.
 	 * 
-	 * @param tradId
 	 * @param readId
 	 * @return
 	 */
 	@GET
-	@Path("getreading/fromtradition/{tradId}/withreadingid/{readId}")
+	@Path("getreading/withreadingid/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getReading(@PathParam("tradId") String tradId,
-			@PathParam("readId") long readId) {
+	public Response getReading(@PathParam("readId") long readId) {
 		
 
 		ReadingModel reading = null;
@@ -111,16 +109,14 @@ public class Reading implements IResource {
 	/**
 	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
-	 * @param tradId
 	 * @param duplicateModel
 	 * @return
 	 */
 	@POST
-	@Path("duplicatereading/fromtradition/{tradId}")
+	@Path("duplicatereading")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response duplicateReading(@PathParam("tradId") String tradId,
-			DuplicateModel duplicateModel) {
+	public Response duplicateReading(DuplicateModel duplicateModel) {
 		
 
 		ArrayList<ReadingModel> createdReadings = new ArrayList<ReadingModel>();
@@ -291,16 +287,14 @@ public class Reading implements IResource {
 	 * Merges two readings into one single reading in a specific tradition.
 	 * Opposite of duplicate
 	 * 
-	 * @param tradId
 	 * @param firstReadId
 	 * @param secondReadId
 	 * @return
 	 */
 	@POST
-	@Path("mergereadings/fromtradition/{tradId}/firstreading/{firstReadId}/secondreading/{secondReadId}")
+	@Path("mergereadings/first/{firstReadId}/second/{secondReadId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response mergeReadings(@PathParam("tradId") String tradId,
-			@PathParam("firstReadId") long firstReadId,
+	public Response mergeReadings(@PathParam("firstReadId") long firstReadId,
 			@PathParam("secondReadId") long secondReadId) {
 		
 
@@ -520,15 +514,13 @@ public class Reading implements IResource {
 	 * Splits up a single reading into several ones in a specific tradition.
 	 * Opposite of compress
 	 * 
-	 * @param tradId
 	 * @param readId
 	 * @return
 	 */
 	@POST
-	@Path("splitreading/fromtradition/{tradId}/ofreading/{readId}")
+	@Path("splitreading/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("tradId") String tradId,
-			@PathParam("readId") long readId) {
+	public Response splitReading(@PathParam("readId") long readId) {
 		
 		ArrayList<ReadingModel> createdNodes = null;
 		Node originalReading = null;
@@ -1045,16 +1037,14 @@ public class Reading implements IResource {
 	/**
 	 * compress two readings into one
 	 * 
-	 * @param tradId
 	 * @param readId1
 	 * @param readId2
 	 * @return confirmation that the operation was completed
 	 */
 	@POST
-	@Path("compressreadings/fromtradition/{tradId}/readingone/{readId1}/readingtwo/{readId2}")
+	@Path("compressreadings/first/{readId1}/second/{readId2}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response compressReadings(@PathParam("tradId") String tradId,
-			@PathParam("readId1") long readId1,
+	public Response compressReadings(@PathParam("readId1") long readId1,
 			@PathParam("readId2") long readId2) {
 		
 		Node read1, read2;
