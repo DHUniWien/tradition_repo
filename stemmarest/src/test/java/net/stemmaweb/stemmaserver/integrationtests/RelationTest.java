@@ -18,6 +18,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -26,22 +27,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
@@ -56,41 +49,33 @@ import com.sun.jersey.test.framework.JerseyTest;
 @RunWith(MockitoJUnitRunner.class)
 public class RelationTest {
 	private String tradId;
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	
-	@InjectMocks
-	private GraphMLToNeo4JParser importResource;
-
-	@InjectMocks
-	private Relation relation;
-	
-	@InjectMocks
-	private Witness witness;
+	GraphDatabaseService db;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
 	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
+	
+
+	private GraphMLToNeo4JParser importResource;
+	private Relation relation;
+	private Witness witness;
+
 
 	@Before
 	public void setUp() throws Exception {
 
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		importResource = new GraphMLToNeo4JParser();
+		relation = new Relation();
+		witness = new Witness();
+		
+		
 		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
@@ -100,37 +85,24 @@ public class RelationTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
-				rootNode = mockDbService.createNode(Nodes.ROOT);
+				rootNode = db.createNode(Nodes.ROOT);
 				rootNode.setProperty("name", "Root node");
 				rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
 			}
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
-
-		/*
-		 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to
-		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
-		 * instead of dbFactory.newEmbeddedDatabase("database");
-		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
-
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
-		 * with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 
 		/**
 		 * load a tradition to the test DB
@@ -144,7 +116,7 @@ public class RelationTest {
 		/**
 		 * gets the generated id of the inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
@@ -187,10 +159,10 @@ public class RelationTest {
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
-    	try (Transaction tx = mockDbService.beginTx()) 
+    	try (Transaction tx = db.beginTx()) 
     	{
     		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
-    		Relationship loadedRelationship = mockDbService.getRelationshipById(Long.parseLong(relationshipId));
+    		Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
     		
     		assertEquals(16L, loadedRelationship.getStartNode().getId());
     		assertEquals(24L, loadedRelationship.getEndNode().getId());
@@ -265,18 +237,18 @@ public class RelationTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
-		try (Transaction tx = mockDbService.beginTx())
+		try (Transaction tx = db.beginTx())
     	{
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId));
+    		db.getRelationshipById(Long.parseLong(relationshipId));
     	} 
 	}
 	
 	@Test
 	public void deleteRealtionsTest(){
 		
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			
-			ExecutionEngine engine = new ExecutionEngine(mockDbService);
+			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine.execute("match (w:WORD {dn15:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
@@ -387,10 +359,10 @@ public class RelationTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,removeModel);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
-		try (Transaction tx = mockDbService.beginTx()) 
+		try (Transaction tx = db.beginTx()) 
     	{
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
-    		mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+    		db.getRelationshipById(Long.parseLong(relationshipId1));
+    		db.getRelationshipById(Long.parseLong(relationshipId2));
     	} 
 	}
 	
@@ -434,10 +406,10 @@ public class RelationTest {
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
-		try (Transaction tx = mockDbService.beginTx()) 
+		try (Transaction tx = db.beginTx()) 
     	{
-			Relationship rel1 = mockDbService.getRelationshipById(Long.parseLong(relationshipId1));
-    		Relationship rel2 = mockDbService.getRelationshipById(Long.parseLong(relationshipId2));
+			Relationship rel1 = db.getRelationshipById(Long.parseLong(relationshipId1));
+    		Relationship rel2 = db.getRelationshipById(Long.parseLong(relationshipId2));
     		
     		RelationshipModel relMod1 = new RelationshipModel(rel1);
     		assertEquals(rel1, relMod1);
@@ -482,9 +454,9 @@ public class RelationTest {
 		assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
 				actualResponse.getEntity(String.class));
 		
-    	try (Transaction tx = mockDbService.beginTx()) 
+    	try (Transaction tx = db.beginTx()) 
     	{
-    		Node node28 = mockDbService.getNodeById(28L);
+    		Node node28 = db.getNodeById(28L);
     		Iterator<Relationship> rels = node28.getRelationships(ERelations.RELATIONSHIP).iterator();
     		
     		assertTrue(!rels.hasNext()); // make sure node 28 does not have a relationship now!
@@ -506,13 +478,13 @@ public class RelationTest {
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
 		
-		try (Transaction tx = mockDbService.beginTx()) {
-			Relationship rel = mockDbService.getRelationshipById(48);
+		try (Transaction tx = db.beginTx()) {
+			Relationship rel = db.getRelationshipById(48);
 			assertEquals("root", rel.getStartNode().getProperty("dn15"));
 			assertEquals("teh", rel.getEndNode().getProperty("dn15"));
 		}
 
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'rood'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
@@ -543,8 +515,8 @@ public class RelationTest {
 		assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
 				actualResponse.getEntity(String.class));
 
-		try (Transaction tx = mockDbService.beginTx()) {
-			Node node21 = mockDbService.getNodeById(21L);
+		try (Transaction tx = db.beginTx()) {
+			Node node21 = db.getNodeById(21L);
 			Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
 
 			assertTrue(!rels.hasNext()); // make sure node 21 does not have a
@@ -556,7 +528,7 @@ public class RelationTest {
 	public void createRelationshipTestWithCyclicConstraintDH39() {
 		RelationshipModel relationship = new RelationshipModel();
 
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = engine.execute("match (w:WORD {dn15:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
@@ -586,15 +558,15 @@ public class RelationTest {
 				"This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.",
 				actualResponse.getEntity(String.class));
 		
-    	try (Transaction tx = mockDbService.beginTx()) 
+    	try (Transaction tx = db.beginTx()) 
     	{
-			Node node1 = mockDbService.getNodeById(firstNode.getId());
+			Node node1 = db.getNodeById(firstNode.getId());
 			Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATIONSHIP).iterator();
 
 			assertTrue(!rels.hasNext()); // make sure node does not have a
 											// relationship now!
 
-			Node node2 = mockDbService.getNodeById(secondNode.getId());
+			Node node2 = db.getNodeById(secondNode.getId());
 			rels = node2.getRelationships(ERelations.RELATIONSHIP).iterator();
     		
 			assertTrue(!rels.hasNext()); // make sure node does not have a
@@ -642,7 +614,7 @@ public class RelationTest {
 	
 	@Test
 	public void getNoRelationshipTest(){
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		String newTradId;
 		/**
 		 * load a tradition with no Realtionships to the test DB
@@ -661,7 +633,7 @@ public class RelationTest {
 		/**
 		 * gets the generated id of the new inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
@@ -686,7 +658,7 @@ public class RelationTest {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		mockDbService.shutdown();
+		db.shutdown();
 		jerseyTest.tearDown();
 	}
 }

@@ -4,14 +4,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.Iterator;
+
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
 
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.IResource;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -20,7 +21,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
@@ -32,15 +32,13 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  */
 public class Neo4JToGraphMLParser implements IResource
 {
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	public Response parseNeo4J(String tradId)
 	{
 		
 		String filename = "upload/" + "output.xml";
-		
-		
-    	GraphDatabaseService db= dbFactory.newEmbeddedDatabase(DB_PATH);
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
@@ -474,12 +472,12 @@ public class Neo4JToGraphMLParser implements IResource
 	    catch(Exception e)
 	    {
 	    	e.printStackTrace();
-	    	db.shutdown();
+	    	
 	    	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error: Tradition could not be exported!").build();
 	    }
 		finally
 		{
-			db.shutdown();
+			
 		}
     	File outputFile = new File(filename);
 		if(outputFile.exists())

@@ -14,6 +14,8 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Stemma;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -50,37 +52,29 @@ import com.sun.jersey.test.framework.JerseyTest;
 @RunWith(MockitoJUnitRunner.class)
 public class StemmaTest {
 	private String tradId;
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	@InjectMocks
-	private GraphMLToNeo4JParser importResource;
-
-	@InjectMocks
-	private Stemma stemma;
+	GraphDatabaseService db;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
 	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
+	
+
+	private GraphMLToNeo4JParser importResource;
+	private Stemma stemma;
 
 	@Before
 	public void setUp() throws Exception {
 
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		stemma = new Stemma();
+		importResource = new GraphMLToNeo4JParser();
+		
 		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
@@ -90,18 +84,18 @@ public class StemmaTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
-				rootNode = mockDbService.createNode(Nodes.ROOT);
+				rootNode = db.createNode(Nodes.ROOT);
 				rootNode.setProperty("name", "Root node");
 				rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
 			}
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
@@ -109,18 +103,6 @@ public class StemmaTest {
 			tx.success();
 		}
 
-		/*
-		 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to
-		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
-		 * instead of dbFactory.newEmbeddedDatabase("database");
-		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
-
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
-		 * with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 
 		/**
 		 * load a tradition to the test DB
@@ -134,7 +116,7 @@ public class StemmaTest {
 		/**
 		 * gets the generated id of the inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
@@ -210,8 +192,8 @@ public class StemmaTest {
 	@Test
 	public void setStemmaTest(){
 		
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res");
 			assertEquals(2L,result.columnAs("res").next());
 		
@@ -225,7 +207,7 @@ public class StemmaTest {
 		ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/newstemma/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,input);
 		assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
 		
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result2 = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res2");
 			assertEquals(3L,result2.columnAs("res2").next());
 		
@@ -242,14 +224,14 @@ public class StemmaTest {
 	@Test
 	public void reorientGraphStemmaTest()
 	{
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		
 		 String stemmaTitle = "Semstem 1402333041_0";
 		 String newNodeId = "C";
 		 String secondNodeId = "0";
 
 
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
 					tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
 					stemmaTitle +"'}) return n");
@@ -286,7 +268,7 @@ public class StemmaTest {
 		 String falseTitle = "X";
 
 
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			
 			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorientstemma/fromtradition/"+tradId+"/withtitle/"+stemmaTitle+"/withnewrootnode/"+ falseNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
@@ -302,12 +284,12 @@ public class StemmaTest {
 	@Test
 	public void reorientDigraphStemmaTest()
 	{
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		
 		 String stemmaTitle = "stemma";
 		 String newNodeId = "C";
 
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
 					tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
 					stemmaTitle +"'}) return n");
@@ -341,7 +323,7 @@ public class StemmaTest {
 		 String falseTitle = "X";
 
 
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			
 			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorientstemma/fromtradition/"+tradId+"/withtitle/"+stemmaTitle+"/withnewrootnode/"+ falseNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
@@ -361,7 +343,7 @@ public class StemmaTest {
 		 String stemmaTitle = "stemma";
 		 String newNode = "C";
 		
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			
 			ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/reorientstemma/fromtradition/"+tradId+"/withtitle/"+stemmaTitle+"/withnewrootnode/"+ newNode).type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
 			assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
@@ -381,7 +363,7 @@ public class StemmaTest {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		mockDbService.shutdown();
+		db.shutdown();
 		jerseyTest.tearDown();
 	}
 
