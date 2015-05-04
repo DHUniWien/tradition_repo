@@ -49,7 +49,9 @@ public class DotToNeo4JParser implements IResource
     	try (Transaction tx = db.beginTx()) 
     	{
     		while(nextObject(tradId));
-    		if(nodes.size()>0)	
+    		if(nodes.size()==0)
+    			return Response.status(Status.NOT_FOUND).build();
+    		else
     			nodes.get(0).createRelationshipTo(nodes.get(1), ERelations.STEMMA);
     		tx.success();
     	}

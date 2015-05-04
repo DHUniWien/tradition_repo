@@ -10,6 +10,7 @@ import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -237,6 +238,15 @@ public class StemmaTest {
 		
 		assertEquals(input, str);
 
+	}
+	
+	@Test
+	public void setStemmaNotFoundTest(){
+		
+		String emptyInput="";
+		
+		ClientResponse actualStemmaResponse = jerseyTest.resource().path("/stemma/newstemma/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,emptyInput);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
 	}
 	
 	@Test
