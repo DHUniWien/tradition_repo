@@ -33,6 +33,8 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 
+import net.stemmaweb.stemmaserver.OSDetector;
+
 /**
  * <dl>
  * <dt>Purpose: GraphViz Java API
@@ -72,8 +74,8 @@ public class GraphViz
    /**
     * The dir. where temporary files will be created.
     */
-  private static String TEMP_DIR = "/tmp";	// Linux
-   //private static String TEMP_DIR = "C:\\Windows\\Temp";	// Windows
+  private static String TEMP_DIR_L = "/tmp";	// Linux
+  private static String TEMP_DIR_W = "C:\\Windows\\Temp";	// Windows
 
    /**
     * Where is your dot program located? It will be called externally.
@@ -81,8 +83,8 @@ public class GraphViz
     * (just extracted to Program Files)
     * The version might need to be adjusted
     */
-  private static String DOT = "/usr/local/bin/dot";	// Linux
-   //private static String DOT = "C:\\Program Files\\graphviz-2.38\\release\\bin\\dot.exe";	// Windows
+  private static String DOT_L = "/usr/local/bin/dot";	// Linux
+  private static String DOT_W = "C:\\Program Files\\graphviz-2.38\\release\\bin\\dot.exe";	// Windows
 
    /**
     * The source of the graph written in dot language.
@@ -188,9 +190,17 @@ public class GraphViz
    {
       File img;
       byte[] img_stream = null;
-
+      
+      String TEMP_DIR = TEMP_DIR_L;
+      if (OSDetector.isWin())
+    	  TEMP_DIR = TEMP_DIR_W;
+      
+      String DOT = DOT_L;
+      if (OSDetector.isWin())
+    	  DOT = DOT_W;
+      
       try {
-         img = File.createTempFile("graph_", "."+type, new File(GraphViz.TEMP_DIR));
+         img = File.createTempFile("graph_", "."+type, new File(TEMP_DIR));
          Runtime rt = Runtime.getRuntime();
          
          // patch by Mike Chenault
@@ -209,7 +219,7 @@ public class GraphViz
             System.err.println("Warning: " + img.getAbsolutePath() + " could not be deleted!");
       }
       catch (java.io.IOException ioe) {
-         System.err.println("Error:    in I/O processing of tempfile in dir " + GraphViz.TEMP_DIR+"\n");
+         System.err.println("Error:    in I/O processing of tempfile in dir " + TEMP_DIR+"\n");
          System.err.println("       or in calling external command");
          ioe.printStackTrace();
       }
@@ -230,8 +240,12 @@ public class GraphViz
    private File writeDotSourceToFile(String str) throws java.io.IOException
    {
       File temp;
+      String TEMP_DIR = TEMP_DIR_L;
+      if (OSDetector.isWin())
+    	  TEMP_DIR = TEMP_DIR_W;
+      
       try {
-         temp = File.createTempFile("graph_", ".dot.tmp", new File(GraphViz.TEMP_DIR));
+         temp = File.createTempFile("graph_", ".dot.tmp", new File(TEMP_DIR));
          FileWriter fout = new FileWriter(temp);
          fout.write(str);
          fout.close();

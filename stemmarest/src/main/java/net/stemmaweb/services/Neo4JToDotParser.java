@@ -225,6 +225,7 @@ public class Neo4JToDotParser
 	    
 	    String type = "png";
 //	      String type = "plain";
+	    
 	    File out = new File(outFile + "." + type);   // Linux
 //	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
 	    gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
