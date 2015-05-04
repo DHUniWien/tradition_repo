@@ -220,13 +220,10 @@ public class Tradition implements IResource {
 
 		
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
-			Iterator<Node> nodes = result.columnAs("s");
-			Node startNode = nodes.next();
+			Node startNode = DatabaseService.getStartNode(tradId, db);
+
 			
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
