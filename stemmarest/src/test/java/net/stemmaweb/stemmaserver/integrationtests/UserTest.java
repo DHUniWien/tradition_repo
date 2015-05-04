@@ -387,6 +387,12 @@ public class UserTest {
     	assertEquals(trad.getId(), tradLoaded.getId());
     	assertEquals(trad.getName(), tradLoaded.getName());
     	
+    	ClientResponse getStemmaResponse = jerseyTest.resource().path("/user/gettraditions/ofuser/837462").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.ok().build().getStatus(), getStemmaResponse.getStatus());
+		
+		ClientResponse getNotFoundStemmaResponse = jerseyTest.resource().path("/user/gettraditions/ofuser/xy").type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
+		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getNotFoundStemmaResponse.getStatus());
+    	
 	}
 	
 	/**

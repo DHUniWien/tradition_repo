@@ -195,7 +195,7 @@ public class User implements IResource {
 		
 		if (!DatabaseService.checkIfUserExists(userId, db)) {
 			db.shutdown();
-			return null;
+			return Response.status(Status.NOT_FOUND).build();
 		}
 
 		ExecutionEngine engine = new ExecutionEngine(db);
