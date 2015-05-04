@@ -3,11 +3,7 @@ package net.stemmaweb.stemmaserver.benachmarktests;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
@@ -23,16 +19,9 @@ import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
-import org.apache.commons.io.FileDeleteStrategy;
-import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
@@ -56,24 +45,20 @@ import com.sun.jersey.test.framework.JerseyTest;
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmarkTestGenerating")
 public abstract class BenachmarkTests {
-	@ClassRule
-	public static TemporaryFolder tempFolder = new TemporaryFolder();
 	
 	@Rule
 	public TestRule benchmarkRun = new BenchmarkRule();
 
-	
-	
 	/*
 	 * In order not to measure the startup time of jerseytest the startup needs to be done @BeforeClass
 	 * so all jerseyTest related objects need to be static.
 	 */
-	private static User userResource = new User();
-	private static Tradition traditionResource = new Tradition();
-	private static Witness witnessResource = new Witness();
-	private static Reading readingResoruce = new Reading();
-	private static Relation relationResource = new Relation();
-	protected static GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+	protected static User userResource;
+	protected static Tradition traditionResource;
+	protected static Witness witnessResource;
+	protected static Reading readingResoruce;
+	protected static Relation relationResource;
+	protected static GraphMLToNeo4JParser importResource ;
 	
 	protected static String filename = "";
 	
@@ -81,20 +66,8 @@ public abstract class BenachmarkTests {
 	protected static long duplicateReadingNodeId;
 	protected static long theRoot;
 	protected static long untoMe;
-
-	private static JerseyTest jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-			.addResource(userResource)
-			.addResource(traditionResource)
-			.addResource(witnessResource)
-			.addResource(relationResource)
-			.addResource(readingResoruce).create();
 	
-	@BeforeClass
-	public static void setUpJersey() throws Exception{
-		jerseyTest.setUp();
-		
-
-	}
+	protected static JerseyTest jerseyTest;
 
 	/**
 	 * Measure the speed to change the owner of a Tradition and change it back
@@ -367,16 +340,5 @@ public abstract class BenachmarkTests {
     	assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
 
 	}
-	@AfterClass
-	public static void tearDownJersey() throws Exception{
-		//jerseyTest.tearDown();
-		try {
-			File dbPathFile = new File("database");
-			FileUtils.deleteDirectory(dbPathFile);
-			Files.move(tempFolder.getRoot().toPath(), dbPathFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			FileUtils.deleteDirectory(tempFolder.getRoot());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+
 }
