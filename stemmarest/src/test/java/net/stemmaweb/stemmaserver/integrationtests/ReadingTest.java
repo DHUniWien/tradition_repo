@@ -196,8 +196,8 @@ public class ReadingTest {
 		assertEquals(expectedWitnessC, resp.getEntity());
 	}
 
-	//not working yes
-	//TODO fix json payload
+	// not working yes
+	// TODO fix json payload
 	@Test
 	public void changeReadingPropertiesTest() {
 
@@ -211,13 +211,15 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			String jsonPayload = "{\"key\":\"dn15\",\"newProperty\":\"snow\"}";
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/changeproperties/ofreading/"+firstNode.getId())
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/changeproperties/ofreading/"
+							+ firstNode.getId())
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class, jsonPayload);
-			
-			//assertEquals(Status.OK, response.getClientResponseStatus());			
-			//assertEquals("snow", (String)firstNode.getProperty("dn15"));
+
+			// assertEquals(Status.OK, response.getClientResponseStatus());
+			// assertEquals("snow", (String)firstNode.getProperty("dn15"));
 		}
 	}
 
@@ -262,7 +264,6 @@ public class ReadingTest {
 			assertTrue(readingModel != null);
 			assertEquals(expectedReadingModel.getDn14(), readingModel.getDn14());
 			assertEquals(expectedReadingModel.getDn15(), readingModel.getDn15());
-
 			tx.success();
 		}
 	}
@@ -275,10 +276,8 @@ public class ReadingTest {
 						+ "/withreadingid/" + 200)
 				.type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
-		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
-		assertEquals("no reading with this id found",
-				response.getEntity(String.class));
-
+		assertEquals(Status.INTERNAL_SERVER_ERROR,
+				response.getClientResponseStatus());
 	}
 
 	@Test

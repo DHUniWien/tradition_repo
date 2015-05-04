@@ -105,7 +105,9 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} 
+		} finally {
+			db.shutdown();
+		}
 		return Response.status(Response.Status.OK).entity(textInfo).build();
 	}
 	
@@ -139,7 +141,9 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
+		} finally {
+			db.shutdown();
+		}
 		return Response.ok().entity(traditionList).build();
 	}
 
@@ -194,6 +198,8 @@ public class Tradition implements IResource {
 			} 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}	
 		return Response.ok(witlist).build();
 	}
@@ -269,7 +275,9 @@ public class Tradition implements IResource {
 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
+		} finally {
+			db.shutdown();
+		}
 		return Response.ok(relList).build();
 	}
 
@@ -359,7 +367,9 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
+		} finally {
+			db.shutdown();
+		}
 		return Response.status(Response.Status.OK).build();
 	}
 
@@ -473,7 +483,7 @@ public class Tradition implements IResource {
 	            line = br.readLine();
 	        }
 	        everything = sb.toString();
-	    } catch (FileNotFoundException e) {
+	    }catch  (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {

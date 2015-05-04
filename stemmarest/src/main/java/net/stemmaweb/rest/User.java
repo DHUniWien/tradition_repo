@@ -109,7 +109,6 @@ public class User implements IResource {
 			} else {
 				return null;
 			}
-
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -213,7 +212,6 @@ public class User implements IResource {
 				}
 			}
 			tx.success();
-
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {

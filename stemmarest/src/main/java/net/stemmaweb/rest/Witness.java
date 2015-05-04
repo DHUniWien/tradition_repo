@@ -66,6 +66,8 @@ public class Witness implements IResource {
 			tx.success();
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
@@ -126,6 +128,8 @@ public class Witness implements IResource {
 			tx.success();
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
@@ -183,6 +187,8 @@ public class Witness implements IResource {
 			tx.success();
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}		
 		if (readingModels.size() == 0)
 			return Response.status(Status.NOT_FOUND)
