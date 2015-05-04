@@ -113,6 +113,7 @@ public class Neo4JToDotParser
 		}
     	
     	writePNGFromDotFile(filename,"upload/file");
+    	writeSVGFromDotFile(filename,"upload/file");
     	
 		return Response.ok().build();
 	}
@@ -207,6 +208,7 @@ public class Neo4JToDotParser
     	}
     	
     	writePNGFromDot(output,"upload/file");
+    	writeSVGFromDot(output,"upload/file");
 		return Response.ok(output).build();
 	}
 	
