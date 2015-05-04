@@ -28,7 +28,7 @@ It is possible though to test it by using the test interface testGui.html which 
 >2. Import an GraphML file using the id of the user you have created. The generated id of the tradition will be returned
 >3. Use the custom request by typing in the API call you want (all calls are listed in the documentation)
 
-**A word about node id's:** when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to actually go into the data base and figure it out (see _Neo4j visualization_ in section Database)
+**A word about node id's:** when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the _getAllReadings_ method (*getallreadings/fromtradition/{traditionId}*) or by actually going into the data base (see _Neo4j visualization_ in section Database)
 
 ###Database
 ---
