@@ -11,6 +11,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -18,11 +19,6 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
@@ -31,54 +27,50 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 @RunWith(MockitoJUnitRunner.class)
 public class Neo4JAndGraphMLParserUnitTest {
 
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 	
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
+	GraphDatabaseService db;
 
-	@InjectMocks
+
 	private GraphMLToNeo4JParser importResource;
-	
-	@InjectMocks
 	private Neo4JToGraphMLParser exportResource;
 	
 	@Before
 	public void setUp() throws Exception {
 		
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		importResource = new GraphMLToNeo4JParser();
+		exportResource = new Neo4JToGraphMLParser();
+		
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-    	ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
+    	ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
     	{
     		ExecutionResult result = engine.execute("match (n:ROOT) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		Node rootNode = null;
     		if(!nodes.hasNext())
     		{
-    			rootNode = mockDbService.createNode(Nodes.ROOT);
+    			rootNode = db.createNode(Nodes.ROOT);
     			rootNode.setProperty("name", "Root node");
     			rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
     		}
     		
-    		Node node = mockDbService.createNode(Nodes.USER);
+    		Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
     		tx.success();
     	}
-    	
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);  
-		
-		Mockito.doNothing().when(mockDbService).shutdown();
 	}
 	
 	/**
@@ -162,9 +154,9 @@ public class Neo4JAndGraphMLParserUnitTest {
 	 * test if the tradition node exists
 	 */
 	public void traditionNodeExistsTest(){
-		try(Transaction tx = mockDbService.beginTx())
+		try(Transaction tx = db.beginTx())
     	{
-			ResourceIterable<Node> tradNodes = mockDbService.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1", "Tradition");
+			ResourceIterable<Node> tradNodes = db.findNodesByLabelAndProperty(Nodes.TRADITION, "dg1", "Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
@@ -175,7 +167,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	 * test if the tradition end node exists
 	 */
 	public void traditionEndNodeExistsTest(){
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		
 		ExecutionResult result = engine.execute("match (e)-[:NORMAL]->(n:WORD) where n.dn15='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");

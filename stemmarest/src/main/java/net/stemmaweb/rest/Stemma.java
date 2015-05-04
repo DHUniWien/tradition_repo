@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DotToNeo4JParser;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.Neo4JToDotParser;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -24,7 +25,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
@@ -35,7 +35,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 @Path("/stemma")
 public class Stemma implements IResource {
 	
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 	
 	/**
 	 * Gets a list of all stemmata available, as dot format
@@ -49,7 +50,7 @@ public class Stemma implements IResource {
 	public Response getAllStemmata(@PathParam("tradId") String tradId)
 	{
 		Response resp = null;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		
 		// check if tradition exists
 		if(DatabaseService.getStartNode(tradId, db)!=null)
@@ -97,7 +98,7 @@ public class Stemma implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle) {
 		
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		Neo4JToDotParser parser = new Neo4JToDotParser(db);
 		Response resp = parser.parseNeo4JStemma(tradId, stemmaTitle);
 		
@@ -115,7 +116,7 @@ public class Stemma implements IResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response setStemma(@PathParam("tradId") String tradId, String dot) {
 		
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		DotToNeo4JParser parser = new DotToNeo4JParser(db);
 		Response resp = parser.parseDot(dot,tradId);
 		
@@ -134,7 +135,7 @@ public class Stemma implements IResource {
 	public Response reorientStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle,
 			@PathParam("nodeId") String nodeId) {
 		
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ExecutionEngine engine = new ExecutionEngine(db);
 		
 		Response resp;
@@ -174,7 +175,7 @@ public class Stemma implements IResource {
 		}
 		finally
     	{
-    		db.shutdown();
+    		
     	}
 		return resp;
     	

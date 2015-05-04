@@ -20,16 +20,15 @@ import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -43,7 +42,8 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 public class Reading implements IResource {
 
 	private String errorMessage;
-	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	/**
 	 * Returns a single reading in a specific tradition.
@@ -57,7 +57,7 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getReading(@PathParam("tradId") String tradId,
 			@PathParam("readId") long readId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 
 		ReadingModel reading = null;
 		Node readingNode;
@@ -70,7 +70,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.ok(reading).build();
 	}
@@ -86,7 +86,7 @@ public class Reading implements IResource {
 	@Path("changeproperties/ofreading/{readId}")
 	public Response changeReadingProperties(@PathParam("readId") long readId,
 			String key, String newProperty) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
 			reading = db.getNodeById(readId);
@@ -103,7 +103,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
-			db.shutdown();
+			
 		}
 		return Response.ok(reading).build();
 	}
@@ -121,7 +121,7 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(@PathParam("tradId") String tradId,
 			DuplicateModel duplicateModel) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 
 		ArrayList<ReadingModel> createdReadings = new ArrayList<ReadingModel>();
 
@@ -146,7 +146,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.ok(createdReadings).build();
 	}
@@ -302,7 +302,7 @@ public class Reading implements IResource {
 	public Response mergeReadings(@PathParam("tradId") String tradId,
 			@PathParam("firstReadId") long firstReadId,
 			@PathParam("secondReadId") long secondReadId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 
 		ArrayList<ReadingModel> stayingReadings = new ArrayList<ReadingModel>();
 
@@ -326,7 +326,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.ok(stayingReadings).build();
 	}
@@ -529,7 +529,7 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("tradId") String tradId,
 			@PathParam("readId") long readId) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ArrayList<ReadingModel> createdNodes = null;
 		Node originalReading = null;
 
@@ -548,7 +548,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.ok(createdNodes).build();
 	}
@@ -669,7 +669,7 @@ public class Reading implements IResource {
 			@PathParam("readId") long readId) {
 
 		final String WITNESS_ID = textId;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		EvaluatorService evaService = new EvaluatorService();
 		Evaluator witnessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
 
@@ -693,7 +693,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -716,7 +716,7 @@ public class Reading implements IResource {
 			@PathParam("textId") String textId, @PathParam("readId") long readId) {
 
 		final String WITNESS_ID = textId;
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		EvaluatorService evaService = new EvaluatorService();
 		Evaluator wintessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
 
@@ -740,7 +740,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -751,7 +751,7 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllReadings(@PathParam("tradId") String tradId) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -765,7 +765,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.ok(readingModels).build();
 	}
@@ -814,7 +814,7 @@ public class Reading implements IResource {
 			@PathParam("startRank") long startRank,
 			@PathParam("endRank") long endRank) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -829,7 +829,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		ArrayList<List<ReadingModel>> identicalReadings = new ArrayList<List<ReadingModel>>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
@@ -843,7 +843,7 @@ public class Reading implements IResource {
 		if (isEmpty)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-		db.shutdown();
+		
 		return Response.ok(identicalReadings).build();
 	}
 
@@ -864,7 +864,7 @@ public class Reading implements IResource {
 			@PathParam("startRank") long startRank,
 			@PathParam("endRank") long endRank) {
 
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
@@ -881,12 +881,12 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-		db.shutdown();
+		
 		return Response.ok(couldBeIdenticalReadings).build();
 	}
 
@@ -1056,7 +1056,7 @@ public class Reading implements IResource {
 	public Response compressReadings(@PathParam("tradId") String tradId,
 			@PathParam("readId1") long readId1,
 			@PathParam("readId2") long readId2) {
-		GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+		
 		Node read1, read2;
 		errorMessage = "problem with a reading. could not compress";
 
@@ -1076,7 +1076,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}finally {
-			db.shutdown();
+			
 		}
 		return Response.status(Status.INTERNAL_SERVER_ERROR)
 				.entity(errorMessage).build();

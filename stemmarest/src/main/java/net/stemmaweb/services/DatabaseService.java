@@ -2,9 +2,6 @@ package net.stemmaweb.services;
 
 import java.util.Iterator;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -171,9 +168,7 @@ public class DatabaseService {
 			tx.success();
 		}catch (Exception e) {
 			return false;
-		} finally {
-			db.shutdown();
-		}
+		} 
 		return false;
 	}
 

@@ -17,10 +17,9 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.OSDetector;
@@ -29,19 +28,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -55,43 +47,30 @@ import com.sun.jersey.test.framework.JerseyTest;
 @RunWith(MockitoJUnitRunner.class)
 public class TraditionTest {
 	private String tradId;
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
-
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	@InjectMocks
-	private GraphMLToNeo4JParser importResource;
-
-	@InjectMocks
-	private Tradition tradition;
 	
-	@InjectMocks
-	private Witness witness;
-	
-	@InjectMocks
-	private Reading reading;
+	GraphDatabaseService db;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
 	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
+	
+
+	private GraphMLToNeo4JParser importResource;
+	private Tradition tradition;
+
 
 	@Before
 	public void setUp() throws Exception {
 
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		importResource = new GraphMLToNeo4JParser();
+		tradition = new Tradition();
+		
 		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
@@ -101,37 +80,24 @@ public class TraditionTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
-				rootNode = mockDbService.createNode(Nodes.ROOT);
+				rootNode = db.createNode(Nodes.ROOT);
 				rootNode.setProperty("name", "Root node");
 				rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
 			}
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
 
 			rootNode.createRelationshipTo(node, ERelations.NORMAL);
 			tx.success();
 		}
-
-		/*
-		 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to
-		 * return new TestGraphDatabaseFactory().newImpermanentDatabase()
-		 * instead of dbFactory.newEmbeddedDatabase("database");
-		 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);
-
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method
-		 * with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 
 		/**
 		 * load a tradition to the test DB
@@ -145,7 +111,7 @@ public class TraditionTest {
 		/**
 		 * gets the generated id of the inserted tradition
 		 */
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
@@ -377,13 +343,13 @@ public class TraditionTest {
 		/*
 		 * Create a second user with id 42
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = nodes.next();
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "42");
 			node.setProperty("isAdmin", "1");
 
@@ -395,7 +361,7 @@ public class TraditionTest {
 		 * The user with id 42 has no tradition
 		 */
 		ExecutionResult result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
@@ -408,7 +374,7 @@ public class TraditionTest {
 		 * The user with id 1 has tradition
 		 */
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
@@ -438,7 +404,7 @@ public class TraditionTest {
 		 * Test if user with id 42 has now the tradition
 		 */
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
@@ -457,7 +423,7 @@ public class TraditionTest {
 		 * The user with id 1 has no tradition
 		 */
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
@@ -473,12 +439,12 @@ public class TraditionTest {
 	 */
 	@Test
 	public void changeOwnerOfATraditionTestWithWrongUserDH44(){
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		/* Preconditon
 		 * The user with id 1 has tradition
 		 */
 		ExecutionResult result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
@@ -508,20 +474,23 @@ public class TraditionTest {
 		/* PostCondition
 		 * The user with id 1 has still tradition
 		 */
+		TraditionModel tradition = new TraditionModel();
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
-			TraditionModel tradition = new TraditionModel();
+
 			tradition.setId(tradNode.getProperty("id").toString());
 			tradition.setName(tradNode.getProperty("dg1").toString());
 
-			assertTrue(tradition.getId().equals(tradId));
-			assertTrue(tradition.getName().equals("Tradition"));
-			
+
 			tx.success();
 		}
+		
+		assertTrue(tradition.getId().equals(tradId));
+		assertTrue(tradition.getName().equals("Tradition"));
+		
 	}
 	
 	/**
@@ -533,13 +502,13 @@ public class TraditionTest {
 		/*
 		 * Create a second user with id 42
 		 */
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
-		try (Transaction tx = mockDbService.beginTx()) {
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
 			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = nodes.next();
 
-			Node node = mockDbService.createNode(Nodes.USER);
+			Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "42");
 			node.setProperty("isAdmin", "1");
 
@@ -551,7 +520,7 @@ public class TraditionTest {
 		 * The user with id 42 has no tradition
 		 */
 		ExecutionResult result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
@@ -564,7 +533,7 @@ public class TraditionTest {
 		 * The user with id 1 has tradition
 		 */
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
@@ -600,7 +569,7 @@ public class TraditionTest {
 		 * Test if user with id 1 has still the old tradition
 		 */
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
@@ -619,7 +588,7 @@ public class TraditionTest {
 		 * The user with id 42 has still no tradition
 		 */
 		result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
@@ -639,8 +608,8 @@ public class TraditionTest {
 		
 
 		Node startNode = null;
-		try (Transaction tx = mockDbService.beginTx()) {
-			startNode = DatabaseService.getStartNode(tradId, mockDbService);
+		try (Transaction tx = db.beginTx()) {
+			startNode = DatabaseService.getStartNode(tradId, db);
 			
 		}
 		
@@ -652,7 +621,7 @@ public class TraditionTest {
 	 */
 	@Test
 	public void deleteATraditionWithInvalidIdTest(){
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		/*
 		 * Try to remove a tradition with invalid id
 		 */
@@ -681,7 +650,7 @@ public class TraditionTest {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		mockDbService.shutdown();
+		db.shutdown();
 		jerseyTest.tearDown();
 	}
 

@@ -15,25 +15,19 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.User;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Matchers;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -46,25 +40,8 @@ import com.sun.jersey.test.framework.JerseyTest;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UserTest {
-	/*
-	 * Create a Mock object for the dbFactory.
-	 */
-	@Mock
-	protected GraphDatabaseFactory mockDbFactory = new GraphDatabaseFactory();
 
-	/*
-	 * Create a Spy object for dbService.
-	 */
-	@Spy
-	protected GraphDatabaseService mockDbService = new TestGraphDatabaseFactory().newImpermanentDatabase();
-
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-
-	@InjectMocks
-	private User userResource;
+	GraphDatabaseService db;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -74,35 +51,33 @@ public class UserTest {
 	
 	@Before
 	public void setUp() throws Exception {
-
+		
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		/*
+		 * The Resource under test. The mockDbFactory will be injected into this
+		 * resource.
+		 */
+		User userResource = new User();
+		
 		/*
 		 * Populate the test database with the root node
 		 */
-    	ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
+    	ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
     	{
     		ExecutionResult result = engine.execute("match (n:ROOT) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		if(!nodes.hasNext())
     		{
-    			Node node = mockDbService.createNode(Nodes.ROOT);
+    			Node node = db.createNode(Nodes.ROOT);
     			node.setProperty("name", "Root node");
     			node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
     		}
     		tx.success();
     	}
-    	
-    	/*
-    	 * Manipulate the newEmbeddedDatabase method of the mockDbFactory to return 
-    	 * new TestGraphDatabaseFactory().newImpermanentDatabase() instead
-    	 * of dbFactory.newEmbeddedDatabase("database");
-    	 */
-		Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString())).thenReturn(mockDbService);  
-		
-		/*
-		 * Avoid the Databaseservice to shutdown. (Override the shutdown method with nothing)
-		 */
-		Mockito.doNothing().when(mockDbService).shutdown();
 		
 		/*
 		 * Create a JersyTestServer serving the Resource under test
@@ -126,9 +101,9 @@ public class UserTest {
 	@Test
 	public void createUserTest(){
 
-		ExecutionEngine engine = new ExecutionEngine(mockDbService);
+		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = null;
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertFalse(nodes.hasNext());
@@ -141,7 +116,7 @@ public class UserTest {
 		assertEquals(Response.status(Response.Status.CREATED).build().getStatus(), returnJSON.getStatus());
 		
 
-		try (Transaction tx = mockDbService.beginTx()) {
+		try (Transaction tx = db.beginTx()) {
 			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertTrue(nodes.hasNext());
@@ -215,8 +190,8 @@ public class UserTest {
 		/*
 		 * Creat a testtradition for user 1
 		 */
-	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
+	    ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
@@ -234,8 +209,8 @@ public class UserTest {
 		/*
 		 * Creat a testtradition for user 2
 		 */
-	    engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
+	    engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'843' })";
@@ -302,8 +277,8 @@ public class UserTest {
 		/*
 		 * Creat a testtradition for user 1
 		 */
-	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
+	    ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
@@ -363,8 +338,8 @@ public class UserTest {
         String jsonPayload = "{\"isAdmin\":0,\"id\":837462}";
         jerseyTest.resource().path("/user/createuser").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
         
-	    ExecutionEngine engine = new ExecutionEngine(mockDbService);
-    	try(Transaction tx = mockDbService.beginTx())
+	    ExecutionEngine engine = new ExecutionEngine(db);
+    	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
@@ -401,7 +376,7 @@ public class UserTest {
 	 */
 	@After
 	public void tearDown() throws Exception {
-		mockDbService.shutdown();
+		db.shutdown();
 		jerseyTest.tearDown();
 	}
 }
