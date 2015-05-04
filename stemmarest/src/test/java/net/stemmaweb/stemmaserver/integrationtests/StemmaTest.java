@@ -136,7 +136,8 @@ public class StemmaTest {
 	@Test
 	public void getAllStemmataTest()
 	{
-		List<String> stemmata = jerseyTest.resource().path("/stemma/getallstemmata/fromtradition/" + tradId).type(MediaType.APPLICATION_JSON).get(new GenericType<List<String>>() {});
+		List<String> stemmata = jerseyTest.resource().path("/stemma/getallstemmata/fromtradition/" + tradId)
+				.get(new GenericType<List<String>>() {});
 		assertEquals(2,stemmata.size());
 		
 		String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "

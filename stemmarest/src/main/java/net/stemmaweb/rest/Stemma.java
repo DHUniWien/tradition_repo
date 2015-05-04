@@ -76,6 +76,9 @@ public class Stemma implements IResource {
 			resp = Response.ok(stemmataList).build();
 			tx.success();
 			}
+			catch (Exception e) {
+				resp = Response.status(Status.INTERNAL_SERVER_ERROR).build();
+			}
 		}
 		else
 		{
