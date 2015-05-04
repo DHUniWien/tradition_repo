@@ -27,7 +27,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
@@ -66,14 +66,12 @@ public class Tradition implements IResource {
 	 * @return OK on success or an ERROR as JSON
 	 */
 	@POST
-	@Path("changeowner/fromtradition/{witnessId}")
+	@Path("changemetadata/fromtradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response changeOwnerOfATradition(TextInfoModel textInfo, @PathParam("witnessId") String witnessId) {
-
+	public Response changeOwnerOfATradition(TraditionMetadataModel textInfo, @PathParam("tradId") String witnessId) {
 		
 		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
-			
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
@@ -140,8 +138,6 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
 		return Response.ok().entity(traditionList).build();
 	}
@@ -158,8 +154,6 @@ public class Tradition implements IResource {
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 
 		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
-
-		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 
@@ -197,9 +191,7 @@ public class Tradition implements IResource {
 			} 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
-		}	
+		}
 		return Response.ok(witlist).build();
 	}
 
@@ -222,7 +214,6 @@ public class Tradition implements IResource {
 
 			Node startNode = DatabaseService.getStartNode(tradId, db);
 
-			
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
@@ -271,8 +262,6 @@ public class Tradition implements IResource {
 
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
 		return Response.ok(relList).build();
 	}
@@ -317,7 +306,6 @@ public class Tradition implements IResource {
 	@DELETE
 	@Path("deletetradition/withid/{tradId}")
 	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
-		
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -363,8 +351,6 @@ public class Tradition implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
 		return Response.status(Response.Status.OK).build();
 	}
@@ -461,12 +447,9 @@ public class Tradition implements IResource {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		if(getTraditionNode(tradId,engine) == null)
 			return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-		
 
 		Neo4JToDotParser parser = new Neo4JToDotParser(db);
 		parser.parseNeo4J(tradId);
-
-		
 		
 		String everything = "";
 		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {

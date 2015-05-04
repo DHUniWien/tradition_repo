@@ -12,7 +12,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.ReturnIdModel;
-import net.stemmaweb.model.TextInfoModel;
+import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
@@ -75,7 +75,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void changeTheOwnerOfATradition(){
-		TextInfoModel textInfo = new TextInfoModel();
+		TraditionMetadataModel textInfo = new TraditionMetadataModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
@@ -84,7 +84,7 @@ public abstract class BenachmarkTests {
 		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/1001").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 	
-		textInfo = new TextInfoModel();
+		textInfo = new TraditionMetadataModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
