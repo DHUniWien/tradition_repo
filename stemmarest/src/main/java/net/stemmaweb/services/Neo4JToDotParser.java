@@ -112,7 +112,6 @@ public class Neo4JToDotParser
 			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Could not write file for export").build();
 		}
     	
-    	db.shutdown();
     	writePNGFromDotFile(filename,"upload/file");
     	
 		return Response.ok().build();
@@ -207,7 +206,6 @@ public class Neo4JToDotParser
     		tx.success();
     	}
     	
-    	db.shutdown();
     	writePNGFromDot(output,"upload/file");
 		return Response.ok(output).build();
 	}
