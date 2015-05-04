@@ -5,10 +5,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 import java.util.List;
 
@@ -24,21 +20,14 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -51,19 +40,8 @@ import com.sun.jersey.test.framework.JerseyTest;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class UserTest {
-	
-	@Mock
-	GraphDatabaseServiceProvider graphDbServiceProvider = new GraphDatabaseServiceProvider();
-	
-	@Spy
-	GraphDatabaseService db = new TestGraphDatabaseFactory().newImpermanentDatabase();
 
-	/*
-	 * The Resource under test. The mockDbFactory will be injected into this
-	 * resource.
-	 */
-	@InjectMocks
-	private User userResource;
+	GraphDatabaseService db;
 
 	/*
 	 * JerseyTest is the test environment to Test api calls it provides a
@@ -73,10 +51,17 @@ public class UserTest {
 	
 	@Before
 	public void setUp() throws Exception {
-
-
-
-
+		
+		GraphDatabaseServiceProvider.setImpermanentDatabase();
+		
+		db = new GraphDatabaseServiceProvider().getDatabase();
+		
+		/*
+		 * The Resource under test. The mockDbFactory will be injected into this
+		 * resource.
+		 */
+		User userResource = new User();
+		
 		/*
 		 * Populate the test database with the root node
 		 */
@@ -93,8 +78,6 @@ public class UserTest {
     		}
     		tx.success();
     	}
-    	
-		Mockito.when(graphDbServiceProvider.getDatabase()).thenReturn(db);
 		
 		/*
 		 * Create a JersyTestServer serving the Resource under test

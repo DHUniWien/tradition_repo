@@ -372,10 +372,7 @@ public abstract class BenachmarkTests {
 		//jerseyTest.tearDown();
 		try {
 			File dbPathFile = new File("database");
-			for (File file : dbPathFile.listFiles()) {
-			    FileDeleteStrategy.FORCE.delete(file);
-			} 
-			//FileUtils.deleteDirectory(dbPathFile);
+			FileUtils.deleteDirectory(dbPathFile);
 			Files.move(tempFolder.getRoot().toPath(), dbPathFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 			FileUtils.deleteDirectory(tempFolder.getRoot());
 		} catch (IOException e) {
