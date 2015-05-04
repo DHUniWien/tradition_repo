@@ -61,19 +61,16 @@ public class Reading implements IResource {
 
 		ReadingModel reading = null;
 		Node readingNode;
-
 		try (Transaction tx = db.beginTx()) {
-			try {
 				readingNode = db.getNodeById(readId);
-			} catch (NotFoundException e) {
-				return Response.status(Status.NOT_FOUND)
-						.entity("no reading with this id found").build();
-			}
+			
 			reading = new ReadingModel(readingNode);
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.ok(reading).build();
 	}
@@ -105,6 +102,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		} finally {
+			db.shutdown();
 		}
 		return Response.ok(reading).build();
 	}
@@ -131,14 +130,7 @@ public class Reading implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			List<Long> readings = duplicateModel.getReadings();
 			for (Long readId : readings) {
-				try {
-					originalReading = db.getNodeById(readId);
-				} catch (NotFoundException e) {
-					return Response.status(Status.NOT_FOUND)
-							.entity("no reading with this id found: " + readId)
-							.build();
-				}
-
+					originalReading = db.getNodeById(readId);					
 				List<String> newWitnesses = duplicateModel.getWitnesses();
 
 				if (cannotBeDuplicated(originalReading, newWitnesses))
@@ -146,15 +138,15 @@ public class Reading implements IResource {
 							.entity(errorMessage).build();
 
 				Node newNode = db.createNode();
-
 				duplicate(newWitnesses, originalReading, newNode);
-
 				createdReadings.add(new ReadingModel(newNode));
 			}
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.ok(createdReadings).build();
 	}
@@ -318,14 +310,9 @@ public class Reading implements IResource {
 		Node deletingReading = null;
 
 		try (Transaction tx = db.beginTx()) {
-			try {
 				stayingReading = db.getNodeById(firstReadId);
 				deletingReading = db.getNodeById(secondReadId);
-			} catch (NotFoundException e) {
-				return Response.status(Status.NOT_FOUND)
-						.entity("no readings with those ids found").build();
-			}
-
+			
 			if (cannotBeMerged(db, stayingReading, deletingReading))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
@@ -338,8 +325,9 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
-
 		return Response.ok(stayingReadings).build();
 	}
 
@@ -546,14 +534,7 @@ public class Reading implements IResource {
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
-			try {
 				originalReading = db.getNodeById(readId);
-			} catch (NotFoundException e) {
-				db.shutdown();
-				return Response.status(Status.NOT_FOUND)
-						.entity("no reading with this id found").build();
-			}
-
 			String[] splittedWords = originalReading.getProperty("dn15")
 					.toString().split("\\s+");
 
@@ -566,6 +547,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.ok(createdNodes).build();
 	}
@@ -709,6 +692,8 @@ public class Reading implements IResource {
 			}
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -754,6 +739,8 @@ public class Reading implements IResource {
 			}
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -777,6 +764,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.ok(readingModels).build();
 	}
@@ -839,6 +828,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		ArrayList<List<ReadingModel>> identicalReadings = new ArrayList<List<ReadingModel>>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
@@ -889,6 +880,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
@@ -1082,6 +1075,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+		}finally {
+			db.shutdown();
 		}
 		return Response.status(Status.INTERNAL_SERVER_ERROR)
 				.entity(errorMessage).build();
