@@ -5,7 +5,7 @@ import org.neo4j.graphdb.traversal.Evaluator;
 
 public class EvaluatorService {
 	
-	public Evaluator getEvalForWitness(final String WITNESS_ID) {
+	public static Evaluator getEvalForWitness(final String WITNESS_ID) {
 		Evaluator e = new Evaluator() {
 			@Override
 			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
@@ -31,30 +31,4 @@ public class EvaluatorService {
 		};
 		return e;
 	}
-	
-	public Evaluator getEvaluatorForStemma(final String nodeId) {
-		Evaluator e = new Evaluator() {
-			@Override
-			public Evaluation evaluate(org.neo4j.graphdb.Path path) {
-
-				if (path.length() == 0)
-					return Evaluation.EXCLUDE_AND_CONTINUE;
-
-				boolean includes = true;
-
-				if (path.lastRelationship().hasProperty("id")) {
-					String[] arg = (String[]) path.lastRelationship()
-							.getProperty("id");
-					for (String str : arg) {
-						if (str.equals(nodeId)) {
-							includes = false;
-						}
-					}
-				}
-				return Evaluation.of(includes, includes);
-			}
-		};
-		return e;
-	}
-
 }

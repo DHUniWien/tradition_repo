@@ -216,9 +216,7 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
-		}
+		} 
 		return Response.ok(traditions).build();
 	}
 }

@@ -660,8 +660,7 @@ public class Reading implements IResource {
 
 		final String WITNESS_ID = textId;
 		
-		EvaluatorService evaService = new EvaluatorService();
-		Evaluator witnessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator witnessEvaluator = EvaluatorService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			Node reading = db.getNodeById(readId);
@@ -707,8 +706,7 @@ public class Reading implements IResource {
 
 		final String WITNESS_ID = textId;
 		
-		EvaluatorService evaService = new EvaluatorService();
-		Evaluator wintessEvaluator = evaService.getEvalForWitness(WITNESS_ID);
+		Evaluator wintessEvaluator = EvaluatorService.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			Node read = db.getNodeById(readId);
