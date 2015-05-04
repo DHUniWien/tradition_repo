@@ -19,11 +19,9 @@ public class ReadingService {
 	 * @return
 	 */
 	public static Node copyReadingProperties(Node oldReading, Node newReading) {
-		for (int i = 0; i < 16; i++) {
-			String key = "dn" + i;
+		for (String key : oldReading.getPropertyKeys())
 			if (oldReading.hasProperty(key))
 				newReading.setProperty(key, oldReading.getProperty(key));
-		}
 		newReading.addLabel(Nodes.WORD);
 		return newReading;
 	}
