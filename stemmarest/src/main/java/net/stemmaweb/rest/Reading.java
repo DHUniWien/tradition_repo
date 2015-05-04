@@ -57,20 +57,19 @@ public class Reading implements IResource {
 	@Path("getreading/withreadingid/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getReading(@PathParam("readId") long readId) {
-		
 
 		ReadingModel reading = null;
 		Node readingNode;
 		try (Transaction tx = db.beginTx()) {
-				readingNode = db.getNodeById(readId);
-			
+			readingNode = db.getNodeById(readId);
+
 			reading = new ReadingModel(readingNode);
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.ok(reading).build();
 	}
@@ -78,7 +77,8 @@ public class Reading implements IResource {
 	/**
 	 * change property of a reading according to their keys
 	 * 
-	 * @param readId the id of th reading 
+	 * @param readId
+	 *            the id of th reading
 	 * @return response with the modified reading
 	 */
 	@POST
@@ -86,7 +86,7 @@ public class Reading implements IResource {
 	@Path("changeproperties/ofreading/{readId}")
 	public Response changeReadingProperties(@PathParam("readId") long readId,
 			ChangePropertyModel changeModel) {
-		
+
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
 			reading = db.getNodeById(readId);
@@ -95,14 +95,15 @@ public class Reading implements IResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("the reading does not have such property")
 						.build();
-			else{
-				reading.setProperty(changeModel.getKey(), changeModel.getNewProperty());	
+			else {
+				reading.setProperty(changeModel.getKey(),
+						changeModel.getNewProperty());
 			}
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
+		}
 		return Response.ok(reading).build();
 	}
 
@@ -117,7 +118,6 @@ public class Reading implements IResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response duplicateReading(DuplicateModel duplicateModel) {
-		
 
 		ArrayList<ReadingModel> createdReadings = new ArrayList<ReadingModel>();
 
@@ -126,7 +126,7 @@ public class Reading implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			List<Long> readings = duplicateModel.getReadings();
 			for (Long readId : readings) {
-					originalReading = db.getNodeById(readId);					
+				originalReading = db.getNodeById(readId);
 				List<String> newWitnesses = duplicateModel.getWitnesses();
 
 				if (cannotBeDuplicated(originalReading, newWitnesses))
@@ -141,8 +141,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.ok(createdReadings).build();
 	}
@@ -296,7 +296,6 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response mergeReadings(@PathParam("firstReadId") long firstReadId,
 			@PathParam("secondReadId") long secondReadId) {
-		
 
 		ArrayList<ReadingModel> stayingReadings = new ArrayList<ReadingModel>();
 
@@ -304,9 +303,9 @@ public class Reading implements IResource {
 		Node deletingReading = null;
 
 		try (Transaction tx = db.beginTx()) {
-				stayingReading = db.getNodeById(firstReadId);
-				deletingReading = db.getNodeById(secondReadId);
-			
+			stayingReading = db.getNodeById(firstReadId);
+			deletingReading = db.getNodeById(secondReadId);
+
 			if (cannotBeMerged(db, stayingReading, deletingReading))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
@@ -319,8 +318,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.ok(stayingReadings).build();
 	}
@@ -521,12 +520,12 @@ public class Reading implements IResource {
 	@Path("splitreading/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("readId") long readId) {
-		
+
 		ArrayList<ReadingModel> createdNodes = null;
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
-				originalReading = db.getNodeById(readId);
+			originalReading = db.getNodeById(readId);
 			String[] splittedWords = originalReading.getProperty("text")
 					.toString().split("\\s+");
 
@@ -539,8 +538,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.ok(createdNodes).build();
 	}
@@ -657,12 +656,14 @@ public class Reading implements IResource {
 	@GET
 	@Path("getnextreading/fromwitness/{witnessId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
+	public Response getNextReadingInWitness(
+			@PathParam("witnessId") String witnessId,
 			@PathParam("readId") long readId) {
 
 		final String WITNESS_ID = witnessId;
-		
-		Evaluator witnessEvaluator = EvaluatorService.getEvalForWitness(WITNESS_ID);
+
+		Evaluator witnessEvaluator = EvaluatorService
+				.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			Node reading = db.getNodeById(readId);
@@ -683,8 +684,8 @@ public class Reading implements IResource {
 			}
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -704,11 +705,13 @@ public class Reading implements IResource {
 	@Path("getpreviousreading/fromwitness/{witnessId}/ofreading/{readId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getPreviousReadingInWitness(
-			@PathParam("witnessId") String witnessId, @PathParam("readId") long readId) {
+			@PathParam("witnessId") String witnessId,
+			@PathParam("readId") long readId) {
 
 		final String WITNESS_ID = witnessId;
-		
-		Evaluator wintessEvaluator = EvaluatorService.getEvalForWitness(WITNESS_ID);
+
+		Evaluator wintessEvaluator = EvaluatorService
+				.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
 			Node read = db.getNodeById(readId);
@@ -729,8 +732,8 @@ public class Reading implements IResource {
 			}
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -741,7 +744,6 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllReadings(@PathParam("tradId") String tradId) {
 
-		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -754,8 +756,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		return Response.ok(readingModels).build();
 	}
@@ -804,7 +806,6 @@ public class Reading implements IResource {
 			@PathParam("startRank") long startRank,
 			@PathParam("endRank") long endRank) {
 
-		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -818,8 +819,8 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		ArrayList<List<ReadingModel>> identicalReadings = new ArrayList<List<ReadingModel>>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
@@ -833,7 +834,7 @@ public class Reading implements IResource {
 		if (isEmpty)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-		
+
 		return Response.ok(identicalReadings).build();
 	}
 
@@ -854,7 +855,6 @@ public class Reading implements IResource {
 			@PathParam("startRank") long startRank,
 			@PathParam("endRank") long endRank) {
 
-		
 		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 		Node startNode = DatabaseService.getStartNode(tradId, db);
 		if (startNode == null)
@@ -870,13 +870,13 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
+		} finally {
+
 		}
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
 					.entity("no identical readings were found").build();
-		
+
 		return Response.ok(couldBeIdenticalReadings).build();
 	}
 
@@ -1033,38 +1033,69 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * compress two readings into one
+	 * 
 	 * 
 	 * @param readId1
 	 * @param readId2
 	 * @return confirmation that the operation was completed
 	 */
+	/**
+	 * compress two readings into one. Texts will be concatenate together (with
+	 * or without a space or extra text The reading with the lower rank should
+	 * be given first
+	 * 
+	 * @param readId1
+	 *            the id of the first reading
+	 * @param readId2
+	 *            the id of the second reading
+	 * @param con
+	 *            concatenate must be 0 (for 'no') or 1 (for 'yes'). if
+	 *            concatenate is set to 1, it will be done with with_str between
+	 *            the texts of the readings. If it is 0, texts will be
+	 *            concatenate with a single space
+	 * @param conString
+	 *            the string which will come between the texts of the readings
+	 *            if con is set to 1 could also be an empty string
+	 * 
+	 * @return status.ok if compress was succesfull.
+	 *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
+	 */
 	@POST
-	@Path("compressreadings/first/{readId1}/second/{readId2}")
+	@Path("compressreadings/read1id/{read1Id}/read2id/{read2Id}/concatenate/{con}/with_str/{conString}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response compressReadings(@PathParam("readId1") long readId1,
-			@PathParam("readId2") long readId2) {
-		
+	public Response compressReadings(@PathParam("read1Id") long readId1,
+			@PathParam("read2Id") long readId2, @PathParam("con") String con,
+			@PathParam("conString") String conString) {
+
 		Node read1, read2;
 		errorMessage = "problem with a reading. could not compress";
+		boolean toConcatenate;
+		if (con.equals("0"))
+			toConcatenate = false;
+		else if (con.equals("1"))
+			toConcatenate = true;
+		else
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity("argument concatenate has an invalid value")
+					.build();
 
 		try (Transaction tx = db.beginTx()) {
 			read1 = db.getNodeById(readId1);
 			read2 = db.getNodeById(readId2);
 			if ((long) read1.getProperty("rank") > (long) read2
 					.getProperty("rank"))
-				swapReadings(read1, read2);
-
+				return Response
+						.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("the first reading has a higher rank then the second reading")
+						.build();
 			if (canCompress(read1, read2, db)) {
-				compress(read1, read2, db);
+				compress(read1, read2, toConcatenate, conString, db);
 				tx.success();
-				return Response.ok("successfully compressed readings").build();
+				return Response.ok().build();
 			}
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
 		}
 		return Response.status(Status.INTERNAL_SERVER_ERROR)
 				.entity(errorMessage).build();
@@ -1077,11 +1108,18 @@ public class Reading implements IResource {
 	 *            the first reading
 	 * @param read2
 	 *            the second reading
+	 * @param conString  the string to come between the texts of the readings
+	 * @param toConcatenate boolean: if true - texts of readings will be concatenated with conString in between
+	 * if false: texts of readings will be concatenated with one empty space in between
 	 */
-	private void compress(Node read1, Node read2, GraphDatabaseService db) {
+	private void compress(Node read1, Node read2, boolean toConcatenate,
+			String conString, GraphDatabaseService db) {
 		String textRead1 = (String) read1.getProperty("text");
 		String textRead2 = (String) read2.getProperty("text");
-		read1.setProperty("text", textRead1 + " " + textRead2);
+		if (!toConcatenate)
+			read1.setProperty("text", textRead1 + " " + textRead2);
+		else
+			read1.setProperty("text", textRead1 + conString + textRead2);
 
 		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
 		from1to2.delete();

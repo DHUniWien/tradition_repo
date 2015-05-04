@@ -55,10 +55,7 @@ import com.sun.jersey.test.framework.JerseyTest;
  */
 @RunWith(MockitoJUnitRunner.class)
 public class ReadingTest {
-	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-	private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood\"}";
-
+	
 	private String tradId;
 
 	GraphDatabaseService db;
@@ -144,16 +141,18 @@ public class ReadingTest {
 
 	/**
 	 * Contains 29 readings at the beginning.
+	 * @return 
 	 */
-	private void testNumberOfReadings(int number) {
+	private List<ReadingModel> testNumberOfReadingsAndWitnesses(int number) {
+		String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
+		String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+		String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood\"}";
+
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
 				.path("/reading/getallreadings/fromtradition/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
 				});
 		assertEquals(number, listOfReadings.size());
-	}
-
-	private void testWitnesses() {
 		Response resp;
 
 		resp = witness.getWitnessAsText(tradId, "A");
@@ -164,7 +163,8 @@ public class ReadingTest {
 
 		resp = witness.getWitnessAsText(tradId, "C");
 		assertEquals(expectedWitnessC, resp.getEntity());
-	}
+		return listOfReadings;
+	}	
 
 	// not working yes
 	// TODO fix json payload
@@ -274,9 +274,9 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			testNumberOfReadings(31);
+			testNumberOfReadingsAndWitnesses(31);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'showers'}) return w");
 			nodes = result.columnAs("w");
@@ -336,9 +336,9 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			testNumberOfReadings(30);
+			testNumberOfReadingsAndWitnesses(30);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'of'}) return w");
 			nodes = result.columnAs("w");
@@ -471,9 +471,9 @@ public class ReadingTest {
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
 			// should contain one reading less now
-			testNumberOfReadings(28);
+			testNumberOfReadingsAndWitnesses(28);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'fruit'}) return w");
 			nodes = result.columnAs("w");
@@ -559,9 +559,9 @@ public class ReadingTest {
 			assertEquals("Readings to be merged would make the graph cyclic",
 					response.getEntity(String.class));
 
-			testNumberOfReadings(29);
+			testNumberOfReadingsAndWitnesses(29);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'drought'}) return w");
 			nodes = result.columnAs("w");
@@ -601,9 +601,9 @@ public class ReadingTest {
 			assertEquals("Readings to be merged would make the graph cyclic",
 					response.getEntity(String.class));
 
-			testNumberOfReadings(29);
+			testNumberOfReadingsAndWitnesses(29);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'to'}) return w");
 			nodes = result.columnAs("w");
@@ -644,9 +644,9 @@ public class ReadingTest {
 					"Readings to be merged have to be connected with each other through a relationship",
 					response.getEntity(String.class));
 
-			testNumberOfReadings(29);
+			testNumberOfReadingsAndWitnesses(29);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'his'}) return w");
 			nodes = result.columnAs("w");
@@ -687,9 +687,9 @@ public class ReadingTest {
 					"Readings to be merged cannot contain class 2 relationships (transposition / repetition)",
 					response.getEntity(String.class));
 
-			testNumberOfReadings(29);
+			testNumberOfReadingsAndWitnesses(29);
 
-			testWitnesses();
+			;
 
 			result = engine.execute("match (w:WORD {text:'march'}) return w");
 			nodes = result.columnAs("w");
@@ -796,9 +796,9 @@ public class ReadingTest {
 			assertEquals((long) 18, root2.getProperty("rank"));
 
 			// should contain one reading more now
-			testNumberOfReadings(30);
+			testNumberOfReadingsAndWitnesses(30);
 
-			testWitnesses();
+			;
 
 			tx.success();
 		}
@@ -829,9 +829,9 @@ public class ReadingTest {
 					"A reading to be splitted cannot be part of any relationship",
 					response.getEntity(String.class));
 
-			testNumberOfReadings(29);
+			testNumberOfReadingsAndWitnesses(29);
 
-			testWitnesses();
+			;
 
 			tx.success();
 		}
@@ -865,7 +865,7 @@ public class ReadingTest {
 					"There has to be a rank-gap after a reading to be splitted",
 					response.getEntity(String.class));
 
-			testWitnesses();
+			;
 
 			tx.success();
 		}
@@ -895,9 +895,9 @@ public class ReadingTest {
 					"A reading to be splitted has to contain at least 2 words",
 					response.getEntity(String.class));
 
-			testNumberOfReadings(29);
+			testNumberOfReadingsAndWitnesses(29);
 
-			testWitnesses();
+			;
 
 			tx.success();
 		}
@@ -1037,7 +1037,7 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void compressReadingTest() {
+	public void compressReadingsNoConcatenatingTest() {
 		Node showers, sweet;
 		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
@@ -1054,13 +1054,10 @@ public class ReadingTest {
 
 			ClientResponse res = jerseyTest
 					.resource()
-					.path("/reading/compressreadings/first/" + showers.getId()
-							+ "/second/" + sweet.getId()).post(ClientResponse.class);
+					.path("/reading/compressreadings/read1id/" + showers.getId()
+							+ "/read2id/" + sweet.getId()+"/concatenate/0/with_str/ ").post(ClientResponse.class);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-			assertEquals("successfully compressed readings",
-					res.getEntity(String.class));
-
 			assertEquals("showers sweet", showers.getProperty("text"));
 
 			result = engine
@@ -1078,13 +1075,8 @@ public class ReadingTest {
 			nodes = result.columnAs("w");
 			assertFalse(nodes.hasNext());
 
-			// both witnesses are still the same
-			testWitnesses();
-
-			List<ReadingModel> listOfReadings = jerseyTest.resource()
-					.path("/reading/getallreadings/fromtradition/" + tradId)
-					.get(new GenericType<List<ReadingModel>>() {
-					});
+			// there is one reading less in the tradition and witnesses have not been changed
+			List<ReadingModel> listOfReadings = testNumberOfReadingsAndWitnesses(28);
 			Collections.sort(listOfReadings);
 
 			// tradition still has all the texts
@@ -1094,9 +1086,6 @@ public class ReadingTest {
 				text += listOfReadings.get(i).getText() + " ";
 			}
 			assertEquals(expectedTest, text.trim());
-
-			// there is one reading less in the tradition
-			assertEquals(28, listOfReadings.size());
 
 			// no more reading with rank 6
 			int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
@@ -1108,7 +1097,92 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
+	
+	@Test
+	public void compressReadingsWithConcatenatingWithConTextTest() {
+		Node showers, sweet;
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			showers = nodes.next();
 
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			sweet = nodes.next();
+
+			ClientResponse res = jerseyTest
+					.resource()
+					.path("/reading/compressreadings/read1id/" + showers.getId()
+							+ "/read2id/" + sweet.getId()+"/concatenate/1/with_str/test").post(ClientResponse.class);
+
+			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+			assertEquals("showerstestsweet", showers.getProperty("text"));
+
+			result = engine
+					.execute("match (w:WORD {text:'showerstestsweet'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			nodes.next();
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'showers'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());			
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void compressReadingsWithConcatenatingWithoutConTextTest() {
+		Node showers, sweet;
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			showers = nodes.next();
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			sweet = nodes.next();
+
+			ClientResponse res = jerseyTest
+					.resource()
+					.path("/reading/compressreadings/read1id/" + showers.getId()
+							+ "/read2id/" + sweet.getId()+"/concatenate/1/with_str/ ").post(ClientResponse.class);
+
+			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+			assertEquals("showers sweet", showers.getProperty("text"));
+
+			result = engine
+					.execute("match (w:WORD {text:'showers sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			nodes.next();
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'showers'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());			
+			tx.success();
+		}
+	}
+
+	
 	/**
 	 * the given reading are not neighbors tests that readings were not
 	 * compressed
@@ -1130,8 +1204,8 @@ public class ReadingTest {
 
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/compressreadings/first/" + showers.getId() 
-							+ "/second/" + fruit.getId()).post(ClientResponse.class);
+					.path("/reading/compressreadings/read1id/" + showers.getId() 
+							+ "/read2id/" + fruit.getId()+"/concatenate/0/with_str/ ").post(ClientResponse.class);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
