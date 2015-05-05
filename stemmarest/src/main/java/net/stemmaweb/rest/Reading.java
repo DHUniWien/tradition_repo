@@ -806,6 +806,19 @@ public class Reading implements IResource {
 		return readingModels;
 	}
 
+	/**
+	 * get all reaings which have the same text and the same rank between given
+	 * ranks
+	 * 
+	 * @param tradId
+	 *            the id of the tradition in which to look for identical
+	 *            readings
+	 * @param startRank
+	 *            the rank from where to start the search
+	 * @param endRank
+	 *            the end rank of the search range
+	 * @return a list of lists: each list contain identical readings
+	 */
 	@GET
 	@Path("getidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
 	@Produces(MediaType.APPLICATION_JSON)
@@ -1040,13 +1053,6 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * 
-	 * 
-	 * @param readId1
-	 * @param readId2
-	 * @return confirmation that the operation was completed
-	 */
-	/**
 	 * compress two readings into one. Texts will be concatenate together (with
 	 * or without a space or extra text The reading with the lower rank should
 	 * be given first
@@ -1057,14 +1063,16 @@ public class Reading implements IResource {
 	 *            the id of the second reading
 	 * @param con
 	 *            concatenate must be 0 (for 'no') or 1 (for 'yes'). if
-	 *            concatenate is set to 1, it will be done with with_str between
-	 *            the texts of the readings. If it is 0, texts will be
-	 *            concatenate with a single space
+	 *            concatenate is set to 1, the compressing will be done with
+	 *            conString between the texts of the readings. If it is 0, texts
+	 *            will be concatenate with a single space. If con is 1 and
+	 *            conString is a single space, the texts will be concatenated
+	 *            without a gap
 	 * @param conString
 	 *            the string which will come between the texts of the readings
 	 *            if con is set to 1 could also be an empty string
 	 * 
-	 * @return status.ok if compress was succesfull.
+	 * @return status.ok if compress was successful.
 	 *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
 	 */
 	@POST
@@ -1115,9 +1123,14 @@ public class Reading implements IResource {
 	 *            the first reading
 	 * @param read2
 	 *            the second reading
-	 * @param conString  the string to come between the texts of the readings
-	 * @param toConcatenate boolean: if true - texts of readings will be concatenated with conString in between
-	 * if false: texts of readings will be concatenated with one empty space in between
+	 * @param conString
+	 *            the string to come between the texts of the readings.
+	 * @param toConcatenate
+	 *            boolean: if true - texts of readings will be concatenated with
+	 *            conString in between if false: texts of readings will be
+	 *            concatenated with one empty space in between. If true and
+	 *            conString is a single space, the texts will be concatenated
+	 *            without a gap
 	 */
 	private void compress(Node read1, Node read2, boolean toConcatenate,
 			String conString, GraphDatabaseService db) {
@@ -1125,6 +1138,8 @@ public class Reading implements IResource {
 		String textRead2 = (String) read2.getProperty("text");
 		if (!toConcatenate)
 			read1.setProperty("text", textRead1 + " " + textRead2);
+		else if (conString.equals(" "))
+			read1.setProperty("text", textRead1 + textRead2);
 		else
 			read1.setProperty("text", textRead1 + conString + textRead2);
 
