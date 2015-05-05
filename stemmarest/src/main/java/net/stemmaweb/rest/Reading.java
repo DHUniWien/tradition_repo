@@ -78,7 +78,7 @@ public class Reading implements IResource {
 	 * change property of a reading according to their keys
 	 * 
 	 * @param readId
-	 *            the id of th reading
+	 *            the id of the reading
 	 * @return response with the modified reading
 	 */
 	@POST
@@ -297,8 +297,6 @@ public class Reading implements IResource {
 	public Response mergeReadings(@PathParam("firstReadId") long firstReadId,
 			@PathParam("secondReadId") long secondReadId) {
 
-		ArrayList<ReadingModel> stayingReadings = new ArrayList<ReadingModel>();
-
 		Node stayingReading = null;
 		Node deletingReading = null;
 
@@ -313,15 +311,13 @@ public class Reading implements IResource {
 			// finally merge readings ;-)
 			merge(stayingReading, deletingReading);
 
-			stayingReadings.add(new ReadingModel(stayingReading));
-
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		} finally {
 
 		}
-		return Response.ok(stayingReadings).build();
+		return Response.ok().build();
 	}
 
 	/**
@@ -514,20 +510,25 @@ public class Reading implements IResource {
 	 * Opposite of compress
 	 * 
 	 * @param readId
+	 * @param separator
+	 *            the string which is between the words to be splitted, default:
+	 *            whitespace
 	 * @return
 	 */
 	@POST
-	@Path("splitreading/ofreading/{readId}")
+	@Path("splitreading/ofreading/{readId}/{separator}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("readId") long readId) {
+	public Response splitReading(@PathParam("readId") long readId, @PathParam("separator") String separator) {
 
 		ArrayList<ReadingModel> createdNodes = null;
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
 			originalReading = db.getNodeById(readId);
-			String[] splittedWords = originalReading.getProperty("text")
-					.toString().split("\\s+");
+			String originalText = originalReading.getProperty("text").toString();
+			if (separator == null || separator.equals("") || separator.equals("0"))
+				separator = "\\s+";
+			String[] splittedWords = originalText.split(separator);
 
 			if (cannotBeSplitted(originalReading, splittedWords))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
@@ -606,40 +607,46 @@ public class Reading implements IResource {
 	 */
 	private ArrayList<ReadingModel> split(GraphDatabaseService db,
 			Node originalReading, String[] splittedWords) {
-		ArrayList<ReadingModel> createdNodes = new ArrayList<ReadingModel>();
+		Iterable<Relationship> originalOutgoingRels = originalReading.getRelationships(ERelations.NORMAL,
+				Direction.OUTGOING);
+		ArrayList<String> allWitnesses = new ArrayList<String>();
+		for (Relationship relationship : originalReading.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
+			String[] witnesses = (String[]) relationship.getProperty("lexemes");
+			for (int j = 0; j < witnesses.length; j++)
+				allWitnesses.add(witnesses[j]);
+
+		}
 		originalReading.setProperty("text", splittedWords[0]);
+
+
+		ArrayList<ReadingModel> createdNodes = new ArrayList<ReadingModel>();
 		createdNodes.add(new ReadingModel(originalReading));
+		
+
+		Node lastReading = originalReading;
+
 		for (int i = 1; i < splittedWords.length; i++) {
 			Node newReading = db.createNode();
 
-			// is this assignment necessary or does that function
-			// otherwise as well in this transaction?
-			newReading = ReadingService.copyReadingProperties(originalReading,
-					newReading);
+			newReading = ReadingService.copyReadingProperties(lastReading, newReading);
 			newReading.setProperty("text", splittedWords[i]);
-			Long previousRank = (Long) originalReading.getProperty("rank");
+			Long previousRank = (Long) lastReading.getProperty("rank");
 			newReading.setProperty("rank", previousRank + 1);
 
-			ArrayList<String> allWitnesses = new ArrayList<String>();
-			Iterable<Relationship> rels = originalReading.getRelationships(
-					ERelations.NORMAL, Direction.OUTGOING);
-			for (Relationship relationship : rels) {
-				String[] witnesses = (String[]) relationship
-						.getProperty("lexemes");
-				for (int j = 0; j < witnesses.length; j++)
-					allWitnesses.add(witnesses[j]);
-
-				newReading.createRelationshipTo(relationship.getEndNode(),
-						ERelations.NORMAL);
-				relationship.delete();
-			}
-
-			Relationship relationship = originalReading.createRelationshipTo(
+			Relationship relationship = lastReading.createRelationshipTo(
 					newReading, ERelations.NORMAL);
 			relationship.setProperty("lexemes",
 					allWitnesses.toArray(new String[allWitnesses.size()]));
+
+			lastReading = newReading;
 			createdNodes.add(new ReadingModel(newReading));
 		}
+		for (Relationship oldRel : originalOutgoingRels) {
+			Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), ERelations.NORMAL);
+			newRel = RelationshipService.copyRelationshipProperties(oldRel, newRel);
+			oldRel.delete();
+		}
+
 		return createdNodes;
 	}
 
