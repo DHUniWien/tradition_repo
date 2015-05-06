@@ -753,7 +753,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -803,7 +803,7 @@ public class ReadingTest {
 
 			// split reading
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/-/").type(MediaType.APPLICATION_JSON)
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/-/0").type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -816,6 +816,79 @@ public class ReadingTest {
 					.path("/reading/getallreadings/fromtradition/" + tradId).get(new GenericType<List<ReadingModel>>() {
 					});
 			assertEquals(32, listOfReadings.size());
+			Response resp;
+
+			resp = witness.getWitnessAsText(tradId, "A");
+			assertEquals(expectedWitnessA, resp.getEntity());
+
+			resp = witness.getWitnessAsText(tradId, "B");
+			assertEquals(expectedWitnessB, resp.getEntity());
+
+			resp = witness.getWitnessAsText(tradId, "C");
+			assertEquals(expectedWitnessC, resp.getEntity());
+
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithWrongIndexTest() {
+		try (Transaction tx = db.beginTx()) {
+
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/7")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
+
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals(
+					"The splitIndex must be smaller than the text length",
+					response.getEntity(String.class));
+
+			testNumberOfReadingsAndWitnesses(29);
+
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithIndexTest() {
+		try (Transaction tx = db.beginTx()) {
+
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/2")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
+
+			assertEquals(Status.OK, response.getClientResponseStatus());
+
+			String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the ro ot\"}";
+			String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+			String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood-of-the-world\"}";
+
+			List<ReadingModel> listOfReadings = jerseyTest.resource()
+					.path("/reading/getallreadings/fromtradition/" + tradId).get(new GenericType<List<ReadingModel>>() {
+					});
+			assertEquals(30, listOfReadings.size());
 			Response resp;
 
 			resp = witness.getWitnessAsText(tradId, "A");
@@ -846,7 +919,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -880,7 +953,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + untoMe.getId() + "/0/")
+					.path("/reading/splitreading/ofreading/" + untoMe.getId() + "/0/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -908,7 +981,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 

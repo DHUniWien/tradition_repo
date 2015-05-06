@@ -519,12 +519,17 @@ public class Reading implements IResource {
 	 * @param separator
 	 *            the string which is between the words to be splitted, default:
 	 *            whitespace
+	 * @param splitIndex
+	 *            the index of the first letter of second word: "unto" with
+	 *            index 2 gets "un" and "to" if the index is zero the reading is
+	 *            splitted using the separator
 	 * @return
 	 */
 	@POST
-	@Path("splitreading/ofreading/{readId}/{separator}")
+	@Path("splitreading/ofreading/{readId}/{separator}/{splitIndex}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("readId") long readId, @PathParam("separator") String separator) {
+	public Response splitReading(@PathParam("readId") long readId, @PathParam("separator") String separator,
+			@PathParam("splitIndex") int splitIndex) {
 
 		ArrayList<ReadingModel> createdNodes = null;
 		Node originalReading = null;
@@ -532,9 +537,20 @@ public class Reading implements IResource {
 		try (Transaction tx = db.beginTx()) {
 			originalReading = db.getNodeById(readId);
 			String originalText = originalReading.getProperty("text").toString();
-			if (separator == null || separator.equals("") || separator.equals("0"))
-				separator = "\\s+";
-			String[] splittedWords = originalText.split(separator);
+			String[] splittedWords;
+			if (splitIndex > 0) {
+				if(splitIndex >= originalText.length())
+					return Response.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("The splitIndex must be smaller than the text length").build();
+				splittedWords = new String[2];
+				splittedWords[0] = originalText.substring(0, splitIndex);
+				splittedWords[1] = originalText.substring(splitIndex);
+			}
+			else {
+				if (separator == null || separator.equals("") || separator.equals("0"))
+					separator = "\\s+";
+				splittedWords = originalText.split(separator);
+			}
 
 			if (cannotBeSplitted(originalReading, splittedWords))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
