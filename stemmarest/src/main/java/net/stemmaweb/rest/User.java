@@ -48,13 +48,12 @@ public class User implements IResource {
 		return "User!";
 	}
 
-
 	/**
 	 * Creates a user based on the parameters submitted in JSON.
 	 * 
 	 * @param userModel
 	 *            in JSON Format
-	 * @return OK on success or an ERROR as JSON
+	 * @return a userModel in JSON on success or an ERROR as JSON
 	 */
 	@POST
 	@Path("createuser")
@@ -90,7 +89,7 @@ public class User implements IResource {
 	 * Gets a user by the id.
 	 * 
 	 * @param userId
-	 * @return UserModel as JSON
+	 * @return UserModel as JSON or an ERROR as JSON
 	 */
 	@GET
 	@Path("getuser/withid/{userId}")
@@ -120,8 +119,9 @@ public class User implements IResource {
 	
 	/**
 	 * Removes a user and all his traditions
+	 * 
 	 * @param userId
-	 * @return
+	 * @return OK on success or an ERROR as JSON
 	 */
 	@DELETE
 	@Path("deleteuser/withid/{userId}")
@@ -177,10 +177,10 @@ public class User implements IResource {
 	}
 
 	/**
-	 * Get all Traditions of a user 
+	 * Get all Traditions of a user
 	 * 
 	 * @param userId
-	 * @return
+	 * @return OK on success or an ERROR as JSON
 	 */
 	@GET
 	@Path("gettraditions/ofuser/{userId}")

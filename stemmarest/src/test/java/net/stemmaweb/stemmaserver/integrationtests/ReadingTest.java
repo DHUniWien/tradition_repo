@@ -15,6 +15,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.ReadingsAndRelationshipsModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -278,6 +279,12 @@ public class ReadingTest {
 					.post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
+
+			ReadingsAndRelationshipsModel readingsAndRelationshipsModel = response
+					.getEntity(ReadingsAndRelationshipsModel.class);
+			assertEquals("showers", readingsAndRelationshipsModel.getReadings().get(0).getText());
+			assertEquals("sweet", readingsAndRelationshipsModel.getReadings().get(1).getText());
+			assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
 
 			testNumberOfReadingsAndWitnesses(31);
 
@@ -758,6 +765,12 @@ public class ReadingTest {
 					.post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
+
+			ReadingsAndRelationshipsModel readingsAndRelationshipsModel = response
+					.getEntity(ReadingsAndRelationshipsModel.class);
+			assertEquals("the", readingsAndRelationshipsModel.getReadings().get(0).getText());
+			assertEquals("root", readingsAndRelationshipsModel.getReadings().get(1).getText());
+			assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
 
 			result = engine.execute("match (w:WORD {text:'the'}) return w");
 			nodes = result.columnAs("w");
