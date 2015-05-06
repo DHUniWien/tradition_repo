@@ -13,8 +13,7 @@ public class ReadingChangePropertyModel {
 	private String key;
 	private String newProperty;
 	
-	public ReadingChangePropertyModel(){
-		
+	public ReadingChangePropertyModel(){		
 	}
 	
 	public ReadingChangePropertyModel(String key, String newProperty) {

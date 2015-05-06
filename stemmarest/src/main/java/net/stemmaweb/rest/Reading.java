@@ -83,11 +83,12 @@ public class Reading implements IResource {
 	 * @return response with the modified reading
 	 */
 	@POST
-	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("changeproperties/ofreading/{readId}")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeReadingProperties(@PathParam("readId") long readId,
 			ReadingChangePropertyModel[] changeModels) {
-
+		ReadingModel modelToReturn = new ReadingModel();
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
 			reading = db.getNodeById(readId);
@@ -105,12 +106,13 @@ public class Reading implements IResource {
 							changeModel.getNewProperty());
 				}
 			}
+			modelToReturn = new ReadingModel(reading);
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		return Response.ok(reading).build();
+		return Response.status(Response.Status.OK).entity(modelToReturn).build();
 	}
 
 	/**

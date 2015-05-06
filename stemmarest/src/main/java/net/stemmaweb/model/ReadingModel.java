@@ -71,7 +71,6 @@ public class ReadingModel implements Comparable<ReadingModel> {
 	}
 
 	public ReadingModel() {
-
 	}
 
 	public String getGrammar_invalid() {
