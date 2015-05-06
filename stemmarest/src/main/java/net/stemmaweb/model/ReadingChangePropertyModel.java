@@ -1,4 +1,4 @@
-package net.stemmaweb.rest;
+package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
@@ -8,10 +8,15 @@ import javax.xml.bind.annotation.XmlRootElement;
  *
  */
 @XmlRootElement
-public class ChangePropertyModel {
+public class ReadingChangePropertyModel {
 	
 	private String key;
 	private String newProperty;
+	
+	public ReadingChangePropertyModel(String key, String newProperty) {
+		this.key = key;
+		this.newProperty = newProperty; 
+	}
 	
 	public String getKey() {
 		return key;

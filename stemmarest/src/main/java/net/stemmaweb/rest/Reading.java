@@ -16,6 +16,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
@@ -85,19 +86,24 @@ public class Reading implements IResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("changeproperties/ofreading/{readId}")
 	public Response changeReadingProperties(@PathParam("readId") long readId,
-			ChangePropertyModel changeModel) {
+			List<ReadingChangePropertyModel> changeModels) {
 
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
 			reading = db.getNodeById(readId);
-
-			if (!reading.hasProperty(changeModel.getKey()))
-				return Response.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("the reading does not have such property")
-						.build();
-			else {
-				reading.setProperty(changeModel.getKey(),
-						changeModel.getNewProperty());
+			for (ReadingChangePropertyModel keyCheckModel : changeModels) {
+				if (!reading.hasProperty(keyCheckModel.getKey()))
+					return Response
+							.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("the reading does not have such property: "
+									+ keyCheckModel.getKey()
+									+ ". no changes to the reading have been done")
+							.build();
+				
+				for (ReadingChangePropertyModel changeModel : changeModels) {
+					reading.setProperty(changeModel.getKey(),
+							changeModel.getNewProperty());
+				}
 			}
 
 			tx.success();

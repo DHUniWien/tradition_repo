@@ -13,6 +13,7 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -171,9 +172,12 @@ public class ReadingTest {
 	// TODO fix json payload
 	@Test
 	public void changeReadingPropertiesTest() {
+		
+		List<ReadingChangePropertyModel> changeModels = new ArrayList<ReadingChangePropertyModel>();
+		ReadingChangePropertyModel changeModel1 = new ReadingChangePropertyModel("text", "snow");
+		changeModels.add(changeModel1);
 
 		Node node;
-		ClientResponse response;
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
@@ -183,12 +187,14 @@ public class ReadingTest {
 			node = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			String jsonPayload = "{\"key\":\"text\",\"newProperty\":\"snow\"}";
-			response = jerseyTest
+			String jsonPayload = "{[\"key\":\"text\",\"newProperty\":\"snow\"]}";
+			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, jsonPayload);
+					.post(ClientResponse.class, changeModels);
+
+			assertEquals(Status.OK, response.getClientResponseStatus());
 
 			assertEquals("snow", (String) node.getProperty("text"));
 			tx.success();
