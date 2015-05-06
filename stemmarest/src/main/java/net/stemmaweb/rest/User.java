@@ -82,10 +82,8 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
-		}
-		return Response.status(Response.Status.CREATED).build();
+		} 
+		return Response.status(Response.Status.CREATED).entity(userModel).build();
 	}
 
 	/**
@@ -116,9 +114,7 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally { 
-			
-		}
+		} 
 		return Response.ok(userModel).build();
 	}
 	
@@ -176,9 +172,7 @@ public class User implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
-		}
+		} 
 		return Response.status(Response.Status.OK).build();
 	}
 

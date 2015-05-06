@@ -195,7 +195,6 @@ public class ReadingTest {
 					.post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
-
 			assertEquals("snow", (String) node.getProperty("text"));
 			tx.success();
 		}
