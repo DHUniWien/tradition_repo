@@ -39,16 +39,17 @@ public class GraphMLToNeo4JParser implements IResource
 {
 	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
+	
 	/**
 	 * Reads xml file and imports it into Neo4J Database 
 	 * @param filename - the graphMl file
 	 * @param userId - the user id who will own the tradition
-	 * @param nameAbbrev - an abbreviation for the tradition (used as prefix in db)
+	 * @param tradName tradition name that should be used
 	 * @return Http Response
 	 * @throws FileNotFoundException
 	 * @throws XMLStreamException
 	 */
-	public Response parseGraphML(String filename, String userId) throws FileNotFoundException
+	public Response parseGraphML(String filename, String userId, String tradName) throws FileNotFoundException
 	{
 		
 		XMLInputFactory factory;
@@ -186,19 +187,16 @@ public class GraphMLToNeo4JParser implements IResource
 			        		// needs implementation of meta data here
 			        		if(map.get(attr).equals("name"))
 			        		{
-			        			ExecutionResult result = engine.execute("match (n:TRADITION {name:'"+ map.get(attr) +"'}) return n");
-			        			
-			        			Iterator<Node> nodes = result.columnAs("n");
-			        			if(nodes.hasNext())
-			        			{
-			        				throw new Exception("Error: A tradition with the same name already exists");
-			        			}
+			        			String tradNameToUse = text;
+			        			if(!tradName.equals(""))
+			        				tradNameToUse = tradName;
+			        				
 			        			tradRootNode = currNode;
 			        			
 			        			//System.out.println(prefix);
 			        			currNode.setProperty("id", prefix.substring(0, prefix.length()-1));
 			        			
-			        			currNode.setProperty(map.get(attr), text);
+			        			currNode.setProperty("name", tradNameToUse);
 			        		}
 			        		else if(map.get(attr).equals("stemmata"))
 			        		{

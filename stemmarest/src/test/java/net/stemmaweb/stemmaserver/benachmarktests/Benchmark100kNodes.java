@@ -73,7 +73,7 @@ public class Benchmark100kNodes extends BenachmarkTests {
 			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
 		
 		try {
-			tradId = importResource.parseGraphML(filename, "1").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
+			tradId = importResource.parseGraphML(filename, "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);

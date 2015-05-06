@@ -204,7 +204,7 @@ public class Tradition implements IResource {
 	 * @return
 	 */
 	@GET
-	@Path("getallrelationships/{tradId}")
+	@Path("getallrelationships/fromtradition/{tradId}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 
@@ -386,8 +386,7 @@ public class Tradition implements IResource {
 		writeToFile(uploadedInputStream, uploadedFileLocation);
 
 		GraphMLToNeo4JParser parser = new GraphMLToNeo4JParser();
-		Response resp = parser.parseGraphML(uploadedFileLocation, userId);
-		// The prefix will always be some sort of '12_', to make sure that all
+		Response resp = parser.parseGraphML(uploadedFileLocation, userId,name);
 		// nodes are unique
 
 		deleteFile(uploadedFileLocation);

@@ -188,7 +188,7 @@ public abstract class BenachmarkTests {
 		GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 	    
 		try {
-			importResource.parseGraphML(filename, "1");
+			importResource.parseGraphML(filename, "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);

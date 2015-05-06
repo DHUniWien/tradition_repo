@@ -89,7 +89,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			filename = "src/TestXMLFiles/SapientiaFileNotExisting.xml";
 		try
 		{
-			Response actualResponse = importResource.parseGraphML(filename, "1");
+			Response actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
 			
 			assertTrue(false); // This line of code should never execute
 		}
@@ -113,7 +113,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			filename = "src/TestXMLFiles/SapientiaWithError.xml";
 		try
 		{
-			actualResponse = importResource.parseGraphML(filename, "1");
+			actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
@@ -138,7 +138,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			filename = "src/TestXMLFiles/testTradition.xml";
 		try
 		{
-			actualResponse = importResource.parseGraphML(filename, "1");
+			actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
@@ -210,7 +210,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			filename = "src/TestXMLFiles/testTradition.xml";
 		try
 		{
-			importResource.parseGraphML(filename, "1");
+			importResource.parseGraphML(filename, "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
@@ -238,7 +238,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 		Response actualResponse = null;
 		try
 		{
-			actualResponse = importResource.parseGraphML(filename, "1");
+			actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
