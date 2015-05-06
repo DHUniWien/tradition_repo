@@ -11,15 +11,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class ReadingChangePropertyModel {
 	
 	private String key;
-	private String newProperty;
-	
-	public ReadingChangePropertyModel(){		
-	}
-	
-	public ReadingChangePropertyModel(String key, String newProperty) {
-		this.key = key;
-		this.newProperty = newProperty; 
-	}
+	private String newProperty;	
 	
 	public String getKey() {
 		return key;
@@ -33,7 +25,4 @@ public class ReadingChangePropertyModel {
 	public void setNewProperty(String newProperty) {
 		this.newProperty = newProperty;
 	}
-	
-	
-
 }

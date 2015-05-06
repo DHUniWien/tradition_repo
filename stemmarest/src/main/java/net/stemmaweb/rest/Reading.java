@@ -79,11 +79,13 @@ public class Reading implements IResource {
 	 * change property of a reading according to their keys
 	 * 
 	 * @param readId
-	 *            the id of the reading
+	 *            the id of the reading to be changed
 	 * @param changeModels
-	 *            an array of changeReadingModels. Will be converted from a json
-	 *            string
-	 * @return ok response with the modified reading
+	 *            an array of changeReadingModel objects. Will be converted from a json
+	 *            string. Example: a json string for an array size 1 which
+	 *            should change the value of language to german will look like
+	 *            this:[{\"key\":\"language\",\"newProperty\":\"german\"}]
+	 * @return ok response with the modified reading as json
 	 */
 	@POST
 	@Path("changeproperties/ofreading/{readId}")
@@ -99,18 +101,16 @@ public class Reading implements IResource {
 				if (!reading.hasProperty(keyCheckModel.getKey()))
 					return Response
 							.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("the reading does not have such property: "
+							.entity("the reading does not have such property: '"
 									+ keyCheckModel.getKey()
-									+ ". no changes to the reading have been done")
+									+ "'. no changes to the reading have been done")
 							.build();
-
+			}
 				for (ReadingChangePropertyModel changeModel : changeModels) {
 					reading.setProperty(changeModel.getKey(),
 							changeModel.getNewProperty());
-				}
-			}
+				}			
 			modelToReturn = new ReadingModel(reading);
-
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -688,11 +688,11 @@ public class Reading implements IResource {
 	 * gets the next readings from a given readings in the same witness
 	 * 
 	 * @param witnessId
-	 *            : witness id
+	 *            : the id (name) of the witness 
 	 * @param readId
-	 *            : reading id
+	 *            : the id of the reading 
 	 * 
-	 * @return the requested reading
+	 * @return the requested reading as json ok response
 	 */
 	@GET
 	@Path("getnextreading/fromwitness/{witnessId}/ofreading/{readId}")
@@ -736,11 +736,11 @@ public class Reading implements IResource {
 	 * gets the next readings from a given readings in the same witness
 	 * 
 	 * @param witnessId
-	 *            : witness id
+	 *            : the id (name) of the witness
 	 * @param readId
-	 *            : reading id
+	 *            : the id of the reading
 	 * 
-	 * @return the requested reading
+	 * @return the requested reading as json ok response
 	 */
 	@GET
 	@Path("getpreviousreading/fromwitness/{witnessId}/ofreading/{readId}")
@@ -851,7 +851,7 @@ public class Reading implements IResource {
 	 *            the rank from where to start the search
 	 * @param endRank
 	 *            the end rank of the search range
-	 * @return a list of lists: each list contain identical readings
+	 * @return a list of lists as a json ok response: each list contain identical readings
 	 */
 	@GET
 	@Path("getidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
@@ -1286,11 +1286,5 @@ public class Reading implements IResource {
 			}
 		}
 		return from1to2;
-	}
-
-	private void swapReadings(Node read1, Node read2) {
-		Node tempRead = read1;
-		read1 = read2;
-		read2 = tempRead;
 	}
 }
