@@ -59,6 +59,10 @@ public class ReadingTest {
 
 	private String tradId;
 
+	private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
+	private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
+	private String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood-of-the-world\"}";
+
 	GraphDatabaseService db;
 
 	/*
@@ -146,10 +150,6 @@ public class ReadingTest {
 	 * @return
 	 */
 	private List<ReadingModel> testNumberOfReadingsAndWitnesses(int number) {
-		String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-		String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-		String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood-of-the-world\"}";
-
 		List<ReadingModel> listOfReadings = jerseyTest.resource()
 				.path("/reading/getallreadings/fromtradition/" + tradId)
 				.get(new GenericType<List<ReadingModel>>() {
@@ -165,6 +165,7 @@ public class ReadingTest {
 
 		resp = witness.getWitnessAsText(tradId, "C");
 		assertEquals(expectedWitnessC, resp.getEntity());
+
 		return listOfReadings;
 	}
 
@@ -807,24 +808,9 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-			String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-			String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
+			expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
-			List<ReadingModel> listOfReadings = jerseyTest.resource()
-					.path("/reading/getallreadings/fromtradition/" + tradId).get(new GenericType<List<ReadingModel>>() {
-					});
-			assertEquals(32, listOfReadings.size());
-			Response resp;
-
-			resp = witness.getWitnessAsText(tradId, "A");
-			assertEquals(expectedWitnessA, resp.getEntity());
-
-			resp = witness.getWitnessAsText(tradId, "B");
-			assertEquals(expectedWitnessB, resp.getEntity());
-
-			resp = witness.getWitnessAsText(tradId, "C");
-			assertEquals(expectedWitnessC, resp.getEntity());
+			testNumberOfReadingsAndWitnesses(32);
 
 			tx.success();
 		}
@@ -880,24 +866,9 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the ro ot\"}";
-			String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-			String expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood-of-the-world\"}";
+			expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the ro ot\"}";
 
-			List<ReadingModel> listOfReadings = jerseyTest.resource()
-					.path("/reading/getallreadings/fromtradition/" + tradId).get(new GenericType<List<ReadingModel>>() {
-					});
-			assertEquals(30, listOfReadings.size());
-			Response resp;
-
-			resp = witness.getWitnessAsText(tradId, "A");
-			assertEquals(expectedWitnessA, resp.getEntity());
-
-			resp = witness.getWitnessAsText(tradId, "B");
-			assertEquals(expectedWitnessB, resp.getEntity());
-
-			resp = witness.getWitnessAsText(tradId, "C");
-			assertEquals(expectedWitnessC, resp.getEntity());
+			testNumberOfReadingsAndWitnesses(30);
 
 			tx.success();
 		}
@@ -967,7 +938,7 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void splitReadingWithOnlyOneWordTest() {
+	public void splitReadingWithOnlyOneWordWithoutIndexAndSeparatorTest() {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine

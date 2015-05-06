@@ -340,7 +340,7 @@ public class StemmaTest {
 	}
 	
 	@Test
-	public void reorientDigraphStemmaSameNodeAsBevorTest()
+	public void reorientDigraphStemmaSameNodeAsBeforeTest()
 	{
 		
 		 String stemmaTitle = "stemma";
