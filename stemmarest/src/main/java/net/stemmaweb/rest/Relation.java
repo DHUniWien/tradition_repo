@@ -104,8 +104,6 @@ public class Relation implements IResource {
     	} 
     	catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
     	ReturnIdModel relId = new ReturnIdModel();
     	relId.setId(relationshipAtoB.getId()+"");
@@ -174,9 +172,7 @@ public class Relation implements IResource {
     @Produces(MediaType.APPLICATION_JSON)
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
     	ArrayList<RelationshipModel> relationships = new ArrayList<RelationshipModel>();
-    	
-    	
-    	
+
     	try (Transaction tx = db.beginTx()) {
     		
     		Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -288,9 +284,8 @@ public class Relation implements IResource {
 	 *         when the Relationship was removed
 	 */
     @DELETE
-    @Path("deleterelationshipsbyid/withrelationship/{relationshipId}")
+	@Path("deleterelationshipbyid/withrelationship/{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId) {
-    	
     	
     	try (Transaction tx = db.beginTx()) 
     	{
@@ -304,10 +299,8 @@ public class Relation implements IResource {
     		
     	} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-			
 		}
-    	return Response.ok().build();
+		return Response.ok().build();
     }
     
     private String nullToEmptyString(String str){

@@ -147,7 +147,7 @@ public class RelationTest {
 	 * Test if a relation is created properly
 	 */
 	@Test
-	public void createRelationshipTestDH41(){
+	public void createRelationshipTest() {
 		RelationshipModel relationship = new RelationshipModel();
 		String relationshipId = "";
 		relationship.setSource("16");
@@ -180,7 +180,7 @@ public class RelationTest {
 	 * Test if an 404 error occurs when an invalid target node was tested
 	 */
 	@Test
-	public void createRelationshipWithInvalidTargetIdTestDH41(){
+	public void createRelationshipWithInvalidTargetIdTest() {
 		RelationshipModel relationship = new RelationshipModel();
 
 		relationship.setSource("16");
@@ -199,7 +199,7 @@ public class RelationTest {
 	 * Test if an 404 error occurs when an invalid source node was tested
 	 */
 	@Test
-	public void createRelationshipWithInvalidSourceIdTestDH41(){
+	public void createRelationshipWithInvalidSourceIdTest() {
 		RelationshipModel relationship = new RelationshipModel();
 
 		relationship.setSource("1337");
@@ -218,7 +218,7 @@ public class RelationTest {
 	 * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
 	 */
 	@Test(expected=NotFoundException.class)
-	public void deleteRelationshipTestDH43(){
+	public void deleteRelationshipTest() {
 		/*
 		 * Create a relationship
 		 */
@@ -237,7 +237,9 @@ public class RelationTest {
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
 		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
 		
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/withrelationship/"+relationshipId).delete(ClientResponse.class);
+		ClientResponse removalResponse = jerseyTest.resource()
+				.path("/relation/deleterelationshipbyid/withrelationship/" + relationshipId)
+				.delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
 		try (Transaction tx = db.beginTx())
@@ -248,7 +250,7 @@ public class RelationTest {
 	
 	//also tests the delete method: with the testTradition
 	@Test
-	public void deleteRealtionsTest(){
+	public void deleteRelationsTest(){
 		
 		try (Transaction tx = db.beginTx()) {
 			
@@ -267,13 +269,13 @@ public class RelationTest {
 					rel = tempRel;
 					relCounter++;
 			}
-			//checks that the correcht realtionship has been found
+			//checks that the correct realtionship has been found
 			assertEquals(1, relCounter);
 			assertEquals(march2.getId(), rel.getOtherNode(march1).getId());
 			
 			ClientResponse removalResponse = jerseyTest
 					.resource()
-					.path("/relation/deleterelationshipsbyid/withrelationship/" + rel.getId())
+					.path("/relation/deleterelationshipbyid/withrelationship/" + rel.getId())
 					.delete(ClientResponse.class);
 			assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
@@ -309,8 +311,9 @@ public class RelationTest {
 	 * Try to delete a relationship that does not exist
 	 */
 	@Test
-	public void deleteRelationshipThatDoesNotExistTestDH43(){
-		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipsbyid/withrelationship/1337").delete(ClientResponse.class);
+	public void deleteRelationshipThatDoesNotExistTest() {
+		ClientResponse removalResponse = jerseyTest.resource()
+				.path("/relation/deleterelationshipbyid/withrelationship/1337").delete(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), removalResponse.getStatus());
 	}
 	
@@ -318,7 +321,7 @@ public class RelationTest {
 	 * Test the removal method by posting two nodes to /relation/{witnessId}/relationships/delete
 	 */
 	@Test(expected=NotFoundException.class)
-	public void deleteRelationshipTestdeleteAllDH43(){
+	public void deleteRelationshipTestdeleteAll() {
 		/*
 		 * Create two relationships between two nodes
 		 */
@@ -370,7 +373,7 @@ public class RelationTest {
 	
 	
 	@Test(expected=NotFoundException.class)
-	public void deleteRelationshipDocumentWideTestDH43(){
+	public void deleteRelationshipDocumentWideTest() {
 		/*
 		 * Create a relationship
 		 */
@@ -424,7 +427,7 @@ public class RelationTest {
 	 * Test that cross relations may not be made
 	 */
 	@Test
-	public void createRelationshipTestWithCrossRelationConstraintDH39(){
+	public void createRelationshipTestWithCrossRelationConstraint() {
 		RelationshipModel relationship = new RelationshipModel();
 		relationship.setSource("6");
 		relationship.setTarget("20");
@@ -466,7 +469,7 @@ public class RelationTest {
 	}
 	
 	@Test
-	public void createRelationshipTestWithCrossRelationConstraintDH39NotDirectlyCloseToEachOther(){
+	public void createRelationshipTestWithCrossRelationConstraintNotDirectlyCloseToEachOther() {
 		RelationshipModel relationship = new RelationshipModel();
 		relationship.setSource("6");
 		relationship.setTarget("20");
@@ -527,7 +530,7 @@ public class RelationTest {
 	}
 
 	@Test
-	public void createRelationshipTestWithCyclicConstraintDH39() {
+	public void createRelationshipTestWithCyclicConstraint() {
 		RelationshipModel relationship = new RelationshipModel();
 
 		ExecutionEngine engine = new ExecutionEngine(db);
