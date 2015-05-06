@@ -16,8 +16,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.DuplicateModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
@@ -528,7 +528,7 @@ public class Reading implements IResource {
 	 * @return
 	 */
 	@POST
-	@Path("splitreading/ofreading/{readId}/{separator}/{splitIndex}")
+	@Path("splitreading/ofreading/{readId}/withseparator/{separator}/withsplitindex/{splitIndex}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("readId") long readId, @PathParam("separator") String separator,
 			@PathParam("splitIndex") int splitIndex) {

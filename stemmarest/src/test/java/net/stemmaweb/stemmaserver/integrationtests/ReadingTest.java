@@ -753,7 +753,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/0")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/withseparator/0/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -803,7 +803,8 @@ public class ReadingTest {
 
 			// split reading
 			ClientResponse response = jerseyTest.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/-/0").type(MediaType.APPLICATION_JSON)
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/withseparator/-/withsplitindex/0")
+					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
@@ -830,7 +831,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/7")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/withseparator/0/withsplitindex/7")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -860,7 +861,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/2")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/withseparator/0/withsplitindex/2")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -889,7 +890,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/0")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/withseparator/0/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -923,7 +924,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + untoMe.getId() + "/0/0")
+					.path("/reading/splitreading/ofreading/" + untoMe.getId() + "/withseparator/0/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
@@ -951,7 +952,7 @@ public class ReadingTest {
 			// split reading
 			ClientResponse response = jerseyTest
 					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/0/0")
+					.path("/reading/splitreading/ofreading/" + node.getId() + "/withseparator/0/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
 					.post(ClientResponse.class);
 
