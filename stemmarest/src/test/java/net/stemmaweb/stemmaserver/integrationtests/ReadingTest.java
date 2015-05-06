@@ -168,9 +168,7 @@ public class ReadingTest {
 
 		return listOfReadings;
 	}
-
-	// not working yes
-	// TODO fix json payload
+	
 	@Test
 	public void changeReadingPropertiesTest() {
 		
@@ -200,6 +198,39 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
+	
+	@Test
+	public void changeReadingPropertiesTwoPropertiesTest() {
+		
+		List<ReadingChangePropertyModel> changeModels = new ArrayList<ReadingChangePropertyModel>();
+		ReadingChangePropertyModel changeModel1 = new ReadingChangePropertyModel("text", "snow");
+		changeModels.add(changeModel1);
+
+		Node node;
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			String jsonPayload = "[{\"key\":\"text\",\"newProperty\":\"snow\"},{\"key\":\"language\",\"newProperty\":\"hebrew\"}]";
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/changeproperties/ofreading/" + node.getId())
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, jsonPayload);
+
+			assertEquals(Status.OK, response.getClientResponseStatus());
+			assertEquals("snow", (String) node.getProperty("text"));
+			tx.success();
+			assertEquals("hebrew", (String) node.getProperty("language"));
+			tx.success();
+		}
+	}
+
 
 	@Test
 	public void getReadingJsonTest() throws JsonProcessingException {

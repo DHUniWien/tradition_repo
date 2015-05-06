@@ -80,7 +80,10 @@ public class Reading implements IResource {
 	 * 
 	 * @param readId
 	 *            the id of the reading
-	 * @return response with the modified reading
+	 * @param changeModels
+	 *            an array of changeReadingModels. Will be converted from a json
+	 *            string
+	 * @return ok response with the modified reading
 	 */
 	@POST
 	@Path("changeproperties/ofreading/{readId}")
@@ -100,7 +103,7 @@ public class Reading implements IResource {
 									+ keyCheckModel.getKey()
 									+ ". no changes to the reading have been done")
 							.build();
-				
+
 				for (ReadingChangePropertyModel changeModel : changeModels) {
 					reading.setProperty(changeModel.getKey(),
 							changeModel.getNewProperty());
@@ -112,7 +115,8 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		return Response.status(Response.Status.OK).entity(modelToReturn).build();
+		return Response.status(Response.Status.OK).entity(modelToReturn)
+				.build();
 	}
 
 	/**
@@ -530,7 +534,8 @@ public class Reading implements IResource {
 	@POST
 	@Path("splitreading/ofreading/{readId}/withseparator/{separator}/withsplitindex/{splitIndex}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("readId") long readId, @PathParam("separator") String separator,
+	public Response splitReading(@PathParam("readId") long readId,
+			@PathParam("separator") String separator,
 			@PathParam("splitIndex") int splitIndex) {
 
 		ArrayList<ReadingModel> createdNodes = null;
@@ -538,18 +543,21 @@ public class Reading implements IResource {
 
 		try (Transaction tx = db.beginTx()) {
 			originalReading = db.getNodeById(readId);
-			String originalText = originalReading.getProperty("text").toString();
+			String originalText = originalReading.getProperty("text")
+					.toString();
 			String[] splittedWords;
 			if (splitIndex > 0) {
-				if(splitIndex >= originalText.length())
-					return Response.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("The splitIndex must be smaller than the text length").build();
+				if (splitIndex >= originalText.length())
+					return Response
+							.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("The splitIndex must be smaller than the text length")
+							.build();
 				splittedWords = new String[2];
 				splittedWords[0] = originalText.substring(0, splitIndex);
 				splittedWords[1] = originalText.substring(splitIndex);
-			}
-			else {
-				if (separator == null || separator.equals("") || separator.equals("0"))
+			} else {
+				if (separator == null || separator.equals("")
+						|| separator.equals("0"))
 					separator = "\\s+";
 				splittedWords = originalText.split(separator);
 			}
@@ -631,10 +639,11 @@ public class Reading implements IResource {
 	 */
 	private ArrayList<ReadingModel> split(GraphDatabaseService db,
 			Node originalReading, String[] splittedWords) {
-		Iterable<Relationship> originalOutgoingRels = originalReading.getRelationships(ERelations.NORMAL,
-				Direction.OUTGOING);
+		Iterable<Relationship> originalOutgoingRels = originalReading
+				.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
 		ArrayList<String> allWitnesses = new ArrayList<String>();
-		for (Relationship relationship : originalReading.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
+		for (Relationship relationship : originalReading.getRelationships(
+				ERelations.NORMAL, Direction.INCOMING)) {
 			String[] witnesses = (String[]) relationship.getProperty("lexemes");
 			for (int j = 0; j < witnesses.length; j++)
 				allWitnesses.add(witnesses[j]);
@@ -642,17 +651,16 @@ public class Reading implements IResource {
 		}
 		originalReading.setProperty("text", splittedWords[0]);
 
-
 		ArrayList<ReadingModel> createdNodes = new ArrayList<ReadingModel>();
 		createdNodes.add(new ReadingModel(originalReading));
-		
 
 		Node lastReading = originalReading;
 
 		for (int i = 1; i < splittedWords.length; i++) {
 			Node newReading = db.createNode();
 
-			newReading = ReadingService.copyReadingProperties(lastReading, newReading);
+			newReading = ReadingService.copyReadingProperties(lastReading,
+					newReading);
 			newReading.setProperty("text", splittedWords[i]);
 			Long previousRank = (Long) lastReading.getProperty("rank");
 			newReading.setProperty("rank", previousRank + 1);
@@ -666,8 +674,10 @@ public class Reading implements IResource {
 			createdNodes.add(new ReadingModel(newReading));
 		}
 		for (Relationship oldRel : originalOutgoingRels) {
-			Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), ERelations.NORMAL);
-			newRel = RelationshipService.copyRelationshipProperties(oldRel, newRel);
+			Relationship newRel = lastReading.createRelationshipTo(
+					oldRel.getEndNode(), ERelations.NORMAL);
+			newRel = RelationshipService.copyRelationshipProperties(oldRel,
+					newRel);
 			oldRel.delete();
 		}
 
