@@ -187,12 +187,12 @@ public class ReadingTest {
 			node = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			String jsonPayload = "{[\"key\":\"text\",\"newProperty\":\"snow\"]}";
+			String jsonPayload = "[{\"key\":\"text\",\"newProperty\":\"snow\"}]";
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, changeModels);
+					.post(ClientResponse.class, jsonPayload);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 

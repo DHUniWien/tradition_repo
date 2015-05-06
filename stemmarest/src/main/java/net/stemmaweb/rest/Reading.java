@@ -86,7 +86,7 @@ public class Reading implements IResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Path("changeproperties/ofreading/{readId}")
 	public Response changeReadingProperties(@PathParam("readId") long readId,
-			List<ReadingChangePropertyModel> changeModels) {
+			ReadingChangePropertyModel[] changeModels) {
 
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
