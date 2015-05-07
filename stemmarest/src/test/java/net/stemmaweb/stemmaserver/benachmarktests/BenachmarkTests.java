@@ -10,8 +10,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.ReadingsAndRelationshipsModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
@@ -292,8 +292,11 @@ public abstract class BenachmarkTests {
 		relationship.setReading_b("unto me");
 		relationship.setScope("local");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("reaterelationship/intradition/"+tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
+		ClientResponse actualResponse = jerseyTest.resource().path("createrelationship")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
+		ReadingsAndRelationshipsModel readingsAndRelationships = actualResponse
+				.getEntity(ReadingsAndRelationshipsModel.class);
+		relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
 		ClientResponse removalResponse = jerseyTest.resource().path("deleterelationshipsbyid/fromtradition/"+tradId+"/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());

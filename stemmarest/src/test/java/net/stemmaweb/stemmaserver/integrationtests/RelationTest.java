@@ -12,8 +12,8 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.ReadingsAndRelationshipsModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
@@ -163,7 +163,9 @@ public class RelationTest {
 		
     	try (Transaction tx = db.beginTx()) 
     	{
-    		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
+			ReadingsAndRelationshipsModel readingsAndRelationships = actualResponse
+					.getEntity(ReadingsAndRelationshipsModel.class);
+			relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
     		Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
     		
     		assertEquals(16L, loadedRelationship.getStartNode().getId());
@@ -235,7 +237,9 @@ public class RelationTest {
 		
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
+		ReadingsAndRelationshipsModel readingsAndRelationships = actualResponse.getEntity(
+				ReadingsAndRelationshipsModel.class);
+		relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 		
 		ClientResponse removalResponse = jerseyTest.resource()
 				.path("/relation/deleterelationshipbyid/withrelationship/" + relationshipId)
@@ -338,7 +342,9 @@ public class RelationTest {
 		relationship.setScope("local");
 		
 		ClientResponse actualResponse1 = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId1 = actualResponse1.getEntity(ReturnIdModel.class).getId();
+		ReadingsAndRelationshipsModel readingsAndRelationships1 = actualResponse1
+				.getEntity(ReadingsAndRelationshipsModel.class);
+		relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
 		
 		relationship = new RelationshipModel();
 		relationship.setSource("16");
@@ -351,7 +357,9 @@ public class RelationTest {
 		relationship.setScope("local");
 		
 		ClientResponse actualResponse2 = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId2 = actualResponse2.getEntity(ReturnIdModel.class).getId();
+		ReadingsAndRelationshipsModel readingsAndRelationships2 = actualResponse2
+				.getEntity(ReadingsAndRelationshipsModel.class);
+		relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
 		
 		/*
 		 * Create the model to delete
@@ -390,7 +398,9 @@ public class RelationTest {
 		relationship.setScope("local");
 		
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId1 = actualResponse.getEntity(ReturnIdModel.class).getId();
+		ReadingsAndRelationshipsModel readingsAndRelationships1 = actualResponse
+				.getEntity(ReadingsAndRelationshipsModel.class);
+		relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
 		
 		relationship.setSource("27");
 		relationship.setTarget("17");
@@ -403,7 +413,9 @@ public class RelationTest {
 		
 		
 		actualResponse = jerseyTest.resource().path("/relation/createrelationship").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId2 = actualResponse.getEntity(ReturnIdModel.class).getId();
+		ReadingsAndRelationshipsModel readingsAndRelationships2 = actualResponse
+				.getEntity(ReadingsAndRelationshipsModel.class);
+		relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
 		
 		relationship.setScope("document");
 		
