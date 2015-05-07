@@ -120,7 +120,7 @@ public class Witness implements IResource {
 					.relationships(ERelations.NORMAL, Direction.OUTGOING)
 					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
 					.traverse(startNode).nodes()) {
-				long nodeRank = (long) node.getProperty("rank");
+				long nodeRank = Long.parseLong( node.getProperty("rank").toString());
 				if (nodeRank >= startRank && nodeRank <= endRank) {
 					if (!node.getProperty("text").equals("#END#"))
 						witnessAsText += (String) node.getProperty("text")
