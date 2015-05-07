@@ -41,11 +41,15 @@ public class GraphMLToNeo4JParser implements IResource
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
 	
 	/**
-	 * Reads xml file and imports it into Neo4J Database 
-	 * @param filename - the graphMl file
-	 * @param userId - the user id who will own the tradition
-	 * @param tradName tradition name that should be used
-	 * @return Http Response
+	 * Reads xml file and imports it into Neo4J Database
+	 * 
+	 * @param filename
+	 *            - the graphMl file
+	 * @param userId
+	 *            - the user id who will own the tradition
+	 * @param tradName
+	 *            tradition name that should be used
+	 * @return Http Response with the id of the imported tradition
 	 * @throws FileNotFoundException
 	 * @throws XMLStreamException
 	 */
@@ -364,15 +368,12 @@ public class GraphMLToNeo4JParser implements IResource
 	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
 	   	    userNode.createRelationshipTo(tradRootNode, ERelations.NORMAL);
-	   	    
-	   	    
+
 	   	    db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
 	   	    								.iterator()
 	   	    								.next()
 	   	    								.setProperty("LAST_INSERTED_TRADITION_ID", prefix.substring(0, prefix.length()-1));
-	   		
-	   	    
-	   	    
+
 			tx.success();
 		}
 	    catch(Exception e)
@@ -381,11 +382,6 @@ public class GraphMLToNeo4JParser implements IResource
 	    	
 	    	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error: Tradition could not be imported!").build();
 	    }
-    	finally
-    	{
-    		
-    	}
-    	
     	
     	String[] graphs = stemmata.split("\\}");
     	
@@ -393,9 +389,7 @@ public class GraphMLToNeo4JParser implements IResource
    	    {
    	    	DotToNeo4JParser parser = new DotToNeo4JParser(db);
    	    	parser.parseDot(graph, last_inserted_id + "");
-   	    }
-   	    
-   	    
+		}
     	
     	return Response.status(Response.Status.OK).entity("{\"tradId\":" + last_inserted_id + "}").build();
 	}

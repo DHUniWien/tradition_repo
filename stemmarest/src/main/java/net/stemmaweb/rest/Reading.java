@@ -19,6 +19,8 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.ReadingsAndRelationshipsModel;
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -123,7 +125,9 @@ public class Reading implements IResource {
 	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
 	 * @param duplicateModel
-	 * @return
+	 * @return a readingsAndRelationshipsModel in JSON containing all the
+	 *         created readings and the deleted relationships on success or an
+	 *         ERROR as JSON
 	 */
 	@POST
 	@Path("duplicatereading")
@@ -132,6 +136,7 @@ public class Reading implements IResource {
 	public Response duplicateReading(DuplicateModel duplicateModel) {
 
 		ArrayList<ReadingModel> createdReadings = new ArrayList<ReadingModel>();
+		ArrayList<RelationshipModel> deletedRelationships = null;
 
 		Node originalReading = null;
 
@@ -146,17 +151,18 @@ public class Reading implements IResource {
 							.entity(errorMessage).build();
 
 				Node newNode = db.createNode();
-				duplicate(newWitnesses, originalReading, newNode);
+				deletedRelationships = duplicate(newWitnesses, originalReading, newNode);
 				createdReadings.add(new ReadingModel(newNode));
 			}
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
-		return Response.ok(createdReadings).build();
+		ReadingsAndRelationshipsModel readingsAndRelationships = new ReadingsAndRelationshipsModel(createdReadings,
+				deletedRelationships);
+		return Response.ok(readingsAndRelationships).build();
+
 	}
 
 	/**
@@ -215,8 +221,9 @@ public class Reading implements IResource {
 	 * @param originalReading
 	 * @param addedReading
 	 */
-	private void duplicate(List<String> newWitnesses, Node originalReading,
+	private ArrayList<RelationshipModel> duplicate(List<String> newWitnesses, Node originalReading,
 			Node addedReading) {
+		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
 		// copy reading properties to newly added reading
 		addedReading = ReadingService.copyReadingProperties(originalReading,
 				addedReading);
@@ -235,15 +242,17 @@ public class Reading implements IResource {
 		// Incoming
 		for (Relationship originalRelationship : originalReading
 				.getRelationships(ERelations.NORMAL, Direction.INCOMING))
-			transferNewWitnessesFromOriginalReadingToAddedReading(newWitnesses,
+			deletedRelationships.addAll(transferNewWitnessesFromOriginalReadingToAddedReading(newWitnesses,
 					originalRelationship, originalRelationship.getStartNode(),
-					addedReading);
+					addedReading));
 		// Outgoing
 		for (Relationship originalRelationship : originalReading
 				.getRelationships(ERelations.NORMAL, Direction.OUTGOING))
-			transferNewWitnessesFromOriginalReadingToAddedReading(newWitnesses,
+			deletedRelationships.addAll(transferNewWitnessesFromOriginalReadingToAddedReading(newWitnesses,
 					originalRelationship, addedReading,
-					originalRelationship.getEndNode());
+					originalRelationship.getEndNode()));
+		
+		return deletedRelationships;
 	}
 
 	/**
@@ -255,9 +264,10 @@ public class Reading implements IResource {
 	 * @param originNode
 	 * @param targetNode
 	 */
-	private void transferNewWitnessesFromOriginalReadingToAddedReading(
+	private ArrayList<RelationshipModel> transferNewWitnessesFromOriginalReadingToAddedReading(
 			List<String> newWitnesses, Relationship originalRel,
 			Node originNode, Node targetNode) {
+		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
 		String[] oldWitnesses = (String[]) originalRel.getProperty("lexemes");
 		// if oldWitnesses only contains one witness and this one should be
 		// duplicated, create new relationship for addedReading and delete
@@ -267,6 +277,7 @@ public class Reading implements IResource {
 				Relationship newRel = originNode.createRelationshipTo(
 						targetNode, ERelations.NORMAL);
 				newRel.setProperty("lexemes", oldWitnesses);
+				deletedRelationships.add(new RelationshipModel(originalRel));
 				originalRel.delete();
 			}
 			// if oldWitnesses contains more than one witnesses, create new
@@ -287,12 +298,16 @@ public class Reading implements IResource {
 			addedRelationship.setProperty("lexemes", remainingWitnesses
 					.toArray(new String[remainingWitnesses.size()]));
 
-			if (stayingWitnesses.isEmpty())
+			if (stayingWitnesses.isEmpty()) {
+				deletedRelationships.add(new RelationshipModel(originalRel));
 				originalRel.delete();
+			}
 			else
 				originalRel.setProperty("lexemes", stayingWitnesses
 						.toArray(new String[stayingWitnesses.size()]));
 		}
+
+		return deletedRelationships;
 	}
 
 	/**
@@ -301,7 +316,8 @@ public class Reading implements IResource {
 	 * 
 	 * @param firstReadId
 	 * @param secondReadId
-	 * @return
+	 * @return Status.ok if merge was successful. Status.INTERNAL_SERVER_ERROR
+	 *         with a detailed message if not
 	 */
 	@POST
 	@Path("mergereadings/first/{firstReadId}/second/{secondReadId}")
@@ -529,7 +545,9 @@ public class Reading implements IResource {
 	 *            the index of the first letter of second word: "unto" with
 	 *            index 2 gets "un" and "to" if the index is zero the reading is
 	 *            splitted using the separator
-	 * @return
+	 * @return a readingsAndRelationshipsModel in JSON containing all the
+	 *         created and modified readings and the deleted relationships on
+	 *         success or an ERROR as JSON
 	 */
 	@POST
 	@Path("splitreading/ofreading/{readId}/withseparator/{separator}/withsplitindex/{splitIndex}")
@@ -538,7 +556,7 @@ public class Reading implements IResource {
 			@PathParam("separator") String separator,
 			@PathParam("splitIndex") int splitIndex) {
 
-		ArrayList<ReadingModel> createdNodes = null;
+		ReadingsAndRelationshipsModel readingsAndRelationships = null;
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
@@ -566,13 +584,14 @@ public class Reading implements IResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
 
-			createdNodes = split(db, originalReading, splittedWords);
+			readingsAndRelationships = split(db, originalReading, splittedWords);
 
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		return Response.ok(createdNodes).build();
+
+		}
+		return Response.ok(readingsAndRelationships).build();
 	}
 
 	/**
@@ -635,8 +654,11 @@ public class Reading implements IResource {
 	 * @param splittedWords
 	 * @return
 	 */
-	private ArrayList<ReadingModel> split(GraphDatabaseService db,
+	private ReadingsAndRelationshipsModel split(GraphDatabaseService db,
 			Node originalReading, String[] splittedWords) {
+		ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<ReadingModel>();
+		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
+
 		Iterable<Relationship> originalOutgoingRels = originalReading
 				.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
 		ArrayList<String> allWitnesses = new ArrayList<String>();
@@ -649,8 +671,7 @@ public class Reading implements IResource {
 		}
 		originalReading.setProperty("text", splittedWords[0]);
 
-		ArrayList<ReadingModel> createdNodes = new ArrayList<ReadingModel>();
-		createdNodes.add(new ReadingModel(originalReading));
+		createdOrChangedReadings.add(new ReadingModel(originalReading));
 
 		Node lastReading = originalReading;
 
@@ -669,17 +690,18 @@ public class Reading implements IResource {
 					allWitnesses.toArray(new String[allWitnesses.size()]));
 
 			lastReading = newReading;
-			createdNodes.add(new ReadingModel(newReading));
+			createdOrChangedReadings.add(new ReadingModel(newReading));
 		}
 		for (Relationship oldRel : originalOutgoingRels) {
 			Relationship newRel = lastReading.createRelationshipTo(
 					oldRel.getEndNode(), ERelations.NORMAL);
 			newRel = RelationshipService.copyRelationshipProperties(oldRel,
 					newRel);
+			deletedRelationships.add(new RelationshipModel(oldRel));
 			oldRel.delete();
 		}
 
-		return createdNodes;
+		return new ReadingsAndRelationshipsModel(createdOrChangedReadings, deletedRelationships);
 	}
 
 	/**
@@ -1087,7 +1109,7 @@ public class Reading implements IResource {
 	/**
 	 * compress two readings into one. Texts will be concatenate together (with
 	 * or without a space or extra text The reading with the lower rank should
-	 * be given first
+	 * be given first. Opposite of split
 	 * 
 	 * @param readId1
 	 *            the id of the first reading

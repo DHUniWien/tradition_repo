@@ -4,15 +4,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.FileNotFoundException;
-import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.DuplicateModel;
-import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.ReadingsAndRelationshipsModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
@@ -32,8 +29,6 @@ import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.ClientResponse.Status;
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 
 /**
@@ -262,8 +257,12 @@ public abstract class BenachmarkTests {
 		relationship.setReading_b("unto me");
 		relationship.setScope("local");
 		
-		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,relationship);
-		relationshipId = actualResponse.getEntity(ReturnIdModel.class).getId();
+
+		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/")
+				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
+		ReadingsAndRelationshipsModel readingsAndRelationships = actualResponse
+				.getEntity(ReadingsAndRelationshipsModel.class);
+		relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipbyid/withrelationship/"+relationshipId).delete(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());

@@ -62,18 +62,21 @@ public class Tradition implements IResource {
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	/**
+	 * Changes the metadata of the tradition.
 	 * 
-	 * @param textInfo
+	 * @param traditionMetadata
 	 *            in JSON Format
-	 * @return OK on success or an ERROR as JSON
+	 * @return OK and information about the tradition in json on success or an
+	 *         ERROR as JSON
 	 */
 	@POST
 	@Path("changemetadata/fromtradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response changeOwnerOfATradition(TraditionMetadataModel textInfo, @PathParam("tradId") String witnessId) {
+	public Response changeTraditionMetadata(TraditionMetadataModel traditionMetadata,
+			@PathParam("tradId") String witnessId) {
 		
-		if (!DatabaseService.checkIfUserExists(textInfo.getOwnerId(),db)) {
+		if (!DatabaseService.checkIfUserExists(traditionMetadata.getOwnerId(), db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
@@ -91,9 +94,10 @@ public class Tradition implements IResource {
 				System.out.println(result.dumpToString());
 
 				// Add the new ownership
-				String createNewRelationQuery = "MATCH(user:USER {id:'" + textInfo.getOwnerId() + "'}) "
+				String createNewRelationQuery = "MATCH(user:USER {id:'" + traditionMetadata.getOwnerId() + "'}) "
 						+ "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) " + "SET tradition.name = '"
-						+ textInfo.getName() + "' " + "SET tradition.public = '" + textInfo.getIsPublic() + "' "
+						+ traditionMetadata.getName() + "' " + "SET tradition.public = '"
+						+ traditionMetadata.getIsPublic() + "' "
 						+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
 				result = engine.execute(createNewRelationQuery);
 				System.out.println(result.dumpToString());
@@ -107,7 +111,7 @@ public class Tradition implements IResource {
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
 		} 
-		return Response.status(Response.Status.OK).entity(textInfo).build();
+		return Response.status(Response.Status.OK).entity(traditionMetadata).build();
 	}
 	
 	/**
@@ -155,7 +159,7 @@ public class Tradition implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 
-		ArrayList<WitnessModel> witlist = new ArrayList<WitnessModel>();
+		ArrayList<WitnessModel> witnessList = new ArrayList<WitnessModel>();
 
 		ExecutionEngine engine = new ExecutionEngine(db);
 
@@ -183,7 +187,7 @@ public class Tradition implements IResource {
 						WitnessModel witM = new WitnessModel();
 						witM.setId(id);
 
-						witlist.add(witM);
+						witnessList.add(witM);
 					}
 				}
 
@@ -194,7 +198,7 @@ public class Tradition implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		return Response.ok(witlist).build();
+		return Response.ok(witnessList).build();
 	}
 
 	/**

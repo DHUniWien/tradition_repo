@@ -13,8 +13,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.ReadingsAndRelationshipsModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.ReturnIdModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
@@ -56,14 +57,17 @@ public class Relation implements IResource {
 	 * Creates a new relationship between the two nodes specified.
 	 * 
 	 * @param relationshipModel
-	 * @return
+	 * @return Http Response 201 and a model containing the created relationship
+	 *         and the readings involved in JSON on success or an ERROR in JSON
 	 */
     @POST
     @Path("createrelationship")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
 	public Response create(RelationshipModel relationshipModel) {
-    	
+		ReadingsAndRelationshipsModel readingsAndRelationshipModel = null;
+		ArrayList<ReadingModel> changedReadings = new ArrayList<ReadingModel>();
+		ArrayList<RelationshipModel> createdRelationships = new ArrayList<RelationshipModel>();
     	
     	Relationship relationshipAtoB = null;
 
@@ -100,14 +104,18 @@ public class Relation implements IResource {
         	relationshipAtoB.setProperty("reading_b", nullToEmptyString(relationshipModel.getReading_b()));
         	relationshipAtoB.setProperty("scope", nullToEmptyString(relationshipModel.getScope()));
         	
+			changedReadings.add(new ReadingModel(readingA));
+			changedReadings.add(new ReadingModel(readingB));
+			createdRelationships.add(new RelationshipModel(relationshipAtoB));
+			readingsAndRelationshipModel = new ReadingsAndRelationshipsModel(changedReadings, createdRelationships);
+
         	tx.success();
     	} 
     	catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-    	ReturnIdModel relId = new ReturnIdModel();
-    	relId.setId(relationshipAtoB.getId()+"");
-		return Response.status(Response.Status.CREATED).entity(relId).build();
+
+		return Response.status(Response.Status.CREATED).entity(readingsAndRelationshipModel).build();
 	}
 
 	/**
@@ -239,8 +247,7 @@ public class Relation implements IResource {
         	} catch (Exception e) {
     			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
     		}
-    	} else if(relationshipModel.getScope().equals("document")){
-        	
+		} else if (relationshipModel.getScope().equals("document")) {
         	
     		Node startNode = DatabaseService.getStartNode(tradId, db);
 
@@ -280,17 +287,20 @@ public class Relation implements IResource {
 	 * Removes a relationship by ID
 	 * 
 	 * @param relationshipId
-	 * @return HTTP Response 404 when no Relationship was found with id, 200
-	 *         when the Relationship was removed
+	 * @return HTTP Response 404 when no Relationship was found with id, 200 and
+	 *         a model of the relationship in JSON when the Relationship was
+	 *         removed
 	 */
     @DELETE
 	@Path("deleterelationshipbyid/withrelationship/{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId) {
+		RelationshipModel relationshipModel = null;
     	
     	try (Transaction tx = db.beginTx()) 
     	{
     		Relationship relationship = db.getRelationshipById(Long.parseLong(relationshipId));
     		if(relationship.getType().name().equals("RELATIONSHIP")){
+				relationshipModel = new RelationshipModel(relationship);
         		relationship.delete();
         		tx.success();
     		} else {
@@ -300,7 +310,7 @@ public class Relation implements IResource {
     	} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		return Response.ok().build();
+		return Response.ok(relationshipModel).build();
     }
     
     private String nullToEmptyString(String str){
