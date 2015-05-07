@@ -44,7 +44,6 @@ public class DotToNeo4JParser implements IResource
 	
 	public Response parseDot(String dot, String tradId)
 	{	
-		//db = dbFactory.newEmbeddedDatabase(DB_PATH);
 		this.dot = dot;
     	
     	try (Transaction tx = db.beginTx()) 
@@ -56,18 +55,11 @@ public class DotToNeo4JParser implements IResource
     			nodes.get(0).createRelationshipTo(nodes.get(1), ERelations.STEMMA);
     		tx.success();
     	}
-    	catch(Exception e)
-    	{
-    		
+    	catch(Exception e) {
     		e.printStackTrace();
     		return Response.status(Status.NOT_FOUND).build();
     	}
-    	finally
-    	{
-    		
-    	}
-		return Response.ok().build();
-
+		return Response.ok(dot).build();
 	}
 	
 	/**

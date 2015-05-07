@@ -101,7 +101,6 @@ public class Stemma implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle) {
 		
-		
 		Neo4JToDotParser parser = new Neo4JToDotParser(db);
 		Response resp = parser.parseNeo4JStemma(tradId, stemmaTitle);
 		
@@ -118,8 +117,6 @@ public class Stemma implements IResource {
 	@Path("newstemma/intradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response setStemma(@PathParam("tradId") String tradId, String dot) {
-		
-		
 		DotToNeo4JParser parser = new DotToNeo4JParser(db);
 		Response resp = parser.parseDot(dot,tradId);
 		
@@ -137,7 +134,6 @@ public class Stemma implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response reorientStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle,
 			@PathParam("nodeId") String nodeId) {
-		
 		
 		ExecutionEngine engine = new ExecutionEngine(db);
 		
@@ -176,10 +172,6 @@ public class Stemma implements IResource {
 		
 		tx.success();
 		}
-		finally
-    	{
-    		
-    	}
 		return resp;
     	
 	}
@@ -233,7 +225,6 @@ public class Stemma implements IResource {
 		
 		reorientGraph(newRootNode, startNodeStemma);
 			
-
 		return Response.ok().build();
 		
 	}
