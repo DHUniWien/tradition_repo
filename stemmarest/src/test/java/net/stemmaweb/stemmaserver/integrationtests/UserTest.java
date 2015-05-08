@@ -86,15 +86,6 @@ public class UserTest {
 	}
 	
 	/**
-	 * Test if the Resource is up and running
-	 */
-	@Test
-	public void SimpleTest(){
-		String actualResponse = jerseyTest.resource().path("/user").get(String.class);
-		assertEquals("User!",actualResponse);
-	}
-	
-	/**
 	 * Test the ability to create a user
 	 */
 	@Test
