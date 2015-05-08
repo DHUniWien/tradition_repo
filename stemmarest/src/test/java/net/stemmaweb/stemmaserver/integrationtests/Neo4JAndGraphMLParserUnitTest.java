@@ -18,8 +18,6 @@ import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.runners.MockitoJUnitRunner;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -33,7 +31,6 @@ import org.neo4j.graphdb.Transaction;
  * @author PSE FS 2015 Team2
  *
  */
-@RunWith(MockitoJUnitRunner.class)
 public class Neo4JAndGraphMLParserUnitTest {
 
 	GraphDatabaseService db;
@@ -89,7 +86,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			filename = "src/TestXMLFiles/SapientiaFileNotExisting.xml";
 		try
 		{
-			Response actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(filename, "1", "Tradition");
 			
 			assertTrue(false); // This line of code should never execute
 		}
