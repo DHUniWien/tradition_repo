@@ -12,18 +12,18 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
- * 
+ * This is the main configuration and setup class.
+ * It defines which services will be published by the server
  * @author PSE FS 2015 Team2
- *
  */
+
 public class ApplicationConfig extends Application {
 	
-	public static final String DB_PATH = "database"; // this is the local path to StemmaServer/database
+	public static final String DB_PATH = "database"; // this is the local path to stemmarest/database
 		
     @Override
     public Set<Class<?>> getClasses() {
         Set<Class<?>> s = new HashSet<Class<?>>();
-        s.add(MyResource.class);
         s.add(Witness.class);
         s.add(User.class);
         s.add(Tradition.class);
