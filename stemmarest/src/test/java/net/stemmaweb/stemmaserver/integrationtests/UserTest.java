@@ -211,7 +211,6 @@ public class UserTest {
 		/*
 		 * Creat a testtradition for user 2
 		 */
-	    engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
@@ -223,44 +222,48 @@ public class UserTest {
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
-    		
     		tx.success();
     	}
     	
-    	/*
-    	 * Remove user 1 with all his traditions
-    	 */
-		ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
-				.delete(ClientResponse.class);
-    	assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
-        
-    	/*
-    	 * Check if user 1 is removed
-    	 */
-		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
-		Iterator<Node> nodes = result.columnAs("userId");
-		assertFalse(nodes.hasNext());
-		
-    	/*
-    	 * Check if tradition 842 is removed
-    	 */
-		result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
-		nodes = result.columnAs("tradId");
-		assertFalse(nodes.hasNext());
-		
-		/*
-		 * Check if user 2 still exists
-		 */
-		result = engine.execute("match (userId:USER {id:'2'}) return userId");
-		nodes = result.columnAs("userId");
-		assertTrue(nodes.hasNext());
-		
-    	/*
-    	 * Check if tradition 843 is removed
-    	 */
-		result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
-		nodes = result.columnAs("tradId");
-		assertTrue(nodes.hasNext());
+    	try(Transaction tx = db.beginTx())
+    	{
+    	
+	    	/*
+	    	 * Remove user 1 with all his traditions
+	    	 */
+			ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
+					.delete(ClientResponse.class);
+	    	assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+	        
+	    	/*
+	    	 * Check if user 1 is removed
+	    	 */
+			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertFalse(nodes.hasNext());
+			
+	    	/*
+	    	 * Check if tradition 842 is removed
+	    	 */
+			result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+			nodes = result.columnAs("tradId");
+			assertFalse(nodes.hasNext());
+			
+			/*
+			 * Check if user 2 still exists
+			 */
+			result = engine.execute("match (userId:USER {id:'2'}) return userId");
+			nodes = result.columnAs("userId");
+			assertTrue(nodes.hasNext());
+			
+	    	/*
+	    	 * Check if tradition 843 is removed
+	    	 */
+			result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+			nodes = result.columnAs("tradId");
+			assertTrue(nodes.hasNext());
+			tx.success();
+		}
 	}
 	
 	/**
@@ -291,45 +294,42 @@ public class UserTest {
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
     		engine.execute(createNewRelationQuery);
-    		
-    		tx.success();
-    	} 
     	
-		
-    	
-    	/*
-    	 * Remove user 2 with all his traditions
-    	 */
-    	ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/2").delete(ClientResponse.class);
-    	assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
-        
-    	/*
-    	 * Check if user 1 still exists
-    	 */
-		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
-		Iterator<Node> nodes = result.columnAs("userId");
-		assertTrue(nodes.hasNext());
-		
-    	/*
-    	 * Check if tradition 842 still exists
-    	 */
-		result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
-		nodes = result.columnAs("tradId");
-		assertTrue(nodes.hasNext());
-		
-		/*
-		 * Check if user 2 does not exist
-		 */
-		result = engine.execute("match (userId:USER {id:'2'}) return userId");
-		nodes = result.columnAs("userId");
-		assertFalse(nodes.hasNext());
-		
-    	/*
-    	 * Check if tradition 843 does not exist
-    	 */
-		result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
-		nodes = result.columnAs("tradId");
-		assertFalse(nodes.hasNext());
+	    	/*
+	    	 * Remove user 2 with all his traditions
+	    	 */
+	    	ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/2").delete(ClientResponse.class);
+	    	assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
+	        
+	    	/*
+	    	 * Check if user 1 still exists
+	    	 */
+			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertTrue(nodes.hasNext());
+			
+	    	/*
+	    	 * Check if tradition 842 still exists
+	    	 */
+			result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+			nodes = result.columnAs("tradId");
+			assertTrue(nodes.hasNext());
+			
+			/*
+			 * Check if user 2 does not exist
+			 */
+			result = engine.execute("match (userId:USER {id:'2'}) return userId");
+			nodes = result.columnAs("userId");
+			assertFalse(nodes.hasNext());
+			
+	    	/*
+	    	 * Check if tradition 843 does not exist
+	    	 */
+			result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+			nodes = result.columnAs("tradId");
+			assertFalse(nodes.hasNext());
+			tx.success();
+		}
 	}
 	
 	/**

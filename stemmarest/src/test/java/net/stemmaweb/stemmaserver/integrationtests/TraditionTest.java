@@ -622,26 +622,30 @@ public class TraditionTest {
 	 */
 	@Test
 	public void deleteATraditionWithInvalidIdTest(){
-		ExecutionEngine engine = new ExecutionEngine(db);
-		/*
-		 * Try to remove a tradition with invalid id
-		 */
-		ClientResponse removalResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/1337").delete(ClientResponse.class);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-		
-		/*
-		 * Test if user 1 still exists
-		 */
-		ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
-		Iterator<Node> nodes = result.columnAs("userId");
-		assertTrue(nodes.hasNext());
-		
-    	/*
-    	 * Check if tradition {tradId} still exists
-    	 */
-		result = engine.execute("match (tradId:TRADITION {id:'"+tradId+"'}) return tradId");
-		nodes = result.columnAs("tradId");
-		assertTrue(nodes.hasNext());
+		try(Transaction tx = db.beginTx())
+		{
+			ExecutionEngine engine = new ExecutionEngine(db);
+			/*
+			 * Try to remove a tradition with invalid id
+			 */
+			ClientResponse removalResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/1337").delete(ClientResponse.class);
+			assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
+			
+			/*
+			 * Test if user 1 still exists
+			 */
+			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+			Iterator<Node> nodes = result.columnAs("userId");
+			assertTrue(nodes.hasNext());
+			
+	    	/*
+	    	 * Check if tradition {tradId} still exists
+	    	 */
+			result = engine.execute("match (t:TRADITION {id:'"+tradId+"'}) return t");
+			nodes = result.columnAs("t");
+			assertTrue(nodes.hasNext());
+			tx.success();
+		}
 	}
 	
 	/**

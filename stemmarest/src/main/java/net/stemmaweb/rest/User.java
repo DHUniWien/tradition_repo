@@ -108,7 +108,7 @@ public class User implements IResource {
 				userModel.setId((String) node.getProperty("id"));
 				userModel.setIsAdmin((String) node.getProperty("isAdmin"));
 			} else {
-				return null;
+				return Response.status(Status.NO_CONTENT).build();
 			}
 			tx.success();
 		} catch (Exception e) {
