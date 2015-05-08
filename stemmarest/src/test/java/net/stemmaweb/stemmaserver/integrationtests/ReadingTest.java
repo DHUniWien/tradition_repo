@@ -1639,7 +1639,7 @@ public class ReadingTest {
 	public void traditionEndNodeExistsTest() {
 		ExecutionEngine engine = new ExecutionEngine(db);
 		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
+				.execute("match (e:TRADITION {name:'Tradition'})-[:NORMAL*]->(n:WORD) where n.text='#END#' return n");
 		ResourceIterator<Node> tradNodes = result.columnAs("n");
 		assertTrue(tradNodes.hasNext());
 	}

@@ -145,7 +145,6 @@ public class Neo4JToDotParser
     		
     		
     		if(!stNodes.hasNext()) {
-    	    	db.shutdown();
     			return Response.status(Status.NOT_FOUND).build();
     		}
 			Node startNodeStemma = stNodes.next();
