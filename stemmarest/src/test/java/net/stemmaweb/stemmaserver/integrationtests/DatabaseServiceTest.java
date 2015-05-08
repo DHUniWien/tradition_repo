@@ -37,8 +37,6 @@ public class DatabaseServiceTest {
 	GraphDatabaseService db;
 
 	private GraphMLToNeo4JParser importResource;
-	private DatabaseService service;
-
 
 	@Before
 	public void setUp() throws Exception {
@@ -48,7 +46,6 @@ public class DatabaseServiceTest {
 		db = new GraphDatabaseServiceProvider().getDatabase();
 		
 		importResource = new GraphMLToNeo4JParser();
-		service = new DatabaseService(db);
 		
 		String filename = "";
 		if(OSDetector.isWin())
@@ -100,15 +97,13 @@ public class DatabaseServiceTest {
 
 			tx.success();
 		}
-		
-		service = new DatabaseService(db);
 	}
 	
 	@Test
 	public void getStartNodeTest(){
 		try(Transaction tx = db.beginTx())
 		{
-			assertEquals("#START#", service.getStartNode("1001").getProperty("text").toString());
+			assertEquals("#START#", DatabaseService.getStartNode("1001",db).getProperty("text").toString());
 		}
 	}
 	

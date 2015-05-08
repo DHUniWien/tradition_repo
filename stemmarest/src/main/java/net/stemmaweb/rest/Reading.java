@@ -22,7 +22,6 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.EvaluatorService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
@@ -721,7 +720,7 @@ public class Reading implements IResource {
 
 		final String WITNESS_ID = witnessId;
 
-		Evaluator witnessEvaluator = EvaluatorService
+		Evaluator witnessEvaluator = Witness
 				.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {
@@ -769,7 +768,7 @@ public class Reading implements IResource {
 
 		final String WITNESS_ID = witnessId;
 
-		Evaluator wintessEvaluator = EvaluatorService
+		Evaluator wintessEvaluator = Witness
 				.getEvalForWitness(WITNESS_ID);
 
 		try (Transaction tx = db.beginTx()) {

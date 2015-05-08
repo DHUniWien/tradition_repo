@@ -31,22 +31,15 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
- * 
- * Comprises all the api calls related to a user.
- * 
+ * Comprises all the API calls related to a user.
+ * Can be called using http://BASE_URL/user
  * @author PSE FS 2015 Team2
- * 
  */
+
 @Path("/user")
 public class User implements IResource {
 	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
-	
-
-	@GET
-	public String getIt() {
-		return "User!";
-	}
 
 	/**
 	 * Creates a user based on the parameters submitted in JSON.
@@ -187,7 +180,6 @@ public class User implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getTraditionsByUserId(@PathParam("userId") String userId) {
 
-		
 		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
 		
 		if (!DatabaseService.checkIfUserExists(userId, db)) {
