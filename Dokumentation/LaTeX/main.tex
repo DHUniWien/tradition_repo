@@ -173,7 +173,7 @@ The performance is tested by benchmark tests. Please consult the chapter Benchma
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Concept}
-This chapter describes the test-concept of the Digital Humanities PSE2 Project. The testing is used to assure the quality of the project and for test driven development. All tests are written in a manner they don't have any impact on the architecture of the project. To achieve this object mocking and injection by mockito is used. 
+This chapter describes the test-concept of the Digital Humanities PSE2 Project. The testing is used to assure the quality of the project and for test driven development. All tests are written in a manner they don't have any impact on the architecture of the project. 
 
 \section*{Integration Tests}
 Every user story is tested by an integration Test. The integration tests assures the quality of the project. The technique of integration tests is described in the Integration test chapter. 
@@ -189,43 +189,31 @@ Unit tests are used for test driven development and are defined by the developer
 \includegraphics[scale=.40]{Pictures/jerseyoverview.png} 
 \end{center}
 
-In the productive system for every REST call jersey is instantiating the requested resource and providing the service. Each resource object has its own database service, which is closed after each call. In production a embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database without test related code in the project, object injection is used. 
+In the productive system for every REST call jersey is instantiating the requested resource and providing the service. Each resource object has its own database service, which is closed after each call. In production a embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider can be configured to return an impermanent Database.
 
 
-\chapter{Injection}
-Mockito is used to mock, spy and inject objects in the tests. To use Mockito with junit the following annotation has to be done directly above the class header.
-\begin{lstlisting}[language=java]
-@RunWith(MockitoJUnitRunner.class)
-\end{lstlisting}
-With the MockitoJUnitRunner the annotations @Mock, @Spy and @InjectMocks can be used. To inject an GraphDatabaseService, the GraphDatabaseFactory is mocked and the newEmbeddedDatabase method overwritten that it returns an impermanent database. 
-\begin{lstlisting}[language=java]
-@Mock
-protected GraphDatabaseFactory mockDbFactory =
-   new GraphDatabaseFactory();
-\end{lstlisting}
-The Mock annotation creates a Mock object. This is needed to overwrite the newEmbeddedDatabase method.
-\begin{lstlisting}[language=java]
-Mockito.when(mockDbFactory.newEmbeddedDatabase(Matchers.anyString()))
-	.thenReturn(mockDbService);  
-\end{lstlisting}
-Where mockDbService is a spy object. This is needed to suppress each shutdown call of this object. This is necessary because the resource is not new created for every restcall and so the database should not be closed. See more in the Integrationtest chapter. 
-\begin{lstlisting}[language=java]
-@Spy
-protected GraphDatabaseService mockDbService = 
-  new TestGraphDatabaseFactory().newImpermanentDatabase();
-\end{lstlisting}
+\chapter{Configure the Test-Database}
+
+In this Project the GraphDatabaseService is a Singleton Object provided by the GraphDatabaseServiceProvider. To use a Testdatabase in the Tests the following steps have to be done.
+A Claswide GraphDatabaseService object db has to be registered.
 
 \begin{lstlisting}[language=java]
-Mockito.doNothing().when(mockDbService).shutdown();
+    GraphDatabaseService db;
 \end{lstlisting}
-
-And the injection of the Mockobjects into a resource
+In the @Before method the singleton GraphDatabaseService provided by the GraphDatabaseServiceProvider has to be overwritten by the following line:
 
 \begin{lstlisting}[language=java]
-@InjectMocks
-private User userResource;
+    GraphDatabaseServiceProvider.setImpermanentDatabase();
 \end{lstlisting}
-
+Later the db object can be initialized by:
+\begin{lstlisting}[language=java]
+    db = new GraphDatabaseServiceProvider().getDatabase();
+\end{lstlisting}
+In the @After method the database has to be closed
+\begin{lstlisting}[language=java]
+    db.shutdown();
+\end{lstlisting}
+With this configuration the impermanent Testdatabase of Neo4j is used during the tests. 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
 %----------------------------------------------------------------------------------------
