@@ -186,7 +186,7 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 			assertEquals("snow", (String) node.getProperty("text"));
-			
+
 			String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
 			Response resp = witness.getWitnessAsText(tradId, "A");
 			assertEquals(expectedWitnessA, resp.getEntity());
@@ -1198,12 +1198,14 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
+			String parameterString = "";
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
-							+ "/concatenate/0/with_str/ ")
-					.post(ClientResponse.class);
+							+ "/concatenate/0")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers sweet", showers.getProperty("text"));
@@ -1264,12 +1266,14 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
+			String parameterString = "shouldNotBeDesplayd";
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
-							+ "/concatenate/0/with_str/shouldNotBeDesplayd")
-					.post(ClientResponse.class);
+							+ "/concatenate/0")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers sweet", showers.getProperty("text"));
@@ -1330,12 +1334,14 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
+			String parameterString = "test";
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
-							+ "/concatenate/1/with_str/test")
-					.post(ClientResponse.class);
+							+ "/concatenate/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showerstestsweet", showers.getProperty("text"));
@@ -1362,6 +1368,108 @@ public class ReadingTest {
 		}
 	}
 
+	// compress with " between the readings' texts
+	@Test
+	public void compressReadingsWithConcatenatingWithQuotationAsTextTest() {
+		Node showers, sweet;
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			showers = nodes.next();
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			sweet = nodes.next();
+
+			String parameterString = "\"";
+			ClientResponse res = jerseyTest
+					.resource()
+					.path("/reading/compressreadings/read1id/"
+							+ showers.getId() + "/read2id/" + sweet.getId()
+							+ "/concatenate/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
+
+			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+			assertEquals("showers\"sweet", showers.getProperty("text"));
+
+			result = engine
+					.execute("match (w:WORD {text:'showers\"sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			nodes.next();
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'showers'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+			tx.success();
+
+			String expectedWitnessA = "{\"text\":\"when april with his showers\"sweet with fruit the drought of march has pierced unto me the root\"}";
+			Response resp = witness.getWitnessAsText(tradId, "A");
+			assertEquals(expectedWitnessA, resp.getEntity());
+		}
+	}
+
+	// compress with / between the readings' texts
+	@Test
+	public void compressReadingsWithConcatenatingWithSlashAsTextTest() {
+		Node showers, sweet;
+		ExecutionEngine engine = new ExecutionEngine(db);
+		try (Transaction tx = db.beginTx()) {
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'showers'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			showers = nodes.next();
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assert (nodes.hasNext());
+			sweet = nodes.next();
+
+			String parameterString = "/";
+			ClientResponse res = jerseyTest
+					.resource()
+					.path("/reading/compressreadings/read1id/"
+							+ showers.getId() + "/read2id/" + sweet.getId()
+							+ "/concatenate/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
+
+			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+			assertEquals("showers/sweet", showers.getProperty("text"));
+
+			result = engine
+					.execute("match (w:WORD {text:'showers/sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			nodes.next();
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'sweet'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+
+			result = engine.execute("match (w:WORD {text:'showers'}) return w");
+			nodes = result.columnAs("w");
+			assertFalse(nodes.hasNext());
+			tx.success();
+
+			String expectedWitnessB = "{\"text\":\"when april his showers/sweet with fruit the march of drought has pierced to the root\"}";
+			Response resp = witness.getWitnessAsText(tradId, "B");
+			assertEquals(expectedWitnessB, resp.getEntity());
+		}
+	}
+
 	// compress with concatenating the two texts without a gap or text
 	@Test
 	public void compressReadingsWithConcatenatingWithoutConTextTest() {
@@ -1379,12 +1487,14 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
+			String parameterString = "";
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
-							+ "/concatenate/1/with_str/" + " " + "/")
-					.post(ClientResponse.class);
+							+ "/concatenate/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showerssweet", showers.getProperty("text"));
@@ -1430,12 +1540,14 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			Node fruit = nodes.next();
 
+			String parameterString = "shouldNotBeDesplayd";
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + fruit.getId()
-							+ "/concatenate/0/with_str/ ")
-					.post(ClientResponse.class);
+							+ "/concatenate/0/")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, parameterString);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
