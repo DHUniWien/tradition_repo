@@ -8,34 +8,37 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * 
  * Provides a model for a reading outside of the database. Can be parsed into a
  * json object.
  * 
  * @author PSE FS 2015 Team2
- *
  */
+
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class ReadingModel implements Comparable<ReadingModel> {
 
-	private String grammar_invalid; // grammar_invalid
-	private String id; // id
-	private String is_common; // is_common
-	private String is_end; // is_end
-	private String is_lacuna; // is_lacuna
-	private String is_lemma; // is_lemma
-	private String is_nonsense; // is_nonsense
-	private String is_ph; // is_ph
-	private String is_start; // is_start
-	private String join_next; // join_next
-	private String join_prior; // join_prior
-	private String language; // language
-	private String lexemes; // lexemes
-	private String normal_form; // normal_form
-	private Long rank; // rank
-	private String text; // text
+	private String grammar_invalid; // dn0
+	private String id; 				// dn1
+	private String is_common; 		// dn2
+	private String is_end; 			// dn3
+	private String is_lacuna; 		// dn4
+	private String is_lemma; 		// dn5
+	private String is_nonsense; 	// dn6
+	private String is_ph; 			// dn7
+	private String is_start; 		// dn8
+	private String join_next; 		// dn9
+	private String join_prior; 		// dn10
+	private String language; 		// dn11
+	private String lexemes; 		// dn12
+	private String normal_form; 	// dn13
+	private Long rank; 				// dn14
+	private String text; 			// dn15
 
+	/**
+	 * Generates a model from a Neo4j Node
+	 * @param node
+	 */
 	public ReadingModel(Node node) {
 		if (node.hasProperty("grammar_invalid"))
 			this.setGrammar_invalid(node.getProperty("grammar_invalid").toString());

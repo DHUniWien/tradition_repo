@@ -10,8 +10,8 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
  * json object.
  * 
  * @author PSE FS 2015 Team2
- *
  */
+
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class UserModel {

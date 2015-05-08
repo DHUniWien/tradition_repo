@@ -14,7 +14,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.ReadingsAndRelationshipsModel;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -65,7 +65,7 @@ public class Relation implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
 	public Response create(RelationshipModel relationshipModel) {
-		ReadingsAndRelationshipsModel readingsAndRelationshipModel = null;
+		GraphModel readingsAndRelationshipModel = null;
 		ArrayList<ReadingModel> changedReadings = new ArrayList<ReadingModel>();
 		ArrayList<RelationshipModel> createdRelationships = new ArrayList<RelationshipModel>();
     	
@@ -107,7 +107,7 @@ public class Relation implements IResource {
 			changedReadings.add(new ReadingModel(readingA));
 			changedReadings.add(new ReadingModel(readingB));
 			createdRelationships.add(new RelationshipModel(relationshipAtoB));
-			readingsAndRelationshipModel = new ReadingsAndRelationshipsModel(changedReadings, createdRelationships);
+			readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
 
         	tx.success();
     	} 

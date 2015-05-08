@@ -8,9 +8,9 @@ import java.io.FileNotFoundException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.ReadingsAndRelationshipsModel;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TraditionMetadataModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
@@ -71,7 +71,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void changeMetadataOfATradition(){
-		TraditionMetadataModel textInfo = new TraditionMetadataModel();
+		TraditionModel textInfo = new TraditionModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
@@ -80,7 +80,7 @@ public abstract class BenachmarkTests {
 		ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/1001").type(MediaType.APPLICATION_JSON).post(ClientResponse.class,textInfo);
 		assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 	
-		textInfo = new TraditionMetadataModel();
+		textInfo = new TraditionModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
@@ -260,8 +260,8 @@ public abstract class BenachmarkTests {
 
 		ClientResponse actualResponse = jerseyTest.resource().path("/relation/createrelationship/")
 				.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, relationship);
-		ReadingsAndRelationshipsModel readingsAndRelationships = actualResponse
-				.getEntity(ReadingsAndRelationshipsModel.class);
+		GraphModel readingsAndRelationships = actualResponse
+				.getEntity(GraphModel.class);
 		relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
 		ClientResponse removalResponse = jerseyTest.resource().path("/relation/deleterelationshipbyid/withrelationship/"+relationshipId).delete(ClientResponse.class);

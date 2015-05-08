@@ -6,10 +6,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * 
+ * This model holds a witness. The id is also the witness name, e.g. 'Mk10'
  * @author PSE FS 2015 Team2
- *
  */
+
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class WitnessModel {

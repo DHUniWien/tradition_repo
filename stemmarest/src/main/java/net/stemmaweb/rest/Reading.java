@@ -19,7 +19,7 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.ReadingsAndRelationshipsModel;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.EvaluatorService;
@@ -159,7 +159,7 @@ public class Reading implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		ReadingsAndRelationshipsModel readingsAndRelationships = new ReadingsAndRelationshipsModel(createdReadings,
+		GraphModel readingsAndRelationships = new GraphModel(createdReadings,
 				deletedRelationships);
 		return Response.ok(readingsAndRelationships).build();
 
@@ -556,7 +556,7 @@ public class Reading implements IResource {
 			@PathParam("separator") String separator,
 			@PathParam("splitIndex") int splitIndex) {
 
-		ReadingsAndRelationshipsModel readingsAndRelationships = null;
+		GraphModel readingsAndRelationships = null;
 		Node originalReading = null;
 
 		try (Transaction tx = db.beginTx()) {
@@ -654,7 +654,7 @@ public class Reading implements IResource {
 	 * @param splittedWords
 	 * @return
 	 */
-	private ReadingsAndRelationshipsModel split(GraphDatabaseService db,
+	private GraphModel split(GraphDatabaseService db,
 			Node originalReading, String[] splittedWords) {
 		ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<ReadingModel>();
 		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
@@ -701,7 +701,7 @@ public class Reading implements IResource {
 			oldRel.delete();
 		}
 
-		return new ReadingsAndRelationshipsModel(createdOrChangedReadings, deletedRelationships);
+		return new GraphModel(createdOrChangedReadings, deletedRelationships);
 	}
 
 	/**

@@ -203,7 +203,6 @@ public class User implements IResource {
 			while (tradIterator.hasNext()) {
 				if (tradIterator.hasNext()) {
 					Node tradNode = tradIterator.next();
-					Iterable<String> test = tradNode.getPropertyKeys();
 					TraditionModel tradition = new TraditionModel();
 					
 					tradition.setId(tradNode.getProperty("id").toString());

@@ -7,37 +7,40 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.neo4j.graphdb.Relationship;
 
 /**
- * 
  * Provides a model for a relationship outside of the database. Can be parsed
  * into a json object.
  * 
  * @author PSE FS 2015 Team2
- *
  */
+
 @XmlRootElement
 public class RelationshipModel {
 	
-	private String source;
-	private String target;
-	private String id;
-	private String a_derivable_from_b;
-	private String alters_meaning;
-	private String annotation;
-	private String b_derivable_from_a;
-	private String displayform;
-	private String extra;
-	private String is_significant;
-	private String non_independent;
-	private String reading_a;
-	private String reading_b;
-	private String scope;
-	private String type;
-	private String witness;
+	private String source;				// source
+	private String target;				// target
+	private String id;					// id
+	private String a_derivable_from_b;	// de0
+	private String alters_meaning;		// de1
+	private String annotation;			// de2
+	private String b_derivable_from_a;	// de3
+	private String displayform;			// de4
+	private String extra;				// de5
+	private String is_significant;		// de6
+	private String non_independent;		// de7
+	private String reading_a;			// de8
+	private String reading_b;			// de9
+	private String scope;				// de10
+	private String type;				// de11
+	private String witness;				// de12
 	
 	public RelationshipModel(){
 		
 	}
 	
+	/**
+	 * Creates a relationshipModel directly from a Relationship from Neo4J db
+	 * @param rel
+	 */
 	public RelationshipModel(Relationship rel){
 		Iterable<String> properties = rel.getPropertyKeys();
 		id = Long.toString(rel.getId());

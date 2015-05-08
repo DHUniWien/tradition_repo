@@ -27,7 +27,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TraditionMetadataModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
@@ -73,10 +72,10 @@ public class Tradition implements IResource {
 	@Path("changemetadata/fromtradition/{tradId}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response changeTraditionMetadata(TraditionMetadataModel traditionMetadata,
+	public Response changeTraditionMetadata(TraditionModel tradition,
 			@PathParam("tradId") String witnessId) {
 		
-		if (!DatabaseService.checkIfUserExists(traditionMetadata.getOwnerId(), db)) {
+		if (!DatabaseService.checkIfUserExists(tradition.getOwnerId(), db)) {
 			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
 					.build();
 		}
@@ -94,10 +93,10 @@ public class Tradition implements IResource {
 				System.out.println(result.dumpToString());
 
 				// Add the new ownership
-				String createNewRelationQuery = "MATCH(user:USER {id:'" + traditionMetadata.getOwnerId() + "'}) "
+				String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId() + "'}) "
 						+ "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) " + "SET tradition.name = '"
-						+ traditionMetadata.getName() + "' " + "SET tradition.public = '"
-						+ traditionMetadata.getIsPublic() + "' "
+						+ tradition.getName() + "' " + "SET tradition.public = '"
+						+ tradition.getIsPublic() + "' "
 						+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
 				result = engine.execute(createNewRelationQuery);
 				System.out.println(result.dumpToString());
@@ -111,7 +110,7 @@ public class Tradition implements IResource {
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
 		} 
-		return Response.status(Response.Status.OK).entity(traditionMetadata).build();
+		return Response.status(Response.Status.OK).entity(tradition).build();
 	}
 	
 	/**

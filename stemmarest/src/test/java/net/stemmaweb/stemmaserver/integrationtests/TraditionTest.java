@@ -393,7 +393,7 @@ public class TraditionTest {
 		/*
 		 * Change the owner of the tradition 
 		 */
-		TraditionMetadataModel textInfo = new TraditionMetadataModel();
+		TraditionModel textInfo = new TraditionModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
@@ -463,7 +463,7 @@ public class TraditionTest {
 		/*
 		 * Change the owner of the tradition 
 		 */
-		TraditionMetadataModel textInfo = new TraditionMetadataModel();
+		TraditionModel textInfo = new TraditionModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");
@@ -552,7 +552,7 @@ public class TraditionTest {
 		/*
 		 * Change the owner of the tradition 
 		 */
-		TraditionMetadataModel textInfo = new TraditionMetadataModel();
+		TraditionModel textInfo = new TraditionModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
 		textInfo.setIsPublic("0");

@@ -8,23 +8,23 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * 
+ * This model contains a graph or subgraph returned from the Neo4j db
  * @author PSE FS 2015 Team2
- *
  */
+
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
-public class ReadingsAndRelationshipsModel {
+public class GraphModel {
     private List<ReadingModel> readings;
     private List<RelationshipModel> relationships;
     
-    public ReadingsAndRelationshipsModel(List<ReadingModel> readings, List<RelationshipModel> relationships) {
+    public GraphModel(List<ReadingModel> readings, List<RelationshipModel> relationships) {
         super();
         this.readings = readings;
         this.relationships = relationships;
     }
 
-    public ReadingsAndRelationshipsModel() {
+    public GraphModel() {
 
     }
 

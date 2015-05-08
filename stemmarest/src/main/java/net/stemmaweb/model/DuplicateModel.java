@@ -8,10 +8,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
- * 
+ * This is a model for the duplicateReadings method.
+ * It consists two lists, one of reading ids to be duplicated 
+ * and the witnesses which will be used for the new path
  * @author PSE FS 2015 Team2
- *
  */
+
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class DuplicateModel {

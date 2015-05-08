@@ -14,7 +14,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.ReadingsAndRelationshipsModel;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -335,8 +335,8 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			ReadingsAndRelationshipsModel readingsAndRelationshipsModel = response
-					.getEntity(ReadingsAndRelationshipsModel.class);
+			GraphModel readingsAndRelationshipsModel = response
+					.getEntity(GraphModel.class);
 			assertEquals("showers", readingsAndRelationshipsModel.getReadings()
 					.get(0).getText());
 			assertEquals("sweet", readingsAndRelationshipsModel.getReadings()
@@ -825,8 +825,8 @@ public class ReadingTest {
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
-			ReadingsAndRelationshipsModel readingsAndRelationshipsModel = response
-					.getEntity(ReadingsAndRelationshipsModel.class);
+			GraphModel readingsAndRelationshipsModel = response
+					.getEntity(GraphModel.class);
 			assertEquals("the", readingsAndRelationshipsModel.getReadings()
 					.get(0).getText());
 			assertEquals("root", readingsAndRelationshipsModel.getReadings()
