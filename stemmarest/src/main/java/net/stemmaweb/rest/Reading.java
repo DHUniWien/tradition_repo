@@ -1060,6 +1060,14 @@ public class Reading implements IResource {
 		}
 	}
 
+	/**
+	 * Returns all readings between two ranks of readings
+	 * @param startRank
+	 * @param endRank
+	 * @param db
+	 * @param startNode
+	 * @return list of readings
+	 */
 	private ArrayList<Node> getReadingsBetweenRanks(long startRank,
 			long endRank, GraphDatabaseService db, Node startNode) {
 		ArrayList<Node> readings = new ArrayList<Node>();
@@ -1079,7 +1087,7 @@ public class Reading implements IResource {
 	 * Gets identical readings in a tradition between the given ranks
 	 * 
 	 * @param readingModels
-	 *            list of all readings sorted according to rank
+	 *            list of all readings sorted by rank
 	 * @param startRank
 	 * @param endRank
 	 * @return list of the identical readings as readingModels

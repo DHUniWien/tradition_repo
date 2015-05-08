@@ -28,11 +28,9 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
- * 
  * Comprises all the api calls related to a stemma.
- * 
+ * Can be called using http://BASE_URL/stemma
  * @author PSE FS 2015 Team2
- *
  */
 @Path("/stemma")
 public class Stemma implements IResource {
@@ -41,7 +39,7 @@ public class Stemma implements IResource {
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
 	
 	/**
-	 * Gets a list of all stemmata available, as dot format
+	 * Gets a list of all Stemmata available, as dot format
 	 * 
 	 * @param tradId
 	 * @return Http Response ok and a list of DOT JSON strings on success or an
@@ -91,7 +89,7 @@ public class Stemma implements IResource {
 	}
 	
 	/**
-	 * Returns JSON string with a stemma of a tradition in DOT format
+	 * Returns JSON string with a Stemma of a tradition in DOT format
 	 * 
 	 * @param tratitionId
 	 * @param stemmaTitle
@@ -110,7 +108,7 @@ public class Stemma implements IResource {
 	}
 
 	/**
-	 * Puts the stemma of a DOT file in the database
+	 * Puts the Stemma of a DOT file in the database
 	 * 
 	 * @param tratitionId
 	 * @return 
@@ -126,9 +124,10 @@ public class Stemma implements IResource {
 	}
 	
 	/**
-	 * Reorients the stemma tree with a given new root node
-	 * 
-	 * @param tratitionId
+	 * Reorients a stemma tree with a given new root node
+	 * @param tradId
+	 * @param stemmaTitle
+	 * @param nodeId
 	 * @return Http Response ok and DOT JSON string on success or an ERROR in
 	 *         JSON
 	 */
@@ -181,8 +180,8 @@ public class Stemma implements IResource {
 	}
 
 	/**
-	 * Reorients a digraph: Searches the path to the new rootnode; reverse the
-	 * realtionships; change the first relationship
+	 * Reorients a directed Graph: Searches the path to the new RootNode; reverse the
+	 * relationships; changes the first relationship
 	 * 
 	 * @param db
 	 * @param newRootNode
@@ -234,7 +233,7 @@ public class Stemma implements IResource {
 	}
 	
 	/**
-	 * Reorients a graph: deletes first relationship to node and exchange with a relationship to 
+	 * Reorients an undirected graph: deletes first relationship to node and exchange with a relationship to 
 	 * the new root node
 	 * 
 	 * @param newRootNode

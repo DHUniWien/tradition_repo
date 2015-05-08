@@ -42,18 +42,15 @@ public class RelationshipModel {
 	 * @param rel
 	 */
 	public RelationshipModel(Relationship rel){
+		target = rel.getStartNode().getId() + "";
+		source = rel.getEndNode().getId() + "";
+		
 		Iterable<String> properties = rel.getPropertyKeys();
 		id = Long.toString(rel.getId());
 		Iterator<String> iterator = properties.iterator();
 		while(iterator.hasNext()){
 			
 			switch (iterator.next()){
-			case "target":
-				target = rel.getProperty("target").toString();
-				break;
-			case "source":
-				source = rel.getProperty("source").toString();
-				break;
 			case "a_derivable_from_b":
 				a_derivable_from_b = rel.getProperty("a_derivable_from_b").toString();				
 				break;

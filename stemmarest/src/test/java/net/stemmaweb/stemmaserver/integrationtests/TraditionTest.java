@@ -178,8 +178,8 @@ public class TraditionTest {
 				.post(ClientResponse.class, jsonPayload);
 
 		RelationshipModel rel = new RelationshipModel();
-		rel.setSource("16");
-		rel.setTarget("27");
+		rel.setSource("27");
+		rel.setTarget("16");
 		rel.setId("36");
 		rel.setReading_a("april");
 		rel.setIs_significant("no");

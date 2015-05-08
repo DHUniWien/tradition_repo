@@ -135,15 +135,6 @@ public class RelationTest {
 	}
 	
 	/**
-	 * Test if the Resource is up and running
-	 */
-	@Test
-	public void SimpleTest(){
-		String actualResponse = jerseyTest.resource().path("/relation").get(String.class);
-		assertEquals("The relation api is up and running",actualResponse);
-	}
-	
-	/**
 	 * Test if a relation is created properly
 	 */
 	@Test

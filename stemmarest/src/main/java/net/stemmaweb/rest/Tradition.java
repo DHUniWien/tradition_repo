@@ -49,12 +49,11 @@ import com.sun.jersey.multipart.FormDataParam;
 
 
 /**
- * 
  * Comprises all the api calls related to a tradition.
- * 
+ * Can be called using http://BASE_URL/tradition
  * @author PSE FS 2015 Team2
- *
  */
+
 @Path("/tradition")
 public class Tradition implements IResource {
 	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -116,7 +115,7 @@ public class Tradition implements IResource {
 	/**
 	 * Gets a list of all the complete traditions in the database.
 	 * 
-	 * @return
+	 * @return list of tradition model
 	 */
 	@GET
 	@Path("getalltraditions")
@@ -151,7 +150,7 @@ public class Tradition implements IResource {
 	 * Gets a list of all the witnesses of a tradition with the given id.
 	 * 
 	 * @param tradId
-	 * @return
+	 * @return list of witness model
 	 */
 	@GET
 	@Path("getallwitnesses/fromtradition/{tradId}")
@@ -204,7 +203,7 @@ public class Tradition implements IResource {
 	 * Gets a list of all relationships of a tradition with the given id.
 	 * 
 	 * @param tradId
-	 * @return
+	 * @return list of relationship model
 	 */
 	@GET
 	@Path("getallrelationships/fromtradition/{tradId}")
@@ -212,9 +211,7 @@ public class Tradition implements IResource {
 	public Response getAllRelationships(@PathParam("tradId") String tradId) {
 
 		ArrayList<RelationshipModel> relList = new ArrayList<RelationshipModel>();
-
 		
-
 		try (Transaction tx = db.beginTx()) {
 
 			Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -227,40 +224,7 @@ public class Tradition implements IResource {
 				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
 				for(Relationship rel : rels)
 				{
-					RelationshipModel relMod = new RelationshipModel();
-	
-					if (rel.getStartNode() != null)
-						relMod.setSource(String.valueOf(rel.getStartNode().getId()));
-					if (rel.getEndNode() != null)
-						relMod.setTarget(String.valueOf(rel.getEndNode().getId()));
-					relMod.setId(String.valueOf(rel.getId()));
-					if (rel.hasProperty("a_derivable_from_b"))
-						relMod.setA_derivable_from_b(rel.getProperty("a_derivable_from_b").toString());
-					if (rel.hasProperty("alters_meaning"))
-						relMod.setAlters_meaning(rel.getProperty("alters_meaning").toString());
-					if (rel.hasProperty("annotation"))
-						relMod.setAnnotation(rel.getProperty("annotation").toString());
-					if (rel.hasProperty("b_derivable_from_a"))
-						relMod.setB_derivable_from_a(rel.getProperty("b_derivable_from_a").toString());
-					if (rel.hasProperty("displayform"))
-						relMod.setDisplayform(rel.getProperty("displayform").toString());
-					if (rel.hasProperty("extra"))
-						relMod.setExtra(rel.getProperty("extra").toString());
-					if (rel.hasProperty("is_significant"))
-						relMod.setIs_significant(rel.getProperty("is_significant").toString());
-					if (rel.hasProperty("non_independent"))
-						relMod.setNon_independent(rel.getProperty("non_independent").toString());
-					if (rel.hasProperty("reading_a"))
-						relMod.setReading_a(rel.getProperty("reading_a").toString());
-					if (rel.hasProperty("reading_b"))
-						relMod.setReading_b(rel.getProperty("reading_b").toString());
-					if (rel.hasProperty("scope"))
-						relMod.setScope(rel.getProperty("scope").toString());
-					if (rel.hasProperty("type"))
-						relMod.setType(rel.getProperty("type").toString());
-					if (rel.hasProperty("witness"))
-						relMod.setWitness(rel.getProperty("witness").toString());
-	
+					RelationshipModel relMod = new RelationshipModel(rel);
 					relList.add(relMod);
 				}
 			}
@@ -271,13 +235,12 @@ public class Tradition implements IResource {
 		return Response.ok(relList).build();
 	}
 
-
 	/**
 	 * Helper method for getting the tradition node with a given tradition id
 	 * 
 	 * @param tradId
 	 * @param engine
-	 * @return
+	 * @return the root tradition node
 	 */
 	private Node getTraditionNode(String tradId, ExecutionEngine engine) {
 		ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
@@ -306,7 +269,7 @@ public class Tradition implements IResource {
 	/**
 	 * Removes a complete tradition
 	 * @param tradId
-	 * @return
+	 * @return http response
 	 */
 	@DELETE
 	@Path("deletetradition/withid/{tradId}")
@@ -381,8 +344,6 @@ public class Tradition implements IResource {
 			return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
 		}
 		
-
-		// Boolean is_public_bool = is_public.equals("on")? true : false;
 		String uploadedFileLocation = "upload/" + fileDetail.getFileName();
 
 		// save it

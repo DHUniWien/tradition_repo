@@ -31,27 +31,16 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 
 /**
- * 
  * Comprises all the api calls related to a relation.
- * 
+ * can be called by using http://BASE_URL/relation
  * @author PSE FS 2015 Team2
- *
  */
+
 @Path("/relation")
 public class Relation implements IResource {
 	
 	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
-	
-	/**
-	 * 
-	 * @return string
-	 */
-    @GET 
-    @Produces("text/plain")
-    public String getIt() {
-        return "The relation api is up and running";
-    }
     
     /**
 	 * Creates a new relationship between the two nodes specified.
@@ -120,7 +109,7 @@ public class Relation implements IResource {
 
 	/**
 	 * Checks if a relationship between the two nodes specified would produce a
-	 * cross-relationship or not. A cross relationship is a relationship that
+	 * cross-relationship. A cross relationship is a relationship that
 	 * crosses another one created before which is not allowed.
 	 * 
 	 * @param db
@@ -209,13 +198,12 @@ public class Relation implements IResource {
     
   
     /**
-     * Remove all like https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271)
+     * Remove all relationships, as it is done in https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271)
      *  in Relationships of type RELATIONSHIP between the two nodes.
      * @param relationshipModel
      * @param tradId
      * @return HTTP Response 404 when no node was found, 200 When relationships where removed
      */
-    //@DELETE 
     @POST
     @Path("deleterelationship/fromtradition/{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)
