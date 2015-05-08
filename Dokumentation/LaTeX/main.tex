@@ -124,15 +124,30 @@ Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod 
 
 \chapter{Database (neo4j)}
 
-\section{Structure}
-
+In our project we used a graph database instead of a relational database.\\ This was due to the fact, that relational databases are much faster when it comes down to look for objects in a list that fulfill some constraints to other objects. Normally in a relational database you would use multiple joins to get your desired result. In the graph way it’s much easier because you traverse the graph (previously mentioned as list) from top down using either breadth- or depth-first algorithm and look for a specific relation between two nodes (previously objects). In respect of that we save a lot of time traversing instead of writing complicated queries which run mostly slow. \\ \quad \\Therefore we use Neo4J (Additional info can be found under http://neo4j.com/developer/graph-db-vs-rdbms/). Neo4J is a graph database that is capable of managing millions of nodes and relationships and returning or changing them within logarithmic or even constant time. That means that it won’t make a big difference whether you use 10 nodes, or 1 million. You can find additional information on benchmarking in the related chapter of this documentation. \\ \quad \\Our database is mainly one big graph. We use different Labels for Nodes and Relationships to increase the search speed. \\ \quad \\ In the database we use only a few labels:\\ \quad \\
+\begin{tabular}{|l|l|}
+\hline 
+\textbf{Nodes} & \textbf{Relationships} \\ 
+\hline 
+ROOT & RELATIONSHIP \\ 
+\hline 
+STEMMA & STEMMA \\ 
+\hline 
+WITNESS & NORMAL \\ 
+\hline 
+TRADITION &  \\ 
+\hline 
+USER &  \\ 
+\hline 
+WORD &  \\ 
+\hline 
+\end{tabular} \\
+Since each label is stored in another file, searching or traversing the graph is stunningly fast. \\ \quad \\ The database structure is as follows:
 \begin{center}
-\includegraphics[scale=0.65]{Pictures/db_overview.png} 
-\end{center}
+\includegraphics[scale=.5]{Pictures/database.png} 
+\end{center} 
+Neo4J is delivered with a powerful script language called cypher. It’s the equivalent to SQL in relational databases. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Using cypher you can write simple queries that return nodes or traverse graphs. Cypher queries can be sent to the database and will then be interpreted and translated into an execution plan by the ExecutionEngine. This takes some time and therefore cypher can not compete with the native java traversal API.
 
-\begin{center}
-\includegraphics[scale=0.65]{Pictures/db_overview2.png} 
-\end{center}
 %----------------------------------------------------------------------------------------
 %	CHAPTER 3
 %----------------------------------------------------------------------------------------
