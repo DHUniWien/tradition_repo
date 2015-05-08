@@ -263,12 +263,13 @@ public class WitnessTest {
 	 */
 	@Test
 	public void traditionEndNodeExistsTest() {
-		ExecutionEngine engine = new ExecutionEngine(db);
-
-		ExecutionResult result = engine
-				.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
-		ResourceIterator<Node> tradNodes = result.columnAs("n");
-		assertTrue(tradNodes.hasNext());
+		try (Transaction tx = db.beginTx()) {
+			ResourceIterable<Node> tradNodes = db.findNodesByLabelAndProperty(
+					Nodes.WORD, "text", "#END#");
+			Iterator<Node> tradNodesIt = tradNodes.iterator();
+			assertTrue(tradNodesIt.hasNext());
+			tx.success();
+		}
 	}
 
 	/**
