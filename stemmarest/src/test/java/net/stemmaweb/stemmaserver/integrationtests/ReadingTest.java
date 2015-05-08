@@ -979,7 +979,7 @@ public class ReadingTest {
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
 			assertEquals(
-					"A reading to be splitted cannot be part of any relationship",
+					"A reading to be split cannot be part of any relationship",
 					response.getEntity(String.class));
 
 			testNumberOfReadingsAndWitnesses(29);
@@ -1014,7 +1014,7 @@ public class ReadingTest {
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
 			assertEquals(
-					"There has to be a rank-gap after a reading to be splitted",
+					"There has to be a rank-gap after a reading to be split",
 					response.getEntity(String.class));
 
 			tx.success();
@@ -1043,7 +1043,7 @@ public class ReadingTest {
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
 			assertEquals(
-					"A reading to be splitted has to contain at least 2 words",
+					"A reading to be split has to contain at least 2 words",
 					response.getEntity(String.class));
 
 			testNumberOfReadingsAndWitnesses(29);
