@@ -29,11 +29,9 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
- * 
- * This class provides a method for importing Graphml (XML) File into Neo4J
+ * This class provides a method for importing GraphMl (XML) File into Neo4J
  * 
  * @author PSE FS 2015 Team2
- * 
  */
 public class GraphMLToNeo4JParser implements IResource
 {
@@ -55,7 +53,6 @@ public class GraphMLToNeo4JParser implements IResource
 	 */
 	public Response parseGraphML(String filename, String userId, String tradName) throws FileNotFoundException
 	{
-		
 		XMLInputFactory factory;
 		XMLStreamReader reader;
 		File file = new File(filename);
@@ -80,11 +77,10 @@ public class GraphMLToNeo4JParser implements IResource
     								// a round-trip store for witness names of a single relationship
     	int last_inserted_id = 0;
     	
-    	String stemmata = ""; // holds the stemmatas for this graphml
+    	String stemmata = ""; // holds Stemmatas for this GraphMl
     	
     	try (Transaction tx = db.beginTx()) 
     	{
-    		
     		reader = factory.createXMLStreamReader(in);
         	// retrieves the last inserted Tradition id
         	String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
@@ -251,10 +247,12 @@ public class GraphMLToNeo4JParser implements IResource
 			        	}
 			        	else
 			        	{
-			        		Node fromTmp = db.getNodeById(idToNeo4jId.get(fromNodeName));
+			        		Node fromTmp = null;
+			        		if(idToNeo4jId.get(fromNodeName)!=null)
+			        			 fromTmp = db.getNodeById(idToNeo4jId.get(fromNodeName));
 			        		Node toTmp = db.getNodeById(idToNeo4jId.get(toNodeName));
 
-					        if(!(fromTmp.equals(from) && toTmp.equals(to)))
+					        if(fromTmp!=null && !(fromTmp.equals(from) && toTmp.equals(to)))
 					        {
 					        	to = toTmp;
 					        	from = fromTmp;
@@ -333,7 +331,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        }
 			    }
 			}
-			if(rel!=null)	// add relationship props to last rel
+			if(rel!=null)	// add relationship props to last relationship
 			{
 				String[] leximArray = new String[leximes.size()];
 				leximArray = leximes.toArray(leximArray);
