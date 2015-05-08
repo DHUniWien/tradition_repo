@@ -17,9 +17,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.DuplicateModel;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -541,23 +541,23 @@ public class Reading implements IResource {
 	 * Opposite of compress
 	 * 
 	 * @param readId
-	 * @param separator
-	 *            the string which is between the words to be split, default:
-	 *            whitespace
 	 * @param splitIndex
 	 *            the index of the first letter of second word: "unto" with
 	 *            index 2 gets "un" and "to" if the index is zero the reading is
 	 *            split using the separator
+	 * @param separator
+	 *            the string which is between the words to be split, default:
+	 *            whitespace. Is given as a String to avoid problems with
+	 *            'unsafe' characters in the URL
 	 * @return a readingsAndRelationshipsModel in JSON containing all the
 	 *         created and modified readings and the deleted relationships on
 	 *         success or an ERROR as JSON
 	 */
 	@POST
-	@Path("splitreading/ofreading/{readId}/withseparator/{separator}/withsplitindex/{splitIndex}")
+	@Path("splitreading/ofreading/{readId}/withsplitindex/{splitIndex}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("readId") long readId,
-			@PathParam("separator") String separator,
-			@PathParam("splitIndex") int splitIndex) {
+	public Response splitReading(@PathParam("readId") long readId, @PathParam("splitIndex") int splitIndex,
+			String separator) {
 
 		GraphModel readingsAndRelationships = null;
 		Node originalReading = null;
@@ -592,7 +592,6 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-
 		}
 		return Response.ok(readingsAndRelationships).build();
 	}
