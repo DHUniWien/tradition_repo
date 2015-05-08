@@ -9,8 +9,15 @@ import java.util.Iterator;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.bind.annotation.W3CDomHandler;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.IResource;
@@ -23,15 +30,15 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 /**
- * 
  * This class provides methods for exporting GraphMl (XML) File from Neo4J
  * 
  * @author PSE FS 2015 Team2
- * 
  */
 public class Neo4JToGraphMLParser implements IResource
 {
@@ -40,6 +47,11 @@ public class Neo4JToGraphMLParser implements IResource
 
 	public Response parseNeo4J(String tradId)
 	{
+		
+		int edgeCountGraph1 = 0;
+		int nodeCountGraph1 = 0;
+		int edgeCountGraph2 = 0;
+		int nodeCountGraph2 = 0;
 		
 		String filename = "upload/" + "output.xml";
     	
@@ -351,11 +363,11 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("edgedefault", "directed");
     		//writer.writeAttribute("id", traditionNode.getProperty("dg1").toString());
     		writer.writeAttribute("parse.edgeids", "canonical");
-    		// THIS NEEDS TO BE IMPLEMENTED LATER 
-    		// writer.writeAttribute("parse.edges", );
+    		// THIS IS CHANGED AFTERWARDS
+    		 writer.writeAttribute("parse.edges", 0+"");
     		writer.writeAttribute("parse.nodeids", "canonical");
-    		// THIS NEEDS TO BE IMPLEMENTED LATER 
-    		// writer.writeAttribute("parse.nodes", );
+    		// THIS IS CHANGED AFTERWARDS
+    		writer.writeAttribute("parse.nodes", 0+"");
     		writer.writeAttribute("parse.order", "nodesfirst");
     		
     		props = traditionNode.getPropertyKeys();
@@ -389,6 +401,7 @@ public class Neo4JToGraphMLParser implements IResource
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNodeTrad).nodes()) {
+				nodeCountGraph1++;
 				props = node.getPropertyKeys();
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", String.valueOf(node.getId()));
@@ -418,9 +431,10 @@ public class Neo4JToGraphMLParser implements IResource
     		        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
     		        .traverse( graphNode ).relationships() )
     		{
-
+    			
         		if(rel!=null)
         		{
+        			edgeCountGraph1++;
         			props = rel.getPropertyKeys();
         			for(String prop : props)
             		{
@@ -461,11 +475,11 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("edgedefault", "directed");
     		writer.writeAttribute("id", "relationships");
     		writer.writeAttribute("parse.edgeids", "canonical");
-    		// THIS NEEDS TO BE IMPLEMENTED LATER 
-    		// writer.writeAttribute("parse.edges", );
+    		// THIS IS CHANGED AFTERWARDS
+    		 writer.writeAttribute("parse.edges", 0+"");
     		writer.writeAttribute("parse.nodeids", "canonical");
-    		// THIS NEEDS TO BE IMPLEMENTED LATER 
-    		// writer.writeAttribute("parse.nodes", );
+    		// THIS IS CHANGED AFTERWARDS
+    		writer.writeAttribute("parse.nodes", 0+"");
     		writer.writeAttribute("parse.order", "nodesfirst");
     		
     		nodeId = 0;
@@ -474,7 +488,7 @@ public class Neo4JToGraphMLParser implements IResource
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(startNodeTrad).nodes()) {
-    			
+    			nodeCountGraph2++;
     			props = node.getPropertyKeys();
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", node.getId() + "");
@@ -497,6 +511,7 @@ public class Neo4JToGraphMLParser implements IResource
 				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
 				for(Relationship rel : rels)
 				{
+					edgeCountGraph2++;
 	    			props = rel.getPropertyKeys();
 					writer.writeStartElement("edge");
 					startNode = rel.getStartNode().getId() + "";
@@ -522,6 +537,35 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeEndElement(); // end graphml
     		writer.flush();
     		out.close();	
+    		
+    		// Add edge and node count to graphs:
+    		
+    		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+    		DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+    		Document doc = docBuilder.parse(filename);
+     
+    		// Get the staff element by tag name directly
+    		org.w3c.dom.Node graph0 = doc.getElementsByTagName("graph").item(0);
+    		
+    		org.w3c.dom.Node graph1 = doc.getElementsByTagName("graph").item(1);
+    		
+    		org.w3c.dom.NamedNodeMap attr = graph0.getAttributes();
+    		org.w3c.dom.Node edgesCount = attr.getNamedItem("parse.edges");
+    		edgesCount.setTextContent(edgeCountGraph1+"");
+    		org.w3c.dom.Node nodesCount = attr.getNamedItem("parse.nodes");
+    		nodesCount.setTextContent(nodeCountGraph1+"");
+    		
+    		attr = graph1.getAttributes();
+    		edgesCount = attr.getNamedItem("parse.edges");
+    		edgesCount.setTextContent(edgeCountGraph2+"");
+    		nodesCount = attr.getNamedItem("parse.nodes");
+    		nodesCount.setTextContent(nodeCountGraph2+"");
+    		
+    		TransformerFactory transformerFactory = TransformerFactory.newInstance();
+    		Transformer transformer = transformerFactory.newTransformer();
+    		DOMSource source = new DOMSource(doc);
+    		StreamResult resultFile = new StreamResult(new File(filename));
+    		transformer.transform(source, resultFile);
 		}
 	    catch(Exception e)
 	    {
@@ -529,14 +573,7 @@ public class Neo4JToGraphMLParser implements IResource
 	    	
 	    	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Error: Tradition could not be exported!").build();
 	    }
-		finally
-		{
-			
-		}
-    	File outputFile = new File(filename);
-		if(outputFile.exists())
-			return Response.ok(outputFile, MediaType.APPLICATION_XML).build();
-		else
-			return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Something went wrong").build();
+
+    	return Response.ok(filename, MediaType.APPLICATION_XML).build();
 	}
 }

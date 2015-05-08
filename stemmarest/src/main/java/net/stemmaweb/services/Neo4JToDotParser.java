@@ -30,11 +30,9 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
- * 
  * This class provides methods for exporting Dot File from Neo4J
  * 
  * @author PSE FS 2015 Team2
- * 
  */
 public class Neo4JToDotParser
 {
@@ -118,7 +116,7 @@ public class Neo4JToDotParser
 	}
 	
 	/**
-	 * Parses a stemma of a tradition in a JSON string in DOT format
+	 * Parses a Stemma of a tradition in a JSON string in DOT format
 	 * don't throw error far enough
 	 * 
 	 * @param tradId
@@ -217,7 +215,7 @@ public class Neo4JToDotParser
 		try(Transaction tx = db.beginTx())
 		{
 			ExecutionEngine engine = new ExecutionEngine(db);
-			// find all stemmata associated with this tradition
+			// find all Stemmata associated with this tradition
 			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
 			
 			Iterator<Node> stemmata = result.columnAs("s");
@@ -245,7 +243,6 @@ public class Neo4JToDotParser
 		gv.add(dot);
 	    
 	    String type = "png";
-//	      String type = "plain";
 	    
 	    File out = new File(outFile + "." + type);   // Linux
 //	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
@@ -280,7 +277,6 @@ public class Neo4JToDotParser
 		gv.add(dot);
 	    
 	    String type = "svg";
-//	      String type = "plain";
 	    
 	    File out = new File(outFile + "." + type);   // Linux
 //	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows

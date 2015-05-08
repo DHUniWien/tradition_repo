@@ -147,7 +147,6 @@ public class Neo4JAndGraphMLParserUnitTest {
 				actualResponse.getStatus());
 		
 		traditionNodeExistsTest();
-		traditionEndNodeExistsTest();
 	}
 	
 	/**
@@ -161,17 +160,6 @@ public class Neo4JAndGraphMLParserUnitTest {
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
     	}
-	}
-	
-	/**
-	 * test if the tradition end node exists
-	 */
-	public void traditionEndNodeExistsTest(){
-		ExecutionEngine engine = new ExecutionEngine(db);
-		
-		ExecutionResult result = engine.execute("match (e)-[:NORMAL]->(n:WORD) where n.text='#END#' return n");
-		ResourceIterator<Node> tradNodes = result.columnAs("n");
-		assertTrue(tradNodes.hasNext());
 	}
 	
 	/**
@@ -247,7 +235,6 @@ public class Neo4JAndGraphMLParserUnitTest {
 				actualResponse.getStatus());
 		
 		traditionNodeExistsTest();
-		traditionEndNodeExistsTest();
 	}
 	
 }
