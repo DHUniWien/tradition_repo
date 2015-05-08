@@ -833,7 +833,7 @@ public class ReadingTest {
 			result = engine.execute("match (w:WORD {text:'the'}) return w");
 			nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
-			Node the1 = nodes.next();
+			nodes.next();
 			assertTrue(nodes.hasNext());
 			Node the2 = nodes.next();
 			assertTrue(nodes.hasNext());

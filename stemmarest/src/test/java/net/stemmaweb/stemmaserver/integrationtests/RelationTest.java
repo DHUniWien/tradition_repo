@@ -280,9 +280,12 @@ public class RelationTest {
 			assertFalse(nodes.hasNext());
 			
 			relCounter = 0;
-			for (Relationship tempRel : march1.getRelationships(ERelations.RELATIONSHIP)) {
+			Iterator<Relationship> relationships = march1.getRelationships(ERelations.RELATIONSHIP).iterator();
+			while(relationships.hasNext()){
 				relCounter++;
-		}
+				relationships.next();
+			}
+			
 			assertEquals(0, relCounter);
 			String expectedText = "{\"text\":\"when april with his showers sweet with "
 					+ "fruit the drought of march has pierced unto the root\"}";
