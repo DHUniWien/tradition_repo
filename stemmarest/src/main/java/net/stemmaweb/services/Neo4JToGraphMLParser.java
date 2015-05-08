@@ -9,7 +9,6 @@ import java.util.Iterator;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.xml.bind.annotation.W3CDomHandler;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -31,7 +30,6 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 

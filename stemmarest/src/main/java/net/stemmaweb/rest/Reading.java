@@ -72,8 +72,6 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		return Response.ok(reading).build();
 	}
@@ -348,8 +346,6 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		return Response.ok().build();
 	}
@@ -542,7 +538,7 @@ public class Reading implements IResource {
 	 * 
 	 * @param readId
 	 * @param splitIndex
-	 *            the index of the first letter of second word: "unto" with
+	 *            the index of the first letter of the second word: "unto" with
 	 *            index 2 gets "un" and "to" if the index is zero the reading is
 	 *            split using the separator
 	 * @param separator
@@ -564,30 +560,20 @@ public class Reading implements IResource {
 
 		try (Transaction tx = db.beginTx()) {
 			originalReading = db.getNodeById(readId);
-			String originalText = originalReading.getProperty("text")
-					.toString();
-			String[] splittedWords;
-			if (splitIndex > 0) {
-				if (splitIndex >= originalText.length())
-					return Response
-							.status(Status.INTERNAL_SERVER_ERROR)
-							.entity("The splitIndex must be smaller than the text length")
-							.build();
-				splittedWords = new String[2];
-				splittedWords[0] = originalText.substring(0, splitIndex);
-				splittedWords[1] = originalText.substring(splitIndex);
-			} else {
-				if (separator == null || separator.equals("")
-						|| separator.equals("0"))
-					separator = "\\s+";
-				splittedWords = originalText.split(separator);
-			}
+			String originalText = originalReading.getProperty("text").toString();
+			if (splitIndex >= originalText.length())
+				return Response
+						.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("The splitIndex must be smaller than the text length")
+						.build();
 
-			if (cannotBeSplitted(originalReading, splittedWords))
+			String[] splitWords = splitUpText(splitIndex, separator, originalText);
+
+			if (cannotBeSplit(originalReading, splitWords))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
 
-			readingsAndRelationships = split(db, originalReading, splittedWords);
+			readingsAndRelationships = split(db, originalReading, splitWords);
 
 			tx.success();
 		} catch (Exception e) {
@@ -597,13 +583,42 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * Checks if a reading can be split or not.
+	 * Splits up the text of the reading into the words.
+	 * 
+	 * @param splitIndex
+	 *            the index of the first letter of the second word
+	 * @param separator
+	 *            the string between the words
+	 * @param originalText
+	 *            the text to be split up
+	 * @return an array containing the separated words
+	 */
+	private String[] splitUpText(int splitIndex, String separator, String originalText) {
+		String[] splitWords;
+		if (splitIndex > 0) {
+			splitWords = new String[2];
+			splitWords[0] = originalText.substring(0, splitIndex);
+			splitWords[1] = originalText.substring(splitIndex);
+		} else {
+			if (separator == null || separator.equals("")
+					|| separator.equals("0"))
+				separator = "\\s+";
+			splitWords = originalText.split(separator);
+		}
+		return splitWords;
+	}
+
+	/**
+	 * Checks if a reading can be split or not. Sets the global error message if
+	 * not.
 	 * 
 	 * @param originalReading
+	 *            the reading to be split
 	 * @param splitWords
-	 * @return
+	 *            the separated words
+	 * @return true if the reading cannot be split false otherwise
 	 */
-	private boolean cannotBeSplitted(Node originalReading, String[] splitWords) {
+	private boolean cannotBeSplit(Node originalReading, String[] splitWords) {
 		if (splitWords.length < 2) {
 			errorMessage = "A reading to be split has to contain at least 2 words";
 			return true;
@@ -792,8 +807,6 @@ public class Reading implements IResource {
 			}
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -829,8 +842,6 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		return Response.ok(readingModels).build();
 	}
@@ -869,8 +880,6 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		ArrayList<List<ReadingModel>> identicalReadings = new ArrayList<List<ReadingModel>>();
 		identicalReadings = getIdenticalReadingsAsList(readingModels,
@@ -950,8 +959,6 @@ public class Reading implements IResource {
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		if (couldBeIdenticalReadings.size() == 0)
 			return Response.status(Status.NOT_FOUND)
@@ -1084,7 +1091,6 @@ public class Reading implements IResource {
 			if ((Long) node.getProperty("rank") > startRank
 					&& (Long) node.getProperty("rank") < endRank)
 				readings.add(node);
-
 		}
 		return readings;
 	}
