@@ -26,14 +26,14 @@ public class DatabaseService {
 		Node startNode = null;
 
 		/**
-		 * this quarry gets the "Start" node of the witness
+		 * this query gets the "Start" node of the witness
 		 */
-		String witnessQuarry = "match (tradition:TRADITION {id:'" + tradId
+		String witnessQuery = "match (tradition:TRADITION {id:'" + tradId
 				+ "'})-[:NORMAL]->(w:WORD) return w";
 
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult result = engine.execute(witnessQuarry);
+			ExecutionResult result = engine.execute(witnessQuery);
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {

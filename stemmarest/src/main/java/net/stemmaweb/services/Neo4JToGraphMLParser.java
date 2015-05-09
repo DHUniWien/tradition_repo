@@ -55,9 +55,13 @@ public class Neo4JToGraphMLParser implements IResource
     	
     	ExecutionEngine engine = new ExecutionEngine(db);
     	
+		Node traditionNode = null;
+		Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
+    	if(traditionStartNode == null)
+    		return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
+    	
     	try (Transaction tx = db.beginTx()) 
     	{
-    		Node traditionNode = null;
     		ExecutionResult result = engine.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		
@@ -65,8 +69,10 @@ public class Neo4JToGraphMLParser implements IResource
     			return Response.status(Status.NOT_FOUND).build();
     		
     		traditionNode = nodes.next();
-    		
-    		
+    	}
+    	
+    	try (Transaction tx = db.beginTx()) 
+    	{
     		File file = new File(filename);
     		//file.delete();
     		file.createNewFile();
@@ -344,19 +350,10 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("id", "de12");
     		
     		// ####### KEYS END #######################################
-    		
-    		result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:NORMAL]-(n:WORD) return n");
-    		nodes = result.columnAs("n");
-    		
-    		if(!nodes.hasNext())
-    			return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
-    		
     		// graph 1
     		
     		Iterable<String> props = null;
     		
-    		Node graphNode = nodes.next();
-    			
     		writer.writeStartElement("graph");
     		writer.writeAttribute("edgedefault", "directed");
     		//writer.writeAttribute("id", traditionNode.getProperty("dg1").toString());
@@ -388,17 +385,13 @@ public class Neo4JToGraphMLParser implements IResource
 			
 			writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
 			writer.writeEndElement();
-    		
-    		result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
-			nodes = result.columnAs("s");
-			Node startNodeTrad = nodes.next();
-			
+  
 			long nodeId = 0;
 			long edgeId = 0;
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(startNodeTrad).nodes()) {
+					.traverse(traditionStartNode).nodes()) {
 				nodeCountGraph1++;
 				props = node.getPropertyKeys();
     			writer.writeStartElement("node");
@@ -427,7 +420,7 @@ public class Neo4JToGraphMLParser implements IResource
     		for ( Relationship rel : db.traversalDescription()
     		        .relationships( ERelations.NORMAL,Direction.OUTGOING)
     		        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-    		        .traverse( graphNode ).relationships() )
+    		        .traverse( traditionStartNode ).relationships() )
     		{
     			
         		if(rel!=null)
@@ -466,8 +459,6 @@ public class Neo4JToGraphMLParser implements IResource
     	
     		// graph 2
     		// get the same nodes again, but this time we will later also search for other relationships
-    		result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:NORMAL]-(n:WORD) return n");
-    		nodes = result.columnAs("n");
     		
 			writer.writeStartElement("graph");
     		writer.writeAttribute("edgedefault", "directed");
@@ -485,7 +476,7 @@ public class Neo4JToGraphMLParser implements IResource
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(startNodeTrad).nodes()) {
+					.traverse(traditionStartNode).nodes()) {
     			nodeCountGraph2++;
     			props = node.getPropertyKeys();
     			writer.writeStartElement("node");
@@ -496,15 +487,11 @@ public class Neo4JToGraphMLParser implements IResource
 	        	writer.writeEndElement();
         		writer.writeEndElement(); // end node
     		}
-    		
-			result = engine.execute("match (n:TRADITION {id:'"+ tradId +"'})-[:NORMAL]->(s:WORD) return s");
-			nodes = result.columnAs("s");
-			startNodeTrad = nodes.next();
 			
 			for (Node node : db.traversalDescription().depthFirst()
 					.relationships(ERelations.NORMAL,Direction.OUTGOING)
 					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(startNodeTrad).nodes()) {
+					.traverse(traditionStartNode).nodes()) {
 				
 				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
 				for(Relationship rel : rels)
