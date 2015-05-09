@@ -13,6 +13,7 @@ import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.rest.Witness;
@@ -54,6 +55,7 @@ public abstract class BenachmarkTests {
 	protected static Witness witnessResource;
 	protected static Reading readingResoruce;
 	protected static Relation relationResource;
+	protected static Stemma stemmaResource;
 	protected static GraphMLToNeo4JParser importResource ;
 	
 	protected static String filename = "";
@@ -70,7 +72,7 @@ public abstract class BenachmarkTests {
 	 */
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
-	public void changeMetadataOfATradition(){
+	public void changeTraditionMetadata(){
 		TraditionModel textInfo = new TraditionModel();
 		textInfo.setName("RenamedTraditionName");
 		textInfo.setLanguage("nital");
@@ -118,7 +120,7 @@ public abstract class BenachmarkTests {
 	 */
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
-	public void getAllWitnessesOfATradition(){
+	public void getAllWitnesses(){
 		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/getallwitnesses/fromtradition/1001").get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
@@ -144,12 +146,14 @@ public abstract class BenachmarkTests {
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
+	
+	
 	/**
 	 * Measure the time to import a tradition as xml
 	 */
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
-	public void importWithGraphMLParser(){
+	public void importGraphMl(){
 		GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 	    
 		try {
@@ -159,6 +163,47 @@ public abstract class BenachmarkTests {
 			assertTrue(false);
 		}
 	}
+
+	/**
+	 * Measure the time to export the dot
+	 */
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getDot(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/getdot/fromtradition/"+tradId).get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	/**
+	 * Measure the time to get a Witness as Plaintext
+	 */
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getWitnessAsText(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/gettext/fromtradition/1001/ofwitness/W0").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	/**
+	 * Measure the time to get a part of a Witness as Plaintext
+	 */
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getWitnessAsTextBetweenRanks(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/gettext/fromtradition/1001/ofwitness/W0/fromstartrank/2/toendrank/5").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	/**
+	 * Measure the time to get a witness as a json array
+	 */
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getWitnessAsReadings(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/witness/getreadinglist/fromtradition/1001/ofwitness/W0").get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
 	
 	/**
 	 * Measure the time to get the next reading of a witness
@@ -191,6 +236,17 @@ public abstract class BenachmarkTests {
 	}
 	
 	/**
+	 * Measure the time to get all stemmata of a tradition
+	 */
+	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
+	@Test
+	public void getAllStemmata(){
+		ClientResponse actualResponse = jerseyTest.resource().path("/stemma/getallstemmata/fromtradition/" + tradId).get(ClientResponse.class);
+		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
+	}
+	
+	
+	/**
 	 * Measure the time to get all identical readings of a tradition
 	 */
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
@@ -210,35 +266,11 @@ public abstract class BenachmarkTests {
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
-	/**
-	 * Measure the time to get a Witness as Plaintext
-	 */
-	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
-	@Test
-	public void getAWitnessAsPlainText(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/witness/gettext/fromtradition/1001/ofwitness/W0").get(ClientResponse.class);
-		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
-	}
+
 	
-	/**
-	 * Measure the time to get a part of a Witness as Plaintext
-	 */
-	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
-	@Test
-	public void getWitnessAsTextBetweenRanks(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/witness/gettext/fromtradition/1001/ofwitness/W0/fromstartrank/2/toendrank/5").get(ClientResponse.class);
-		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
-	}
+
 	
-	/**
-	 * Measure the time to get a witness as a json array
-	 */
-	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
-	@Test
-	public void getWitnessAsReadings(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/witness/getreadinglist/fromtradition/1001/ofwitness/W0").get(ClientResponse.class);
-		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
-	}
+
 	
 	/**
 	 * Measure the time to create a relationship and remove it

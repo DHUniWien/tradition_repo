@@ -7,6 +7,7 @@ import java.util.Iterator;
 
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.rest.Witness;
@@ -33,7 +34,7 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
  * @author PSE FS 2015 Team2
  *
  */
-@AxisRange(min = 0, max = 1)
+@AxisRange(min = 0, max = 0.2)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmark-1kNodes")
 public class Benchmark1kNodes extends BenachmarkTests {
 	
@@ -57,13 +58,15 @@ public class Benchmark1kNodes extends BenachmarkTests {
 		readingResoruce = new Reading();
 		relationResource = new Relation();
 		importResource = new GraphMLToNeo4JParser();
+		stemmaResource = new Stemma();
 		
 		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
 				.addResource(userResource)
 				.addResource(traditionResource)
 				.addResource(witnessResource)
 				.addResource(relationResource)
-				.addResource(readingResoruce).create();
+				.addResource(readingResoruce)
+				.addResource(stemmaResource).create();
 		try {
 			jerseyTest.setUp();
 		} catch (Exception e) {
@@ -99,9 +102,10 @@ public class Benchmark1kNodes extends BenachmarkTests {
 	}
 	
 	@AfterClass
-	public static void shutdown(){
+	public static void shutdown() throws Exception{
 		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
 		dbServiceProvider.getDatabase().shutdown();
+		jerseyTest.tearDown();
 	}
 	
 }
