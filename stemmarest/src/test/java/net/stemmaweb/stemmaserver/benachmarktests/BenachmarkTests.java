@@ -142,7 +142,7 @@ public abstract class BenachmarkTests {
 	@BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
 	@Test
 	public void getTradition(){
-		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/gettradition/withid/1001").get(ClientResponse.class);
+		ClientResponse actualResponse = jerseyTest.resource().path("/tradition/gettradition/withid/"+tradId).get(ClientResponse.class);
 		assertEquals(Response.Status.OK.getStatusCode(),actualResponse.getStatus());
 	}
 	
