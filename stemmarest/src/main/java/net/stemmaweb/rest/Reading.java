@@ -55,7 +55,8 @@ public class Reading implements IResource {
 	 * Returns a single reading by global neo4j id
 	 * 
 	 * @param readId
-	 * @return
+	 *            to get the reading from the database
+	 * @return the reading fetched by the id
 	 */
 	@GET
 	@Path("getreading/withreadingid/{readId}")
@@ -125,6 +126,9 @@ public class Reading implements IResource {
 	 * Duplicates a reading in a specific tradition. Opposite of merge
 	 * 
 	 * @param duplicateModel
+	 *            a model in JSON containing the readings to be duplicated and
+	 *            the witnesses of the old readings which the duplicated new
+	 *            readings should now belong to
 	 * @return a readingsAndRelationshipsModel in JSON containing all the
 	 *         created readings and the deleted relationships on success or an
 	 *         ERROR as JSON else
@@ -166,10 +170,13 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * Checks if the reading can be duplicated for the given witness list
+	 * Checks if the reading can be duplicated for the given witness list. Sets
+	 * the global error message if not.
 	 * 
 	 * @param originalReading
+	 *            the reading to be duplicated
 	 * @param newWitnesses
+	 *            the witnesses the duplicated reading will belong to
 	 * @return true if specific reading can be duplicated, false else
 	 */
 	private boolean canBeDuplicated(Node originalReading,
@@ -199,6 +206,7 @@ public class Reading implements IResource {
 	 * Gets all witnesses of a reading in all its normal relationships.
 	 * 
 	 * @param originalReading
+	 *            the reading to be duplicated
 	 * @return the list of witnesses of a reading
 	 */
 	private List<String> allWitnessesOfReading(Node originalReading) {
@@ -220,9 +228,9 @@ public class Reading implements IResource {
 	 * @param newWitnesses
 	 *            : the new witnesses to be split from the original path
 	 * @param originalReading
-	 *            : the original witnesses of the original path
+	 *            : the reading to be duplicated
 	 * @param addedReading
-	 *            : the duplicated reading
+	 *            : the newly duplicated reading
 	 * @return a list of the deleted relationships
 	 */
 	private ArrayList<RelationshipModel> duplicate(List<String> newWitnesses,
@@ -266,6 +274,7 @@ public class Reading implements IResource {
 	 * reading to the relationships of the newly added reading.
 	 * 
 	 * @param newWitnesses
+	 *            the witnesses the duplicated reading will belong to
 	 * @param originalRel
 	 * @param originNode
 	 * @param targetNode
@@ -321,9 +330,11 @@ public class Reading implements IResource {
 	 * Opposite of duplicate
 	 * 
 	 * @param firstReadId
+	 *            the id of the first reading to be merged
 	 * @param secondReadId
-	 * @return Status.ok if merge was successful. Status.INTERNAL_SERVER_ERROR
-	 *         with a detailed message if not
+	 *            the id of the second reading to be merged
+	 * @return Status.ok if the merge was successful.
+	 *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
 	 */
 	@POST
 	@Path("mergereadings/first/{firstReadId}/second/{secondReadId}")
@@ -351,11 +362,14 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * Checks if the two readings can be merged or not.
+	 * Checks if the two readings can be merged or not. Sets the global error
+	 * message if not.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
-	 * @return true if readings can be merged
+	 *            the reading which will be deleted from the database
+	 * @return true if readings can be merged, false if not
 	 */
 	private boolean canBeMerged(Node stayingReading,
 			Node deletingReading) {
@@ -387,7 +401,9 @@ public class Reading implements IResource {
 	 * Checks if the two readings contain the same text or not.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 * @return true if they contain the same text
 	 */
 	private boolean doContainSameText(Node stayingReading, Node deletingReading) {
@@ -399,7 +415,9 @@ public class Reading implements IResource {
 	 * Checks if the two readings have a relationship between them.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 * @return check whether two readings contain a relationship between them
 	 */
 	private boolean doContainRelationshipBetweenEachOther(Node stayingReading,
@@ -418,7 +436,9 @@ public class Reading implements IResource {
 	 * class two (transposition / repetition).
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 * @return true if a relationship between two readings is of class 2
 	 */
 	private boolean containClassTwoRelationships(Node stayingReading,
@@ -437,7 +457,9 @@ public class Reading implements IResource {
 	 * one.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 */
 	private void merge(Node stayingReading, Node deletingReading) {
 		deleteRelationshipBetweenReadings(stayingReading, deletingReading);
@@ -451,7 +473,9 @@ public class Reading implements IResource {
 	 * Deletes the relationship between the two readings.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 */
 	private void deleteRelationshipBetweenReadings(Node stayingReading,
 			Node deletingReading) {
@@ -468,7 +492,9 @@ public class Reading implements IResource {
 	 * reading.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 */
 	private void copyWitnesses(Node stayingReading, Node deletingReading,
 			Direction direction) {
@@ -508,7 +534,9 @@ public class Reading implements IResource {
 	 * Adds relationships from deletedReading to staying reading.
 	 * 
 	 * @param stayingReading
+	 *            the reading which stays in the database
 	 * @param deletingReading
+	 *            the reading which will be deleted from the database
 	 */
 	private void addRelationshipsToStayingReading(Node stayingReading,
 			Node deletingReading) {
@@ -536,6 +564,7 @@ public class Reading implements IResource {
 	 * Opposite of compress
 	 * 
 	 * @param readId
+	 *            the id of the reading to be split
 	 * @param splitIndex
 	 *            the index of the first letter of the second word: "unto" with
 	 *            index 2 gets "un" and "to". if the index is zero the reading
@@ -571,7 +600,7 @@ public class Reading implements IResource {
 
 			String[] splitWords = splitUpText(splitIndex, separator, originalText);
 
-			if (cannotBeSplit(originalReading, splitWords))
+			if (!canBeSplit(originalReading, splitWords))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
 
@@ -618,25 +647,25 @@ public class Reading implements IResource {
 	 *            the reading to be split
 	 * @param splitWords
 	 *            the separated words
-	 * @return true if the reading cannot be split false otherwise
+	 * @return true if the reading can be split, false otherwise
 	 */
-	private boolean cannotBeSplit(Node originalReading, String[] splitWords) {
+	private boolean canBeSplit(Node originalReading, String[] splitWords) {
 		if (splitWords.length < 2) {
 			errorMessage = "A reading to be split has to contain at least 2 words";
-			return true;
+			return false;
 		}
 
 		if (originalReading.hasRelationship(ERelations.RELATIONSHIP)) {
 			errorMessage = "A reading to be split cannot be part of any relationship";
-			return true;
+			return false;
 		}
 
 		if (!hasRankGap(originalReading, splitWords.length)) {
 			errorMessage = "There has to be a rank-gap after a reading to be split";
-			return true;
+			return false;
 		}
 
-		return false;
+		return true;
 	}
 
 	/**
@@ -646,7 +675,9 @@ public class Reading implements IResource {
 	 * least rank 8.
 	 * 
 	 * @param originalReading
+	 *            the reading to be split
 	 * @param numberOfWords
+	 *            the number of words the reading to be split contains
 	 * @return true if there is a rank gap
 	 */
 	private boolean hasRankGap(Node originalReading, int numberOfWords) {
@@ -668,11 +699,12 @@ public class Reading implements IResource {
 	 * Performs all necessary steps in the database to split the reading.
 	 * 
 	 * @param originalReading
-	 * @param splittedWords
+	 *            the reading to be split
+	 * @param splitWords
+	 *            the words the reading consists of
 	 * @return a model of the split graph
 	 */
-	private GraphModel split(Node originalReading,
-			String[] splittedWords) {
+	private GraphModel split(Node originalReading, String[] splitWords) {
 		ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<ReadingModel>();
 		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
 
@@ -686,18 +718,18 @@ public class Reading implements IResource {
 				allWitnesses.add(witnesses[j]);
 
 		}
-		originalReading.setProperty("text", splittedWords[0]);
+		originalReading.setProperty("text", splitWords[0]);
 
 		createdOrChangedReadings.add(new ReadingModel(originalReading));
 
 		Node lastReading = originalReading;
 
-		for (int i = 1; i < splittedWords.length; i++) {
+		for (int i = 1; i < splitWords.length; i++) {
 			Node newReading = db.createNode();
 
 			newReading = ReadingService.copyReadingProperties(lastReading,
 					newReading);
-			newReading.setProperty("text", splittedWords[i]);
+			newReading.setProperty("text", splitWords[i]);
 			Long previousRank = (Long) lastReading.getProperty("rank");
 			newReading.setProperty("rank", previousRank + 1);
 
@@ -815,6 +847,7 @@ public class Reading implements IResource {
 	 * Returns a list of all readings in a tradition
 	 * 
 	 * @param tradId
+	 *            the id of the tradition
 	 * @return the list of readings
 	 */
 	@GET
@@ -1169,7 +1202,7 @@ public class Reading implements IResource {
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("the first reading has a higher rank then the second reading")
 						.build();
-			if (canCompress(read1, read2)) {
+			if (canBeCompressed(read1, read2)) {
 				compress(read1, read2, toConcatenate, with_str);
 				tx.success();
 				return Response.ok().build();
@@ -1196,8 +1229,7 @@ public class Reading implements IResource {
 	 *            with_str in between. if false: texts of readings will be
 	 *            concatenated with one empty space in between.
 	 */
-	private void compress(Node read1, Node read2, boolean toConcatenate,
- String with_str) {
+	private void compress(Node read1, Node read2, boolean toConcatenate, String with_str) {
 		String textRead1 = (String) read1.getProperty("text");
 		String textRead2 = (String) read2.getProperty("text");
 		if (!toConcatenate)
@@ -1243,7 +1275,8 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * checks if two readings could be compressed
+	 * checks if two readings could be compressed. Sets the global error message
+	 * if not.
 	 * 
 	 * @param read1
 	 *            the first reading
@@ -1251,7 +1284,7 @@ public class Reading implements IResource {
 	 *            the second reading
 	 * @return true if ok to compress, false otherwise
 	 */
-	private boolean canCompress(Node read1, Node read2) {
+	private boolean canBeCompressed(Node read1, Node read2) {
 		Iterable<Relationship> rel;
 		rel = read2.getRelationships(ERelations.NORMAL);
 

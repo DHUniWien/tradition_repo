@@ -907,6 +907,7 @@ public class ReadingTest {
 
 			tx.success();
 		}
+
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
@@ -1011,6 +1012,7 @@ public class ReadingTest {
 
 			tx.success();
 		}
+
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine
