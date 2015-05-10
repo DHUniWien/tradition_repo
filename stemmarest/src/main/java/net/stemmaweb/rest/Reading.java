@@ -539,11 +539,12 @@ public class Reading implements IResource {
 	 * @param readId
 	 * @param splitIndex
 	 *            the index of the first letter of the second word: "unto" with
-	 *            index 2 gets "un" and "to" if the index is zero the reading is
-	 *            split using the separator
+	 *            index 2 gets "un" and "to". if the index is zero the reading
+	 *            is split using the separator
 	 * @param separator
-	 *            the string which is between the words to be split, default:
-	 *            whitespace. Is given as a String to avoid problems with
+	 *            the string which is between the words to be split, if no
+	 *            separator is specified the reading is split using whitespace
+	 *            as default. Is given as a String to avoid problems with
 	 *            'unsafe' characters in the URL
 	 * @return a readingsAndRelationshipsModel in JSON containing all the
 	 *         created and modified readings and the deleted relationships on
@@ -566,6 +567,8 @@ public class Reading implements IResource {
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("The splitIndex must be smaller than the text length")
 						.build();
+			if (!originalText.contains(separator))
+				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("no such separator exists").build();
 
 			String[] splitWords = splitUpText(splitIndex, separator, originalText);
 

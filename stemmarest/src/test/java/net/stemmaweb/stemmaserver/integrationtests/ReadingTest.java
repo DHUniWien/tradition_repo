@@ -968,7 +968,7 @@ public class ReadingTest {
 
 
 	@Test
-	public void splitReadingWithNotExsitingSeperatorTest() {
+	public void splitReadingWithNotExistingSeparatorTest() {
 		// prepare the database for the test
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
@@ -990,7 +990,7 @@ public class ReadingTest {
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
-			assertEquals("no such seprerator exists",
+			assertEquals("no such separator exists",
 					response.getEntity(String.class));
 			tx.success();
 		}
