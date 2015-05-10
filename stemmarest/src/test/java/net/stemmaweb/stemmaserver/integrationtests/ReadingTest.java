@@ -879,8 +879,8 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
-							.type(MediaType.APPLICATION_JSON)
-							.post(ClientResponse.class, separator);
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -897,7 +897,8 @@ public class ReadingTest {
 		// prepare the database for the test
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -908,7 +909,8 @@ public class ReadingTest {
 		}
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine.execute("match (w:WORD {text:'rood/of/the/world'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood/of/the/world'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -916,9 +918,12 @@ public class ReadingTest {
 
 			// split reading
 			String separator = "/";
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/withsplitindex/0")
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, separator);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/0")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -929,13 +934,75 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
+	
+	@Test
+	public void splitReadingWithOtherSeparatorAndMultipleWordsAndIndexTest() {
+		try (Transaction tx = db.beginTx()) {
+
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			String separator = "-";
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/4")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
+
+			assertEquals(Status.OK, response.getClientResponseStatus());
+
+			expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of-the-world\"}";
+
+			testNumberOfReadingsAndWitnesses(30);
+
+			tx.success();
+		}
+	}
+
+
+	@Test
+	public void splitReadingWithNotExsitingSeperatorTest() {
+		// prepare the database for the test
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			String separator = "/";
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/2")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
+
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());
+			assertEquals("no such seprerator exists",
+					response.getEntity(String.class));
+			tx.success();
+		}
+	}
 
 	@Test
 	public void splitReadingWithQuotesAsSeparatorTest() {
 		// prepare the database for the test
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -946,7 +1013,8 @@ public class ReadingTest {
 		}
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine.execute("match (w:WORD {text:'rood\"of\"the\"world'}) return w");
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood\"of\"the\"world'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node node = nodes.next();
@@ -954,9 +1022,12 @@ public class ReadingTest {
 
 			// split reading
 			String separator = "\"";
-			ClientResponse response = jerseyTest.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId() + "/withsplitindex/0")
-					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, separator);
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/0")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -985,8 +1056,8 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/7")
-							.type(MediaType.APPLICATION_JSON)
-							.post(ClientResponse.class);
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
@@ -1016,8 +1087,8 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/2")
-							.type(MediaType.APPLICATION_JSON)
-							.post(ClientResponse.class);
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -1046,8 +1117,8 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
-							.type(MediaType.APPLICATION_JSON)
-							.post(ClientResponse.class);
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
@@ -1081,8 +1152,8 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/splitreading/ofreading/" + untoMe.getId()
 							+ "/withsplitindex/0")
-							.type(MediaType.APPLICATION_JSON)
-							.post(ClientResponse.class);
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
@@ -1110,8 +1181,8 @@ public class ReadingTest {
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
-							.type(MediaType.APPLICATION_JSON)
-							.post(ClientResponse.class);
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
