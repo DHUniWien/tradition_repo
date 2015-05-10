@@ -52,7 +52,6 @@ public class User implements IResource {
 	@Path("createuser")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response create(UserModel userModel) {
-
 		
 		if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
 			

@@ -67,8 +67,6 @@ public class Witness implements IResource {
 			tx.success();
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
 		}
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
@@ -128,8 +126,6 @@ public class Witness implements IResource {
 			tx.success();
 		} catch (Exception exception) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}finally {
-			
 		}
 		if (witnessAsText.equals(""))
 			return Response.status(Status.NOT_FOUND)
@@ -163,7 +159,6 @@ public class Witness implements IResource {
 			@PathParam("witnessId") String witnessId) {
 		final String WITNESS_ID = witnessId;
 
-		
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
 		Node startNode = DatabaseService.getStartNode(tradId, db);

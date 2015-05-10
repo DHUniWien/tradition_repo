@@ -338,7 +338,7 @@ public class Reading implements IResource {
 			stayingReading = db.getNodeById(firstReadId);
 			deletingReading = db.getNodeById(secondReadId);
 
-			if (!canBeMerged(db, stayingReading, deletingReading))
+			if (!canBeMerged(stayingReading, deletingReading))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
 			merge(stayingReading, deletingReading);
@@ -353,12 +353,11 @@ public class Reading implements IResource {
 	/**
 	 * Checks if the two readings can be merged or not.
 	 * 
-	 * @param db
 	 * @param stayingReading
 	 * @param deletingReading
 	 * @return true if readings can be merged
 	 */
-	private boolean canBeMerged(GraphDatabaseService db, Node stayingReading,
+	private boolean canBeMerged(Node stayingReading,
 			Node deletingReading) {
 		if (!doContainSameText(stayingReading, deletingReading)) {
 			errorMessage = "Readings to be merged do not contain the same text";
@@ -576,7 +575,7 @@ public class Reading implements IResource {
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity(errorMessage).build();
 
-			readingsAndRelationships = split(db, originalReading, splitWords);
+			readingsAndRelationships = split(originalReading, splitWords);
 
 			tx.success();
 		} catch (Exception e) {
@@ -668,12 +667,11 @@ public class Reading implements IResource {
 	/**
 	 * Performs all necessary steps in the database to split the reading.
 	 * 
-	 * @param db
 	 * @param originalReading
 	 * @param splittedWords
 	 * @return a model of the split graph
 	 */
-	private GraphModel split(GraphDatabaseService db, Node originalReading,
+	private GraphModel split(Node originalReading,
 			String[] splittedWords) {
 		ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<ReadingModel>();
 		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
@@ -763,8 +761,6 @@ public class Reading implements IResource {
 			}
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} finally {
-
 		}
 		return Response.status(Status.NOT_FOUND)
 				.entity("given readings not found").build();
@@ -879,7 +875,7 @@ public class Reading implements IResource {
 
 		try (Transaction tx = db.beginTx()) {
 			readingModels = getAllReadingsFromTraditionBetweenRanks(startNode,
-					startRank, endRank, db);
+					startRank, endRank);
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -906,12 +902,9 @@ public class Reading implements IResource {
 	 * @param startNode
 	 * @param startRank
 	 * @param endRank
-	 * @param db
 	 * @return list of readings of a tradition
 	 */
-	private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
-			Node startNode, long startRank, long endRank,
-			GraphDatabaseService db) {
+	private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(Node startNode, long startRank, long endRank) {
 
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
@@ -954,11 +947,10 @@ public class Reading implements IResource {
 					.entity("Could not find tradition with this id").build();
 
 		try (Transaction tx = db.beginTx()) {
-			ArrayList<Node> questionedReadings = getReadingsBetweenRanks(
-					startRank, endRank, db, startNode);
+			ArrayList<Node> questionedReadings = getReadingsBetweenRanks(startRank, endRank, startNode);
 
 			couldBeIdenticalReadings = getCouldBeIdenticalAsList(
-					questionedReadings, db);
+					questionedReadings);
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -975,11 +967,10 @@ public class Reading implements IResource {
 	 * different ranks and send the list for further test
 	 * 
 	 * @param questionedReadings
-	 * @param db
 	 * @return list of lists of identical readings
 	 */
 	private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
-			ArrayList<Node> questionedReadings, GraphDatabaseService db) {
+			ArrayList<Node> questionedReadings) {
 
 		ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<ArrayList<ReadingModel>>();
 
@@ -996,7 +987,7 @@ public class Reading implements IResource {
 				}
 			}
 			if (sameText.size() > 0)
-				couldBeIdenticalCheck(sameText, couldBeIdenticalReadings, db);
+				couldBeIdenticalCheck(sameText, couldBeIdenticalReadings);
 		}
 		return couldBeIdenticalReadings;
 	}
@@ -1006,11 +997,9 @@ public class Reading implements IResource {
 	 * 
 	 * @param sameText
 	 * @param couldBeIdenticalReadings
-	 * @param db
 	 */
 	private void couldBeIdenticalCheck(ArrayList<Node> sameText,
-			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings,
-			GraphDatabaseService db) {
+			ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings) {
 
 		ArrayList<ReadingModel> couldBeIdentical = new ArrayList<ReadingModel>();
 
@@ -1080,12 +1069,11 @@ public class Reading implements IResource {
 	 * 
 	 * @param startRank
 	 * @param endRank
-	 * @param db
 	 * @param startNode
 	 * @return list of readings
 	 */
 	private ArrayList<Node> getReadingsBetweenRanks(long startRank,
-			long endRank, GraphDatabaseService db, Node startNode) {
+			long endRank, Node startNode) {
 		ArrayList<Node> readings = new ArrayList<Node>();
 
 		for (Node node : db.traversalDescription().breadthFirst()
@@ -1181,8 +1169,8 @@ public class Reading implements IResource {
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("the first reading has a higher rank then the second reading")
 						.build();
-			if (canCompress(read1, read2, db)) {
-				compress(read1, read2, toConcatenate, with_str, db);
+			if (canCompress(read1, read2)) {
+				compress(read1, read2, toConcatenate, with_str);
 				tx.success();
 				return Response.ok().build();
 			}
@@ -1209,7 +1197,7 @@ public class Reading implements IResource {
 	 *            concatenated with one empty space in between.
 	 */
 	private void compress(Node read1, Node read2, boolean toConcatenate,
-			String with_str, GraphDatabaseService db) {
+ String with_str) {
 		String textRead1 = (String) read1.getProperty("text");
 		String textRead2 = (String) read2.getProperty("text");
 		if (!toConcatenate)
@@ -1217,7 +1205,7 @@ public class Reading implements IResource {
 		else
 			read1.setProperty("text", textRead1 + with_str + textRead2);
 
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
 		from1to2.delete();
 		copyRelationships(read1, read2);
 		read2.delete();
@@ -1263,7 +1251,7 @@ public class Reading implements IResource {
 	 *            the second reading
 	 * @return true if ok to compress, false otherwise
 	 */
-	private boolean canCompress(Node read1, Node read2, GraphDatabaseService db) {
+	private boolean canCompress(Node read1, Node read2) {
 		Iterable<Relationship> rel;
 		rel = read2.getRelationships(ERelations.NORMAL);
 
@@ -1272,14 +1260,13 @@ public class Reading implements IResource {
 			errorMessage = "second readings is not connected. could not compress";
 			return false;
 		}
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2, db);
+		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
 		if (from1to2 == null) {
 			errorMessage = "reading are not neighbors. could not compress";
 			return false;
 		}
 
-		if (hasNotNormalRealtionships(read1, db)
-				|| hasNotNormalRealtionships(read2, db)) {
+		if (hasNotNormalRealtionships(read1) || hasNotNormalRealtionships(read2)) {
 			errorMessage = "reading has other relations. could not compress";
 			return false;
 		}
@@ -1291,11 +1278,9 @@ public class Reading implements IResource {
 	 * 
 	 * @param read
 	 *            the reading
-	 * @param db
-	 *            the data base
 	 * @return true if it has, false otherwise
 	 */
-	private boolean hasNotNormalRealtionships(Node read, GraphDatabaseService db) {
+	private boolean hasNotNormalRealtionships(Node read) {
 		String type = "", normal = "";
 
 		for (Relationship rel : read.getRelationships()) {
@@ -1317,8 +1302,7 @@ public class Reading implements IResource {
 	 *            the second reading
 	 * @return the NORMAL relationship
 	 */
-	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2,
-			GraphDatabaseService db) {
+	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2) {
 		Relationship from1to2 = null;
 		for (Relationship tempRel : read1.getRelationships()) {
 			if (tempRel.getOtherNode(read1).equals(read2)) {

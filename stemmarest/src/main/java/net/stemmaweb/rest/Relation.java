@@ -13,8 +13,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -69,7 +69,7 @@ public class Relation implements IResource {
     		Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
     		Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
     		
-			if (wouldProduceCrossRelationship(db, readingA, readingB))
+			if (wouldProduceCrossRelationship(readingA, readingB))
 				return Response.status(Status.CONFLICT)
 						.entity("This relationship creation is not allowed. Would produce cross-relationship.").build();
 
@@ -112,12 +112,11 @@ public class Relation implements IResource {
 	 * cross-relationship. A cross relationship is a relationship that
 	 * crosses another one created before which is not allowed.
 	 * 
-	 * @param db
 	 * @param firstReading
 	 * @param secondReading
 	 * @return
 	 */
-	private boolean wouldProduceCrossRelationship(GraphDatabaseService db, Node firstReading, Node secondReading) {
+	private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading) {
 		Long firstRank = Long.parseLong(firstReading.getProperty("rank").toString());
 		Long secondRank = Long.parseLong(secondReading.getProperty("rank").toString());
 		Direction firstDirection, secondDirection;
@@ -132,10 +131,10 @@ public class Relation implements IResource {
 
 		int depth = (int) (Long.parseLong(firstReading.getProperty("rank").toString()) - (Long.parseLong( secondReading.getProperty("rank").toString()))) + 1;
 
-		for (Node firstReadingNextNode : getNextNodes(firstReading, db, firstDirection, depth))
+		for (Node firstReadingNextNode : getNextNodes(firstReading, firstDirection, depth))
 			for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP))
 				if (!rel.getProperty("type").equals("transposition") && !rel.getProperty("type").equals("repetition"))
-					for (Node secondReadingNextNode : getNextNodes(secondReading, db, secondDirection, depth))
+					for (Node secondReadingNextNode : getNextNodes(secondReading, secondDirection, depth))
 						if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode))
 							return true;
 
@@ -146,12 +145,11 @@ public class Relation implements IResource {
 	 * Gets all the next nodes with the given constraints.
 	 * 
 	 * @param reading
-	 * @param db
 	 * @param direction
 	 * @param depth
 	 * @return
 	 */
-	private ResourceIterable<Node> getNextNodes(Node reading, GraphDatabaseService db, Direction direction,
+	private ResourceIterable<Node> getNextNodes(Node reading, Direction direction,
 			int depth) {
 		return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, direction)
 				.evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))

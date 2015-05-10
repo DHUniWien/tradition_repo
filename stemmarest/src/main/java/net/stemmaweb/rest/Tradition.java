@@ -380,7 +380,6 @@ public class Tradition implements IResource {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-
 	}
 
 	/**

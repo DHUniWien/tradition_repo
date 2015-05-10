@@ -167,7 +167,7 @@ public class Stemma implements IResource {
 			Node newRootNode = nodes.next();
     		
     		if(stemmaType.equals("digraph"))
-	    		resp = reorientDigraph(db,newRootNode,startNodeStemma);
+				resp = reorientDigraph(newRootNode, startNodeStemma);
     		else
     			resp = reorientGraph(newRootNode,startNodeStemma);
 		
@@ -183,12 +183,11 @@ public class Stemma implements IResource {
 	 * Reorients a directed Graph: Searches the path to the new RootNode; reverse the
 	 * relationships; changes the first relationship
 	 * 
-	 * @param db
 	 * @param newRootNode
 	 * @param startNodeStemma
 	 * @return
 	 */
-	private Response reorientDigraph(GraphDatabaseService db, Node newRootNode, Node startNodeStemma) {
+	private Response reorientDigraph(Node newRootNode, Node startNodeStemma) {
 		
 		Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
 		
