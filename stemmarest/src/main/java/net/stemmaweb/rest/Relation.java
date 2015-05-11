@@ -191,7 +191,7 @@ public class Relation implements IResource {
     	if (relationships.size() ==0)
     		return Response.status(Status.NOT_FOUND).entity("no relationships were found").build();
     	
-    	return Response.ok().entity(relationships).build();    	
+    	return Response.ok(relationships).build();    	
 	}     
     
   

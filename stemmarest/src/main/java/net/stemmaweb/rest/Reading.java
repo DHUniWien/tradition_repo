@@ -1237,7 +1237,7 @@ public class Reading implements IResource {
 		else
 			read1.setProperty("text", textRead1 + with_str + textRead2);
 
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
+		Relationship from1to2 = getRelationshipBetweenReadings(read1, read2);
 		from1to2.delete();
 		copyRelationships(read1, read2);
 		read2.delete();
@@ -1293,13 +1293,13 @@ public class Reading implements IResource {
 			errorMessage = "second readings is not connected. could not compress";
 			return false;
 		}
-		Relationship from1to2 = getRealtionshipBetweenReadings(read1, read2);
+		Relationship from1to2 = getRelationshipBetweenReadings(read1, read2);
 		if (from1to2 == null) {
 			errorMessage = "reading are not neighbors. could not compress";
 			return false;
 		}
 
-		if (hasNotNormalRealtionships(read1) || hasNotNormalRealtionships(read2)) {
+		if (hasNotNormalRelationships(read1) || hasNotNormalRelationships(read2)) {
 			errorMessage = "reading has other relations. could not compress";
 			return false;
 		}
@@ -1313,7 +1313,7 @@ public class Reading implements IResource {
 	 *            the reading
 	 * @return true if it has, false otherwise
 	 */
-	private boolean hasNotNormalRealtionships(Node read) {
+	private boolean hasNotNormalRelationships(Node read) {
 		String type = "", normal = "";
 
 		for (Relationship rel : read.getRelationships()) {
@@ -1335,7 +1335,7 @@ public class Reading implements IResource {
 	 *            the second reading
 	 * @return the NORMAL relationship
 	 */
-	private Relationship getRealtionshipBetweenReadings(Node read1, Node read2) {
+	private Relationship getRelationshipBetweenReadings(Node read1, Node read2) {
 		Relationship from1to2 = null;
 		for (Relationship tempRel : read1.getRelationships()) {
 			if (tempRel.getOtherNode(read1).equals(read2)) {

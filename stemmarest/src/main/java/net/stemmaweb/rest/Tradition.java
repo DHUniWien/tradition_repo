@@ -109,7 +109,7 @@ public class Tradition implements IResource {
 		} catch (Exception e) {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
 		} 
-		return Response.status(Response.Status.OK).entity(tradition).build();
+		return Response.ok(tradition).build();
 	}
 	
 	/**
@@ -143,7 +143,7 @@ public class Tradition implements IResource {
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
 		}
-		return Response.ok().entity(traditionList).build();
+		return Response.ok(traditionList).build();
 	}
 
 	/**
