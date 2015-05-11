@@ -572,8 +572,10 @@ public class Reading implements IResource {
 	 * @param separator
 	 *            the string which is between the words to be split, if no
 	 *            separator is specified the reading is split using whitespace
-	 *            as default. Is given as a String to avoid problems with
-	 *            'unsafe' characters in the URL
+	 *            as default. If a splitIndex and a separator were specified the
+	 *            reading is split using the splitIndex and removing the
+	 *            separator from the second word. Is given as a String to avoid
+	 *            problems with 'unsafe' characters in the URL
 	 * @return a readingsAndRelationshipsModel in JSON containing all the
 	 *         created and modified readings and the deleted relationships on
 	 *         success or an ERROR as JSON
@@ -630,6 +632,9 @@ public class Reading implements IResource {
 			splitWords = new String[2];
 			splitWords[0] = originalText.substring(0, splitIndex);
 			splitWords[1] = originalText.substring(splitIndex);
+			// remove separator from second word if there was one specified
+			if (separator != null || separator != "")
+				splitWords[1] = splitWords[1].substring(separator.length());
 		} else {
 			if (separator == null || separator.equals("")
 					|| separator.equals("0"))

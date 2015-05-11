@@ -812,12 +812,13 @@ public class ReadingTest {
 
 		try (Transaction tx = db.beginTx()) {
 			// split reading
+			String separator = " ";
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
+					.post(ClientResponse.class, separator);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -1085,12 +1086,13 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
+			String separator = "";
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/2")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
+					.post(ClientResponse.class, separator);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
