@@ -300,7 +300,7 @@ public class Reading implements IResource {
 			// if oldWitnesses contains more than one witnesses, create new
 			// relationship and add those witnesses which should be duplicated
 		} else {
-			// add only those witnesses to oldWitnesses which are
+			// add only those old witnesses to remainingWitnessess which are
 			// not in newWitnesses
 			ArrayList<String> remainingWitnesses = new ArrayList<String>();
 			ArrayList<String> stayingWitnesses = new ArrayList<String>();
