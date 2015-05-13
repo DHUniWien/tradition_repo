@@ -970,7 +970,7 @@ public class ReadingTest {
 
 
 	@Test
-	public void splitReadingWithNotExistingSeparatorTest() {
+	public void splitReadingWithNotExistingSeparatorInWordTest() {
 		// prepare the database for the test
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
@@ -994,6 +994,66 @@ public class ReadingTest {
 					response.getClientResponseStatus());
 			assertEquals("no such separator exists",
 					response.getEntity(String.class));
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithNotExistingSeparatorInIndexTest() {
+		// prepare the database for the test
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			String separator = "t";
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/2")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
+			
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());			
+			assertEquals("no such separator exists",
+					response.getEntity(String.class));				
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithExistingSeparatorInIndexTest() {
+		// prepare the database for the test
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			String separator = "oo";
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, separator);
+
+			
+			assertEquals(Status.OK,
+					response.getClientResponseStatus());
+			expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r t\"}";
+
+			testNumberOfReadingsAndWitnesses(30);
 			tx.success();
 		}
 	}
