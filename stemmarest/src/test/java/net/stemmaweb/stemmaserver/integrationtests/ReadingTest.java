@@ -13,6 +13,7 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
@@ -812,13 +813,14 @@ public class ReadingTest {
 
 		try (Transaction tx = db.beginTx()) {
 			// split reading
-			String separator = " ";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter(" ");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -875,13 +877,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "-";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("-");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -919,13 +922,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "/";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("/");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -950,13 +954,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "-";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("-");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/4")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -967,10 +972,42 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
+	
+	@Test
+	public void splitReadingWithLongSeparatorAndIndexTest() {
+		try (Transaction tx = db.beginTx()) {
+
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("-of-");
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/4")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, characterModel);
+
+			assertEquals(Status.OK, response.getClientResponseStatus());
+
+			expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood the-world\"}";
+
+			testNumberOfReadingsAndWitnesses(30);
+
+			tx.success();
+		}
+	}
 
 
 	@Test
-	public void splitReadingWithNotExistingSeparatorTest() {
+	public void splitReadingWithNotExistingSeparatorInWordTest() {
 		// prepare the database for the test
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
@@ -982,18 +1019,113 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "/";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("/");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/2")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
 			assertEquals("no such separator exists",
 					response.getEntity(String.class));
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithNotExistingSeparatorInIndexTest() {
+		// prepare the database for the test
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("t");
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/2")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, characterModel);
+			
+			assertEquals(Status.INTERNAL_SERVER_ERROR,
+					response.getClientResponseStatus());			
+			assertEquals("The separator does not apear in the index location in the text",
+					response.getEntity(String.class));				
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithExistingSeparatorInIndexTest() {
+		// prepare the database for the test
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("oo");
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, characterModel);
+
+			
+			assertEquals(Status.OK,
+					response.getClientResponseStatus());
+			expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r t\"}";
+
+			testNumberOfReadingsAndWitnesses(30);
+			tx.success();
+		}
+	}
+	
+	@Test
+	public void splitReadingWithExistingSeparatorInIndexOneCharTest() {
+		// prepare the database for the test
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine
+					.execute("match (w:WORD {text:'root'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("o");
+			ClientResponse response = jerseyTest
+					.resource()
+					.path("/reading/splitreading/ofreading/" + node.getId()
+							+ "/withsplitindex/1")
+					.type(MediaType.APPLICATION_JSON)
+					.post(ClientResponse.class, characterModel);
+
+			
+			assertEquals(Status.OK,
+					response.getClientResponseStatus());
+			expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r ot\"}";
+
+			testNumberOfReadingsAndWitnesses(30);
 			tx.success();
 		}
 	}
@@ -1024,13 +1156,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "\"";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("\"");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -1055,16 +1188,18 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/7")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
-			assertEquals("The splitIndex must be smaller than the text length",
+			assertEquals("The index must be smaller than the text length",
 					response.getEntity(String.class));
 
 			testNumberOfReadingsAndWitnesses(29);
@@ -1072,38 +1207,7 @@ public class ReadingTest {
 			tx.success();
 		}
 	}
-
-	@Test
-	public void splitReadingWithIndexTest() {
-		try (Transaction tx = db.beginTx()) {
-
-			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'root'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node node = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			// split reading
-			String separator = "";
-			ClientResponse response = jerseyTest
-					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId()
-							+ "/withsplitindex/2")
-					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
-
-			assertEquals(Status.OK, response.getClientResponseStatus());
-
-			expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the ro ot\"}";
-
-			testNumberOfReadingsAndWitnesses(30);
-
-			tx.success();
-		}
-	}
-
+	
 	@Test
 	public void splitReadingWithRelationshipTest() {
 		try (Transaction tx = db.beginTx()) {
@@ -1117,12 +1221,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter(" ");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
@@ -1152,12 +1258,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + untoMe.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());
@@ -1167,38 +1275,7 @@ public class ReadingTest {
 
 			tx.success();
 		}
-	}
-
-	@Test
-	public void splitReadingWithOnlyOneWordWithoutIndexAndSeparatorTest() {
-		try (Transaction tx = db.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'showers'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node node = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			// split reading
-			ClientResponse response = jerseyTest
-					.resource()
-					.path("/reading/splitreading/ofreading/" + node.getId()
-							+ "/withsplitindex/0")
-					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
-
-			assertEquals(Status.INTERNAL_SERVER_ERROR,
-					response.getClientResponseStatus());
-			assertEquals(
-					"A reading to be split has to contain at least 2 words",
-					response.getEntity(String.class));
-
-			testNumberOfReadingsAndWitnesses(29);
-
-			tx.success();
-		}
-	}
+	}	
 
 	/**
 	 * test that all readings of a tradition are returned sorted ascending
@@ -1350,14 +1427,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers sweet", showers.getProperty("text"));
@@ -1418,14 +1496,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "shouldNotBeDesplayd";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("shouldNotBeDesplayd");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers sweet", showers.getProperty("text"));
@@ -1486,14 +1565,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "test";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("test");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showerstestsweet", showers.getProperty("text"));
@@ -1537,14 +1617,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "\"";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("\"");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers\"sweet", showers.getProperty("text"));
@@ -1588,14 +1669,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "/";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("/");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers/sweet", showers.getProperty("text"));
@@ -1639,14 +1721,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showerssweet", showers.getProperty("text"));
@@ -1692,14 +1775,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			Node fruit = nodes.next();
 
-			String parameterString = "shouldNotBeDesplayd";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("shouldNotBeDesplayd");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + fruit.getId()
 							+ "/concatenate/0/")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());
