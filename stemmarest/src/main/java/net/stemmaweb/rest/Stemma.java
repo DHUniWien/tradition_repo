@@ -111,7 +111,8 @@ public class Stemma implements IResource {
 	 * Puts the Stemma of a DOT file in the database
 	 * 
 	 * @param tratitionId
-	 * @return 
+	 * @return Http Response ok and DOT JSON string on success or an ERROR in
+	 *         JSON
 	 */
 	@POST
 	@Path("newstemma/intradition/{tradId}")
