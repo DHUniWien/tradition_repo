@@ -379,7 +379,7 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void duplicateReadingWithSpecialWitnessesTest() {
+	public void duplicateReadingWithDuölicateForTwoWitnessesTest() {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine.execute("match (w:WORD {text:'of'}) return w");
@@ -436,6 +436,80 @@ public class ReadingTest {
 			for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
 				assertEquals("A", ((String[]) outgoing.getProperty("lexemes"))[0]);
 				assertEquals("C", ((String[]) outgoing.getProperty("lexemes"))[1]);
+				numberOfPaths++;
+			}
+			assertEquals(1, numberOfPaths);
+
+			// compare original and duplicated
+			Iterable<String> keys = originalOf.getPropertyKeys();
+			for (String key : keys) {
+				String val1 = originalOf.getProperty(key).toString();
+				String val2 = duplicatedOf.getProperty(key).toString();
+				assertEquals(val1, val2);
+			}
+
+			tx.success();
+		}
+	}
+
+	@Test
+	public void duplicateReadingWithDuplicateForOneWitnessTest() {
+		try (Transaction tx = db.beginTx()) {
+			ExecutionEngine engine = new ExecutionEngine(db);
+			ExecutionResult result = engine.execute("match (w:WORD {text:'of'}) return w");
+			Iterator<Node> nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node node = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// duplicate reading
+			String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
+			ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading")
+					.type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+
+			assertEquals(Status.OK, response.getClientResponseStatus());
+
+			GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
+			assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
+			assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
+
+			testNumberOfReadingsAndWitnesses(30);
+
+			result = engine.execute("match (w:WORD {text:'of'}) return w");
+			nodes = result.columnAs("w");
+			assertTrue(nodes.hasNext());
+			Node originalOf = nodes.next();
+			assertTrue(nodes.hasNext());
+			Node duplicatedOf = nodes.next();
+			assertFalse(nodes.hasNext());
+
+			// test witnesses and number of paths
+			int numberOfPaths = 0;
+			for (Relationship incoming : originalOf.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
+				assertEquals("A", ((String[]) incoming.getProperty("lexemes"))[0]);
+				assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[1]);
+				numberOfPaths++;
+			}
+			assertEquals(1, numberOfPaths);
+
+			numberOfPaths = 0;
+			for (Relationship incoming : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
+				assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[0]);
+				numberOfPaths++;
+			}
+			assertEquals(1, numberOfPaths);
+
+			numberOfPaths = 0;
+			for (Relationship outgoing : originalOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
+				assertEquals("A", ((String[]) outgoing.getProperty("lexemes"))[0]);
+				assertEquals("C", ((String[]) outgoing.getProperty("lexemes"))[1]);
+				numberOfPaths++;
+			}
+			assertEquals(1, numberOfPaths);
+
+			numberOfPaths = 0;
+			for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
+				assertEquals("B", ((String[]) outgoing.getProperty("lexemes"))[0]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
@@ -620,8 +694,10 @@ public class ReadingTest {
 			assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[1]);
 			assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[2]);
 
+			int counter = 0;
 			for (Relationship outgoing : stayingNode.getRelationships(
 					ERelations.NORMAL, Direction.OUTGOING)) {
+				counter++;
 				if (outgoing.getOtherNode(stayingNode).getProperty("text")
 						.equals("the")) {
 					assertEquals("A",
@@ -635,6 +711,7 @@ public class ReadingTest {
 							((String[]) outgoing.getProperty("lexemes"))[0]);
 				}
 			}
+			assertEquals(2, counter);
 
 			// test relationships
 			int numberOfRelationships = 0;

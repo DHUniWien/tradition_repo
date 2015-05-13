@@ -300,7 +300,7 @@ public class Reading implements IResource {
 			// if oldWitnesses contains more than one witnesses, create new
 			// relationship and add those witnesses which should be duplicated
 		} else {
-			// add only those old witnesses to remainingWitnessess which are
+			// add only those old witnesses to stayingWitnessess which are
 			// not in newWitnesses
 			ArrayList<String> remainingWitnesses = new ArrayList<String>();
 			ArrayList<String> stayingWitnesses = new ArrayList<String>();
@@ -310,17 +310,18 @@ public class Reading implements IResource {
 				else
 					remainingWitnesses.add(oldWitness);
 
-			Relationship addedRelationship = originNode.createRelationshipTo(
-					targetNode, ERelations.NORMAL);
-			addedRelationship.setProperty("lexemes", remainingWitnesses
-					.toArray(new String[remainingWitnesses.size()]));
+			// create new relationship for remaining witnesses if there are any
+			if (!remainingWitnesses.isEmpty()) {
+				Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+				addedRelationship.setProperty("lexemes",
+						remainingWitnesses.toArray(new String[remainingWitnesses.size()]));
 
-			if (stayingWitnesses.isEmpty()) {
-				deletedRelationships.add(new RelationshipModel(originalRel));
-				originalRel.delete();
-			} else
-				originalRel.setProperty("lexemes", stayingWitnesses
-						.toArray(new String[stayingWitnesses.size()]));
+				if (stayingWitnesses.isEmpty()) {
+					deletedRelationships.add(new RelationshipModel(originalRel));
+					originalRel.delete();
+				} else
+					originalRel.setProperty("lexemes", stayingWitnesses.toArray(new String[stayingWitnesses.size()]));
+			}
 		}
 
 		return deletedRelationships;
