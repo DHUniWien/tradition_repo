@@ -218,7 +218,7 @@ duplicateModel as application/json
 /mergereadings/first/\{firstReadId\}/second/\{secondReadId\}
 \end{post}
 \begin{response}
- as application/json
+ as application/json: Status.OK on success or Status.INTERNAL\_SERVER\_ERROR with a detailed message.
 \end{response}
 \begin{parameter}
 secondReadId as long
@@ -234,7 +234,7 @@ firstReadId as long
  as text/plain
 \end{request}
 \begin{response}
- as application/json
+ as application/json: Status.OK with a GraphModel containing all the created and modified readings and the deleted relationships on success or Status.INTERNAL\_SERVER\_ERROR with a detailed error message
 \end{response}
 \begin{parameter}
 readId as long

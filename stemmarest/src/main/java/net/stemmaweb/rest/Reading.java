@@ -576,9 +576,9 @@ public class Reading implements IResource {
 	 *            reading is split using the splitIndex and removing the
 	 *            separator from the second word. Is given as a String to avoid
 	 *            problems with 'unsafe' characters in the URL
-	 * @return a readingsAndRelationshipsModel in JSON containing all the
-	 *         created and modified readings and the deleted relationships on
-	 *         success or an ERROR as JSON
+	 * @return a GraphModel in JSON containing all the created and modified
+	 *         readings and the deleted relationships on success or an ERROR as
+	 *         JSON
 	 */
 	@POST
 	@Path("splitreading/ofreading/{readId}/withsplitindex/{splitIndex}")
