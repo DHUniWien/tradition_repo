@@ -13,6 +13,7 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
@@ -874,13 +875,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "-";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("-");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -918,13 +920,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "/";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("/");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -949,13 +952,14 @@ public class ReadingTest {
 			assertFalse(nodes.hasNext());
 
 			// split reading
-			String separator = "-";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("-");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/splitreading/ofreading/" + node.getId()
 							+ "/withsplitindex/4")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, separator);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 
@@ -1348,14 +1352,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers sweet", showers.getProperty("text"));
@@ -1416,14 +1421,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "shouldNotBeDesplayd";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("shouldNotBeDesplayd");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/0")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers sweet", showers.getProperty("text"));
@@ -1484,14 +1490,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "test";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("test");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showerstestsweet", showers.getProperty("text"));
@@ -1535,14 +1542,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "\"";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("\"");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers\"sweet", showers.getProperty("text"));
@@ -1586,14 +1594,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "/";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("/");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showers/sweet", showers.getProperty("text"));
@@ -1637,14 +1646,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			sweet = nodes.next();
 
-			String parameterString = "";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("");
 			ClientResponse res = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + sweet.getId()
 							+ "/concatenate/1")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 			assertEquals("showerssweet", showers.getProperty("text"));
@@ -1690,14 +1700,15 @@ public class ReadingTest {
 			assert (nodes.hasNext());
 			Node fruit = nodes.next();
 
-			String parameterString = "shouldNotBeDesplayd";
+			CharacterModel characterModel = new CharacterModel();
+			characterModel.setCharacter("shouldNotBeDesplayd");
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/compressreadings/read1id/"
 							+ showers.getId() + "/read2id/" + fruit.getId()
 							+ "/concatenate/0/")
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, parameterString);
+					.post(ClientResponse.class, characterModel);
 
 			assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
 					response.getStatus());

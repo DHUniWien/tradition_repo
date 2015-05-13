@@ -16,6 +16,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
@@ -34,6 +35,8 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
+
+import com.sun.jersey.multipart.FormDataParam;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
@@ -580,9 +583,10 @@ public class Reading implements IResource {
 	 */
 	@POST
 	@Path("splitreading/ofreading/{readId}/withsplitindex/{splitIndex}")
+	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("readId") long readId, @PathParam("splitIndex") int splitIndex,
-			String separator) {
+			CharacterModel character) {
 
 		GraphModel readingsAndRelationships = null;
 		Node originalReading = null;
@@ -595,10 +599,10 @@ public class Reading implements IResource {
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("The splitIndex must be smaller than the text length")
 						.build();
-			if (!originalText.contains(separator))
+			if (!originalText.contains(character.getCharacter()))
 				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("no such separator exists").build();
 
-			String[] splitWords = splitUpText(splitIndex, separator, originalText);
+			String[] splitWords = splitUpText(splitIndex, character.getCharacter(), originalText);
 
 			if (!canBeSplit(originalReading, splitWords))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
@@ -1176,10 +1180,11 @@ public class Reading implements IResource {
 	 */
 	@POST
 	@Path("compressreadings/read1id/{read1Id}/read2id/{read2Id}/concatenate/{con}")
+	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response compressReadings(@PathParam("read1Id") long readId1,
 			@PathParam("read2Id") long readId2, @PathParam("con") String con,
-			String with_str) {
+			CharacterModel character) {
 
 		Node read1, read2;
 		errorMessage = "problem with a reading. could not compress";
@@ -1203,7 +1208,7 @@ public class Reading implements IResource {
 						.entity("the first reading has a higher rank then the second reading")
 						.build();
 			if (canBeCompressed(read1, read2)) {
-				compress(read1, read2, toConcatenate, with_str);
+				compress(read1, read2, toConcatenate, character.getCharacter());
 				tx.success();
 				return Response.ok().build();
 			}
