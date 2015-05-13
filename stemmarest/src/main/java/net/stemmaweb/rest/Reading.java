@@ -520,9 +520,14 @@ public class Reading implements IResource {
 					stayingRel.setProperty("lexemes", combinedWitnesses);
 
 				} else {
-					Relationship newRel = stayingReading.createRelationshipTo(
-							deletingRel.getOtherNode(deletingReading),
-							ERelations.NORMAL);
+					Relationship newRel;
+					if (direction.equals(Direction.OUTGOING))
+						newRel = stayingReading.createRelationshipTo(
+									deletingRel.getOtherNode(deletingReading),
+									ERelations.NORMAL);
+					else
+						newRel = deletingRel.getOtherNode(deletingReading).createRelationshipTo(stayingReading,
+								ERelations.NORMAL);
 					newRel.setProperty("lexemes",
 							deletingRel.getProperty("lexemes"));
 				}
