@@ -371,8 +371,7 @@ public class Reading implements IResource {
 	 *            the reading which will be deleted from the database
 	 * @return true if readings can be merged, false if not
 	 */
-	private boolean canBeMerged(Node stayingReading,
-			Node deletingReading) {
+	private boolean canBeMerged(Node stayingReading, Node deletingReading) {
 		if (!doContainSameText(stayingReading, deletingReading)) {
 			errorMessage = "Readings to be merged do not contain the same text";
 			return false;
@@ -571,11 +570,12 @@ public class Reading implements IResource {
 	 *            is split using the separator
 	 * @param separator
 	 *            the string which is between the words to be split, if no
-	 *            separator is specified the reading is split using whitespace
-	 *            as default. If a splitIndex and a separator were specified the
-	 *            reading is split using the splitIndex and removing the
-	 *            separator from the second word. Is given as a String to avoid
-	 *            problems with 'unsafe' characters in the URL
+	 *            separator is specified (empty String) the reading is split
+	 *            using whitespace as default. If a splitIndex and a separator
+	 *            were specified the reading is split using the splitIndex and
+	 *            removing the separator from the beginning of the second word.
+	 *            Is given as a String to avoid problems with 'unsafe'
+	 *            characters in the URL
 	 * @return a readingsAndRelationshipsModel in JSON containing all the
 	 *         created and modified readings and the deleted relationships on
 	 *         success or an ERROR as JSON
@@ -583,28 +583,52 @@ public class Reading implements IResource {
 	@POST
 	@Path("splitreading/ofreading/{readId}/withsplitindex/{splitIndex}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response splitReading(@PathParam("readId") long readId, @PathParam("splitIndex") int splitIndex,
-			String separator) {
-
+	public Response splitReading(@PathParam("readId") long readId,
+			@PathParam("splitIndex") int splitIndex, String separator) {
+		assert(separator != null);
 		GraphModel readingsAndRelationships = null;
 		Node originalReading = null;
-
+		if (separator.equals(""))
+			separator = " ";
 		try (Transaction tx = db.beginTx()) {
 			originalReading = db.getNodeById(readId);
-			String originalText = originalReading.getProperty("text").toString();
+			String originalText = originalReading.getProperty("text")
+					.toString();
 			if (splitIndex >= originalText.length())
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("The splitIndex must be smaller than the text length")
+						.entity("The index must be smaller than the text length")
 						.build();
+			
 			if (!originalText.contains(separator))
-				return Response.status(Status.INTERNAL_SERVER_ERROR).entity("no such separator exists").build();
-
-			String[] splitWords = splitUpText(splitIndex, separator, originalText);
-
-			if (!canBeSplit(originalReading, splitWords))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
-						.entity(errorMessage).build();
+						.entity("no such separator exists").build();
+			
+			if (splitIndex != 0){
+			String textToRemove = originalText.substring(splitIndex, splitIndex
+					+ separator.length());
+			if (!textToRemove.equals(separator))
+				return Response
+						.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("The separator does not apear in the index location in the text")
+						.build();
+			}
+			
+			if (originalReading.hasRelationship(ERelations.RELATIONSHIP))
+				return Response
+						.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("A reading to be split cannot be part of any relationship")
+						.build();
+
+			String[] splitWords = splitUpText(splitIndex, separator,
+					originalText);
+
+			if (!hasRankGap(originalReading, splitWords.length)) {
+				return Response
+						.status(Status.INTERNAL_SERVER_ERROR)
+						.entity("There has to be a rank-gap after a reading to be split")
+						.build();
+			}
 
 			readingsAndRelationships = split(originalReading, splitWords);
 
@@ -626,7 +650,8 @@ public class Reading implements IResource {
 	 *            the text to be split up
 	 * @return an array containing the separated words
 	 */
-	private String[] splitUpText(int splitIndex, String separator, String originalText) {
+	private String[] splitUpText(int splitIndex, String separator,
+			String originalText) {
 		String[] splitWords;
 		if (splitIndex > 0) {
 			splitWords = new String[2];
@@ -636,41 +661,11 @@ public class Reading implements IResource {
 			if (separator != null || separator != "")
 				splitWords[1] = splitWords[1].substring(separator.length());
 		} else {
-			if (separator == null || separator.equals("")
-					|| separator.equals("0"))
+			if (separator.equals(" "))
 				separator = "\\s+";
 			splitWords = originalText.split(separator);
 		}
 		return splitWords;
-	}
-
-	/**
-	 * Checks if a reading can be split or not. Sets the global error message if
-	 * not.
-	 * 
-	 * @param originalReading
-	 *            the reading to be split
-	 * @param splitWords
-	 *            the separated words
-	 * @return true if the reading can be split, false otherwise
-	 */
-	private boolean canBeSplit(Node originalReading, String[] splitWords) {
-		if (splitWords.length < 2) {
-			errorMessage = "A reading to be split has to contain at least 2 words";
-			return false;
-		}
-
-		if (originalReading.hasRelationship(ERelations.RELATIONSHIP)) {
-			errorMessage = "A reading to be split cannot be part of any relationship";
-			return false;
-		}
-
-		if (!hasRankGap(originalReading, splitWords.length)) {
-			errorMessage = "There has to be a rank-gap after a reading to be split";
-			return false;
-		}
-
-		return true;
 	}
 
 	/**
@@ -942,7 +937,8 @@ public class Reading implements IResource {
 	 * @param endRank
 	 * @return list of readings of a tradition
 	 */
-	private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(Node startNode, long startRank, long endRank) {
+	private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
+			Node startNode, long startRank, long endRank) {
 
 		ArrayList<ReadingModel> readingModels = new ArrayList<ReadingModel>();
 
@@ -985,10 +981,10 @@ public class Reading implements IResource {
 					.entity("Could not find tradition with this id").build();
 
 		try (Transaction tx = db.beginTx()) {
-			ArrayList<Node> questionedReadings = getReadingsBetweenRanks(startRank, endRank, startNode);
+			ArrayList<Node> questionedReadings = getReadingsBetweenRanks(
+					startRank, endRank, startNode);
 
-			couldBeIdenticalReadings = getCouldBeIdenticalAsList(
-					questionedReadings);
+			couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings);
 			tx.success();
 		} catch (Exception e) {
 			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -1234,7 +1230,8 @@ public class Reading implements IResource {
 	 *            with_str in between. if false: texts of readings will be
 	 *            concatenated with one empty space in between.
 	 */
-	private void compress(Node read1, Node read2, boolean toConcatenate, String with_str) {
+	private void compress(Node read1, Node read2, boolean toConcatenate,
+			String with_str) {
 		String textRead1 = (String) read1.getProperty("text");
 		String textRead2 = (String) read2.getProperty("text");
 		if (!toConcatenate)
@@ -1304,7 +1301,8 @@ public class Reading implements IResource {
 			return false;
 		}
 
-		if (hasNotNormalRelationships(read1) || hasNotNormalRelationships(read2)) {
+		if (hasNotNormalRelationships(read1)
+				|| hasNotNormalRelationships(read2)) {
 			errorMessage = "reading has other relations. could not compress";
 			return false;
 		}
