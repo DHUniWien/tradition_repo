@@ -637,9 +637,6 @@ public class Reading implements IResource {
 						.entity("A reading to be split cannot be part of any relationship")
 						.build();
 
-			if (model.getCharacter().equals(""))
-				model.setCharacter(" ");
-			
 			String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
 					originalText);
 
@@ -681,7 +678,7 @@ public class Reading implements IResource {
 			if (separator != null || separator != "")
 				splitWords[1] = splitWords[1].substring(separator.length());
 		} else {
-			if (separator.equals(" "))
+			if (separator.equals(""))
 				separator = "\\s+";
 			splitWords = originalText.split(separator);
 		}
