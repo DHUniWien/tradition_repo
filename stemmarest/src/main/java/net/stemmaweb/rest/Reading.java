@@ -313,17 +313,20 @@ public class Reading implements IResource {
 
 			// create new relationship for remaining witnesses if there are any
 			if (!remainingWitnesses.isEmpty()) {
-				Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+				Relationship addedRelationship = originNode
+						.createRelationshipTo(targetNode, ERelations.NORMAL);
 				Collections.sort(remainingWitnesses);
-				addedRelationship.setProperty("lexemes",
-						remainingWitnesses.toArray(new String[remainingWitnesses.size()]));
+				addedRelationship.setProperty("lexemes", remainingWitnesses
+						.toArray(new String[remainingWitnesses.size()]));
 
 				if (stayingWitnesses.isEmpty()) {
-					deletedRelationships.add(new RelationshipModel(originalRel));
+					deletedRelationships
+							.add(new RelationshipModel(originalRel));
 					originalRel.delete();
 				} else {
 					Collections.sort(stayingWitnesses);
-					originalRel.setProperty("lexemes", stayingWitnesses.toArray(new String[stayingWitnesses.size()]));
+					originalRel.setProperty("lexemes", stayingWitnesses
+							.toArray(new String[stayingWitnesses.size()]));
 				}
 			}
 		}
@@ -504,11 +507,11 @@ public class Reading implements IResource {
 	private void copyWitnesses(Node stayingReading, Node deletingReading,
 			Direction direction) {
 		for (Relationship stayingRel : stayingReading.getRelationships(
-				ERelations.NORMAL, direction))
+				ERelations.NORMAL, direction)) {
 			for (Relationship deletingRel : deletingReading.getRelationships(
 					ERelations.NORMAL, direction)) {
-				if (stayingRel.getOtherNode(stayingReading).getId()==(
-						deletingRel.getOtherNode(deletingReading).getId())) {
+				if (stayingRel.getOtherNode(stayingReading).getId() == (deletingRel
+						.getOtherNode(deletingReading).getId())) {
 					// get Witnesses
 					String[] stayingReadingWitnesses = (String[]) stayingRel
 							.getProperty("lexemes");
@@ -528,16 +531,18 @@ public class Reading implements IResource {
 					Relationship newRel;
 					if (direction.equals(Direction.OUTGOING))
 						newRel = stayingReading.createRelationshipTo(
-									deletingRel.getOtherNode(deletingReading),
-									ERelations.NORMAL);
-					else
-						newRel = deletingRel.getOtherNode(deletingReading).createRelationshipTo(stayingReading,
+								deletingRel.getOtherNode(deletingReading),
 								ERelations.NORMAL);
+					else
+						newRel = deletingRel.getOtherNode(deletingReading)
+								.createRelationshipTo(stayingReading,
+										ERelations.NORMAL);
 					newRel.setProperty("lexemes",
 							deletingRel.getProperty("lexemes"));
 				}
 				deletingRel.delete();
 			}
+		}
 	}
 
 	/**
@@ -597,7 +602,7 @@ public class Reading implements IResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response splitReading(@PathParam("readId") long readId,
 			@PathParam("splitIndex") int splitIndex, CharacterModel model) {
-		assert(model != null);
+		assert (model != null);
 		GraphModel readingsAndRelationships = null;
 		Node originalReading = null;
 		if (model.getCharacter().equals(""))
@@ -611,21 +616,21 @@ public class Reading implements IResource {
 						.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("The index must be smaller than the text length")
 						.build();
-			
+
 			if (!originalText.contains(model.getCharacter()))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
 						.entity("no such separator exists").build();
-			
-			if (splitIndex != 0){
-			String textToRemove = originalText.substring(splitIndex, splitIndex
-					+ model.getCharacter().length());
-			if (!textToRemove.equals(model.getCharacter()))
-				return Response
-						.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("The separator does not apear in the index location in the text")
-						.build();
+
+			if (splitIndex != 0) {
+				String textToRemove = originalText.substring(splitIndex,
+						splitIndex + model.getCharacter().length());
+				if (!textToRemove.equals(model.getCharacter()))
+					return Response
+							.status(Status.INTERNAL_SERVER_ERROR)
+							.entity("The separator does not apear in the index location in the text")
+							.build();
 			}
-			
+
 			if (originalReading.hasRelationship(ERelations.RELATIONSHIP))
 				return Response
 						.status(Status.INTERNAL_SERVER_ERROR)
@@ -774,7 +779,8 @@ public class Reading implements IResource {
 	 * @param readId
 	 *            : the id of the reading
 	 * 
-	 * @return http.ok and a model of the requested reading in json on success or an ERROR in JSON format
+	 * @return http.ok and a model of the requested reading in json on success
+	 *         or an ERROR in JSON format
 	 */
 	@GET
 	@Path("getnextreading/fromwitness/{witnessId}/ofreading/{readId}")
