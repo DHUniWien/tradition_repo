@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -313,14 +314,17 @@ public class Reading implements IResource {
 			// create new relationship for remaining witnesses if there are any
 			if (!remainingWitnesses.isEmpty()) {
 				Relationship addedRelationship = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+				Collections.sort(remainingWitnesses);
 				addedRelationship.setProperty("lexemes",
 						remainingWitnesses.toArray(new String[remainingWitnesses.size()]));
 
 				if (stayingWitnesses.isEmpty()) {
 					deletedRelationships.add(new RelationshipModel(originalRel));
 					originalRel.delete();
-				} else
+				} else {
+					Collections.sort(stayingWitnesses);
 					originalRel.setProperty("lexemes", stayingWitnesses.toArray(new String[stayingWitnesses.size()]));
+				}
 			}
 		}
 
@@ -518,8 +522,8 @@ public class Reading implements IResource {
 						combinedWitnesses[i] = stayingReadingWitnesses[i];
 					for (int i = 0; i < deletingReadingWitnesses.length; i++)
 						combinedWitnesses[stayingReadingWitnesses.length + i] = deletingReadingWitnesses[i];
+					Arrays.sort(combinedWitnesses);
 					stayingRel.setProperty("lexemes", combinedWitnesses);
-
 				} else {
 					Relationship newRel;
 					if (direction.equals(Direction.OUTGOING))
@@ -743,6 +747,7 @@ public class Reading implements IResource {
 
 			Relationship relationship = lastReading.createRelationshipTo(
 					newReading, ERelations.NORMAL);
+			Collections.sort(allWitnesses);
 			relationship.setProperty("lexemes",
 					allWitnesses.toArray(new String[allWitnesses.size()]));
 

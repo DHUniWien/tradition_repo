@@ -691,8 +691,8 @@ public class ReadingTest {
 			Relationship incoming = stayingNode.getSingleRelationship(
 					ERelations.NORMAL, Direction.INCOMING);
 			assertEquals("A", ((String[]) incoming.getProperty("lexemes"))[0]);
-			assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[1]);
-			assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[2]);
+			assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[1]);
+			assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[2]);
 
 			int counter = 0;
 			for (Relationship outgoing : stayingNode.getRelationships(
