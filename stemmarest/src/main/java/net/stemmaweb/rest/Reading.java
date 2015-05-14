@@ -606,9 +606,7 @@ public class Reading implements IResource {
 			@PathParam("splitIndex") int splitIndex, CharacterModel model) {
 		assert (model != null);
 		GraphModel readingsAndRelationships = null;
-		Node originalReading = null;
-		if (model.getCharacter().equals(""))
-			model.setCharacter(" ");
+		Node originalReading = null;		
 		try (Transaction tx = db.beginTx()) {
 			originalReading = db.getNodeById(readId);
 			String originalText = originalReading.getProperty("text")
@@ -621,9 +619,9 @@ public class Reading implements IResource {
 
 			if (!originalText.contains(model.getCharacter()))
 				return Response.status(Status.INTERNAL_SERVER_ERROR)
-						.entity("no such separator exists").build();
+						.entity("no such separator exists").build();				
 
-			if (splitIndex != 0) {
+			if (splitIndex != 0 && !model.getCharacter().equals("")) {
 				String textToRemove = originalText.substring(splitIndex,
 						splitIndex + model.getCharacter().length());
 				if (!textToRemove.equals(model.getCharacter()))
@@ -639,6 +637,9 @@ public class Reading implements IResource {
 						.entity("A reading to be split cannot be part of any relationship")
 						.build();
 
+			if (model.getCharacter().equals(""))
+				model.setCharacter(" ");
+			
 			String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
 					originalText);
 
