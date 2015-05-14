@@ -97,7 +97,7 @@ tradId as string
 /deleterelationshipbyid/withrelationship/\{relationshipId\}
 \end{delete}
 \begin{response}
- as text/plain: HTTP Response 404 when no Relationship was found with id, 200 and a model of the relationship in JSON when the Relationship was removed
+relationshipModel as application/json
 \end{response}
 \begin{parameter}
 relationshipId as string
@@ -108,7 +108,7 @@ relationshipId as string
 /getallrelationships/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json: Http Response 200 and a list of relationship model in JSON
+list of relationshipModel as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -121,7 +121,7 @@ tradId as string
 traditionModel as application/json
 \end{request}
 \begin{response}
- as application/json: OK and information about the tradition in JSON on success or an ERROR in JSON format
+traditionModel as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -131,14 +131,14 @@ tradId as string
 /getalltraditions
 \end{get}
 \begin{response}
- as application/json: Http Response 200 and a list of tradition models in JSON on success or Http Response 500
+list of traditionModels as application/json
 \end{response}
 \textbf{Method Name: }getAllWitnesses \\ Gets a list of all the witnesses of a tradition with the given id.
 \begin{get}
 /getallwitnesses/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json: Http Response 200 and a list of witness models in JSON on success or an ERROR in JSON format
+list of witnessModels as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -171,7 +171,7 @@ tradId as string
  as multipart/form-data
 \end{request}
 \begin{response}
- as application/json: Http Response with the id of the imported tradition on success or an ERROR in JSON format
+the id of the imported tradition as text/plain
 \end{response}
 \textbf{Method Name: }getDot \\ Returns DOT file from specified tradition owned by user
 \begin{get}
@@ -556,6 +556,10 @@ readings as long
 \begin{property}
 witnesses as string
 \end{property}
+\section{witnessModel}
+\begin{property}
+id as string
+\end{property}
 \section{userModel}
 \begin{property}
 id as string
@@ -563,3 +567,5 @@ id as string
 \begin{property}
 isAdmin as string
 \end{property}
+\section{stemma}
+A tree that provides an overview over the witnesses of a tradition. The relations between the witnesses which are displayed as nodes is central. Here the stemmata are mostly returned in dot format.
