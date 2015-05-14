@@ -1,3 +1,7 @@
+%----------------------------------------------------------------------------------------
+%	CHAPTER 10
+%----------------------------------------------------------------------------------------
+
 \chapter{Services}
 \section{Baseresource: }
 http://localhost:8080/
@@ -7,7 +11,7 @@ http://localhost:8080/
 /getallstemmata/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
+list of stemmata as dot
 \end{response}
 \begin{parameter}
 tradId as string
@@ -17,10 +21,10 @@ tradId as string
 /newstemma/intradition/\{tradId\}
 \end{post}
 \begin{request}
- as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
+ as application/json
 \end{request}
 \begin{response}
- as text/plain
+stemma as dot
 \end{response}
 \begin{parameter}
 tradId as string
@@ -30,7 +34,7 @@ tradId as string
 /reorientstemma/fromtradition/\{tradId\}/withtitle/\{stemmaTitle\}/withnewrootnode/\{nodeId\}
 \end{post}
 \begin{response}
- as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
+stemma as dot
 \end{response}
 \begin{parameter}
 tradId as string
@@ -46,7 +50,7 @@ nodeId as string
 /getstemma/fromtradition/\{tradId\}/withtitle/\{stemmaTitle\}
 \end{get}
 \begin{response}
- as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
+stemma as dot
 \end{response}
 \begin{parameter}
 tradId as string
@@ -83,7 +87,7 @@ relationshipModel as application/json
 /getallrelationships/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json: a list of the relationships in JSON on success or an ERROR in JSON format
+list of relationshipModel as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -188,7 +192,7 @@ tradId as string
  as application/json
 \end{request}
 \begin{response}
- as application/json: ok response with a model of the modified reading in json format
+readingModel as application/json
 \end{response}
 \begin{parameter}
 readId as long
@@ -198,7 +202,7 @@ readId as long
 /getreading/withreadingid/\{readId\}
 \end{get}
 \begin{response}
- as application/json: the reading fetched by the id
+readingModel as application/json
 \end{response}
 \begin{parameter}
 readId as long
@@ -211,7 +215,7 @@ readId as long
 duplicateModel as application/json
 \end{request}
 \begin{response}
- as application/json: a GraphModel in JSON containing all the created readings and the deleted relationships on success or Status.INTERNAL\_SERVER\_ERROR with a detailed message else
+GraphModel as application/json
 \end{response}
 \textbf{Method Name: }mergeReadings \\ Merges two readings into one single reading in a specific tradition. Opposite of duplicate
 \begin{post}
@@ -234,7 +238,7 @@ firstReadId as long
  as text/plain
 \end{request}
 \begin{response}
- as application/json: Status.OK with a GraphModel containing all the created and modified readings and the deleted relationships on success or Status.INTERNAL\_SERVER\_ERROR with a detailed error message
+GraphModel as application/json
 \end{response}
 \begin{parameter}
 readId as long
@@ -247,7 +251,7 @@ splitIndex as int
 /getnextreading/fromwitness/\{witnessId\}/ofreading/\{readId\}
 \end{get}
 \begin{response}
- as application/json: http.ok and a model of the requested reading in json on success or an ERROR in JSON format
+readingModel as application/json
 \end{response}
 \begin{parameter}
 readId as long
@@ -260,7 +264,7 @@ witnessId as string
 /getpreviousreading/fromwitness/\{witnessId\}/ofreading/\{readId\}
 \end{get}
 \begin{response}
- as application/json: http.ok and a model of the requested reading in json on success or an ERROR in JSON format
+readingModel as application/json
 \end{response}
 \begin{parameter}
 readId as long
@@ -273,7 +277,7 @@ witnessId as string
 /getallreadings/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json: the list of readings in json format on success or an ERROR in JSON format
+list of readingModels as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -283,7 +287,7 @@ tradId as string
 /getidenticalreadings/fromtradition/\{tradId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
- as application/json: a list of lists as a json ok response: each list contain identical readings on success or an ERROR in JSON format
+list of list of readingModels as application/json
 \end{response}
 \begin{parameter}
 endRank as long
@@ -299,7 +303,7 @@ startRank as long
 /couldbeidenticalreadings/fromtradition/\{tradId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
- as application/json: list of readings that could be at the same rank in JSON format or an ERROR in JSON format
+list of readingModels as application/json
 \end{response}
 \begin{parameter}
 endRank as long
@@ -335,7 +339,7 @@ con as string
 /gettext/fromtradition/\{tradId\}/ofwitness/\{witnessId\}
 \end{get}
 \begin{response}
- as application/json: a witness as a string
+a witness as a string
 \end{response}
 \begin{parameter}
 tradId as string
@@ -348,7 +352,7 @@ witnessId as string
 /gettext/fromtradition/\{tradId\}/ofwitness/\{witnessId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
- as application/json: a witness as a string
+a witness as a string
 \end{response}
 \begin{parameter}
 endRank as string
@@ -367,7 +371,7 @@ witnessId as string
 /getreadinglist/fromtradition/\{tradId\}/ofwitness/\{witnessId\}
 \end{get}
 \begin{response}
- as application/json: a witness as a list of models of readings in json format
+list of readingModels as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -384,14 +388,14 @@ witnessId as string
 userModel as application/json
 \end{request}
 \begin{response}
- as application/json: a userModel in JSON on success or an ERROR in JSON format
+userModel as application/json
 \end{response}
 \textbf{Method Name: }getUserById \\ Gets a user by the id.
 \begin{get}
 /getuser/withid/\{userId\}
 \end{get}
 \begin{response}
- as application/json: UserModel as JSON or an ERROR in JSON format
+userModel as application/json
 \end{response}
 \begin{parameter}
 userId as string
@@ -416,7 +420,14 @@ userId as string
 \begin{parameter}
 userId as string
 \end{parameter}
+
+
+%----------------------------------------------------------------------------------------
+%	CHAPTER 11
+%----------------------------------------------------------------------------------------
+
 \chapter{Models}
+
 \section{relationshipModel}
 \begin{property}
 a\_derivable\_from\_b as string
@@ -466,6 +477,55 @@ type as string
 \begin{property}
 witness as string
 \end{property}
+\section{readingModel}
+\begin{property}
+grammar\_invalid as string
+\end{property}
+\begin{property}
+id as string
+\end{property}
+\begin{property}
+is\_common as string
+\end{property}
+\begin{property}
+is\_end as string
+\end{property}
+\begin{property}
+is\_lacuna as string
+\end{property}
+\begin{property}
+is\_lemma as string
+\end{property}
+\begin{property}
+is\_nonsense as string
+\end{property}
+\begin{property}
+is\_ph as string
+\end{property}
+\begin{property}
+is\_start as string
+\end{property}
+\begin{property}
+join\_next as string
+\end{property}
+\begin{property}
+join\_prior as string
+\end{property}
+\begin{property}
+language as string
+\end{property}
+\begin{property}
+lexemes as string
+\end{property}
+\begin{property}
+normal\_form as string
+\end{property}
+\begin{property}
+rank as long
+\end{property}
+\begin{property}
+text as string
+\end{property}
 \section{traditionModel}
 \begin{property}
 id as string
@@ -483,6 +543,13 @@ name as string
 ownerId as string
 \end{property}
 \section{duplicateModel}
+\begin{property}
+readings as long
+\end{property}
+\begin{property}
+witnesses as string
+\end{property}
+\section{graphModel}
 \begin{property}
 readings as long
 \end{property}

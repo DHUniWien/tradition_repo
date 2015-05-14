@@ -171,7 +171,7 @@ At the top the „POST“ annotation states the http method. Then the „Path“
 
 
 %----------------------------------------------------------------------------------------
-%	CHAPTER 3
+%	CHAPTER 4
 %----------------------------------------------------------------------------------------
 
 \chapterimage{header.png} % Chapter heading image
@@ -228,7 +228,7 @@ This measurement shows that the execution time depend on the size of the working
 \part{Testing}
 
 %----------------------------------------------------------------------------------------
-%	CHAPTER 1
+%	CHAPTER 5
 %----------------------------------------------------------------------------------------
 
 \chapterimage{header.png} % Chapter heading image
@@ -252,6 +252,9 @@ Unit tests are used for test driven development and are defined by the developer
 
 In the productive system for every REST call jersey is instantiating the requested resource and providing the service. Each resource object has its own database service, which is closed after each call. In production a embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider can be configured to return an impermanent Database.
 
+%----------------------------------------------------------------------------------------
+%	CHAPTER 6
+%----------------------------------------------------------------------------------------
 
 \chapter{Configure the Test-Database}
 
@@ -276,7 +279,7 @@ In the @After method the database has to be closed
 \end{lstlisting}
 With this configuration the impermanent Testdatabase of Neo4j is used during the tests. 
 %----------------------------------------------------------------------------------------
-%	CHAPTER 2
+%	CHAPTER 7
 %----------------------------------------------------------------------------------------
 
 \chapterimage{header.png} % Chapter heading image
@@ -300,7 +303,7 @@ public void SimpleTest(){
 \subsection*{Example}
 \url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserUnitTest.java}
 %----------------------------------------------------------------------------------------
-%	CHAPTER 3
+%	CHAPTER 8
 %----------------------------------------------------------------------------------------
 
 \chapterimage{header.png} % Chapter heading image
@@ -337,7 +340,7 @@ public void SimpleTest(){
 \url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserTest.java}
 
 %----------------------------------------------------------------------------------------
-%	CHAPTER 4
+%	CHAPTER 9
 %----------------------------------------------------------------------------------------
 
 \chapterimage{header.png} % Chapter heading image
@@ -391,252 +394,6 @@ The execution of the tests will take some time because of the generation of huge
 %----------------------------------------------------------------------------------------
 
 \part{RESTful API}
-
-%----------------------------------------------------------------------------------------
-%	CHAPTER 1
-%----------------------------------------------------------------------------------------
-
-\chapterimage{header.png} % Chapter heading image
-
-\chapter{Documentation}
-
-\section{/user}
-\begin{get}
-/user
-\end{get}
-
-\subsection*{Summary}
-Returns a welcome message
-\begin{parameter}
-\end{parameter}
-\begin{return}[SUCCESS]
-\textbf{text/plain}\\
-''User!''
-\end{return}
-
-\section{/user/create}
-\begin{post}
-/user/create
-\end{post}
-
-\subsection*{Summary}
-Creates a user.
-\begin{parameter}
-\textbf{application/json}\\
-\{ ''userId'':<userId>, ''isPublic'':<isAdmin> \}
-\end{parameter}
-\begin{return}[CREATED]
-\textbf{application/json}\\
-\{ ''userId'':<userId>, ''isPublic'':<isAdmin> \}
-\end{return}
-\begin{return}[CONFLICT]
-\textbf{application/json}\\
-Error: A user with this id already exists
-\end{return}
-
-\section{/user/\{id\}}
-\begin{get}
-/user/\{id\}
-\end{get}
-
-\subsection*{Summary}
-Returns the user as JSON Object
-\begin{parameter}\textbf{URL}\\
- Id: the user id
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/json}\\
-\{ 'userId': <userId>, 'isAdmin': <isAdmin> \}\\
-\textit{The information about the user}
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-\textit{The information about the user}
-\end{return}
-
-\section{/user/traditions/\{userId\}}
-\begin{get}
-/user/traditions/\{userId\}
-\end{get}
-
-\subsection*{Summary}
-List all Traditions of a user
-\begin{parameter}\textbf{URL}\\
-userId: the id of the user \\
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/json}\\
-\{''traditions'':[ \{''name'':<traditionName> \} ] \}
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-Error: A user with this id does not exist!
-\end{return}
-
-\section{/textinfo/\{textId\}}
-\begin{post}
-/textinfo/\{textId\}
-\end{post}
-
-\subsection*{Summary}
-Update the textInfo of a tradition.
-\begin{parameter}\textbf{URL}\\
-textId: the id of the tradition \\
-\end{parameter}
-\begin{parameter}
-\textbf{application/json}\\
-\{  'name': <new\_name>, 'language': <new\_language>, 'isPublic': <is\_public>, 'ownerId': <new\_ownerId>  \}
-\end{parameter}
-\begin{return}[SUCCESS]
-\textbf{application/json}\\
-\{  'name': <new\_name>, 'language': <new\_language>, 'isPublic': <is\_public>, 'ownerId': <new\_ownerId>  \}\\
-\textit{The new information of the tradition.}
-\end{return}
-\begin{return}[CONFLICT]
-\textbf{application/json}\\
-''Error: A user with this id does not exist''\\
-\textit{If the user does not exist. }
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-\textit{If the tradition was not found. }
-\end{return}
-
-\section{/tradition/witness/\{tradId\}}
-\begin{get}
-/tradition/witness/\{tradId\}
-\end{get}
-
-\subsection*{Summary}
-List all Witness of a tradition
-\begin{parameter}\textbf{URL}\\
-tradId: the id of the tradition \\
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/json}\\
-
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-Error: A tradition with this id does not exist!
-\end{return}
-
-\section{/tradition/relation/\{tradId\}/relationships}
-\begin{get}
-/tradition/relation/\{tradId/relationships\}
-\end{get}
-
-\subsection*{Summary}
-List all Relationships of a tradition
-\begin{parameter}\textbf{URL}\\
-tradId: the id of the tradition \\
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/json}\\
-\end{return}
-
-\section{/tradition/new}
-\begin{post}
-/tradition/new
-\end{post}
-
-\subsection*{Summary}
-Create a new tradition.
-\begin{parameter}
-\textbf{text/plain}\\
-name: The name of the tradition
-\end{parameter}
-\begin{parameter}
-\textbf{multipart/form-data}\\
-language: The language of the tradition\\
-public: 0 if the tradition is not public 1 if the tradition is public\\
-name: The name of the tradition\\
-file: multipart file input stream
-\end{parameter}
-\begin{return}[CONFLICT]
-\textbf{application/json}\\
-''Error: No user with this id exists''
-\end{return}
-\begin{return}[INTERNAL\_SERVER\_ERROR]
-\textbf{application/json}\\
-''Error: Tradition could not be imported!''
-\textit{If the server was not able to parse the input file}
-\end{return}
-\begin{return}[OK]
-\textbf{application/json}\\
-''Tradition imported successfully''
-\end{return}
-
-\section{/tradition/get/\{tradId\}}
-\begin{get}
-/tradition/get/\{tradId\}
-\end{get}
-
-\subsection*{Summary}
-Get a graphml of a tradition
-\begin{parameter}\textbf{URL}\\
-tradId: the id of the tradition \\
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/xml}\\
-
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-Error: A tradition with this id does not exist!
-\end{return}
-
-\section{/tradition/reading/\{tradId\}/\{readId\}}
-\begin{get}
-/tradition/reading/\{tradId\}/\{readId\}
-\end{get}
-
-\subsection*{Summary}
-Get a specific reading of a tradition
-\begin{parameter}\textbf{URL}\\
-tradId: the id of the tradition \\
-\end{parameter}
-\begin{parameter}\textbf{URL}\\
-readId: the id of the reading \\
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/json} The reading in json\\
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-Error: A tradition with this id does not exist!
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-Error: A reading with this id does not exist!
-\end{return}
-
-\section{/tradition/duplicate/\{tradId\}}
-\begin{post}
-/tradition/duplicate/\{tradId\}
-\end{post}
-
-\subsection*{Summary}
-Duplicates readings in a tradition. Is the opposite method of merge.
-\begin{parameter}\textbf{URL}\\
-tradId: the id of the tradition \\
-\end{parameter}
-\begin{parameter}
-\textbf{application/json}\\
-\{  'readings': [readId1, readId2], 'witnesses': ["wit1", "wit2"]\}
-\end{parameter}
-\begin{return}[OK]
-\textbf{application/json}\\
-\textit{Successfully duplicated readings}
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-\textit{If the tradition was not found. }
-\end{return}
-\begin{return}[NOT\_FOUND]
-\textbf{application/json}\\
-\textit{If one of the readings was not found. }
-\end{return}
 
 \include{api_generated}
 
