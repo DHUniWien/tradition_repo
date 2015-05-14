@@ -527,22 +527,24 @@ public class Reading implements IResource {
 						combinedWitnesses[stayingReadingWitnesses.length + i] = deletingReadingWitnesses[i];
 					Arrays.sort(combinedWitnesses);
 					stayingRel.setProperty("lexemes", combinedWitnesses);
-				} else {
-					Relationship newRel;
-					if (direction.equals(Direction.OUTGOING))
-						newRel = stayingReading.createRelationshipTo(
-								deletingRel.getOtherNode(deletingReading),
-								ERelations.NORMAL);
-					else
-						newRel = deletingRel.getOtherNode(deletingReading)
-								.createRelationshipTo(stayingReading,
-										ERelations.NORMAL);
-					newRel.setProperty("lexemes",
-							deletingRel.getProperty("lexemes"));
+					deletingRel.delete();
 				}
-				deletingRel.delete();
 			}
 		}
+		for (Relationship deletingRel : deletingReading.getRelationships(
+				ERelations.NORMAL, direction)) {
+			Relationship newRel;
+			if (direction.equals(Direction.OUTGOING))
+				newRel = stayingReading.createRelationshipTo(
+						deletingRel.getOtherNode(deletingReading),
+						ERelations.NORMAL);
+			else
+				newRel = deletingRel
+						.getOtherNode(deletingReading)
+						.createRelationshipTo(stayingReading, ERelations.NORMAL);
+			newRel.setProperty("lexemes", deletingRel.getProperty("lexemes"));
+			deletingRel.delete();
+		}		
 	}
 
 	/**
