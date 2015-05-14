@@ -48,6 +48,7 @@ public class Relation implements IResource {
 	 * @param relationshipModel
 	 * @return Http Response 201 and a model containing the created relationship
 	 *         and the readings involved in JSON on success or an ERROR in JSON
+	 *         format
 	 */
     @POST
     @Path("createrelationship")
@@ -157,10 +158,11 @@ public class Relation implements IResource {
 	}
 
     /**
-	 * Get a list of all readings
+	 * Get a list of all relationships from a given tradition.
 	 * 
 	 * @param tradId
-	 * @return relationships ArrayList
+	 * @return a list of the relationships in JSON on success or an ERROR in
+	 *         JSON format
 	 */
     @GET
     @Path("getallrelationships/fromtradition/{tradId}")
@@ -196,12 +198,16 @@ public class Relation implements IResource {
     
   
     /**
-     * Remove all relationships, as it is done in https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271)
-     *  in Relationships of type RELATIONSHIP between the two nodes.
-     * @param relationshipModel
-     * @param tradId
-     * @return HTTP Response 404 when no node was found, 200 When relationships where removed
-     */
+	 * Remove all relationships, as it is done in
+	 * https://github.com/tla/stemmaweb
+	 * /blob/master/lib/stemmaweb/Controller/Relation.pm line 271) in
+	 * Relationships of type RELATIONSHIP between the two nodes.
+	 * 
+	 * @param relationshipModel
+	 * @param tradId
+	 * @return HTTP Response 404 when no node was found, 200 When relationships
+	 *         where removed
+	 */
     @POST
     @Path("deleterelationship/fromtradition/{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)

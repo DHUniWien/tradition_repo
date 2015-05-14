@@ -64,8 +64,8 @@ public class Tradition implements IResource {
 	 * 
 	 * @param traditionMetadata
 	 *            in JSON Format
-	 * @return OK and information about the tradition in json on success or an
-	 *         ERROR as JSON
+	 * @return OK and information about the tradition in JSON on success or an
+	 *         ERROR in JSON format
 	 */
 	@POST
 	@Path("changemetadata/fromtradition/{tradId}")
@@ -115,7 +115,8 @@ public class Tradition implements IResource {
 	/**
 	 * Gets a list of all the complete traditions in the database.
 	 * 
-	 * @return list of tradition model
+	 * @return Http Response 200 and a list of tradition models in JSON on
+	 *         success or Http Response 500
 	 */
 	@GET
 	@Path("getalltraditions")
@@ -150,7 +151,8 @@ public class Tradition implements IResource {
 	 * Gets a list of all the witnesses of a tradition with the given id.
 	 * 
 	 * @param tradId
-	 * @return list of witness model
+	 * @return Http Response 200 and a list of witness models in JSON on success
+	 *         or an ERROR in JSON format
 	 */
 	@GET
 	@Path("getallwitnesses/fromtradition/{tradId}")
@@ -203,7 +205,7 @@ public class Tradition implements IResource {
 	 * Gets a list of all relationships of a tradition with the given id.
 	 * 
 	 * @param tradId
-	 * @return list of relationship model
+	 * @return Http Response 200 and a list of relationship model in JSON
 	 */
 	@GET
 	@Path("getallrelationships/fromtradition/{tradId}")
@@ -268,6 +270,7 @@ public class Tradition implements IResource {
 	
 	/**
 	 * Removes a complete tradition
+	 * 
 	 * @param tradId
 	 * @return http response
 	 */
@@ -326,7 +329,8 @@ public class Tradition implements IResource {
 	/**
 	 * Imports a tradition by given GraphML file and meta data
 	 *
-	 * @return String that will be returned as a text/plain response.
+	 * @return Http Response with the id of the imported tradition on success or
+	 *         an ERROR in JSON format
 	 * @throws XMLStreamException
 	 */
 	@POST

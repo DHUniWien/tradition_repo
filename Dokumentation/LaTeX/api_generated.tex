@@ -2,22 +2,22 @@
 \section{Baseresource: }
 http://localhost:8080/
 \section{/stemma}
-\textbf{Method Name: }getAllStemmata
+\textbf{Method Name: }getAllStemmata \\ Gets a list of all Stemmata available, as dot format
 \begin{get}
 /getallstemmata/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }setStemma
+\textbf{Method Name: }setStemma \\ Puts the Stemma of a DOT file in the database
 \begin{post}
 /newstemma/intradition/\{tradId\}
 \end{post}
 \begin{request}
- as application/json
+ as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
 \end{request}
 \begin{response}
  as text/plain
@@ -25,12 +25,12 @@ tradId as string
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }reorientStemma
+\textbf{Method Name: }reorientStemma \\ Reorients a stemma tree with a given new root node
 \begin{post}
 /reorientstemma/fromtradition/\{tradId\}/withtitle/\{stemmaTitle\}/withnewrootnode/\{nodeId\}
 \end{post}
 \begin{response}
- as application/json
+ as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
@@ -41,12 +41,12 @@ stemmaTitle as string
 \begin{parameter}
 nodeId as string
 \end{parameter}
-\textbf{Method Name: }getStemma
+\textbf{Method Name: }getStemma \\ Returns JSON string with a Stemma of a tradition in DOT format
 \begin{get}
 /getstemma/fromtradition/\{tradId\}/withtitle/\{stemmaTitle\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: Http Response ok and a list of DOT JSON strings on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
@@ -55,7 +55,7 @@ tradId as string
 stemmaTitle as string
 \end{parameter}
 \section{/relation}
-\textbf{Method Name: }delete
+\textbf{Method Name: }delete \\ Remove all relationships, as it is done in https://github.com/tla/stemmaweb/blob/master/lib/stemmaweb/Controller/Relation.pm line 271) in Relationships of type RELATIONSHIP between the two nodes.
 \begin{post}
 /deleterelationship/fromtradition/\{tradId\}
 \end{post}
@@ -63,12 +63,12 @@ stemmaTitle as string
 relationshipModel as application/json
 \end{request}
 \begin{response}
- as text/plain
+ as text/plain: HTTP Response 404 when no node was found, 200 When relationships where removed
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }create
+\textbf{Method Name: }create \\ Creates a new relationship between the two nodes specified.
 \begin{post}
 /createrelationship
 \end{post}
@@ -78,38 +78,38 @@ relationshipModel as application/json
 \begin{response}
  as application/json
 \end{response}
-\textbf{Method Name: }getAllRelationships
+\textbf{Method Name: }getAllRelationships \\ Get a list of all relationships from a given tradition.
 \begin{get}
 /getallrelationships/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: a list of the relationships in JSON on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }deleteById
+\textbf{Method Name: }deleteById \\ Removes a relationship by ID.
 \begin{delete}
 /deleterelationshipbyid/withrelationship/\{relationshipId\}
 \end{delete}
 \begin{response}
- as text/plain
+ as text/plain: HTTP Response 404 when no Relationship was found with id, 200 and a model of the relationship in JSON when the Relationship was removed
 \end{response}
 \begin{parameter}
 relationshipId as string
 \end{parameter}
 \section{/tradition}
-\textbf{Method Name: }getAllRelationships
+\textbf{Method Name: }getAllRelationships \\ Gets a list of all relationships of a tradition with the given id.
 \begin{get}
 /getallrelationships/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: Http Response 200 and a list of relationship model in JSON
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }changeTraditionMetadata
+\textbf{Method Name: }changeTraditionMetadata \\ Changes the metadata of the tradition.
 \begin{post}
 /changemetadata/fromtradition/\{tradId\}
 \end{post}
@@ -117,49 +117,49 @@ tradId as string
 traditionModel as application/json
 \end{request}
 \begin{response}
- as application/json
+ as application/json: OK and information about the tradition in JSON on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }getAllTraditions
+\textbf{Method Name: }getAllTraditions \\ Gets a list of all the complete traditions in the database.
 \begin{get}
 /getalltraditions
 \end{get}
 \begin{response}
- as application/json
+ as application/json: Http Response 200 and a list of tradition models in JSON on success or Http Response 500
 \end{response}
-\textbf{Method Name: }getAllWitnesses
+\textbf{Method Name: }getAllWitnesses \\ Gets a list of all the witnesses of a tradition with the given id.
 \begin{get}
 /getallwitnesses/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: Http Response 200 and a list of witness models in JSON on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }getTradition
+\textbf{Method Name: }getTradition \\ Returns GraphML file from specified tradition owned by user
 \begin{get}
 /gettradition/withid/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: XML data
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }deleteTraditionById
+\textbf{Method Name: }deleteTraditionById \\ Removes a complete tradition
 \begin{delete}
 /deletetradition/withid/\{tradId\}
 \end{delete}
 \begin{response}
- as text/plain
+ as text/plain: http response
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }importGraphMl
+\textbf{Method Name: }importGraphMl \\ Imports a tradition by given GraphML file and meta data
 \begin{post}
 //newtraditionwithgraphml
 \end{post}
@@ -167,20 +167,20 @@ tradId as string
  as multipart/form-data
 \end{request}
 \begin{response}
- as application/json
+ as application/json: Http Response with the id of the imported tradition on success or an ERROR in JSON format
 \end{response}
-\textbf{Method Name: }getDot
+\textbf{Method Name: }getDot \\ Returns DOT file from specified tradition owned by user
 \begin{get}
 /getdot/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: XML data
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
 \section{/reading}
-\textbf{Method Name: }changeReadingProperties
+\textbf{Method Name: }changeReadingProperties \\ Changes properties of a reading according to its keys
 \begin{post}
 /changeproperties/ofreading/\{readId\}
 \end{post}
@@ -188,22 +188,22 @@ tradId as string
  as application/json
 \end{request}
 \begin{response}
- as application/json
+ as application/json: ok response with a model of the modified reading in json format
 \end{response}
 \begin{parameter}
 readId as long
 \end{parameter}
-\textbf{Method Name: }getReading
+\textbf{Method Name: }getReading \\ Returns a single reading by global neo4j id
 \begin{get}
 /getreading/withreadingid/\{readId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: the reading fetched by the id
 \end{response}
 \begin{parameter}
 readId as long
 \end{parameter}
-\textbf{Method Name: }duplicateReading
+\textbf{Method Name: }duplicateReading \\ Duplicates a reading in a specific tradition. Opposite of merge
 \begin{post}
 /duplicatereading
 \end{post}
@@ -211,9 +211,9 @@ readId as long
 duplicateModel as application/json
 \end{request}
 \begin{response}
- as application/json
+ as application/json: a GraphModel in JSON containing all the created readings and the deleted relationships on success or Status.INTERNAL\_SERVER\_ERROR with a detailed message else
 \end{response}
-\textbf{Method Name: }mergeReadings
+\textbf{Method Name: }mergeReadings \\ Merges two readings into one single reading in a specific tradition. Opposite of duplicate
 \begin{post}
 /mergereadings/first/\{firstReadId\}/second/\{secondReadId\}
 \end{post}
@@ -226,7 +226,7 @@ secondReadId as long
 \begin{parameter}
 firstReadId as long
 \end{parameter}
-\textbf{Method Name: }splitReading
+\textbf{Method Name: }splitReading \\ Splits up a single reading into several ones in a specific tradition. Opposite of compress
 \begin{post}
 /splitreading/ofreading/\{readId\}/withsplitindex/\{splitIndex\}
 \end{post}
@@ -242,12 +242,12 @@ readId as long
 \begin{parameter}
 splitIndex as int
 \end{parameter}
-\textbf{Method Name: }getNextReadingInWitness
+\textbf{Method Name: }getNextReadingInWitness \\ gets the next readings from a given readings in the same witness
 \begin{get}
 /getnextreading/fromwitness/\{witnessId\}/ofreading/\{readId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: http.ok and a model of the requested reading in json on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 readId as long
@@ -255,12 +255,12 @@ readId as long
 \begin{parameter}
 witnessId as string
 \end{parameter}
-\textbf{Method Name: }getPreviousReadingInWitness
+\textbf{Method Name: }getPreviousReadingInWitness \\ gets the previous readings from a given readings in the same witness
 \begin{get}
 /getpreviousreading/fromwitness/\{witnessId\}/ofreading/\{readId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: http.ok and a model of the requested reading in json on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 readId as long
@@ -268,22 +268,22 @@ readId as long
 \begin{parameter}
 witnessId as string
 \end{parameter}
-\textbf{Method Name: }getAllReadings
+\textbf{Method Name: }getAllReadings \\ Returns a list of all readings in a tradition
 \begin{get}
 /getallreadings/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: the list of readings in json format on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 tradId as string
 \end{parameter}
-\textbf{Method Name: }getIdenticalReadings
+\textbf{Method Name: }getIdenticalReadings \\ Get all readings which have the same text and the same rank between given ranks
 \begin{get}
 /getidenticalreadings/fromtradition/\{tradId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: a list of lists as a json ok response: each list contain identical readings on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 endRank as long
@@ -294,12 +294,12 @@ tradId as string
 \begin{parameter}
 startRank as long
 \end{parameter}
-\textbf{Method Name: }getCouldBeIdenticalReadings
+\textbf{Method Name: }getCouldBeIdenticalReadings \\ Returns a list of a list of readingModels with could be one the same rank without problems
 \begin{get}
 /couldbeidenticalreadings/fromtradition/\{tradId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: list of readings that could be at the same rank in JSON format or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 endRank as long
@@ -310,7 +310,7 @@ tradId as string
 \begin{parameter}
 startRank as long
 \end{parameter}
-\textbf{Method Name: }compressReadings
+\textbf{Method Name: }compressReadings \\ Compress two readings into one. Texts will be concatenated together (with or without a space or extra text. The reading with the lower rank will be given first. Opposite of split
 \begin{post}
 /compressreadings/read1id/\{read1Id\}/read2id/\{read2Id\}/concatenate/\{con\}
 \end{post}
@@ -318,7 +318,7 @@ startRank as long
  as text/plain
 \end{request}
 \begin{response}
- as application/json
+ as application/json: status.ok if compress was successful. Status.INTERNAL\_SERVER\_ERROR with a detailed message if not concatenated
 \end{response}
 \begin{parameter}
 read1Id as long
@@ -330,12 +330,12 @@ read2Id as long
 con as string
 \end{parameter}
 \section{/witness}
-\textbf{Method Name: }getWitnessAsText
+\textbf{Method Name: }getWitnessAsText \\ finds a witness in the database and returns it as a string
 \begin{get}
 /gettext/fromtradition/\{tradId\}/ofwitness/\{witnessId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: a witness as a string
 \end{response}
 \begin{parameter}
 tradId as string
@@ -343,12 +343,12 @@ tradId as string
 \begin{parameter}
 witnessId as string
 \end{parameter}
-\textbf{Method Name: }getWitnessAsTextBetweenRanks
+\textbf{Method Name: }getWitnessAsTextBetweenRanks \\ find a requested witness in the data base and return it as a string according to define start and end readings (including the readings in those ranks). if end-rank is too high or start-rank too low will return till the end/from the start of the witness
 \begin{get}
 /gettext/fromtradition/\{tradId\}/ofwitness/\{witnessId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: a witness as a string
 \end{response}
 \begin{parameter}
 endRank as string
@@ -362,12 +362,12 @@ startRank as string
 \begin{parameter}
 witnessId as string
 \end{parameter}
-\textbf{Method Name: }getWitnessAsReadings
+\textbf{Method Name: }getWitnessAsReadings \\ finds a witness in the database and returns it as a list of readings
 \begin{get}
 /getreadinglist/fromtradition/\{tradId\}/ofwitness/\{witnessId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: a witness as a list of models of readings in json format
 \end{response}
 \begin{parameter}
 tradId as string
@@ -376,7 +376,7 @@ tradId as string
 witnessId as string
 \end{parameter}
 \section{/user}
-\textbf{Method Name: }create
+\textbf{Method Name: }create \\ Creates a user based on the parameters submitted in JSON.
 \begin{post}
 /createuser
 \end{post}
@@ -384,34 +384,34 @@ witnessId as string
 userModel as application/json
 \end{request}
 \begin{response}
- as text/plain
+ as application/json: a userModel in JSON on success or an ERROR in JSON format
 \end{response}
-\textbf{Method Name: }getUserById
+\textbf{Method Name: }getUserById \\ Gets a user by the id.
 \begin{get}
 /getuser/withid/\{userId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: UserModel as JSON or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 userId as string
 \end{parameter}
-\textbf{Method Name: }deleteUserById
+\textbf{Method Name: }deleteUserById \\ Removes a user and all his traditions
 \begin{delete}
 /deleteuser/withid/\{userId\}
 \end{delete}
 \begin{response}
- as text/plain
+ as text/plain: OK on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 userId as string
 \end{parameter}
-\textbf{Method Name: }getTraditionsByUserId
+\textbf{Method Name: }getTraditionsByUserId \\ Get all Traditions of a user
 \begin{get}
 /gettraditions/ofuser/\{userId\}
 \end{get}
 \begin{response}
- as application/json
+ as application/json: OK on success or an ERROR in JSON format
 \end{response}
 \begin{parameter}
 userId as string

@@ -35,7 +35,7 @@ public class Witness implements IResource {
 	GraphDatabaseService db = dbServiceProvider.getDatabase();
 
 	/**
-	 * finds a witness in the data base and returns it as a string
+	 * finds a witness in the database and returns it as a string
 	 * 
 	 * @param userId
 	 *            : the id of the user who owns the witness
@@ -150,7 +150,7 @@ public class Witness implements IResource {
 	 *            : the name of the tradition which the witness is in
 	 * @param witnessId
 	 *            : the id of the witness
-	 * @return a witness as a list of readings
+	 * @return a witness as a list of models of readings in json format
 	 */
 	@GET
 	@Path("getreadinglist/fromtradition/{tradId}/ofwitness/{witnessId}")

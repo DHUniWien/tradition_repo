@@ -89,7 +89,7 @@ public class Reading implements IResource {
 	 *            which should change the value of 'language' to 'german' will
 	 *            look like
 	 *            this:[{\"key\":\"language\",\"newProperty\":\"german\"}]
-	 * @return ok response with the modified reading as json
+	 * @return ok response with a model of the modified reading in json format
 	 */
 	@POST
 	@Path("changeproperties/ofreading/{readId}")
@@ -130,9 +130,9 @@ public class Reading implements IResource {
 	 *            a model in JSON containing the readings to be duplicated and
 	 *            the witnesses of the old readings which the duplicated new
 	 *            readings should now belong to
-	 * @return a readingsAndRelationshipsModel in JSON containing all the
-	 *         created readings and the deleted relationships on success or an
-	 *         ERROR as JSON else
+	 * @return a GraphModel in JSON containing all the created readings and the
+	 *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
+	 *         with a detailed message else
 	 */
 	@POST
 	@Path("duplicatereading")
@@ -584,8 +584,8 @@ public class Reading implements IResource {
 	 *            Is given as a String to avoid problems with 'unsafe'
 	 *            characters in the URL
 	 * @return a GraphModel in JSON containing all the created and modified
-	 *         readings and the deleted relationships on success or an ERROR as
-	 *         JSON
+	 *         readings and the deleted relationships on success or
+	 *         Status.INTERNAL_SERVER_ERROR with a detailed message else
 	 */
 	@POST
 	@Path("splitreading/ofreading/{readId}/withsplitindex/{splitIndex}")
@@ -769,7 +769,7 @@ public class Reading implements IResource {
 	 * @param readId
 	 *            : the id of the reading
 	 * 
-	 * @return the requested reading as json ok response
+	 * @return http.ok and a model of the requested reading in json on success or an ERROR in JSON format
 	 */
 	@GET
 	@Path("getnextreading/fromwitness/{witnessId}/ofreading/{readId}")
@@ -807,14 +807,15 @@ public class Reading implements IResource {
 	}
 
 	/**
-	 * gets the next readings from a given readings in the same witness
+	 * gets the previous readings from a given readings in the same witness
 	 * 
 	 * @param witnessId
 	 *            : the id (name) of the witness
 	 * @param readId
 	 *            : the id of the reading
 	 * 
-	 * @return the requested reading as json ok response
+	 * @return http.ok and a model of the requested reading in json on success
+	 *         or an ERROR in JSON format
 	 */
 	@GET
 	@Path("getpreviousreading/fromwitness/{witnessId}/ofreading/{readId}")
@@ -856,7 +857,8 @@ public class Reading implements IResource {
 	 * 
 	 * @param tradId
 	 *            the id of the tradition
-	 * @return the list of readings
+	 * @return the list of readings in json format on success or an ERROR in
+	 *         JSON format
 	 */
 	@GET
 	@Path("getallreadings/fromtradition/{tradId}")
@@ -898,7 +900,7 @@ public class Reading implements IResource {
 	 * @param endRank
 	 *            the end rank of the search range
 	 * @return a list of lists as a json ok response: each list contain
-	 *         identical readings
+	 *         identical readings on success or an ERROR in JSON format
 	 */
 	@GET
 	@Path("getidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
@@ -972,7 +974,8 @@ public class Reading implements IResource {
 	 * @param tradId
 	 * @param startRank
 	 * @param endRank
-	 * @return list of readings that could be at the same rank
+	 * @return list of readings that could be at the same rank in JSON format or
+	 *         an ERROR in JSON format
 	 */
 	@GET
 	@Path("couldbeidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")

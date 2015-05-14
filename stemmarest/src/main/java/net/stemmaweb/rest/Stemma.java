@@ -43,7 +43,7 @@ public class Stemma implements IResource {
 	 * 
 	 * @param tradId
 	 * @return Http Response ok and a list of DOT JSON strings on success or an
-	 *         ERROR in JSON
+	 *         ERROR in JSON format
 	 */
 	@GET
 	@Path("getallstemmata/fromtradition/{tradId}")
@@ -94,7 +94,7 @@ public class Stemma implements IResource {
 	 * @param tratitionId
 	 * @param stemmaTitle
 	 * @return Http Response ok and DOT JSON string on success or an ERROR in
-	 *         JSON
+	 *         JSON format
 	 */
 	@GET
 	@Path("getstemma/fromtradition/{tradId}/withtitle/{stemmaTitle}")
@@ -112,7 +112,7 @@ public class Stemma implements IResource {
 	 * 
 	 * @param tratitionId
 	 * @return Http Response ok and DOT JSON string on success or an ERROR in
-	 *         JSON
+	 *         JSON format
 	 */
 	@POST
 	@Path("newstemma/intradition/{tradId}")
@@ -126,11 +126,12 @@ public class Stemma implements IResource {
 	
 	/**
 	 * Reorients a stemma tree with a given new root node
+	 * 
 	 * @param tradId
 	 * @param stemmaTitle
 	 * @param nodeId
 	 * @return Http Response ok and DOT JSON string on success or an ERROR in
-	 *         JSON
+	 *         JSON format
 	 */
 	@POST
 	@Path("reorientstemma/fromtradition/{tradId}/withtitle/{stemmaTitle}/withnewrootnode/{nodeId}")
