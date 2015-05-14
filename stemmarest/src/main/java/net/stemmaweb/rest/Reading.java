@@ -507,8 +507,8 @@ public class Reading implements IResource {
 				ERelations.NORMAL, direction))
 			for (Relationship deletingRel : deletingReading.getRelationships(
 					ERelations.NORMAL, direction)) {
-				if (stayingRel.getOtherNode(stayingReading).equals(
-						deletingRel.getOtherNode(deletingReading))) {
+				if (stayingRel.getOtherNode(stayingReading).getId()==(
+						deletingRel.getOtherNode(deletingReading).getId())) {
 					// get Witnesses
 					String[] stayingReadingWitnesses = (String[]) stayingRel
 							.getProperty("lexemes");

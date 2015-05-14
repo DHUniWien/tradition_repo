@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key attr.name="language" attr.type="string" for="graph" id="dg0"/>
+  <key attr.name="name" attr.type="string" for="graph" id="dg1"/>
+  <key attr.name="public" attr.type="boolean" for="graph" id="dg2"/>
+  <key attr.name="stemmata" attr.type="string" for="graph" id="dg3"/>
+  <key attr.name="stemweb_jobid" attr.type="string" for="graph" id="dg4"/>
+  <key attr.name="user" attr.type="string" for="graph" id="dg5"/>
+  <key attr.name="version" attr.type="string" for="graph" id="dg6"/>
+  <key attr.name="grammar_invalid" attr.type="boolean" for="node" id="dn0"/>
+  <key attr.name="id" attr.type="string" for="node" id="dn1"/>
+  <key attr.name="is_common" attr.type="boolean" for="node" id="dn2"/>
+  <key attr.name="is_end" attr.type="boolean" for="node" id="dn3"/>
+  <key attr.name="is_lacuna" attr.type="boolean" for="node" id="dn4"/>
+  <key attr.name="is_lemma" attr.type="boolean" for="node" id="dn5"/>
+  <key attr.name="is_nonsense" attr.type="boolean" for="node" id="dn6"/>
+  <key attr.name="is_ph" attr.type="boolean" for="node" id="dn7"/>
+  <key attr.name="is_start" attr.type="boolean" for="node" id="dn8"/>
+  <key attr.name="join_next" attr.type="boolean" for="node" id="dn9"/>
+  <key attr.name="join_prior" attr.type="boolean" for="node" id="dn10"/>
+  <key attr.name="language" attr.type="string" for="node" id="dn11"/>
+  <key attr.name="lexemes" attr.type="string" for="node" id="dn12"/>
+  <key attr.name="normal_form" attr.type="string" for="node" id="dn13"/>
+  <key attr.name="rank" attr.type="int" for="node" id="dn14"/>
+  <key attr.name="text" attr.type="string" for="node" id="dn15"/>
+  <key attr.name="a_derivable_from_b" attr.type="boolean" for="edge" id="de0"/>
+  <key attr.name="alters_meaning" attr.type="int" for="edge" id="de1"/>
+  <key attr.name="annotation" attr.type="string" for="edge" id="de2"/>
+  <key attr.name="b_derivable_from_a" attr.type="boolean" for="edge" id="de3"/>
+  <key attr.name="displayform" attr.type="string" for="edge" id="de4"/>
+  <key attr.name="extra" attr.type="boolean" for="edge" id="de5"/>
+  <key attr.name="is_significant" attr.type="string" for="edge" id="de6"/>
+  <key attr.name="non_independent" attr.type="boolean" for="edge" id="de7"/>
+  <key attr.name="reading_a" attr.type="string" for="edge" id="de8"/>
+  <key attr.name="reading_b" attr.type="string" for="edge" id="de9"/>
+  <key attr.name="scope" attr.type="string" for="edge" id="de10"/>
+  <key attr.name="type" attr.type="string" for="edge" id="de11"/>
+  <key attr.name="witness" attr.type="string" for="edge" id="de12"/>
+  <graph edgedefault="directed" id="Tradition" parse.edgeids="canonical" parse.edges="49" parse.nodeids="canonical" parse.nodes="26" parse.order="nodesfirst">
+    <data key="dg3"/>
+    <data key="dg0">Default</data>
+    <data key="dg6">3.2</data>
+    <data key="dg1">Tradition</data>
+	<data key="dg3">digraph "stemma" {  0 [ class=hypothetical ];  A [ class=hypothetical ];  B [ class=hypothetical ];  C [ class=hypothetical ]; D [ class=hypothetical ];0 -> A;  0 -> B;  A -> C;} graph "Semstem 1402333041_0" {  0 [ class=hypothetical ];  A [ class=hypothetical ];  B [ class=hypothetical ];  C [ class=hypothetical ]; D [ class=hypothetical ];0 -- A;  A -- B;  B -- C;}</data>
+    <data key="dg2">0</data>
+    <node id="n0">
+      <data key="dn15">#END#</data>
+      <data key="dn3">1</data>
+      <data key="dn1">__END__</data>
+      <data key="dn14">19</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n1">
+      <data key="dn15">#START#</data>
+      <data key="dn8">n1</data>
+      <data key="dn1">__START__</data>
+      <data key="dn14">0</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n2">
+      <data key="dn15">we</data>
+      <data key="dn1">n2</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">1</data>
+      <data key="dn2">1</data>
+    </node>
+    <node id="n4">
+      <data key="dn15">all</data>
+      <data key="dn1">n4</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">2</data>
+      <data key="dn2">1</data>
+    </node>
+    <node id="n5">
+      <data key="dn15">they</data>
+      <data key="dn1">n5</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">1</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n6">
+      <data key="dn15">live</data>
+      <data key="dn1">n6</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">3</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n7">
+      <data key="dn15">liv</data>
+      <data key="dn1">n7</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">3</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n8">
+      <data key="dn15">live</data>
+      <data key="dn1">n8</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">3</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n9">
+      <data key="dn15">in</data>
+      <data key="dn1">n9</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">4</data>
+      <data key="dn2">1</data>
+    </node>
+    <node id="n11">
+      <data key="dn15">a</data>
+      <data key="dn1">n11</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">5</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n12">
+      <data key="dn15">yellow</data>
+      <data key="dn1">n12</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">6</data>
+      <data key="dn2">1</data>
+    </node>
+    <node id="n13">
+      <data key="dn15">red</data>
+      <data key="dn1">n13</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">6</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n14">
+      <data key="dn15">submarine</data>
+      <data key="dn1">n14</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">9</data>
+      <data key="dn2">1</data>
+    </node>
+    <node id="n15">
+      <data key="dn15">sub</data>
+      <data key="dn1">n15</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">7</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n16">
+      <data key="dn15">marine</data>
+      <data key="dn1">n16</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">8</data>
+      <data key="dn2">0</data>
+    </node>
+    <node id="n17">
+      <data key="dn15">a</data>
+      <data key="dn1">n17</data>
+      <data key="dn11">Default</data>
+      <data key="dn14">5</data>
+      <data key="dn2">0</data>
+    </node>
+    <edge source="n1" target="n2" id="e0">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n1" target="n2" id="e1">
+      <data key="de12">B</data>
+    </edge>
+	<edge source="n1" target="n2" id="e5">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n1" target="n5" id="e2">
+      <data key="de12">C</data>
+    </edge>
+    <edge source="n2" target="n4" id="e3">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n2" target="n4" id="e6">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n2" target="n6" id="e4">
+      <data key="de12">B</data>
+    </edge>    
+    <edge source="n4" target="n6" id="e8">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n4" target="n6" id="e9">
+      <data key="de12">C</data>
+    </edge>
+    <edge source="n4" target="n7" id="e10">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n5" target="n4" id="e11">
+      <data key="de12">C</data>
+    </edge>
+    <edge source="n6" target="n9" id="e12">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n6" target="n9" id="e15">
+      <data key="de12">B</data>
+    </edge> 
+	<edge source="n6" target="n9" id="e13">
+      <data key="de12">C</data>
+    </edge>
+    <edge source="n7" target="n9" id="e14">
+      <data key="de12">D</data>
+    </edge>  
+    <edge source="n9" target="n17" id="e17">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n9" target="n17" id="e18">
+      <data key="de12">B</data>
+    </edge>    
+    <edge source="n9" target="n11" id="e20">
+      <data key="de12">C</data>
+    </edge>
+    <edge source="n9" target="n11" id="e21">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n17" target="n12" id="e22">
+      <data key="de12">A</data>
+    </edge>
+	<edge source="n17" target="n12" id="e19">
+      <data key="de12">B</data>
+    </edge>
+	<edge source="n11" target="n14" id="e100">
+      <data key="de12">C</data>
+    </edge>
+	<edge source="n11" target="n13" id="e101">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n12" target="n14" id="e23">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n12" target="n15" id="e24">
+      <data key="de12">B</data>
+    </edge>   
+    <edge source="n13" target="n14" id="e26">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n14" target="n0" id="e27">
+      <data key="de12">A</data>
+    </edge>
+    <edge source="n14" target="n0" id="e28">
+      <data key="de12">C</data>
+    </edge>
+    <edge source="n14" target="n0" id="e29">
+      <data key="de12">D</data>
+    </edge>
+    <edge source="n15" target="n16" id="e30">
+      <data key="de12">B</data>
+    </edge>
+    <edge source="n16" target="n0" id="e31">
+      <data key="de12">B</data>
+    </edge>    
+  </graph>
+  <graph edgedefault="directed" id="relationships" parse.edgeids="canonical" parse.edges="3" parse.nodeids="canonical" parse.nodes="26" parse.order="nodesfirst">
+    <node id="n0">
+      <data key="dn1">__END__</data>
+    </node>
+    <node id="n1">
+      <data key="dn1">__START__</data>
+    </node>
+    <node id="n1">
+      <data key="dn1">n1</data>
+    </node>
+    <node id="n2">
+      <data key="dn1">n2</data>
+    </node>
+    <node id="n3">
+      <data key="dn1">n3</data>
+    </node>
+    <node id="n4">
+      <data key="dn1">n4</data>
+    </node>
+    <node id="n5">
+      <data key="dn1">n5</data>
+    </node>
+    <node id="n6">
+      <data key="dn1">n6</data>
+    </node>
+    <node id="n7">
+      <data key="dn1">n7</data>
+    </node>
+    <node id="n8">
+      <data key="dn1">n8</data>
+    </node>
+    <node id="n9">
+      <data key="dn1">n9</data>
+    </node>
+    <node id="n11">
+      <data key="dn1">n11</data>
+    </node>
+    <node id="n12">
+      <data key="dn1">n12</data>
+    </node>
+    <node id="n13">
+      <data key="dn1">n13</data>
+    </node>
+    <node id="n14">
+      <data key="dn1">n14</data>
+    </node>
+    <node id="n15">
+      <data key="dn1">n15</data>
+    </node>
+    <node id="n16">
+      <data key="dn1">n16</data>
+    </node>
+    <node id="n17">
+      <data key="dn1">n17</data>
+    </node>
+    <edge source="n6" target="n7" id="e1">
+      <data key="de8">live</data>
+      <data key="de6">no</data>
+      <data key="de9">liv</data>
+      <data key="de1">0</data>
+      <data key="de11">spelling</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n12" target="n13" id="e2">
+      <data key="de8">yellow</data>
+      <data key="de6">no</data>
+      <data key="de9">red</data>
+      <data key="de1">0</data>
+      <data key="de11">lexical</data>
+      <data key="de10">local</data>
+    </edge>
+    <edge source="n11" target="n17" id="e3">
+      <data key="de8">a</data>
+      <data key="de6">no</data>
+      <data key="de9">a</data>
+      <data key="de1">0</data>
+      <data key="de11">other</data>
+      <data key="de10">local</data>
+    </edge>
+  </graph>
+</graphml>

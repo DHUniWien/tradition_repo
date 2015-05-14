@@ -379,7 +379,7 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void duplicateReadingWithDuölicateForTwoWitnessesTest() {
+	public void duplicateReadingWithDuplicateForTwoWitnessesTest() {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);
 			ExecutionResult result = engine.execute("match (w:WORD {text:'of'}) return w");
