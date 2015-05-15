@@ -277,7 +277,7 @@ Unit tests are used for test-driven-development and are defined by the developer
 \includegraphics[scale=.40]{Pictures/jerseyoverview.png} 
 \end{center}
 
-In the productive system, for every REST call a jersey instantiate the requested resource and provides the service. Each resource object has its own database service, which is closed after each call. In production an embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database.
+In the productive system, for every REST call a jersey instantiate the requested IResource and provides the service. A global singleton GraphDatabaseService object is used to provide the GraphDatabaseService. In production this GraphDatabaseService is an embedded neo4j GraphDatabase. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database. As the GraphDatabaseService is a singleton object this configuration needs to be done before the start-up of the Jersey Testserver.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 6
