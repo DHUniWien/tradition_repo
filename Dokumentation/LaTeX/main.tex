@@ -156,9 +156,7 @@ Neo4J uses a powerful script language called cypher. It’s the equivalent to SQ
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Jersey}
-
-This program is basically a REST-API for stemmaweb, a web tool for comparing texts. The Java framework chosen was Jersey due to its simplicity and ease of use. \\
-Jersey is an open source framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used. \\
+Jersey is an open source java framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used in this program. \\
 
 An example of the method declaration of duplicateReading:
 \begin{lstlisting}
@@ -179,15 +177,15 @@ The „POST“ annotation states the http method. The „Path“ annotation sets
 
 \chapter{Performance}
 
-One of the main goals of the redesign is it to create a faster RESTful service. To assure the speed of the service some performance tests are done. 
+One of the main goals of this project is it to create a  RESTful service which is significantly faster then the existing one. To assure the speed of the service some performance tests are done. 
 \\ \quad \\
-The aim of the performance tests is it to show that the response time of the service is limited and within a usable range. So the time to execute all operations for a certain request is measured. This contains the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data are transmitted over the local loop interface, so the network speed is not measured. 
+The goal of the performance tests is to show that the response time of the service is limited and within a usable range, therefore the tests measure the time to execute all operations for a certain request. This includes the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data is transmitted over the local loop interface, so the network speed is not measured. 
 \\ \quad \\
-To do the tests the database is populated by a random graph which contains several valid traditions on which the REST requests can be executed. Several tests with databases of a different size are done to show that the response time does not change with an increasing database size. (Actually there are several search by ID requests in the database which execute under O(log n) but as the database access time takes such a small percentage of the measurement scope this does not show up in the size of database expected for an operational database.)
+For the purpose of the tests the database is being populated by a random graph which contains several valid traditions on which the REST requests can be executed. Several tests with databases of different sizes are done to show that the response time does not change while the size of the database increases. (There are several Node-ID queries in the database which execute under O(log n). But as the database access time takes such a small percentage of the measurement scope, this does not show up as the size of the database grows).
 \\ \quad \\
-In the following measurement series the dimension of the database size is tested. This tests show, that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase which allows to work on a subgraph without filtering the whole database. 
+In the following measurements are a result of tests which test the dimension of the database. Those tests show that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase in which a query can search on a subgraph without filtering the whole database. 
 \begin{remark}
-The implementation of stemma rest uses some search node by id methods which search over the complete database but those are in $O(log n)$ and are not seen in the noise of the other operations. In a much bigger Database those methods will slow down the REST requests. But it is not expected that the database will grow that big, that this operations will have any impact.
+The implementation of stemmarest uses some search node by id methods (a part of Neo4j framework) which search over the complete database. It is then important to realize that those quarries are done on $O(log n)$ time and are not seen in the noise of the other operations during the tests. In a much bigger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
 \end{remark} 
 
 \begin{figure}[h!]
@@ -207,9 +205,9 @@ The implementation of stemma rest uses some search node by id methods which sear
   \centering
     \includegraphics[scale=0.45]{1000knode.png}
 \end{figure}
-The previous measurement series tested the dimension of the database size and could show that the response time is almost independent of it for the expected database size of something between 1000 and 1 Million Nodes (Readings). This independence results out of the fact, that each Tradition can be selected as a subgraph and the algorithms only have a subset of the whole database to search trough. It is obviously that those algorithms are not independent of the tradition size as the working subset grows with a bigger tradition. Most of the algorithms to work on a tradition are in $O(log n)$ but there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
+The previous measurement test the dimension of the database and could show that the response time is almost independent to its size between 1000 and 1 Million Nodes (Readings). This independence is a results of the fact that each Tradition can be selected as a subgraph and the algorithms only have a subset of the whole database to search trough. It is obvious the tradition size have an influence on the speed of those algorithms, as the working subset grows with a bigger tradition. Most of the algorithms which work on a tradition are in $O(log n)$, though there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
 \\ \quad \\
-In the following test series the dimension of the tradition size is varied. 
+In the following tests the dimension of the tradition is varied. 
 \begin{figure}[h!]
   \caption{Database with 10000 nodes,  working tradition with 1000 nodes }
   \centering
@@ -220,7 +218,7 @@ In the following test series the dimension of the tradition size is varied.
   \centering
     \includegraphics[scale=0.45]{trad10kwords.png}
 \end{figure}
-This measurement shows that the execution time depend on the size of the working tradition. In this test result the getAllReadingsFromATradition each reading of the tradition is parsed to a JSON Object and all are returned as an List. The parsing of those nodes executes in O(n) and the downloading of the JSON file takes also its time. As larger traditions are not expected the execution time of those methods is in the accepted range.
+Those measurements show that the execution time depends on the size of the working tradition, as in the results for the getAllReadingsFromATradition method, in which each reading of the tradition is parsed to a JSON Object and all are returned as an List. The parsing of those nodes executes in O(n) and the downloading of the JSON file takes also its time. As larger traditions are not expected the execution time of those methods is in the accepted range.
 
 %----------------------------------------------------------------------------------------
 %	PART
@@ -235,13 +233,13 @@ This measurement shows that the execution time depend on the size of the working
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Concept}
-This chapter describes the test-concept of the Digital Humanities PSE2 Project. The testing is used to assure the quality of the project and for test driven development. All tests are written in a manner they don't have any impact on the architecture of the project. 
+This chapter describes the test-concept of the Digital Humanities PSE2 Project. The testing is used to assure the quality of the project and for test driven development. All tests are written in such a manner that they do not have any impact on the architecture of the project. 
 
 \section*{Integration Tests}
-Every user story is tested by an integration Test. The integration tests assures the quality of the project. The technique of integration tests is described in the Integration test chapter. 
+Every user story is tested by integration tests. Those tests assures the quality of the project. The technique of integration tests is described in the Integration test chapter. 
 
 \section*{Unit Tests}
-Unit tests are used for test driven development and are defined by the developer. They are only for the development process and are not referenced in quality audits.
+Unit tests are used for test-driven-development and are defined by the developer. They are only used for the development process and are not a referenced to the quality of the end product.
 
 \newpage
 
@@ -251,7 +249,7 @@ Unit tests are used for test driven development and are defined by the developer
 \includegraphics[scale=.40]{Pictures/jerseyoverview.png} 
 \end{center}
 
-In the productive system for every REST call jersey is instantiating the requested resource and providing the service. Each resource object has its own database service, which is closed after each call. In production a embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider can be configured to return an impermanent Database.
+In the productive system, for every REST call a jersey instantiate the requested resource and provides the service. Each resource object has its own database service, which is closed after each call. In production an embedded neo4j GraphDatabase is used. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 6
@@ -348,31 +346,31 @@ public void SimpleTest(){
 
 \chapter{Benchmark Testing}
 
-A main goal of the PSE2 stemmarest project is a good performance compared to the previous RESTful service. To measure the performance benchmark testing is needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this \textit{com.carrotsearch.junitbenchmarks} a handy JUnit benchmark test suite is used. This JUnitbenchmarks measure the time which is used to execute a test and can generate visual representations of the measurement.\\
-For the benchmark testing it is of interest to have a variety of different databases. Those databases should differ in their size from small to very huge. This allows to measure the algorithms in extreme situations.
-To generate valid graphs only limited by diskspace the class \textit{RandomGraphGenerator} can be used. By calling the static method role a graph is generated according to the parameters.\\
+The main goal of the stemmarest project is to achieve better performance then the previous service. To measure the performance of the system benchmark testing is needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this \textit{com.carrotsearch.junitbenchmarks} a handy JUnit benchmark test suite is used. This JUnitbenchmarks measure the time which is used to execute a test and can generate visual representations of the measurement.\\
+For effective benchmark testing it is important to have a variety of different databases. Those databases should differ in size from small to very huge. This allows to measure the algorithms in extreme situations.
+To generate valid graphs only limited by space the class \textit{RandomGraphGenerator} can be used. By calling this static method a graph is generated according to the parameters.\\
 \begin{remark}
 Please note that the response time highly depends on the hardware the tests are running on and the actual state of Javas virtual machine. 
 \end{remark}
-To reduce the influence of the virtual machine before the measurements 5 warm-up calls are done to bring the virtual machine to live. The hardware which was used for testing is represented in the report.
+To reduce the influence of the virtual machine before the measurements 5 warm-up calls are done. The hardware which was used for testing is represented in the report.
 
 \section*{Setup}
-All the classes related to the Benchmark Tests can be found in the package \\ \textit{net.stemmaweb.stemmaserver.benachmarktests}. The class BenchmarkTests contains all Tests. The classes Benchmark<n>Nodes contain the database generation. Here is configured how many nodes the database has. This are also the classes which are run with JUnit test. BenchmarkTests cant be run as a JUnit test as it is a abstract class. s
+All the classes related to the Benchmark Tests can be found in the package \\ \textit{net.stemmaweb.stemmaserver.benachmarktests}. The class BenchmarkTests contains all Tests. The classes Benchmark<n>Nodes contain the database generator. In it it is being configured how many nodes the database has. Those are also the classes which run with the JUnit test. BenchmarkTests cant be run as a JUnit test as it is an abstract class.
 
 \begin{center}
 \includegraphics[scale=0.4]{BenchmarkTestsClassOverview.jpg} 
 \end{center}
 
-Tests are simply implemented in the BenchmarkTests class with the @Test annotation. It is best practice only to implement the restcall in this method and only test if Response.Status is OK. This assures that as less as possible overhead time is measured. And the integration- and JUnit tests should be done on a other place.
+Tests are simply implemented in the BenchmarkTests class with the @Test annotation. It is best practice only to implement the restcall in this method and only test if Response.Status is OK. This assures that as low as possible overhead time will be measured. The integration- and JUnit tests should be done in a different location.
 
 \begin{remark}
 JUnitBenchmarks measures the time to execute (@Before, @Test, @After). Heavy operations which should not be measured can be done in @BeforeClass and @AfterClass.
 \end{remark}
 
-To create a new database test-environment copy the class Benchmark600Nodes and rename it to the count of Nodes that should be inserted. In the class itself only two small adjustments need to be done. First change the name of the report file \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')}. Second adjust the properties of the database which should be generated \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
+To create a new database, test-environment copy the class Benchmark600Nodes and rename it to the count of Nodes that should be inserted. In the class itself only two small adjustments need to be done. First: change the name of the report file \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')}. Second: adjust the properties of the database which should be generated \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
 
 \section*{Run Benchmarktests}
-The Benchmarktests can be run as every JUnit test. But to generate the report an argument needs to be passed by. 
+The Benchmarktests can be run as every JUnit test. To generate the report, though, an argument needs to be passed. 
 Create a JUnit Test as follows:
 
 \begin{center}
