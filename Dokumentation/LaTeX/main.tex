@@ -115,6 +115,34 @@
 
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
+%----------------------------------------------------------------------------------------
+%	CHAPTER 
+%----------------------------------------------------------------------------------------
+
+\chapterimage{header.png} % Chapter heading image
+
+\chapter{Setup}
+
+\section*{Downloading}
+
+git clone https://github.com/tohotforice/PSE2\_DH.git
+
+\section*{Building}
+
+Stemmarest needs to be built using Maven. This can be done using a java IDE (e.g Eclipse) and a Maven plugin
+
+\section*{Running}
+
+As this application represents a server side only, there is no full GUI included. It is possible though to test it by using the test interface testGui.html which is located at StemmaClient.
+
+\section*{Using the test interface}
+
+\begin{itemize}
+\item Create a user and give it an id (this is necessary as every graph needs to be owned by a user)
+\item Import an GraphML file using the id of the user you have created. The generated id of the tradition will be returned
+\item Use the custom request by typing in the API call you want (all calls are listed in the documentation)
+\end{itemize}
+A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base (see Neo4j visualization in section Database)
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
