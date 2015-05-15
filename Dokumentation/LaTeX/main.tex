@@ -124,7 +124,8 @@ Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod 
 
 \chapter{Database (neo4j)}
 
-In our project we used a graph database instead of a relational database.\\ This was due to the fact, that relational databases are much faster when it comes down to look for objects in a list that fulfill some constraints to other objects. Normally in a relational database you would use multiple joins to get your desired result. In the graph way it’s much easier because you traverse the graph (previously mentioned as list) from top down using either breadth- or depth-first algorithm and look for a specific relation between two nodes (previously objects). In respect of that we save a lot of time traversing instead of writing complicated queries which run mostly slow. \\ \quad \\Therefore we use Neo4J (Additional info can be found under http://neo4j.com/developer/graph-db-vs-rdbms/). Neo4J is a graph database that is capable of managing millions of nodes and relationships and returning or changing them within logarithmic or even constant time. That means that it won’t make a big difference whether you use 10 nodes, or 1 million. You can find additional information on benchmarking in the related chapter of this documentation. \\ \quad \\Our database is mainly one big graph. We use different Labels for Nodes and Relationships to increase the search speed. \\ \quad \\ In the database we use only a few labels:\\ \quad \\
+In this project a graph database is used to store the data instead of a relational database.\\ This was due to the fact that graph databases are much faster when it comes down to look for objects in a list that fulfil some constraints to other objects. In a relational database one would normally use multiple joins to get the desired result. By using a graph this task becomes much easier since it is possible to traverse the graph from node to node using either breadth- or depth-first algorithm and look for a specific relation between two nodes, which represent objects. This could make a search of objects, which are connected to each other, very efficient. \\ \quad \\We have chosen to use Neo4J (Additional info can be found under http://neo4j.com/developer/graph-db-vs-rdbms/) which is a graph database capable of very efficiently finding and managing nodes and relationship even in a large scale graph.\\
+Additional information regarding benchmarking could be found in the related chapter of this documentation. \\ \quad \\The stemmaweb database is basically a one big graph, with different Labels marking different Nodes and Relationships to increase the search speed. \\ \quad \\Only a few labels are used in the database:\\ \quad \\
 \begin{tabular}{|l|l|}
 \hline 
 \textbf{Nodes} & \textbf{Relationships} \\ 
@@ -141,12 +142,12 @@ USER &  \\
 \hline 
 WORD &  \\ 
 \hline 
-\end{tabular} \\
+\end{tabular} \\\\
 Since each label is stored in another file, searching or traversing the graph is stunningly fast. \\ \quad \\ The database structure is as follows:
 \begin{center}
 \includegraphics[scale=.5]{Pictures/database.png} 
 \end{center} 
-Neo4J is delivered with a powerful script language called cypher. It’s the equivalent to SQL in relational databases. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Using cypher you can write simple queries that return nodes or traverse graphs. Cypher queries can be sent to the database and will then be interpreted and translated into an execution plan by the ExecutionEngine. This takes some time and therefore cypher can not compete with the native java traversal API.
+Neo4J uses a powerful script language called cypher. It’s the equivalent to SQL in relational databases. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Using cypher one can write simple queries that return nodes or traverse graphs. But as Cypher queries need to be interpreted and translated into an execution plan they are still less fast then the native java traversal API which is therefore the common query tool used in the project.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 3
@@ -156,10 +157,10 @@ Neo4J is delivered with a powerful script language called cypher. It’s the equ
 
 \chapter{Jersey}
 
-In our project we built a REST-API for stemmaweb an online tool for textual scholars willing to explore their texts. For this REST-API we needed a simple and easy to use Java framework and chose Jersey. \\
-Jersey is an open source framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. It abstracts away low-level details of the client-server communication which made it more easy for us to concentrate on the actual implementation of the user stories. In our project it is deployed with GlassFish, a Java EE Application Server. Jersey can help support exposing the data in very different media types, including JSON, which we used very frequently. \\
-Jersey uses Annotations which made it very easy to use for us.\\
-Here as an example the method declaration of duplicateReading:
+This program is basically a REST-API for stemmaweb, a web tool for comparing texts. The Java framework chosen was Jersey due to its simplicity and ease of use. \\
+Jersey is an open source framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used. \\
+
+An example of the method declaration of duplicateReading:
 \begin{lstlisting}
    @POST
    @Path("duplicatereading/fromtradition/{tradId}")
@@ -167,7 +168,7 @@ Here as an example the method declaration of duplicateReading:
    @Produces(MediaType.APPLICATION_JSON)
    public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
-At the top the „POST“ annotation states the http method. Then the „Path“ annotation lets us set the url path with parameters in curly braces. Furthermore the method can „consume“ data, in this case JSON. The „DuplicateModel“ is passed with the call as a JSON object and then gets parsed in a POJO. Last but not least the method „produces“ a response, in this case also in JSON. 
+The „POST“ annotation states the http method. The „Path“ annotation sets the url path with parameters in curly brackets. The method can „consume“ data sent by the client, which is in this case a java object of a „DuplicateModel“, which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method „produces“ a response, which is the method's return value, in this case also in JSON. 
 
 
 %----------------------------------------------------------------------------------------
