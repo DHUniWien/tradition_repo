@@ -184,17 +184,62 @@ Neo4J uses a powerful script language called cypher. Itâ€™s the equivalent to SQ
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Jersey}
-Jersey is an open source java framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used in this program. \\
 
-An example of the method declaration of duplicateReading:
+\section*{Introduction}
+Jersey is an open source java framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used in this program. 
+
+\section*{Method Declarations}
+An example of the method declaration of duplicateReading in the reading class:
+
 \begin{lstlisting}
-   @POST
-   @Path("duplicatereading/fromtradition/{tradId}")
-   @Consumes(MediaType.APPLICATION_JSON)
-   @Produces(MediaType.APPLICATION_JSON)
-   public Response duplicateReading(DuplicateModel duplicateModel)
+	@POST
+	@Path("duplicatereading")
+	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
-The â€žPOSTâ€œ annotation states the http method. The â€žPathâ€œ annotation sets the url path with parameters in curly brackets. The method can â€žconsumeâ€œ data sent by the client, which is in this case a java object of a â€žDuplicateModelâ€œ, which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method â€žproducesâ€œ a response, which is the method's return value, in this case also in JSON. 
+
+The @POST annotation states the http method. The @Path€œ annotation sets the url path. The method can "consume"œ data sent by the client, which is in this case a java object of a "DuplicateModel"€œ, which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces"€œ a response, which is the method's return value, in this case also in JSON. 
+\\\\
+And here another example from the witness class:
+
+\begin{lstlisting}
+	@GET
+	@Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response getWitnessAsText(@PathParam("tradId") String tradId,
+		@PathParam("witnessId") String witnessId) {
+\end{lstlisting}
+
+The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In the method declaration they are annotated with @PathParam. 
+
+\section*{Resources}
+In the ApplicationConfig class all the "resources"€ž are loaded in the following method:
+
+\begin{lstlisting}
+	@Override
+	public Set<Class<?>> getClasses() {
+		Set<Class<?>> s = new HashSet<Class<?>>();
+		s.add(Witness.class);
+		s.add(User.class);
+		s.add(Tradition.class);
+		s.add(Relation.class);
+		s.add(Stemma.class);
+		s.add(Reading.class);
+		
+		return s;
+	}
+\end{lstlisting}
+
+A "resource" is a class that provides methods annotated with @GET, @POST, @PUT or @DELETE. So all the api calls that can be made using stemmarest are defined in these six classes: Witness, User, Tradition, Relatino, Stemma and Reading.
+\\
+
+\begin{lstlisting}
+@Path("/reading")
+public class Reading implements IResource {
+\end{lstlisting}
+
+All of these classes implement the IResource interface which declarates the class as a €žresource€ž. Additionally the path of the database is set in this interface. It can be seen that a path can also be set for an entire class. That means that it is set before each method of this class. So duplicateReading to take the example from above can be reached under "baseurl/reading/duplicatereading".
 
 
 %----------------------------------------------------------------------------------------
