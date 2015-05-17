@@ -113,9 +113,9 @@
 
 \chapter{Introduction}
 
-We are a team of 5 students from the University of Bern. In the course of the ?Practical Software Engineering? lecture we have been assigned this digital humanities software development project. The goal of this lecture is to experience the development process of a software while working in a team. \\
-The development process included the collection of the requirements through interviews with the customer, implementing the user-stories using agile programming techniques, constant dialog with the customer to ensure the software fulfils her requirements and finally delivering the project to the costumer so it can be put into use. \\
-Our customer?s goal is to create a tool to analyse old texts by comparing different versions of them. The prototype of this web tool, StemmaWeb, focused on functionality and not on performance, which led to very slow loading times due to the complexity of the different connections between elements in different texts. We were asked to evaluate and develop a more efficient system which should drastically improve StemmaWeb ?s performance,  purposely by using a graph database over a standard relational database. \\
+We are a team of 5 students from the University of Bern. In the course of the Practical Software Engineering lecture we have been assigned this digital humanities software development project. The goal of this lecture is to experience the development process of a software while working in a team. \\
+The development process included the collection of the requirements through interviews with the customer, implementing the user-stories using agile programming techniques, constant dialog with the customer to ensure the software fulfills her requirements and finally delivering the project to the costumer so it can be put into use. \\
+Our customers goal is to create a tool to analyze old texts by comparing different versions of them. The prototype of this web tool, Stemmaweb, focused on functionality and not on performance, which led to very slow loading times due to the complexity of the different connections between elements in different texts. We were asked to evaluate and develop a more efficient system which would significantly improve the performance of Stemmaweb, purposely by using a graph database over a standard relational database. \\
 To achieve this we used the graph database Neo4. We programmed the software in the programming language Java and worked with Jersey, a Java RESTful framework. In four iterations during 12 weeks we implemented the user-stories given to us and defined a unique API call for each implemented function. This will allow the customer to easily connect her existing Graphical User Interface to the new software we have created.\\
 
 %----------------------------------------------------------------------------------------
@@ -145,7 +145,8 @@ As this application represents a server side only, there is no full GUI included
 \item Import an GraphML file using the id of the user you have created. The generated id of the tradition will be returned
 \item Use the custom request by typing in the API call you want (all calls are listed in the documentation)
 \end{itemize}
-A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base (see Neo4j visualization in section Database)
+A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base \\ \quad \\ More information in the README file on GitHib: \textit{https://github.com/tohotforice/PSE2_DH}
+
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
@@ -155,8 +156,8 @@ A word about node id's: when a graph is being imported each node gets from Neo4j
 
 \chapter{Database (neo4j)}
 
-In this project a graph database is used to store the data.\\ This was done as graph databases are much faster when it comes down to look for objects in a list that contain some constraints to other objects. In a relational database one would normally use multiple joins to get the desired result, but by using a graph this task becomes much easier since it is possible to traverse the graph from node to node using either breadth- or depth-first algorithm and to for a specific relation between two nodes, which represent objects. This method makes a search for objects, which are connected to each other, very efficient. \\ \quad \\We chose to use Neo4J (more information can be found at http://neo4j.com/developer/graph-db-vs-rdbms/) which is a graph database capable of very efficiently managing nodes and relationship even in a large scale graph.\\
-Additional information regarding performance could be found in the related chapter of this documentation. \\ \quad \\The stemmaweb database is basically a one big graph, with different labels marking different nodes and relationships. \\ \quad \\Only a few labels are used in the database:\\ \quad \\
+In this project a graph database is used to store the data. This was done as graph databases are much faster when it comes down to look for objects in a list that contain some constraints to other objects. \\ In a relational database one would normally use multiple joins to get the desired result, but by using a graph this task becomes much easier since it is possible to traverse the graph from node to node using either breadth- or depth-first algorithms for a specific relation between nodes. This method makes a search for nodes, representing objects, which are connected to each other, very efficient. \\ \quad \\ Neo4J was chosen(more information can be found at http://neo4j.com/developer/graph-db-vs-rdbms/), which is a graph database capable of very efficiently managing nodes and relationship even in a large scale graph.\\
+Additional information regarding performance could be found in the related chapter of this documentation. \\ \quad \\The stemmaweb database is basically a one big graph, with different labels marking different nodes and relationships. \\ \quad \\Those labels are used in the database:\\ \quad \\
 \begin{tabular}{|l|l|}
 \hline 
 \textbf{Nodes} & \textbf{Relationships} \\ 
@@ -174,11 +175,11 @@ USER &  \\
 WORD &  \\ 
 \hline 
 \end{tabular} \\\\
-Since each label is stored in another file, searching or traversing the graph is stunningly fast. \\ \quad \\ The database structure is as follows:
+Since each label is stored in another file, searching or traversing the graph is highly efficient. \\ \quad \\ The database structure is as follows:
 \begin{center}
 \includegraphics[scale=.5]{Pictures/database.png} 
 \end{center} 
-Neo4J uses a powerful script language called cypher. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Using cypher one can write simple queries that return nodes or traverse graphs. Cypher queries, though, need to be interpreted and translated into an execution plan and that is why they are still less fast then the native java traversal API which has become the common query tool used in the project.
+Neo4J uses a script language called cypher. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Cypher queries, though, need to be interpreted and translated into an execution plan. This is the reason why they are not always as fast as the native java traversal API, which has therefore become the common query tool used in the project.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 3
@@ -189,7 +190,7 @@ Neo4J uses a powerful script language called cypher. Cypher is a declarative gra
 \chapter{Jersey}
 
 \section*{Introduction}
-Jersey is an open source java framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used in this program. 
+Jersey is an open source java framework for developing RESTful Web Services in Java that is built upon JAX-RS and serves as a JAX-RS Reference Implementation. It adds additional features and utilities in order to further simplify development of REST-APIs. Jersey helps support exposing the data in different media types, including JSON, which is very frequently used in this project. 
 
 \section*{Method Declarations}
 An example of the method declaration of duplicateReading in the reading class:
@@ -202,10 +203,11 @@ An example of the method declaration of duplicateReading in the reading class:
 	public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
 
-The @POST annotation states the http method. The @Path annotation sets the url path.\\
+The @POST annotation states the http method.\\
+The @Path annotation sets the url path.\\
 The method "consumes" (i.e. gets from the client side) data sent by the client, in this case a java object of a "DuplicateModel" which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces" (returns) a response, which is the method's return value, in this case also in JSON. 
 \\\\
-And here another example from the witness class:
+Another example from the witness class:
 
 \begin{lstlisting}
 	@GET
@@ -215,9 +217,9 @@ And here another example from the witness class:
 		@PathParam("witnessId") String witnessId) {
 \end{lstlisting}
 
-The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In the method declaration they are annotated with @PathParam. 
+The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In this example they are given in the URL and not as JSON. In the method declaration they are annotated with @PathParam. 
 
-\section*{Resources}
+\section*{IResources}
 In the ApplicationConfig class all the IResources (the objects) are loaded in the following method:
 
 \begin{lstlisting}
@@ -243,9 +245,6 @@ An 'IResource' is a class that provides methods annotated with @GET, @POST, @PUT
 public class Reading implements IResource {
 \end{lstlisting}
 
-All of those classes implement the IResource interface. Additionally the path of the database is set in this interface. This a path can also be set for an entire class which means that it is set before each method of this class. So duplicateReading, for example, can be reached under "baseurl/reading/duplicatereading".
-
-
 %----------------------------------------------------------------------------------------
 %	CHAPTER 4
 %----------------------------------------------------------------------------------------
@@ -256,13 +255,13 @@ All of those classes implement the IResource interface. Additionally the path of
 
 One of the main goals of this project was to create a RESTful service which is significantly faster then the existing one. To verify the speed of the service some performance tests are done. 
 \\ \quad \\
-The goal of the performance tests is to show that the response time of the service is limited and within a usable range and so those tests measure the time to execute all operations for a certain request. This includes the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data is transmitted over the local loop interface. The network speed is therefore not measured. 
+The goal of the performance tests is to show that the response time of the service is limited and within a usable range. The performance (benchmark) tests therefore measure the time needed to execute all operations for a certain request. This includes the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data is transmitted over the local loop interface. The network speed is therefore not measured. 
 \\ \quad \\
 For the purpose of the tests the database is being populated by a random graph which contains several valid traditions on which the REST requests can be executed. Several tests with databases of different sizes are done to show that the response time does not change as the size of the database increases.
 \\ \quad \\
-The following measurements show the result of tests which test the dimension of the database. Those tests show that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase in which a query can search a subgraph without filtering the whole database. 
+The first set of diagrams show the result of tests with different database sizes. Those tests show that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase in which a query can search a subgraph without filtering the whole database. 
 \begin{remark}
-The implementation of stemmarest uses some search-node-by-id methods (a part of Neo4j framework) which search over the complete database. It is important to realize that those quarries are done in $O(log n)$ time and are not seen in the noise of the other operations during the tests. In a much bigger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
+The implementation of stemmarest uses some search-node-by-id methods (a part of Neo4j framework) which search over the complete database. It is important to realize that those quarries are done in $O(log n)$ time and are not seen in the noise of the other operations during the tests. This can be seen in the diagrams is such methods as \textit{getReading}, \textit{getNextReading} etc, which use the search-node-by-id method and their execution time hardly change even in a very big data base. In a much bigger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
 \end{remark} 
 
 \begin{figure}[h!]
@@ -282,7 +281,7 @@ The implementation of stemmarest uses some search-node-by-id methods (a part of 
   \centering
     \includegraphics[scale=0.45]{1000knode.png}
 \end{figure}
-The previous measurement show the dimension of the database and could show that the response time is almost independent to its size between 1000 and 1 Million Nodes (Readings). This is a results of the fact that each Tradition can be selected as a subgraph and the algorithms only have a subset of the whole database to search trough. It is obvious the tradition size have an influence on the speed of the implemented algorithms as the working subset grows with a bigger tradition. Most of the algorithms which work on a tradition are in $O(log n)$, though there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
+In those diagrams it is possible to see that the response time is almost independent to the database size between 1000 and 1 Million Nodes (Readings). As explained before, this is the result of the fact that each Tradition can be selected as a subgraph and the algorithms only have to search it, rather than the whole database. It is obvious, though, that the tradition size have an influence on the speed of the implemented algorithms as the working subset, which is in most cases a tradition, grows with a bigger tradition. Most of the algorithms which work on a tradition are in $O(log n)$, though there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
 \\ \quad \\
 In the following tests the dimension of the tradition is varied while the size of the database stays the same. 
 \begin{figure}[h!]
