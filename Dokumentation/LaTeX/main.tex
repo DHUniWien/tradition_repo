@@ -77,13 +77,13 @@
 
 \noindent Copyright \copyright\ 2015 Team PSE2\\ % Copyright notice
 
-\noindent \textsc{Published by ...}\\ % Publisher
+%\noindent \textsc{Published by ...}\\ % Publisher
 
-\noindent \textsc{....org}\\ % URL
+%\noindent \textsc{....org}\\ % URL
 
-\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
+%\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
 
-\noindent \textit{First printing, March 2013} % Printing/edition date
+\noindent \textit{First printing, Mai 2015} % Printing/edition date
 
 %----------------------------------------------------------------------------------------
 %	TABLE OF CONTENTS
@@ -145,8 +145,29 @@ As this application represents a server side only, there is no full GUI included
 \item Import an GraphML file using the id of the user you have created. The generated id of the tradition will be returned
 \item Use the custom request by typing in the API call you want (all calls are listed in the documentation)
 \end{itemize}
-A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base \\ \quad \\ More information in the README file on GitHib: \textit{https://github.com/tohotforice/PSE2_DH}
+A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base \\ \quad \\ More information in the README file on GitHib: \textit{https://github.com/tohotforice/PSE2\_DH}
 
+\chapterimage{header.png} % Chapter heading image
+\chapter{Design-Overview}
+\begin{figure}[h!]
+  \caption{Class-Overview}
+  \centering
+    \includegraphics[scale=0.40]{ProjectOverview.png}
+\end{figure}
+This overview shows the relation between the classes of the StemmaREST service. As StemmaREST is based on the Jersey Framework all the provided Resources need to be registered in this framework. This is done in the ApplicationConfig class, like it is specified in the chapter Jersey. All classes which should be registered as a 'resource' need to implement the IResource Interface. \\
+All IResources which need access to the Database use the GraphDatabaseServiceProvider. The GraphDatabaseServiceProvider contains a static GraphDatabaseServiceObject which can be requested by the IResource and used to acces the Database.\\
+Several IResources need the service classes to share common functionality.\\
+The model classes are dataclasses which contain the datamodels. They are also used for the serialisation and deserialisation of xml and JSON strings. For this serialisation the jackson package is used.\\
+The parser classes are used to import graphml and dot files into the database.
+
+\begin{figure}[h!]
+  \caption{Request Sequence}
+  \centering
+    \includegraphics[scale=0.40]{stdRequest.png}
+\end{figure}
+When a client sends a request to the stemmaREST service. Jersey instantiates the requested IResource. GraphDatabaseServiceProvided is instantiated to request the singleton Database. All requests require access to the database. The transaction is executed in the manner the request requires and a response is sent to the client. 
+\\ \quad \\
+More information about the database design and the Jersey integration can be found in the chapters Database and Jersey. 
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
@@ -181,6 +202,7 @@ Since each label is stored in another file, searching or traversing the graph is
 \end{center} 
 Neo4J uses a script language called cypher. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Cypher queries, though, need to be interpreted and translated into an execution plan. This is the reason why they are not always as fast as the native java traversal API, which has therefore become the common query tool used in the project.
 
+
 %----------------------------------------------------------------------------------------
 %	CHAPTER 3
 %----------------------------------------------------------------------------------------
@@ -196,11 +218,11 @@ Jersey is an open source java framework for developing RESTful Web Services in J
 An example of the method declaration of duplicateReading in the reading class:
 
 \begin{lstlisting}
-	@POST
-	@Path("duplicatereading")
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response duplicateReading(DuplicateModel duplicateModel)
+@POST
+@Path("duplicatereading")
+@Consumes(MediaType.APPLICATION_JSON)
+@Produces(MediaType.APPLICATION_JSON)
+public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
 
 The @POST annotation states the http method.\\
@@ -210,11 +232,11 @@ The method "consumes" (i.e. gets from the client side) data sent by the client, 
 Another example from the witness class:
 
 \begin{lstlisting}
-	@GET
-	@Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getWitnessAsText(@PathParam("tradId") String tradId,
-		@PathParam("witnessId") String witnessId) {
+@GET
+@Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}")
+@Produces(MediaType.APPLICATION_JSON)
+public Response getWitnessAsText(@PathParam("tradId") String tradId,		
+	@PathParam("witnessId") String witnessId) {
 \end{lstlisting}
 
 The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In this example they are given in the URL and not as JSON. In the method declaration they are annotated with @PathParam. 
@@ -223,18 +245,18 @@ The values in curly braces in the path (tradId and witnessId) are path parameter
 In the ApplicationConfig class all the IResources (the objects) are loaded in the following method:
 
 \begin{lstlisting}
-	@Override
-	public Set<Class<?>> getClasses() {
-		Set<Class<?>> s = new HashSet<Class<?>>();
-		s.add(Witness.class);
-		s.add(User.class);
-		s.add(Tradition.class);
-		s.add(Relation.class);
-		s.add(Stemma.class);
-		s.add(Reading.class);
-		
-		return s;
-	}
+@Override
+public Set<Class<?>> getClasses() {
+	Set<Class<?>> s = new HashSet<Class<?>>();
+	s.add(Witness.class);
+	s.add(User.class);
+	s.add(Tradition.class);
+	s.add(Relation.class);
+	s.add(Stemma.class);
+	s.add(Reading.class);
+	
+	return s;
+}
 \end{lstlisting}
 
 An 'IResource' is a class that provides methods annotated with @GET, @POST, @PUT or @DELETE. All the API calls that can be made using stemmarest are defined in those six classes: Witness, User, Tradition, Relation, Stemma and Reading.
@@ -310,8 +332,6 @@ According to the diagrams, the execution time depends on the size of the working
 
 \chapter{Concept}
 This chapter describes the test-concept of the Project. The tests were used for test driven development and to assure the quality of the product. All tests are written in such a manner that they do not have any impact on the architecture of the project.
-
-\newpage
 
 \section*{Jersey Overview} 
 
@@ -447,24 +467,24 @@ The execution of the tests will take some time because of the need to generate h
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
 
-\chapter*{Bibliography}
-\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
-\section*{Books}
-\addcontentsline{toc}{section}{Books}
-\printbibliography[heading=bibempty,type=book]
-\section*{Articles}
-\addcontentsline{toc}{section}{Articles}
-\printbibliography[heading=bibempty,type=article]
+%\chapter*{Bibliography}
+%\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
+%\section*{Books}
+%\addcontentsline{toc}{section}{Books}
+%\printbibliography[heading=bibempty,type=book]
+%\section*{Articles}
+%\addcontentsline{toc}{section}{Articles}
+%\printbibliography[heading=bibempty,type=article]
 
 %----------------------------------------------------------------------------------------
 %	INDEX
 %----------------------------------------------------------------------------------------
 
-\cleardoublepage
-\phantomsection
-\setlength{\columnsep}{0.75cm}
-\addcontentsline{toc}{chapter}{\textcolor{ocre}{Index}}
-\printindex
+%\cleardoublepage
+%\phantomsection
+%\setlength{\columnsep}{0.75cm}
+%\addcontentsline{toc}{chapter}{\textcolor{ocre}{Index}}
+%\printindex
 
 %----------------------------------------------------------------------------------------
 
