@@ -315,9 +315,6 @@ This chapter describes the test-concept of the Project. The testing were used fo
 \section*{Integration Tests}
 Every user story is tested with integration tests. Those tests are the mean of assuring the quality of the project. The technique of integration tests is described in the Integration test chapter. 
 
-\section*{Unit Tests}
-Unit tests are used for test-driven-development and are defined by the developer. They are only used for the development process and are not a referenced to the quality of the end product.
-
 \newpage
 
 \section*{Jersey Overview} 
@@ -326,7 +323,7 @@ Unit tests are used for test-driven-development and are defined by the developer
 \includegraphics[scale=.40]{Pictures/jerseyoverview.png} 
 \end{center}
 
-In the productive system, for every REST call a jersey instantiate the requested IResource and provides the service. A global singleton GraphDatabaseService object is used to provide the GraphDatabaseService. In production this GraphDatabaseService is an embedded neo4j GraphDatabase. To achieve a minimal invasive test system the productive database needs to be replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database. As the GraphDatabaseService is a singleton object this configuration needs to be done before the start-up of the Jersey Testserver.
+For every REST call in the system a jersey instantiate the requested IResource and provides the service. A global singleton GraphDatabaseService object, which is is an embedded neo4j GraphDatabase, is used to provide the service. To achieve a minimal invasive test system the productive database is being replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database. As the GraphDatabaseService is a singleton object this configuration is done before the start-up of the Jersey Testserver.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 6
@@ -334,22 +331,22 @@ In the productive system, for every REST call a jersey instantiate the requested
 
 \chapter{Configure the Test-Database}
 
-In this Project the GraphDatabaseService is a Singleton Object provided by the GraphDatabaseServiceProvider. To use a Testdatabase in the Tests the following steps have to be done.
-A Claswide GraphDatabaseService object db has to be registered.
+To use a Testdatabase in the Tests the following steps are done:
+A Claswide GraphDatabaseService object db is registered.
 
 \begin{lstlisting}[language=java]
     GraphDatabaseService db;
 \end{lstlisting}
-In the @Before method the singleton GraphDatabaseService provided by the GraphDatabaseServiceProvider has to be overwritten by the following line:
+In the @Before method the singleton GraphDatabaseService provided by the GraphDatabaseServiceProvider is overwritten by the following line:
 
 \begin{lstlisting}[language=java]
     GraphDatabaseServiceProvider.setImpermanentDatabase();
 \end{lstlisting}
-Later the db object can be initialized by:
+Later the db object is initialized by:
 \begin{lstlisting}[language=java]
     db = new GraphDatabaseServiceProvider().getDatabase();
 \end{lstlisting}
-In the @After method the database has to be closed
+In the @After method the database is being closed
 \begin{lstlisting}[language=java]
     db.shutdown();
 \end{lstlisting}
@@ -360,42 +357,18 @@ With this configuration the impermanent Testdatabase of Neo4j is used during the
 
 \chapterimage{header.png} % Chapter heading image
 
-\chapter{Unit Test}
-
-\begin{center}
-\includegraphics[scale=.4]{Pictures/junitoverview.png}
-\end{center} 
- 
-For Unit Tests the methods of the resource are called directly.
-\begin{lstlisting}[language=java]
-@Test
-public void SimpleTest(){
-  String actualResponse = userResource.getIt();
-  assertEquals(actualResponse, "User!");
-}
-\end{lstlisting}
-
-
-\subsection*{Example}
-\url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserUnitTest.java}
-%----------------------------------------------------------------------------------------
-%	CHAPTER 8
-%----------------------------------------------------------------------------------------
-
-\chapterimage{header.png} % Chapter heading image
-
 \chapter{Integration Tests}
 
 \begin{center}
 \includegraphics[scale=.4]{Pictures/jerseytestoverview.png} 
 \end{center}
 
-To inject objects into a resource it is mandatory that the resource is created statically at the place the injection is done. This is not possible when the resources are instantiated when a REST call occurs. To solve this JerseyTestServerFactory creates a server where already instantiated resources can be registered. 
-To start a JerseyTestServer a global JerseyTest has to be created.
+To inject objects into a resource the resource must be created statically. This is not possible when the resources are instantiated when a REST call occurs. To solve this problem JerseyTestServerFactory creates a server where already instantiated resources can be registered. 
+To start a JerseyTestServer a global JerseyTest is created.
 \begin{lstlisting}[language=java]
 private JerseyTest jerseyTest;
 \end{lstlisting}
-The JerseyTestServerFactory creates a JerseyTest with already instantiated resources. This is necessary to inject the mock objects. Multiple resources can be added by chaining .addResource(..).addResource()
+The JerseyTestServerFactory creates a JerseyTest with already instantiated resources. This is used to inject the mock objects. Multiple resources can be added by chaining .addResource(..).addResource()
 \begin{lstlisting}[language=java]
 jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
 	.addResource(userResource).create();
@@ -416,35 +389,35 @@ public void SimpleTest(){
 \url{https://github.com/tohotforice/PSE2_DH/blob/e364fcb0c164981281c5799a6bf9f9f9ea5eb503/stemmarest/src/test/java/net/stemmaweb/stemmaserver/UserTest.java}
 
 %----------------------------------------------------------------------------------------
-%	CHAPTER 9
+%	CHAPTER 8
 %----------------------------------------------------------------------------------------
 
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Benchmark Testing}
 
-The main goal of the stemmarest project is to achieve better performance then the previous service. To measure the performance of the system benchmark testing is needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this \textit{com.carrotsearch.junitbenchmarks} a handy JUnit benchmark test suite is used. This JUnitbenchmarks measure the time which is used to execute a test and can generate visual representations of the measurement.\\
-For effective benchmark testing it is important to have a variety of different databases. Those databases should differ in size from small to very huge. This allows to measure the algorithms in extreme situations.
-To generate valid graphs only limited by space the class \textit{RandomGraphGenerator} can be used. By calling this static method a graph is generated according to the parameters.\\
+The main goal of the stemmarest project was to achieve better performance then the previous service. To measure the performance of the system benchmark testing was needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this \textit{com.carrotsearch.junitbenchmarks} a JUnit benchmark test suite is used. The JUnitbenchmarks measures the time which is used to execute a test and can generate visual representations of the measurement.\\
+For effective benchmark testing it is important to have a variety of different databases. Those databases should differ in size from small to very huge. This allows to measure the algorithms in different situations.
+To generate valid graphs only limited by space the class \textit{RandomGraphGenerator} can be used. By calling this static method a graph is generated according to the given parameters.\\
 \begin{remark}
-Please note that the response time highly depends on the hardware the tests are running on and the actual state of Javas virtual machine. 
+Please note that the response time depends highly on the hardware the tests are running on and the actual state of Javas virtual machine. 
 \end{remark}
 To reduce the influence of the virtual machine before the measurements 5 warm-up calls are done. The hardware which was used for testing is represented in the report.
 
 \section*{Setup}
-All the classes related to the Benchmark Tests can be found in the package \\ \textit{net.stemmaweb.stemmaserver.benachmarktests}. The class BenchmarkTests contains all Tests. The classes Benchmark<n>Nodes contain the database generator. In it it is being configured how many nodes the database has. Those are also the classes which run with the JUnit test. BenchmarkTests cant be run as a JUnit test as it is an abstract class.
+All the classes related to the Benchmark Tests can be found in the package \\ \textit{net.stemmaweb.stemmaserver.benachmarktests}. The class BenchmarkTests contains all the Tests. The classes Benchmark<n>Nodes contain the database generator. In it the number of nodes in the current test-database is being configured. BenchmarkTests cant be run as a JUnit test.
 
 \begin{center}
 \includegraphics[scale=0.4]{BenchmarkTestsClassOverview.jpg} 
 \end{center}
 
-Tests are simply implemented in the BenchmarkTests class with the @Test annotation. It is best practice only to implement the restcall in this method and only test if Response.Status is OK. This assures that as low as possible overhead time will be measured. The integration- and JUnit tests should be done in a different location.
+Tests are implemented in the BenchmarkTests class with the @Test annotation. Only restcall in implement the in the methods and they only test if Response.Status is OK. This assures that as low as possible overhead time will be generated and measured.
 
 \begin{remark}
 JUnitBenchmarks measures the time to execute (@Before, @Test, @After). Heavy operations which should not be measured can be done in @BeforeClass and @AfterClass.
 \end{remark}
 
-To create a new database, test-environment copy the class Benchmark600Nodes and rename it to the count of Nodes that should be inserted. In the class itself only two small adjustments need to be done. First: change the name of the report file \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')}. Second: adjust the properties of the database which should be generated \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
+To create a new database, the test-environment copies the class Benchmark600Nodes and rename it to the count of Nodes that are being inserted. In the class itself only two small adjustments are done. First: the name of the report file is being changed \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')}. Second: the properties of the database which should be generated are being adjusted \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
 
 \section*{Run Benchmarktests}
 The Benchmarktests can be run as every JUnit test. To generate the report, though, an argument needs to be passed. 
@@ -458,10 +431,10 @@ Create a JUnit Test as follows:
 \includegraphics[scale=0.4]{benchmarkTestArgument.png} 
 \end{center}
 
-On the tab Arguments \textit{-Djub.consumers=CONSOLE,H2 -Djub.db.file=.benchmarks} has to be inserted into the VM Arguments input. After that the test can be run as usual. After the test execution the reports are stored under \textit{benchmark/}.
+On the tab Arguments \textit{-Djub.consumers=CONSOLE,H2 -Djub.db.file=.benchmarks} has to be inserted into the VM Arguments input. After that the test can be run as usual. After the execution of the tests the reports will be stored at \textit{benchmark/}.
  
 \begin{remark}
-The execution of the tests will take some time because of the need to generate huge graphs. Its recommended not to use the computer for other assignments during this tests.  
+The execution of the tests will take some time because of the need to generate huge graphs. Its recommended not to use the computer for other assignments during the tests.  
 \end{remark}
 
 
