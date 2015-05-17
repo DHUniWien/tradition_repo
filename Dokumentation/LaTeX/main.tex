@@ -258,11 +258,11 @@ One of the main goals of this project was to create a RESTful service which is s
 \\ \quad \\
 The goal of the performance tests is to show that the response time of the service is limited and within a usable range and so those tests measure the time to execute all operations for a certain request. This includes the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data is transmitted over the local loop interface. The network speed is therefore not measured. 
 \\ \quad \\
-For the purpose of the tests the database is being populated by a random graph which contains several valid traditions on which the REST requests can be executed. Several tests with databases of different sizes are done to show that the response time does not change while the size of the database increases. (There are several Node-ID queries in the database which execute under O(log n). But as the database access time takes such a small percentage of the measurement scope, this does not show up as the size of the database grows).
+For the purpose of the tests the database is being populated by a random graph which contains several valid traditions on which the REST requests can be executed. Several tests with databases of different sizes are done to show that the response time does not change as the size of the database increases.
 \\ \quad \\
-In the following measurements are a result of tests which test the dimension of the database. Those tests show that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase in which a query can search on a subgraph without filtering the whole database. 
+The following measurements show the result of tests which test the dimension of the database. Those tests show that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase in which a query can search a subgraph without filtering the whole database. 
 \begin{remark}
-The implementation of stemmarest uses some search node by id methods (a part of Neo4j framework) which search over the complete database. It is then important to realize that those quarries are done on $O(log n)$ time and are not seen in the noise of the other operations during the tests. In a much bigger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
+The implementation of stemmarest uses some search-node-by-id methods (a part of Neo4j framework) which search over the complete database. It is important to realize that those quarries are done in $O(log n)$ time and are not seen in the noise of the other operations during the tests. In a much bigger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
 \end{remark} 
 
 \begin{figure}[h!]
@@ -282,9 +282,9 @@ The implementation of stemmarest uses some search node by id methods (a part of 
   \centering
     \includegraphics[scale=0.45]{1000knode.png}
 \end{figure}
-The previous measurement test the dimension of the database and could show that the response time is almost independent to its size between 1000 and 1 Million Nodes (Readings). This independence is a results of the fact that each Tradition can be selected as a subgraph and the algorithms only have a subset of the whole database to search trough. It is obvious the tradition size have an influence on the speed of those algorithms, as the working subset grows with a bigger tradition. Most of the algorithms which work on a tradition are in $O(log n)$, though there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
+The previous measurement show the dimension of the database and could show that the response time is almost independent to its size between 1000 and 1 Million Nodes (Readings). This is a results of the fact that each Tradition can be selected as a subgraph and the algorithms only have a subset of the whole database to search trough. It is obvious the tradition size have an influence on the speed of the implemented algorithms as the working subset grows with a bigger tradition. Most of the algorithms which work on a tradition are in $O(log n)$, though there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
 \\ \quad \\
-In the following tests the dimension of the tradition is varied. 
+In the following tests the dimension of the tradition is varied while the size of the database stays the same. 
 \begin{figure}[h!]
   \caption{Database with 10000 nodes,  working tradition with 1000 nodes }
   \centering
@@ -295,7 +295,7 @@ In the following tests the dimension of the tradition is varied.
   \centering
     \includegraphics[scale=0.45]{trad10kwords.png}
 \end{figure}
-Those measurements show that the execution time depends on the size of the working tradition, as in the results for the getAllReadingsFromATradition method, in which each reading of the tradition is parsed to a JSON Object and all are returned as an List. The parsing of those nodes executes in O(n) and the downloading of the JSON file takes also its time. As larger traditions are not expected the execution time of those methods is in the accepted range.
+Those measurements show that the execution time depends on the size of the working tradition, as can be seen in the results for the getAllReadingsFromATradition method, in which each reading of the tradition is parsed to a JSON Object and all are returned as an List. The parsing of those nodes executes in O(n) time and the downloading of the JSON file takes about the same. As larger traditions are not expected the execution time of those methods stays in the accepted range.
 
 %----------------------------------------------------------------------------------------
 %	PART
@@ -310,10 +310,10 @@ Those measurements show that the execution time depends on the size of the worki
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Concept}
-This chapter describes the test-concept of the Digital Humanities PSE2 Project. The testing is used to assure the quality of the project and for test driven development. All tests are written in such a manner that they do not have any impact on the architecture of the project. 
+This chapter describes the test-concept of the Project. The testing were used for test driven development and to assure the quality of the project. All tests are written in such a manner that they do not have any impact on the architecture of the project. 
 
 \section*{Integration Tests}
-Every user story is tested by integration tests. Those tests assures the quality of the project. The technique of integration tests is described in the Integration test chapter. 
+Every user story is tested with integration tests. Those tests are the mean of assuring the quality of the project. The technique of integration tests is described in the Integration test chapter. 
 
 \section*{Unit Tests}
 Unit tests are used for test-driven-development and are defined by the developer. They are only used for the development process and are not a referenced to the quality of the end product.
