@@ -77,13 +77,13 @@
 
 \noindent Copyright \copyright\ 2015 Team PSE2\\ % Copyright notice
 
-%\noindent \textsc{Published by Team PSE2}\\ % Publisher
+\noindent \textsc{Published by ...}\\ % Publisher
 
-%\noindent \textsc{}\\ % URL
+\noindent \textsc{....org}\\ % URL
 
-%\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
+\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
 
-%\noindent \textit{First printing, Mai 2015} % Printing/edition date
+\noindent \textit{First printing, March 2013} % Printing/edition date
 
 %----------------------------------------------------------------------------------------
 %	TABLE OF CONTENTS
@@ -113,7 +113,10 @@
 
 \chapter{Introduction}
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+We are a team of 5 students from the University of Bern. In the course of the ?Practical Software Engineering? lecture we have been assigned this digital humanities software development project. The goal of this lecture is to experience the development process of a software while working in a team. \\
+The development process included the collection of the requirements through interviews with the customer, implementing the user-stories using agile programming techniques, constant dialog with the customer to ensure the software fulfils her requirements and finally delivering the project to the costumer so it can be put into use. \\
+Our customer?s goal is to create a tool to analyse old texts by comparing different versions of them. The prototype of this web tool, StemmaWeb, focused on functionality and not on performance, which led to very slow loading times due to the complexity of the different connections between elements in different texts. We were asked to evaluate and develop a more efficient system which should drastically improve StemmaWeb ?s performance,  purposely by using a graph database over a standard relational database. \\
+To achieve this we used the graph database Neo4. We programmed the software in the programming language Java and worked with Jersey, a Java RESTful framework. In four iterations during 12 weeks we implemented the user-stories given to us and defined a unique API call for each implemented function. This will allow the customer to easily connect her existing Graphical User Interface to the new software we have created.\\
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 
@@ -144,19 +147,6 @@ As this application represents a server side only, there is no full GUI included
 \end{itemize}
 A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base (see Neo4j visualization in section Database)
 
-\chapterimage{header.png} % Chapter heading image
-\chapter{Class-Overview}
-\begin{figure}[h!]
-  \caption{Project Overview}
-  \centering
-    \includegraphics[scale=0.40]{ProjectOverview.png}
-\end{figure}
-This overview shows the relation between the classes of the StemmaREST service. As StemmaREST is based on the Jersey Framework all the provided Resources need to be registered in this framework. This is done in the ApplicationConfig class, like it is specified in the chapter Jersey. All classes which should be registered as a 'resource' need to implement the IResource Interface. \\
-All IResources which need access to the Database use the GraphDatabaseServiceProvider. The GraphDatabaseServiceProvider contains a static GraphDatabaseServiceObject which can be requested by the IResource and used to acces the Database.\\
-Several IResources need the service classes to share common functionality.\\
-The model classes are dataclasses which contain the datamodels. They are also used for the serialisation and deserialisation of xml and JSON strings. For this serialisation the jackson package is used.\\
-The parser classes are used to import graphml and dot files into the database.
-
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
 %----------------------------------------------------------------------------------------
@@ -165,8 +155,8 @@ The parser classes are used to import graphml and dot files into the database.
 
 \chapter{Database (neo4j)}
 
-In this project a graph database is used to store the data instead of a relational database.\\ This was due to the fact that graph databases are much faster when it comes down to look for objects in a list that fulfil some constraints to other objects. In a relational database one would normally use multiple joins to get the desired result. By using a graph this task becomes much easier since it is possible to traverse the graph from node to node using either breadth- or depth-first algorithm and look for a specific relation between two nodes, which represent objects. This could make a search of objects, which are connected to each other, very efficient. \\ \quad \\We have chosen to use Neo4J (Additional info can be found under http://neo4j.com/developer/graph-db-vs-rdbms/) which is a graph database capable of very efficiently finding and managing nodes and relationship even in a large scale graph.\\
-Additional information regarding benchmarking could be found in the related chapter of this documentation. \\ \quad \\The stemmaweb database is basically a one big graph, with different Labels marking different Nodes and Relationships to increase the search speed. \\ \quad \\Only a few labels are used in the database:\\ \quad \\
+In this project a graph database is used to store the data.\\ This was done as graph databases are much faster when it comes down to look for objects in a list that contain some constraints to other objects. In a relational database one would normally use multiple joins to get the desired result, but by using a graph this task becomes much easier since it is possible to traverse the graph from node to node using either breadth- or depth-first algorithm and to for a specific relation between two nodes, which represent objects. This method makes a search for objects, which are connected to each other, very efficient. \\ \quad \\We chose to use Neo4J (more information can be found at http://neo4j.com/developer/graph-db-vs-rdbms/) which is a graph database capable of very efficiently managing nodes and relationship even in a large scale graph.\\
+Additional information regarding performance could be found in the related chapter of this documentation. \\ \quad \\The stemmaweb database is basically a one big graph, with different labels marking different nodes and relationships. \\ \quad \\Only a few labels are used in the database:\\ \quad \\
 \begin{tabular}{|l|l|}
 \hline 
 \textbf{Nodes} & \textbf{Relationships} \\ 
@@ -188,7 +178,7 @@ Since each label is stored in another file, searching or traversing the graph is
 \begin{center}
 \includegraphics[scale=.5]{Pictures/database.png} 
 \end{center} 
-Neo4J uses a powerful script language called cypher. Itâ€™s the equivalent to SQL in relational databases. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Using cypher one can write simple queries that return nodes or traverse graphs. But as Cypher queries need to be interpreted and translated into an execution plan they are still less fast then the native java traversal API which is therefore the common query tool used in the project.
+Neo4J uses a powerful script language called cypher. Cypher is a declarative graph query language that allows for expressive and efficient querying and updating of the graph store. Using cypher one can write simple queries that return nodes or traverse graphs. Cypher queries, though, need to be interpreted and translated into an execution plan and that is why they are still less fast then the native java traversal API which has become the common query tool used in the project.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 3
@@ -212,7 +202,8 @@ An example of the method declaration of duplicateReading in the reading class:
 	public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
 
-The @POST annotation states the http method. The @Path annotation sets the url path. The method can "consume" data sent by the client, which is in this case a java object of a "DuplicateModel", which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces" a response, which is the method's return value, in this case also in JSON. 
+The @POST annotation states the http method. The @Path€ annotation sets the url path.\\
+The method "consumes" (i.e. gets from the client side) data sent by the client, in this case a java object of a "DuplicateModel"€ which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces"€ (returns) a response, which is the method's return value, in this case also in JSON. 
 \\\\
 And here another example from the witness class:
 
@@ -227,7 +218,7 @@ And here another example from the witness class:
 The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In the method declaration they are annotated with @PathParam. 
 
 \section*{Resources}
-In the ApplicationConfig class all the "resources" are loaded in the following method:
+In the ApplicationConfig class all the IResources (the objects)€ž are loaded in the following method:
 
 \begin{lstlisting}
 	@Override
@@ -244,7 +235,7 @@ In the ApplicationConfig class all the "resources" are loaded in the following m
 	}
 \end{lstlisting}
 
-A "resource" is a class that provides methods annotated with @GET, @POST, @PUT or @DELETE. So all the api calls that can be made using stemmarest are defined in these six classes: Witness, User, Tradition, Relatino, Stemma and Reading.
+An 'IResource' is a class that provides methods annotated with @GET, @POST, @PUT or @DELETE. All the API calls that can be made using stemmarest are defined in those six classes: Witness, User, Tradition, Relation, Stemma and Reading.
 \\
 
 \begin{lstlisting}
@@ -252,7 +243,7 @@ A "resource" is a class that provides methods annotated with @GET, @POST, @PUT o
 public class Reading implements IResource {
 \end{lstlisting}
 
-All of these classes implement the IResource interface which declarates the class as a 'resource'. Additionally the path of the database is set in this interface. It can be seen that a path can also be set for an entire class. That means that it is set before each method of this class. So duplicateReading to take the example from above can be reached under "baseurl/reading/duplicatereading".
+All of those classes implement the IResource interface. Additionally the path of the database is set in this interface. This a path can also be set for an entire class which means that it is set before each method of this class. So duplicateReading, for example, can be reached under "baseurl/reading/duplicatereading".
 
 
 %----------------------------------------------------------------------------------------
@@ -263,9 +254,9 @@ All of these classes implement the IResource interface which declarates the clas
 
 \chapter{Performance}
 
-One of the main goals of this project is it to create a  RESTful service which is significantly faster then the existing one. To assure the speed of the service some performance tests are done. 
+One of the main goals of this project was to create a RESTful service which is significantly faster then the existing one. To verify the speed of the service some performance tests are done. 
 \\ \quad \\
-The goal of the performance tests is to show that the response time of the service is limited and within a usable range, therefore the tests measure the time to execute all operations for a certain request. This includes the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data is transmitted over the local loop interface, so the network speed is not measured. 
+The goal of the performance tests is to show that the response time of the service is limited and within a usable range and so those tests measure the time to execute all operations for a certain request. This includes the time to transmit the data over HTTP, the time to execute the internal algorithms and the time to access the database. All the Data is transmitted over the local loop interface. The network speed is therefore not measured. 
 \\ \quad \\
 For the purpose of the tests the database is being populated by a random graph which contains several valid traditions on which the REST requests can be executed. Several tests with databases of different sizes are done to show that the response time does not change while the size of the database increases. (There are several Node-ID queries in the database which execute under O(log n). But as the database access time takes such a small percentage of the measurement scope, this does not show up as the size of the database grows).
 \\ \quad \\
@@ -486,14 +477,14 @@ The execution of the tests will take some time because of the need to generate h
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
 
-%\chapter*{Bibliography}
-%\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
-%\section*{Books}
-%\addcontentsline{toc}{section}{Books}
-%\printbibliography[heading=bibempty,type=book]
-%\section*{Articles}
-%\addcontentsline{toc}{section}{Articles}
-%\printbibliography[heading=bibempty,type=article]
+\chapter*{Bibliography}
+\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
+\section*{Books}
+\addcontentsline{toc}{section}{Books}
+\printbibliography[heading=bibempty,type=book]
+\section*{Articles}
+\addcontentsline{toc}{section}{Articles}
+\printbibliography[heading=bibempty,type=article]
 
 %----------------------------------------------------------------------------------------
 %	INDEX
