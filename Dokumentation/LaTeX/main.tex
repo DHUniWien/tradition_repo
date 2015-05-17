@@ -77,13 +77,13 @@
 
 \noindent Copyright \copyright\ 2015 Team PSE2\\ % Copyright notice
 
-\noindent \textsc{Published by ...}\\ % Publisher
+%\noindent \textsc{Published by Team PSE2}\\ % Publisher
 
-\noindent \textsc{....org}\\ % URL
+%\noindent \textsc{}\\ % URL
 
-\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
+%\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
 
-\noindent \textit{First printing, March 2013} % Printing/edition date
+%\noindent \textit{First printing, Mai 2015} % Printing/edition date
 
 %----------------------------------------------------------------------------------------
 %	TABLE OF CONTENTS
@@ -144,6 +144,19 @@ As this application represents a server side only, there is no full GUI included
 \end{itemize}
 A word about node id's: when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the getAllReadings method (getallreadings/fromtradition/{traditionId}) or by actually going into the data base (see Neo4j visualization in section Database)
 
+\chapterimage{header.png} % Chapter heading image
+\chapter{Class-Overview}
+\begin{figure}[h!]
+  \caption{Project Overview}
+  \centering
+    \includegraphics[scale=0.40]{ProjectOverview.png}
+\end{figure}
+This overview shows the relation between the classes of the StemmaREST service. As StemmaREST is based on the Jersey Framework all the provided Resources need to be registered in this framework. This is done in the ApplicationConfig class, like it is specified in the chapter Jersey. All classes which should be registered as a 'resource' need to implement the IResource Interface. \\
+All IResources which need access to the Database use the GraphDatabaseServiceProvider. The GraphDatabaseServiceProvider contains a static GraphDatabaseServiceObject which can be requested by the IResource and used to acces the Database.\\
+Several IResources need the service classes to share common functionality.\\
+The model classes are dataclasses which contain the datamodels. They are also used for the serialisation and deserialisation of xml and JSON strings. For this serialisation the jackson package is used.\\
+The parser classes are used to import graphml and dot files into the database.
+
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
 %----------------------------------------------------------------------------------------
@@ -199,7 +212,7 @@ An example of the method declaration of duplicateReading in the reading class:
 	public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
 
-The @POST annotation states the http method. The @Path€œ annotation sets the url path. The method can "consume"œ data sent by the client, which is in this case a java object of a "DuplicateModel"€œ, which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces"€œ a response, which is the method's return value, in this case also in JSON. 
+The @POST annotation states the http method. The @Path annotation sets the url path. The method can "consume" data sent by the client, which is in this case a java object of a "DuplicateModel", which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces" a response, which is the method's return value, in this case also in JSON. 
 \\\\
 And here another example from the witness class:
 
@@ -214,7 +227,7 @@ And here another example from the witness class:
 The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In the method declaration they are annotated with @PathParam. 
 
 \section*{Resources}
-In the ApplicationConfig class all the "resources"€ž are loaded in the following method:
+In the ApplicationConfig class all the "resources" are loaded in the following method:
 
 \begin{lstlisting}
 	@Override
@@ -239,7 +252,7 @@ A "resource" is a class that provides methods annotated with @GET, @POST, @PUT o
 public class Reading implements IResource {
 \end{lstlisting}
 
-All of these classes implement the IResource interface which declarates the class as a €žresource€ž. Additionally the path of the database is set in this interface. It can be seen that a path can also be set for an entire class. That means that it is set before each method of this class. So duplicateReading to take the example from above can be reached under "baseurl/reading/duplicatereading".
+All of these classes implement the IResource interface which declarates the class as a 'resource'. Additionally the path of the database is set in this interface. It can be seen that a path can also be set for an entire class. That means that it is set before each method of this class. So duplicateReading to take the example from above can be reached under "baseurl/reading/duplicatereading".
 
 
 %----------------------------------------------------------------------------------------
@@ -473,14 +486,14 @@ The execution of the tests will take some time because of the need to generate h
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
 
-\chapter*{Bibliography}
-\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
-\section*{Books}
-\addcontentsline{toc}{section}{Books}
-\printbibliography[heading=bibempty,type=book]
-\section*{Articles}
-\addcontentsline{toc}{section}{Articles}
-\printbibliography[heading=bibempty,type=article]
+%\chapter*{Bibliography}
+%\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
+%\section*{Books}
+%\addcontentsline{toc}{section}{Books}
+%\printbibliography[heading=bibempty,type=book]
+%\section*{Articles}
+%\addcontentsline{toc}{section}{Articles}
+%\printbibliography[heading=bibempty,type=article]
 
 %----------------------------------------------------------------------------------------
 %	INDEX
