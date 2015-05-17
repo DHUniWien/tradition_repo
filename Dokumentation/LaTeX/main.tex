@@ -261,7 +261,7 @@ For the purpose of the tests the database is being populated by a random graph w
 \\ \quad \\
 The first set of diagrams show the result of tests with different database sizes. Those tests show that the RESTful service response time is not influenced by the size of the database in a significant way. This is related to the use of the Graphdatabase in which a query can search a subgraph without filtering the whole database. 
 \begin{remark}
-The implementation of stemmarest uses some search-node-by-id methods (a part of Neo4j framework) which search over the complete database. It is important to realize that those quarries are done in $O(log n)$ time and are not seen in the noise of the other operations during the tests. This can be seen in the diagrams is such methods as \textit{getReading}, \textit{getNextReading} etc, which use the search-node-by-id method and their execution time hardly change even in a very big data base. In a much bigger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
+The implementation of stemmarest uses some search-node-by-id methods (a part of Neo4j framework) which search over the complete database. It is important to realize that those quarries are done in $O(log n)$ time and are not seen in the noise of the other operations during the tests. This can be seen in the diagrams in such methods as \textit{getReading}, \textit{getNextReading} etc, which use the search-node-by-id method and their execution time hardly change even in a very big data base. In a much larger Database those methods will slow down the REST requests, though it is not expected that the database will grow so big that such operations will have any impact.
 \end{remark} 
 
 \begin{figure}[h!]
@@ -283,7 +283,7 @@ The implementation of stemmarest uses some search-node-by-id methods (a part of 
 \end{figure}
 In those diagrams it is possible to see that the response time is almost independent to the database size between 1000 and 1 Million Nodes (Readings). As explained before, this is the result of the fact that each Tradition can be selected as a subgraph and the algorithms only have to search it, rather than the whole database. It is obvious, though, that the tradition size have an influence on the speed of the implemented algorithms as the working subset, which is in most cases a tradition, grows with a bigger tradition. Most of the algorithms which work on a tradition are in $O(log n)$, though there are also some export and import functions which have to handle each node and relation of the tradition and run in $O(n)$. 
 \\ \quad \\
-In the following tests the dimension of the tradition is varied while the size of the database stays the same. 
+The following diagrams show the results of the tests in which the dimension of the tradition is varied while the size of the database stays the same. 
 \begin{figure}[h!]
   \caption{Database with 10000 nodes,  working tradition with 1000 nodes }
   \centering
@@ -294,7 +294,7 @@ In the following tests the dimension of the tradition is varied while the size o
   \centering
     \includegraphics[scale=0.45]{trad10kwords.png}
 \end{figure}
-Those measurements show that the execution time depends on the size of the working tradition, as can be seen in the results for the getAllReadingsFromATradition method, in which each reading of the tradition is parsed to a JSON Object and all are returned as an List. The parsing of those nodes executes in O(n) time and the downloading of the JSON file takes about the same. As larger traditions are not expected the execution time of those methods stays in the accepted range.
+According to the diagrams, the execution time depends on the size of the working tradition, as can be seen in the results for the getAllReadingsFromATradition method, in which each reading of the tradition is parsed to a JSON Object and all are returned as an List. The parsing of those nodes executes in O(n) time and the downloading of the JSON file takes about the same. As larger traditions are not expected the execution time of those methods stays in the accepted range.
 
 %----------------------------------------------------------------------------------------
 %	PART
@@ -309,10 +309,7 @@ Those measurements show that the execution time depends on the size of the worki
 \chapterimage{header.png} % Chapter heading image
 
 \chapter{Concept}
-This chapter describes the test-concept of the Project. The testing were used for test driven development and to assure the quality of the project. All tests are written in such a manner that they do not have any impact on the architecture of the project. 
-
-\section*{Integration Tests}
-Every user story is tested with integration tests. Those tests are the mean of assuring the quality of the project. The technique of integration tests is described in the Integration test chapter. 
+This chapter describes the test-concept of the Project. The tests were used for test driven development and to assure the quality of the product. All tests are written in such a manner that they do not have any impact on the architecture of the project.
 
 \newpage
 
@@ -322,7 +319,7 @@ Every user story is tested with integration tests. Those tests are the mean of a
 \includegraphics[scale=.40]{Pictures/jerseyoverview.png} 
 \end{center}
 
-For every REST call in the system a jersey instantiate the requested IResource and provides the service. A global singleton GraphDatabaseService object, which is is an embedded neo4j GraphDatabase, is used to provide the service. To achieve a minimal invasive test system the productive database is being replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database. As the GraphDatabaseService is a singleton object this configuration is done before the start-up of the Jersey Testserver.
+For every REST call in the system a jersey instantiate the requested IResource and provides the service. A global singleton GraphDatabaseService object, which is is an embedded neo4j GraphDatabase, is used to provide the service. To achieve a minimal invasive test system the actual database is being replaced with a test database. To change the database with minimal test related code in the project, the GraphDatabaseServiceProvider is configured to return an impermanent Database. As the GraphDatabaseService is a singleton object this configuration is done before the start-up of the Jersey Testserver.
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 6
@@ -330,8 +327,8 @@ For every REST call in the system a jersey instantiate the requested IResource a
 
 \chapter{Configure the Test-Database}
 
-To use a Testdatabase in the Tests the following steps are done:
-A Claswide GraphDatabaseService object db is registered.
+To use an impermanent Testdatabase in the Tests the following initialization steps are done:
+A Claswide GraphDatabaseService object db is registered:
 
 \begin{lstlisting}[language=java]
     GraphDatabaseService db;
@@ -345,11 +342,11 @@ Later the db object is initialized by:
 \begin{lstlisting}[language=java]
     db = new GraphDatabaseServiceProvider().getDatabase();
 \end{lstlisting}
-In the @After method the database is being closed
+In the @After method the database is being closed:
 \begin{lstlisting}[language=java]
     db.shutdown();
 \end{lstlisting}
-With this configuration the impermanent Testdatabase of Neo4j is used during the tests. 
+
 %----------------------------------------------------------------------------------------
 %	CHAPTER 7
 %----------------------------------------------------------------------------------------
@@ -362,19 +359,20 @@ With this configuration the impermanent Testdatabase of Neo4j is used during the
 \includegraphics[scale=.4]{Pictures/jerseytestoverview.png} 
 \end{center}
 
-To inject objects into a resource the resource must be created statically. This is not possible when the resources are instantiated when a REST call occurs. To solve this problem JerseyTestServerFactory creates a server where already instantiated resources can be registered. 
-To start a JerseyTestServer a global JerseyTest is created.
+Every user story is tested with integration tests. Those tests are the mean of assuring the quality of the project. \\ \quad \\ To inject objects into a resource the resource must be created statically. This is not possible when the resources are instantiated only when a REST call occurs. To solve this problem JerseyTestServerFactory creates a server where instantiated resources can be registered.\\
+To start a JerseyTestServer a global JerseyTest is created:
 \begin{lstlisting}[language=java]
 private JerseyTest jerseyTest;
 \end{lstlisting}
-The JerseyTestServerFactory creates a JerseyTest with already instantiated resources. This is used to inject the mock objects. Multiple resources can be added by chaining .addResource(..).addResource()
+The JerseyTestServerFactory creates a JerseyTest with already instantiated resources. This is used to inject the mock objects.\\
+ Multiple resources can be added by chaining: .addResource(..).addResource()
 \begin{lstlisting}[language=java]
 jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
 	.addResource(userResource).create();
 jerseyTest.setUp();
 \end{lstlisting}
 
-The test is done by calling a webresource of jerseyTest
+The test is done by calling a webresource of jerseyTest:
 \begin{lstlisting}[language=java]
 @Test
 public void SimpleTest(){
@@ -395,9 +393,9 @@ public void SimpleTest(){
 
 \chapter{Benchmark Testing}
 
-The main goal of the stemmarest project was to achieve better performance then the previous service. To measure the performance of the system benchmark testing was needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this \textit{com.carrotsearch.junitbenchmarks} a JUnit benchmark test suite is used. The JUnitbenchmarks measures the time which is used to execute a test and can generate visual representations of the measurement.\\
-For effective benchmark testing it is important to have a variety of different databases. Those databases should differ in size from small to very huge. This allows to measure the algorithms in different situations.
-To generate valid graphs only limited by space the class \textit{RandomGraphGenerator} can be used. By calling this static method a graph is generated according to the given parameters.\\
+The main goal of the stemmarest project was to achieve better performance then the previous service. To measure the performance of the system benchmark testing was needed. A benchmark test basically calls the RESTful service multiple times and measure the response time. To achieve this a JUnit benchmark test suite is used. The JUnitbenchmarks measures the time used to execute a test and can generate visual representations of the measurement.\\
+For effective benchmark testing it is important to have a variety of different databases. Those databases should differ in size from small to very large.
+To generate valid graphs only limited by space the class \textit{RandomGraphGenerator} is being used. By calling this static method a graph is generated according to the given parameters.\\
 \begin{remark}
 Please note that the response time depends highly on the hardware the tests are running on and the actual state of Javas virtual machine. 
 \end{remark}
@@ -410,13 +408,13 @@ All the classes related to the Benchmark Tests can be found in the package \\ \t
 \includegraphics[scale=0.4]{BenchmarkTestsClassOverview.jpg} 
 \end{center}
 
-Tests are implemented in the BenchmarkTests class with the @Test annotation. Only restcall in implement the in the methods and they only test if Response.Status is OK. This assures that as low as possible overhead time will be generated and measured.
+Tests are implemented in the BenchmarkTests class with the @Test annotation. Only restcall is implemented in the methods and they only test if the Response.Status is OK. This assures that as low as possible overhead time will be generated and measured.
 
 \begin{remark}
 JUnitBenchmarks measures the time to execute (@Before, @Test, @After). Heavy operations which should not be measured can be done in @BeforeClass and @AfterClass.
 \end{remark}
 
-To create a new database, the test-environment copies the class Benchmark600Nodes and rename it to the count of Nodes that are being inserted. In the class itself only two small adjustments are done. First: the name of the report file is being changed \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')}. Second: the properties of the database which should be generated are being adjusted \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
+To create a new database, the test-environment copies the class Benchmark600Nodes and rename it to the count of Nodes that are being inserted. In the class itself only two small adjustments are done: the name of the report file is being changed \textit{@BenchmarkMethodChart(filePrefix = ''benchmark/benchmark-600Nodes'')} and the properties of the database which should be generated are being adjusted \textit{rgg.role(db, 2, 1, 3, 100);}. role(databaseService, cardinalityOfUsers, cardinalityOfTraditionsPerUser, cardinalityOfWitnessesPerTradition, degreeOfTheTraditionGraphs)
 
 \section*{Run Benchmarktests}
 The Benchmarktests can be run as every JUnit test. To generate the report, though, an argument needs to be passed. 
@@ -430,7 +428,7 @@ Create a JUnit Test as follows:
 \includegraphics[scale=0.4]{benchmarkTestArgument.png} 
 \end{center}
 
-On the tab Arguments \textit{-Djub.consumers=CONSOLE,H2 -Djub.db.file=.benchmarks} has to be inserted into the VM Arguments input. After that the test can be run as usual. After the execution of the tests the reports will be stored at \textit{benchmark/}.
+On the tab Arguments \textit{-Djub.consumers=CONSOLE,H2 -Djub.db.file=.benchmarks} has to be inserted into the VM Arguments input. After that the test can be executed as usual. After the execution of the tests the reports will be stored at \textit{benchmark/}.
  
 \begin{remark}
 The execution of the tests will take some time because of the need to generate huge graphs. Its recommended not to use the computer for other assignments during the tests.  
