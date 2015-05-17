@@ -20,9 +20,6 @@ tradId as string
 \begin{post}
 /newstemma/intradition/\{tradId\}
 \end{post}
-\begin{request}
- as application/json
-\end{request}
 \begin{response}
 stemma as dot
 \end{response}
@@ -80,7 +77,7 @@ tradId as string
 relationshipModel as application/json
 \end{request}
 \begin{response}
- as application/json
+graphModel as application/json
 \end{response}
 \textbf{Method Name: }getAllRelationships \\ Get a list of all relationships from a given tradition.
 \begin{get}
@@ -148,7 +145,7 @@ tradId as string
 /gettradition/withid/\{tradId\}
 \end{get}
 \begin{response}
- as application/json: XML data
+tradition as application/xml (graphML)
 \end{response}
 \begin{parameter}
 tradId as string
@@ -168,7 +165,7 @@ tradId as string
 //newtraditionwithgraphml
 \end{post}
 \begin{request}
- as multipart/form-data
+ graphML as multipart/form-data
 \end{request}
 \begin{response}
 the id of the imported tradition as text/plain
@@ -189,7 +186,7 @@ tradId as string
 /changeproperties/ofreading/\{readId\}
 \end{post}
 \begin{request}
- as application/json
+ ReadingChangePropertyModel as application/json
 \end{request}
 \begin{response}
 readingModel as application/json
@@ -339,7 +336,7 @@ con as string
 /gettext/fromtradition/\{tradId\}/ofwitness/\{witnessId\}
 \end{get}
 \begin{response}
-a witness as a string
+witness as string
 \end{response}
 \begin{parameter}
 tradId as string
@@ -352,7 +349,7 @@ witnessId as string
 /gettext/fromtradition/\{tradId\}/ofwitness/\{witnessId\}/fromstartrank/\{startRank\}/toendrank/\{endRank\}
 \end{get}
 \begin{response}
-a witness as a string
+witness as string
 \end{response}
 \begin{parameter}
 endRank as string
@@ -567,5 +564,14 @@ id as string
 \begin{property}
 isAdmin as string
 \end{property}
+\section{ReadingChangePropertyModel}
+\begin{property}
+key as string
+\end{property}
+\begin{property}
+newProperty as string
+\end{property}
 \section{stemma}
 A tree that provides an overview over the witnesses of a tradition. The relations between the witnesses which are displayed as nodes is central. Here the stemmata are mostly returned in dot format.
+\section{GraphML}
+\url{http://de.wikipedia.org/wiki/GraphML}

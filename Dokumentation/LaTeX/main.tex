@@ -79,7 +79,7 @@
 
 %\noindent \textsc{Published by ...}\\ % Publisher
 
-%\noindent \textsc{....org}\\ % URL
+\noindent \textsc{https://github.com/tohotforice/PSE2\_DH}\\ % URL
 
 %\noindent Licensed under the Creative Commons Attribution-NonCommercial 3.0 Unported License (the ``License''). You may not use this file except in compliance with the License. You may obtain a copy of the License at \url{http://creativecommons.org/licenses/by-nc/3.0}. Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \textsc{``as is'' basis, without warranties or conditions of any kind}, either express or implied. See the License for the specific language governing permissions and limitations under the License.\\ % License information
 
@@ -165,9 +165,12 @@ The parser classes are used to import graphml and dot files into the database.
   \centering
     \includegraphics[scale=0.40]{stdRequest.png}
 \end{figure}
-When a client sends a request to the stemmaREST service. Jersey instantiates the requested IResource. GraphDatabaseServiceProvided is instantiated to request the singleton Database. All requests require access to the database. The transaction is executed in the manner the request requires and a response is sent to the client. 
+When a client sends a request to the stemmaREST service. Jersey instantiates the requested IResource. GraphDatabaseServiceProvided is instantiated to request the singleton database. All requests require access to the database. The transaction is executed in the manner the request requires and a response is sent to the client. 
 \\ \quad \\
 More information about the database design and the Jersey integration can be found in the chapters Database and Jersey. 
+\\ \quad \\
+A more detailed Class-Overview can be found:
+\url{https://github.com/tohotforice/PSE2_DH/blob/master/Dokumentation/DetailedClassOverview.svg}
 
 %----------------------------------------------------------------------------------------
 %	CHAPTER 2
