@@ -202,8 +202,8 @@ An example of the method declaration of duplicateReading in the reading class:
 	public Response duplicateReading(DuplicateModel duplicateModel)
 \end{lstlisting}
 
-The @POST annotation states the http method. The @Path€ annotation sets the url path.\\
-The method "consumes" (i.e. gets from the client side) data sent by the client, in this case a java object of a "DuplicateModel"€ which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces"€ (returns) a response, which is the method's return value, in this case also in JSON. 
+The @POST annotation states the http method. The @Path annotation sets the url path.\\
+The method "consumes" (i.e. gets from the client side) data sent by the client, in this case a java object of a "DuplicateModel" which is passed with the call as a JSON object and then gets parsed by the server into a POJO. The method "produces" (returns) a response, which is the method's return value, in this case also in JSON. 
 \\\\
 And here another example from the witness class:
 
@@ -218,7 +218,7 @@ And here another example from the witness class:
 The values in curly braces in the path (tradId and witnessId) are path parameters, which are used in the method. In the method declaration they are annotated with @PathParam. 
 
 \section*{Resources}
-In the ApplicationConfig class all the IResources (the objects)€ž are loaded in the following method:
+In the ApplicationConfig class all the IResources (the objects) are loaded in the following method:
 
 \begin{lstlisting}
 	@Override
