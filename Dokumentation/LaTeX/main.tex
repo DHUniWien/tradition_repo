@@ -154,8 +154,8 @@ A word about node id's: when a graph is being imported each node gets from Neo4j
   \centering
     \includegraphics[scale=0.40]{ProjectOverview.png}
 \end{figure}
-This overview shows the relation between the classes of the StemmaREST service. As StemmaREST is based on the Jersey Framework all the provided Resources need to be registered in this framework. This is done in the ApplicationConfig class, like it is specified in the chapter Jersey. All classes which should be registered as a 'resource' need to implement the IResource Interface. \\
-All IResources which need access to the Database use the GraphDatabaseServiceProvider. The GraphDatabaseServiceProvider contains a static GraphDatabaseServiceObject which can be requested by the IResource and used to acces the Database.\\
+This overview shows the relation between the classes of the StemmaREST service. As StemmaREST is based on the Jersey Framework all the provided resources need to be registered in this framework. This is done in the ApplicationConfig class, like it is specified in the chapter Jersey. All classes which should be registered as a 'resource' need to implement the IResource interface. \\
+All IResources which need access to the database use the GraphDatabaseServiceProvider. The GraphDatabaseServiceProvider contains a static GraphDatabaseServiceObject which can be requested by the IResource and used to acces the database.\\
 Several IResources need the service classes to share common functionality.\\
 The model classes are dataclasses which contain the datamodels. They are also used for the serialisation and deserialisation of xml and JSON strings. For this serialisation the jackson package is used.\\
 The parser classes are used to import graphml and dot files into the database.
