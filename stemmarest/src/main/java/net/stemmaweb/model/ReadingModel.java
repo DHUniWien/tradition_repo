@@ -63,7 +63,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
 			this.setJoin_prior(node.getProperty("join_prior").toString());
 		if (node.hasProperty("language"))
 			this.setLanguage(node.getProperty("language").toString());
-		if (node.hasProperty("witnesses"))
+		if (node.hasProperty("lexemes"))
 			this.setLexemes(node.getProperty("lexemes").toString());
 		if (node.hasProperty("normal_form"))
 			this.setNormal_form(node.getProperty("normal_form").toString());
