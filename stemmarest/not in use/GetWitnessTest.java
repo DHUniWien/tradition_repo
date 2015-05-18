@@ -36,11 +36,11 @@ public class GetWitnessTest {
 				+ " (word5:WORD {text:'test', rank:'5'}),"
 				+ " (testUser)-[:NORMAL]->(testTradition),"
 				+ " (testTradition)-[:NORMAL]->(witnessStart),"
-				+ " (witnessStart)-[:NORMAL {lexemes:'[testLexeme,testLexeme2]'}]->(word1),"
-				+ " (word1)-[:NORMAL {lexemes:'[testLexeme,testLexeme2]'}]->(word2),"
-				+ " (word2)-[:NORMAL {lexemes:'[testLexeme,testLexeme2]'}]->(word3),"
-				+ " (word3)-[:NORMAL {lexemes:'[testLexeme,testLexeme2]'}]->(word4),"
-				+ " (word4)-[:NORMAL {lexemes:'[testLexeme,testLexeme2]'}]->(word5);";
+				+ " (witnessStart)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word1),"
+				+ " (word1)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word2),"
+				+ " (word2)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word3),"
+				+ " (word3)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word4),"
+				+ " (word4)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word5);";
 		try (Transaction tx = graphDb.beginTx()) {
 			beforeEngine.execute(createWitness);
 			tx.success();

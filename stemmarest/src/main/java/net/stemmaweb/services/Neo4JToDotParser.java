@@ -73,11 +73,11 @@ public class Neo4JToDotParser
     			
     			for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.NORMAL))
     			{
-	    			if(rel!=null && rel.hasProperty("lexemes"))
+	    			if(rel!=null && rel.hasProperty("witnesses"))
 	    			{
-	    				String[] lexemes = (String[]) rel.getProperty("lexemes");
+	    				String[] witnesses = (String[]) rel.getProperty("witnesses");
 	    				String lex_str = "";
-	    				Iterator<String> it = Arrays.asList(lexemes).iterator();
+	    				Iterator<String> it = Arrays.asList(witnesses).iterator();
 	    				while(it.hasNext())
 	    				{
 	    					lex_str += ""+it.next()+"";

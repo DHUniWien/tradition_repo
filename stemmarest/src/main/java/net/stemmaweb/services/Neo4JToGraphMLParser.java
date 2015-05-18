@@ -106,7 +106,7 @@ public class Neo4JToGraphMLParser implements IResource
     		nodeMap.put("join_next", "dn9");
     		nodeMap.put("join_prior", "dn10");
     		nodeMap.put("language", "dn11");
-    		nodeMap.put("lexemes", "dn12");
+    		nodeMap.put("witnesses", "dn12");
     		nodeMap.put("normal_form", "dn13");
     		nodeMap.put("rank", "dn14");
     		nodeMap.put("text", "dn15");
@@ -248,7 +248,7 @@ public class Neo4JToGraphMLParser implements IResource
     		writer.writeAttribute("id", "dn11");
     		
     		writer.writeEmptyElement("key");
-    		writer.writeAttribute("attr.name", "lexemes");
+    		writer.writeAttribute("attr.name", "witnesses");
     		writer.writeAttribute("attr.type", "string");
     		writer.writeAttribute("for", "node");
     		writer.writeAttribute("id", "dn12");
@@ -432,10 +432,10 @@ public class Neo4JToGraphMLParser implements IResource
             			String val = prop;
             			if(val!=null)
             			{
-    	        			if(prop.equals("lexemes"))
+    	        			if(prop.equals("witnesses"))
     	        			{
-    	        				String[] lexemes = (String[]) rel.getProperty(prop);
-    	        				for(int i = 0; i < lexemes.length; i++)
+    	        				String[] witnesses = (String[]) rel.getProperty(prop);
+    	        				for(int i = 0; i < witnesses.length; i++)
     	        				{
 	    	        				writer.writeStartElement("edge");
 	    	        				
@@ -445,7 +445,7 @@ public class Neo4JToGraphMLParser implements IResource
 	    	        				
 	    	        				writer.writeStartElement("data");
 	    	        				writer.writeAttribute("key","de12");
-	    	        				writer.writeCharacters(lexemes[i]);
+	    	        				writer.writeCharacters(witnesses[i]);
 	    	        				
 	    	        				writer.writeEndElement();
 	    	        				writer.writeEndElement(); // end edge
@@ -507,7 +507,7 @@ public class Neo4JToGraphMLParser implements IResource
 	    			for(String prop : props)
 	        		{
 	        			String val = prop;			
-	        			if(val!=null && !val.equals("lexemes"))
+	        			if(val!=null && !val.equals("witnesses"))
 	        			{
 		        			writer.writeStartElement("data");
 		        			writer.writeAttribute("key",relationMap.get(val));

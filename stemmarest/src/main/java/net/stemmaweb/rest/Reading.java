@@ -217,7 +217,7 @@ public class Reading implements IResource {
 		String[] currentWitnesses;
 		for (Relationship relationship : originalReading
 				.getRelationships(ERelations.NORMAL)) {
-			currentWitnesses = (String[]) relationship.getProperty("lexemes");
+			currentWitnesses = (String[]) relationship.getProperty("witnesses");
 			for (String currentWitness : currentWitnesses)
 				if (!allWitnesses.contains(currentWitness))
 					allWitnesses.add(currentWitness);
@@ -287,7 +287,7 @@ public class Reading implements IResource {
 			List<String> newWitnesses, Relationship originalRel,
 			Node originNode, Node targetNode) {
 		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
-		String[] oldWitnesses = (String[]) originalRel.getProperty("lexemes");
+		String[] oldWitnesses = (String[]) originalRel.getProperty("witnesses");
 		// if oldWitnesses only contains one witness and this one should be
 		// duplicated, create new relationship for addedReading and delete
 		// the one from the originalReading
@@ -295,7 +295,7 @@ public class Reading implements IResource {
 			if (newWitnesses.contains(oldWitnesses[0])) {
 				Relationship newRel = originNode.createRelationshipTo(
 						targetNode, ERelations.NORMAL);
-				newRel.setProperty("lexemes", oldWitnesses);
+				newRel.setProperty("witnesses", oldWitnesses);
 				deletedRelationships.add(new RelationshipModel(originalRel));
 				originalRel.delete();
 			}
@@ -317,7 +317,7 @@ public class Reading implements IResource {
 				Relationship addedRelationship = originNode
 						.createRelationshipTo(targetNode, ERelations.NORMAL);
 				Collections.sort(remainingWitnesses);
-				addedRelationship.setProperty("lexemes", remainingWitnesses
+				addedRelationship.setProperty("witnesses", remainingWitnesses
 						.toArray(new String[remainingWitnesses.size()]));
 
 				if (stayingWitnesses.isEmpty()) {
@@ -326,7 +326,7 @@ public class Reading implements IResource {
 					originalRel.delete();
 				} else {
 					Collections.sort(stayingWitnesses);
-					originalRel.setProperty("lexemes", stayingWitnesses
+					originalRel.setProperty("witnesses", stayingWitnesses
 							.toArray(new String[stayingWitnesses.size()]));
 				}
 			}
@@ -515,9 +515,9 @@ public class Reading implements IResource {
 						.getOtherNode(deletingReading).getId())) {
 					// get Witnesses
 					String[] stayingReadingWitnesses = (String[]) stayingRel
-							.getProperty("lexemes");
+							.getProperty("witnesses");
 					String[] deletingReadingWitnesses = (String[]) deletingRel
-							.getProperty("lexemes");
+							.getProperty("witnesses");
 
 					// combine witness lists into one list
 					String[] combinedWitnesses = new String[stayingReadingWitnesses.length
@@ -527,7 +527,7 @@ public class Reading implements IResource {
 					for (int i = 0; i < deletingReadingWitnesses.length; i++)
 						combinedWitnesses[stayingReadingWitnesses.length + i] = deletingReadingWitnesses[i];
 					Arrays.sort(combinedWitnesses);
-					stayingRel.setProperty("lexemes", combinedWitnesses);
+					stayingRel.setProperty("witnesses", combinedWitnesses);
 					deletingRel.delete();
 				}
 			}
@@ -543,7 +543,7 @@ public class Reading implements IResource {
 				newRel = deletingRel
 						.getOtherNode(deletingReading)
 						.createRelationshipTo(stayingReading, ERelations.NORMAL);
-			newRel.setProperty("lexemes", deletingRel.getProperty("lexemes"));
+			newRel.setProperty("witnesses", deletingRel.getProperty("witnesses"));
 			deletingRel.delete();
 		}		
 	}
@@ -731,7 +731,7 @@ public class Reading implements IResource {
 		ArrayList<String> allWitnesses = new ArrayList<String>();
 		for (Relationship relationship : originalReading.getRelationships(
 				ERelations.NORMAL, Direction.INCOMING)) {
-			String[] witnesses = (String[]) relationship.getProperty("lexemes");
+			String[] witnesses = (String[]) relationship.getProperty("witnesses");
 			for (int j = 0; j < witnesses.length; j++)
 				allWitnesses.add(witnesses[j]);
 
@@ -754,7 +754,7 @@ public class Reading implements IResource {
 			Relationship relationship = lastReading.createRelationshipTo(
 					newReading, ERelations.NORMAL);
 			Collections.sort(allWitnesses);
-			relationship.setProperty("lexemes",
+			relationship.setProperty("witnesses",
 					allWitnesses.toArray(new String[allWitnesses.size()]));
 
 			lastReading = newReading;

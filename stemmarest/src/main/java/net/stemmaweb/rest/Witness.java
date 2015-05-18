@@ -202,9 +202,9 @@ public class Witness implements IResource {
 				boolean includes = false;
 				boolean continues = false;
 	
-				if (path.lastRelationship().hasProperty("lexemes")) {
+				if (path.lastRelationship().hasProperty("witnesses")) {
 					String[] arr = (String[]) path.lastRelationship()
-							.getProperty("lexemes");
+							.getProperty("witnesses");
 					for (String str : arr) {
 						if (str.equals(WITNESS_ID)) {
 							includes = true;

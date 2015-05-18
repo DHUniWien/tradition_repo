@@ -183,7 +183,7 @@ public class Tradition implements IResource {
 					return Response.status(Status.NOT_FOUND).entity("start node not found").build();
 
 				for (Relationship rel : relationships) {
-					for (String id : ((String[]) rel.getProperty("lexemes"))) {
+					for (String id : ((String[]) rel.getProperty("witnesses"))) {
 						WitnessModel witM = new WitnessModel();
 						witM.setId(id);
 

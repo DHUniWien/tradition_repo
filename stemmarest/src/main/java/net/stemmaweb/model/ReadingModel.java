@@ -30,7 +30,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
 	private String join_next; 		// dn9
 	private String join_prior; 		// dn10
 	private String language; 		// dn11
-	private String lexemes; 		// dn12
+	private String lexxemes; 		// dn12
 	private String normal_form; 	// dn13
 	private Long rank; 				// dn14
 	private String text; 			// dn15
@@ -63,8 +63,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
 			this.setJoin_prior(node.getProperty("join_prior").toString());
 		if (node.hasProperty("language"))
 			this.setLanguage(node.getProperty("language").toString());
-		if (node.hasProperty("lexemes"))
-			this.setLexemes(node.getProperty("lexemes").toString());
+		if (node.hasProperty("witnesses"))
+			this.setwitnesses(node.getProperty("witnesses").toString());
 		if (node.hasProperty("normal_form"))
 			this.setNormal_form(node.getProperty("normal_form").toString());
 		if (node.hasProperty("rank"))
@@ -172,12 +172,12 @@ public class ReadingModel implements Comparable<ReadingModel> {
 		this.language = language;
 	}
 
-	public String getLexemes() {
-		return lexemes;
+	public String getwitnesses() {
+		return lexxemes;
 	}
 
-	public void setLexemes(String lexemes) {
-		this.lexemes = lexemes;
+	public void setwitnesses(String witnesses) {
+		this.lexxemes = witnesses;
 	}
 
 	public String getNormal_form() {

@@ -176,19 +176,19 @@ public class RandomGraphGenerator {
             				}
             	    		
             	    		if(relationshipAtoB==null) {
-            	    			String[] lexemesArray = {witnessBranch.getName()};
+            	    			String[] witnessesArray = {witnessBranch.getName()};
             	    			Relationship rel = lastNode.createRelationshipTo(nextNode, ERelations.NORMAL);
-            	    			rel.setProperty("lexemes", lexemesArray);
+            	    			rel.setProperty("witnesses", witnessesArray);
             	    		} else {
-            					String[] arr = (String[]) relationshipAtoB.getProperty("lexemes");
+            					String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");
             	    			
-            	    			String[] lexemesArray = new String[arr.length + 1];
+            	    			String[] witnessesArray = new String[arr.length + 1];
             					for (int index = 0;index < arr.length;index++) {
-            						lexemesArray[index] = arr[index];
+            						witnessesArray[index] = arr[index];
             					}
-            					lexemesArray[arr.length] = witnessBranch.getName();
+            					witnessesArray[arr.length] = witnessBranch.getName();
             	    			
-            	    			relationshipAtoB.setProperty("lexemes", lexemesArray);
+            	    			relationshipAtoB.setProperty("witnesses", witnessesArray);
             	    		}
             				
             				witnessBranch.setLastNode(nextNode);
@@ -231,19 +231,19 @@ public class RandomGraphGenerator {
         				}
         	    		
         	    		if(relationshipAtoB==null) {
-        	    			String[] lexemesArray = {witnessBranch.getName()};
+        	    			String[] witnessesArray = {witnessBranch.getName()};
         	    			Relationship rel = lastNode.createRelationshipTo(endNode, ERelations.NORMAL);
-        	    			rel.setProperty("lexemes", lexemesArray);
+        	    			rel.setProperty("witnesses", witnessesArray);
         	    		} else {
-        					String[] arr = (String[]) relationshipAtoB.getProperty("lexemes");
+        					String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");
         	    			
-        	    			String[] lexemesArray = new String[arr.length + 1];
+        	    			String[] witnessesArray = new String[arr.length + 1];
         					for (int index = 0;index < arr.length;index++) {
-        						lexemesArray[index] = arr[index];
+        						witnessesArray[index] = arr[index];
         					}
-        					lexemesArray[arr.length] = witnessBranch.getName();
+        					witnessesArray[arr.length] = witnessBranch.getName();
         	    			
-        	    			relationshipAtoB.setProperty("lexemes", lexemesArray);
+        	    			relationshipAtoB.setProperty("witnesses", witnessesArray);
         	    		}
         	    		
     	            	tx.success();

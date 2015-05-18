@@ -438,30 +438,30 @@ public class ReadingTest {
 			// test witnesses and number of paths
 			int numberOfPaths = 0;
 			for (Relationship incoming : originalOf.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
-				assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[0]);
+				assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
 
 			numberOfPaths = 0;
 			for (Relationship incoming : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
-				assertEquals("A", ((String[]) incoming.getProperty("lexemes"))[0]);
-				assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[1]);
+				assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
+				assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[1]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
 
 			numberOfPaths = 0;
 			for (Relationship outgoing : originalOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
-				assertEquals("B", ((String[]) outgoing.getProperty("lexemes"))[0]);
+				assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
 
 			numberOfPaths = 0;
 			for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
-				assertEquals("A", ((String[]) outgoing.getProperty("lexemes"))[0]);
-				assertEquals("C", ((String[]) outgoing.getProperty("lexemes"))[1]);
+				assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
+				assertEquals("C", ((String[]) outgoing.getProperty("witnesses"))[1]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
@@ -512,30 +512,30 @@ public class ReadingTest {
 			// test witnesses and number of paths
 			int numberOfPaths = 0;
 			for (Relationship incoming : originalOf.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
-				assertEquals("A", ((String[]) incoming.getProperty("lexemes"))[0]);
-				assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[1]);
+				assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
+				assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[1]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
 
 			numberOfPaths = 0;
 			for (Relationship incoming : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.INCOMING)) {
-				assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[0]);
+				assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
 
 			numberOfPaths = 0;
 			for (Relationship outgoing : originalOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
-				assertEquals("A", ((String[]) outgoing.getProperty("lexemes"))[0]);
-				assertEquals("C", ((String[]) outgoing.getProperty("lexemes"))[1]);
+				assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
+				assertEquals("C", ((String[]) outgoing.getProperty("witnesses"))[1]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
 
 			numberOfPaths = 0;
 			for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
-				assertEquals("B", ((String[]) outgoing.getProperty("lexemes"))[0]);
+				assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
 				numberOfPaths++;
 			}
 			assertEquals(1, numberOfPaths);
@@ -716,9 +716,9 @@ public class ReadingTest {
 			// test witnesses
 			Relationship incoming = stayingNode.getSingleRelationship(
 					ERelations.NORMAL, Direction.INCOMING);
-			assertEquals("A", ((String[]) incoming.getProperty("lexemes"))[0]);
-			assertEquals("B", ((String[]) incoming.getProperty("lexemes"))[1]);
-			assertEquals("C", ((String[]) incoming.getProperty("lexemes"))[2]);
+			assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
+			assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[1]);
+			assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[2]);
 
 			int counter = 0;
 			for (Relationship outgoing : stayingNode.getRelationships(
@@ -727,14 +727,14 @@ public class ReadingTest {
 				if (outgoing.getOtherNode(stayingNode).getProperty("text")
 						.equals("the")) {
 					assertEquals("A",
-							((String[]) outgoing.getProperty("lexemes"))[0]);
+							((String[]) outgoing.getProperty("witnesses"))[0]);
 					assertEquals("B",
-							((String[]) outgoing.getProperty("lexemes"))[1]);
+							((String[]) outgoing.getProperty("witnesses"))[1]);
 				}
 				if (outgoing.getOtherNode(stayingNode).getProperty("text")
 						.equals("to")) {
 					assertEquals("C",
-							((String[]) outgoing.getProperty("lexemes"))[0]);
+							((String[]) outgoing.getProperty("witnesses"))[0]);
 				}
 			}
 			assertEquals(2, counter);

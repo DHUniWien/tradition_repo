@@ -19,7 +19,7 @@
   <key attr.name="join_next" attr.type="boolean" for="node" id="dn9"/>
   <key attr.name="join_prior" attr.type="boolean" for="node" id="dn10"/>
   <key attr.name="language" attr.type="string" for="node" id="dn11"/>
-  <key attr.name="lexemes" attr.type="string" for="node" id="dn12"/>
+  <key attr.name="witnesses" attr.type="string" for="node" id="dn12"/>
   <key attr.name="normal_form" attr.type="string" for="node" id="dn13"/>
   <key attr.name="rank" attr.type="int" for="node" id="dn14"/>
   <key attr.name="text" attr.type="string" for="node" id="dn15"/>
