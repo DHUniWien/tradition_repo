@@ -36,11 +36,11 @@ public class GetWitnessTest {
 				+ " (word5:WORD {text:'test', rank:'5'}),"
 				+ " (testUser)-[:NORMAL]->(testTradition),"
 				+ " (testTradition)-[:NORMAL]->(witnessStart),"
-				+ " (witnessStart)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word1),"
-				+ " (word1)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word2),"
-				+ " (word2)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word3),"
-				+ " (word3)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word4),"
-				+ " (word4)-[:NORMAL {witnesses:'[testLexeme,testLexeme2]'}]->(word5);";
+				+ " (witnessStart)-[:NORMAL {witnesses:'[testWitness,testWitness2]'}]->(word1),"
+				+ " (word1)-[:NORMAL {witnesses:'[testWitness,testWitness2]'}]->(word2),"
+				+ " (word2)-[:NORMAL {witnesses:'[testWitness,testWitness2]'}]->(word3),"
+				+ " (word3)-[:NORMAL {witnesses:'[testWitness,testWitness2]'}]->(word4),"
+				+ " (word4)-[:NORMAL {witnesses:'[testWitness,testWitness2]'}]->(word5);";
 		try (Transaction tx = graphDb.beginTx()) {
 			beforeEngine.execute(createWitness);
 			tx.success();
@@ -68,7 +68,7 @@ public class GetWitnessTest {
 		wintess.setDb(graphDb);
 
 		assertEquals("this is a witness test",
-				wintess.getWitnssAsPlainText("1000", "testLexeme"));
+				wintess.getWitnssAsPlainText("1000", "testWitness"));
 		graphDb.shutdown();
 	}
 
@@ -79,7 +79,7 @@ public class GetWitnessTest {
 		wintess.setDb(graphDb);
 
 		assertEquals("is a witness",
-				wintess.getWitnssAsPlainText("1000", "testLexeme", "2", "4"));
+				wintess.getWitnssAsPlainText("1000", "testWitness", "2", "4"));
 		graphDb.shutdown();
 	}
 

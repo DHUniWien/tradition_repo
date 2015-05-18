@@ -227,10 +227,10 @@ public class GraphMLToNeo4JParser implements IResource
 						        	if(rel!=null)
 						        	{
 						        		//System.out.println(witnesses.toString());
-						        		String[] lexemeArray = new String[witnesses.size()];
-						        		lexemeArray = witnesses.toArray(lexemeArray);
-						        		if(lexemeArray.length>0)
-						        			rel.setProperty("witnesses", lexemeArray);
+						        		String[] witnessesArray = new String[witnesses.size()];
+						        		witnessesArray = witnesses.toArray(witnessesArray);
+						        		if(witnessesArray.length>0)
+						        			rel.setProperty("witnesses", witnessesArray);
 						        		witnesses.clear();
 						        	}
 						        	if(graphNumber<=1)
@@ -259,9 +259,9 @@ public class GraphMLToNeo4JParser implements IResource
 					        	if(rel!=null)
 					        	{
 					        		//System.out.println(witnesses.toString());
-					        		String[] lexemeArray = new String[witnesses.size()];
-					        		lexemeArray = witnesses.toArray(lexemeArray);
-					        		rel.setProperty("witnesses", lexemeArray);
+					        		String[] witnessesArray = new String[witnesses.size()];
+					        		witnessesArray = witnesses.toArray(witnessesArray);
+					        		rel.setProperty("witnesses", witnessesArray);
 					        		witnesses.clear();
 					        	}
 					        	if(graphNumber<=1)
@@ -333,9 +333,9 @@ public class GraphMLToNeo4JParser implements IResource
 			}
 			if(rel!=null)	// add relationship props to last relationship
 			{
-				String[] lexemeArray = new String[witnesses.size()];
-				lexemeArray = witnesses.toArray(lexemeArray);
-				rel.setProperty("witnesses", lexemeArray);
+				String[] witnessesArray = new String[witnesses.size()];
+				witnessesArray = witnesses.toArray(witnessesArray);
+				rel.setProperty("witnesses", witnessesArray);
 				witnesses.clear();
 			}
 			
