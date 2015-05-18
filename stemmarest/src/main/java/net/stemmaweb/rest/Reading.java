@@ -20,6 +20,7 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
@@ -97,23 +98,23 @@ public class Reading implements IResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response changeReadingProperties(@PathParam("readId") long readId,
-			ReadingChangePropertyModel[] changeModels) {
+			ReadingChangePropertyModel changeModels) {
 		ReadingModel modelToReturn = new ReadingModel();
 		Node reading;
 		try (Transaction tx = db.beginTx()) {
 			reading = db.getNodeById(readId);
-			for (ReadingChangePropertyModel keyCheckModel : changeModels) {
-				if (!reading.hasProperty(keyCheckModel.getKey()))
+			for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
+				if (!reading.hasProperty(keyPropertyModel.getKey()))
 					return Response
 							.status(Status.INTERNAL_SERVER_ERROR)
 							.entity("the reading does not have such property: '"
-									+ keyCheckModel.getKey()
+									+ keyPropertyModel.getKey()
 									+ "'. no changes to the reading have been done")
 							.build();
 			}
-			for (ReadingChangePropertyModel changeModel : changeModels) {
-				reading.setProperty(changeModel.getKey(),
-						changeModel.getNewProperty());
+			for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
+				reading.setProperty(keyPropertyModel.getKey(),
+						keyPropertyModel.getProperty());
 			}
 			modelToReturn = new ReadingModel(reading);
 			tx.success();

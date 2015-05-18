@@ -15,6 +15,8 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -177,13 +179,20 @@ public class ReadingTest {
 			assertTrue(nodes.hasNext());
 			node = nodes.next();
 			assertFalse(nodes.hasNext());
+			
+			KeyPropertyModel keyModel = new KeyPropertyModel();
+			keyModel.setKey("text");
+			keyModel.setProperty("snow");
+			ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+			List<KeyPropertyModel> models = new ArrayList<KeyPropertyModel>();
+			models.add(keyModel);
+			chgModel.setProperties(models);
 
-			String jsonPayload = "[{\"key\":\"text\",\"newProperty\":\"snow\"}]";
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, jsonPayload);
+					.post(ClientResponse.class, chgModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 			assertEquals("snow", (String) node.getProperty("text"));
@@ -207,13 +216,24 @@ public class ReadingTest {
 			assertTrue(nodes.hasNext());
 			node = nodes.next();
 			assertFalse(nodes.hasNext());
+			
+			KeyPropertyModel keyModel = new KeyPropertyModel();
+			keyModel.setKey("text");
+			keyModel.setProperty("snow");
+			ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+			List<KeyPropertyModel> models = new ArrayList<KeyPropertyModel>();
+			models.add(keyModel);
+			KeyPropertyModel keyModel2 = new KeyPropertyModel();
+			keyModel2.setKey("language");
+			keyModel2.setProperty("hebrew");
+			models.add(keyModel2);
+			chgModel.setProperties(models);
 
-			String jsonPayload = "[{\"key\":\"text\",\"newProperty\":\"snow\"},{\"key\":\"language\",\"newProperty\":\"hebrew\"}]";
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, jsonPayload);
+					.post(ClientResponse.class, chgModel);
 
 			assertEquals(Status.OK, response.getClientResponseStatus());
 			assertEquals("snow", (String) node.getProperty("text"));
@@ -238,12 +258,18 @@ public class ReadingTest {
 			node = nodes.next();
 			assertFalse(nodes.hasNext());
 
-			String jsonPayload = "[{\"key\":\"test\",\"newProperty\":\"snow\"}]";
+			KeyPropertyModel keyModel = new KeyPropertyModel();
+			keyModel.setKey("test");
+			keyModel.setProperty("snow");
+			ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+			List<KeyPropertyModel> models = new ArrayList<KeyPropertyModel>();
+			models.add(keyModel);
+			chgModel.setProperties(models);
 			ClientResponse response = jerseyTest
 					.resource()
 					.path("/reading/changeproperties/ofreading/" + node.getId())
 					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class, jsonPayload);
+					.post(ClientResponse.class, chgModel);
 
 			assertEquals(Status.INTERNAL_SERVER_ERROR,
 					response.getClientResponseStatus());

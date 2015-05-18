@@ -1,27 +1,24 @@
 package net.stemmaweb.model;
 
+import java.util.List;
+
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
- * This model consists a node property key and value
+ * This model consists of a list of keypropertymodels
  * @author PSE FS 2015 Team2
  */
 @XmlRootElement
 public class ReadingChangePropertyModel {
 	
-	private String key;
-	private String newProperty;	
+	private List<KeyPropertyModel> properties;
+
+	public List<KeyPropertyModel> getProperties() {
+		return properties;
+	}
+
+	public void setProperties(List<KeyPropertyModel> properties) {
+		this.properties = properties;
+	}
 	
-	public String getKey() {
-		return key;
-	}
-	public void setKey(String key) {
-		this.key = key;
-	}
-	public String getNewProperty() {
-		return newProperty;
-	}
-	public void setNewProperty(String newProperty) {
-		this.newProperty = newProperty;
-	}
 }
