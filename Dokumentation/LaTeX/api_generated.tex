@@ -105,7 +105,7 @@ relationshipId as string
 /getallrelationships/fromtradition/\{tradId\}
 \end{get}
 \begin{response}
-list of relationshipModel as application/json
+list of relationshipModels as application/json
 \end{response}
 \begin{parameter}
 tradId as string
@@ -566,12 +566,16 @@ isAdmin as string
 \end{property}
 \section{ReadingChangePropertyModel}
 \begin{property}
-key as string
-\end{property}
-\begin{property}
-newProperty as string
+properties as list of KeyPropertyModels
 \end{property}
 \section{stemma}
 A tree that provides an overview over the witnesses of a tradition. The relations between the witnesses which are displayed as nodes is central. Here the stemmata are mostly returned in dot format.
 \section{GraphML}
 \url{http://de.wikipedia.org/wiki/GraphML}
+\section{KeyPropertyModel}
+\begin{property}
+key as string
+\end{property}
+\begin{property}
+property as string
+\end{property}
