@@ -507,7 +507,7 @@ public class Neo4JToGraphMLParser implements IResource
 	    			for(String prop : props)
 	        		{
 	        			String val = prop;			
-	        			if(val!=null && !val.equals("leximes"))
+	        			if(val!=null && !val.equals("lexemes"))
 	        			{
 		        			writer.writeStartElement("data");
 		        			writer.writeAttribute("key",relationMap.get(val));

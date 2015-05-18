@@ -73,7 +73,7 @@ public class GraphMLToNeo4JParser implements IResource
     	Node from = null;			// a round-trip store for the start node of a path
     	Node to = null;				// a round-trip store for the end node of a path
     	
-    	LinkedList<String> leximes = new LinkedList<String>();
+    	LinkedList<String> lexemes = new LinkedList<String>();
     								// a round-trip store for witness names of a single relationship
     	int last_inserted_id = 0;
     	
@@ -145,7 +145,7 @@ public class GraphMLToNeo4JParser implements IResource
 			        					}
 			        					else if(map.get(attr).equals("witness"))
 			        					{
-			        						leximes.add(val);
+			        						lexemes.add(val);
 			        					//rel.setProperty(map.get(reader.getAttributeValue(0)),reader.getElementText());
 			        					}
 			        					else
@@ -226,12 +226,12 @@ public class GraphMLToNeo4JParser implements IResource
 						        	from = fromTmp;
 						        	if(rel!=null)
 						        	{
-						        		//System.out.println(leximes.toString());
-						        		String[] leximArray = new String[leximes.size()];
-						        		leximArray = leximes.toArray(leximArray);
-						        		if(leximArray.length>0)
-						        			rel.setProperty("lexemes", leximArray);
-						        		leximes.clear();
+						        		//System.out.println(lexemes.toString());
+						        		String[] lexemeArray = new String[lexemes.size()];
+						        		lexemeArray = lexemes.toArray(lexemeArray);
+						        		if(lexemeArray.length>0)
+						        			rel.setProperty("lexemes", lexemeArray);
+						        		lexemes.clear();
 						        	}
 						        	if(graphNumber<=1)
 						        	{
@@ -258,11 +258,11 @@ public class GraphMLToNeo4JParser implements IResource
 					        	from = fromTmp;
 					        	if(rel!=null)
 					        	{
-					        		//System.out.println(leximes.toString());
-					        		String[] leximArray = new String[leximes.size()];
-					        		leximArray = leximes.toArray(leximArray);
-					        		rel.setProperty("leximes", leximArray);
-					        		leximes.clear();
+					        		//System.out.println(lexemes.toString());
+					        		String[] lexemeArray = new String[lexemes.size()];
+					        		lexemeArray = lexemes.toArray(lexemeArray);
+					        		rel.setProperty("lexemes", lexemeArray);
+					        		lexemes.clear();
 					        	}
 					        	if(graphNumber<=1)
 					        	{
@@ -333,10 +333,10 @@ public class GraphMLToNeo4JParser implements IResource
 			}
 			if(rel!=null)	// add relationship props to last relationship
 			{
-				String[] leximArray = new String[leximes.size()];
-				leximArray = leximes.toArray(leximArray);
-				rel.setProperty("leximes", leximArray);
-				leximes.clear();
+				String[] lexemeArray = new String[lexemes.size()];
+				lexemeArray = lexemes.toArray(lexemeArray);
+				rel.setProperty("lexemes", lexemeArray);
+				lexemes.clear();
 			}
 			
 			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
