@@ -9,9 +9,13 @@ import org.neo4j.graphdb.Label;
  */
 public enum Nodes implements Label {
 	ROOT,		// is a the root node of the db
-	WORD,		// is a reading in the db
+	WORD,	// is a reading in the db
 	WITNESS,	// is a witness in a stemma tree
 	TRADITION,	// is a tradition root node
 	STEMMA,		// is a stemma root node
+        REFERENCE,      // is an entity reference
+        PERSON,         // ...to a person
+        PLACE,          // ...to a place
+        TIMESPAN,       // ...to a period of time
 	USER		// is a user node
 }
