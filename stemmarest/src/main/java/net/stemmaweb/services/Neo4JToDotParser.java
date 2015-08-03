@@ -85,12 +85,12 @@ public class Neo4JToDotParser
 	    						lex_str += ",";
 	    				}
 	    			
-	    				write("n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[label=\""+ lex_str +"\";id=\"e"+ edgeId++ +"\"];");
+	    				write("n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + " [label=\""+ lex_str +"\", id=\"e"+ edgeId++ +"\"];");
 	    			}
     			}
     			for(Relationship rel : node.getRelationships(Direction.OUTGOING, ERelations.RELATIONSHIP))
     			{
-    				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + "[style=dotted;label=\""+ rel.getProperty("type").toString() +"\";id=\"e"+ edgeId++ +"\"];";
+    				subgraph += "n" + rel.getStartNode().getId() + "->" + "n" + rel.getEndNode().getId() + " [style=dotted, label=\""+ rel.getProperty("type").toString() +"\", id=\"e"+ edgeId++ +"\"];";
     			}
     		}
     		
