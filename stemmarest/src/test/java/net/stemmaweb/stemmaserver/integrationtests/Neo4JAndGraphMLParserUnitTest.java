@@ -18,11 +18,10 @@ import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 /**
@@ -50,10 +49,9 @@ public class Neo4JAndGraphMLParserUnitTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-    	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
+    		Result result = db.execute("match (n:ROOT) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		Node rootNode = null;
     		if(!nodes.hasNext())
@@ -78,7 +76,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLImportFileNotFoundExceptionTest()
 	{
-		String filename = "";
+		String filename;
 		if(OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\SapientiaFileNotExisting.xml";
 		else 
@@ -102,7 +100,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLImportXMLStreamErrorTest()
 	{
 		Response actualResponse = null;
-		String filename = "";
+		String filename;
 		if(OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\SapientiaWithError.xml";
 		else 
@@ -127,7 +125,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLImportSuccessTest(){
 		Response actualResponse = null;
-		String filename = "";
+		String filename;
 		if(OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else 
@@ -154,7 +152,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void traditionNodeExistsTest(){
 		try(Transaction tx = db.beginTx())
     	{
-			ResourceIterable<Node> tradNodes = db.findNodesByLabelAndProperty(Nodes.TRADITION, "name", "Tradition");
+			ResourceIterable<Node> tradNodes = (ResourceIterable<Node>) db.findNodes(Nodes.TRADITION, "name", "Tradition");
 			Iterator<Node> tradNodesIt = tradNodes.iterator();
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
@@ -187,7 +185,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLExportSuccessTest(){
 		
 		removeOutputFile();
-		String filename = "";
+		String filename;
 		if(OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else 

@@ -21,12 +21,11 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -50,10 +49,7 @@ public class StemmaTest {
 	 * grizzly http service
 	 */
 	private JerseyTest jerseyTest;
-	
 
-	private GraphMLToNeo4JParser importResource;
-	private Stemma stemma;
 
 	@Before
 	public void setUp() throws Exception {
@@ -61,11 +57,11 @@ public class StemmaTest {
 		GraphDatabaseServiceProvider.setImpermanentDatabase();
 		
 		db = new GraphDatabaseServiceProvider().getDatabase();
+
+		Stemma stemma = new Stemma();
+		GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 		
-		stemma = new Stemma();
-		importResource = new GraphMLToNeo4JParser();
-		
-		String filename = "";
+		String filename;
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else
@@ -74,9 +70,8 @@ public class StemmaTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
@@ -107,7 +102,7 @@ public class StemmaTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -183,9 +178,8 @@ public class StemmaTest {
 	@Test
 	public void setStemmaTest(){
 		
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res");
+			Result result = db.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res");
 			assertEquals(2L,result.columnAs("res").next());
 		
 			tx.success();
@@ -199,7 +193,7 @@ public class StemmaTest {
 		assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
 		
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result2 = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res2");
+			Result result2 = db.execute("match (t:TRADITION {id:'"+ tradId +"'})--(s:STEMMA) return count(s) AS res2");
 			assertEquals(3L,result2.columnAs("res2").next());
 		
 			tx.success();
@@ -224,15 +218,13 @@ public class StemmaTest {
 	@Test
 	public void reorientGraphStemmaTest()
 	{
-		ExecutionEngine engine = new ExecutionEngine(db);
-		
 		 String stemmaTitle = "Semstem 1402333041_0";
 		 String newNodeId = "C";
 		 String secondNodeId = "0";
 
 
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
+			Result result1 = db.execute("match (t:TRADITION {id:'"+
 					tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
 					stemmaTitle +"'}) return n");
     		Iterator<Node> stNodes = result1.columnAs("n");
@@ -284,13 +276,11 @@ public class StemmaTest {
 	@Test
 	public void reorientDigraphStemmaTest()
 	{
-		ExecutionEngine engine = new ExecutionEngine(db);
-		
 		 String stemmaTitle = "stemma";
 		 String newNodeId = "C";
 
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
+			Result result1 = db.execute("match (t:TRADITION {id:'"+
 					tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
 					stemmaTitle +"'}) return n");
     		Iterator<Node> stNodes = result1.columnAs("n");

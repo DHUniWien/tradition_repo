@@ -21,10 +21,9 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -64,10 +63,9 @@ public class UserTest {
 		/*
 		 * Populate the test database with the root node
 		 */
-    	ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
+    		Result result = db.execute("match (n:ROOT) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		if(!nodes.hasNext())
     		{
@@ -91,10 +89,9 @@ public class UserTest {
 	@Test
 	public void createUserTest(){
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = null;
+		Result result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
+			result = db.execute("match (userId:USER {id:'1337'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertFalse(nodes.hasNext());
 			tx.success();
@@ -107,7 +104,7 @@ public class UserTest {
 		
 
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (userId:USER {id:'1337'}) return userId");
+			result = db.execute("match (userId:USER {id:'1337'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertTrue(nodes.hasNext());
 			tx.success();
@@ -180,18 +177,17 @@ public class UserTest {
 		/*
 		 * Creat a testtradition for user 1
 		 */
-	    ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-    		engine.execute(createTradition);
+    		db.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
     						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
-    		engine.execute(createNewRelationQuery);
+    		db.execute(createNewRelationQuery);
     		
     		tx.success();
     	} 
@@ -203,13 +199,13 @@ public class UserTest {
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'843' })";
-    		engine.execute(createTradition);
+    		db.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'2'}) "
     				+ "MATCH(tradition: TRADITION {id:'843'}) "
     						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
-    		engine.execute(createNewRelationQuery);
+    		db.execute(createNewRelationQuery);
     		tx.success();
     	}
     	
@@ -226,28 +222,28 @@ public class UserTest {
 	    	/*
 	    	 * Check if user 1 is removed
 	    	 */
-			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+			Result result = db.execute("match (userId:USER {id:'1'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertFalse(nodes.hasNext());
 			
 	    	/*
 	    	 * Check if tradition 842 is removed
 	    	 */
-			result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+			result = db.execute("match (tradId:TRADITION {id:'842'}) return tradId");
 			nodes = result.columnAs("tradId");
 			assertFalse(nodes.hasNext());
 			
 			/*
 			 * Check if user 2 still exists
 			 */
-			result = engine.execute("match (userId:USER {id:'2'}) return userId");
+			result = db.execute("match (userId:USER {id:'2'}) return userId");
 			nodes = result.columnAs("userId");
 			assertTrue(nodes.hasNext());
 			
 	    	/*
 	    	 * Check if tradition 843 is removed
 	    	 */
-			result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+			result = db.execute("match (tradId:TRADITION {id:'843'}) return tradId");
 			nodes = result.columnAs("tradId");
 			assertTrue(nodes.hasNext());
 			tx.success();
@@ -270,18 +266,17 @@ public class UserTest {
 		/*
 		 * Creat a testtradition for user 1
 		 */
-	    ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-    		engine.execute(createTradition);
+    		db.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
     						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
-    		engine.execute(createNewRelationQuery);
+    		db.execute(createNewRelationQuery);
     	
 	    	/*
 	    	 * Remove user 2 with all his traditions
@@ -292,28 +287,28 @@ public class UserTest {
 	    	/*
 	    	 * Check if user 1 still exists
 	    	 */
-			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+			Result result = db.execute("match (userId:USER {id:'1'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertTrue(nodes.hasNext());
 			
 	    	/*
 	    	 * Check if tradition 842 still exists
 	    	 */
-			result = engine.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+			result = db.execute("match (tradId:TRADITION {id:'842'}) return tradId");
 			nodes = result.columnAs("tradId");
 			assertTrue(nodes.hasNext());
 			
 			/*
 			 * Check if user 2 does not exist
 			 */
-			result = engine.execute("match (userId:USER {id:'2'}) return userId");
+			result = db.execute("match (userId:USER {id:'2'}) return userId");
 			nodes = result.columnAs("userId");
 			assertFalse(nodes.hasNext());
 			
 	    	/*
 	    	 * Check if tradition 843 does not exist
 	    	 */
-			result = engine.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+			result = db.execute("match (tradId:TRADITION {id:'843'}) return tradId");
 			nodes = result.columnAs("tradId");
 			assertFalse(nodes.hasNext());
 			tx.success();
@@ -328,18 +323,17 @@ public class UserTest {
         String jsonPayload = "{\"isAdmin\":0,\"id\":837462}";
         jerseyTest.resource().path("/user/createuser").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
         
-	    ExecutionEngine engine = new ExecutionEngine(db);
     	try(Transaction tx = db.beginTx())
     	{
     		// Add the new ownership
     		String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-    		engine.execute(createTradition);
+    		db.execute(createTradition);
     		String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
     				+ "MATCH(tradition: TRADITION {id:'842'}) "
     						+ "SET tradition.name = 'TestTradition' "
     								+ "SET tradition.public = '0' "
     										+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
-    		engine.execute(createNewRelationQuery);
+    		db.execute(createNewRelationQuery);
     		
     		tx.success();
     	} 

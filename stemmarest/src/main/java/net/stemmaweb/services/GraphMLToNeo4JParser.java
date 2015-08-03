@@ -19,13 +19,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
@@ -68,8 +62,6 @@ public class GraphMLToNeo4JParser implements IResource
 		HashMap<String, String> map = new HashMap<String, String>();
 		// to store all keys of the introduction part
 		
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	
     	Node from = null;			// a round-trip store for the start node of a path
     	Node to = null;				// a round-trip store for the end node of a path
     	
@@ -83,8 +75,7 @@ public class GraphMLToNeo4JParser implements IResource
     	{
     		reader = factory.createXMLStreamReader(in);
         	// retrieves the last inserted Tradition id
-        	String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
-        												.iterator()
+        	String prefix = ((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node")).iterator()
         												.next()
         												.getProperty("LAST_INSERTED_TRADITION_ID")
         												.toString();
@@ -95,7 +86,7 @@ public class GraphMLToNeo4JParser implements IResource
         	
         	Node tradRootNode = null;	// this will be the entry point of the graph
         	
-	    	Node currNode = null;	// holds the current node
+	    	Node currNode;	// holds the current node
 	    	currNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
 	    	Relationship rel = null;	// holds the current relationship
 	    	
@@ -339,7 +330,7 @@ public class GraphMLToNeo4JParser implements IResource
 				witnesses.clear();
 			}
 			
-			ExecutionResult result = engine.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
+			Result result = db.execute("match (n:TRADITION {id:'"+ last_inserted_id +"'})-[:NORMAL]->(s:WORD) return s");
 			Iterator<Node> nodes = result.columnAs("s");
 			Node startNode = nodes.next();
 			for (Node node : db.traversalDescription().breadthFirst()
@@ -363,14 +354,14 @@ public class GraphMLToNeo4JParser implements IResource
 				}
 			}
 	    	
-	   	    ExecutionResult userNodeSearch = engine.execute("match (user:USER {id:'" + userId + "'}) return user");
+	   	    Result userNodeSearch = db.execute("match (user:USER {id:'" + userId + "'}) return user");
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
 	   	    userNode.createRelationshipTo(tradRootNode, ERelations.NORMAL);
 
-	   	    db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
-	   	    								.iterator()
-	   	    								.next()
-	   	    								.setProperty("LAST_INSERTED_TRADITION_ID", prefix.substring(0, prefix.length()-1));
+			((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node"))
+					.iterator()
+					.next()
+					.setProperty("LAST_INSERTED_TRADITION_ID", prefix.substring(0, prefix.length() - 1));
 
 			tx.success();
 		}

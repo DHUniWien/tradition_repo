@@ -2,8 +2,7 @@ package net.stemmaweb.services;
 
 import java.util.Iterator;
 import net.stemmaweb.rest.Nodes;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -22,8 +21,8 @@ public class DatabaseService {
 	 * @return
 	 */
 	public static Node getStartNode(String tradId, GraphDatabaseService db) {
-		ExecutionEngine engine = new ExecutionEngine(db);
-		Node startNode = null;
+//		ExecutionEngine engine = new ExecutionEngine(db);
+		Node startNode;
 
 		/**
 		 * this query gets the "Start" node of the witness
@@ -33,13 +32,15 @@ public class DatabaseService {
 
 		try (Transaction tx = db.beginTx()) {
 
-			ExecutionResult result = engine.execute(witnessQuery);
+			Result result = db.execute(witnessQuery);
 			Iterator<Node> nodes = result.columnAs("w");
 
 			if (!nodes.hasNext()) {
-				return null;				
-			} else
+				return null;
+			}
+			else {
 				startNode = nodes.next();
+			}
 
 			tx.success();
 		}catch (Exception e){
@@ -54,9 +55,8 @@ public class DatabaseService {
 	 * 
 	 */
 	public static void createRootNode(GraphDatabaseService db) {
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			if (!nodes.hasNext()) {
 				Node node = db.createNode(Nodes.ROOT);
@@ -77,9 +77,8 @@ public class DatabaseService {
 	 */
 	public static boolean checkIfUserExists(String userId,
 			GraphDatabaseService db) {
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (userId:USER {id:'"
+			Result result = db.execute("match (userId:USER {id:'"
 					+ userId + "'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			if (nodes.hasNext())

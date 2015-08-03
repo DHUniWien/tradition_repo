@@ -18,12 +18,11 @@ import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.Neo4JToDotParser;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -58,9 +57,8 @@ public class Stemma implements IResource {
 		{
 			try(Transaction tx = db.beginTx())
 			{
-			ExecutionEngine engine = new ExecutionEngine(db);
 			// find all stemmata associated with this tradition
-			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
+			Result result = db.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
 			
 			Iterator<Node> stemmata = result.columnAs("s");
 			Neo4JToDotParser parser = new Neo4JToDotParser(db);
@@ -91,7 +89,7 @@ public class Stemma implements IResource {
 	/**
 	 * Returns JSON string with a Stemma of a tradition in DOT format
 	 * 
-	 * @param tratitionId
+	 * @param tradId
 	 * @param stemmaTitle
 	 * @return Http Response ok and DOT JSON string on success or an ERROR in
 	 *         JSON format
@@ -110,7 +108,7 @@ public class Stemma implements IResource {
 	/**
 	 * Puts the Stemma of a DOT file in the database
 	 * 
-	 * @param tratitionId
+	 * @param tradId
 	 * @return Http Response ok and DOT JSON string on success or an ERROR in
 	 *         JSON format
 	 */
@@ -139,13 +137,11 @@ public class Stemma implements IResource {
 	public Response reorientStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle,
 			@PathParam("nodeId") String nodeId) {
 		
-		ExecutionEngine engine = new ExecutionEngine(db);
-		
 		Response resp;
 
 		try (Transaction tx = db.beginTx()) 
     	{
-    		ExecutionResult result1 = engine.execute("match (t:TRADITION {id:'"+ 
+    		Result result1 = db.execute("match (t:TRADITION {id:'"+
     						tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
     						stemmaTitle +"'}) return n");
     		Iterator<Node> stNodes = result1.columnAs("n");
@@ -157,7 +153,7 @@ public class Stemma implements IResource {
 			Node startNodeStemma = stNodes.next();
     		String stemmaType = startNodeStemma.getProperty("type").toString();
     		
-    		ExecutionResult result2 = engine.execute("match (s:STEMMA { name:'"+
+    		Result result2 = db.execute("match (s:STEMMA { name:'"+
     						stemmaTitle+"'})-[:STEMMA*..]-(w:WITNESS { id:'" +
     						nodeId + "'}) return w");
     		Iterator<Node> nodes = result2.columnAs("w");

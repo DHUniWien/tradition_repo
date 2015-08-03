@@ -20,10 +20,9 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Result;
 
 import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
@@ -87,16 +86,15 @@ public class Benchmark1kNodes extends BenachmarkTests {
 			assertTrue(false);
 		}
 		
-		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = engine.execute("match (w:WORD {text:'showers'}) return w");
+		Result result = db.execute("match (w:WORD {text:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		duplicateReadingNodeId = nodes.next().getId();
 
-		result = engine.execute("match (w:WORD {text:'the root'}) return w");
+		result = db.execute("match (w:WORD {text:'the root'}) return w");
 		nodes = result.columnAs("w");
 		theRoot = nodes.next().getId();
 		
-		result = engine.execute("match (w:WORD {text:'unto me'}) return w");
+		result = db.execute("match (w:WORD {text:'unto me'}) return w");
 		nodes = result.columnAs("w");
 		untoMe = nodes.next().getId();
 	}

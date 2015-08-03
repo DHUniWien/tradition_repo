@@ -21,12 +21,11 @@ import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -59,9 +58,8 @@ public class User implements IResource {
 					.build();
 		}
 
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult rootNodeSearch = engine.execute("match (n:ROOT) return n");
+			Result rootNodeSearch = db.execute("match (n:ROOT) return n");
 			Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
 
 			Node node = db.createNode(Nodes.USER);
@@ -89,10 +87,8 @@ public class User implements IResource {
 	public Response getUserById(@PathParam("userId") String userId) {
 		UserModel userModel = new UserModel();
 		
-
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (userId:USER {id:'" + userId + "'}) return userId");
+			Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 
 			if (nodes.hasNext()) {
@@ -119,10 +115,8 @@ public class User implements IResource {
 	@Path("deleteuser/withid/{userId}")
 	public Response deleteUserById(@PathParam("userId") String userId) {
 		
-
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (userId:USER {id:'" + userId + "'}) return userId");
+			Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 
 			if (nodes.hasNext()) {
@@ -186,10 +180,8 @@ public class User implements IResource {
 			return Response.status(Status.NOT_FOUND).build();
 		}
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'" + userId + "'}) return n");
+			Result result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'" + userId + "'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			while (tradIterator.hasNext()) {
 				if (tradIterator.hasNext()) {

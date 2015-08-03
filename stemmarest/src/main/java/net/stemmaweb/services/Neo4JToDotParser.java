@@ -17,13 +17,12 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
@@ -46,7 +45,7 @@ public class Neo4JToDotParser
 
 	public Response parseNeo4J(String tradId)
 	{
-		String filename = "upload/" + "output.dot";
+		String filename = "upload/output.dot";
     	
 		Node startNode = DatabaseService.getStartNode(tradId,db);
 
@@ -131,12 +130,9 @@ public class Neo4JToDotParser
 		ArrayList<Node> nodes = new ArrayList<Node>();
 		ArrayList<Relationship> relationships = new ArrayList<Relationship>();
 
-
-		ExecutionEngine engine = new ExecutionEngine(db);
-    	
-    	try (Transaction tx = db.beginTx()) 
+    	try (Transaction tx = db.beginTx())
     	{
-    		ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ 
+    		Result result = db.execute("match (t:TRADITION {id:'"+
     						tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" + 
     						stemmaTitle +"'}) return n");
     		Iterator<Node> stNodes = result.columnAs("n");
@@ -214,9 +210,9 @@ public class Neo4JToDotParser
 		
 		try(Transaction tx = db.beginTx())
 		{
-			ExecutionEngine engine = new ExecutionEngine(db);
+			//ExecutionEngine engine = new ExecutionEngine(db);
 			// find all Stemmata associated with this tradition
-			ExecutionResult result = engine.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
+			Result result = db.execute("match (t:TRADITION {id:'"+ tradId +"'})-[:STEMMA]->(s:STEMMA) return s");
 			
 			Iterator<Node> stemmata = result.columnAs("s");
 			while(stemmata.hasNext())

@@ -26,12 +26,11 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -75,7 +74,7 @@ public class RelationTest {
 		witness = new Witness();
 		
 		
-		String filename = "";
+		String filename;
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else
@@ -84,9 +83,8 @@ public class RelationTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
@@ -116,7 +114,7 @@ public class RelationTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -137,7 +135,7 @@ public class RelationTest {
 	@Test
 	public void createRelationshipTest() {
 		RelationshipModel relationship = new RelationshipModel();
-		String relationshipId = "";
+		String relationshipId;
 		relationship.setSource("16");
 		relationship.setTarget("24");
 		relationship.setType("repetition");
@@ -213,7 +211,7 @@ public class RelationTest {
 		 * Create a relationship
 		 */
 		RelationshipModel relationship = new RelationshipModel();
-		String relationshipId = "";
+		String relationshipId;
 		relationship.setSource("16");
 		relationship.setTarget("24");
 		relationship.setType("transposition");
@@ -246,8 +244,7 @@ public class RelationTest {
 		
 		try (Transaction tx = db.beginTx()) {
 			
-			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine.execute("match (w:WORD {text:'march'}) return w");
+			Result result = db.execute("match (w:WORD {text:'march'}) return w");
 			Iterator<Node> nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			Node march1 = nodes.next();
@@ -261,7 +258,7 @@ public class RelationTest {
 					rel = tempRel;
 					relCounter++;
 			}
-			//checks that the correct realtionship has been found
+			//checks that the correct relationship has been found
 			assertEquals(1, relCounter);
 			assertEquals(march2.getId(), rel.getOtherNode(march1).getId());
 			
@@ -271,7 +268,7 @@ public class RelationTest {
 					.delete(ClientResponse.class);
 			assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
-			result = engine.execute("match (w:WORD {text:'march'}) return w");
+			result = db.execute("match (w:WORD {text:'march'}) return w");
 			 nodes = result.columnAs("w");
 			assertTrue(nodes.hasNext());
 			march1 = nodes.next();
@@ -280,11 +277,7 @@ public class RelationTest {
 			assertFalse(nodes.hasNext());
 			
 			relCounter = 0;
-			Iterator<Relationship> relationships = march1.getRelationships(ERelations.RELATIONSHIP).iterator();
-			while(relationships.hasNext()){
-				relCounter++;
-				relationships.next();
-			}
+			for (Relationship relationship : march1.getRelationships(ERelations.RELATIONSHIP)) relCounter++;
 			
 			assertEquals(0, relCounter);
 			String expectedText = "{\"text\":\"when april with his showers sweet with "
@@ -321,8 +314,8 @@ public class RelationTest {
 		 * Create two relationships between two nodes
 		 */
 		RelationshipModel relationship = new RelationshipModel();
-		String relationshipId1 = "";
-		String relationshipId2 = "";
+		String relationshipId1;
+		String relationshipId2;
 		relationship.setSource("16");
 		relationship.setTarget("24");
 		relationship.setType("transposition");
@@ -377,8 +370,8 @@ public class RelationTest {
 		 * Create a relationship
 		 */
 		RelationshipModel relationship = new RelationshipModel();
-		String relationshipId1 = "";
-		String relationshipId2 = "";
+		String relationshipId1;
+		String relationshipId2;
 		relationship.setSource("16");
 		relationship.setTarget("17");
 		relationship.setType("transposition");
@@ -492,8 +485,7 @@ public class RelationTest {
 			assertEquals("teh", rel.getEndNode().getProperty("text"));
 		}
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = engine.execute("match (w:WORD {text:'rood'}) return w");
+		Result result = db.execute("match (w:WORD {text:'rood'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node node = nodes.next();
@@ -501,7 +493,7 @@ public class RelationTest {
 		
 		relationship.setSource(node.getId() + "");
 
-		result = engine.execute("match (w:WORD {text:'unto'}) return w");
+		result = db.execute("match (w:WORD {text:'unto'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		node = nodes.next();
@@ -536,14 +528,13 @@ public class RelationTest {
 	public void createRelationshipTestWithCyclicConstraint() {
 		RelationshipModel relationship = new RelationshipModel();
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-		ExecutionResult result = engine.execute("match (w:WORD {text:'showers'}) return w");
+		Result result = db.execute("match (w:WORD {text:'showers'}) return w");
 		Iterator<Node> nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node firstNode = nodes.next();
 		assertFalse(nodes.hasNext());
 
-		result = engine.execute("match (w:WORD {text:'pierced'}) return w");
+		result = db.execute("match (w:WORD {text:'pierced'}) return w");
 		nodes = result.columnAs("w");
 		assertTrue(nodes.hasNext());
 		Node secondNode = nodes.next();
@@ -622,12 +613,11 @@ public class RelationTest {
 	
 	@Test
 	public void getNoRelationshipTest(){
-		ExecutionEngine engine = new ExecutionEngine(db);
 		String newTradId;
 		/**
 		 * load a tradition with no Realtionships to the test DB
 		 */
-		String filename = "";
+		String filename;
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTraditionNoRealtions.xml";
 		else
@@ -642,7 +632,7 @@ public class RelationTest {
 		 * gets the generated id of the new inserted tradition
 		 */
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			String tradId1 = (String) nodes.next().getProperty("id");

@@ -16,10 +16,9 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 /**
@@ -53,9 +52,8 @@ public class DatabaseServiceTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
@@ -86,8 +84,7 @@ public class DatabaseServiceTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine
-					.execute("match (u:USER)--(t:TRADITION) return t");
+			Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");

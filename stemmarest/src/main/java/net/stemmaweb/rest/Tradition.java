@@ -35,12 +35,11 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -62,7 +61,7 @@ public class Tradition implements IResource {
 	/**
 	 * Changes the metadata of the tradition.
 	 * 
-	 * @param traditionMetadata
+	 * @param tradition
 	 *            in JSON Format
 	 * @return OK and information about the tradition in JSON on success or an
 	 *         ERROR in JSON format
@@ -79,26 +78,26 @@ public class Tradition implements IResource {
 					.build();
 		}
 
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (witnessId:TRADITION {id:'" + witnessId + "'}) return witnessId");
+			Result result = db.execute("match (witnessId:TRADITION {id:'" + witnessId + "'}) return witnessId");
 			Iterator<Node> nodes = result.columnAs("witnessId");
 
 			if (nodes.hasNext()) {
 				// Remove the old ownership
 				String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + witnessId + "'}) "
 						+ "MATCH tradition<-[r:NORMAL]-(:USER) DELETE r";
-				result = engine.execute(removeRelationQuery);
-				System.out.println(result.dumpToString());
-
+				result = db.execute(removeRelationQuery);
+//                System.out.println(result.dumpToString());
+                System.out.println(result.toString());
 				// Add the new ownership
 				String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId() + "'}) "
 						+ "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) " + "SET tradition.name = '"
 						+ tradition.getName() + "' " + "SET tradition.public = '"
 						+ tradition.getIsPublic() + "' "
 						+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
-				result = engine.execute(createNewRelationQuery);
-				System.out.println(result.dumpToString());
+				result = db.execute(createNewRelationQuery);
+//				System.out.println(result.dumpToString());
+                System.out.println(result.toString());
 
 			} else {
 				// Tradition not found
@@ -124,11 +123,9 @@ public class Tradition implements IResource {
 	public Response getAllTraditions() {
 		List<TraditionModel> traditionList = new ArrayList<TraditionModel>();
 		
-		ExecutionEngine engine = new ExecutionEngine(db);
-		
 		try (Transaction tx = db.beginTx()) {
 			
-			ExecutionResult result = engine.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
+			Result result = db.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
 			Iterator<Node> traditions = result.columnAs("n");
 			while(traditions.hasNext())
 			{
@@ -161,15 +158,13 @@ public class Tradition implements IResource {
 
 		ArrayList<WitnessModel> witnessList = new ArrayList<WitnessModel>();
 
-		ExecutionEngine engine = new ExecutionEngine(db);
-
 		try (Transaction tx = db.beginTx()) {
-			Node traditionNode = null;
+			Node traditionNode;
 			Iterable<Relationship> relationships = null;
 			Node startNode = DatabaseService.getStartNode(tradId, db);
 
 			try {
-				traditionNode = getTraditionNode(tradId, engine);								
+				traditionNode = getTraditionNode(tradId, db);
 
 				if (traditionNode == null){
 					return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
@@ -244,8 +239,8 @@ public class Tradition implements IResource {
 	 * @param engine
 	 * @return the root tradition node
 	 */
-	private Node getTraditionNode(String tradId, ExecutionEngine engine) {
-		ExecutionResult result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
+	private Node getTraditionNode(String tradId, GraphDatabaseService engine) {
+		Result result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
 		Iterator<Node> nodes = result.columnAs("n");
 
 		if (!nodes.hasNext())
@@ -256,8 +251,7 @@ public class Tradition implements IResource {
 	/**
 	 * Returns GraphML file from specified tradition owned by user
 	 * 
-	 * @param userId
-	 * @param traditionName
+	 * @param tradId
 	 * @return XML data
 	 */
 	@GET
@@ -278,9 +272,8 @@ public class Tradition implements IResource {
 	@Path("deletetradition/withid/{tradId}")
 	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
 
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return tradId");
+			Result result = db.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return tradId");
 			Iterator<Node> nodes = result.columnAs("tradId");
 
 			if (nodes.hasNext()) {
@@ -399,7 +392,7 @@ public class Tradition implements IResource {
 	/**
 	 * Returns DOT file from specified tradition owned by user
 	 * 
-	 * @param traditionName
+	 * @param tradId
 	 * @return XML data
 	 */
 	@GET
@@ -412,8 +405,7 @@ public class Tradition implements IResource {
 		File file = new File(filename);
 		file.delete();
 		
-		ExecutionEngine engine = new ExecutionEngine(db);
-		if(getTraditionNode(tradId,engine) == null)
+		if(getTraditionNode(tradId, db) == null)
 			return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
 		Neo4JToDotParser parser = new Neo4JToDotParser(db);

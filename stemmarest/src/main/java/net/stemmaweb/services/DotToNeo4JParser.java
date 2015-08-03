@@ -12,6 +12,7 @@ import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 
 /**
@@ -137,14 +138,13 @@ public class DotToNeo4JParser implements IResource
 				node.setProperty("name", name[1]);
 			}
 			
-			Node trad = db.findNodesByLabelAndProperty(Nodes.TRADITION, "id", tradId).iterator().next();
+			Node trad = ((ResourceIterable<Node>) db.findNodes(Nodes.TRADITION, "id", tradId)).iterator().next();
 			if(trad!=null)
 				trad.createRelationshipTo(node, ERelations.STEMMA);
 			nodes.add(node);
 			dot = dot.substring(i+1);
 		}
-		else
-		{
+		else {
 			return false;
 		}
 		return true;

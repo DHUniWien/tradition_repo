@@ -21,12 +21,11 @@ import javax.xml.transform.stream.StreamResult;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.IResource;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.w3c.dom.Document;
@@ -53,16 +52,14 @@ public class Neo4JToGraphMLParser implements IResource
 		
 		String filename = "upload/" + "output.xml";
     	
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	
-		Node traditionNode = null;
+		Node traditionNode;
 		Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
     	if(traditionStartNode == null)
     		return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
     	
     	try (Transaction tx = db.beginTx()) 
     	{
-    		ExecutionResult result = engine.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
+    		Result result = db.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		
     		if(!nodes.hasNext())
@@ -90,9 +87,9 @@ public class Neo4JToGraphMLParser implements IResource
     		
     		// ####### KEYS START #######################################
     		
-    		HashMap<String, String> nodeMap = new HashMap<String, String>();
-    		HashMap<String, String> relationMap = new HashMap<String, String>();
-    		HashMap<String, String> graphMap = new HashMap<String, String>();
+    		HashMap<String, String> nodeMap = new HashMap<>();
+    		HashMap<String, String> relationMap = new HashMap<>();
+    		HashMap<String, String> graphMap = new HashMap<>();
     		
     		nodeMap.put("grammar_invalid", "dn0");
     		nodeMap.put("id", "dn1");
@@ -352,7 +349,7 @@ public class Neo4JToGraphMLParser implements IResource
     		// ####### KEYS END #######################################
     		// graph 1
     		
-    		Iterable<String> props = null;
+    		Iterable<String> props;
     		
     		writer.writeStartElement("graph");
     		writer.writeAttribute("edgedefault", "directed");
@@ -368,11 +365,10 @@ public class Neo4JToGraphMLParser implements IResource
     		props = traditionNode.getPropertyKeys();
     		for(String prop : props)
     		{
-    			String val = prop;
-    			if(val!=null && !val.equals("id"))
+				if(prop !=null && !prop.equals("id"))
     			{
     				writer.writeStartElement("data");
-    				writer.writeAttribute("key",graphMap.get(val));
+    				writer.writeAttribute("key",graphMap.get(prop));
     				writer.writeCharacters(traditionNode.getProperty(prop).toString());
     				writer.writeEndElement();
     			}
@@ -402,12 +398,10 @@ public class Neo4JToGraphMLParser implements IResource
     			writer.writeEndElement();
         		for(String prop : props)
         		{
-        			String val = prop;
-        			
-        			if(val!=null)
+        			if(prop!=null)
         			{
 	        			writer.writeStartElement("data");
-	        			writer.writeAttribute("key",nodeMap.get(val));
+	        			writer.writeAttribute("key",nodeMap.get(prop));
 	        			writer.writeCharacters(node.getProperty(prop).toString());
 	        			writer.writeEndElement();
         			}
@@ -415,8 +409,8 @@ public class Neo4JToGraphMLParser implements IResource
         		writer.writeEndElement(); // end node
 			}
         		
-    		String startNode = "";
-    		String endNode = "";
+    		String startNode;
+    		String endNode;
     		for ( Relationship rel : db.traversalDescription()
     		        .relationships( ERelations.NORMAL,Direction.OUTGOING)
     		        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
@@ -435,21 +429,20 @@ public class Neo4JToGraphMLParser implements IResource
     	        			if(prop.equals("witnesses"))
     	        			{
     	        				String[] witnesses = (String[]) rel.getProperty(prop);
-    	        				for(int i = 0; i < witnesses.length; i++)
-    	        				{
-	    	        				writer.writeStartElement("edge");
-	    	        				
-	    	        				writer.writeAttribute("source", rel.getStartNode().getId() + "");
-	    	        				writer.writeAttribute("target", rel.getEndNode().getId() + "");
-	    	        				writer.writeAttribute("id","e" + edgeId++);
-	    	        				
-	    	        				writer.writeStartElement("data");
-	    	        				writer.writeAttribute("key","de12");
-	    	        				writer.writeCharacters(witnesses[i]);
-	    	        				
-	    	        				writer.writeEndElement();
-	    	        				writer.writeEndElement(); // end edge
-    	        				}
+								for (String witness : witnesses) {
+									writer.writeStartElement("edge");
+
+									writer.writeAttribute("source", rel.getStartNode().getId() + "");
+									writer.writeAttribute("target", rel.getEndNode().getId() + "");
+									writer.writeAttribute("id", "e" + edgeId++);
+
+									writer.writeStartElement("data");
+									writer.writeAttribute("key", "de12");
+									writer.writeCharacters(witness);
+
+									writer.writeEndElement();
+									writer.writeEndElement(); // end edge
+								}
     	        			}
             			}
             		}
@@ -478,7 +471,7 @@ public class Neo4JToGraphMLParser implements IResource
 					.uniqueness(Uniqueness.NODE_GLOBAL)
 					.traverse(traditionStartNode).nodes()) {
     			nodeCountGraph2++;
-    			props = node.getPropertyKeys();
+    			// props = node.getPropertyKeys();
     			writer.writeStartElement("node");
     			writer.writeAttribute("id", node.getId() + "");
 	        	writer.writeStartElement("data");
@@ -506,11 +499,10 @@ public class Neo4JToGraphMLParser implements IResource
     				writer.writeAttribute("id", "e" + edgeId++);
 	    			for(String prop : props)
 	        		{
-	        			String val = prop;			
-	        			if(val!=null && !val.equals("witnesses"))
+						if(prop !=null && !prop.equals("witnesses"))
 	        			{
 		        			writer.writeStartElement("data");
-		        			writer.writeAttribute("key",relationMap.get(val));
+		        			writer.writeAttribute("key",relationMap.get(prop));
 		        			writer.writeCharacters(rel.getProperty(prop).toString());
 		        			writer.writeEndElement();
 	        			}

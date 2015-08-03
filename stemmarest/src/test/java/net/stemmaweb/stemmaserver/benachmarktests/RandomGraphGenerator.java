@@ -7,12 +7,7 @@ import java.util.Random;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 
 /**
@@ -40,20 +35,19 @@ public class RandomGraphGenerator {
 	 * @param cardOfUsers
 	 * @param cardOfTraditionsPerUser
 	 * @param cardOfWitnesses
-	 * @param maxRanks
+	 * @param maxRank
 	 * @postcondition the database if full
 	 */
 	public void role(GraphDatabaseService db, int cardOfUsers, int cardOfTraditionsPerUser, 
 			int cardOfWitnesses, int maxRank){
-    	ExecutionEngine engine = new ExecutionEngine(db);
-    	
+
     	Random randomGenerator = new Random();
     	
     	String[] loremIpsumArray = loremIpsum.split(" ");
     	
     	try(Transaction tx = db.beginTx())
     	{
-    		ExecutionResult result = engine.execute("match (n:ROOT) return n");
+    		Result result = db.execute("match (n:ROOT) return n");
     		Iterator<Node> nodes = result.columnAs("n");
     		if(!nodes.hasNext())
     		{
@@ -66,10 +60,9 @@ public class RandomGraphGenerator {
     	
     	for(int k=0;k<cardOfUsers;k++)
     	{
-    		engine = new ExecutionEngine(db);
-    		Node currentUser = null;
+    		Node currentUser;
     		try (Transaction tx = db.beginTx()) {
-    			ExecutionResult rootNodeSearch = engine.execute("match (n:ROOT) return n");
+    			Result rootNodeSearch = db.execute("match (n:ROOT) return n");
     			Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
 
     			currentUser = db.createNode(Nodes.USER);
@@ -93,15 +86,15 @@ public class RandomGraphGenerator {
         		for(;ind<20;ind++)
         			System.out.print(" ");
         		System.out.println("]");
-        		ArrayList<WitnessBranch> witnessUnconnectedBranchs = new ArrayList<RandomGraphGenerator.WitnessBranch>();
+        		ArrayList<WitnessBranch> witnessUnconnectedBranches = new ArrayList<RandomGraphGenerator.WitnessBranch>();
             	try (Transaction tx = db.beginTx()) {
-            		String prefix = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node")
-            							.iterator()
-            							.next()
-            							.getProperty("LAST_INSERTED_TRADITION_ID")
-            							.toString();
+            		String prefix =((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node"))
+							.iterator()
+							.next()
+							.getProperty("LAST_INSERTED_TRADITION_ID")
+							.toString();
 	            	Node traditionRootNode = db.createNode(Nodes.TRADITION);
-	            	Node rootNode = db.findNodesByLabelAndProperty(Nodes.ROOT, "name", "Root node").iterator().next();
+	            	Node rootNode = ((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node")).iterator().next();
 	            	rootNode.setProperty("LAST_INSERTED_TRADITION_ID", 
 	            			Integer.toString(Integer.parseInt(prefix) + 1));
 
@@ -126,7 +119,7 @@ public class RandomGraphGenerator {
 	            		witnessBranch.setLastNode(startNode); 
 	            		witnessBranch.setName("W"+l);
 	            		
-	            		witnessUnconnectedBranchs.add(witnessBranch);	
+	            		witnessUnconnectedBranches.add(witnessBranch);
 	            	}
 	            	
 	            	tx.success();
@@ -135,10 +128,10 @@ public class RandomGraphGenerator {
             	/**
             	 * Create Nodes for each rank
             	 */
-            	ArrayList<WitnessBranch> witnessConnectedBranchs = new ArrayList<RandomGraphGenerator.WitnessBranch>();
+            	ArrayList<WitnessBranch> witnessConnectedBranchs = new ArrayList<>();
         		for(int u=1;u<maxRank;u++){
 
-    				ArrayList<Node> nodesOfCurrentRank = new ArrayList<Node>();
+    				ArrayList<Node> nodesOfCurrentRank = new ArrayList<>();
     				int numberOfNodesOnThisRank = randomGenerator.nextInt(cardOfWitnesses)+1;
         			try(Transaction tx = db.beginTx()){
             			for(int m=0;m<numberOfNodesOnThisRank;m++){
@@ -161,7 +154,7 @@ public class RandomGraphGenerator {
         				 * Connect the words randomly
         				 */
             			for(int n=cardOfWitnesses; n>0;n--){
-            				WitnessBranch witnessBranch = witnessUnconnectedBranchs.remove(randomGenerator.nextInt(n));
+            				WitnessBranch witnessBranch = witnessUnconnectedBranches.remove(randomGenerator.nextInt(n));
             				Node lastNode = witnessBranch.getLastNode();
             				Node nextNode = nodesOfCurrentRank.get(moduloIndex);
             				
@@ -183,9 +176,7 @@ public class RandomGraphGenerator {
             					String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");
             	    			
             	    			String[] witnessesArray = new String[arr.length + 1];
-            					for (int index = 0;index < arr.length;index++) {
-            						witnessesArray[index] = arr[index];
-            					}
+								System.arraycopy(arr, 0, witnessesArray, 0, arr.length);
             					witnessesArray[arr.length] = witnessBranch.getName();
             	    			
             	    			relationshipAtoB.setProperty("witnesses", witnessesArray);
@@ -195,7 +186,7 @@ public class RandomGraphGenerator {
             				witnessConnectedBranchs.add(witnessBranch);
             				moduloIndex = (moduloIndex+1)%numberOfNodesOnThisRank;
             			}
-            			witnessUnconnectedBranchs = witnessConnectedBranchs;
+            			witnessUnconnectedBranches = witnessConnectedBranchs;
             			tx.success();
         			}
         		}
@@ -216,7 +207,7 @@ public class RandomGraphGenerator {
         		/**
         		 * Connect to end node
         		 */
-        		for(WitnessBranch witnessBranch : witnessUnconnectedBranchs){
+        		for(WitnessBranch witnessBranch : witnessUnconnectedBranches){
             		try(Transaction tx = db.beginTx()){
             			Node lastNode = witnessBranch.getLastNode();
             			
@@ -238,9 +229,7 @@ public class RandomGraphGenerator {
         					String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");
         	    			
         	    			String[] witnessesArray = new String[arr.length + 1];
-        					for (int index = 0;index < arr.length;index++) {
-        						witnessesArray[index] = arr[index];
-        					}
+							System.arraycopy(arr, 0, witnessesArray, 0, arr.length);
         					witnessesArray[arr.length] = witnessBranch.getName();
         	    			
         	    			relationshipAtoB.setProperty("witnesses", witnessesArray);
