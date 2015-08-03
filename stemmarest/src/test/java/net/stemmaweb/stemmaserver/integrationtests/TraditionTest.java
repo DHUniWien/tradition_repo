@@ -26,10 +26,9 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -69,7 +68,7 @@ public class TraditionTest {
 		importResource = new GraphMLToNeo4JParser();
 		tradition = new Tradition();
 		
-		String filename = "";
+		String filename;
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else
@@ -78,9 +77,8 @@ public class TraditionTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
@@ -110,7 +108,7 @@ public class TraditionTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
+			Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -129,7 +127,7 @@ public class TraditionTest {
 	public void getAllTraditionsTest()
 	{
 		// import a second tradition into the db
-		String filename = "";
+		String filename;
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else
@@ -326,7 +324,7 @@ public class TraditionTest {
 		exp[58]= "subgraph { edge [dir=none]n16->n27 [style=dotted, label=\"transposition\", id=";
 		exp[59]= "n11->n14 [style=dotted, label=\"transposition\", id=";
 		exp[0]= "n10->n13 [style=dotted, label=\"transposition\", id=";
-		
+
 		for(int i=0; i<exp.length;i++) {
 			assertTrue(str.contains(exp[i]));
 		}
@@ -341,9 +339,8 @@ public class TraditionTest {
 		/*
 		 * Create a second user with id 42
 		 */
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = nodes.next();
 
@@ -358,9 +355,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 42 has no tradition
 		 */
-		ExecutionResult result = null;
+		Result result;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -371,9 +368,8 @@ public class TraditionTest {
 		/*
 		 * The user with id 1 has tradition
 		 */
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -401,9 +397,8 @@ public class TraditionTest {
 		/*
 		 * Test if user with id 42 has now the tradition
 		 */
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -420,9 +415,8 @@ public class TraditionTest {
 		/*
 		 * The user with id 1 has no tradition
 		 */
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -437,13 +431,12 @@ public class TraditionTest {
 	 */
 	@Test
 	public void changeMetadataOfATraditionTestWithWrongUser(){
-		ExecutionEngine engine = new ExecutionEngine(db);
 		/* Preconditon
 		 * The user with id 1 has tradition
 		 */
-		ExecutionResult result = null;
+		Result result;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -473,15 +466,13 @@ public class TraditionTest {
 		 * The user with id 1 has still tradition
 		 */
 		TraditionModel tradition = new TraditionModel();
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 
 			tradition.setId(tradNode.getProperty("id").toString());
 			tradition.setName(tradNode.getProperty("name").toString());
-
 
 			tx.success();
 		}
@@ -500,9 +491,8 @@ public class TraditionTest {
 		/*
 		 * Create a second user with id 42
 		 */
-		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			ExecutionResult result = engine.execute("match (n:ROOT) return n");
+			Result result = db.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = nodes.next();
 
@@ -517,9 +507,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 42 has no tradition
 		 */
-		ExecutionResult result = null;
+		Result result;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -530,9 +520,8 @@ public class TraditionTest {
 		/*
 		 * The user with id 1 has tradition
 		 */
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -566,9 +555,8 @@ public class TraditionTest {
 		/*
 		 * Test if user with id 1 has still the old tradition
 		 */
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -579,20 +567,17 @@ public class TraditionTest {
 			assertTrue(tradition.getName().equals("Tradition"));
 
 			tx.success();
-
 		}
 		
 		/*
 		 * The user with id 42 has still no tradition
 		 */
-		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
 			tx.success();
-
 		}
 	}
 	
@@ -621,7 +606,6 @@ public class TraditionTest {
 	public void deleteATraditionWithInvalidIdTest(){
 		try(Transaction tx = db.beginTx())
 		{
-			ExecutionEngine engine = new ExecutionEngine(db);
 			/*
 			 * Try to remove a tradition with invalid id
 			 */
@@ -631,14 +615,14 @@ public class TraditionTest {
 			/*
 			 * Test if user 1 still exists
 			 */
-			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
+			Result result = db.execute("match (userId:USER {id:'1'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertTrue(nodes.hasNext());
 			
 	    	/*
 	    	 * Check if tradition {tradId} still exists
 	    	 */
-			result = engine.execute("match (t:TRADITION {id:'"+tradId+"'}) return t");
+			result = db.execute("match (t:TRADITION {id:'"+tradId+"'}) return t");
 			nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tx.success();
