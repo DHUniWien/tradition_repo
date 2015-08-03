@@ -849,47 +849,6 @@ public class ReadingTest {
 	}
 
 	@Test
-	public void mergeReadingsWithoutRelationshipBetweenEachOtherTest() {
-		try (Transaction tx = db.beginTx()) {
-			ExecutionEngine engine = new ExecutionEngine(db);
-			ExecutionResult result = engine
-					.execute("match (w:WORD {text:'his'}) return w");
-			Iterator<Node> nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			Node firstNode = nodes.next();
-			assertTrue(nodes.hasNext());
-			Node secondNode = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			// merge readings
-			ClientResponse response = jerseyTest
-					.resource()
-					.path("/reading/mergereadings/first/" + firstNode.getId()
-							+ "/second/" + secondNode.getId())
-					.type(MediaType.APPLICATION_JSON)
-					.post(ClientResponse.class);
-
-			assertEquals(Status.INTERNAL_SERVER_ERROR,
-					response.getClientResponseStatus());
-			assertEquals(
-					"Readings to be merged have to be connected with each other through a relationship",
-					response.getEntity(String.class));
-
-			testNumberOfReadingsAndWitnesses(29);
-
-			result = engine.execute("match (w:WORD {text:'his'}) return w");
-			nodes = result.columnAs("w");
-			assertTrue(nodes.hasNext());
-			firstNode = nodes.next();
-			assertTrue(nodes.hasNext());
-			secondNode = nodes.next();
-			assertFalse(nodes.hasNext());
-
-			tx.success();
-		}
-	}
-
-	@Test
 	public void mergeReadingsWithClassTwoRelationshipsTest() {
 		try (Transaction tx = db.beginTx()) {
 			ExecutionEngine engine = new ExecutionEngine(db);

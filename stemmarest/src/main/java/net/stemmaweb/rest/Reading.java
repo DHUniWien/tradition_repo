@@ -387,12 +387,6 @@ public class Reading implements IResource {
 			return false;
 		}
 
-		if (!doContainRelationshipBetweenEachOther(stayingReading,
-				deletingReading)) {
-			errorMessage = "Readings to be merged have to be connected with each other through a relationship";
-			return false;
-		}
-
 		if (containClassTwoRelationships(stayingReading, deletingReading)) {
 			errorMessage = "Readings to be merged cannot contain class 2 relationships (transposition / repetition)";
 			return false;
