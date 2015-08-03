@@ -6,5 +6,6 @@ stemmarest/.classpath
 stemmarest/.project
 stemmarest/.*
 stemmarest/upload/*
+stemmarest/stemmarest.iml
 !stemmarest/upload/notempty
 Tests/*
