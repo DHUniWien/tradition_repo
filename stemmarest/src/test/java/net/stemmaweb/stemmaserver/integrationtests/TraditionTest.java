@@ -26,9 +26,10 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -68,7 +69,7 @@ public class TraditionTest {
 		importResource = new GraphMLToNeo4JParser();
 		tradition = new Tradition();
 		
-		String filename;
+		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else
@@ -77,8 +78,9 @@ public class TraditionTest {
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
+		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (n:ROOT) return n");
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = null;
 			if (!nodes.hasNext()) {
@@ -108,7 +110,7 @@ public class TraditionTest {
 		 * gets the generated id of the inserted tradition
 		 */
 		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
+			ExecutionResult result = engine.execute("match (u:USER)--(t:TRADITION) return t");
 			Iterator<Node> nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tradId = (String) nodes.next().getProperty("id");
@@ -127,7 +129,7 @@ public class TraditionTest {
 	public void getAllTraditionsTest()
 	{
 		// import a second tradition into the db
-		String filename;
+		String filename = "";
 		if (OSDetector.isWin())
 			filename = "src\\TestXMLFiles\\testTradition.xml";
 		else
@@ -264,70 +266,70 @@ public class TraditionTest {
 		String str = jerseyTest.resource().path("/tradition/getdot/fromtradition/" + tradId).type(MediaType.APPLICATION_JSON).get(String.class);
 
 		String[] exp = new String[60];
-		exp[1]= "digraph { n4 [label=\"#START#\"];n4->n5[label=\"A,B,C\";id=\"e0\"];";
+		exp[1]= "digraph { n4 [label=\"#START#\"];n4->n5 [label=\"A,B,C\", id=\"e0\"];";
 		exp[2]= "n5 [label=\"when\"];";
-		exp[3]= "n5->n16[label=\"A\";id=";
-		exp[4]= "n5->n24[label=\"B,C\";id=";
+		exp[3]= "n5->n16 [label=\"A\", id=";
+		exp[4]= "n5->n24 [label=\"B,C\", id=";
 		exp[5]= "n16 [label=\"april\"];";
-		exp[6]= "n16->n22[label=\"A\";id=";
+		exp[6]= "n16->n22 [label=\"A\", id=";
 		exp[7]= "n24 [label=\"showers\"];";
-		exp[8]= "n24->n25[label=\"A,B,C\";id=";
+		exp[8]= "n24->n25 [label=\"A,B,C\", id=";
 		exp[9]= "n22 [label=\"with\"];";
-		exp[10]= "n22->n23[label=\"A\";id=";
+		exp[10]= "n22->n23 [label=\"A\", id=";
 		exp[11]= "n25 [label=\"sweet\"];";
-		exp[12]= "n25->n26[label=\"A,B,C\";id=";
+		exp[12]= "n25->n26 [label=\"A,B,C\", id=";
 		exp[13]= "n23 [label=\"his\"];";
-		exp[14]= "n23->n24[label=\"A\";id=";
+		exp[14]= "n23->n24 [label=\"A\", id=";
 		exp[15]= "n26 [label=\"with\"];";
-		exp[16]= "n26->n27[label=\"B,C\";id=";
-		exp[17]= "n26->n7[label=\"A\";id=";
+		exp[16]= "n26->n27 [label=\"B,C\", id=";
+		exp[17]= "n26->n7 [label=\"A\", id=";
 		exp[18]= "n27 [label=\"april\"];";
-		exp[19]= "n27->n7[label=\"B,C\";id=";
+		exp[19]= "n27->n7 [label=\"B,C\", id=";
 		exp[20]= "n7 [label=\"fruit\"];";
-		exp[21]= "n7->n9[label=\"C\";id=";
-		exp[22]= "n7->n8[label=\"A,B\";id=";
+		exp[21]= "n7->n9 [label=\"C\", id=";
+		exp[22]= "n7->n8 [label=\"A,B\", id=";
 		exp[23]= "n9 [label=\"teh\"];";
-		exp[24]= "n9->n11[label=\"C\";id=";
+		exp[24]= "n9->n11 [label=\"C\", id=";
 		exp[25]= "n8 [label=\"the\"];";
-		exp[26]= "n8->n10[label=\"B\";id=";
-		exp[27]= "n8->n11[label=\"A\";id=";
+		exp[26]= "n8->n10 [label=\"B\", id=";
+		exp[27]= "n8->n11 [label=\"A\", id=";
 		exp[28]= "n11 [label=\"drought\"];";
-		exp[29]= "n11->n12[label=\"A,C\";id=";
+		exp[29]= "n11->n12 [label=\"A,C\", id=";
 		exp[30]= "n10 [label=\"march\"];";
-		exp[31]= "n10->n12[label=\"B\";id=";
+		exp[31]= "n10->n12 [label=\"B\", id=";
 		exp[32]= "n12 [label=\"of\"];";
-		exp[33]= "n12->n14[label=\"B\";id=";
-		exp[34]= "n12->n13[label=\"A,C\";id=";
+		exp[33]= "n12->n14 [label=\"B\", id=";
+		exp[34]= "n12->n13 [label=\"A,C\", id=";
 		exp[35]= "n14 [label=\"drought\"];";
-		exp[36]= "n14->n15[label=\"B\";id=";
+		exp[36]= "n14->n15 [label=\"B\", id=";
 		exp[37]= "n13 [label=\"march\"];";
-		exp[38]= "n13->n15[label=\"A,C\";id=";
+		exp[38]= "n13->n15 [label=\"A,C\", id=";
 		exp[39]= "n15 [label=\"has\"];";
-		exp[40]= "n15->n17[label=\"A,B,C\";id=";
+		exp[40]= "n15->n17 [label=\"A,B,C\", id=";
 		exp[41]= "n17 [label=\"pierced\"];";
-		exp[42]= "n17->n18[label=\"A\";id=";
-		exp[43]= "n17->n19[label=\"B\";id=";
-		exp[44]= "n17->n20[label=\"C\";id=";
+		exp[42]= "n17->n18 [label=\"A\", id=";
+		exp[43]= "n17->n19 [label=\"B\", id=";
+		exp[44]= "n17->n20 [label=\"C\", id=";
 		exp[45]= "n18 [label=\"unto\"];";
-		exp[46]= "n18->n21[label=\"A\";id=";
+		exp[46]= "n18->n21 [label=\"A\", id=";
 		exp[47]= "n19 [label=\"to\"];";
-		exp[48]= "n19->n21[label=\"B\";id=";
+		exp[48]= "n19->n21 [label=\"B\", id=";
 		exp[49]= "n20 [label=\"teh\"];";
-		exp[50]= "n20->n28[label=\"C\";id=";
+		exp[50]= "n20->n28 [label=\"C\", id=";
 		exp[51]= "n21 [label=\"the\"];";
-		exp[52]= "n21->n6[label=\"A,B\";id=";
+		exp[52]= "n21->n6 [label=\"A,B\", id=";
 		exp[53]= "n28 [label=\"rood\"];";
-		exp[54]= "n28->n3[label=\"C\";id=";
+		exp[54]= "n28->n3 [label=\"C\", id=";
 		exp[55]= "n6 [label=\"root\"];";
-		exp[56]= "n6->n3[label=\"A,B\";id=";
+		exp[56]= "n6->n3 [label=\"A,B\", id=";
 		exp[57]= "n3 [label=\"#END#\"];";
-		exp[58]= "subgraph { edge [dir=none]n16->n27[style=dotted;label=\"transposition\";id=";
-		exp[59]= "n11->n14[style=dotted;label=\"transposition\";id=";
-		exp[0]= "n10->n13[style=dotted;label=\"transposition\";id=";
-
-        for (String anExp : exp) {
-            assertTrue(str.contains(anExp));
-        }
+		exp[58]= "subgraph { edge [dir=none]n16->n27 [style=dotted, label=\"transposition\", id=";
+		exp[59]= "n11->n14 [style=dotted, label=\"transposition\", id=";
+		exp[0]= "n10->n13 [style=dotted, label=\"transposition\", id=";
+		
+		for(int i=0; i<exp.length;i++) {
+			assertTrue(str.contains(exp[i]));
+		}
 	} 
 	
 	/**
@@ -339,8 +341,9 @@ public class TraditionTest {
 		/*
 		 * Create a second user with id 42
 		 */
+		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (n:ROOT) return n");
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = nodes.next();
 
@@ -355,9 +358,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 42 has no tradition
 		 */
-		Result result;
+		ExecutionResult result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -368,8 +371,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 1 has tradition
 		 */
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -397,8 +401,9 @@ public class TraditionTest {
 		/*
 		 * Test if user with id 42 has now the tradition
 		 */
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -415,8 +420,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 1 has no tradition
 		 */
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -431,12 +437,13 @@ public class TraditionTest {
 	 */
 	@Test
 	public void changeMetadataOfATraditionTestWithWrongUser(){
+		ExecutionEngine engine = new ExecutionEngine(db);
 		/* Preconditon
 		 * The user with id 1 has tradition
 		 */
-		Result result;
+		ExecutionResult result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -466,8 +473,9 @@ public class TraditionTest {
 		 * The user with id 1 has still tradition
 		 */
 		TraditionModel tradition = new TraditionModel();
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 
@@ -492,8 +500,9 @@ public class TraditionTest {
 		/*
 		 * Create a second user with id 42
 		 */
+		ExecutionEngine engine = new ExecutionEngine(db);
 		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (n:ROOT) return n");
+			ExecutionResult result = engine.execute("match (n:ROOT) return n");
 			Iterator<Node> nodes = result.columnAs("n");
 			Node rootNode = nodes.next();
 
@@ -508,9 +517,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 42 has no tradition
 		 */
-		Result result;
+		ExecutionResult result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -521,8 +530,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 1 has tradition
 		 */
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -556,8 +566,9 @@ public class TraditionTest {
 		/*
 		 * Test if user with id 1 has still the old tradition
 		 */
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			Node tradNode = tradIterator.next();
 			TraditionModel tradition = new TraditionModel();
@@ -574,8 +585,9 @@ public class TraditionTest {
 		/*
 		 * The user with id 42 has still no tradition
 		 */
+		result = null;
 		try (Transaction tx = db.beginTx()) {
-			result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+			result = engine.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
 			Iterator<Node> tradIterator = result.columnAs("n");
 			assertTrue(!tradIterator.hasNext());
 
@@ -593,7 +605,7 @@ public class TraditionTest {
 		assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 		
 
-		Node startNode;
+		Node startNode = null;
 		try (Transaction tx = db.beginTx()) {
 			startNode = DatabaseService.getStartNode(tradId, db);
 			
@@ -609,6 +621,7 @@ public class TraditionTest {
 	public void deleteATraditionWithInvalidIdTest(){
 		try(Transaction tx = db.beginTx())
 		{
+			ExecutionEngine engine = new ExecutionEngine(db);
 			/*
 			 * Try to remove a tradition with invalid id
 			 */
@@ -618,14 +631,14 @@ public class TraditionTest {
 			/*
 			 * Test if user 1 still exists
 			 */
-			Result result = db.execute("match (userId:USER {id:'1'}) return userId");
+			ExecutionResult result = engine.execute("match (userId:USER {id:'1'}) return userId");
 			Iterator<Node> nodes = result.columnAs("userId");
 			assertTrue(nodes.hasNext());
 			
 	    	/*
 	    	 * Check if tradition {tradId} still exists
 	    	 */
-			result = db.execute("match (t:TRADITION {id:'"+tradId+"'}) return t");
+			result = engine.execute("match (t:TRADITION {id:'"+tradId+"'}) return t");
 			nodes = result.columnAs("t");
 			assertTrue(nodes.hasNext());
 			tx.success();

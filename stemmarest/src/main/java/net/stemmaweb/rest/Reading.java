@@ -387,12 +387,6 @@ public class Reading implements IResource {
 			return false;
 		}
 
-		if (!doContainRelationshipBetweenEachOther(stayingReading,
-				deletingReading)) {
-			errorMessage = "Readings to be merged have to be connected with each other through a relationship";
-			return false;
-		}
-
 		if (containClassTwoRelationships(stayingReading, deletingReading)) {
 			errorMessage = "Readings to be merged cannot contain class 2 relationships (transposition / repetition)";
 			return false;
@@ -726,8 +720,11 @@ public class Reading implements IResource {
 		ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<ReadingModel>();
 		ArrayList<RelationshipModel> deletedRelationships = new ArrayList<RelationshipModel>();
 
-		Iterable<Relationship> originalOutgoingRels = originalReading
-				.getRelationships(ERelations.NORMAL, Direction.OUTGOING);
+		ArrayList<Relationship> originalOutgoingRels = new ArrayList<Relationship>();
+		for (Relationship oldRel : originalReading
+				.getRelationships(ERelations.NORMAL, Direction.OUTGOING) ) {
+			originalOutgoingRels.add(oldRel);
+		}
 		ArrayList<String> allWitnesses = new ArrayList<String>();
 		for (Relationship relationship : originalReading.getRelationships(
 				ERelations.NORMAL, Direction.INCOMING)) {
