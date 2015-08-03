@@ -31,7 +31,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
@@ -1981,8 +1981,7 @@ public class ReadingTest {
 	@Test
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
-			ResourceIterable<Node> tradNodes = (ResourceIterable<Node>) db.findNodes(Nodes.TRADITION, "name", "Tradition");
-			Iterator<Node> tradNodesIt = tradNodes.iterator();
+			ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
 		}
@@ -1994,8 +1993,7 @@ public class ReadingTest {
 	@Test
 	public void traditionEndNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
-			ResourceIterable<Node> tradNodes = (ResourceIterable<Node>) db.findNodes(Nodes.WORD, "text", "#END#");
-			Iterator<Node> tradNodesIt = tradNodes.iterator();
+			ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.WORD, "text", "#END#");
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
 		}

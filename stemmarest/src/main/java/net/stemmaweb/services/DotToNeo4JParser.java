@@ -138,7 +138,7 @@ public class DotToNeo4JParser implements IResource
 				node.setProperty("name", name[1]);
 			}
 			
-			Node trad = ((ResourceIterable<Node>) db.findNodes(Nodes.TRADITION, "id", tradId)).iterator().next();
+			Node trad = db.findNodes(Nodes.TRADITION, "id", tradId).next();
 			if(trad!=null)
 				trad.createRelationshipTo(node, ERelations.STEMMA);
 			nodes.add(node);

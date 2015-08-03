@@ -75,10 +75,10 @@ public class GraphMLToNeo4JParser implements IResource
     	{
     		reader = factory.createXMLStreamReader(in);
         	// retrieves the last inserted Tradition id
-        	String prefix = ((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node")).iterator()
-        												.next()
-        												.getProperty("LAST_INSERTED_TRADITION_ID")
-        												.toString();
+        	String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
+					.next()
+					.getProperty("LAST_INSERTED_TRADITION_ID")
+					.toString();
         	last_inserted_id = Integer.parseInt(prefix);
         	last_inserted_id++;
         	prefix = String.valueOf(last_inserted_id) + "_";
@@ -358,8 +358,7 @@ public class GraphMLToNeo4JParser implements IResource
 	   	    Node userNode = (Node) userNodeSearch.columnAs("user").next();
 	   	    userNode.createRelationshipTo(tradRootNode, ERelations.NORMAL);
 
-			((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node"))
-					.iterator()
+			db.findNodes(Nodes.ROOT, "name", "Root node")
 					.next()
 					.setProperty("LAST_INSERTED_TRADITION_ID", prefix.substring(0, prefix.length() - 1));
 

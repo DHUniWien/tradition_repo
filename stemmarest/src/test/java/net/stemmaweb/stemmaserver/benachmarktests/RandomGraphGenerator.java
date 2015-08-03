@@ -8,6 +8,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.*;
+import org.neo4j.helpers.collection.ResourceClosingIterator;
 
 
 /**
@@ -88,13 +89,12 @@ public class RandomGraphGenerator {
         		System.out.println("]");
         		ArrayList<WitnessBranch> witnessUnconnectedBranches = new ArrayList<RandomGraphGenerator.WitnessBranch>();
             	try (Transaction tx = db.beginTx()) {
-            		String prefix =((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node"))
-							.iterator()
+            		String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
 							.next()
 							.getProperty("LAST_INSERTED_TRADITION_ID")
 							.toString();
 	            	Node traditionRootNode = db.createNode(Nodes.TRADITION);
-	            	Node rootNode = ((ResourceIterable<Node>) db.findNodes(Nodes.ROOT, "name", "Root node")).iterator().next();
+	            	Node rootNode = db.findNodes(Nodes.ROOT, "name", "Root node").next();
 	            	rootNode.setProperty("LAST_INSERTED_TRADITION_ID", 
 	            			Integer.toString(Integer.parseInt(prefix) + 1));
 

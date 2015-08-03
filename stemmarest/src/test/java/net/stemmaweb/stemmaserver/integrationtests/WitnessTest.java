@@ -21,11 +21,7 @@ import net.stemmaweb.stemmaserver.OSDetector;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.ResourceIterable;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -242,8 +238,7 @@ public class WitnessTest {
 	@Test
 	public void traditionNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
-			ResourceIterable<Node> tradNodes = (ResourceIterable<Node>) db.findNodes(Nodes.TRADITION, "name", "Tradition");
-			Iterator<Node> tradNodesIt = tradNodes.iterator();
+			ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
 		}
@@ -255,8 +250,7 @@ public class WitnessTest {
 	@Test
 	public void traditionEndNodeExistsTest() {
 		try (Transaction tx = db.beginTx()) {
-			ResourceIterable<Node> tradNodes = (ResourceIterable<Node>) db.findNodes(Nodes.WORD, "text", "#END#");
-			Iterator<Node> tradNodesIt = tradNodes.iterator();
+			ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.WORD, "text", "#END#");
 			assertTrue(tradNodesIt.hasNext());
 			tx.success();
 		}
