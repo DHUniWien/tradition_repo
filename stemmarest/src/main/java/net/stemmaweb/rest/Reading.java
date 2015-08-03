@@ -1,11 +1,6 @@
 package net.stemmaweb.rest;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -729,8 +724,7 @@ public class Reading implements IResource {
 		for (Relationship relationship : originalReading.getRelationships(
 				ERelations.NORMAL, Direction.INCOMING)) {
 			String[] witnesses = (String[]) relationship.getProperty("witnesses");
-			for (int j = 0; j < witnesses.length; j++)
-				allWitnesses.add(witnesses[j]);
+			Collections.addAll(allWitnesses, witnesses);
 
 		}
 		originalReading.setProperty("text", splitWords[0]);
@@ -1154,8 +1148,8 @@ public class Reading implements IResource {
 		ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<List<ReadingModel>>();
 
 		for (int i = 0; i <= readingModels.size() - 2; i++) {
-			while (readingModels.get(i).getRank() == readingModels.get(i + 1)
-					.getRank() && i + 1 < readingModels.size()) {
+			while (Objects.equals(readingModels.get(i).getRank(), readingModels.get(i + 1)
+					.getRank()) && i + 1 < readingModels.size()) {
 				ArrayList<ReadingModel> identicalReadings = new ArrayList<ReadingModel>();
 
 				if (readingModels.get(i).getText()

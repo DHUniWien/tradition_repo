@@ -117,7 +117,7 @@ public class GraphViz
     * Adds a string to the graph's source (with newline).
     */
    public void addln(String line) {
-      graph.append(line + "\n");
+      graph.append(line).append("\n");
    }
 
    /**
@@ -143,7 +143,7 @@ public class GraphViz
          if (dot != null)
          {
             img_stream = get_img_stream(dot, type);
-            if (dot.delete() == false) 
+            if (!dot.delete())
                System.err.println("Warning: " + dot.getAbsolutePath() + " could not be deleted!");
             return img_stream;
          }
@@ -209,7 +209,7 @@ public class GraphViz
          // Close it if we need to
          if( in != null ) in.close();
 
-         if (img.delete() == false) 
+         if (!img.delete())
             System.err.println("Warning: " + img.getAbsolutePath() + " could not be deleted!");
       }
       catch (java.io.IOException ioe) {

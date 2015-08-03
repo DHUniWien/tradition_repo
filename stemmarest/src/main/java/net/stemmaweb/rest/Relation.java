@@ -55,11 +55,11 @@ public class Relation implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
 	public Response create(RelationshipModel relationshipModel) {
-		GraphModel readingsAndRelationshipModel = null;
-		ArrayList<ReadingModel> changedReadings = new ArrayList<ReadingModel>();
-		ArrayList<RelationshipModel> createdRelationships = new ArrayList<RelationshipModel>();
+		GraphModel readingsAndRelationshipModel;
+		ArrayList<ReadingModel> changedReadings = new ArrayList<>();
+		ArrayList<RelationshipModel> createdRelationships = new ArrayList<>();
     	
-    	Relationship relationshipAtoB = null;
+    	Relationship relationshipAtoB;
 
     	try (Transaction tx = db.beginTx()) {
     		/*

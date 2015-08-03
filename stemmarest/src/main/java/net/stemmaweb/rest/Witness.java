@@ -62,7 +62,7 @@ public class Witness implements IResource {
 					.evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
 					.traverse(startNode).nodes()) {
 				if (!node.getProperty("text").equals("#END#"))
-					witnessAsText += (String) node.getProperty("text") + " ";
+					witnessAsText += node.getProperty("text") + " ";
 			}
 			tx.success();
 		} catch (Exception exception) {
@@ -119,7 +119,7 @@ public class Witness implements IResource {
 				long nodeRank = Long.parseLong( node.getProperty("rank").toString());
 				if (nodeRank >= startRank && nodeRank <= endRank) {
 					if (!node.getProperty("text").equals("#END#"))
-						witnessAsText += (String) node.getProperty("text")
+						witnessAsText += node.getProperty("text")
 								+ " ";
 				}
 			}

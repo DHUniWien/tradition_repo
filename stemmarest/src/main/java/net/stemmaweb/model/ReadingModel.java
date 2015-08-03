@@ -206,7 +206,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
 	
 	@Override
 	public int compareTo(ReadingModel readingModel) {
-		Long compareRank = ((ReadingModel) readingModel).getRank();
+		Long compareRank = readingModel.getRank();
 		return (int) (this.rank - compareRank);
 	}
 

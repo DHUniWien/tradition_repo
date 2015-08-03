@@ -38,7 +38,7 @@ error element</error>
   <key attr.name="type" attr.type="string" for="edge" id="de11"/>
   <key attr.name="witness" attr.type="string" for="edge" id="de12"/>
   
-  <errorelement
+  <errorelement></errorelement>
   
   <graph edgedefault="directed" id="Sapientia" parse.edgeids="canonical" parse.edges="25449" parse.nodeids="canonical" parse.nodes="2813" parse.order="nodesfirst">
     <data key="dg0">Latin</data>

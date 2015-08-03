@@ -7,6 +7,6 @@ package net.stemmaweb.rest;
  */
 
 public interface IResource {
-	public static final String DB_PATH = "database";
+	String DB_PATH = "database";
 	
 }

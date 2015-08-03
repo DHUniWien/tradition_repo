@@ -48,7 +48,7 @@ public class UnicodeTest {
 		try (Transaction tx = graphDb.beginTx()) {
 			Node foundNode = graphDb.getNodeById(n.getId());
 			assertTrue(foundNode.getId() == n.getId());
-			assertTrue(((String) foundNode.getProperty("name"))
+			assertTrue(foundNode.getProperty("name")
 					.equals("Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³"));
 		}
 	}
@@ -83,9 +83,9 @@ public class UnicodeTest {
 			Relationship foundRelationship = graphDb.getRelationshipById(relationship.getId());
 			
 			assertTrue(foundNode1.getId() == node1.getId());
-			assertEquals("בדיקה", (String) foundNode1.getProperty("name"));
-			assertEquals("עוד בדיקה", (String) foundNode2.getProperty("name"));
-			assertEquals("יחס", (String) foundRelationship.getProperty("type"));
+			assertEquals("בדיקה", foundNode1.getProperty("name"));
+			assertEquals("עוד בדיקה", foundNode2.getProperty("name"));
+			assertEquals("יחס", foundRelationship.getProperty("type"));
 		}
 	}
 
@@ -106,7 +106,7 @@ public class UnicodeTest {
 		try (Transaction tx = graphDb.beginTx()) {
 			Node foundNode = graphDb.getNodeById(n.getId());
 			assertTrue(foundNode.getId() == n.getId());
-			assertFalse(((String) foundNode.getProperty("name"))
+			assertFalse(foundNode.getProperty("name")
 					.equals("בליקה"));
 		}
 	}
@@ -128,7 +128,7 @@ public class UnicodeTest {
 		try (Transaction tx = graphDb.beginTx()) {
 			Node foundNode = graphDb.getNodeById(n.getId());
 			assertTrue(foundNode.getId() == n.getId());
-			assertEquals("ειπον", (String) foundNode.getProperty("name"));
+			assertEquals("ειπον", foundNode.getProperty("name"));
 		}
 	}
 
@@ -149,7 +149,7 @@ public class UnicodeTest {
 		try (Transaction tx = graphDb.beginTx()) {
 			Node foundNode = graphDb.getNodeById(n.getId());
 			assertTrue(foundNode.getId() == n.getId());
-			assertFalse(((String) foundNode.getProperty("name"))
+			assertFalse(foundNode.getProperty("name")
 					.equals("ειπων"));
 		}
 	}
@@ -171,7 +171,7 @@ public class UnicodeTest {
 		try (Transaction tx = graphDb.beginTx()) {
 			Node foundNode = graphDb.getNodeById(n.getId());
 			assertTrue(foundNode.getId() == n.getId());
-			assertEquals("المطلق", (String) foundNode.getProperty("name"));
+			assertEquals("المطلق", foundNode.getProperty("name"));
 		}
 	}
 
@@ -192,7 +192,7 @@ public class UnicodeTest {
 		try (Transaction tx = graphDb.beginTx()) {
 			Node foundNode = graphDb.getNodeById(n.getId());
 			assertTrue(foundNode.getId() == n.getId());
-			assertFalse(((String) foundNode.getProperty("name"))
+			assertFalse(foundNode.getProperty("name")
 					.equals("المطلو"));
 		}
 	}
