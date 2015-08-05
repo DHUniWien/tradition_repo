@@ -37,11 +37,11 @@
   <key attr.name="type" attr.type="string" for="edge" id="de11"/>
   <key attr.name="witness" attr.type="string" for="edge" id="de12"/>
   <graph edgedefault="directed" id="Tradition" parse.edgeids="canonical" parse.edges="49" parse.nodeids="canonical" parse.nodes="26" parse.order="nodesfirst">
-    <data key="dg3"/>
     <data key="dg0">Default</data>
     <data key="dg6">3.2</data>
     <data key="dg1">Tradition</data>
-	<data key="dg3">digraph "stemma" {  0 [ class=hypothetical ];  A [ class=hypothetical ];  B [ class=hypothetical ];  C [ class=hypothetical ]; D [ class=hypothetical ];0 -> A;  0 -> B;  A -> C;} graph "Semstem 1402333041_0" {  0 [ class=hypothetical ];  A [ class=hypothetical ];  B [ class=hypothetical ];  C [ class=hypothetical ]; D [ class=hypothetical ];0 -- A;  A -- B;  B -- C;}</data>
+	<data key="dg3">digraph "stemma" {  0 [ class=hypothetical ];  A [ class=hypothetical ];  B [ class=hypothetical ];  C [ class=hypothetical ]; D [ class=hypothetical ];0 -> A;  0 -> B;  A -> C;}
+graph "Semstem 1402333041_0" {  0 [ class=hypothetical ];  A [ class=hypothetical ];  B [ class=hypothetical ];  C [ class=hypothetical ]; D [ class=hypothetical ];0 -- A;  A -- B;  B -- C;}</data>
     <data key="dg2">0</data>
     <node id="n0">
       <data key="dn15">#END#</data>
@@ -255,9 +255,6 @@
     </node>
     <node id="n1">
       <data key="dn1">__START__</data>
-    </node>
-    <node id="n1">
-      <data key="dn1">n1</data>
     </node>
     <node id="n2">
       <data key="dn1">n2</data>
