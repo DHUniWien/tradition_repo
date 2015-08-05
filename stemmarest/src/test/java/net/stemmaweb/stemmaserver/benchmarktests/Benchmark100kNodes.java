@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver.benachmarktests;
+package net.stemmaweb.stemmaserver.benchmarktests;
 
 import static org.junit.Assert.assertTrue;
 
@@ -18,13 +18,10 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.rules.TestRule;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Result;
 
-import com.carrotsearch.junitbenchmarks.BenchmarkRule;
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 
@@ -34,11 +31,8 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
  *
  */
 @AxisRange(min = 0, max = 0.2)
-@BenchmarkMethodChart(filePrefix = "benchmark/benchmark-1kNodes")
-public class Benchmark1kNodes extends BenachmarkTests {
-	
-	@Rule
-	public TestRule benchmarkRun = new BenchmarkRule();
+@BenchmarkMethodChart(filePrefix = "benchmark/benchmark-100kNodes")
+public class Benchmark100kNodes extends BenchmarkTests {
 	
 	@BeforeClass
 	public static void prepareTheDatabase(){
@@ -72,12 +66,13 @@ public class Benchmark1kNodes extends BenachmarkTests {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		rgg.role(db, 2, 1, 5, 100);
+		
+		rgg.role(db, 10, 10, 10, 100);
 
-		File testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
+		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 		
 		try {
-			tradId = importResource.parseGraphML(testfile.getPath(), "1", "Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
+			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
@@ -93,7 +88,7 @@ public class Benchmark1kNodes extends BenachmarkTests {
 		
 		result = db.execute("match (w:WORD {text:'unto me'}) return w");
 		nodes = result.columnAs("w");
-		untoMe = nodes.next().getId();
+		untoMe = nodes.next().getId();		
 	}
 	
 	@AfterClass
@@ -102,5 +97,4 @@ public class Benchmark1kNodes extends BenachmarkTests {
 		dbServiceProvider.getDatabase().shutdown();
 		jerseyTest.tearDown();
 	}
-	
 }

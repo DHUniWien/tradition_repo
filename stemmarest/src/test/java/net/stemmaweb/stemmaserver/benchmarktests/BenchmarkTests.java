@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver.benachmarktests;
+package net.stemmaweb.stemmaserver.benchmarktests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -42,7 +42,7 @@ import com.sun.jersey.test.framework.JerseyTest;
 
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmarkTestGenerating")
-public abstract class BenachmarkTests {
+public abstract class BenchmarkTests {
 	
 	@Rule
 	public TestRule benchmarkRun = new BenchmarkRule();

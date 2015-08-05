@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver.benachmarktests;
+package net.stemmaweb.stemmaserver.benchmarktests;
 
 import static org.junit.Assert.assertTrue;
 
@@ -32,7 +32,7 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
  */
 @AxisRange(min = 0, max = 0.2)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmark-1000kNodes")
-public class Benchmark1000kNodes extends BenachmarkTests {
+public class Benchmark1000kNodes extends BenchmarkTests {
 	
 	@BeforeClass
 	public static void prepareTheDatabase(){

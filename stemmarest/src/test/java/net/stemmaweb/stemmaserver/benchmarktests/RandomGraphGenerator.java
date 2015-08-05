@@ -1,4 +1,4 @@
-package net.stemmaweb.stemmaserver.benachmarktests;
+package net.stemmaweb.stemmaserver.benchmarktests;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -8,7 +8,6 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.*;
-import org.neo4j.helpers.collection.ResourceClosingIterator;
 
 
 /**
