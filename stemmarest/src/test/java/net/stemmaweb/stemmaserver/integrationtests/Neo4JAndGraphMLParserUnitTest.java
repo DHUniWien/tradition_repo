@@ -14,7 +14,6 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
-import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -25,7 +24,7 @@ import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 /**
- * 
+ *
  * @author PSE FS 2015 Team2
  *
  */
@@ -35,17 +34,17 @@ public class Neo4JAndGraphMLParserUnitTest {
 
 	private GraphMLToNeo4JParser importResource;
 	private Neo4JToGraphMLParser exportResource;
-	
+
 	@Before
 	public void setUp() throws Exception {
-		
+
 		GraphDatabaseServiceProvider.setImpermanentDatabase();
-		
+
 		db = new GraphDatabaseServiceProvider().getDatabase();
-		
+
 		importResource = new GraphMLToNeo4JParser();
 		exportResource = new Neo4JToGraphMLParser();
-		
+
 		/*
 		 * Populate the test database with the root node and a user with id 1
 		 */
@@ -60,7 +59,7 @@ public class Neo4JAndGraphMLParserUnitTest {
     			rootNode.setProperty("name", "Root node");
     			rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
     		}
-    		
+
     		Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("isAdmin", "1");
@@ -69,22 +68,18 @@ public class Neo4JAndGraphMLParserUnitTest {
     		tx.success();
     	}
 	}
-	
+
 	/**
 	 * Try to import a non existent file
 	 */
 	@Test
 	public void graphMLImportFileNotFoundExceptionTest()
 	{
-		String filename;
-		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\SapientiaFileNotExisting.xml";
-		else 
-			filename = "src/TestXMLFiles/SapientiaFileNotExisting.xml";
+		File testfile = new File("src/TestXMLFiles/SapientiaFileNotExisting.xml");
 		try
 		{
-			importResource.parseGraphML(filename, "1", "Tradition");
-			
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+
 			assertTrue(false); // This line of code should never execute
 		}
 		catch(FileNotFoundException f)
@@ -92,7 +87,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			assertTrue(true);
 		}
 	}
-	
+
 	/**
 	 * Try to import a file with errors
 	 */
@@ -100,25 +95,21 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLImportXMLStreamErrorTest()
 	{
 		Response actualResponse = null;
-		String filename;
-		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\SapientiaWithError.xml";
-		else 
-			filename = "src/TestXMLFiles/SapientiaWithError.xml";
+		File testfile = new File("src/TestXMLFiles/SapientiaWithError.xml");
 		try
 		{
-			actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
+			actualResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
 			// this error should not occur
 			assertTrue(false);
 		}
-		
+
 		assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
 				actualResponse.getStatus());
 	}
-	
+
 	/**
 	 * Import a correct file
 	 */
@@ -126,26 +117,23 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLImportSuccessTest(){
 		Response actualResponse = null;
 		String filename;
-		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else 
-			filename = "src/TestXMLFiles/testTradition.xml";
+		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 		try
 		{
-			actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
+			actualResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
 			// this error should not occur
 			assertTrue(false);
 		}
-		
+
 		assertEquals(Response.status(Response.Status.OK).build().getStatus(),
 				actualResponse.getStatus());
-		
+
 		traditionNodeExistsTest();
 	}
-	
+
 	/**
 	 * test if the tradition node exists
 	 */
@@ -157,7 +145,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			tx.success();
     	}
 	}
-	
+
 	/**
 	 * remove output file
 	 */
@@ -166,55 +154,52 @@ public class Neo4JAndGraphMLParserUnitTest {
 		File file = new File(filename);
 		file.delete();
 	}
-	
+
 	/**
-	 * try to export a non existent tradition 
+	 * try to export a non existent tradition
 	 */
 	@Test
 	public void graphMLExportTraditionNotFoundTest(){
-		
+
 		Response actualResponse = exportResource.parseNeo4J("1002");
 		assertEquals(Response.status(Response.Status.NOT_FOUND).build().getStatus(), actualResponse.getStatus());
 	}
-	
+
 	/**
 	 * try to export a correct tradition
 	 */
 	@Test
 	public void graphMLExportSuccessTest(){
-		
+
 		removeOutputFile();
 		String filename;
-		if(OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else 
-			filename = "src/TestXMLFiles/testTradition.xml";
+		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 		try
 		{
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
 			// this error should not occur
 			assertTrue(false);
 		}
-		
+
 		Response actualResponse = exportResource.parseNeo4J("1001");
-		
+
 		assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
-		
+
 		String outputFile = "upload/output.xml";
 		File file = new File(outputFile);
-		
+
 		assertTrue(file.exists());
 	}
-	
+
 	/**
 	 * try to import an exported tradition
 	 */
 	@Test
 	public void graphMLExportImportTest(){
-		
+
 		String filename = "upload/output.xml";
 		Response actualResponse = null;
 		try
@@ -226,11 +211,11 @@ public class Neo4JAndGraphMLParserUnitTest {
 			// this error should not occur
 			assertTrue(false);
 		}
-		
+
 		assertEquals(Response.status(Response.Status.OK).build().getStatus(),
 				actualResponse.getStatus());
-		
+
 		traditionNodeExistsTest();
 	}
-	
+
 }

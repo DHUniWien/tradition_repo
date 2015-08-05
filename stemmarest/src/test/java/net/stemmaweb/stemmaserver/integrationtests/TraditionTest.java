@@ -3,6 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
@@ -21,7 +22,6 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
 import org.junit.Before;
@@ -68,11 +68,7 @@ public class TraditionTest {
 		importResource = new GraphMLToNeo4JParser();
 		tradition = new Tradition();
 		
-		String filename;
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else
-			filename = "src/TestXMLFiles/testTradition.xml";
+		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -99,7 +95,7 @@ public class TraditionTest {
 		 * load a tradition to the test DB
 		 */
 		try {
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
@@ -127,14 +123,10 @@ public class TraditionTest {
 	public void getAllTraditionsTest()
 	{
 		// import a second tradition into the db
-		String filename;
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else
-			filename = "src/TestXMLFiles/testTradition.xml";
+		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 		
 		try {
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);

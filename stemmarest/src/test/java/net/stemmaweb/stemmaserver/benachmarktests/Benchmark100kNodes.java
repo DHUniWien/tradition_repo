@@ -2,6 +2,7 @@ package net.stemmaweb.stemmaserver.benachmarktests;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
@@ -14,7 +15,6 @@ import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -69,14 +69,10 @@ public class Benchmark100kNodes extends BenachmarkTests {
 		
 		rgg.role(db, 10, 10, 10, 100);
 
-		
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
-		else
-			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
+		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 		
 		try {
-			tradId = importResource.parseGraphML(filename, "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
+			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);

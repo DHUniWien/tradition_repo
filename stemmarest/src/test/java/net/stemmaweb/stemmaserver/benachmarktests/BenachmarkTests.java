@@ -3,6 +3,7 @@ package net.stemmaweb.stemmaserver.benachmarktests;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 
 import javax.ws.rs.core.MediaType;
@@ -58,7 +59,7 @@ public abstract class BenachmarkTests {
 	protected static Stemma stemmaResource;
 	protected static GraphMLToNeo4JParser importResource ;
 	
-	protected static String filename = "";
+	protected static File testfile;
 	
 	protected static String tradId;
 	protected static long duplicateReadingNodeId;
@@ -157,7 +158,7 @@ public abstract class BenachmarkTests {
 		GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 	    
 		try {
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);

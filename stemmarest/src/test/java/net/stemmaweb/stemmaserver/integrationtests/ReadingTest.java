@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
 
@@ -22,7 +23,6 @@ import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
 import org.junit.Before;
@@ -81,11 +81,7 @@ public class ReadingTest {
 		witness = new Witness();
 		importResource = new GraphMLToNeo4JParser();
 
-		String filename;
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
-		else
-			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
+		File testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -112,7 +108,7 @@ public class ReadingTest {
 		 * load a tradition to the test DB
 		 */
 		try {
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 import java.util.List;
@@ -21,7 +22,6 @@ import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.OSDetector;
 
 import org.junit.After;
 import org.junit.Before;
@@ -72,13 +72,9 @@ public class RelationTest {
 		importResource = new GraphMLToNeo4JParser();
 		relation = new Relation();
 		witness = new Witness();
-		
-		
-		String filename;
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTradition.xml";
-		else
-			filename = "src/TestXMLFiles/testTradition.xml";
+
+
+		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 
 		/*
 		 * Populate the test database with the root node and a user with id 1
@@ -105,7 +101,7 @@ public class RelationTest {
 		 * load a tradition to the test DB
 		 */
 		try {
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
@@ -618,12 +614,9 @@ public class RelationTest {
 		 * load a tradition with no Realtionships to the test DB
 		 */
 		String filename;
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\testTraditionNoRealtions.xml";
-		else
-			filename = "src/TestXMLFiles/testTraditionNoRealtions.xml";
+		File testfile = new File("src/TestXMLFiles/testTraditionNoRealtions.xml");
 		try {
-			importResource.parseGraphML(filename, "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
