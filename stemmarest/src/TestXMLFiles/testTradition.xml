@@ -37,7 +37,6 @@
   <key attr.name="type" attr.type="string" for="edge" id="de11"/>
   <key attr.name="witness" attr.type="string" for="edge" id="de12"/>
   <graph edgedefault="directed" id="Tradition" parse.edgeids="canonical" parse.edges="49" parse.nodeids="canonical" parse.nodes="26" parse.order="nodesfirst">
-    <data key="dg3"/>
     <data key="dg0">Default</data>
     <data key="dg6">3.2</data>
     <data key="dg1">Tradition</data>
