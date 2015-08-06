@@ -33,80 +33,85 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 @AxisRange(min = 0, max = 0.2)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmark-1000kNodes")
 public class Benchmark1000kNodes extends BenachmarkTests {
-	
-	@BeforeClass
-	public static void prepareTheDatabase(){
 
-		/*
-		 * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
-		 */
-		initDatabase();
-	}
+    @BeforeClass
+    public static void prepareTheDatabase(){
 
-	public static void initDatabase() {
-		RandomGraphGenerator rgg = new RandomGraphGenerator();
+        /*
+         * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
+         */
+        initDatabase();
+    }
 
-		GraphDatabaseServiceProvider.setImpermanentDatabase();
-		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-		
-		GraphDatabaseService db = dbServiceProvider.getDatabase();
-		
-		
-		userResource = new User();
-		traditionResource = new Tradition();
-		witnessResource = new Witness();
-		readingResoruce = new Reading();
-		relationResource = new Relation();
-		importResource = new GraphMLToNeo4JParser();
-		stemmaResource = new Stemma();
-		
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(userResource)
-				.addResource(traditionResource)
-				.addResource(witnessResource)
-				.addResource(relationResource)
-				.addResource(readingResoruce)
-				.addResource(stemmaResource).create();
-		try {
-			jerseyTest.setUp();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		rgg.role(db, 10, 100, 10, 100);
-		
-		if (OSDetector.isWin())
-			filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
-		else
-			filename = "src/TestXMLFiles/ReadingstestTradition.xml";
-		
-		try {
-			tradId = importResource.parseGraphML(filename, "1", "Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
-		} catch (FileNotFoundException f) {
-			// this error should not occur
-			assertTrue(false);
-		}
-		
-		Result result = db.execute("match (w:WORD {text:'showers'}) return w");
-		Iterator<Node> nodes = result.columnAs("w");
-		duplicateReadingNodeId = nodes.next().getId();
+    public static void initDatabase() {
+        RandomGraphGenerator rgg = new RandomGraphGenerator();
 
-		result = db.execute("match (w:WORD {text:'the root'}) return w");
-		nodes = result.columnAs("w");
-		theRoot = nodes.next().getId();
-		
-		result = db.execute("match (w:WORD {text:'unto me'}) return w");
-		nodes = result.columnAs("w");
-		untoMe = nodes.next().getId();
-		
-	}
-	
-	@AfterClass
-	public static void shutdown() throws Exception{
-		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-		dbServiceProvider.getDatabase().shutdown();
-		jerseyTest.tearDown();
-	}
-	
-	
+        GraphDatabaseServiceProvider.setImpermanentDatabase();
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+
+        GraphDatabaseService db = dbServiceProvider.getDatabase();
+
+
+        userResource = new User();
+        traditionResource = new Tradition();
+        witnessResource = new Witness();
+        readingResoruce = new Reading();
+        relationResource = new Relation();
+        importResource = new GraphMLToNeo4JParser();
+        stemmaResource = new Stemma();
+
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(userResource)
+                .addResource(traditionResource)
+                .addResource(witnessResource)
+                .addResource(relationResource)
+                .addResource(readingResoruce)
+                .addResource(stemmaResource).create();
+        try {
+            jerseyTest.setUp();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        rgg.role(db, 10, 100, 10, 100);
+
+        if (OSDetector.isWin()) {
+            filename = "src\\TestXMLFiles\\ReadingstestTradition.xml";
+        } else {
+            filename = "src/TestXMLFiles/ReadingstestTradition.xml";
+        }
+
+        try {
+            tradId = importResource.parseGraphML(filename, "1", "Tradition")
+                    .getEntity()
+                    .toString()
+                    .replace("{\"tradId\":", "")
+                    .replace("}", "");
+        } catch (FileNotFoundException f) {
+            // this error should not occur
+            assertTrue(false);
+        }
+
+        Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+        Iterator<Node> nodes = result.columnAs("w");
+        duplicateReadingNodeId = nodes.next().getId();
+
+        result = db.execute("match (w:WORD {text:'the root'}) return w");
+        nodes = result.columnAs("w");
+        theRoot = nodes.next().getId();
+
+        result = db.execute("match (w:WORD {text:'unto me'}) return w");
+        nodes = result.columnAs("w");
+        untoMe = nodes.next().getId();
+
+    }
+
+    @AfterClass
+    public static void shutdown() throws Exception{
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        dbServiceProvider.getDatabase().shutdown();
+        jerseyTest.tearDown();
+    }
+
+
 }

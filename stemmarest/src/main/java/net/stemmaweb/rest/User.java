@@ -37,166 +37,169 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 @Path("/user")
 public class User implements IResource {
-	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-	GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-	/**
-	 * Creates a user based on the parameters submitted in JSON.
-	 * 
-	 * @param userModel
-	 *            in JSON Format
-	 * @return a userModel in JSON on success or an ERROR in JSON format
-	 */
-	@POST
-	@Path("createuser")
-	@Consumes(MediaType.APPLICATION_JSON)
-	public Response create(UserModel userModel) {
-		
-		if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
-			
-			return Response.status(Response.Status.CONFLICT).entity("Error: A user with this id already exists")
-					.build();
-		}
+    /**
+     * Creates a user based on the parameters submitted in JSON.
+     *
+     * @param userModel
+     *            in JSON Format
+     * @return a userModel in JSON on success or an ERROR in JSON format
+     */
+    @POST
+    @Path("createuser")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response create(UserModel userModel) {
 
-		try (Transaction tx = db.beginTx()) {
-			Result rootNodeSearch = db.execute("match (n:ROOT) return n");
-			Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
+        if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
 
-			Node node = db.createNode(Nodes.USER);
-			node.setProperty("id", userModel.getId());
-			node.setProperty("isAdmin", userModel.getIsAdmin());
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("Error: A user with this id already exists")
+                    .build();
+        }
 
-			rootNode.createRelationshipTo(node, ERelations.NORMAL);
+        try (Transaction tx = db.beginTx()) {
+            Result rootNodeSearch = db.execute("match (n:ROOT) return n");
+            Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
 
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		return Response.status(Response.Status.CREATED).entity(userModel).build();
-	}
+            Node node = db.createNode(Nodes.USER);
+            node.setProperty("id", userModel.getId());
+            node.setProperty("isAdmin", userModel.getIsAdmin());
 
-	/**
-	 * Gets a user by the id.
-	 * 
-	 * @param userId
-	 * @return UserModel as JSON or an ERROR in JSON format
-	 */
-	@GET
-	@Path("getuser/withid/{userId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getUserById(@PathParam("userId") String userId) {
-		UserModel userModel = new UserModel();
-		
-		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
-			Iterator<Node> nodes = result.columnAs("userId");
+            rootNode.createRelationshipTo(node, ERelations.NORMAL);
 
-			if (nodes.hasNext()) {
-				Node node = nodes.next();
-				userModel.setId((String) node.getProperty("id"));
-				userModel.setIsAdmin((String) node.getProperty("isAdmin"));
-			} else {
-				return Response.status(Status.NO_CONTENT).build();
-			}
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		return Response.ok(userModel).build();
-	}
-	
-	/**
-	 * Removes a user and all his traditions
-	 * 
-	 * @param userId
-	 * @return OK on success or an ERROR in JSON format
-	 */
-	@DELETE
-	@Path("deleteuser/withid/{userId}")
-	public Response deleteUserById(@PathParam("userId") String userId) {
-		
-		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
-			Iterator<Node> nodes = result.columnAs("userId");
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.status(Response.Status.CREATED).entity(userModel).build();
+    }
 
-			if (nodes.hasNext()) {
-				Node node = nodes.next();
-				
-				/*
-				 * Find all the nodes and relations to remove
-				 */
-				Set<Relationship> removableRelations = new HashSet<Relationship>();
-				Set<Node> removableNodes = new HashSet<Node>();
-				for (Node currentNode : db.traversalDescription()
-				        .depthFirst()
-				        .relationships( ERelations.NORMAL, Direction.OUTGOING)
-				        .relationships( ERelations.STEMMA, Direction.OUTGOING)
-				        .relationships( ERelations.RELATIONSHIP, Direction.OUTGOING)
-				        .uniqueness( Uniqueness.RELATIONSHIP_GLOBAL )
-				        .traverse( node )
-				        .nodes()) 
-				{
-					for(Relationship currentRelationship : currentNode.getRelationships()){
-						removableRelations.add(currentRelationship);
-					}
-					removableNodes.add(currentNode);
-				}
-				
-				/*
-				 * Remove the nodes and relations
-				 */
-				for(Relationship removableRel:removableRelations){
-		            removableRel.delete();
-		        }
-				for(Node remNode:removableNodes){
-		            remNode.delete();
-		        }
-			} else {
-				return Response.status(Response.Status.NOT_FOUND).entity("A user with this ID was not found").build();
-			}
+    /**
+     * Gets a user by the id.
+     *
+     * @param userId
+     * @return UserModel as JSON or an ERROR in JSON format
+     */
+    @GET
+    @Path("getuser/withid/{userId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getUserById(@PathParam("userId") String userId) {
+        UserModel userModel = new UserModel();
 
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		return Response.status(Response.Status.OK).build();
-	}
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
+            Iterator<Node> nodes = result.columnAs("userId");
 
-	/**
-	 * Get all Traditions of a user
-	 * 
-	 * @param userId
-	 * @return OK on success or an ERROR in JSON format
-	 */
-	@GET
-	@Path("gettraditions/ofuser/{userId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getTraditionsByUserId(@PathParam("userId") String userId) {
+            if (nodes.hasNext()) {
+                Node node = nodes.next();
+                userModel.setId((String) node.getProperty("id"));
+                userModel.setIsAdmin((String) node.getProperty("isAdmin"));
+            } else {
+                return Response.status(Status.NO_CONTENT).build();
+            }
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(userModel).build();
+    }
 
-		ArrayList<TraditionModel> traditions = new ArrayList<TraditionModel>();
-		
-		if (!DatabaseService.checkIfUserExists(userId, db)) {
-			
-			return Response.status(Status.NOT_FOUND).build();
-		}
+    /**
+     * Removes a user and all his traditions
+     *
+     * @param userId
+     * @return OK on success or an ERROR in JSON format
+     */
+    @DELETE
+    @Path("deleteuser/withid/{userId}")
+    public Response deleteUserById(@PathParam("userId") String userId) {
 
-		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'" + userId + "'}) return n");
-			Iterator<Node> tradIterator = result.columnAs("n");
-			while (tradIterator.hasNext()) {
-				if (tradIterator.hasNext()) {
-					Node tradNode = tradIterator.next();
-					TraditionModel tradition = new TraditionModel();
-					
-					tradition.setId(tradNode.getProperty("id").toString());
-					tradition.setName(tradNode.getProperty("name").toString());
-					traditions.add(tradition);
-				}
-			}
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		return Response.ok(traditions).build();
-	}
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
+            Iterator<Node> nodes = result.columnAs("userId");
+
+            if (nodes.hasNext()) {
+                Node node = nodes.next();
+
+                /*
+                 * Find all the nodes and relations to remove
+                 */
+                Set<Relationship> removableRelations = new HashSet<>();
+                Set<Node> removableNodes = new HashSet<>();
+                for (Node currentNode : db.traversalDescription()
+                        .depthFirst()
+                        .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                        .relationships(ERelations.STEMMA, Direction.OUTGOING)
+                        .relationships(ERelations.RELATIONSHIP, Direction.OUTGOING)
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                        .traverse(node)
+                        .nodes())
+                {
+                    for(Relationship currentRelationship : currentNode.getRelationships()){
+                        removableRelations.add(currentRelationship);
+                    }
+                    removableNodes.add(currentNode);
+                }
+
+                /*
+                 * Remove the nodes and relations
+                 */
+                for(Relationship removableRel:removableRelations){
+                    removableRel.delete();
+                }
+                for(Node remNode:removableNodes){
+                    remNode.delete();
+                }
+            } else {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("A user with this ID was not found")
+                        .build();
+            }
+
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.status(Response.Status.OK).build();
+    }
+
+    /**
+     * Get all Traditions of a user
+     *
+     * @param userId
+     * @return OK on success or an ERROR in JSON format
+     */
+    @GET
+    @Path("gettraditions/ofuser/{userId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTraditionsByUserId(@PathParam("userId") String userId) {
+
+        ArrayList<TraditionModel> traditions = new ArrayList<>();
+
+        if (!DatabaseService.checkIfUserExists(userId, db)) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'" + userId
+                    + "'}) return n");
+            Iterator<Node> tradIterator = result.columnAs("n");
+            while (tradIterator.hasNext()) {
+                if (tradIterator.hasNext()) {
+                    Node tradNode = tradIterator.next();
+                    TraditionModel tradition = new TraditionModel();
+
+                    tradition.setId(tradNode.getProperty("id").toString());
+                    tradition.setName(tradNode.getProperty("name").toString());
+                    traditions.add(tradition);
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(traditions).build();
+    }
 }

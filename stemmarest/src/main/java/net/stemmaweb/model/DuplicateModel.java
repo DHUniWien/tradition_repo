@@ -17,23 +17,23 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class DuplicateModel {
-	private List<Long> readings;
-	private List<String> witnesses;
-	
-	public List<Long> getReadings() {
-		return readings;
-	}
+    private List<Long> readings;
+    private List<String> witnesses;
 
-	public void setReadings(List<Long> readings) {
-		this.readings = readings;
-	}
+    public List<Long> getReadings() {
+        return readings;
+    }
 
-	public List<String> getWitnesses() {
-		return witnesses;
-	}
+    public void setReadings(List<Long> readings) {
+        this.readings = readings;
+    }
 
-	public void setWitnesses(List<String> witnesses) {
-		this.witnesses = witnesses;
-	}
+    public List<String> getWitnesses() {
+        return witnesses;
+    }
+
+    public void setWitnesses(List<String> witnesses) {
+        this.witnesses = witnesses;
+    }
 
 }

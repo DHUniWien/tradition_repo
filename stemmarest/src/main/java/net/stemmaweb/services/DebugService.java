@@ -11,34 +11,35 @@ import org.neo4j.graphdb.Transaction;
  * This class is used for debugging purposes only
  * @author PSE FS 2015 Team2
  */
-public class DebugService {
+class DebugService {
 
-	public String findPathProblem(String tradId, GraphDatabaseService db) {
+    public String findPathProblem(String tradId, GraphDatabaseService db) {
 
-		String exceptionString = "";
-		try (Transaction tx = db.beginTx()) {
+        String exceptionString;
+        try (Transaction tx = db.beginTx()) {
 
-			Result traditionResult = db
-					.execute("match (t:TRADITION {id:'" + tradId
-							+ "'}) return t");
-			Iterator<Node> traditions = traditionResult.columnAs("t");
+            Result traditionResult = db
+                    .execute("match (t:TRADITION {id:'" + tradId + "'}) return t");
+            Iterator<Node> traditions = traditionResult.columnAs("t");
 
-			if (!traditions.hasNext())
-				exceptionString = "such trsdition does not exist in the data base";
-			else {
-				Result witnessResult = db
-						.execute("match (tradition:TRADITION {id:'" + tradId
-								+ "'})--(w:WORD  {text:'#START#'}) return w");
-				Iterator<Node> witnesses = witnessResult.columnAs("w");
+            if (!traditions.hasNext()) {
+                exceptionString = "such tradition does not exist in the data base";
+            }
+            else {
+                Result witnessResult = db
+                        .execute("match (tradition:TRADITION {id:'" + tradId
+                                + "'})--(w:WORD  {text:'#START#'}) return w");
+                Iterator<Node> witnesses = witnessResult.columnAs("w");
 
-				if (!witnesses.hasNext())
-					exceptionString = "such witness does not exist in the data base";
-				else
-					exceptionString = "no witness found: there is a problem with the data path";
-			}
-		}
-		db.shutdown();
-		return exceptionString;
-	}
+                if (witnesses.hasNext()) {
+                    exceptionString = "no witness found: there is a problem with the data path";
+                } else {
+                    exceptionString = "such witness does not exist in the data base";
+                }
+            }
+        }
+        db.shutdown();
+        return exceptionString;
+    }
 
 }

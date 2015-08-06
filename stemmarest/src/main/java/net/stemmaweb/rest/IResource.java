@@ -7,6 +7,6 @@ package net.stemmaweb.rest;
  */
 
 public interface IResource {
-	String DB_PATH = "database";
-	
+    // String DB_PATH = "database";
+    String DB_PATH = "/usr/local/neo4j/data/graph.db";
 }

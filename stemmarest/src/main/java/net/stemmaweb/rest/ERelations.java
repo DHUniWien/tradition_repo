@@ -14,7 +14,6 @@ public enum ERelations implements RelationshipType {
     HAS_TEXT,       // between tradition and START node
     NEXT,           // to indicate word sequence
     
-    
     // Undirected types
     RELATIONSHIP,   // this type is used to show relationships between readings (undirected)
     STEMMA,          // this type is used to make a stemma tree (directed/undirected)
