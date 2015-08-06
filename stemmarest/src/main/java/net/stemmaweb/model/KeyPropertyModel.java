@@ -8,21 +8,19 @@ import javax.xml.bind.annotation.XmlRootElement;
  */
 @XmlRootElement
 public class KeyPropertyModel {
-	private String key;
-	private String property;
-	
-	public String getKey() {
-		return key;
-	}
-	public void setKey(String key) {
-		this.key = key;
-	}
-	public String getProperty() {
-		return property;
-	}
-	public void setProperty(String property) {
-		this.property = property;
-	}
-	
-	
+    private String key;
+    private String property;
+
+    public String getKey() {
+        return key;
+    }
+    public void setKey(String key) {
+        this.key = key;
+    }
+    public String getProperty() {
+        return property;
+    }
+    public void setProperty(String property) {
+        this.property = property;
+    }
 }

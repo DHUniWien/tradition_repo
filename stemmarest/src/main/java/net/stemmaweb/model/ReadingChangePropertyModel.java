@@ -10,15 +10,15 @@ import javax.xml.bind.annotation.XmlRootElement;
  */
 @XmlRootElement
 public class ReadingChangePropertyModel {
-	
-	private List<KeyPropertyModel> properties;
 
-	public List<KeyPropertyModel> getProperties() {
-		return properties;
-	}
+    private List<KeyPropertyModel> properties;
 
-	public void setProperties(List<KeyPropertyModel> properties) {
-		this.properties = properties;
-	}
-	
+    public List<KeyPropertyModel> getProperties() {
+        return properties;
+    }
+
+    public void setProperties(List<KeyPropertyModel> properties) {
+        this.properties = properties;
+    }
+
 }

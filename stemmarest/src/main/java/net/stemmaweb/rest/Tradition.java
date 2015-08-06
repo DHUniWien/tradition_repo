@@ -2,7 +2,6 @@ package net.stemmaweb.rest;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -55,379 +54,395 @@ import com.sun.jersey.multipart.FormDataParam;
 
 @Path("/tradition")
 public class Tradition implements IResource {
-	GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-	GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-	/**
-	 * Changes the metadata of the tradition.
-	 * 
-	 * @param tradition
-	 *            in JSON Format
-	 * @return OK and information about the tradition in JSON on success or an
-	 *         ERROR in JSON format
-	 */
-	@POST
-	@Path("changemetadata/fromtradition/{tradId}")
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response changeTraditionMetadata(TraditionModel tradition,
-			@PathParam("tradId") String witnessId) {
-		
-		if (!DatabaseService.checkIfUserExists(tradition.getOwnerId(), db)) {
-			return Response.status(Response.Status.NOT_FOUND).entity("Error: A user with this id does not exist")
-					.build();
-		}
+    /**
+     * Changes the metadata of the tradition.
+     *
+     * @param tradition
+     *            in JSON Format
+     * @return OK and information about the tradition in JSON on success or an
+     *         ERROR in JSON format
+     */
+    @POST
+    @Path("changemetadata/fromtradition/{tradId}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response changeTraditionMetadata(TraditionModel tradition,
+            @PathParam("tradId") String witnessId) {
 
-		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (witnessId:TRADITION {id:'" + witnessId + "'}) return witnessId");
-			Iterator<Node> nodes = result.columnAs("witnessId");
+        if (!DatabaseService.checkIfUserExists(tradition.getOwnerId(), db)) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Error: A user with this id does not exist")
+                    .build();
+        }
 
-			if (nodes.hasNext()) {
-				// Remove the old ownership
-				String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + witnessId + "'}) "
-						+ "MATCH tradition<-[r:NORMAL]-(:USER) DELETE r";
-				result = db.execute(removeRelationQuery);
-//                System.out.println(result.dumpToString());
-                System.out.println(result.toString());
-				// Add the new ownership
-				String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId() + "'}) "
-						+ "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) " + "SET tradition.name = '"
-						+ tradition.getName() + "' " + "SET tradition.public = '"
-						+ tradition.getIsPublic() + "' "
-						+ "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
-				result = db.execute(createNewRelationQuery);
-//				System.out.println(result.dumpToString());
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (witnessId:TRADITION {id:'" + witnessId
+                    + "'}) return witnessId");
+            Iterator<Node> nodes = result.columnAs("witnessId");
+
+            if (nodes.hasNext()) {
+                // Remove the old ownership
+                String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + witnessId + "'}) "
+                        + "MATCH tradition<-[r:NORMAL]-(:USER) DELETE r";
+                result = db.execute(removeRelationQuery);
                 System.out.println(result.toString());
 
-			} else {
-				// Tradition not found
-				return Response.status(Response.Status.NOT_FOUND).entity("Tradition not found").build();
-			}
+                // Add the new ownership
+                String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId()
+                        + "'}) " + "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) "
+                        + "SET tradition.name = '" + tradition.getName() + "' "
+                        + "SET tradition.public = '" + tradition.getIsPublic() + "' "
+                        + "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+                result = db.execute(createNewRelationQuery);
+                System.out.println(result.toString());
 
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-		} 
-		return Response.ok(tradition).build();
-	}
-	
-	/**
-	 * Gets a list of all the complete traditions in the database.
-	 * 
-	 * @return Http Response 200 and a list of tradition models in JSON on
-	 *         success or Http Response 500
-	 */
-	@GET
-	@Path("getalltraditions")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getAllTraditions() {
-		List<TraditionModel> traditionList = new ArrayList<TraditionModel>();
-		
-		try (Transaction tx = db.beginTx()) {
-			
-			Result result = db.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
-			Iterator<Node> traditions = result.columnAs("n");
-			while(traditions.hasNext())
-			{
-				Node trad = traditions.next();
-				TraditionModel tradModel = new TraditionModel();
-				if(trad.hasProperty("id"))
-					tradModel.setId(trad.getProperty("id").toString());
-				if(trad.hasProperty("name"))	
-					tradModel.setName(trad.getProperty("name").toString());
-				traditionList.add(tradModel);
-			}
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		return Response.ok(traditionList).build();
-	}
+            } else {
+                // Tradition not found
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Tradition not found")
+                        .build();
+            }
 
-	/**
-	 * Gets a list of all the witnesses of a tradition with the given id.
-	 * 
-	 * @param tradId
-	 * @return Http Response 200 and a list of witness models in JSON on success
-	 *         or an ERROR in JSON format
-	 */
-	@GET
-	@Path("getallwitnesses/fromtradition/{tradId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getAllWitnesses(@PathParam("tradId") String tradId) {
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(tradition).build();
+    }
 
-		ArrayList<WitnessModel> witnessList = new ArrayList<WitnessModel>();
+    /**
+     * Gets a list of all the complete traditions in the database.
+     *
+     * @return Http Response 200 and a list of tradition models in JSON on
+     *         success or Http Response 500
+     */
+    @GET
+    @Path("getalltraditions")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllTraditions() {
+        List<TraditionModel> traditionList = new ArrayList<>();
 
-		try (Transaction tx = db.beginTx()) {
-			Node traditionNode;
-			Iterable<Relationship> relationships = null;
-			Node startNode = DatabaseService.getStartNode(tradId, db);
+        try (Transaction tx = db.beginTx()) {
 
-			try {
-				traditionNode = getTraditionNode(tradId, db);
+            Result result = db.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
+            Iterator<Node> traditions = result.columnAs("n");
+            while(traditions.hasNext())
+            {
+                Node trad = traditions.next();
+                TraditionModel tradModel = new TraditionModel();
+                if(trad.hasProperty("id"))
+                    tradModel.setId(trad.getProperty("id").toString());
+                if(trad.hasProperty("name"))
+                    tradModel.setName(trad.getProperty("name").toString());
+                traditionList.add(tradModel);
+            }
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(traditionList).build();
+    }
 
-				if (traditionNode == null){
-					return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
-				}
-				if (startNode == null)
-					return Response.status(Status.NOT_FOUND).entity("no tradition with this id was found").build();
+    /**
+     * Gets a list of all the witnesses of a tradition with the given id.
+     *
+     * @param tradId
+     * @return Http Response 200 and a list of witness models in JSON on success
+     *         or an ERROR in JSON format
+     */
+    @GET
+    @Path("getallwitnesses/fromtradition/{tradId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllWitnesses(@PathParam("tradId") String tradId) {
 
-				relationships = startNode.getRelationships(Direction.OUTGOING);
+        ArrayList<WitnessModel> witnessList = new ArrayList<>();
 
-				if (relationships == null)
-					return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+        try (Transaction tx = db.beginTx()) {
+            Node traditionNode;
+            Iterable<Relationship> relationships;
+            Node startNode = DatabaseService.getStartNode(tradId, db);
 
-				for (Relationship rel : relationships) {
-					for (String id : ((String[]) rel.getProperty("witnesses"))) {
-						WitnessModel witM = new WitnessModel();
-						witM.setId(id);
+            try {
+                if (startNode == null) {
+                    return Response.status(Status.NOT_FOUND)
+                            .entity("no tradition with this id was found")
+                            .build();
+                }
 
-						witnessList.add(witM);
-					}
-				}
+                traditionNode = getTraditionNode(tradId, db);
 
-				tx.success();
-			} catch (Exception e) {
-				e.printStackTrace();
-			} 
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		return Response.ok(witnessList).build();
-	}
+                if (traditionNode == null) {
+                    return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+                }
 
-	/**
-	 * Gets a list of all relationships of a tradition with the given id.
-	 * 
-	 * @param tradId
-	 * @return Http Response 200 and a list of relationship model in JSON
-	 */
-	@GET
-	@Path("getallrelationships/fromtradition/{tradId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getAllRelationships(@PathParam("tradId") String tradId) {
+                relationships = startNode.getRelationships(Direction.OUTGOING);
 
-		ArrayList<RelationshipModel> relList = new ArrayList<RelationshipModel>();
-		
-		try (Transaction tx = db.beginTx()) {
+                if (relationships == null) {
+                    return Response.status(Status.NOT_FOUND).entity("start node not found").build();
+                }
 
-			Node startNode = DatabaseService.getStartNode(tradId, db);
+                for (Relationship rel : relationships) {
+                    for (String id : ((String[]) rel.getProperty("witnesses"))) {
+                        WitnessModel witM = new WitnessModel();
+                        witM.setId(id);
 
-			for (Node node : db.traversalDescription().depthFirst()
-					.relationships(ERelations.NORMAL,Direction.OUTGOING)
-					.uniqueness(Uniqueness.NODE_GLOBAL)
-					.traverse(startNode).nodes()) {
-				
-				Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,Direction.OUTGOING);
-				for(Relationship rel : rels)
-				{
-					RelationshipModel relMod = new RelationshipModel(rel);
-					relList.add(relMod);
-				}
-			}
+                        witnessList.add(witM);
+                    }
+                }
 
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		return Response.ok(relList).build();
-	}
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(witnessList).build();
+    }
 
-	/**
-	 * Helper method for getting the tradition node with a given tradition id
-	 * 
-	 * @param tradId
-	 * @param engine
-	 * @return the root tradition node
-	 */
-	private Node getTraditionNode(String tradId, GraphDatabaseService engine) {
-		Result result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
-		Iterator<Node> nodes = result.columnAs("n");
+    /**
+     * Gets a list of all relationships of a tradition with the given id.
+     *
+     * @param tradId
+     * @return Http Response 200 and a list of relationship model in JSON
+     */
+    @GET
+    @Path("getallrelationships/fromtradition/{tradId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllRelationships(@PathParam("tradId") String tradId) {
 
-		if (!nodes.hasNext())
-			return null;
-		return nodes.next();
-	}
+        ArrayList<RelationshipModel> relList = new ArrayList<>();
 
-	/**
-	 * Returns GraphML file from specified tradition owned by user
-	 * 
-	 * @param tradId
-	 * @return XML data
-	 */
-	@GET
-	@Path("gettradition/withid/{tradId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getTradition(@PathParam("tradId") String tradId) {
-		Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
-		return parser.parseNeo4J(tradId);
-	}
-	
-	/**
-	 * Removes a complete tradition
-	 * 
-	 * @param tradId
-	 * @return http response
-	 */
-	@DELETE
-	@Path("deletetradition/withid/{tradId}")
-	public Response deleteTraditionById(@PathParam("tradId") String tradId) {
+        try (Transaction tx = db.beginTx()) {
 
-		try (Transaction tx = db.beginTx()) {
-			Result result = db.execute("match (tradId:TRADITION {id:'" + tradId + "'}) return tradId");
-			Iterator<Node> nodes = result.columnAs("tradId");
+            Node startNode = DatabaseService.getStartNode(tradId, db);
 
-			if (nodes.hasNext()) {
-				Node node = nodes.next();
-				
-				/*
-				 * Find all the nodes and relations to remove
-				 */
-				Set<Relationship> removableRelations = new HashSet<Relationship>();
-				Set<Node> removableNodes = new HashSet<Node>();
-				for (Node currentNode : db.traversalDescription()
-				        .depthFirst()
-				        .relationships( ERelations.NORMAL, Direction.OUTGOING)
-				        .relationships( ERelations.STEMMA, Direction.OUTGOING)
-				        .relationships( ERelations.RELATIONSHIP, Direction.OUTGOING)
-				        .uniqueness( Uniqueness.RELATIONSHIP_GLOBAL )
-				        .traverse( node )
-				        .nodes()) 
-				{
-					for(Relationship currentRelationship : currentNode.getRelationships()){
-						removableRelations.add(currentRelationship);
-					}
-					removableNodes.add(currentNode);
-				}
-				
-				/*
-				 * Remove the nodes and relations
-				 */
-				for(Relationship removableRel:removableRelations){
-		            removableRel.delete();
-		        }
-				for(Node remNode:removableNodes){
-		            remNode.delete();
-		        }
-			} else {
-				return Response.status(Response.Status.NOT_FOUND).entity("A tradition with this id was not found!").build();
-			}
+            for (Node node : db.traversalDescription().depthFirst()
+                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(startNode).nodes()) {
 
-			tx.success();
-		} catch (Exception e) {
-			return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-		}
-		return Response.status(Response.Status.OK).build();
-	}
+                Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,
+                        Direction.OUTGOING);
+                for(Relationship rel : rels)
+                {
+                    RelationshipModel relMod = new RelationshipModel(rel);
+                    relList.add(relMod);
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(relList).build();
+    }
 
-	/**
-	 * Imports a tradition by given GraphML file and meta data
-	 *
-	 * @return Http Response with the id of the imported tradition on success or
-	 *         an ERROR in JSON format
-	 * @throws XMLStreamException
-	 */
-	@POST
-	@Consumes(MediaType.MULTIPART_FORM_DATA)
-	@Produces(MediaType.APPLICATION_JSON)
-	@Path("/newtraditionwithgraphml")
-	public Response importGraphMl(@FormDataParam("name") String name, @FormDataParam("language") String language,
-			@FormDataParam("public") String is_public, @FormDataParam("userId") String userId,
-			@FormDataParam("file") InputStream uploadedInputStream,
-			@FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException, XMLStreamException {
+    /**
+     * Helper method for getting the tradition node with a given tradition id
+     *
+     * @param tradId
+     * @param engine
+     * @return the root tradition node
+     */
+    private Node getTraditionNode(String tradId, GraphDatabaseService engine) {
+        Result result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
+        Iterator<Node> nodes = result.columnAs("n");
 
-		
-		
-		if (!DatabaseService.checkIfUserExists(userId,db)) {
-			return Response.status(Response.Status.CONFLICT).entity("Error: No user with this id exists").build();
-		}
-		
-		String uploadedFileLocation = "upload/" + fileDetail.getFileName();
+        if (nodes.hasNext()) {
+            return nodes.next();
+        }
+        return null;
+    }
 
-		// save it
-		writeToFile(uploadedInputStream, uploadedFileLocation);
+    /**
+     * Returns GraphML file from specified tradition owned by user
+     *
+     * @param tradId
+     * @return XML data
+     */
+    @GET
+    @Path("gettradition/withid/{tradId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTradition(@PathParam("tradId") String tradId) {
+        Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
+        return parser.parseNeo4J(tradId);
+    }
 
-		GraphMLToNeo4JParser parser = new GraphMLToNeo4JParser();
-		Response resp = parser.parseGraphML(uploadedFileLocation, userId,name);
-		// nodes are unique
+    /**
+     * Removes a complete tradition
+     *
+     * @param tradId
+     * @return http response
+     */
+    @DELETE
+    @Path("deletetradition/withid/{tradId}")
+    public Response deleteTraditionById(@PathParam("tradId") String tradId) {
 
-		deleteFile(uploadedFileLocation);
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (tradId:TRADITION {id:'" + tradId
+                    + "'}) return tradId");
+            Iterator<Node> nodes = result.columnAs("tradId");
 
-		return resp;
-	}
+            if (nodes.hasNext()) {
+                Node node = nodes.next();
 
-	/**
-	 * Helper method for writing stream into a given location
-	 * 
-	 * @param uploadedInputStream
-	 * @param uploadedFileLocation
-	 */
-	private void writeToFile(InputStream uploadedInputStream, String uploadedFileLocation) {
+                /*
+                 * Find all the nodes and relations to remove
+                 */
+                Set<Relationship> removableRelations = new HashSet<>();
+                Set<Node> removableNodes = new HashSet<>();
+                for (Node currentNode : db.traversalDescription()
+                        .depthFirst()
+                        .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                        .relationships(ERelations.STEMMA, Direction.OUTGOING)
+                        .relationships(ERelations.RELATIONSHIP, Direction.OUTGOING)
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                        .traverse(node)
+                        .nodes())
+                {
+                    for(Relationship currentRelationship : currentNode.getRelationships()){
+                        removableRelations.add(currentRelationship);
+                    }
+                    removableNodes.add(currentNode);
+                }
 
-		try {
-			OutputStream out = new FileOutputStream(new File(uploadedFileLocation));
-			int read = 0;
-			byte[] bytes = new byte[1024];
+                /*
+                 * Remove the nodes and relations
+                 */
+                for(Relationship removableRel:removableRelations){
+                    removableRel.delete();
+                }
+                for(Node remNode:removableNodes){
+                    remNode.delete();
+                }
+            } else {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("A tradition with this id was not found!")
+                        .build();
+            }
 
-			out = new FileOutputStream(new File(uploadedFileLocation));
-			while ((read = uploadedInputStream.read(bytes)) != -1) {
-				out.write(bytes, 0, read);
-			}
-			out.flush();
-			out.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.status(Response.Status.OK).build();
+    }
 
-	/**
-	 * Helper method for deleting a file by given name
-	 * 
-	 * @param filename
-	 */
-	private void deleteFile(String filename) {
-		File file = new File(filename);
-		file.delete();
-	}
+    /**
+     * Imports a tradition by given GraphML file and meta data
+     *
+     * @return Http Response with the id of the imported tradition on success or
+     *         an ERROR in JSON format
+     * @throws XMLStreamException
+     */
+    @POST
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("/newtraditionwithgraphml")
+    public Response importGraphMl(@FormDataParam("name") String name,
+                                  @FormDataParam("language") String language,
+                                  @FormDataParam("public") String is_public,
+                                  @FormDataParam("userId") String userId,
+                                  @FormDataParam("file") InputStream uploadedInputStream,
+                                  @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException,
+            XMLStreamException {
 
-	/**
-	 * Returns DOT file from specified tradition owned by user
-	 * 
-	 * @param tradId
-	 * @return XML data
-	 */
-	@GET
-	@Path("getdot/fromtradition/{tradId}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getDot(@PathParam("tradId") String tradId) {
-		
-		String filename = "upload/" + "output.dot";
-		
-		File file = new File(filename);
-		file.delete();
-		
-		if(getTraditionNode(tradId, db) == null)
-			return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
-		Neo4JToDotParser parser = new Neo4JToDotParser(db);
-		parser.parseNeo4J(tradId);
-		
-		String everything = "";
-		try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
-	        StringBuilder sb = new StringBuilder();
-	        String line = br.readLine();
 
-	        while (line != null) {
-	            sb.append(line);
-	            sb.append(System.lineSeparator());
-	            line = br.readLine();
-	        }
-	        everything = sb.toString();
-	    }catch  (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		return Response.ok(everything).build();
-	}
+        if (!DatabaseService.checkIfUserExists(userId, db)) {
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("Error: No user with this id exists")
+                    .build();
+        }
+
+        String uploadedFileLocation = "upload/" + fileDetail.getFileName();
+
+        // save it
+        writeToFile(uploadedInputStream, uploadedFileLocation);
+
+        GraphMLToNeo4JParser parser = new GraphMLToNeo4JParser();
+        Response resp = parser.parseGraphML(uploadedFileLocation, userId, name);
+        // nodes are unique
+
+        deleteFile(uploadedFileLocation);
+
+        return resp;
+    }
+
+    /**
+     * Helper method for writing stream into a given location
+     *
+     * @param uploadedInputStream
+     * @param uploadedFileLocation
+     */
+    private void writeToFile(InputStream uploadedInputStream, String uploadedFileLocation) {
+
+        try {
+            OutputStream out; // = new FileOutputStream(new File(uploadedFileLocation));
+            int read;
+            byte[] bytes = new byte[1024];
+
+            out = new FileOutputStream(new File(uploadedFileLocation));
+            while ((read = uploadedInputStream.read(bytes)) != -1) {
+                out.write(bytes, 0, read);
+            }
+            out.flush();
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Helper method for deleting a file by given name
+     *
+     * @param filename
+     */
+    private void deleteFile(String filename) {
+        File file = new File(filename);
+        file.delete();
+    }
+
+    /**
+     * Returns DOT file from specified tradition owned by user
+     *
+     * @param tradId
+     * @return XML data
+     */
+    @GET
+    @Path("getdot/fromtradition/{tradId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getDot(@PathParam("tradId") String tradId) {
+
+        String filename = "upload/output.dot";
+
+        File file = new File(filename);
+        file.delete();
+
+        if(getTraditionNode(tradId, db) == null)
+            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+
+        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        parser.parseNeo4J(tradId);
+
+        String everything = "";
+        try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            StringBuilder sb = new StringBuilder();
+            String line = br.readLine();
+
+            while (line != null) {
+                sb.append(line);
+                sb.append(System.lineSeparator());
+                line = br.readLine();
+            }
+            everything = sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return Response.ok(everything).build();
+    }
 }

@@ -14,15 +14,15 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class CharacterModel {
-	private String character;
+    private String character;
 
-	public String getCharacter() {
-		return character;
-	}
+    public String getCharacter() {
+        return character;
+    }
 
-	public void setCharacter(String character) {
-		this.character = character;
-	}
+    public void setCharacter(String character) {
+        this.character = character;
+    }
 
-	
+
 }

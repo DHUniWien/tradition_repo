@@ -18,12 +18,12 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  */
 
 public class ApplicationConfig extends Application {
-	
-	public static final String DB_PATH = "database"; // this is the local path to stemmarest/database
-		
+
+    // private static final String DB_PATH_ = "database"; // this is the local path to stemmarest/database
+    private static final String DB_PATH = "/usr/local/neo4j/data/graph.db";
     @Override
     public Set<Class<?>> getClasses() {
-        Set<Class<?>> s = new HashSet<Class<?>>();
+        Set<Class<?>> s = new HashSet<>();
         s.add(Witness.class);
         s.add(User.class);
         s.add(Tradition.class);
@@ -36,13 +36,13 @@ public class ApplicationConfig extends Application {
     
     @PostConstruct
     public void initializeApp()
-    {	
-    	GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-    	GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-    	
-    	DatabaseService.createRootNode(db);
-    	
-    	db.shutdown();
+    {
+        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+        GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
+
+        DatabaseService.createRootNode(db);
+
+        db.shutdown();
     }
 
 }

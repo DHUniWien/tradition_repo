@@ -10,24 +10,24 @@ import org.neo4j.test.TestGraphDatabaseFactory;
  * @author PSE FS 2015 Team2
  */
 public class GraphDatabaseServiceProvider {
-	
-	private static GraphDatabaseService db;
-	
-	public GraphDatabaseServiceProvider() {
 
-		GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+    private static GraphDatabaseService db;
 
-		if(db==null){
-			db = dbFactory.newEmbeddedDatabase("database");
-		}
-	}
-	
-	public GraphDatabaseService getDatabase(){
-		return db;
-	}
+    public GraphDatabaseServiceProvider() {
 
-	public static void setImpermanentDatabase(){
-		db =  new TestGraphDatabaseFactory().newImpermanentDatabase();
-	}
+        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+
+        if(db == null){
+            db = dbFactory.newEmbeddedDatabase("/usr/local/neo4j/data/graph.db");
+        }
+    }
+
+    public GraphDatabaseService getDatabase(){
+        return db;
+    }
+
+    public static void setImpermanentDatabase(){
+        db =  new TestGraphDatabaseFactory().newImpermanentDatabase();
+    }
 
 }

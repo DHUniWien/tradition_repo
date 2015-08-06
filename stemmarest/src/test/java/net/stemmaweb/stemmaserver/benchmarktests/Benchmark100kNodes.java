@@ -33,68 +33,67 @@ import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 @AxisRange(min = 0, max = 0.2)
 @BenchmarkMethodChart(filePrefix = "benchmark/benchmark-100kNodes")
 public class Benchmark100kNodes extends BenchmarkTests {
-	
-	@BeforeClass
-	public static void prepareTheDatabase(){
 
-		RandomGraphGenerator rgg = new RandomGraphGenerator();
+    @BeforeClass
+    public static void prepareTheDatabase(){
 
-		GraphDatabaseServiceProvider.setImpermanentDatabase();
-		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-		
+        RandomGraphGenerator rgg = new RandomGraphGenerator();
+
+        GraphDatabaseServiceProvider.setImpermanentDatabase();
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
 		GraphDatabaseService db = dbServiceProvider.getDatabase();
-		
-		
-		userResource = new User();
-		traditionResource = new Tradition();
-		witnessResource = new Witness();
-		readingResoruce = new Reading();
-		relationResource = new Relation();
-		importResource = new GraphMLToNeo4JParser();
-		stemmaResource = new Stemma();
-		
-		jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-				.addResource(userResource)
-				.addResource(traditionResource)
-				.addResource(witnessResource)
-				.addResource(relationResource)
-				.addResource(readingResoruce)
-				.addResource(stemmaResource).create();
-		try {
-			jerseyTest.setUp();
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		rgg.role(db, 10, 10, 10, 100);
 
-		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 		
+        userResource = new User();
+        traditionResource = new Tradition();
+        witnessResource = new Witness();
+        readingResoruce = new Reading();
+        relationResource = new Relation();
+        importResource = new GraphMLToNeo4JParser();
+        stemmaResource = new Stemma();
+
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(userResource)
+                .addResource(traditionResource)
+                .addResource(witnessResource)
+                .addResource(relationResource)
+                .addResource(readingResoruce)
+                .addResource(stemmaResource).create();
+        try {
+            jerseyTest.setUp();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        rgg.role(db, 10, 10, 10, 100);
+		
+		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
+
 		try {
 			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
 		} catch (FileNotFoundException f) {
 			// this error should not occur
 			assertTrue(false);
 		}
-		
-		Result result = db.execute("match (w:WORD {text:'showers'}) return w");
-		Iterator<Node> nodes = result.columnAs("w");
-		duplicateReadingNodeId = nodes.next().getId();
 
-		result = db.execute("match (w:WORD {text:'the root'}) return w");
-		nodes = result.columnAs("w");
-		theRoot = nodes.next().getId();
-		
-		result = db.execute("match (w:WORD {text:'unto me'}) return w");
-		nodes = result.columnAs("w");
-		untoMe = nodes.next().getId();		
-	}
-	
-	@AfterClass
-	public static void shutdown() throws Exception{
-		GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-		dbServiceProvider.getDatabase().shutdown();
-		jerseyTest.tearDown();
-	}
+        Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+        Iterator<Node> nodes = result.columnAs("w");
+        duplicateReadingNodeId = nodes.next().getId();
+
+        result = db.execute("match (w:WORD {text:'the root'}) return w");
+        nodes = result.columnAs("w");
+        theRoot = nodes.next().getId();
+
+        result = db.execute("match (w:WORD {text:'unto me'}) return w");
+        nodes = result.columnAs("w");
+        untoMe = nodes.next().getId();
+    }
+
+    @AfterClass
+    public static void shutdown() throws Exception{
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        dbServiceProvider.getDatabase().shutdown();
+        jerseyTest.tearDown();
+    }
 }

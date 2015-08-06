@@ -43,5 +43,4 @@ public class GraphModel {
     public void setRelationships(List<RelationshipModel> relationships) {
         this.relationships = relationships;
     }
-
 }

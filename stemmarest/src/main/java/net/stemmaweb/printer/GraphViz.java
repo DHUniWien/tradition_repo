@@ -81,7 +81,7 @@ public class GraphViz
    /**
     * The source of the graph written in dot language.
     */
-	private StringBuilder graph = new StringBuilder();
+    private StringBuilder graph = new StringBuilder();
 
    /**
     * Constructor: creates a new GraphViz object that will contain
@@ -138,18 +138,18 @@ public class GraphViz
    public byte[] getGraph(String dot_source, String type)
    {
       File dot;
-      byte[] img_stream = null;
+      byte[] img_stream;
    
       try {
          dot = writeDotSourceToFile(dot_source);
-         if (dot != null)
-         {
-            img_stream = get_img_stream(dot, type);
-            if (!dot.delete())
-               System.err.println("Warning: " + dot.getAbsolutePath() + " could not be deleted!");
-            return img_stream;
-         }
-         return null;
+          if (dot == null) {
+              return null;
+          }
+          img_stream = get_img_stream(dot, type);
+          if (!dot.delete()) {
+              System.err.println("Warning: " + dot.getAbsolutePath() + " could not be deleted!");
+          }
+          return img_stream;
       } catch (java.io.IOException ioe) { return null; }
    }
 
@@ -177,7 +177,9 @@ public class GraphViz
          FileOutputStream fos = new FileOutputStream(to);
          fos.write(img);
          fos.close();
-      } catch (java.io.IOException ioe) { return -1; }
+      } catch (java.io.IOException ioe) {
+          return -1;
+      }
       return 1;
    }
 
@@ -209,17 +211,17 @@ public class GraphViz
          img_stream = new byte[in.available()];
          in.read(img_stream);
          // Close it if we need to
-         if( in != null ) in.close();
+         // if( in != null ) in.close();  --> always true
+         in.close();
 
-         if (!img.delete())
-            System.err.println("Warning: " + img.getAbsolutePath() + " could not be deleted!");
-      }
-      catch (java.io.IOException ioe) {
+         if (!img.delete()) {
+             System.err.println("Warning: " + img.getAbsolutePath() + " could not be deleted!");
+         }
+      } catch (java.io.IOException ioe) {
          System.err.println("Error:    in I/O processing of tempfile\n");
          System.err.println("       or in calling external command: " + ioe.getMessage());
          ioe.printStackTrace();
-      }
-      catch (java.lang.InterruptedException ie) {
+      } catch (java.lang.InterruptedException ie) {
          System.err.println("Error: the execution of the external program was interrupted");
          ie.printStackTrace();
       }
@@ -274,24 +276,23 @@ public class GraphViz
     */
    public void readSource(String input)
    {
-	   StringBuilder sb = new StringBuilder();
-	   
-	   try
-	   {
-		   FileInputStream fis = new FileInputStream(input);
-		   DataInputStream dis = new DataInputStream(fis);
-		   BufferedReader br = new BufferedReader(new InputStreamReader(dis));
-		   String line;
-		   while ((line = br.readLine()) != null) {
-			   sb.append(line);
-		   }
-		   dis.close();
-	   } 
-	   catch (Exception e) {
-		   System.err.println("Error: " + e.getMessage());
-	   }
-	   
-	   this.graph = sb;
+       StringBuilder sb = new StringBuilder();
+
+       try {
+           FileInputStream fis = new FileInputStream(input);
+           DataInputStream dis = new DataInputStream(fis);
+           BufferedReader br = new BufferedReader(new InputStreamReader(dis));
+           String line;
+           while ((line = br.readLine()) != null) {
+               sb.append(line);
+           }
+           dis.close();
+       }
+       catch (Exception e) {
+           System.err.println("Error: " + e.getMessage());
+       }
+
+       this.graph = sb;
    }
    
    private static String resolve(String executable)
