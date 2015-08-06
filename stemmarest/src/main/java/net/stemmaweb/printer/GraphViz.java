@@ -35,6 +35,12 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Optional;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * <dl>
@@ -85,17 +91,13 @@ public class GraphViz
    }
    
     public String getDotExecutable() {
-        /** TODO this should be implemented as a PATH search, really, and
-         * should raise an exception if dot is not found.
-         */
-        String[] possibilities = {"/usr/local/bin/dot", "/opt/local/bin/dot"};
-        for (String path : possibilities) {
-            File f = new File(path);
-             if (f.exists() && f.canExecute()) {
-                return f.getAbsolutePath();
-            } 
-        }
-        return "C:\\Program Files\\graphviz-2.38\\release\\bin\\dot.exe";
+       String[] possibilities = {"dot", "dot.exe", "dot.bat"};
+       for (String exec : possibilities) {
+          String dotPath = resolve(exec);
+          if (!dotPath.equals(""))
+             return dotPath + File.separator + exec;
+       }
+       return "";
     }
 
    /**
@@ -292,11 +294,16 @@ public class GraphViz
 	   this.graph = sb;
    }
    
-   private static boolean isWin()
-	{
-		String OS = System.getProperty("os.name").toLowerCase();
-		return (OS.indexOf("win") >= 0);
-	}
+   private static String resolve(String executable)
+   {
+      Optional<Path> execInPath = Stream.of(System.getenv("PATH").split(Pattern.quote(File.pathSeparator)))
+              .map(Paths::get)
+              .filter(path -> Files.exists(path.resolve(executable))).findFirst();
+      if (execInPath.isPresent())
+         return execInPath.get().toString();
+      else
+         return "";
+   }
    
 } // end of class GraphViz
 
