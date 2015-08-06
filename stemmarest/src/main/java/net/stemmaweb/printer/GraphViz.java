@@ -90,7 +90,7 @@ public class GraphViz
    public GraphViz() {
    }
    
-    public String getDotExecutable() {
+    private String getDotExecutable() {
        String[] possibilities = {"dot", "dot.exe", "dot.bat"};
        for (String exec : possibilities) {
           String dotPath = resolve(exec);

@@ -174,7 +174,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 		try
 		{
-			importResource.parseGraphML(testfile.getPath()ˀ., "1", "Tradition");
+			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
