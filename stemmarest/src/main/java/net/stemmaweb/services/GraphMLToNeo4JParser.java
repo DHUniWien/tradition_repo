@@ -32,11 +32,18 @@ public class GraphMLToNeo4JParser implements IResource
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    public Response parseGraphML(String filename, String userId, String tradName)
+        throws FileNotFoundException {
+        File file = new File(filename);
+        InputStream in = new FileInputStream(file);
+        return parseGraphML(in, userId, tradName);
+    }
+
     /**
-     * Reads xml file and imports it into Neo4J Database
+     * Reads xml file input stream and imports it into Neo4J Database
      *
-     * @param filename
-     *            - the graphMl file
+     * @param xmldata
+     *            - the GraphML file stream
      * @param userId
      *            - the user id who will own the tradition
      * @param tradName
@@ -45,12 +52,10 @@ public class GraphMLToNeo4JParser implements IResource
      * @throws FileNotFoundException
      * @throws XMLStreamException
      */
-    public Response parseGraphML(String filename, String userId, String tradName)
+    public Response parseGraphML(InputStream xmldata, String userId, String tradName)
             throws FileNotFoundException {
         XMLInputFactory factory;
         XMLStreamReader reader;
-        File file = new File(filename);
-        InputStream in = new FileInputStream(file);
         factory = XMLInputFactory.newInstance();
 
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
@@ -72,7 +77,7 @@ public class GraphMLToNeo4JParser implements IResource
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         try (Transaction tx = db.beginTx()) {
-            reader = factory.createXMLStreamReader(in);
+            reader = factory.createXMLStreamReader(xmldata);
             // retrieves the last inserted Tradition id
             String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
                     .next()

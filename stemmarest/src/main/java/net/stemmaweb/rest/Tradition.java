@@ -358,52 +358,11 @@ public class Tradition implements IResource {
                     .build();
         }
 
-        String uploadedFileLocation = "upload/" + fileDetail.getFileName();
-
-        // save it
-        writeToFile(uploadedInputStream, uploadedFileLocation);
-
         GraphMLToNeo4JParser parser = new GraphMLToNeo4JParser();
-        Response resp = parser.parseGraphML(uploadedFileLocation, userId, name);
+        Response resp = parser.parseGraphML(uploadedInputStream, userId, name);
         // nodes are unique
 
-        deleteFile(uploadedFileLocation);
-
         return resp;
-    }
-
-    /**
-     * Helper method for writing stream into a given location
-     *
-     * @param uploadedInputStream
-     * @param uploadedFileLocation
-     */
-    private void writeToFile(InputStream uploadedInputStream, String uploadedFileLocation) {
-
-        try {
-            OutputStream out; // = new FileOutputStream(new File(uploadedFileLocation));
-            int read;
-            byte[] bytes = new byte[1024];
-
-            out = new FileOutputStream(new File(uploadedFileLocation));
-            while ((read = uploadedInputStream.read(bytes)) != -1) {
-                out.write(bytes, 0, read);
-            }
-            out.flush();
-            out.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Helper method for deleting a file by given name
-     *
-     * @param filename
-     */
-    private void deleteFile(String filename) {
-        File file = new File(filename);
-        file.delete();
     }
 
     /**
