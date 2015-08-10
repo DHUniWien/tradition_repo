@@ -31,6 +31,7 @@ import org.neo4j.graphdb.Transaction;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * Contains all tests for the api calls related to stemmas.
@@ -51,9 +52,7 @@ public class StemmaTest {
     @Before
     public void setUp() throws Exception {
 
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
-
-        db = new GraphDatabaseServiceProvider().getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         Stemma stemma = new Stemma();
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();

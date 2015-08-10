@@ -2,7 +2,6 @@ package net.stemmaweb.services;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * Creates a global DatabaseService provider
@@ -25,12 +24,12 @@ public class GraphDatabaseServiceProvider {
         }
     }
 
-    public GraphDatabaseService getDatabase(){
-        return db;
+    public GraphDatabaseServiceProvider(GraphDatabaseService existingdb) {
+        db = existingdb;
     }
 
-    public static void setImpermanentDatabase(){
-        db =  new TestGraphDatabaseFactory().newImpermanentDatabase();
+    public GraphDatabaseService getDatabase(){
+        return db;
     }
 
 }

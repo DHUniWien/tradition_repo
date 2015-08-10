@@ -24,6 +24,7 @@ import org.neo4j.graphdb.Result;
 
 import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
 import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * 
@@ -46,10 +47,8 @@ public class Benchmark1000kNodes extends BenchmarkTests {
     public static void initDatabase() {
         RandomGraphGenerator rgg = new RandomGraphGenerator();
 
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-
-        GraphDatabaseService db = dbServiceProvider.getDatabase();
+        GraphDatabaseService db = new TestGraphDatabaseFactory().newImpermanentDatabase();
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider(db);
 
 
         userResource = new User();

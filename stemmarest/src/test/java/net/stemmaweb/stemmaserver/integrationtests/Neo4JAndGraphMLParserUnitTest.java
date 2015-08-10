@@ -22,6 +22,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  *
@@ -37,10 +38,8 @@ public class Neo4JAndGraphMLParserUnitTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		
-		GraphDatabaseServiceProvider.setImpermanentDatabase();
-		
-		db = new GraphDatabaseServiceProvider().getDatabase();
+
+		db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 		
 		importResource = new GraphMLToNeo4JParser();
 		exportResource = new Neo4JToGraphMLParser();

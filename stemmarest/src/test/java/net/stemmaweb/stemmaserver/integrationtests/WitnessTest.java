@@ -26,6 +26,7 @@ import org.neo4j.graphdb.*;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * 
@@ -52,9 +53,7 @@ public class WitnessTest {
     public void setUp() throws Exception {
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
-
-        db = new GraphDatabaseServiceProvider().getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         /*
          * The Resource under test. The mockDbFactory will be injected into this

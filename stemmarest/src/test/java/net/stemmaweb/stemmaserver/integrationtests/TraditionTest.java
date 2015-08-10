@@ -34,6 +34,7 @@ import org.neo4j.graphdb.Transaction;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * Contains all tests for the api calls related to the tradition.
@@ -55,9 +56,8 @@ public class TraditionTest {
     @Before
     public void setUp() throws Exception {
 
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-        db = new GraphDatabaseServiceProvider().getDatabase();
 
         importResource = new GraphMLToNeo4JParser();
         Tradition tradition = new Tradition();

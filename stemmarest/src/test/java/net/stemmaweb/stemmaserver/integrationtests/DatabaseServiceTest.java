@@ -20,6 +20,7 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * 
@@ -33,9 +34,7 @@ public class DatabaseServiceTest {
     @Before
     public void setUp() throws Exception {
 
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
-
-        db = new GraphDatabaseServiceProvider().getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 

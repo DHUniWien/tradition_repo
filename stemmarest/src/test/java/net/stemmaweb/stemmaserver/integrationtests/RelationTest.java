@@ -37,6 +37,7 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * 
@@ -61,9 +62,8 @@ public class RelationTest {
 
     @Before
     public void setUp() throws Exception {
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-        db = new GraphDatabaseServiceProvider().getDatabase();
 
         importResource = new GraphMLToNeo4JParser();
         witness = new Witness();

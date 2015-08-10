@@ -42,6 +42,7 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
  * 
@@ -70,9 +71,7 @@ public class ReadingTest {
     @Before
     public void setUp() throws Exception {
 
-        GraphDatabaseServiceProvider.setImpermanentDatabase();
-
-        db = new GraphDatabaseServiceProvider().getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         Reading reading = new Reading();
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
