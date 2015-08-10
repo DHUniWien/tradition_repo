@@ -18,9 +18,10 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
  */
 
 public class ApplicationConfig extends Application {
+    // Get the correct path to the database location
+    private static final String DB_ENV = System.getenv("DATABASE_HOME");
+    private static final String DB_PATH = DB_ENV == null ? "/var/lib/stemmarest" : DB_ENV;
 
-    // private static final String DB_PATH_ = "database"; // this is the local path to stemmarest/database
-    private static final String DB_PATH = "/usr/local/neo4j/data/graph.db";
     @Override
     public Set<Class<?>> getClasses() {
         Set<Class<?>> s = new HashSet<>();
