@@ -80,7 +80,7 @@ public class WitnessTest {
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
         }
 
@@ -251,7 +251,7 @@ public class WitnessTest {
     @Test
     public void traditionEndNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.WORD, "text", "#END#");
+            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
             tx.success();
         }

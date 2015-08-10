@@ -205,7 +205,7 @@ public class UserTest {
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
-                    + "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+                    + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
             db.execute(createNewRelationQuery);
 
             tx.success();
@@ -223,7 +223,7 @@ public class UserTest {
                     + "MATCH(tradition: TRADITION {id:'843'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
-                    + "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+                    + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
             db.execute(createNewRelationQuery);
             tx.success();
         }
@@ -297,7 +297,7 @@ public class UserTest {
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
-                    + "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+                    + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
             db.execute(createNewRelationQuery);
 
             /*
@@ -361,7 +361,7 @@ public class UserTest {
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
-                    + "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+                    + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
             db.execute(createNewRelationQuery);
 
             tx.success();

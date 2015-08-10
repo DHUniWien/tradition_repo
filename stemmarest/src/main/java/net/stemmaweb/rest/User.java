@@ -67,7 +67,7 @@ public class User implements IResource {
             node.setProperty("id", userModel.getId());
             node.setProperty("isAdmin", userModel.getIsAdmin());
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
 
             tx.success();
         } catch (Exception e) {
@@ -130,9 +130,9 @@ public class User implements IResource {
                 Set<Node> removableNodes = new HashSet<>();
                 for (Node currentNode : db.traversalDescription()
                         .depthFirst()
-                        .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                        .relationships(ERelations.OWNS_TRADITION, Direction.OUTGOING)
                         .relationships(ERelations.STEMMA, Direction.OUTGOING)
-                        .relationships(ERelations.RELATIONSHIP, Direction.OUTGOING)
+                        .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(node)
                         .nodes())
@@ -183,7 +183,7 @@ public class User implements IResource {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'" + userId
+            Result result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'" + userId
                     + "'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             while (tradIterator.hasNext()) {

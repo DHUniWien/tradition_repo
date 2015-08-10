@@ -89,7 +89,7 @@ public class RelationTest {
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
         }
 
@@ -247,7 +247,7 @@ public class RelationTest {
     @Test
     public void deleteRelationsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'march'}) return w");
+            Result result = db.execute("match (w:READING {text:'march'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node march1 = nodes.next();
@@ -257,7 +257,7 @@ public class RelationTest {
 
             Relationship rel = null;
             int relCounter = 0;
-            for (Relationship tempRel : march1.getRelationships(ERelations.RELATIONSHIP)) {
+            for (Relationship tempRel : march1.getRelationships(ERelations.RELATED)) {
                 rel = tempRel;
                 relCounter++;
             }
@@ -271,7 +271,7 @@ public class RelationTest {
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
-            result = db.execute("match (w:WORD {text:'march'}) return w");
+            result = db.execute("match (w:READING {text:'march'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             march1 = nodes.next();
@@ -280,7 +280,7 @@ public class RelationTest {
             assertFalse(nodes.hasNext());
 
             relCounter = 0;
-            for (Relationship relationship : march1.getRelationships(ERelations.RELATIONSHIP)) {
+            for (Relationship relationship : march1.getRelationships(ERelations.RELATED)) {
                 relCounter++;
             }
 
@@ -483,7 +483,7 @@ public class RelationTest {
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
-                // RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+                // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
@@ -492,7 +492,7 @@ public class RelationTest {
         try (Transaction tx = db.beginTx()) {
             Node node28 = db.getNodeById(28L);
             Iterator<Relationship> rels = node28
-                    .getRelationships(ERelations.RELATIONSHIP)
+                    .getRelationships(ERelations.RELATED)
                     .iterator();
 
             assertTrue(!rels.hasNext()); // make sure node 28 does not have a relationship now!
@@ -526,7 +526,7 @@ public class RelationTest {
             tx.success();
         }
 
-        Result result = db.execute("match (w:WORD {text:'rood'}) return w");
+        Result result = db.execute("match (w:READING {text:'rood'}) return w");
         Iterator<Node> nodes = result.columnAs("w");
         assertTrue(nodes.hasNext());
         Node node = nodes.next();
@@ -534,7 +534,7 @@ public class RelationTest {
 
         relationship.setSource(node.getId() + "");
 
-        result = db.execute("match (w:WORD {text:'unto'}) return w");
+        result = db.execute("match (w:READING {text:'unto'}) return w");
         nodes = result.columnAs("w");
         assertTrue(nodes.hasNext());
         node = nodes.next();
@@ -554,7 +554,7 @@ public class RelationTest {
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class,relationship);
-        // RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
+        // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
@@ -562,7 +562,7 @@ public class RelationTest {
 
         try (Transaction tx = db.beginTx()) {
             Node node21 = db.getNodeById(21L);
-            Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATIONSHIP).iterator();
+            Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATED).iterator();
 
             assertTrue(!rels.hasNext()); // make sure node 21 does not have a relationship now!
             tx.success();
@@ -573,13 +573,13 @@ public class RelationTest {
     public void createRelationshipTestWithCyclicConstraint() {
         RelationshipModel relationship = new RelationshipModel();
 
-        Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+        Result result = db.execute("match (w:READING {text:'showers'}) return w");
         Iterator<Node> nodes = result.columnAs("w");
         assertTrue(nodes.hasNext());
         Node firstNode = nodes.next();
         assertFalse(nodes.hasNext());
 
-        result = db.execute("match (w:WORD {text:'pierced'}) return w");
+        result = db.execute("match (w:READING {text:'pierced'}) return w");
         nodes = result.columnAs("w");
         assertTrue(nodes.hasNext());
         Node secondNode = nodes.next();
@@ -605,12 +605,12 @@ public class RelationTest {
 
         try (Transaction tx = db.beginTx()) {
             Node node1 = db.getNodeById(firstNode.getId());
-            Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATIONSHIP).iterator();
+            Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATED).iterator();
 
             assertTrue(!rels.hasNext()); // make sure node does not have a relationship now!
 
             Node node2 = db.getNodeById(secondNode.getId());
-            rels = node2.getRelationships(ERelations.RELATIONSHIP).iterator();
+            rels = node2.getRelationships(ERelations.RELATED).iterator();
 
             assertTrue(!rels.hasNext()); // make sure node does not have a relationship now!
             tx.success();

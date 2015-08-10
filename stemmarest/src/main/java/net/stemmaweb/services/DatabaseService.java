@@ -28,7 +28,7 @@ public class DatabaseService {
          * this query gets the "Start" node of the witness
          */
         String witnessQuery = "match (tradition:TRADITION {id:'" + tradId
-                + "'})-[:NORMAL]->(w:WORD) return w";
+                + "'})-[:COLLATION]->(w:READING) return w";
 
         try (Transaction tx = db.beginTx()) {
 

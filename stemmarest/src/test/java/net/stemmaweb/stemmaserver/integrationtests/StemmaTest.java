@@ -76,7 +76,7 @@ public class StemmaTest {
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
         }
 

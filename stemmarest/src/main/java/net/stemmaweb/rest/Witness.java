@@ -56,7 +56,7 @@ public class Witness implements IResource {
 
         try (Transaction tx = db.beginTx()) {
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
                     .traverse(startNode).nodes()) {
                 if (!node.getProperty("text").equals("#END#")) {
@@ -121,7 +121,7 @@ public class Witness implements IResource {
 
         try (Transaction tx = db.beginTx()) {
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(e)
                     .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                     .traverse(startNode)
@@ -185,7 +185,7 @@ public class Witness implements IResource {
         try (Transaction tx = db.beginTx()) {
 
             for (Node startNodes : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(e)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(startNode)

@@ -64,7 +64,7 @@ public class UnicodeTest {
             node2 = graphDb.createNode();
             node2.setProperty("name", "עוד בדיקה");
 
-            relationship = node1.createRelationshipTo(node2, ERelations.NORMAL);
+            relationship = node1.createRelationshipTo(node2, ERelations.SEQUENCE);
             relationship.setProperty("type", "יחס");
             tx.success();
         }

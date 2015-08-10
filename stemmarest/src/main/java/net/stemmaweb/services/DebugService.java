@@ -28,7 +28,7 @@ class DebugService {
             else {
                 Result witnessResult = db
                         .execute("match (tradition:TRADITION {id:'" + tradId
-                                + "'})--(w:WORD  {text:'#START#'}) return w");
+                                + "'})--(w:READING  {text:'#START#'}) return w");
                 Iterator<Node> witnesses = witnessResult.columnAs("w");
 
                 if (witnesses.hasNext()) {

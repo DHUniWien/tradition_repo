@@ -207,7 +207,7 @@ public class Reading implements IResource {
         List<String> allWitnesses = new LinkedList<>();
         String[] currentWitnesses;
         for (Relationship relationship : originalReading
-                .getRelationships(ERelations.NORMAL)) {
+                .getRelationships(ERelations.SEQUENCE)) {
             currentWitnesses = (String[]) relationship.getProperty("witnesses");
             for (String currentWitness : currentWitnesses) {
                 if (!allWitnesses.contains(currentWitness)) {
@@ -237,10 +237,10 @@ public class Reading implements IResource {
 
         // copy relationships
         for (Relationship originalRel : originalReading
-                .getRelationships(ERelations.RELATIONSHIP)) {
+                .getRelationships(ERelations.RELATED)) {
             Relationship newRel = addedReading.createRelationshipTo(
                     originalRel.getOtherNode(originalReading),
-                    ERelations.RELATIONSHIP);
+                    ERelations.RELATED);
             for (String key : originalRel.getPropertyKeys()) {
                 newRel.setProperty(key, originalRel.getProperty(key));
             }
@@ -249,14 +249,14 @@ public class Reading implements IResource {
         // add witnesses to normal relationships
         // Incoming
         for (Relationship originalRelationship : originalReading
-                .getRelationships(ERelations.NORMAL, Direction.INCOMING))
+                .getRelationships(ERelations.SEQUENCE, Direction.INCOMING))
             deletedRelationships
                     .addAll(transferNewWitnessesFromOriginalReadingToAddedReading(
                             newWitnesses, originalRelationship,
                             originalRelationship.getStartNode(), addedReading));
         // Outgoing
         for (Relationship originalRelationship : originalReading
-                .getRelationships(ERelations.NORMAL, Direction.OUTGOING)) {
+                .getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
             deletedRelationships
                     .addAll(transferNewWitnessesFromOriginalReadingToAddedReading(
                             newWitnesses, originalRelationship, addedReading,
@@ -287,7 +287,7 @@ public class Reading implements IResource {
         // the one from the originalReading
         if (oldWitnesses.length == 1) {
             if (newWitnesses.contains(oldWitnesses[0])) {
-                Relationship newRel = originNode.createRelationshipTo(targetNode, ERelations.NORMAL);
+                Relationship newRel = originNode.createRelationshipTo(targetNode, ERelations.SEQUENCE);
                 newRel.setProperty("witnesses", oldWitnesses);
                 deletedRelationships.add(new RelationshipModel(originalRel));
                 originalRel.delete();
@@ -310,7 +310,7 @@ public class Reading implements IResource {
             // create new relationship for remaining witnesses if there are any
             if (!remainingWitnesses.isEmpty()) {
                 Relationship addedRelationship = originNode
-                        .createRelationshipTo(targetNode, ERelations.NORMAL);
+                        .createRelationshipTo(targetNode, ERelations.SEQUENCE);
                 Collections.sort(remainingWitnesses);
                 addedRelationship.setProperty("witnesses", remainingWitnesses
                         .toArray(new String[remainingWitnesses.size()]));
@@ -418,8 +418,8 @@ public class Reading implements IResource {
      * @return check whether two readings contain a relationship between them
      */
     private boolean doContainRelationshipBetweenEachOther(Node stayingReading, Node deletingReading) {
-        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATIONSHIP)) {
-            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATIONSHIP)) {
+        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
+            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
                 if (firstRel.equals(secondRel)) {
                     return true;
                 }
@@ -439,7 +439,7 @@ public class Reading implements IResource {
      * @return true if a relationship between two readings is of class 2
      */
     private boolean containClassTwoRelationships(Node stayingReading, Node deletingReading) {
-        for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATIONSHIP)) {
+        for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
             if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)
                     && (stayingRel.getProperty("type").equals("transposition")
                     || stayingRel.getProperty("type").equals("repetition"))) {
@@ -475,8 +475,8 @@ public class Reading implements IResource {
      *            the reading which will be deleted from the database
      */
     private void deleteRelationshipBetweenReadings(Node stayingReading, Node deletingReading) {
-        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATIONSHIP)) {
-            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATIONSHIP)) {
+        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
+            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
                 if (firstRel.equals(secondRel)) {
                     firstRel.delete();
                 }
@@ -496,9 +496,9 @@ public class Reading implements IResource {
     private void copyWitnesses(Node stayingReading, Node deletingReading,
             Direction direction) {
         for (Relationship stayingRel : stayingReading.getRelationships(
-                ERelations.NORMAL, direction)) {
+                ERelations.SEQUENCE, direction)) {
             for (Relationship deletingRel : deletingReading.getRelationships(
-                    ERelations.NORMAL, direction)) {
+                    ERelations.SEQUENCE, direction)) {
                 if (stayingRel.getOtherNode(stayingReading).getId() == (deletingRel
                         .getOtherNode(deletingReading).getId())) {
                     // get Witnesses
@@ -519,16 +519,16 @@ public class Reading implements IResource {
             }
         }
         for (Relationship deletingRel : deletingReading.getRelationships(
-                ERelations.NORMAL, direction)) {
+                ERelations.SEQUENCE, direction)) {
             Relationship newRel;
             if (direction.equals(Direction.OUTGOING)) {
                 newRel = stayingReading
                         .createRelationshipTo(deletingRel.getOtherNode(deletingReading),
-                                ERelations.NORMAL);
+                                ERelations.SEQUENCE);
             } else {
                 newRel = deletingRel
                         .getOtherNode(deletingReading)
-                        .createRelationshipTo(stayingReading, ERelations.NORMAL);
+                        .createRelationshipTo(stayingReading, ERelations.SEQUENCE);
             }
             newRel.setProperty("witnesses", deletingRel.getProperty("witnesses"));
             deletingRel.delete();
@@ -547,16 +547,16 @@ public class Reading implements IResource {
             Node deletingReading) {
         // copy relationships from deletingReading to stayingReading
         for (Relationship oldRel : deletingReading.getRelationships(
-                ERelations.RELATIONSHIP, Direction.OUTGOING)) {
+                ERelations.RELATED, Direction.OUTGOING)) {
             Relationship newRel = stayingReading.createRelationshipTo(
-                    oldRel.getEndNode(), ERelations.RELATIONSHIP);
+                    oldRel.getEndNode(), ERelations.RELATED);
             RelationshipService.copyRelationshipProperties(oldRel, newRel);
             oldRel.delete();
         }
         for (Relationship oldRel : deletingReading.getRelationships(
-                ERelations.RELATIONSHIP, Direction.INCOMING)) {
+                ERelations.RELATED, Direction.INCOMING)) {
             Relationship newRel = oldRel.getStartNode().createRelationshipTo(
-                    stayingReading, ERelations.RELATIONSHIP);
+                    stayingReading, ERelations.RELATED);
             RelationshipService.copyRelationshipProperties(oldRel, newRel);
             oldRel.delete();
         }
@@ -618,7 +618,7 @@ public class Reading implements IResource {
                 }
             }
 
-            if (originalReading.hasRelationship(ERelations.RELATIONSHIP)) {
+            if (originalReading.hasRelationship(ERelations.RELATED)) {
                 return Response.status(Status.INTERNAL_SERVER_ERROR)
                         .entity("A reading to be split cannot be part of any relationship")
                         .build();
@@ -688,7 +688,7 @@ public class Reading implements IResource {
         String rankKey = "rank";
         Long rank = (Long) originalReading.getProperty(rankKey);
         for (Relationship rel : originalReading.getRelationships(
-                Direction.OUTGOING, ERelations.NORMAL)) {
+                Direction.OUTGOING, ERelations.SEQUENCE)) {
             Node nextNode = rel.getEndNode();
             if (nextNode.hasProperty(rankKey)) {
                 Long nextRank = (Long) nextNode.getProperty(rankKey);
@@ -715,12 +715,12 @@ public class Reading implements IResource {
 
         ArrayList<Relationship> originalOutgoingRels = new ArrayList<>();
         for (Relationship oldRel : originalReading
-                .getRelationships(ERelations.NORMAL, Direction.OUTGOING) ) {
+                .getRelationships(ERelations.SEQUENCE, Direction.OUTGOING) ) {
             originalOutgoingRels.add(oldRel);
         }
         ArrayList<String> allWitnesses = new ArrayList<>();
         for (Relationship relationship : originalReading.getRelationships(
-                ERelations.NORMAL, Direction.INCOMING)) {
+                ERelations.SEQUENCE, Direction.INCOMING)) {
             String[] witnesses = (String[]) relationship.getProperty("witnesses");
             Collections.addAll(allWitnesses, witnesses);
 
@@ -739,7 +739,7 @@ public class Reading implements IResource {
             Long previousRank = (Long) lastReading.getProperty("rank");
             newReading.setProperty("rank", previousRank + 1);
 
-            Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.NORMAL);
+            Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
             Collections.sort(allWitnesses);
             relationship.setProperty("witnesses", allWitnesses.toArray(new String[allWitnesses.size()]));
 
@@ -747,7 +747,7 @@ public class Reading implements IResource {
             createdOrChangedReadings.add(new ReadingModel(newReading));
         }
         for (Relationship oldRel : originalOutgoingRels) {
-            Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), ERelations.NORMAL);
+            Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), ERelations.SEQUENCE);
             RelationshipService.copyRelationshipProperties(oldRel, newRel);
             deletedRelationships.add(new RelationshipModel(oldRel));
             oldRel.delete();
@@ -783,7 +783,7 @@ public class Reading implements IResource {
 
             // TODO: for-statement does not loop!
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(witnessEvaluator)
                     .evaluator(Evaluators.toDepth(1))
                     .uniqueness(Uniqueness.NONE).traverse(reading).nodes()) {
@@ -830,7 +830,7 @@ public class Reading implements IResource {
 
             // TODO: for-statement does not loop!
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.INCOMING)
+                    .relationships(ERelations.SEQUENCE, Direction.INCOMING)
                     .evaluator(witnessEvaluator)
                     .evaluator(Evaluators.toDepth(1))
                     .uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
@@ -874,7 +874,7 @@ public class Reading implements IResource {
         }
         try (Transaction tx = db.beginTx()) {
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
                     .nodes()) {
@@ -955,7 +955,7 @@ public class Reading implements IResource {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 
         for (Node node : db.traversalDescription().depthFirst()
-                .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .evaluator(Evaluators.all()).uniqueness(Uniqueness.NODE_GLOBAL)
                 .traverse(startNode).nodes()) {
             long nodeRank = (long) node.getProperty("rank");
@@ -1075,7 +1075,7 @@ public class Reading implements IResource {
             boolean gotOne = false;
 
             Iterable<Relationship> rels = smallerRankNode
-                    .getRelationships(Direction.OUTGOING, ERelations.NORMAL);
+                    .getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
 
             for (Relationship rel : rels) {
                 rank = (long) rel.getEndNode().getProperty("rank");
@@ -1089,7 +1089,7 @@ public class Reading implements IResource {
                 gotOne = false;
 
                 Iterable<Relationship> rels2 = biggerRankNode
-                        .getRelationships(Direction.INCOMING, ERelations.NORMAL);
+                        .getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
 
                 for (Relationship rel : rels2) {
                     rank = (long) rel.getStartNode().getProperty("rank");
@@ -1128,7 +1128,7 @@ public class Reading implements IResource {
         ArrayList<Node> readings = new ArrayList<>();
 
         for (Node node : db.traversalDescription().breadthFirst()
-                .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode).nodes()) {
             if ((Long) node.getProperty("rank") > startRank
                     && (Long) node.getProperty("rank") < endRank) {
@@ -1264,7 +1264,7 @@ public class Reading implements IResource {
     }
 
     /**
-     * copy all NORMAL relationship from one node to another IMPORTANT: when
+     * copy all SEQUENCE relationship from one node to another IMPORTANT: when
      * called needs to be inside a try-catch
      *
      * @param read1
@@ -1275,7 +1275,7 @@ public class Reading implements IResource {
     private void copyRelationships(Node read1, Node read2) {
         for (Relationship tempRel : read2.getRelationships(Direction.OUTGOING)) {
             Node tempNode = tempRel.getOtherNode(read2);
-            Relationship rel1 = read1.createRelationshipTo(tempNode, ERelations.NORMAL);
+            Relationship rel1 = read1.createRelationshipTo(tempNode, ERelations.SEQUENCE);
             for (String key : tempRel.getPropertyKeys()) {
                 rel1.setProperty(key, tempRel.getProperty(key));
             }
@@ -1284,7 +1284,7 @@ public class Reading implements IResource {
 
         for (Relationship tempRel : read2.getRelationships(Direction.INCOMING)) {
             Node tempNode = tempRel.getOtherNode(read2);
-            Relationship rel1 = tempNode.createRelationshipTo(read1, ERelations.NORMAL);
+            Relationship rel1 = tempNode.createRelationshipTo(read1, ERelations.SEQUENCE);
             for (String key : tempRel.getPropertyKeys()) {
                 rel1.setProperty(key, tempRel.getProperty(key));
             }
@@ -1304,7 +1304,7 @@ public class Reading implements IResource {
      */
     private boolean canBeCompressed(Node read1, Node read2) {
         Iterable<Relationship> rel;
-        rel = read2.getRelationships(ERelations.NORMAL);
+        rel = read2.getRelationships(ERelations.SEQUENCE);
 
         Iterator<Relationship> normalFromRead2 = rel.iterator();
         if (!normalFromRead2.hasNext()) {
@@ -1325,7 +1325,7 @@ public class Reading implements IResource {
     }
 
     /**
-     * checks if a reading has relationships which are not NORMAL
+     * checks if a reading has relationships which are not SEQUENCE
      *
      * @param read
      *            the reading
@@ -1337,7 +1337,7 @@ public class Reading implements IResource {
 
         for (Relationship rel : read.getRelationships()) {
             type = rel.getType().name();
-            normal = ERelations.NORMAL.toString();
+            normal = ERelations.SEQUENCE.toString();
 
             if (!type.equals(normal)) {
                 return true;
@@ -1353,7 +1353,7 @@ public class Reading implements IResource {
      *            the first reading
      * @param read2
      *            the second reading
-     * @return the NORMAL relationship
+     * @return the SEQUENCE relationship
      */
     private Relationship getRelationshipBetweenReadings(Node read1, Node read2) {
         Relationship from1to2 = null;

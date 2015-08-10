@@ -383,7 +383,7 @@ public class Neo4JToGraphMLParser implements IResource
             long nodeId = 0;
             long edgeId = 0;
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(traditionStartNode).nodes()) {
                 nodeCountGraph1++;
@@ -409,7 +409,7 @@ public class Neo4JToGraphMLParser implements IResource
             String startNode;
             String endNode;
             for ( Relationship rel : db.traversalDescription()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(traditionStartNode)
                     .relationships() ) {
@@ -456,7 +456,7 @@ public class Neo4JToGraphMLParser implements IResource
             nodeId = 0;
             edgeId = 0;
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(traditionStartNode)
                     .nodes()) {
@@ -472,13 +472,13 @@ public class Neo4JToGraphMLParser implements IResource
 
             for (Node node : db.traversalDescription()
                     .depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(traditionStartNode)
                     .nodes()) {
 
                 Iterable<Relationship> rels;
-                rels = node.getRelationships(ERelations.RELATIONSHIP, Direction.OUTGOING);
+                rels = node.getRelationships(ERelations.RELATED, Direction.OUTGOING);
                 for(Relationship rel : rels) {
                     edgeCountGraph2++;
                     props = rel.getPropertyKeys();
