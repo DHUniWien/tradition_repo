@@ -176,7 +176,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, chgModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
 
             String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
@@ -215,7 +215,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, chgModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
             tx.success();
             assertEquals("hebrew", node.getProperty("language"));
@@ -249,8 +249,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, chgModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("the reading does not have such property: 'test'."
                     + " no changes to the reading have been done",
                     response.getEntity(String.class));
@@ -303,8 +303,8 @@ public class ReadingTest {
                 .path("/reading/getreading/withreadingid/" + 200)
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR,
-                response.getClientResponseStatus());
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
     }
 
     @Test
@@ -330,7 +330,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
             assertEquals("showers", readingsAndRelationshipsModel.getReadings().get(0).getText());
@@ -391,7 +391,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
             assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
@@ -468,7 +468,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading")
                     .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
             assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
@@ -548,7 +548,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             testNumberOfReadingsAndWitnesses(30);
 
@@ -589,8 +589,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals(
                     "The witness list has to contain at least one witness",
                     response.getEntity(String.class));
@@ -616,8 +616,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("The reading has to be in at least two witnesses",
                     response.getEntity(String.class));
 
@@ -642,8 +642,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals(
                     "The reading has to be in the witnesses to be duplicated",
                     response.getEntity(String.class));
@@ -671,7 +671,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             // should contain one reading less now
             testNumberOfReadingsAndWitnesses(28);
@@ -746,8 +746,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("Readings to be merged would make the graph cyclic",
                     response.getEntity(String.class));
 
@@ -784,8 +784,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("Readings to be merged would make the graph cyclic",
                     response.getEntity(String.class));
 
@@ -822,8 +822,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals(
                     "Readings to be merged cannot contain class 2 relationships (transposition / repetition)",
                     response.getEntity(String.class));
@@ -863,8 +863,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("Readings to be merged do not contain the same text",
                     response.getEntity(String.class));
 
@@ -906,7 +906,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response
                     .getEntity(GraphModel.class);
@@ -968,7 +968,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
@@ -1009,7 +1009,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
@@ -1039,7 +1039,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of-the-world\"}";
 
@@ -1069,7 +1069,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood the-world\"}";
 
@@ -1100,8 +1100,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("no such separator exists",
                     response.getEntity(String.class));
             tx.success();
@@ -1128,8 +1128,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("The separator does not apear in the index location in the text",
                     response.getEntity(String.class));
             tx.success();
@@ -1157,8 +1157,8 @@ public class ReadingTest {
                     .post(ClientResponse.class, characterModel);
 
 
-            assertEquals(Status.OK,
-                    response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r t\"}";
 
             testNumberOfReadingsAndWitnesses(30);
@@ -1187,8 +1187,8 @@ public class ReadingTest {
                     .post(ClientResponse.class, characterModel);
 
 
-            assertEquals(Status.OK,
-                    response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r ot\"}";
 
             testNumberOfReadingsAndWitnesses(30);
@@ -1227,7 +1227,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK, response.getClientResponseStatus());
+            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
@@ -1257,8 +1257,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals("The index must be smaller than the text length",
                     response.getEntity(String.class));
 
@@ -1288,8 +1288,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals(
                     "A reading to be split cannot be part of any relationship",
                     response.getEntity(String.class));
@@ -1323,8 +1323,8 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR,
-                    response.getClientResponseStatus());
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                    response.getStatusInfo().getStatusCode());
             assertEquals(
                     "There has to be a rank-gap after a reading to be split",
                     response.getEntity(String.class));

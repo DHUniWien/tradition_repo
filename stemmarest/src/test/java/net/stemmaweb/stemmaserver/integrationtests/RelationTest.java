@@ -485,7 +485,7 @@ public class RelationTest {
                 .post(ClientResponse.class, relationship);
                 // RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 
-        assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+        assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
                 actualResponse.getEntity(String.class));
 
@@ -556,7 +556,7 @@ public class RelationTest {
                 .post(ClientResponse.class,relationship);
         // RETURN CONFLICT IF THE CROSS RELATIONSHIP RULE IS TAKING ACTION
 
-        assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+        assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
                 actualResponse.getEntity(String.class));
 
@@ -598,7 +598,7 @@ public class RelationTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
 
-        assertEquals(Status.CONFLICT, actualResponse.getClientResponseStatus());
+        assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals(
                 "This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.",
                 actualResponse.getEntity(String.class));
@@ -630,7 +630,7 @@ public class RelationTest {
 				.path("/relation/getallrelationships/fromtradition/" + tradId)
                 .get(new GenericType<List<RelationshipModel>>() {
 				});
-		assertEquals(Status.OK, response.getClientResponseStatus());
+		assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 		for (RelationshipModel rel : relationships) {
 			assertTrue(rel.getId().equals("34")
                     || rel.getId().equals("35")
@@ -699,7 +699,7 @@ public class RelationTest {
                 .resource()
                 .path("/relation/getallrelationships/fromtradition/" + (newTradId))
                 .get(ClientResponse.class);
-		assertEquals(Status.NOT_FOUND, response.getClientResponseStatus());
+		assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
 		assertEquals("no relationships were found", response.getEntity(String.class));	}
 
     /**
