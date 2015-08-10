@@ -18,7 +18,10 @@ public class GraphDatabaseServiceProvider {
         GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
 
         if(db == null){
-            db = dbFactory.newEmbeddedDatabase("/usr/local/neo4j/data/graph.db");
+            String db_location = System.getenv("DATABASE_HOME");
+            if(db_location == null)
+                db_location = "/var/lib/stemmarest";
+            db = dbFactory.newEmbeddedDatabase(db_location);
         }
     }
 
