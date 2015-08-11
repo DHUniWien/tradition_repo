@@ -1,7 +1,9 @@
 package net.stemmaweb.services;
 
+
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.shell.ShellSettings;
 
 /**
  * Creates a global DatabaseService provider
@@ -20,7 +22,10 @@ public class GraphDatabaseServiceProvider {
             String db_location = System.getenv("DATABASE_HOME");
             if(db_location == null)
                 db_location = "/var/lib/stemmarest";
-            db = dbFactory.newEmbeddedDatabase(db_location);
+            db = dbFactory.newEmbeddedDatabaseBuilder(db_location)
+                    .setConfig(ShellSettings.remote_shell_enabled, "true")
+                    .setConfig(ShellSettings.remote_shell_port, "1337")
+                    .newGraphDatabase();
         }
     }
 
