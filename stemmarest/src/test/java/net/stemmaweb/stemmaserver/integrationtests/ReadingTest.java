@@ -95,7 +95,7 @@ public class ReadingTest {
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
         }
 
@@ -156,7 +156,7 @@ public class ReadingTest {
     public void changeReadingPropertiesOnePropertyTest() {
         Node node;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             node = nodes.next();
@@ -191,7 +191,7 @@ public class ReadingTest {
 
         Node node;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             node = nodes.next();
@@ -230,7 +230,7 @@ public class ReadingTest {
     public void changeReadingPropertiesPropertyKeyNotFoundTest() {
         Node node;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             node = nodes.next();
@@ -277,7 +277,7 @@ public class ReadingTest {
     @Test
     public void getReadingReadingModelTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -310,13 +310,13 @@ public class ReadingTest {
     @Test
     public void duplicateReadingTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node secondNode = nodes.next();
@@ -339,7 +339,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(31);
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node originalShowers = nodes.next();
@@ -347,7 +347,7 @@ public class ReadingTest {
             Node duplicatedShowers = nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node originalSweet = nodes.next();
@@ -377,7 +377,7 @@ public class ReadingTest {
     @Test
     public void duplicateReadingWithDuplicateForTwoWitnessesTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'of'}) return w");
+            Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -399,7 +399,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(30);
 
-            result = db.execute("match (w:WORD {text:'of'}) return w");
+            result = db.execute("match (w:READING {text:'of'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node originalOf = nodes.next();
@@ -409,7 +409,7 @@ public class ReadingTest {
 
             // test witnesses and number of paths
             int numberOfPaths = 0;
-            for (Relationship incoming : originalOf.getRelationships(ERelations.NORMAL,
+            for (Relationship incoming : originalOf.getRelationships(ERelations.SEQUENCE,
                     Direction.INCOMING)) {
                 assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
                 numberOfPaths++;
@@ -417,7 +417,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship incoming : duplicatedOf.getRelationships(ERelations.NORMAL,
+            for (Relationship incoming : duplicatedOf.getRelationships(ERelations.SEQUENCE,
                     Direction.INCOMING)) {
                 assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[1]);
@@ -426,7 +426,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : originalOf.getRelationships(ERelations.NORMAL,
+            for (Relationship outgoing : originalOf.getRelationships(ERelations.SEQUENCE,
                     Direction.OUTGOING)) {
                 assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 numberOfPaths++;
@@ -434,7 +434,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.NORMAL,
+            for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.SEQUENCE,
                     Direction.OUTGOING)) {
                 assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) outgoing.getProperty("witnesses"))[1]);
@@ -457,7 +457,7 @@ public class ReadingTest {
     @Test
     public void duplicateReadingWithDuplicateForOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'of'}) return w");
+            Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -476,7 +476,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(30);
 
-            result = db.execute("match (w:WORD {text:'of'}) return w");
+            result = db.execute("match (w:READING {text:'of'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node originalOf = nodes.next();
@@ -486,7 +486,7 @@ public class ReadingTest {
 
             // test witnesses and number of paths
             int numberOfPaths = 0;
-            for (Relationship incoming : originalOf.getRelationships(ERelations.NORMAL,
+            for (Relationship incoming : originalOf.getRelationships(ERelations.SEQUENCE,
                     Direction.INCOMING)) {
                 assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[1]);
@@ -495,7 +495,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship incoming : duplicatedOf.getRelationships(ERelations.NORMAL,
+            for (Relationship incoming : duplicatedOf.getRelationships(ERelations.SEQUENCE,
                     Direction.INCOMING)) {
                 assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
                 numberOfPaths++;
@@ -503,7 +503,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : originalOf.getRelationships(ERelations.NORMAL,
+            for (Relationship outgoing : originalOf.getRelationships(ERelations.SEQUENCE,
                     Direction.OUTGOING)) {
                 assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) outgoing.getProperty("witnesses"))[1]);
@@ -512,7 +512,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.NORMAL,
+            for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.SEQUENCE,
                     Direction.OUTGOING)) {
                 assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 numberOfPaths++;
@@ -534,7 +534,7 @@ public class ReadingTest {
     @Test
     public void duplicateReadingWitnessCrossingTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'of'}) return w");
+            Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -552,7 +552,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(30);
 
-            result = db.execute("match (w:WORD {text:'of'}) return w");
+            result = db.execute("match (w:READING {text:'of'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node originalOf = nodes.next();
@@ -575,7 +575,7 @@ public class ReadingTest {
     @Test
     public void duplicateReadingWithNoWitnessesInJSONTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -602,7 +602,7 @@ public class ReadingTest {
     @Test
     public void duplicateReadingWithOnlyOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -628,7 +628,7 @@ public class ReadingTest {
     @Test
     public void duplicateReadingWithNotAllowedWitnessesTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'root'}) return w");
+            Result result = db.execute("match (w:READING {text:'root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -655,7 +655,7 @@ public class ReadingTest {
     @Test
     public void mergeReadingsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'fruit'}) return w");
+            Result result = db.execute("match (w:READING {text:'fruit'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -676,7 +676,7 @@ public class ReadingTest {
             // should contain one reading less now
             testNumberOfReadingsAndWitnesses(28);
 
-            result = db.execute("match (w:WORD {text:'fruit'}) return w");
+            result = db.execute("match (w:READING {text:'fruit'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node stayingNode = nodes.next();
@@ -684,14 +684,14 @@ public class ReadingTest {
 
             // test witnesses
             Relationship incoming = stayingNode.getSingleRelationship(
-                    ERelations.NORMAL, Direction.INCOMING);
+                    ERelations.SEQUENCE, Direction.INCOMING);
             assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
             assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[1]);
             assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[2]);
 
             int counter = 0;
             for (Relationship outgoing : stayingNode.getRelationships(
-                    ERelations.NORMAL, Direction.OUTGOING)) {
+                    ERelations.SEQUENCE, Direction.OUTGOING)) {
                 counter++;
                 if (outgoing.getOtherNode(stayingNode).getProperty("text").equals("the")) {
                     assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
@@ -705,7 +705,7 @@ public class ReadingTest {
 
             // test relationships
             int numberOfRelationships = 0;
-            for (Relationship rel : stayingNode.getRelationships(ERelations.RELATIONSHIP)) {
+            for (Relationship rel : stayingNode.getRelationships(ERelations.RELATED)) {
                 numberOfRelationships++;
                 // test that relationships have been copied
                 if (rel.getOtherNode(stayingNode).getProperty("text").equals("when")) {
@@ -730,7 +730,7 @@ public class ReadingTest {
     @Test
     public void mergeReadingsGetsCyclicTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'drought'}) return w");
+            Result result = db.execute("match (w:READING {text:'drought'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -753,7 +753,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(29);
 
-            result = db.execute("match (w:WORD {text:'drought'}) return w");
+            result = db.execute("match (w:READING {text:'drought'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();    // first Node
@@ -768,7 +768,7 @@ public class ReadingTest {
     @Test
     public void mergeReadingsGetsCyclicWithNodesFarApartTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'to'}) return w");
+            Result result = db.execute("match (w:READING {text:'to'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -791,7 +791,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(29);
 
-            result = db.execute("match (w:WORD {text:'to'}) return w");
+            result = db.execute("match (w:READING {text:'to'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();    // first node
@@ -806,7 +806,7 @@ public class ReadingTest {
     @Test
     public void mergeReadingsWithClassTwoRelationshipsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'march'}) return w");
+            Result result = db.execute("match (w:READING {text:'march'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -830,7 +830,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(29);
 
-            result = db.execute("match (w:WORD {text:'march'}) return w");
+            result = db.execute("match (w:READING {text:'march'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();    // first node
@@ -845,12 +845,12 @@ public class ReadingTest {
     @Test
     public void mergeReadingsWithDifferentTextTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node secondNode = nodes.next();
@@ -878,19 +878,19 @@ public class ReadingTest {
         Result result;
         Iterator<Node> nodes;
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (w:WORD {text:'the root'}) return w");
+            result = db.execute("match (w:READING {text:'the root'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             node = nodes.next();
             assertFalse(nodes.hasNext());
 
-            assertTrue(node.hasRelationship(ERelations.RELATIONSHIP));
+            assertTrue(node.hasRelationship(ERelations.RELATED));
 
             // delete relationship, so that splitting is possible
-            node.getSingleRelationship(ERelations.RELATIONSHIP,
+            node.getSingleRelationship(ERelations.RELATED,
                     Direction.INCOMING).delete();
 
-            assertFalse(node.hasRelationship(ERelations.RELATIONSHIP));
+            assertFalse(node.hasRelationship(ERelations.RELATED));
 
             tx.success();
         }
@@ -917,7 +917,7 @@ public class ReadingTest {
             assertEquals(1, readingsAndRelationshipsModel.getRelationships()
                     .size());
 
-            result = db.execute("match (w:WORD {text:'the'}) return w");
+            result = db.execute("match (w:READING {text:'the'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
@@ -930,7 +930,7 @@ public class ReadingTest {
             assertEquals((long) 17, the2.getProperty("rank"));
             assertEquals((long) 17, the3.getProperty("rank"));
 
-            result = db.execute("match (w:WORD {text:'root'}) return w");
+            result = db.execute("match (w:READING {text:'root'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node root1 = nodes.next();
@@ -952,7 +952,7 @@ public class ReadingTest {
     public void splitReadingWithOtherSeparatorAndMultipleWordsTest() {
         try (Transaction tx = db.beginTx()) {
 
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -982,7 +982,7 @@ public class ReadingTest {
     public void splitReadingWithSlashAsSeparatorTest() {
         // prepare the database for the test
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -993,7 +993,7 @@ public class ReadingTest {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood/of/the/world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood/of/the/world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1023,7 +1023,7 @@ public class ReadingTest {
     public void splitReadingWithOtherSeparatorAndMultipleWordsAndIndexTest() {
         try (Transaction tx = db.beginTx()) {
 
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1053,7 +1053,7 @@ public class ReadingTest {
     public void splitReadingWithLongSeparatorAndIndexTest() {
         try (Transaction tx = db.beginTx()) {
 
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1084,7 +1084,7 @@ public class ReadingTest {
     public void splitReadingWithNotExistingSeparatorInWordTest() {
         // prepare the database for the test
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1112,7 +1112,7 @@ public class ReadingTest {
     public void splitReadingWithNotExistingSeparatorInIndexTest() {
         // prepare the database for the test
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'root'}) return w");
+            Result result = db.execute("match (w:READING {text:'root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1140,7 +1140,7 @@ public class ReadingTest {
     public void splitReadingWithExistingSeparatorInIndexTest() {
         // prepare the database for the test
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'root'}) return w");
+            Result result = db.execute("match (w:READING {text:'root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1170,7 +1170,7 @@ public class ReadingTest {
     public void splitReadingWithExistingSeparatorInIndexOneCharTest() {
         // prepare the database for the test
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'root'}) return w");
+            Result result = db.execute("match (w:READING {text:'root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1200,7 +1200,7 @@ public class ReadingTest {
     public void splitReadingWithQuotesAsSeparatorTest() {
         // prepare the database for the test
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood-of-the-world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1211,7 +1211,7 @@ public class ReadingTest {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'rood\"of\"the\"world'}) return w");
+            Result result = db.execute("match (w:READING {text:'rood\"of\"the\"world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1241,7 +1241,7 @@ public class ReadingTest {
     public void splitReadingWithWrongIndexTest() {
         try (Transaction tx = db.beginTx()) {
 
-            Result result = db.execute("match (w:WORD {text:'root'}) return w");
+            Result result = db.execute("match (w:READING {text:'root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1272,7 +1272,7 @@ public class ReadingTest {
     public void splitReadingWithRelationshipTest() {
         try (Transaction tx = db.beginTx()) {
 
-            Result result = db.execute("match (w:WORD {text:'the root'}) return w");
+            Result result = db.execute("match (w:READING {text:'the root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node node = nodes.next();
@@ -1307,7 +1307,7 @@ public class ReadingTest {
     @Test
     public void splitReadingNoAvailableRankTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'unto me'}) return w");
+            Result result = db.execute("match (w:READING {text:'unto me'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node untoMe = nodes.next();
@@ -1472,12 +1472,12 @@ public class ReadingTest {
     public void compressReadingsNoConcatenatingNoTextTest() {
         Node showers, sweet;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             sweet = nodes.next();
@@ -1494,17 +1494,17 @@ public class ReadingTest {
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showers sweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:WORD {text:'showers sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showers sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
@@ -1538,12 +1538,12 @@ public class ReadingTest {
     public void compressReadingsNoConcatenatingWithTextTest() {
         Node showers, sweet;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             sweet = nodes.next();
@@ -1561,17 +1561,17 @@ public class ReadingTest {
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showers sweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:WORD {text:'showers sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showers sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
@@ -1603,12 +1603,12 @@ public class ReadingTest {
     public void compressReadingsWithConcatenatingWithConTextTest() {
         Node showers, sweet;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             sweet = nodes.next();
@@ -1625,17 +1625,17 @@ public class ReadingTest {
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showerstestsweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:WORD {text:'showerstestsweet'}) return w");
+            result = db.execute("match (w:READING {text:'showerstestsweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
             tx.success();
@@ -1651,12 +1651,12 @@ public class ReadingTest {
     public void compressReadingsWithConcatenatingWithQuotationAsTextTest() {
         Node showers, sweet;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             sweet = nodes.next();
@@ -1673,17 +1673,17 @@ public class ReadingTest {
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showers\"sweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:WORD {text:'showers\"sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showers\"sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
             tx.success();
@@ -1699,12 +1699,12 @@ public class ReadingTest {
     public void compressReadingsWithConcatenatingWithSlashAsTextTest() {
         Node showers, sweet;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             sweet = nodes.next();
@@ -1721,17 +1721,17 @@ public class ReadingTest {
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showers/sweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:WORD {text:'showers/sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showers/sweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
             tx.success();
@@ -1747,12 +1747,12 @@ public class ReadingTest {
     public void compressReadingsWithConcatenatingWithoutConTextTest() {
         Node showers, sweet;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             sweet = nodes.next();
@@ -1769,17 +1769,17 @@ public class ReadingTest {
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showerssweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:WORD {text:'showerssweet'}) return w");
+            result = db.execute("match (w:READING {text:'showerssweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'sweet'}) return w");
+            result = db.execute("match (w:READING {text:'sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            result = db.execute("match (w:WORD {text:'showers'}) return w");
+            result = db.execute("match (w:READING {text:'showers'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
             tx.success();
@@ -1797,12 +1797,12 @@ public class ReadingTest {
     @Test
     public void notNeighborsCompressReadingTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+            Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             Node showers = nodes.next();
 
-            result = db.execute("match (w:WORD {text:'fruit'}) return w");
+            result = db.execute("match (w:READING {text:'fruit'}) return w");
             nodes = result.columnAs("w");
             assert (nodes.hasNext());
             Node fruit = nodes.next();
@@ -1821,7 +1821,7 @@ public class ReadingTest {
             assertEquals("reading are not neighbors. could not compress",
                     response.getEntity(String.class));
 
-            result = db.execute("match (w:WORD {text:'showers sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showers sweet'}) return w");
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
@@ -1836,7 +1836,7 @@ public class ReadingTest {
     public void nextReadingTest() {
         long withReadId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'with'}) return w");
+            Result result = db.execute("match (w:READING {text:'with'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             withReadId = nodes.next().getId();
@@ -1855,7 +1855,7 @@ public class ReadingTest {
     public void nextReadingWithTwoWitnessesTest() {
         long piercedReadId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'pierced'}) return w");
+            Result result = db.execute("match (w:READING {text:'pierced'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             piercedReadId = nodes.next().getId();
@@ -1881,7 +1881,7 @@ public class ReadingTest {
     public void nextReadingLastNodeTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'the root'}) return w");
+            Result result = db.execute("match (w:READING {text:'the root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             readId = nodes.next().getId();
@@ -1903,7 +1903,7 @@ public class ReadingTest {
     public void previousReadingTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'with'}) return w");
+            Result result = db.execute("match (w:READING {text:'with'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             readId = nodes.next().getId();
@@ -1923,7 +1923,7 @@ public class ReadingTest {
     public void previousReadingTwoWitnessesTest() {
         long ofId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'of'}) return w");
+            Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             ofId = nodes.next().getId();
@@ -1949,7 +1949,7 @@ public class ReadingTest {
     public void previousReadingFirstNodeTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'when'}) return w");
+            Result result = db.execute("match (w:READING {text:'when'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             readId = nodes.next().getId();
@@ -1969,7 +1969,7 @@ public class ReadingTest {
     @Test
     public void randomNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:WORD {text:'april'}) return w");
+            Result result = db.execute("match (w:READING {text:'april'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             long rank = 2;
@@ -1996,7 +1996,7 @@ public class ReadingTest {
     @Test
     public void traditionEndNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.WORD, "text", "#END#");
+            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
             tx.success();
         }

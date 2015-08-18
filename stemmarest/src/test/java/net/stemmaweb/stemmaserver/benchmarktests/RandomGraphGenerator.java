@@ -65,7 +65,7 @@ class RandomGraphGenerator {
                 currentUser.setProperty("id", Integer.toString(k));
                 currentUser.setProperty("isAdmin", Integer.toString(randomGenerator.nextInt(2)));
 
-                rootNode.createRelationshipTo(currentUser, ERelations.NORMAL);
+                rootNode.createRelationshipTo(currentUser, ERelations.SEQUENCE);
 
                 tx.success();
             }
@@ -84,30 +84,31 @@ class RandomGraphGenerator {
                 }
                 System.out.println("]");
                 ArrayList<WitnessBranch> witnessUnconnectedBranches = new ArrayList<>();
+                Node traditionRootNode;
                 try (Transaction tx = db.beginTx()) {
                     String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
                             .next()
                             .getProperty("LAST_INSERTED_TRADITION_ID")
                             .toString();
-                    Node traditionRootNode = db.createNode(Nodes.TRADITION);
+                    traditionRootNode = db.createNode(Nodes.TRADITION);
                     Node rootNode = db.findNodes(Nodes.ROOT, "name", "Root node").next();
                     rootNode.setProperty("LAST_INSERTED_TRADITION_ID",
                             Integer.toString(Integer.parseInt(prefix) + 1));
 
                     traditionRootNode.setProperty("name", "TestTradition_"+prefix);
                     traditionRootNode.setProperty("id", prefix);
-                    currentUser.createRelationshipTo(traditionRootNode, ERelations.NORMAL);
+                    currentUser.createRelationshipTo(traditionRootNode, ERelations.SEQUENCE);
 
                     /**
                      * Create start node
                      */
-                    Node startNode = db.createNode(Nodes.WORD);
+                    Node startNode = db.createNode(Nodes.READING);
                     startNode.setProperty("text", "#START#");
                     startNode.setProperty("is_start", "1");
                     startNode.setProperty("rank", "0");
                     startNode.setProperty("is_common", "0");
 
-                    traditionRootNode.createRelationshipTo(startNode, ERelations.NORMAL);
+                    traditionRootNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
                     for(int l=0; l < cardOfWitnesses; l++){
                         WitnessBranch witnessBranch = new WitnessBranch();
@@ -129,7 +130,7 @@ class RandomGraphGenerator {
                     int numberOfNodesOnThisRank = randomGenerator.nextInt(cardOfWitnesses)+1;
                     try(Transaction tx = db.beginTx()){
                         for(int m = 0; m < numberOfNodesOnThisRank; m++){
-                            Node wordNode = db.createNode(Nodes.WORD);
+                            Node wordNode = db.createNode(Nodes.READING);
 
                             wordNode.setProperty("text", loremIpsumArray[randomGenerator
                                     .nextInt(loremIpsumArray.length)]);
@@ -155,7 +156,7 @@ class RandomGraphGenerator {
                             Node nextNode = nodesOfCurrentRank.get(moduloIndex);
 
                             Iterable<Relationship> relationships = lastNode
-                                    .getRelationships(ERelations.NORMAL);
+                                    .getRelationships(ERelations.SEQUENCE);
 
                             Relationship relationshipAtoB = null;
                             for (Relationship relationship : relationships) {
@@ -170,7 +171,7 @@ class RandomGraphGenerator {
                             if(relationshipAtoB == null) {
                                 String[] witnessesArray = {witnessBranch.getName()};
                                 Relationship rel = lastNode.createRelationshipTo(nextNode,
-                                        ERelations.NORMAL);
+                                        ERelations.SEQUENCE);
                                 rel.setProperty("witnesses", witnessesArray);
                             } else {
                                 String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");
@@ -196,11 +197,12 @@ class RandomGraphGenerator {
                  */
                 Node endNode;
                 try(Transaction tx = db.beginTx()){
-                    endNode = db.createNode(Nodes.WORD);
+                    endNode = db.createNode(Nodes.READING);
                     endNode.setProperty("text", "#END#");
                     endNode.setProperty("rank", maxRank);
                     endNode.setProperty("is_start", "0");
                     endNode.setProperty("is_common", "0");
+                    traditionRootNode.createRelationshipTo(endNode, ERelations.HAS_END);
                     tx.success();
                 }
 
@@ -212,7 +214,7 @@ class RandomGraphGenerator {
                         Node lastNode = witnessBranch.getLastNode();
 
                         Iterable<Relationship> relationships = lastNode
-                                .getRelationships(ERelations.NORMAL);
+                                .getRelationships(ERelations.SEQUENCE);
 
                         Relationship relationshipAtoB = null;
                         for (Relationship relationship : relationships) {
@@ -227,7 +229,7 @@ class RandomGraphGenerator {
                         if(relationshipAtoB == null) {
                             String[] witnessesArray = {witnessBranch.getName()};
                             Relationship rel = lastNode.createRelationshipTo(endNode,
-                                    ERelations.NORMAL);
+                                    ERelations.SEQUENCE);
                             rel.setProperty("witnesses", witnessesArray);
                         } else {
                             String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");

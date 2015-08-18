@@ -9,13 +9,14 @@ import org.neo4j.graphdb.RelationshipType;
  */
 public enum ERelations implements RelationshipType {
     // Directed types
-    NORMAL,         // this type is used to make a tradition tree [DEPRECATE!]
+    SYSTEMUSER,     // links the root node to the user(s)
+    SEQUENCE,       // the basic link between word sequences in a text
     OWNS_TRADITION, // between user and tradition
-    HAS_TEXT,       // between tradition and START node
-    NEXT,           // to indicate word sequence
+    COLLATION,      // between tradition part and START node
+    LEMMA_TEXT,     // to indicate word sequence
+    HAS_END,        // between tradition part and END node
     
     // Undirected types
-    RELATIONSHIP,   // this type is used to show relationships between readings (undirected)
-    STEMMA,          // this type is used to make a stemma tree (directed/undirected)
-    COPIED_FROM
+    RELATED,        // this type is used to show relationships between readings (undirected)
+    STEMMA          // this type is used to make a stemma tree (directed/undirected)
 }

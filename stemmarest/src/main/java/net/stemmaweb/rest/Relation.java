@@ -84,7 +84,7 @@ public class Relation implements IResource {
                         .build();
             }
 
-            relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATIONSHIP);
+            relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
             relationshipAtoB.setProperty("a_derivable_from_b",
                     nullToEmptyString(relationshipModel.getA_derivable_from_b()));
@@ -144,7 +144,7 @@ public class Relation implements IResource {
                 - (Long.parseLong( secondReading.getProperty("rank").toString()))) + 1;
 
         for (Node firstReadingNextNode : getNextNodes(firstReading, firstDirection, depth)) {
-            for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATIONSHIP)) {
+            for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATED)) {
                 if (!rel.getProperty("type").equals("transposition")
                         && !rel.getProperty("type").equals("repetition")) {
                     for (Node secondReadingNextNode : getNextNodes(secondReading, secondDirection,
@@ -169,7 +169,7 @@ public class Relation implements IResource {
      */
     private ResourceIterable<Node> getNextNodes(Node reading, Direction direction,
             int depth) {
-        return db.traversalDescription().breadthFirst().relationships(ERelations.NORMAL, direction)
+        return db.traversalDescription().breadthFirst().relationships(ERelations.SEQUENCE, direction)
                 .evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
                 .uniqueness(Uniqueness.NODE_GLOBAL).traverse(reading).nodes();
     }
@@ -190,13 +190,13 @@ public class Relation implements IResource {
         try (Transaction tx = db.beginTx()) {
             Node startNode = DatabaseService.getStartNode(tradId, db);
             for (Relationship rel: db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
-                    .relationships(ERelations.RELATIONSHIP, Direction.BOTH)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(ERelations.RELATED, Direction.BOTH)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(startNode)
                     .relationships()) {
-                if(rel.getType().name().equals(ERelations.RELATIONSHIP.name())){
+                if(rel.getType().name().equals(ERelations.RELATED.name())){
                     RelationshipModel tempRel = new RelationshipModel(rel);
                     relationships.add(tempRel);
                 }
@@ -216,7 +216,7 @@ public class Relation implements IResource {
      * Remove all relationships, as it is done in
      * https://github.com/tla/stemmaweb
      * /blob/master/lib/stemmaweb/Controller/Relation.pm line 271) in
-     * Relationships of type RELATIONSHIP between the two nodes.
+     * Relationships of type RELATED between the two nodes.
      *
      * @param relationshipModel
      * @param tradId
@@ -236,7 +236,7 @@ public class Relation implements IResource {
                     Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
-                    Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATIONSHIP);
+                    Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
 
                     Relationship relationshipAtoB = null;
                     for (Relationship relationship : relationships) {
@@ -264,13 +264,13 @@ public class Relation implements IResource {
 
                 try (Transaction tx = db.beginTx()) {
                     for (Relationship rel : db.traversalDescription().depthFirst()
-                            .relationships(ERelations.NORMAL, Direction.OUTGOING)
-                            .relationships(ERelations.RELATIONSHIP, Direction.BOTH)
+                            .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                            .relationships(ERelations.RELATED, Direction.BOTH)
                             .uniqueness(Uniqueness.NODE_GLOBAL)
                             .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                             .traverse(startNode)
                             .relationships()) {
-                        if (rel.getType().name().equals(ERelations.RELATIONSHIP.name())) {
+                        if (rel.getType().name().equals(ERelations.RELATED.name())) {
                             Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
                             Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
@@ -309,7 +309,7 @@ public class Relation implements IResource {
         try (Transaction tx = db.beginTx())
         {
             Relationship relationship = db.getRelationshipById(Long.parseLong(relationshipId));
-            if(relationship.getType().name().equals("RELATIONSHIP")){
+            if(relationship.getType().name().equals("RELATED")){
                 relationshipModel = new RelationshipModel(relationship);
                 relationship.delete();
             } else {

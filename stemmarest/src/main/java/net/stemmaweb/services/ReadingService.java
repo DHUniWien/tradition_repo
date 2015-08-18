@@ -31,7 +31,7 @@ public class ReadingService {
                 newReading.setProperty(key, oldReading.getProperty(key));
             }
         }
-        newReading.addLabel(Nodes.WORD);
+        newReading.addLabel(Nodes.READING);
         return newReading;
     }
 
@@ -59,7 +59,7 @@ public class ReadingService {
         // check if higherRankReading is found in one of the paths
         for (Node node : db.traversalDescription()
                 .depthFirst()
-                .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .uniqueness(Uniqueness.NONE)
                 .evaluator(Evaluators.all())
                 .traverse(lowerRankReading).nodes()) {

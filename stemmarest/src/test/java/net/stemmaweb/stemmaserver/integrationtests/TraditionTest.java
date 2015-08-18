@@ -81,7 +81,7 @@ public class TraditionTest {
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
             tx.success();
         }
 
@@ -334,7 +334,7 @@ public class TraditionTest {
             node.setProperty("id", "42");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.OWNS_TRADITION);
             tx.success();
         }
 
@@ -343,7 +343,7 @@ public class TraditionTest {
          */
         Result result;
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             assertTrue(!tradIterator.hasNext());
 
@@ -355,7 +355,7 @@ public class TraditionTest {
          * The user with id 1 has tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             Node tradNode = tradIterator.next();
             TraditionModel tradition = new TraditionModel();
@@ -384,7 +384,7 @@ public class TraditionTest {
          * Test if user with id 42 has now the tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             Node tradNode = tradIterator.next();
             TraditionModel tradition = new TraditionModel();
@@ -402,7 +402,7 @@ public class TraditionTest {
          * The user with id 1 has no tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             assertTrue(!tradIterator.hasNext());
 
@@ -421,7 +421,7 @@ public class TraditionTest {
          */
         Result result;
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             Node tradNode = tradIterator.next();
             TraditionModel tradition = new TraditionModel();
@@ -452,7 +452,7 @@ public class TraditionTest {
          */
         TraditionModel tradition = new TraditionModel();
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             Node tradNode = tradIterator.next();
 
@@ -485,7 +485,7 @@ public class TraditionTest {
             node.setProperty("id", "42");
             node.setProperty("isAdmin", "1");
 
-            rootNode.createRelationshipTo(node, ERelations.NORMAL);
+            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
             tx.success();
         }
 
@@ -494,7 +494,7 @@ public class TraditionTest {
          */
         Result result;
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             assertTrue(!tradIterator.hasNext());
 
@@ -506,7 +506,7 @@ public class TraditionTest {
          * The user with id 1 has tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             Node tradNode = tradIterator.next();
             TraditionModel tradition = new TraditionModel();
@@ -541,7 +541,7 @@ public class TraditionTest {
          * Test if user with id 1 has still the old tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'1'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             Node tradNode = tradIterator.next();
             TraditionModel tradition = new TraditionModel();
@@ -558,7 +558,7 @@ public class TraditionTest {
          * The user with id 42 has still no tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:NORMAL]-(userId:USER {id:'42'}) return n");
+            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             assertTrue(!tradIterator.hasNext());
 

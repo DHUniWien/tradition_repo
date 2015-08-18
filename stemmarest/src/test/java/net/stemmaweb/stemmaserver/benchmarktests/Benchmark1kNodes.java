@@ -85,15 +85,15 @@ public class Benchmark1kNodes extends BenchmarkTests {
             assertTrue(false);
         }
 
-        Result result = db.execute("match (w:WORD {text:'showers'}) return w");
+        Result result = db.execute("match (w:READING {text:'showers'}) return w");
         Iterator<Node> nodes = result.columnAs("w");
         duplicateReadingNodeId = nodes.next().getId();
 
-        result = db.execute("match (w:WORD {text:'the root'}) return w");
+        result = db.execute("match (w:READING {text:'the root'}) return w");
         nodes = result.columnAs("w");
         theRoot = nodes.next().getId();
 
-        result = db.execute("match (w:WORD {text:'unto me'}) return w");
+        result = db.execute("match (w:READING {text:'unto me'}) return w");
         nodes = result.columnAs("w");
         untoMe = nodes.next().getId();
     }

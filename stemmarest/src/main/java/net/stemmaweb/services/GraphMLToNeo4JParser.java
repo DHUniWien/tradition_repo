@@ -135,6 +135,9 @@ public class GraphMLToNeo4JParser implements IResource
                                                     rel.setProperty(map.get(attr), val);
                                                 }
                                             }
+                                            if (map.get(attr).equals("is_end")) {
+                                                tradRootNode.createRelationshipTo(currNode, ERelations.HAS_END);
+                                            }
                                         } else if (type_nd == 2 && currNode != null) {
                                             if (map.get(reader.getAttributeValue(0)).equals("rank")) {
                                                 currNode.setProperty(map.get(reader.getAttributeValue(0)),
@@ -196,7 +199,7 @@ public class GraphMLToNeo4JParser implements IResource
                                             witnesses.clear();
                                         }
                                         ERelations relKind = (graphNumber <= 1) ?
-                                                ERelations.NORMAL : ERelations.RELATIONSHIP;
+                                                ERelations.SEQUENCE : ERelations.RELATED;
                                         rel = fromTmp.createRelationshipTo(toTmp, relKind);
                                         rel.setProperty("id", prefix + reader.getAttributeValue(2));
                                     }
@@ -217,7 +220,7 @@ public class GraphMLToNeo4JParser implements IResource
                                             witnesses.clear();
                                         }
                                         ERelations relKind = (graphNumber <= 1) ?
-                                                ERelations.NORMAL : ERelations.RELATIONSHIP;
+                                                ERelations.SEQUENCE : ERelations.RELATED;
                                         rel = fromTmp.createRelationshipTo(toTmp, relKind);
                                         rel.setProperty("id", prefix + reader.getAttributeValue(2));
                                     }
@@ -229,7 +232,7 @@ public class GraphMLToNeo4JParser implements IResource
                             case "node":
                                 if (graphNumber <= 1) {
                                     // only store nodes for graph 1, ignore all others (unused)
-                                    currNode = db.createNode(Nodes.WORD);
+                                    currNode = db.createNode(Nodes.READING);
 
                                     currNode.setProperty("id", prefix + reader.getAttributeValue(0));
 
@@ -237,7 +240,7 @@ public class GraphMLToNeo4JParser implements IResource
                                             currNode.getId());
 
                                     if (firstNode == 1) {
-                                        tradRootNode.createRelationshipTo(currNode, ERelations.NORMAL);
+                                        tradRootNode.createRelationshipTo(currNode, ERelations.COLLATION);
                                         firstNode++;
                                     }
                                     if (firstNode < 1) {
@@ -282,11 +285,11 @@ public class GraphMLToNeo4JParser implements IResource
             }
 
             Result result = db.execute("match (n:TRADITION {id:'"+ last_inserted_id
-                    +"'})-[:NORMAL]->(s:WORD) return s");
+                    +"'})-[:COLLATION]->(s:READING) return s");
             Iterator<Node> nodes = result.columnAs("s");
             Node startNode = nodes.next();
             for (Node node : db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode)
                     .nodes()) {
@@ -302,7 +305,7 @@ public class GraphMLToNeo4JParser implements IResource
 
             Result userNodeSearch = db.execute("match (user:USER {id:'" + userId + "'}) return user");
             Node userNode = (Node) userNodeSearch.columnAs("user").next();
-            userNode.createRelationshipTo(tradRootNode, ERelations.NORMAL);
+            userNode.createRelationshipTo(tradRootNode, ERelations.OWNS_TRADITION);
 
             db.findNodes(Nodes.ROOT, "name", "Root node")
                     .next()

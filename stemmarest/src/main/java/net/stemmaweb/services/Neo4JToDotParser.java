@@ -63,7 +63,7 @@ public class Neo4JToDotParser
             long edgeId = 0;
             String subgraph = "";
             for (Node node : db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.NORMAL,Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode)
                     .nodes()) {
@@ -71,7 +71,7 @@ public class Neo4JToDotParser
                 write("n" + node.getId() + " [label=\"" + node.getProperty("text").toString()
                         + "\"];");
 
-                for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.NORMAL)) {
+                for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.SEQUENCE)) {
                     if(rel != null && rel.hasProperty("witnesses")) {
                         String[] witnesses = (String[]) rel.getProperty("witnesses");
                         String lex_str = "";
@@ -88,7 +88,7 @@ public class Neo4JToDotParser
                     }
                 }
                 for(Relationship rel : node.getRelationships(Direction.OUTGOING,
-                        ERelations.RELATIONSHIP)) {
+                        ERelations.RELATED)) {
                     subgraph += "n" + rel.getStartNode().getId() + "->" + "n" +
                             rel.getEndNode().getId() + " [style=dotted, label=\""+
                             rel.getProperty("type").toString() +"\", id=\"e"+ edgeId++ +"\"];";

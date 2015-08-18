@@ -86,7 +86,7 @@ public class Tradition implements IResource {
             if (nodes.hasNext()) {
                 // Remove the old ownership
                 String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + witnessId + "'}) "
-                        + "MATCH tradition<-[r:NORMAL]-(:USER) DELETE r";
+                        + "MATCH tradition<-[r:OWNS_TRADITION]-(:USER) DELETE r";
                 result = db.execute(removeRelationQuery);
                 System.out.println(result.toString());
 
@@ -95,7 +95,7 @@ public class Tradition implements IResource {
                         + "'}) " + "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) "
                         + "SET tradition.name = '" + tradition.getName() + "' "
                         + "SET tradition.public = '" + tradition.getIsPublic() + "' "
-                        + "CREATE (tradition)<-[r:NORMAL]-(user) RETURN r, tradition";
+                        + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
                 result = db.execute(createNewRelationQuery);
                 System.out.println(result.toString());
 
@@ -127,7 +127,7 @@ public class Tradition implements IResource {
 
         try (Transaction tx = db.beginTx()) {
 
-            Result result = db.execute("match (u:USER)-[:NORMAL]->(n:TRADITION) return n");
+            Result result = db.execute("match (u:USER)-[:OWNS_TRADITION]->(n:TRADITION) return n");
             Iterator<Node> traditions = result.columnAs("n");
             while(traditions.hasNext())
             {
@@ -221,11 +221,11 @@ public class Tradition implements IResource {
             Node startNode = DatabaseService.getStartNode(tradId, db);
 
             for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes()) {
 
-                Iterable<Relationship> rels = node.getRelationships(ERelations.RELATIONSHIP,
+                Iterable<Relationship> rels = node.getRelationships(ERelations.RELATED,
                         Direction.OUTGOING);
                 for(Relationship rel : rels)
                 {
@@ -296,9 +296,9 @@ public class Tradition implements IResource {
                 Set<Node> removableNodes = new HashSet<>();
                 for (Node currentNode : db.traversalDescription()
                         .depthFirst()
-                        .relationships(ERelations.NORMAL, Direction.OUTGOING)
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                         .relationships(ERelations.STEMMA, Direction.OUTGOING)
-                        .relationships(ERelations.RELATIONSHIP, Direction.OUTGOING)
+                        .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(node)
                         .nodes())
