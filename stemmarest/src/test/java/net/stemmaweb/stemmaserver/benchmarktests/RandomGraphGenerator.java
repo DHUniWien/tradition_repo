@@ -107,7 +107,7 @@ class RandomGraphGenerator {
                     startNode.setProperty("rank", "0");
                     startNode.setProperty("is_common", "0");
 
-                    traditionRootNode.createRelationshipTo(startNode, ERelations.SEQUENCE);
+                    traditionRootNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
                     for(int l=0; l < cardOfWitnesses; l++){
                         WitnessBranch witnessBranch = new WitnessBranch();
@@ -227,7 +227,7 @@ class RandomGraphGenerator {
                         if(relationshipAtoB == null) {
                             String[] witnessesArray = {witnessBranch.getName()};
                             Relationship rel = lastNode.createRelationshipTo(endNode,
-                                    ERelations.SEQUENCE);
+                                    ERelations.HAS_END);
                             rel.setProperty("witnesses", witnessesArray);
                         } else {
                             String[] arr = (String[]) relationshipAtoB.getProperty("witnesses");

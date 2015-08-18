@@ -37,6 +37,7 @@ class DebugService {
                     exceptionString = "such witness does not exist in the data base";
                 }
             }
+            tx.success();
         }
         db.shutdown();
         return exceptionString;
