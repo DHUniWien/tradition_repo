@@ -570,7 +570,7 @@ public class Reading implements IResource {
      *            the index of the first letter of the second word: "unto" with
      *            index 2 gets "un" and "to". if the index is zero the reading
      *            is split using the separator
-     * @param separator
+     * @_param separator
      *            the string which is between the words to be split, if no
      *            separator is specified (empty String) the reading is split
      *            using whitespace as default. If a splitIndex and a separator
@@ -587,7 +587,8 @@ public class Reading implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response splitReading(@PathParam("readId") long readId,
-            @PathParam("splitIndex") int splitIndex, CharacterModel model) {
+                                 @PathParam("splitIndex") int splitIndex,
+                                 CharacterModel model) {
         assert (model != null);
         GraphModel readingsAndRelationships;
         Node originalReading;
@@ -955,7 +956,7 @@ public class Reading implements IResource {
                 .traverse(startNode).nodes()) {
             long nodeRank = (long) node.getProperty("rank");
 
-            if (nodeRank < endRank && nodeRank > startRank) {
+            if (nodeRank <= endRank && nodeRank >= startRank) {
                 ReadingModel tempReading = new ReadingModel(node);
                 readingModels.add(tempReading);
             }
@@ -1177,7 +1178,7 @@ public class Reading implements IResource {
      *            concatenate is set to 1, the compressing will be done with
      *            with_str between the texts of the readings. If it is 0, texts
      *            will be concatenate with a single space.
-     * @param with_str
+     * @_param with_str
      *            the string which will come between the texts of the readings
      *            if con is set to 1 could also be an empty string. Is given as
      *            a String to avoid problems with 'unsafe' characters in the URL
