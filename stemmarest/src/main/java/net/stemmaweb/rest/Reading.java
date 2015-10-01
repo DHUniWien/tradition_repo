@@ -350,7 +350,7 @@ public class Reading implements IResource {
             deletingReading = db.getNodeById(secondReadId);
 
             if (!canBeMerged(stayingReading, deletingReading)) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorMessage).build();
+                return Response.status(Status.CONFLICT).entity(errorMessage).build();
             }
             merge(stayingReading, deletingReading);
 
