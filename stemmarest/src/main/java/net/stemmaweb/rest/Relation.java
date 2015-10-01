@@ -70,19 +70,21 @@ public class Relation implements IResource {
             Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
             Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
-            if (wouldProduceCrossRelationship(readingA, readingB))
-                return Response.status(Status.CONFLICT)
-                        .entity("This relationship creation is not allowed. Would produce cross-relationship.")
-                        .build();
-
-            if (!relationshipModel.getType().equals("transposition")
-                    && !relationshipModel.getType().equals("repetition")
-                    && ReadingService.wouldGetCyclic(db, readingA, readingB)) {
+            if (ReadingService.wouldGetCyclic(db, readingA, readingB)) {
+                if (!relationshipModel.getType().equals("transposition") &&
+                        !relationshipModel.getType().equals("repetition")) {
+                    return Response
+                            .status(Status.CONFLICT)
+                            .entity("This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.")
+                            .build();
+                }
+            } else if (relationshipModel.getType().equals("transposition")
+                    || relationshipModel.getType().equals("repetition")) {
                 return Response
                         .status(Status.CONFLICT)
-                        .entity("This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.")
+                        .entity("This relationship creation is not allowed. The two readings can be aligned.")
                         .build();
-            }
+            } // TODO add constraints about witness uniqueness or lack thereof
 
             relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
@@ -116,47 +118,6 @@ public class Relation implements IResource {
         }
 
         return Response.status(Response.Status.CREATED).entity(readingsAndRelationshipModel).build();
-    }
-
-    /**
-     * Checks if a relationship between the two nodes specified would produce a
-     * cross-relationship. A cross relationship is a relationship that
-     * crosses another one created before which is not allowed.
-     *
-     * @param firstReading
-     * @param secondReading
-     * @return
-     */
-    private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading) {
-        Long firstRank = Long.parseLong(firstReading.getProperty("rank").toString());
-        Long secondRank = Long.parseLong(secondReading.getProperty("rank").toString());
-        Direction firstDirection, secondDirection;
-
-        if (firstRank > secondRank) {
-            firstDirection = Direction.INCOMING;
-            secondDirection = Direction.OUTGOING;
-        } else {
-            firstDirection = Direction.OUTGOING;
-            secondDirection = Direction.INCOMING;
-        }
-
-        int depth = Math.abs((int) (Long.parseLong(firstReading.getProperty("rank").toString())
-                - (Long.parseLong( secondReading.getProperty("rank").toString())))) + 1;
-
-        for (Node firstReadingNextNode : getNextNodes(firstReading, firstDirection, depth)) {
-            for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATED)) {
-                if (!rel.getProperty("type").equals("transposition")
-                        && !rel.getProperty("type").equals("repetition")) {
-                    for (Node secondReadingNextNode : getNextNodes(secondReading, secondDirection,
-                            depth)) {
-                        if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode)) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
     }
 
     /**

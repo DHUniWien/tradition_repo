@@ -155,7 +155,7 @@ public class TranspositionTest {
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
     }
 
     /**

@@ -384,10 +384,19 @@ public class Reading implements IResource {
                     "(transposition / repetition)";
             return false;
         }
-
-        if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged would make the graph cyclic";
-            return false;
+        // If the two readings are aligned, there is no need to test for cycles.
+        boolean aligned = false;
+        for (Relationship rel : stayingReading.getRelationships(ERelations.RELATED)) {
+            if (rel.getEndNode().equals(deletingReading)) {
+                aligned = true;
+                break;
+            }
+        }
+        if (!aligned) {
+            if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
+                errorMessage = "Readings to be merged would make the graph cyclic";
+                return false;
+            }
         }
 
         return true;
