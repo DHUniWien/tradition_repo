@@ -5,10 +5,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.sun.jersey.api.client.GenericType;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
@@ -106,7 +108,8 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void getReading(){
-        ClientResponse actualResponse = jerseyTest.resource()
+        ClientResponse actualResponse = jerseyTest
+                .resource()
                 .path("/reading/getreading/withreadingid/20")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
@@ -118,7 +121,8 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void getAllTraditions(){
-        ClientResponse actualResponse = jerseyTest.resource()
+        ClientResponse actualResponse = jerseyTest
+                .resource()
                 .path("/tradition/getalltraditions")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
@@ -157,7 +161,8 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void getTradition(){
-        ClientResponse actualResponse = jerseyTest.resource()
+        ClientResponse actualResponse = jerseyTest
+                .resource()
                 .path("/tradition/gettradition/withid/"+tradId)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
@@ -328,7 +333,8 @@ public abstract class BenchmarkTests {
                 .path("/relation/createrelationship/")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
+        ArrayList<GraphModel> graphModelList = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
+        GraphModel readingsAndRelationships = graphModelList.get(0);
         relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()

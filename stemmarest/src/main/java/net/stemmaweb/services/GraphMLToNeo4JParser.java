@@ -60,12 +60,9 @@ public class GraphMLToNeo4JParser implements IResource
 
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
 
-        int depth = 0;
-        // 0 root, 1 <graphml>, 2 <graph>, 3 <node>, 4 <data>
-        int type_nd = 0;
-        // 0 = no, 1 = edge, 2 = node
-        HashMap<String, String> map = new HashMap<>();
-        // to store all keys of the introduction part
+        int depth = 0;       // 0 root, 1 <graphml>, 2 <graph>, 3 <node>, 4 <data>
+        int type_nd = 0;     // 0 = no, 1 = edge, 2 = node
+        HashMap<String, String> map = new HashMap<>(); // to store all keys of the introduction part
 
         Node from = null;    // a round-trip store for the start node of a path
         Node to = null;      // a round-trip store for the end node of a path
@@ -89,13 +86,13 @@ public class GraphMLToNeo4JParser implements IResource
 
             Node tradRootNode = null;    // this will be the entry point of the graph
 
-            Node currNode;	// holds the current node
-            currNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            Relationship rel = null;    // holds the current relationship
+            Node currNode;               // holds the current node
+            currNode = db.createNode(Nodes.TRADITION);    // create the root node of tradition
+            Relationship rel = null;     // holds the current relationship
 
-            int graphNumber = 0;     // holds the current graph number
+            int graphNumber = 0;         // holds the current graph number
 
-            int firstNode = 0;    // flag to get START NODE (always == n1) == 2
+            int firstNode = 0;           // flag to get START NODE (always == n1) == 2
 
             label:
             while (true) {
@@ -235,6 +232,7 @@ public class GraphMLToNeo4JParser implements IResource
                                     currNode = db.createNode(Nodes.READING);
 
                                     currNode.setProperty("id", prefix + reader.getAttributeValue(0));
+                                    currNode.setProperty("tradition_id", last_inserted_id);
 
                                     idToNeo4jId.put(prefix + reader.getAttributeValue(0),
                                             currNode.getId());
@@ -277,7 +275,7 @@ public class GraphMLToNeo4JParser implements IResource
                         break;
                 }
             }
-            if(rel!=null) {    	// add relationship props to last relationship
+            if(rel!=null) {     // add relationship props to last relationship
                 String[] witnessesArray = new String[witnesses.size()];
                 witnessesArray = witnesses.toArray(witnessesArray);
                 rel.setProperty("witnesses", witnessesArray);

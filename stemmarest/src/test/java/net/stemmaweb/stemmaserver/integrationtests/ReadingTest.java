@@ -303,7 +303,7 @@ public class ReadingTest {
                 .path("/reading/getreading/withreadingid/" + 200)
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
-        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+        assertEquals(Status.NO_CONTENT.getStatusCode(),
                 response.getStatusInfo().getStatusCode());
     }
 
@@ -1358,8 +1358,7 @@ public class ReadingTest {
         int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 10, 11,
                 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 21 };
         for (int i = 0; i < listOfReadings.size(); i++) {
-            assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i)
-                    .getRank());
+            assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i).getRank());
         }
     }
 

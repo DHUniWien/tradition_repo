@@ -51,7 +51,7 @@ public class WitnessTest {
 
     @Before
     public void setUp() throws Exception {
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+        File testfile = new File("src/TestXMLFiles/testTradition.xml");
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
@@ -177,8 +177,8 @@ public class WitnessTest {
                 .resource()
                 .path("/witness/getreadinglist/fromtradition/" + tradId + "/ofwitness/D")
                 .get(ClientResponse.class);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-		assertEquals("no witness with this id was found", response.getEntity(String.class));
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals("no witness with this id was found", response.getEntity(String.class));
     }
 
     @Test
@@ -188,35 +188,35 @@ public class WitnessTest {
         String response = jerseyTest.resource()
                 .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
                         + "fromstartrank/2/toendrank/5")
-				.get(String.class);
-		assertEquals(expectedText, response);
-	}
+                .get(String.class);
+        assertEquals(expectedText, response);
+    }
 
-	/**
-	 * as ranks are adjusted should give same result as previous test
-	 */
-	@Test
+    /**
+     * as ranks are adjusted should give same result as previous test
+     */
+    @Test
     public void witnessBetweenRanksWrongWayTest() {
         String expectedText = "{\"text\":\"april with his showers\"}";
         String response = jerseyTest
                 .resource()
                 .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
                         + "fromstartrank/2/toendrank/5")
-				.get(String.class);
-		assertEquals(expectedText, response);
-	}
+                .get(String.class);
+        assertEquals(expectedText, response);
+    }
 
-	/**
-	 * gives same ranks for start and end should return error
-	 */
-	@Test
-	public void witnessBetweenRanksSameRanksTest() {
+    /**
+     * gives same ranks for start and end should return error
+     */
+    @Test
+    public void witnessBetweenRanksSameRanksTest() {
         ClientResponse response = jerseyTest
                 .resource()
                 .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
                         + "fromstartrank/5/toendrank/5")
-				.get(ClientResponse.class);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertEquals("end-rank is equal to start-rank", response.getEntity(String.class));
     }
 
@@ -228,14 +228,13 @@ public class WitnessTest {
                 .resource()
                 .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
                         + "fromstartrank/5/toendrank/30")
-				.get(String.class);
-		assertEquals(expectedText, response);
+                .get(String.class);
+        assertEquals(expectedText, response);
+    }
 
-	}
-
-	/**
-	 * test if the tradition node exists
-	 */
+    /**
+     * test if the tradition node exists
+     */
     @Test
     public void traditionNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {

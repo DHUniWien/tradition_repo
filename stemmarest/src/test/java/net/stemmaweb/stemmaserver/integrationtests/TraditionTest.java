@@ -56,13 +56,14 @@ public class TraditionTest {
     @Before
     public void setUp() throws Exception {
 
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
+                .newImpermanentDatabase())
+                .getDatabase();
 
         importResource = new GraphMLToNeo4JParser();
         Tradition tradition = new Tradition();
 
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+        File testFile = new File("src/TestXMLFiles/testTradition.xml");
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -89,7 +90,7 @@ public class TraditionTest {
          * load a tradition to the test DB
          */
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -116,10 +117,10 @@ public class TraditionTest {
     @Test
     public void getAllTraditionsTest() {
         // import a second tradition into the db
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+        File testFile = new File("src/TestXMLFiles/testTradition.xml");
 
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -377,7 +378,10 @@ public class TraditionTest {
         textInfo.setIsPublic("0");
         textInfo.setOwnerId("42");
 
-        ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/" + tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, textInfo);
+        ClientResponse ownerChangeResponse = jerseyTest.resource()
+                .path("/tradition/changemetadata/fromtradition/" + tradId)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
         /*
@@ -443,7 +447,10 @@ public class TraditionTest {
         textInfo.setIsPublic("0");
         textInfo.setOwnerId("1337");
 
-        ClientResponse removalResponse = jerseyTest.resource().path("/tradition/changemetadata/fromtradition/" + tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, textInfo);
+        ClientResponse removalResponse = jerseyTest.resource()
+                .path("/tradition/changemetadata/fromtradition/" + tradId)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
         assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
 

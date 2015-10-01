@@ -72,10 +72,10 @@ public class Benchmark1kNodes extends BenchmarkTests {
         }
         rgg.role(db, 2, 1, 5, 100);
 
-		File testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
+        File testFile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 
         try {
-            tradId = importResource.parseGraphML(testfile.getPath(), "1", "Tradition")
+            tradId = importResource.parseGraphML(testFile.getPath(), "1", "Tradition")
                     .getEntity()
                     .toString()
                     .replace("{\"tradId\":", "")
