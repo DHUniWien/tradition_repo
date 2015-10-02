@@ -114,8 +114,7 @@ public class Reading implements IResource {
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Response.Status.OK).entity(modelToReturn)
-                .build();
+        return Response.status(Response.Status.OK).entity(modelToReturn).build();
     }
 
     /**
@@ -236,8 +235,7 @@ public class Reading implements IResource {
         addedReading = ReadingService.copyReadingProperties(originalReading, addedReading);
 
         // copy relationships
-        for (Relationship originalRel : originalReading
-                .getRelationships(ERelations.RELATED)) {
+        for (Relationship originalRel : originalReading.getRelationships(ERelations.RELATED)) {
             Relationship newRel = addedReading.createRelationshipTo(
                     originalRel.getOtherNode(originalReading),
                     ERelations.RELATED);
@@ -382,13 +380,23 @@ public class Reading implements IResource {
         }
 
         if (containClassTwoRelationships(stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged cannot contain class 2 relationships (transposition / repetition)";
+            errorMessage = "Readings to be merged cannot contain class 2 relationships " +
+                    "(transposition / repetition)";
             return false;
         }
-
-        if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged would make the graph cyclic";
-            return false;
+        // If the two readings are aligned, there is no need to test for cycles.
+        boolean aligned = false;
+        for (Relationship rel : stayingReading.getRelationships(ERelations.RELATED)) {
+            if (rel.getEndNode().equals(deletingReading)) {
+                aligned = true;
+                break;
+            }
+        }
+        if (!aligned) {
+            if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
+                errorMessage = "Readings to be merged would make the graph cyclic";
+                return false;
+            }
         }
 
         return true;
@@ -506,12 +514,11 @@ public class Reading implements IResource {
                     String[] deletingReadingWitnesses = (String[]) deletingRel.getProperty("witnesses");
 
                     // combine witness lists into one list
-                    String[] combinedWitnesses = new String[stayingReadingWitnesses.length
-                            + deletingReadingWitnesses.length];
-                    for (int i = 0; i < stayingReadingWitnesses.length; i++)
-                        combinedWitnesses[i] = stayingReadingWitnesses[i];
-                    for (int i = 0; i < deletingReadingWitnesses.length; i++)
-                        combinedWitnesses[stayingReadingWitnesses.length + i] = deletingReadingWitnesses[i];
+                    int sRWl = stayingReadingWitnesses.length;
+                    int dRWl = deletingReadingWitnesses.length;
+                    String[] combinedWitnesses = new String[sRWl + dRWl];
+                    System.arraycopy(stayingReadingWitnesses, 0, combinedWitnesses, 0, sRWl);
+                    System.arraycopy(deletingReadingWitnesses, 0, combinedWitnesses, sRWl, dRWl);
                     Arrays.sort(combinedWitnesses);
                     stayingRel.setProperty("witnesses", combinedWitnesses);
                     deletingRel.delete();
@@ -572,7 +579,7 @@ public class Reading implements IResource {
      *            the index of the first letter of the second word: "unto" with
      *            index 2 gets "un" and "to". if the index is zero the reading
      *            is split using the separator
-     * @param separator
+     * @_param separator
      *            the string which is between the words to be split, if no
      *            separator is specified (empty String) the reading is split
      *            using whitespace as default. If a splitIndex and a separator
@@ -589,7 +596,8 @@ public class Reading implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response splitReading(@PathParam("readId") long readId,
-            @PathParam("splitIndex") int splitIndex, CharacterModel model) {
+                                 @PathParam("splitIndex") int splitIndex,
+                                 CharacterModel model) {
         assert (model != null);
         GraphModel readingsAndRelationships;
         Node originalReading;
@@ -652,8 +660,7 @@ public class Reading implements IResource {
      *            the text to be split up
      * @return an array containing the separated words
      */
-    private String[] splitUpText(int splitIndex, String separator,
-            String originalText) {
+    private String[] splitUpText(int splitIndex, String separator, String originalText) {
         String[] splitWords;
         if (splitIndex > 0) {
             splitWords = new String[2];
@@ -774,9 +781,7 @@ public class Reading implements IResource {
             @PathParam("witnessId") String witnessId,
             @PathParam("readId") long readId) {
 
-        final String WITNESS_ID = witnessId;
-
-        Evaluator witnessEvaluator = Witness.getEvalForWitness(WITNESS_ID);
+        Evaluator witnessEvaluator = Witness.getEvalForWitness(witnessId);
 
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
@@ -960,7 +965,7 @@ public class Reading implements IResource {
                 .traverse(startNode).nodes()) {
             long nodeRank = (long) node.getProperty("rank");
 
-            if (nodeRank < endRank && nodeRank > startRank) {
+            if (nodeRank <= endRank && nodeRank >= startRank) {
                 ReadingModel tempReading = new ReadingModel(node);
                 readingModels.add(tempReading);
             }
@@ -1026,11 +1031,9 @@ public class Reading implements IResource {
         for (Node nodeA : questionedReadings) {
             ArrayList<Node> sameText = new ArrayList<>();
             for (Node nodeB : questionedReadings)
-                if (nodeA.getProperty("text").toString()
-                        .equals(nodeB.getProperty("text").toString())
-                        && !nodeA.equals(nodeB)
-                        && !nodeA.getProperty("rank").toString()
-                        .equals(nodeB.getProperty("rank").toString())) {
+                if (!nodeA.equals(nodeB)
+                        && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
+                        && !nodeA.getProperty("rank").toString().equals(nodeB.getProperty("rank").toString())) {
                     sameText.add(nodeB);
                     sameText.add(nodeA);
                 }
@@ -1050,14 +1053,18 @@ public class Reading implements IResource {
     private void couldBeIdenticalCheck(ArrayList<Node> sameText,
             ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings) {
 
+        Node biggerRankNode;
+        Node smallerRankNode;
+        long biggerRank;
+        long smallerRank;
+        long rank;
+        boolean gotOne;
+
         ArrayList<ReadingModel> couldBeIdentical = new ArrayList<>();
 
         for (int i = 0; i < sameText.size() - 1; i++) {
-            Node biggerRankNode;
-            Node smallerRankNode;
             long rankA = (long) sameText.get(i).getProperty("rank");
             long rankB = (long) sameText.get(i + 1).getProperty("rank");
-            long biggerRank, smallerRank;
 
             if (rankA < rankB) {
                 biggerRankNode = sameText.get(i + 1);
@@ -1071,9 +1078,7 @@ public class Reading implements IResource {
                 biggerRank = rankA;
             }
 
-            long rank;
-            boolean gotOne = false;
-
+            gotOne = false;
             Iterable<Relationship> rels = smallerRankNode
                     .getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
 
@@ -1123,8 +1128,7 @@ public class Reading implements IResource {
      * @param startNode
      * @return list of readings
      */
-    private ArrayList<Node> getReadingsBetweenRanks(long startRank,
-            long endRank, Node startNode) {
+    private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
         ArrayList<Node> readings = new ArrayList<>();
 
         for (Node node : db.traversalDescription().breadthFirst()
@@ -1183,7 +1187,7 @@ public class Reading implements IResource {
      *            concatenate is set to 1, the compressing will be done with
      *            with_str between the texts of the readings. If it is 0, texts
      *            will be concatenate with a single space.
-     * @param with_str
+     * @_param with_str
      *            the string which will come between the texts of the readings
      *            if con is set to 1 could also be an empty string. Is given as
      *            a String to avoid problems with 'unsafe' characters in the URL
@@ -1220,6 +1224,7 @@ public class Reading implements IResource {
             read1 = db.getNodeById(readId1);
             read2 = db.getNodeById(readId2);
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
+                tx.success();
                 return Response.status(Status.INTERNAL_SERVER_ERROR)
                         .entity("the first reading has a higher rank then the second reading")
                         .build();

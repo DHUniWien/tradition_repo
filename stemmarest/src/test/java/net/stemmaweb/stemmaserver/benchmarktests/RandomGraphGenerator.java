@@ -84,12 +84,13 @@ class RandomGraphGenerator {
                 }
                 System.out.println("]");
                 ArrayList<WitnessBranch> witnessUnconnectedBranches = new ArrayList<>();
+                Node traditionRootNode;
                 try (Transaction tx = db.beginTx()) {
                     String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
                             .next()
                             .getProperty("LAST_INSERTED_TRADITION_ID")
                             .toString();
-                    Node traditionRootNode = db.createNode(Nodes.TRADITION);
+                    traditionRootNode = db.createNode(Nodes.TRADITION);
                     Node rootNode = db.findNodes(Nodes.ROOT, "name", "Root node").next();
                     rootNode.setProperty("LAST_INSERTED_TRADITION_ID",
                             Integer.toString(Integer.parseInt(prefix) + 1));
@@ -107,7 +108,7 @@ class RandomGraphGenerator {
                     startNode.setProperty("rank", "0");
                     startNode.setProperty("is_common", "0");
 
-                    traditionRootNode.createRelationshipTo(startNode, ERelations.SEQUENCE);
+                    traditionRootNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
                     for(int l=0; l < cardOfWitnesses; l++){
                         WitnessBranch witnessBranch = new WitnessBranch();
@@ -201,6 +202,7 @@ class RandomGraphGenerator {
                     endNode.setProperty("rank", maxRank);
                     endNode.setProperty("is_start", "0");
                     endNode.setProperty("is_common", "0");
+                    traditionRootNode.createRelationshipTo(endNode, ERelations.HAS_END);
                     tx.success();
                 }
 

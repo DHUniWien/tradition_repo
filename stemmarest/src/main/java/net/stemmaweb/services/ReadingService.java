@@ -57,10 +57,11 @@ public class ReadingService {
         }
 
         // check if higherRankReading is found in one of the paths
+        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse();
         for (Node node : db.traversalDescription()
                 .depthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .uniqueness(Uniqueness.NONE)
+                .expand(alignmentEvaluator)
+                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                 .evaluator(Evaluators.all())
                 .traverse(lowerRankReading).nodes()) {
             if (node.equals(higherRankReading)) {
