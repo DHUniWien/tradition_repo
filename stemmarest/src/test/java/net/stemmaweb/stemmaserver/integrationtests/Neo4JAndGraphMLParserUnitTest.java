@@ -6,16 +6,26 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.test.framework.JerseyTest;
+import net.stemmaweb.model.*;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -35,8 +45,10 @@ public class Neo4JAndGraphMLParserUnitTest {
 
 	private GraphMLToNeo4JParser importResource;
 	private Neo4JToGraphMLParser exportResource;
-	
-	@Before
+
+    private JerseyTest jerseyTest;
+
+    @Before
 	public void setUp() throws Exception {
 
 		db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
@@ -44,9 +56,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 		importResource = new GraphMLToNeo4JParser();
 		exportResource = new Neo4JToGraphMLParser();
 		
-		/*
-		 * Populate the test database with the root node and a user with id 1
-		 */
+        // Populate the test database with the root node and a user with id 1
     	try(Transaction tx = db.beginTx())
     	{
     		Result result = db.execute("match (n:ROOT) return n");
@@ -66,7 +76,21 @@ public class Neo4JAndGraphMLParserUnitTest {
 			rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
     		tx.success();
     	}
-	}
+
+        // Create a JerseyTestServer for the necessary REST API calls
+        Reading reading = new Reading();
+        Relation relation = new Relation();
+        Stemma stemma = new Stemma();
+        Tradition tradition = new Tradition();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(reading)
+                .addResource(relation)
+                .addResource(stemma)
+                .addResource(tradition)
+                .create();
+        jerseyTest.setUp();
+
+    }
 	
 	/**
 	 * Try to import a non existent file
@@ -214,5 +238,272 @@ public class Neo4JAndGraphMLParserUnitTest {
 		
 		traditionNodeExistsTest();
 	}
-	
+
+	/**
+	 * Ports of test suite from Perl Text::Tradition::Parser::Self.
+	 *
+	 * #1: parse a file, check for the correct number of readings, paths, and witnesses
+	 */
+
+    @Test
+	public void importFlorilegiumTest () {
+		Response actualResponse = null;
+		File testfile = new File("src/TestXMLFiles/florilegium_graphml.xml");
+		try
+		{
+			actualResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+		}
+		catch(FileNotFoundException f)
+		{
+			// this error should not occur
+			assertTrue(false);
+		}
+
+        // Check for success and get the tradition id
+		assertEquals(Response.status(Response.Status.OK).build().getStatus(),
+				actualResponse.getStatus());
+        String traditionId = "NONE";
+		try {
+            JSONObject content = new JSONObject((String) actualResponse.getEntity());
+            traditionId = String.valueOf(content.get("tradId"));
+		} catch (JSONException e) {
+			assertTrue(false);
+		}
+
+		// Check for the correct number of reading nodes
+        List<ReadingModel> readings = jerseyTest
+                .resource()
+                .path("/reading/getallreadings/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(319, readings.size()); // really 319
+
+        // Check for the correct number of sequence paths
+        int sequenceCount = 0;
+        try(Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (n:TRADITION {id:'" + traditionId + "'})-[*]->(:READING)-[p:SEQUENCE]->() return p");
+            Iterator<Node> nodes = result.columnAs("p");
+            while (nodes.hasNext()) {
+                nodes.next();
+                sequenceCount++;
+            }
+        }
+        assertEquals(376, sequenceCount); // should be 376
+
+        // Check for the correct number of witnesses
+        List<WitnessModel> witnesses = jerseyTest
+                .resource()
+                .path("/tradition/getallwitnesses/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(13, witnesses.size());  // should be 13
+
+        // Check for the correct number of relationships
+        List<RelationshipModel> relations = jerseyTest
+                .resource()
+                .path("/tradition/getallrelationships/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(7, relations.size());
+    }
+
+
+    /**
+     * #2: parse a file, mess around with the tradition, export it, check the result
+     */
+
+    @Ignore
+    @Test
+    public void exportFlorilegiumTest () {
+        Response parseResponse = null;
+        File testfile = new File("src/TestXMLFiles/florilegium_graphml.xml");
+        try {
+            parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+        } catch (FileNotFoundException f) {
+            // this error should not occur
+            assertTrue(false);
+        }
+
+        // Check for success and get the tradition id
+        assertEquals(Response.status(Response.Status.OK).build().getStatus(),
+                parseResponse.getStatus());
+        String traditionId = "NONE";
+        try {
+            JSONObject content = new JSONObject((String) parseResponse.getEntity());
+            traditionId = (String) content.get("tradId");
+        } catch (JSONException e) {
+            assertTrue(false);
+        }
+
+        // Set the language
+        String jsonPayload = "{\"language\":\"Greek\"}";
+        ClientResponse jerseyResponse = jerseyTest
+                .resource()
+                .path("/tradition/changemetadata/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+
+        // Add a stemma
+        String newStemma = "digraph Stemma {\n" +
+                "    \"α\" [ class=hypothetical ];\n" +
+                "    \"γ\" [ class=hypothetical ];\n" +
+                "    \"δ\" [ class=hypothetical ];\n" +
+                "    2 [ class=hypothetical,label=\"*\" ];\n" +
+                "    3 [ class=hypothetical,label=\"*\" ];\n" +
+                "    4 [ class=hypothetical,label=\"*\" ];\n" +
+                "    5 [ class=hypothetical,label=\"*\" ];\n" +
+                "    7 [ class=hypothetical,label=\"*\" ];\n" +
+                "    A [ class=extant ];\n" +
+                "    B [ class=extant ];\n" +
+                "    C [ class=extant ];\n" +
+                "    D [ class=extant ];\n" +
+                "    E [ class=extant ];\n" +
+                "    F [ class=extant ];\n" +
+                "    G [ class=extant ];\n" +
+                "    H [ class=extant ];\n" +
+                "    K [ class=extant ];\n" +
+                "    P [ class=extant ];\n" +
+                "    Q [ class=extant ];\n" +
+                "    S [ class=extant ];\n" +
+                "    T [ class=extant ];\n" +
+                "    \"α\" -> A;\n" +
+                "    \"α\" -> T;\n" +
+                "    \"α\" -> \"δ\";\n" +
+                "    \"δ\" -> 2;\n" +
+                "    2 -> C;\n" +
+                "    2 -> B;\n" +
+                "    B -> P;\n" +
+                "    B -> S;\n" +
+                "    \"δ\" -> \"γ\";\n" +
+                "    \"γ\" -> 3;\n" +
+                "    3 -> F;\n" +
+                "    3 -> H;\n" +
+                "    \"γ\" -> 4;\n" +
+                "    4 -> D;\n" +
+                "    4 -> 5;\n" +
+                "    5 -> Q;\n" +
+                "    5 -> K;\n" +
+                "    5 -> 7;\n" +
+                "    7 -> E;\n" +
+                "    7 -> G;\n" +
+                "}\n";
+        jerseyResponse = jerseyTest
+                .resource()
+                .path("/stemma/newstemma/intradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemma);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+
+        // Merge a couple of nodes
+        Node blasphemias;
+        Node aporia;
+        Node blasphemia;
+        try(Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (q:READING {text:'πνεύματος'})-->(bs:READING {text:'βλασφημίας'})-->(a:READING {text:'ἀπορία'})," +
+                    " (q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
+            assertTrue(result.hasNext());
+            Map<String, Object> row = result.next();
+            blasphemias = (Node) row.get("bs");
+            aporia = (Node) row.get("a");
+            blasphemia = (Node) row.get("b");
+        }
+
+        CharacterModel characterModel = new CharacterModel();
+        characterModel.setCharacter(" ");
+        jerseyResponse = jerseyTest
+                .resource()
+                .path("/reading/compressreadings/read1id/"
+                        + blasphemias.getId() + "/read2id/" + aporia.getId() + "/concatenate/1")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, characterModel);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        assertEquals("βλασφημίας ἀπορία", blasphemias.getProperty("text"));
+
+        // Add a new
+        RelationshipModel relationship = new RelationshipModel();
+        relationship.setSource(String.valueOf(blasphemias.getId()));
+        relationship.setTarget(String.valueOf(blasphemia.getId()));
+        relationship.setType("lexical");
+        relationship.setAlters_meaning("0");
+        relationship.setIs_significant("true");
+        relationship.setReading_a("βλασφημίας ἀπορία");
+        relationship.setReading_b("βλασφημία");
+
+        jerseyResponse = jerseyTest
+                .resource()
+                .path("/relation/createrelationship")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, relationship);
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
+
+        // Export the GraphML
+        removeOutputFile();
+        parseResponse = exportResource.parseNeo4J(traditionId);
+        assertEquals(Response.ok().build().getStatus(), parseResponse.getStatus());
+        File outputFile = new File("upload/output.xml");
+        assertTrue(outputFile.exists());
+
+        // Re-import and test the result
+        try {
+            parseResponse = importResource.parseGraphML(outputFile.getPath(), "1", "Tradition");
+        } catch(FileNotFoundException f) {
+            // this error should not occur
+            assertTrue(false);
+        }
+
+        // Check for success and get the tradition id
+        assertEquals(Response.status(Response.Status.OK).build().getStatus(),
+                parseResponse.getStatus());
+        traditionId = "NONE";
+        try {
+            JSONObject content = new JSONObject((String) parseResponse.getEntity());
+            traditionId = (String) content.get("tradId");
+        } catch (JSONException e) {
+            assertTrue(false);
+        }
+
+        // Check for the correct number of reading nodes
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/getallreadings/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        int readingCount = response.getEntity(JSONObject.class).length();
+        assertEquals(318, readingCount);
+
+        // Check for the correct number of sequence paths
+        int sequenceCount = 0;
+        try(Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (n:TRADITION {id='" + traditionId + "'})-[*]->(:READING)-[p:SEQUENCE]->() return p");
+            Iterator<Node> nodes = result.columnAs("p");
+            while (nodes.hasNext()) {
+                nodes.next();
+                sequenceCount++;
+            }
+        }
+        assertEquals(375, sequenceCount);
+
+        // Check for the correct number of witnesses
+        response = jerseyTest
+                .resource()
+                .path("/tradition/getallwitnesses/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        int witnessCount = response.getEntity(JSONObject.class).length();
+        assertEquals(13, witnessCount);
+
+        // Check for the correct number of relationships
+        response = jerseyTest
+                .resource()
+                .path("/tradition/getallrelationships/fromtradition/" + traditionId)
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        int relationshipCount = response.getEntity(JSONObject.class).length();
+        assertEquals(8, relationshipCount);
+
+        // Check for the existence of the stemma
+
+        // Check for the correct language setting
+    }
 }
