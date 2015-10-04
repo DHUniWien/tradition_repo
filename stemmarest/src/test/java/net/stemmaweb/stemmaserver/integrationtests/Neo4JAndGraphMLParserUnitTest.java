@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -27,11 +28,9 @@ import org.codehaus.jettison.json.JSONObject;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 /**
@@ -278,17 +277,28 @@ public class Neo4JAndGraphMLParserUnitTest {
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(319, readings.size()); // really 319
 
-        // Check for the correct number of sequence paths
+        // Check for the correct number of sequence paths. Do this with a traversal.
         int sequenceCount = 0;
-        try(Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:TRADITION {id:'" + traditionId + "'})-[*]->(:READING)-[p:SEQUENCE]->() return p");
-            Iterator<Node> nodes = result.columnAs("p");
-            while (nodes.hasNext()) {
-                nodes.next();
+        try (Transaction tx = db.beginTx()) {
+            Node startNode = null;
+            for (ReadingModel reading : readings) {
+                if (reading.getIs_start() != null && reading.getIs_start().equals("1")) {
+                    startNode = db.getNodeById(Long.valueOf(reading.getId()));
+                    break;
+                }
+            }
+            assertNotNull(startNode);
+            for (Relationship sequence : db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                    .relationships()) {
                 sequenceCount++;
             }
+            tx.success();
         }
         assertEquals(376, sequenceCount); // should be 376
+
 
         // Check for the correct number of witnesses
         List<WitnessModel> witnesses = jerseyTest
