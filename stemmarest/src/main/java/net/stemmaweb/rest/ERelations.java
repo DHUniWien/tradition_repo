@@ -15,6 +15,7 @@ public enum ERelations implements RelationshipType {
     COLLATION,      // between tradition part and START node
     LEMMA_TEXT,     // to indicate word sequence
     HAS_END,        // between tradition part and END node
+    HAS_WITNESS,    // links text witnesses to the tradition
     
     // Undirected types
     RELATED,        // this type is used to show relationships between readings (undirected)

@@ -25,6 +25,7 @@ import net.stemmaweb.services.Neo4JToGraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -523,5 +524,16 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the existence of the stemma
 
         // Check for the correct language setting
+    }
+
+    /**
+     * Shut down the jersey server
+     *
+     * @throws Exception
+     */
+    @After
+    public void tearDown() throws Exception {
+        db.shutdown();
+        jerseyTest.tearDown();
     }
 }

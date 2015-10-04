@@ -9,6 +9,7 @@ import java.util.Iterator;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -21,6 +22,7 @@ import javax.xml.transform.stream.StreamResult;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.IResource;
 
+import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -51,21 +53,17 @@ public class Neo4JToGraphMLParser implements IResource
 
         String filename = "upload/output.xml";
 
-        Node traditionNode;
+        Node traditionNode = null;
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
         if(traditionStartNode == null) {
             return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:TRADITION {id: '"+ tradId +"'}) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-
-            if(!nodes.hasNext()) {
+            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            if(traditionNode == null) {
                 return Response.status(Status.NOT_FOUND).build();
             }
-
-            traditionNode = nodes.next();
             tx.success();
         }
 
@@ -352,6 +350,8 @@ public class Neo4JToGraphMLParser implements IResource
             Iterable<String> props;
 
             writer.writeStartElement("graph");
+            // TODO convert tradition name safely into XML Name
+            writer.writeAttribute("id", "Tradition");
             writer.writeAttribute("edgedefault", "directed");
             //writer.writeAttribute("id", traditionNode.getProperty("dg1").toString());
             writer.writeAttribute("parse.edgeids", "canonical");
@@ -415,25 +415,23 @@ public class Neo4JToGraphMLParser implements IResource
                     .relationships() ) {
                 if(rel!=null) {
                     edgeCountGraph1++;
-                    props = rel.getPropertyKeys();
-                    for(String prop : props) {
-                        if((prop != null) && (prop.equals("witnesses"))) {
-                            String[] witnesses = (String[]) rel.getProperty(prop);
-                            for (String witness : witnesses) {
-                                writer.writeStartElement("edge");
+                    String[] witnesses = null;
+                    if (rel.hasProperty("witnesses")) {
+                        witnesses = (String[]) rel.getProperty("witnesses");
+                    }
+                    for (String witness : witnesses) {
+                        writer.writeStartElement("edge");
 
-                                writer.writeAttribute("source", rel.getStartNode().getId() + "");
-                                writer.writeAttribute("target", rel.getEndNode().getId() + "");
-                                writer.writeAttribute("id", "e" + edgeId++);
+                        writer.writeAttribute("source", rel.getStartNode().getId() + "");
+                        writer.writeAttribute("target", rel.getEndNode().getId() + "");
+                        writer.writeAttribute("id", "e" + edgeId++);
 
-                                writer.writeStartElement("data");
-                                writer.writeAttribute("key", "de12");
-                                writer.writeCharacters(witness);
+                        writer.writeStartElement("data");
+                        writer.writeAttribute("key", "de12");
+                        writer.writeCharacters(witness);
 
-                                writer.writeEndElement();
-                                writer.writeEndElement(); // end edge
-                            }
-                        }
+                        writer.writeEndElement();
+                        writer.writeEndElement(); // end edge
                     }
                 }
             }
@@ -489,12 +487,16 @@ public class Neo4JToGraphMLParser implements IResource
                     writer.writeAttribute("target", endNode);
                     writer.writeAttribute("id", "e" + edgeId++);
                     for(String prop : props) {
-                        if(prop !=null && !prop.equals("witnesses")) {
-                            writer.writeStartElement("data");
-                            writer.writeAttribute("key",relationMap.get(prop));
-                            writer.writeCharacters(rel.getProperty(prop).toString());
-                            writer.writeEndElement();
-                        }
+                            if (rel.hasProperty(prop)) {
+                                String value = rel.getProperty(prop).toString();
+                                if (!value.equals("")) {
+                                    writer.writeStartElement("data");
+                                    String keyId = relationMap.get(prop);
+                                    writer.writeAttribute("key", keyId);
+                                    writer.writeCharacters(value);
+                                    writer.writeEndElement();
+                                }
+                            }
                     }
                     writer.writeEndElement(); // end edge
                 }

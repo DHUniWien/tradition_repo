@@ -2,11 +2,9 @@ package net.stemmaweb.rest;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -161,43 +159,18 @@ public class Tradition implements IResource {
         ArrayList<WitnessModel> witnessList = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            Node traditionNode;
-            Iterable<Relationship> relationships;
-            Node startNode = DatabaseService.getStartNode(tradId, db);
+            Node traditionNode = getTraditionNode(tradId, db);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 
-            try {
-                if (startNode == null) {
-                    return Response.status(Status.NOT_FOUND)
-                            .entity("no tradition with this id was found")
-                            .build();
-                }
-
-                traditionNode = getTraditionNode(tradId, db);
-
-                if (traditionNode == null) {
-                    return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
-                }
-
-                relationships = startNode.getRelationships(Direction.OUTGOING);
-
-                if (relationships == null) {
-                    return Response.status(Status.NOT_FOUND).entity("start node not found").build();
-                }
-
-                for (Relationship rel : relationships) {
-                    for (String id : ((String[]) rel.getProperty("witnesses"))) {
-                        WitnessModel witM = new WitnessModel();
-                        witM.setId(id);
-
-                        witnessList.add(witM);
-                    }
-                }
-
-                tx.success();
-            } catch (Exception e) {
-                e.printStackTrace();
+            for (Relationship witnessRel : traditionNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
+                Node witness = witnessRel.getEndNode();
+                WitnessModel witM = new WitnessModel(witness);
+                witnessList.add(witM);
             }
+            tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(witnessList).build();

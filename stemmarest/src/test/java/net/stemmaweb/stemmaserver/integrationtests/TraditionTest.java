@@ -203,11 +203,11 @@ public class TraditionTest {
     public void getAllWitnessesTest() {
 
         WitnessModel witA = new WitnessModel();
-        witA.setId("A");
+        witA.setSigil("A");
         WitnessModel witB = new WitnessModel();
-        witB.setId("B");
+        witB.setSigil("B");
         WitnessModel witC = new WitnessModel();
-        witC.setId("C");
+        witC.setSigil("C");
 
         List<WitnessModel> witnesses = jerseyTest.resource()
                 .path("/tradition/getallwitnesses/fromtradition/" + tradId)
@@ -216,9 +216,9 @@ public class TraditionTest {
         WitnessModel witLoaded1 = witnesses.get(1);
         WitnessModel witLoaded2 = witnesses.get(2);
 
-        assertEquals(witA.getId(), witLoaded0.getId());
-        assertEquals(witB.getId(), witLoaded1.getId());
-        assertEquals(witC.getId(), witLoaded2.getId());
+        assertEquals(witA.getSigil(), witLoaded0.getSigil());
+        assertEquals(witB.getSigil(), witLoaded1.getSigil());
+        assertEquals(witC.getSigil(), witLoaded2.getSigil());
     }
 
     @Test
