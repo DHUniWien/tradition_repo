@@ -135,16 +135,20 @@ public class GraphMLToNeo4JParser implements IResource
                                                     rel.setProperty(map.get(attr), val);
                                                 }
                                             }
-                                            if (map.get(attr).equals("is_end")) {
-                                                tradRootNode.createRelationshipTo(currNode, ERelations.HAS_END);
-                                            }
                                         } else if (type_nd == 2 && currNode != null) {
-                                            if (map.get(reader.getAttributeValue(0)).equals("rank")) {
+                                            String attr = reader.getAttributeValue(0);
+                                            if (map.get(attr).equals("rank")) {
                                                 currNode.setProperty(map.get(reader.getAttributeValue(0)),
                                                         Long.parseLong(reader.getElementText()));
                                             } else {
                                                 currNode.setProperty(map.get(reader.getAttributeValue(0)),
                                                         reader.getElementText());
+                                            }
+                                            if (map.get(attr).equals("is_start")) {
+                                                tradRootNode.createRelationshipTo(currNode, ERelations.COLLATION);
+                                            }
+                                            if (map.get(attr).equals("is_end")) {
+                                                tradRootNode.createRelationshipTo(currNode, ERelations.HAS_END);
                                             }
                                         }
                                         break;
@@ -239,11 +243,7 @@ public class GraphMLToNeo4JParser implements IResource
                                     idToNeo4jId.put(prefix + reader.getAttributeValue(0),
                                             currNode.getId());
 
-                                    if (firstNode == 1) {
-                                        tradRootNode.createRelationshipTo(currNode, ERelations.COLLATION);
-                                        firstNode++;
-                                    }
-                                    if (firstNode < 1) {
+                                    if (firstNode <= 1) {
                                         firstNode++;
                                     }
                                 }
