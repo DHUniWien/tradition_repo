@@ -183,8 +183,9 @@ public class GraphMLToNeo4JParser implements IResource
                                 break;
                             case "edge":
                                 // this definitely needs refactoring!
-                                String fromNodeName = prefix + reader.getAttributeValue(0);
-                                String toNodeName = prefix + reader.getAttributeValue(1);
+                                // TODO why are namespaces not being used?
+                                String fromNodeName = prefix + reader.getAttributeValue("", "source");
+                                String toNodeName = prefix + reader.getAttributeValue("", "target");
                                 if (from == null || to == null) {
                                     Node fromTmp = null;
                                     if (idToNeo4jId.get(fromNodeName) != null) {
