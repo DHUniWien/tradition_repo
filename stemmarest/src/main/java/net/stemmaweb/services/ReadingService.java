@@ -6,6 +6,9 @@ import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -35,6 +38,30 @@ public class ReadingService {
         return newReading;
     }
 
+    /* Custom evaluation and expander for checking alignment traversals */
+
+    private static class RankEvaluate implements Evaluator {
+
+        private Long rank;
+
+        public RankEvaluate(Long stoprank) {
+            rank = stoprank;
+        }
+
+        @Override
+        public Evaluation evaluate(Path path) {
+            Node testNode = path.startNode();
+            if (testNode.hasProperty("rank")
+                    && testNode.getProperty("rank").equals(rank)) {
+                return Evaluation.INCLUDE_AND_PRUNE;
+            } else {
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            }
+        }
+    }
+
+    // TODO move AlignmentTraverse here
+
     /**
      * Checks if both readings can be found in the same path through the
      * tradition. If yes when merging these nodes the graph would get cyclic.
@@ -56,10 +83,13 @@ public class ReadingService {
             higherRankReading = firstReading;
         }
 
-        // check if higherRankReading is found in one of the paths
+        // check if higherRankReading is found in one of the paths, but don't crawl the graph beyond
+        // that reading's rank.
         AlignmentTraverse alignmentEvaluator = new AlignmentTraverse();
+        RankEvaluate rankEvaluator = new RankEvaluate((Long) higherRankReading.getProperty("rank"));
         for (Node node : db.traversalDescription()
                 .depthFirst()
+                .evaluator(rankEvaluator)
                 .expand(alignmentEvaluator)
                 .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                 .evaluator(Evaluators.all())
