@@ -114,7 +114,7 @@ public class DotToNeo4JParser implements IResource
             String[] declaration = tmp.split(" ");
             if(declaration.length >= 2) {
                 String name = String.join(" ", Arrays.copyOfRange(declaration, 1, declaration.length));
-                name.replaceAll("\"", "");
+                name = name.replaceAll("\"", "");
                 node.setProperty("name", name);
             } else {
                 throw new Exception("Could not find stemma name in graph declaration");
