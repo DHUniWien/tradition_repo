@@ -251,7 +251,7 @@ public class GraphMLToNeo4JParser implements IResource
                     .build();
         }
 
-        String[] graphs = stemmata.split("\\}");
+        String[] graphs = stemmata.split("\n");
 
         for(String graph : graphs) {
             DotToNeo4JParser parser = new DotToNeo4JParser(db);

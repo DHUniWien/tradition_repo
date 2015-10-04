@@ -7,9 +7,13 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.alexmerz.graphviz.ParseException;
+import com.alexmerz.graphviz.objects.Graph;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
+
+import com.alexmerz.graphviz.Parser;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -32,6 +36,17 @@ public class DotToNeo4JParser implements IResource
 
     public Response parseDot(String dot, String tradId) {
         this.dot = dot;
+
+        // Try the parser
+        StringBuffer dotstream = new StringBuffer(dot);
+        Parser p = new Parser();
+        try {
+            p.parse(dotstream);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return Response.status(Status.BAD_REQUEST).build();
+        }
+        ArrayList<Graph> parsedgraphs = p.getGraphs();
 
         try (Transaction tx = db.beginTx()) {
             while(nextObject(tradId));
