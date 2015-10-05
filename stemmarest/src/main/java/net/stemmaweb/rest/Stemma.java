@@ -41,35 +41,31 @@ public class Stemma implements IResource {
     @GET
     @Path("getallstemmata/fromtradition/{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllStemmata(@PathParam("tradId") String tradId)
-    {
+    public Response getAllStemmata(@PathParam("tradId") String tradId) {
         Response resp;
 
-
-        // check if tradition exists
-        if(DatabaseService.getStartNode(tradId, db)!=null)
-        {
-            try(Transaction tx = db.beginTx()) {
-                // find all stemmata associated with this tradition
-                Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-                ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-                Neo4JToDotParser parser = new Neo4JToDotParser(db);
-                ArrayList<String> stemmataList = new ArrayList<>();
-                for (Node stemma : stemmata) {
-                    System.out.println(stemma.getProperty("name"));
-                    Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name")
-                            .toString());
-                    String dot = (String) localResp.getEntity();
-                    stemmataList.add(dot);
-                }
-
-                resp = Response.ok(stemmataList).build();
-                tx.success();
-            } catch (Exception e) {
-                resp = Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        try (Transaction tx = db.beginTx()) {
+            // find all stemmata associated with this tradition
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            // check if tradition exists
+            if (traditionNode == null) {
+                return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
             }
-        } else {
-            resp = Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+            ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+            Neo4JToDotParser parser = new Neo4JToDotParser(db);
+            ArrayList<String> stemmataList = new ArrayList<>();
+            for (Node stemma : stemmata) {
+                System.out.println(stemma.getProperty("name"));
+                Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name")
+                        .toString());
+                String dot = (String) localResp.getEntity();
+                stemmataList.add(dot);
+            }
+
+            resp = Response.ok(stemmataList).build();
+            tx.success();
+        } catch (Exception e) {
+            resp = Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return resp;
     }
@@ -88,9 +84,7 @@ public class Stemma implements IResource {
     public Response getStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle) {
 
         Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        Response resp = parser.parseNeo4JStemma(tradId, stemmaTitle);
-
-        return resp;
+        return parser.parseNeo4JStemma(tradId, stemmaTitle);
     }
 
     /**
@@ -105,9 +99,7 @@ public class Stemma implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response setStemma(@PathParam("tradId") String tradId, String dot) {
         DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        Response resp = parser.importStemmaFromDot(dot, tradId, false);
-
-        return resp;
+        return parser.importStemmaFromDot(dot, tradId, false);
     }
 
     /**

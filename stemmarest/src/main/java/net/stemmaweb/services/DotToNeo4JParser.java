@@ -1,16 +1,12 @@
 package net.stemmaweb.services;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import com.alexmerz.graphviz.ParseException;
-import com.alexmerz.graphviz.objects.Edge;
-import com.alexmerz.graphviz.objects.Graph;
+import com.alexmerz.graphviz.objects.*;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
@@ -18,6 +14,7 @@ import net.stemmaweb.rest.Nodes;
 import com.alexmerz.graphviz.Parser;
 
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Node;
 
 /**
  * This class provides methods for exporting Dot File from Neo4J
@@ -34,9 +31,12 @@ public class DotToNeo4JParser implements IResource
     }
 
     public Response importStemmaFromDot(String dot, String tradId, Boolean replace) {
-        // Try the parser
         Status result = Status.NO_CONTENT;
 
+        // Split the dot string into separate lines if necessary. Having
+        // single-line dot seems to confuse the parser.
+        if (dot.indexOf('\n') == -1)
+            dot = dot.replaceAll("; ", ";\n");
         StringBuffer dotstream = new StringBuffer(dot);
         Parser p = new Parser();
         try {
@@ -67,6 +67,10 @@ public class DotToNeo4JParser implements IResource
 
     private Status saveToNeo(Graph stemma, String tradId, Boolean replace) {
         String stemmaName = stemma.getId().getLabel();
+        // Sometimes the stemma name will be an ID instead of a label. (Quotes?)
+        if (stemmaName.equals("")) {
+            stemmaName = stemma.getId().getId();
+        }
         try (Transaction tx = db.beginTx()) {
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
             // First check that no stemma with this name already exists for this tradition,
@@ -85,6 +89,11 @@ public class DotToNeo4JParser implements IResource
                 }
             }
 
+            // Get a list of the existing (extant) tradition witnesses
+            HashMap<String, Node> traditionWitnesses = new HashMap<>();
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
+                    .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
+
             // Create the new stemma node
             Node stemmaNode = db.createNode(Nodes.STEMMA);
             stemmaNode.setProperty("name", stemmaName);
@@ -95,21 +104,33 @@ public class DotToNeo4JParser implements IResource
             // Store the collection of them for later traversal.
             HashMap<Node, Boolean> witnessesVisited = new HashMap<>();
             for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
-                String sigil = witness.getId().getId();
+                String sigil = getNodeSigil(witness);
+                // If the witness ID is empty then the sigil was the label, probably
+                // Unicode, and needs to be quoted on output.
+                boolean quoteSigil = witness.getId().getId().equals("");
+                Boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
                 // Check for the existence of a node by this name
-                Node existingWitness = db.findNode(Nodes.WITNESS, "sigil", sigil);
+                Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
                 if (existingWitness != null) {
                     // Check that the requested witness isn't hypothetical unless the
                     // existing one is!
-                    if (witness.getAttribute("class").equals("hypothetical") &&
-                            !((Boolean) existingWitness.getProperty("hypothetical"))) {
-                        errorMessage = "The tradition witness " + sigil + " cannot be hypothetical.";
+                    if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical"))) {
+                        errorMessage = "The extant tradition witness " + sigil
+                                + " cannot be a hypothetical stemma node.";
                         return Status.CONFLICT;
                     }
                 } else {
                     existingWitness = db.createNode(Nodes.WITNESS);
                     existingWitness.setProperty("sigil", sigil);
-                    existingWitness.setProperty("hypothetical", witness.getAttribute("class").equals("hypothetical"));
+                    existingWitness.setProperty("hypothetical", hypothetical);
+                    existingWitness.setProperty("quotesigil", quoteSigil);
+                    // Does it have a label separate from its ID?
+                    // TODO check for a Unicode ID and separate label
+                    String displayLabel = witness.getId().getLabel();
+                    if (!displayLabel.equals("") && !quoteSigil) {
+                        existingWitness.setProperty("label", displayLabel);
+                    }
+                    traditionWitnesses.put(sigil, existingWitness);
                 }
                 stemmaNode.createRelationshipTo(existingWitness, ERelations.HAS_WITNESS);
                 witnessesVisited.put(existingWitness, false);
@@ -117,8 +138,8 @@ public class DotToNeo4JParser implements IResource
 
             // Create the edges; each edge has the stemma label as a property.
             for (Edge transmission : stemma.getEdges()) {
-                Node sourceWit = db.findNode(Nodes.WITNESS, "sigil", transmission.getSource().getNode().getId().getId());
-                Node targetWit = db.findNode(Nodes.WITNESS, "sigil", transmission.getTarget().getNode().getId().getId());
+                Node sourceWit = traditionWitnesses.get(getNodeSigil(transmission.getSource().getNode()));
+                Node targetWit = traditionWitnesses.get(getNodeSigil(transmission.getTarget().getNode()));
                 Relationship txEdge = sourceWit.createRelationshipTo(targetWit, ERelations.TRANSMITTED);
                 txEdge.setProperty("hypothesis", stemmaName);
             }
@@ -171,6 +192,15 @@ public class DotToNeo4JParser implements IResource
             return Status.OK;
         else
             return Status.CREATED;
+    }
+
+    private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {
+        String sigil = n.getId().getId();
+        // If the sigil is in quotes it will be a label, not an ID.
+        if (sigil.equals("")) {
+            sigil = n.getId().getLabel();
+        }
+        return sigil;
     }
 
 }

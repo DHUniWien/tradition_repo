@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Array;
 import java.util.*;
 
 import javax.ws.rs.core.Response;
@@ -112,13 +113,13 @@ public class Neo4JToDotParser
      *
      * @param tradId
      * @param stemmaTitle
+     * @param singleLine
      * @return
      */
-    public Response parseNeo4JStemma(String tradId, String stemmaTitle)
+
+    public Response parseNeo4JStemma(String tradId, String stemmaTitle, Boolean singleLine)
     {
-        String output;
-        String outputNodes="";
-        String outputRelationships="";
+        ArrayList<String> outputLines = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
@@ -135,14 +136,20 @@ public class Neo4JToDotParser
 
             String stemmaType = (Boolean) startNodeStemma.getProperty("directed") ? "digraph" : "graph";
             String edgeGlyph = (Boolean) startNodeStemma.getProperty("directed") ? "->" : "--";
-            outputNodes += String.format("%s \"%s\" {\n", stemmaType, stemmaTitle);
+            outputLines.add(String.format("%s \"%s\" {", stemmaType, stemmaTitle));
 
             // Output all the nodes associated with this stemma.
             for (Node witness : DatabaseService.getRelated(startNodeStemma, ERelations.HAS_WITNESS)) {
-                Boolean witnessExists = !(witness.hasProperty("hypothetical")
-                        && (Boolean) witness.getProperty("hypothetical"));
-                String witnessClass = witnessExists ? "extant" : "hypothetical";
-                outputNodes += String.format("\t%s [class=%s];\n", witness.getProperty("sigil"), witnessClass);
+                String witnessSigil = sigilDotString(witness);
+                Boolean hypothetical = (Boolean) witness.getProperty("hypothetical");
+
+                // Get the witness class and, if it exists, label.
+                String witnessAttr = hypothetical ? "[class=hypothetical" : "[class=extant";
+                if (witness.hasProperty("label")) {
+                    witnessAttr += " label=\"" + witness.getProperty("label") + '"';
+                }
+                witnessAttr += "]";
+                outputLines.add(String.format("\t%s %s;", witnessSigil, witnessAttr));
             }
 
             // Now output all the edges associated with this stemma, starting with the
@@ -151,33 +158,54 @@ public class Neo4JToDotParser
             if (foundRoots.isEmpty()) {
                 // No archetype; just output the list of edges in any order.
                 Result txEdges = db.execute("MATCH (a:WITNESS)-[:TRANSMITTED {hypothesis:'" +
-                        stemmaTitle + "'}]->(b:WITNESS) RETURN a.sigil, b.sigil");
+                        stemmaTitle + "'}]->(b:WITNESS) RETURN a, b");
                 while (txEdges.hasNext()) {
                     Map<String, Object> vector = txEdges.next();
-                    String source = vector.get("a.sigil").toString();
-                    String target = vector.get("b.sigil").toString();
-                    outputRelationships += String.format("\t%s %s %s;\n", source, edgeGlyph, target);
+                    String source = sigilDotString((Node) vector.get("a"));
+                    String target = sigilDotString((Node) vector.get("b"));
+                    outputLines.add(String.format("\t%s %s %s;", source, edgeGlyph, target));
                 }
             } else {
                 // We have an archetype; start there and traverse the graph.
                 Node stemmaRoot = foundRoots.get(0);  // There should be only one.
-                for (Vector v : traverseStemma(startNodeStemma, stemmaRoot)) {
-                    outputRelationships += String.format("\t%s %s %s;\n", v.source(), edgeGlyph, v.target());
+                for (String edge : traverseStemma(startNodeStemma, stemmaRoot)) {
+                    String[] v = edge.split(" : ");
+                    outputLines.add(String.format("\t%s %s %s;", v[0], edgeGlyph, v[1]));
                 }
             }
-            output = outputNodes + outputRelationships + "}\n";
-
+            outputLines.add("}");
             tx.success();
         }
 
+        String joinString = singleLine ? " " : "\n";
+        String output = String.join(joinString, outputLines);
         // writePNGFromDot(output,"upload/file");
         writeSVGFromDot(output, "upload/file");
 
         return Response.ok(output).build();
     }
 
+    // Helper function to get the correctly-quote sigil for a Witness node.
+    private static String sigilDotString(Node witness) {
+        String witnessSigil = witness.getProperty("sigil").toString();
+        if (witness.hasProperty("quotesigil") && (Boolean) witness.getProperty("quotesigil"))
+            witnessSigil = String.format("\"%s\"", witnessSigil);
+        return witnessSigil;
+    }
+
+    public Response parseNeo4JStemma(String tradId, String stemmaTitle) {
+        return parseNeo4JStemma(tradId, stemmaTitle, false);
+    }
+
+    /**
+     * Returns all the stemmata associated with a tradition, in a format
+     * suitable for inclusion in an XML file.
+     *
+     * @param tradId
+     * @return
+     */
     public String getAllStemmataAsDot(String tradId) {
-        String dot = "";
+        ArrayList<String> stemmaList = new ArrayList<>();
 
         try(Transaction tx = db.beginTx()) {
             //ExecutionEngine engine = new ExecutionEngine(db);
@@ -188,19 +216,19 @@ public class Neo4JToDotParser
             Iterator<Node> stemmata = result.columnAs("s");
             while(stemmata.hasNext()) {
                 String stemma = stemmata.next().getProperty("name").toString();
-                Response resp = parseNeo4JStemma(tradId, stemma);
+                Response resp = parseNeo4JStemma(tradId, stemma, true);
 
-                dot = dot + resp.getEntity();
+                stemmaList.add(resp.getEntity().toString());
             }
             tx.success();
         }
 
-        return dot;
+        return String.join("\n", stemmaList);
     }
 
-    private Set<Vector> traverseStemma(Node stemma, Node archetype) {
+    private Set<String> traverseStemma(Node stemma, Node archetype) {
         String stemmaName = (String) stemma.getProperty("name");
-        Set<Vector> allPaths = new HashSet<>();
+        Set<String> allPaths = new HashSet<>();
 
         // We need to traverse only those paths that belong to this stemma.
         PathExpander e = new PathExpander() {
@@ -231,31 +259,15 @@ public class Neo4JToDotParser
             Node sourceNode = orderedNodes.next();
             while (orderedNodes.hasNext()) {
                 Node targetNode = orderedNodes.next();
-                String source = (String) sourceNode.getProperty("sigil");
-                String target = (String) targetNode.getProperty("sigil");
-                allPaths.add(new Vector(source, target));
+                String source = sigilDotString(sourceNode);
+                String target = sigilDotString(targetNode);
+                allPaths.add(String.format("%s : %s", source, target));
                 sourceNode = targetNode;
             }
         }
         return allPaths;
     }
 
-    private final class Vector {
-        String x;
-        String y;
-
-        public Vector(String from, String to) {
-            x = from;
-            y = to;
-        }
-
-        public String source() {
-            return x;
-        }
-        public String target() {
-            return y;
-        }
-    }
 
     private void write(String str) throws IOException
     {

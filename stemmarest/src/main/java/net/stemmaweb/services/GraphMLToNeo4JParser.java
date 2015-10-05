@@ -224,7 +224,9 @@ public class GraphMLToNeo4JParser implements IResource
             // Create the witness nodes
             for (String sigil: witnesses.keySet()) {
                 Node witnessNode = db.createNode(Nodes.WITNESS);
+                // TODO see if the sigil will need to be quoted in DOT files
                 witnessNode.setProperty("sigil", sigil);
+                witnessNode.setProperty("hypothetical", false);
                 traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
             }
 

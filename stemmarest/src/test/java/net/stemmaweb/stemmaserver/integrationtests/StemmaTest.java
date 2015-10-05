@@ -21,6 +21,7 @@ import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 import org.junit.After;
 import org.junit.Before;
@@ -227,7 +228,7 @@ public class StemmaTest {
                 .get(String.class);
 
         // Parse the resulting stemma and make sure it matches
-        assertStemmasEquivalent(input, str);
+        Util.assertStemmasEquivalent(input, str);
     }
 
     @Test
@@ -409,64 +410,6 @@ public class StemmaTest {
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse2.getStatus());
 
             tx.success();
-        }
-    }
-
-    // TODO add tests to check all the possible stemma creation/edition return paths
-
-    // Helper method
-    public static void assertStemmasEquivalent (String expected, String actual) {
-        StringBuffer expectedStream = new StringBuffer(expected);
-        StringBuffer actualStream = new StringBuffer(actual);
-
-        Parser p = new Parser();
-        try {
-            p.parse(expectedStream);
-        } catch (ParseException e) {
-            assertTrue(false);
-        }
-        ArrayList<Graph> expectedGraphs = p.getGraphs();
-
-        try {
-            p.parse(actualStream);
-        } catch (ParseException e) {
-            assertTrue(false);
-        }
-        ArrayList<Graph> actualGraphs = p.getGraphs();
-
-        assertEquals(expectedGraphs.size(), actualGraphs.size());
-
-        // Now check the contents of each graph
-        int i = 0;
-        while(i < expectedGraphs.size()) {
-
-            Graph expectedStemma = expectedGraphs.get(i);
-            Graph actualStemma = actualGraphs.get(i);
-
-            assertEquals(expectedStemma.getType(), actualStemma.getType());  // Same [di]graph declaration
-
-            // Now check for the expected nodes
-            HashSet<String> expectedNodes = new HashSet<>();
-            expectedStemma.getNodes(false).forEach(e -> expectedNodes.add(e.getId().getId()));
-            HashSet<String> actualNodes = new HashSet<>();
-            actualStemma.getNodes(false).forEach(e -> actualNodes.add(e.getId().getId()));
-            assertEquals(expectedNodes.size(), actualNodes.size());
-            for (String graphNode : actualNodes) {
-                assertTrue(expectedNodes.contains(graphNode));
-            }
-
-            // ...and the expected edges. Just count them for now; comparison is complicated
-            // for undirected graphs.
-            HashSet<String> expectedEdges = new HashSet<>();
-            expectedStemma.getEdges().forEach(e -> expectedNodes.add(
-                    e.getSource().getNode().getId().getId() + " - " +
-                            e.getTarget().getNode().getId().getId()));
-            HashSet<String> actualEdges = new HashSet<>();
-            actualStemma.getEdges().forEach(e -> actualNodes.add(
-                    e.getSource().getNode().getId().getId() + " - " +
-                            e.getTarget().getNode().getId().getId()));
-            assertEquals(expectedEdges.size(), actualEdges.size());
-            i++;
         }
     }
 

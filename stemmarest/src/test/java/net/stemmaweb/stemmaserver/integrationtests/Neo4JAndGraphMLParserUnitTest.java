@@ -23,6 +23,7 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.After;
@@ -403,7 +404,7 @@ public class Neo4JAndGraphMLParserUnitTest {
                 .path("/stemma/newstemma/intradition/" + traditionId)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, newStemma);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // Merge a couple of nodes - TODO why does Cypher not return both instances of πνεύματος?
         Node blasphemias;
@@ -522,6 +523,14 @@ public class Neo4JAndGraphMLParserUnitTest {
         assertEquals(8, relations.size());
 
         // Check for the existence of the stemma
+        List<String> stemmata = jerseyTest
+                .resource()
+                .path("/stemma/getallstemmata/fromtradition/" + traditionId)
+                .get(new GenericType<List<String>>() {
+                });
+        assertEquals(1, stemmata.size());
+
+        Util.assertStemmasEquivalent(newStemma, stemmata.get(0));
 
         // Check for the correct language setting
     }
