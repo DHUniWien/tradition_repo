@@ -1,7 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -18,13 +18,7 @@ import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.Neo4JToDotParser;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.*;
 
 /**
  * Comprises all the api calls related to a stemma.
@@ -55,26 +49,22 @@ public class Stemma implements IResource {
         // check if tradition exists
         if(DatabaseService.getStartNode(tradId, db)!=null)
         {
-            try(Transaction tx = db.beginTx())
-            {
-            // find all stemmata associated with this tradition
-            Result result = db.execute("match (t:TRADITION {id:'"+ tradId
-                    +"'})-[:STEMMA]->(s:STEMMA) return s");
+            try(Transaction tx = db.beginTx()) {
+                // find all stemmata associated with this tradition
+                Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+                ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+                Neo4JToDotParser parser = new Neo4JToDotParser(db);
+                ArrayList<String> stemmataList = new ArrayList<>();
+                for (Node stemma : stemmata) {
+                    System.out.println(stemma.getProperty("name"));
+                    Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name")
+                            .toString());
+                    String dot = (String) localResp.getEntity();
+                    stemmataList.add(dot);
+                }
 
-            Iterator<Node> stemmata = result.columnAs("s");
-            Neo4JToDotParser parser = new Neo4JToDotParser(db);
-            ArrayList<String> stemmataList = new ArrayList<>();
-            while(stemmata.hasNext()) {
-                Node stemma = stemmata.next();
-                System.out.println(stemma.getProperty("name"));
-                Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name")
-                        .toString());
-                String dot = (String) localResp.getEntity();
-                stemmataList.add(dot);
-            }
-
-            resp = Response.ok(stemmataList).build();
-            tx.success();
+                resp = Response.ok(stemmataList).build();
+                tx.success();
             } catch (Exception e) {
                 resp = Response.status(Status.INTERNAL_SERVER_ERROR).build();
             }
@@ -115,7 +105,7 @@ public class Stemma implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response setStemma(@PathParam("tradId") String tradId, String dot) {
         DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        Response resp = parser.parseDot(dot,tradId);
+        Response resp = parser.importStemmaFromDot(dot, tradId, false);
 
         return resp;
     }
@@ -140,113 +130,32 @@ public class Stemma implements IResource {
 
         try (Transaction tx = db.beginTx())
         {
-            Result result1 = db.execute("match (t:TRADITION {id:'"+ tradId
-                    + "'})-[:STEMMA]->(n:STEMMA { name:'" + stemmaTitle +"'}) return n");
-            Iterator<Node> stNodes = result1.columnAs("n");
-
-            if(!stNodes.hasNext()) {
+            // Get the stemma and the witness
+            Result foundStemma = db.execute("match (:TRADITION {id:'" + tradId
+                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + stemmaTitle
+                    + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
+            if(!foundStemma.hasNext()) {
                 return Response.status(Status.NOT_FOUND).build();
             }
+            Map<String, Object> queryRow = foundStemma.next();
+            Node stemma    = (Node) queryRow.get("s");
+            Node archetype = (Node) queryRow.get("w");
 
-            Node startNodeStemma = stNodes.next();
-            String stemmaType = startNodeStemma.getProperty("type").toString();
+            // Delete its current HAS_ARCHETYPE, if any
+            Relationship currentArchetype = stemma.getSingleRelationship(ERelations.HAS_ARCHETYPE, Direction.OUTGOING);
+            if (currentArchetype != null)
+                currentArchetype.delete();
 
-            Result result2 = db.execute("match (s:STEMMA { name:'"+ stemmaTitle
-                    + "'})-[:STEMMA*..]-(w:WITNESS { id:'" + nodeId + "'}) return w");
-            Iterator<Node> nodes = result2.columnAs("w");
+            // Set the new archetype
+            stemma.createRelationshipTo(archetype, ERelations.HAS_ARCHETYPE);
+            // and make sure the stemma is directed.
+            stemma.setProperty("directed", true);
 
-            if(!nodes.hasNext()) {
-                return Response.status(Status.NOT_FOUND).build();
-            }
-
-            Node newRootNode = nodes.next();
-
-            if(stemmaType.equals("digraph"))
-                resp = reorientDigraph(newRootNode, startNodeStemma);
-            else
-                resp = reorientGraph(newRootNode, startNodeStemma);
         tx.success();
         }
         resp = getStemma(tradId, stemmaTitle);
         return resp;
 
     }
-
-    /**
-     * Reorients a directed Graph: Searches the path to the new RootNode; reverse the
-     * relationships; changes the first relationship
-     *
-     * @param newRootNode
-     * @param startNodeStemma
-     * @return
-     */
-    private Response reorientDigraph(Node newRootNode, Node startNodeStemma) {
-
-        Iterator<Relationship> stRels = startNodeStemma.getRelationships().iterator();
-
-        if(!stRels.hasNext()) {
-            return Response.status(Status.NOT_FOUND).build();
-        }
-
-        String  actualRootNodeId = stRels.next().getEndNode().getProperty("id").toString();
-
-        if(actualRootNodeId.equals(newRootNode.getProperty("id").toString())) {
-                return Response.ok().build();
-        }
-
-        ArrayList<Relationship> pathRels = new ArrayList<>();
-
-        for (Relationship rel : db.traversalDescription().breadthFirst()
-                .relationships(ERelations.STEMMA, Direction.INCOMING)
-                .uniqueness(Uniqueness.NODE_GLOBAL)
-                .traverse(newRootNode).relationships()) {
-
-            pathRels.add(rel);
-
-            if(rel.getStartNode().getProperty("id").toString().equals(actualRootNodeId))
-                break;
-
-        }
-
-        for(Relationship rela : pathRels) {
-
-            Node startNode = rela.getStartNode();
-            Node endNode = rela.getEndNode();
-
-            rela.delete();
-
-            endNode.createRelationshipTo(startNode,ERelations.STEMMA);
-        }
-
-        reorientGraph(newRootNode, startNodeStemma);
-
-        return Response.ok().build();
-
-    }
-
-    /**
-     * Reorients an undirected graph: deletes first relationship to node and exchange with a
-     * relationship to the new root node
-     *
-     * @param newRootNode
-     * @param startNodeStemma
-     * @return
-     */
-    private Response reorientGraph(Node newRootNode, Node startNodeStemma) {
-
-        Iterator<Relationship> rels = startNodeStemma.getRelationships().iterator();
-
-        if(!rels.hasNext()) {
-            return Response.status(Status.NOT_FOUND).build();
-        }
-
-        Relationship rootRel = rels.next();
-
-        rootRel.delete();
-
-        startNodeStemma.createRelationshipTo(newRootNode,ERelations.STEMMA);
-        return Response.ok().build();
-    }
-
 
 }

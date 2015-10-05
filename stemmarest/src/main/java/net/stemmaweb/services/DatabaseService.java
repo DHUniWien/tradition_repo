@@ -1,11 +1,9 @@
 package net.stemmaweb.services;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import net.stemmaweb.rest.Nodes;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 /**
  * Helper methods for the database
@@ -65,6 +63,24 @@ public class DatabaseService {
             tx.success();
         }
     }
+
+    /**
+     * This method can be used to get the list of nodes connected to a given
+     * node via a given relation.
+     *
+     * @param startNode
+     * @param relType
+     * @return ArrayList<Node> result
+     */
+    public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
+        ArrayList<Node> result = new ArrayList<>();
+        Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
+        while (allRels.hasNext()) {
+            result.add(allRels.next().getEndNode());
+        }
+        return result;
+    }
+
 
     /**
      * This method can be used to determine whether a user with given Id exists

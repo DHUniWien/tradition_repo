@@ -1,16 +1,20 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.alexmerz.graphviz.ParseException;
+import com.alexmerz.graphviz.Parser;
+import com.alexmerz.graphviz.objects.Edge;
+import com.alexmerz.graphviz.objects.Graph;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Stemma;
@@ -120,13 +124,13 @@ public class StemmaTest {
         assertEquals(2, stemmata.size());
 
         String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "
-                + "A [ class=hypothetical ];  B [ class=hypothetical ];  "
-                + "C [ class=hypothetical ]; 0 -> A;  0 -> B;  A -> C; }";
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; }";
         assertEquals(expected, stemmata.get(0));
 
         String expected2 = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  "
-                + "A [ class=hypothetical ];  B [ class=hypothetical ];  "
-                + "C [ class=hypothetical ]; 0 -- A;  A -- B;  B -- C; }";
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; }";
         assertEquals(expected2, stemmata.get(1));
     }
 
@@ -163,8 +167,8 @@ public class StemmaTest {
                 .get(String.class);
 
         String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "
-                + "A [ class=hypothetical ];  B [ class=hypothetical ];  "
-                + "C [ class=hypothetical ]; 0 -> A;  0 -> B;  A -> C; }";
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; }";
         assertEquals(expected, str);
 
         String stemmaTitle2 = "Semstem 1402333041_0";
@@ -175,8 +179,8 @@ public class StemmaTest {
                 .get(String.class);
 
         String expected2 = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  "
-                + "A [ class=hypothetical ];  B [ class=hypothetical ];  "
-                + "C [ class=hypothetical ]; 0 -- A;  A -- B;  B -- C; }";
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; }";
         assertEquals(expected2, str2);
 
         ClientResponse getStemmaResponse = jerseyTest
@@ -198,16 +202,14 @@ public class StemmaTest {
             tx.success();
         }
 
-        String input = "graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  "
-                + "A [ class=hypothetical ];  B [ class=hypothetical ];  "
-                + "C [ class=hypothetical ]; 0 -- A;  A -- B;  B -- C; }";
+        String input = "graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}";
 
         ClientResponse actualStemmaResponse = jerseyTest
                 .resource()
                 .path("/stemma/newstemma/intradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, input);
-        assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
             Result result2 = db.execute("match (t:TRADITION {id:'" + tradId +
@@ -224,7 +226,8 @@ public class StemmaTest {
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
-        assertEquals(input, str);
+        // Parse the resulting stemma and make sure it matches
+        assertStemmasEquivalent(input, str);
     }
 
     @Test
@@ -237,7 +240,7 @@ public class StemmaTest {
                 .path("/stemma/newstemma/intradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, emptyInput);
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), actualStemmaResponse.getStatus());
     }
 
     @Test
@@ -249,16 +252,15 @@ public class StemmaTest {
 
         try (Transaction tx = db.beginTx()) {
             Result result1 = db.execute("match (t:TRADITION {id:'" +
-                    tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" +
+                    tradId + "'})-[:HAS_STEMMA]->(n:STEMMA { name:'" +
                     stemmaTitle + "'}) return n");
             Iterator<Node> stNodes = result1.columnAs("n");
             assertTrue(stNodes.hasNext());
             Node startNodeStemma = stNodes.next();
 
             Iterable<Relationship> rel1 = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.STEMMA);
-            assertTrue(rel1.iterator().hasNext());
-            assertEquals("0", rel1.iterator().next().getEndNode().getProperty("id").toString());
+                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
+            assertFalse(rel1.iterator().hasNext());
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
@@ -269,9 +271,9 @@ public class StemmaTest {
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
 
             Iterable<Relationship> rel2 = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.STEMMA);
+                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
             assertTrue(rel2.iterator().hasNext());
-            assertEquals(newNodeId, rel2.iterator().next().getEndNode().getProperty("id").toString());
+            assertEquals(newNodeId, rel2.iterator().next().getEndNode().getProperty("sigil").toString());
 
             ClientResponse actualStemmaResponseSecond = jerseyTest
                     .resource()
@@ -323,16 +325,16 @@ public class StemmaTest {
 
         try (Transaction tx = db.beginTx()) {
             Result result1 = db.execute("match (t:TRADITION {id:'" +
-                    tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" +
+                    tradId + "'})-[:HAS_STEMMA]->(n:STEMMA { name:'" +
                     stemmaTitle + "'}) return n");
             Iterator<Node> stNodes = result1.columnAs("n");
             assertTrue(stNodes.hasNext());
             Node startNodeStemma = stNodes.next();
 
             Iterable<Relationship> relBevor = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.STEMMA);
+                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
             assertTrue(relBevor.iterator().hasNext());
-            assertEquals("0", relBevor.iterator().next().getEndNode().getProperty("id").toString());
+            assertEquals("0", relBevor.iterator().next().getEndNode().getProperty("sigil").toString());
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
@@ -343,9 +345,9 @@ public class StemmaTest {
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
 
             Iterable<Relationship> relAfter = startNodeStemma
-                    .getRelationships(Direction.OUTGOING, ERelations.STEMMA);
+                    .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
             assertTrue(relAfter.iterator().hasNext());
-            assertEquals(relAfter.iterator().next().getEndNode().getProperty("id").toString(),
+            assertEquals(relAfter.iterator().next().getEndNode().getProperty("sigil").toString(),
                     newNodeId);
 
             tx.success();
@@ -407,6 +409,64 @@ public class StemmaTest {
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse2.getStatus());
 
             tx.success();
+        }
+    }
+
+    // TODO add tests to check all the possible stemma creation/edition return paths
+
+    // Helper method
+    public static void assertStemmasEquivalent (String expected, String actual) {
+        StringBuffer expectedStream = new StringBuffer(expected);
+        StringBuffer actualStream = new StringBuffer(actual);
+
+        Parser p = new Parser();
+        try {
+            p.parse(expectedStream);
+        } catch (ParseException e) {
+            assertTrue(false);
+        }
+        ArrayList<Graph> expectedGraphs = p.getGraphs();
+
+        try {
+            p.parse(actualStream);
+        } catch (ParseException e) {
+            assertTrue(false);
+        }
+        ArrayList<Graph> actualGraphs = p.getGraphs();
+
+        assertEquals(expectedGraphs.size(), actualGraphs.size());
+
+        // Now check the contents of each graph
+        int i = 0;
+        while(i < expectedGraphs.size()) {
+
+            Graph expectedStemma = expectedGraphs.get(i);
+            Graph actualStemma = actualGraphs.get(i);
+
+            assertEquals(expectedStemma.getType(), actualStemma.getType());  // Same [di]graph declaration
+
+            // Now check for the expected nodes
+            HashSet<String> expectedNodes = new HashSet<>();
+            expectedStemma.getNodes(false).forEach(e -> expectedNodes.add(e.getId().getId()));
+            HashSet<String> actualNodes = new HashSet<>();
+            actualStemma.getNodes(false).forEach(e -> actualNodes.add(e.getId().getId()));
+            assertEquals(expectedNodes.size(), actualNodes.size());
+            for (String graphNode : actualNodes) {
+                assertTrue(expectedNodes.contains(graphNode));
+            }
+
+            // ...and the expected edges. Just count them for now; comparison is complicated
+            // for undirected graphs.
+            HashSet<String> expectedEdges = new HashSet<>();
+            expectedStemma.getEdges().forEach(e -> expectedNodes.add(
+                    e.getSource().getNode().getId().getId() + " - " +
+                            e.getTarget().getNode().getId().getId()));
+            HashSet<String> actualEdges = new HashSet<>();
+            actualStemma.getEdges().forEach(e -> actualNodes.add(
+                    e.getSource().getNode().getId().getId() + " - " +
+                            e.getTarget().getNode().getId().getId()));
+            assertEquals(expectedEdges.size(), actualEdges.size());
+            i++;
         }
     }
 

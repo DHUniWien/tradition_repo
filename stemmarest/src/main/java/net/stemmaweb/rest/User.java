@@ -131,7 +131,7 @@ public class User implements IResource {
                 for (Node currentNode : db.traversalDescription()
                         .depthFirst()
                         .relationships(ERelations.OWNS_TRADITION, Direction.OUTGOING)
-                        .relationships(ERelations.STEMMA, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
                         .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(node)

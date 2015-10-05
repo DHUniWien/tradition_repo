@@ -1,14 +1,10 @@
 package net.stemmaweb.services;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
+import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -16,15 +12,9 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.Evaluator;
+import net.stemmaweb.rest.Nodes;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
@@ -46,7 +36,7 @@ public class Neo4JToDotParser
     {
         String filename = "upload/output.dot";
 
-        Node startNode = DatabaseService.getStartNode(tradId,db);
+        Node startNode = DatabaseService.getStartNode(tradId, db);
 
         try (Transaction tx = db.beginTx()) {
             if(startNode==null) {
@@ -110,8 +100,8 @@ public class Neo4JToDotParser
                     .build();
         }
 
-        writePNGFromDotFile(filename,"upload/file");
-        writeSVGFromDotFile(filename,"upload/file");
+        // writePNGFromDotFile(filename,"upload/file");
+        // writeSVGFromDotFile(filename,"upload/file");
 
         return Response.ok().build();
     }
@@ -129,79 +119,59 @@ public class Neo4JToDotParser
         String output;
         String outputNodes="";
         String outputRelationships="";
-        ArrayList<Node> nodes = new ArrayList<>();
-        ArrayList<Relationship> relationships = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (t:TRADITION {id:'"+
-                            tradId + "'})-[:STEMMA]->(n:STEMMA { name:'" +
-                            stemmaTitle +"'}) return n");
-            Iterator<Node> stNodes = result.columnAs("n");
-
-
-            if(!stNodes.hasNext()) {
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            Node startNodeStemma = null;
+            for (Node stemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
+                if (stemma.getProperty("name").equals(stemmaTitle)) {
+                    startNodeStemma = stemma;
+                    break;
+                }
+            }
+            if(startNodeStemma == null) {
                 return Response.status(Status.NOT_FOUND).build();
             }
-            Node startNodeStemma = stNodes.next();
-            String stemmaType = startNodeStemma.getProperty("type").toString();
 
+            String stemmaType = (Boolean) startNodeStemma.getProperty("directed") ? "digraph" : "graph";
+            String edgeGlyph = (Boolean) startNodeStemma.getProperty("directed") ? "->" : "--";
+            outputNodes += String.format("%s \"%s\" {\n", stemmaType, stemmaTitle);
 
-            if(stemmaType.equals("digraph")) {
-                outputNodes += "digraph \"" + stemmaTitle + "\" {";
+            // Output all the nodes associated with this stemma.
+            for (Node witness : DatabaseService.getRelated(startNodeStemma, ERelations.HAS_WITNESS)) {
+                Boolean witnessExists = !(witness.hasProperty("hypothetical")
+                        && (Boolean) witness.getProperty("hypothetical"));
+                String witnessClass = witnessExists ? "extant" : "hypothetical";
+                outputNodes += String.format("\t%s [class=%s];\n", witness.getProperty("sigil"), witnessClass);
+            }
+
+            // Now output all the edges associated with this stemma, starting with the
+            // archetype if we have one.
+            ArrayList<Node> foundRoots = DatabaseService.getRelated(startNodeStemma, ERelations.HAS_ARCHETYPE);
+            if (foundRoots.isEmpty()) {
+                // No archetype; just output the list of edges in any order.
+                Result txEdges = db.execute("MATCH (a:WITNESS)-[:TRANSMITTED {hypothesis:'" +
+                        stemmaTitle + "'}]->(b:WITNESS) RETURN a.sigil, b.sigil");
+                while (txEdges.hasNext()) {
+                    Map<String, Object> vector = txEdges.next();
+                    String source = vector.get("a.sigil").toString();
+                    String target = vector.get("b.sigil").toString();
+                    outputRelationships += String.format("\t%s %s %s;\n", source, edgeGlyph, target);
+                }
             } else {
-                outputNodes += "graph \"" + stemmaTitle + "\" {";
-            }
-
-
-            Evaluator e = new Evaluator(){
-                @Override
-                public Evaluation evaluate(org.neo4j.graphdb.Path path) {
-
-                    if (path.length() == 0) {
-                        return Evaluation.EXCLUDE_AND_CONTINUE;
-                    }
-
-                    boolean includes = (path.endNode().hasProperty("class"));
-
-                    return Evaluation.of(includes, includes);
-                }
-            };
-
-            for (Path path : db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.STEMMA)
-                    .evaluator(e)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNodeStemma)) {
-
-                if(!nodes.contains(path.endNode())) {
-                    nodes.add(path.endNode());
+                // We have an archetype; start there and traverse the graph.
+                Node stemmaRoot = foundRoots.get(0);  // There should be only one.
+                for (Vector v : traverseStemma(startNodeStemma, stemmaRoot)) {
+                    outputRelationships += String.format("\t%s %s %s;\n", v.source(), edgeGlyph, v.target());
                 }
             }
-            for(Node n : nodes) {
-                outputNodes += "  " + n.getProperty("id").toString() +
-                        " [ class=" + n.getProperty("class").toString() + " ];";
-                Iterable<Relationship> rels = n.getRelationships();
-
-                for(Relationship rel: rels){
-                    if(!relationships.contains(rel)) {
-                        relationships.add(rel);
-                    }
-                }
-            }
-            for(Relationship rel: relationships) {
-                if(rel.getStartNode().hasProperty("id")) {
-                    String sign = (stemmaType.equals("digraph")) ? " -> " : " -- ";
-                    outputRelationships += " " + rel.getStartNode().getProperty("id") + sign +
-                                rel.getEndNode().getProperty("id") + "; ";
-                }
-            }
-            output = outputNodes + outputRelationships + "}";
+            output = outputNodes + outputRelationships + "}\n";
 
             tx.success();
         }
 
-        writePNGFromDot(output,"upload/file");
-        writeSVGFromDot(output,"upload/file");
+        // writePNGFromDot(output,"upload/file");
+        writeSVGFromDot(output, "upload/file");
 
         return Response.ok(output).build();
     }
@@ -213,7 +183,7 @@ public class Neo4JToDotParser
             //ExecutionEngine engine = new ExecutionEngine(db);
             // find all Stemmata associated with this tradition
             Result result = db.execute("match (t:TRADITION {id:'"+ tradId +
-                    "'})-[:STEMMA]->(s:STEMMA) return s");
+                    "'})-[:HAS_STEMMA]->(s:STEMMA) return s");
 
             Iterator<Node> stemmata = result.columnAs("s");
             while(stemmata.hasNext()) {
@@ -226,6 +196,65 @@ public class Neo4JToDotParser
         }
 
         return dot;
+    }
+
+    private Set<Vector> traverseStemma(Node stemma, Node archetype) {
+        String stemmaName = (String) stemma.getProperty("name");
+        Set<Vector> allPaths = new HashSet<>();
+
+        // We need to traverse only those paths that belong to this stemma.
+        PathExpander e = new PathExpander() {
+            @Override
+            public Iterable<Relationship> expand(Path path, BranchState branchState) {
+                ArrayList<Relationship> goodPaths = new ArrayList<>();
+                Iterator<Relationship> stemmaLinks = path.endNode()
+                        .getRelationships(ERelations.TRANSMITTED, Direction.BOTH).iterator();
+                while(stemmaLinks.hasNext()) {
+                    Relationship link = stemmaLinks.next();
+                    if (link.getProperty("hypothesis").equals(stemmaName)) {
+                        goodPaths.add(link);
+                    }
+                }
+                return goodPaths;
+            }
+
+            @Override
+            public PathExpander reverse() {
+                return null;
+            }
+        };
+        for (Path nodePath: db.traversalDescription().breadthFirst()
+                .expand(e)
+                .uniqueness(Uniqueness.NODE_PATH)
+                .traverse(archetype)) {
+            Iterator<Node> orderedNodes = nodePath.nodes().iterator();
+            Node sourceNode = orderedNodes.next();
+            while (orderedNodes.hasNext()) {
+                Node targetNode = orderedNodes.next();
+                String source = (String) sourceNode.getProperty("sigil");
+                String target = (String) targetNode.getProperty("sigil");
+                allPaths.add(new Vector(source, target));
+                sourceNode = targetNode;
+            }
+        }
+        return allPaths;
+    }
+
+    private final class Vector {
+        String x;
+        String y;
+
+        public Vector(String from, String to) {
+            x = from;
+            y = to;
+        }
+
+        public String source() {
+            return x;
+        }
+        public String target() {
+            return y;
+        }
     }
 
     private void write(String str) throws IOException
@@ -246,26 +275,6 @@ public class Neo4JToDotParser
         gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
     }
 
-    private void writePNGFromDotFile(String inFile, String outFile)
-    {
-        String everything = "";
-        try(BufferedReader br = new BufferedReader(new FileReader(inFile))) {
-            StringBuilder sb = new StringBuilder();
-            String line = br.readLine();
-
-            while (line != null) {
-                sb.append(line);
-                sb.append(System.lineSeparator());
-                line = br.readLine();
-            }
-            everything = sb.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        writePNGFromDot(everything, outFile);
-    }
-
     private void writeSVGFromDot(String dot, String outFile)
     {
         GraphViz gv = new GraphViz();
@@ -276,26 +285,6 @@ public class Neo4JToDotParser
         File out = new File(outFile + "." + type);   // Linux
 //	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
         gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
-    }
-
-    private void writeSVGFromDotFile(String inFile, String outFile)
-    {
-        String everything = "";
-        try(BufferedReader br = new BufferedReader(new FileReader(inFile))) {
-            StringBuilder sb = new StringBuilder();
-            String line = br.readLine();
-
-            while (line != null) {
-                sb.append(line);
-                sb.append(System.lineSeparator());
-                line = br.readLine();
-            }
-            everything = sb.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        writeSVGFromDot(everything, outFile);
     }
 
 }

@@ -26,11 +26,8 @@ import javax.xml.stream.XMLStreamException;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.services.Neo4JToDotParser;
-import net.stemmaweb.services.Neo4JToGraphMLParser;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -270,7 +267,7 @@ public class Tradition implements IResource {
                 for (Node currentNode : db.traversalDescription()
                         .depthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                        .relationships(ERelations.STEMMA, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
                         .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(node)

@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.util.*;
 
 import javax.ws.rs.core.Response;
-import javax.xml.namespace.QName;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -18,7 +17,6 @@ import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * This class provides a method for importing GraphMl (XML) File into Neo4J
@@ -255,7 +253,7 @@ public class GraphMLToNeo4JParser implements IResource
 
         for(String graph : graphs) {
             DotToNeo4JParser parser = new DotToNeo4JParser(db);
-            parser.parseDot(graph, last_inserted_id + "");
+            parser.importStemmaFromDot(graph, last_inserted_id + "", false);
         }
 
         return Response.status(Response.Status.OK)
