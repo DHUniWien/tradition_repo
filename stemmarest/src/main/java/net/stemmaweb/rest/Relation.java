@@ -142,25 +142,21 @@ public class Relation implements IResource {
                         .build();
             }
 
-            if (wouldProduceCrossRelationship(readingA, readingB))
-                return Response.status(Status.CONFLICT)
-                        .entity("This relationship creation is not allowed. Would produce cross-relationship.")
-                        .build();
-
-            if (!relationshipModel.getType().equals("transposition")
-                    && !relationshipModel.getType().equals("repetition")) {
-
-                if (wouldProduceCrossRelationship(readingA, readingB))
-                    return Response.status(Status.CONFLICT)
-                            .entity("This relationship creation is not allowed. Would produce cross-relationship.")
-                            .build();
-                if (ReadingService.wouldGetCyclic(db, readingA, readingB)) {
+            if (ReadingService.wouldGetCyclic(db, readingA, readingB)) {
+                if (!relationshipModel.getType().equals("transposition") &&
+                        !relationshipModel.getType().equals("repetition")) {
                     return Response
                             .status(Status.CONFLICT)
                             .entity("This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.")
                             .build();
                 }
-            }
+            } else if (relationshipModel.getType().equals("transposition")
+                    || relationshipModel.getType().equals("repetition")) {
+                return Response
+                        .status(Status.CONFLICT)
+                        .entity("This relationship creation is not allowed. The two readings can be aligned.")
+                        .build();
+            } // TODO add constraints about witness uniqueness or lack thereof
 
             relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
@@ -210,49 +206,6 @@ public class Relation implements IResource {
                         (reading.hasProperty("is_end") && reading.getProperty("is_end").equals("1"))
                 )) {
             return true;
-        }
-        return false;
-    }
-
-    /**
-     * Checks if a relationship between the two nodes specified would produce a
-     * cross-relationship. A cross relationship is a relationship that
-     * crosses another one created before which is not allowed.
-     *
-     * @param firstReading
-     * @param secondReading
-     * @return
-     */
-    private boolean wouldProduceCrossRelationship(Node firstReading, Node secondReading) {
-        Long firstRank = Long.parseLong(firstReading.getProperty("rank").toString());
-        Long secondRank = Long.parseLong(secondReading.getProperty("rank").toString());
-        Direction firstDirection, secondDirection;
-
-        if (firstRank > secondRank) {
-            firstDirection = Direction.INCOMING;
-            secondDirection = Direction.OUTGOING;
-        } else {
-            firstDirection = Direction.OUTGOING;
-            secondDirection = Direction.INCOMING;
-        }
-
-        int depth = (int) Math.abs((Long.parseLong(firstReading.getProperty("rank").toString())
-                - (Long.parseLong( secondReading.getProperty("rank").toString())))) + 1;
-
-        for (Node firstReadingNextNode : getNextNodes(firstReading, firstDirection, depth)) {
-            for (Relationship rel : firstReadingNextNode.getRelationships(ERelations.RELATED)) {
-                String type = rel.getProperty("type").toString();
-                if (!(type.equals("transposition")) || type.equals("repetition")) {
-//                if (!rel.getProperty("type").equals("transposition")
-//                        && !rel.getProperty("type").equals("repetition")) {
-                    for (Node secondReadingNextNode : getNextNodes(secondReading, secondDirection,
-                            depth)) {
-                        if (rel.getOtherNode(firstReadingNextNode).equals(secondReadingNextNode)) {
-                            return true;
-                        }
-                    }
-                }
-            }
         }
         return false;
     }

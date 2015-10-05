@@ -373,11 +373,11 @@ public class Reading implements IResource {
      */
     private boolean canBeMerged(Node stayingReading, Node deletingReading) {
         /**
-        if (!doContainSameText(stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged do not contain the same text";
-            return false;
-        }
-        */
+         if (!doContainSameText(stayingReading, deletingReading)) {
+         errorMessage = "Readings to be merged do not contain the same text";
+         return false;
+         }
+         */
         if (containClassTwoRelationships(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged cannot contain class 2 relationships " +
                     "(transposition / repetition)";
@@ -385,8 +385,20 @@ public class Reading implements IResource {
         }
 
         if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged would make the graph cyclic";
-            return false;
+            // If the two readings are aligned, there is no need to test for cycles.
+            boolean aligned = false;
+            for (Relationship rel : stayingReading.getRelationships(ERelations.RELATED)) {
+                if (rel.getEndNode().equals(deletingReading)) {
+                    aligned = true;
+                    break;
+                }
+            }
+            if (!aligned) {
+                if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
+                    errorMessage = "Readings to be merged would make the graph cyclic";
+                    return false;
+                }
+            }
         }
 
         return true;
