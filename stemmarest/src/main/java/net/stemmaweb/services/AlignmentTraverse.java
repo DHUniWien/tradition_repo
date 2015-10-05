@@ -17,18 +17,6 @@ import java.util.stream.StreamSupport;
  */
 public class AlignmentTraverse implements PathExpander {
 
-    private class AlignmentIterable implements Iterable<Relationship> {
-        ArrayList<Relationship> relations;
-
-        public AlignmentIterable(ArrayList<Relationship> items) {
-            relations = items;
-        }
-        @Override
-        public Iterator<Relationship> iterator() {
-            return relations.iterator();
-        }
-    }
-
     public Iterable expand(Path path, BranchState state) {
         ArrayList<Relationship> relevantRelations = new ArrayList<Relationship>();
         // Get the sequence relationships
@@ -46,8 +34,7 @@ public class AlignmentTraverse implements PathExpander {
                 relevantRelations.add(r);
             }
         }
-        return new AlignmentIterable(relevantRelations);
-
+        return relevantRelations;
     }
 
     public PathExpander reverse() {
