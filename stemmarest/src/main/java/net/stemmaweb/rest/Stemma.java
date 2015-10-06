@@ -42,18 +42,16 @@ public class Stemma implements IResource {
     @Path("getallstemmata/fromtradition/{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllStemmata(@PathParam("tradId") String tradId) {
-        Response resp;
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        // make sure that the node exists
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
+        // find all stemmata associated with this tradition
+        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        ArrayList<String> stemmataList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            // find all stemmata associated with this tradition
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            // check if tradition exists
-            if (traditionNode == null) {
-                return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-            }
-            ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-            Neo4JToDotParser parser = new Neo4JToDotParser(db);
-            ArrayList<String> stemmataList = new ArrayList<>();
             for (Node stemma : stemmata) {
                 System.out.println(stemma.getProperty("name"));
                 Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name")
@@ -61,13 +59,9 @@ public class Stemma implements IResource {
                 String dot = (String) localResp.getEntity();
                 stemmataList.add(dot);
             }
-
-            resp = Response.ok(stemmataList).build();
-            tx.success();
-        } catch (Exception e) {
-            resp = Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return resp;
+
+        return Response.ok(stemmataList).build();
     }
 
     /**

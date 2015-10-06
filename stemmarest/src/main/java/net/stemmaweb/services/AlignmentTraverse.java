@@ -33,7 +33,7 @@ public class AlignmentTraverse implements PathExpander {
 
             @Override
             public PathExpander reverse() {
-                return null;
+                return new AlignmentTraverse();
             }
         };
     }

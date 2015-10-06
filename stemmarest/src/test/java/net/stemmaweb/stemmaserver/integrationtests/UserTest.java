@@ -97,7 +97,7 @@ public class UserTest {
             tx.success();
         }
 
-        String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
         ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
@@ -119,7 +119,7 @@ public class UserTest {
     @Test
     public void createConflictingUserTest(){
 
-        String jsonPayload = "{\"isAdmin\":0,\"id\":42}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":42}";
         ClientResponse dummyJSON = jerseyTest.resource().path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
         ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
@@ -137,7 +137,7 @@ public class UserTest {
     public void getUserTest(){
         UserModel userModel = new UserModel();
         userModel.setId("43");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
                 .path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON)
@@ -148,7 +148,7 @@ public class UserTest {
                 .path("/user/getuser/withid/43")
                 .get(UserModel.class);
         assertEquals("43",actualResponse.getId());
-        assertEquals("0",actualResponse.getIsAdmin());
+        assertEquals("user",actualResponse.getRole());
 
 
     }
@@ -176,7 +176,7 @@ public class UserTest {
          */
         UserModel userModel = new UserModel();
         userModel.setId("1");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
                 .path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON)
@@ -187,7 +187,7 @@ public class UserTest {
          */
         userModel = new UserModel();
         userModel.setId("2");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
                 .path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON)
@@ -279,7 +279,7 @@ public class UserTest {
          */
         UserModel userModel = new UserModel();
         userModel.setId("1");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
                 .path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON)
@@ -345,7 +345,7 @@ public class UserTest {
      */
     @Test
     public void getUserTraditions(){
-        String jsonPayload = "{\"isAdmin\":0,\"id\":837462}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":837462}";
         jerseyTest
                 .resource()
                 .path("/user/createuser")

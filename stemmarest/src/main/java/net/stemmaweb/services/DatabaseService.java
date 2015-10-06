@@ -2,6 +2,8 @@ package net.stemmaweb.services;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.*;
 
@@ -19,33 +21,30 @@ public class DatabaseService {
      * @return
      */
     public static Node getStartNode(String tradId, GraphDatabaseService db) {
-//		ExecutionEngine engine = new ExecutionEngine(db);
-        Node startNode;
-
-        /**
-         * this query gets the "Start" node of the witness
-         */
-        String witnessQuery = "match (tradition:TRADITION {id:'" + tradId
-                + "'})-[:COLLATION]->(w:READING) return w";
-
-        try (Transaction tx = db.beginTx()) {
-
-            Result result = db.execute(witnessQuery);
-            Iterator<Node> nodes = result.columnAs("w");
-
-            if (nodes.hasNext()) {
-                startNode = nodes.next();
-            } else {
-                return null;
-            }
-
-            tx.success();
-        }catch (Exception e){
+        Node tradition = getTraditionNode(tradId, db);
+        if (tradition == null)
             return null;
-        }
-        return startNode;
+        ArrayList<Node> snList = getRelated(tradition, ERelations.COLLATION);
+        if (snList.size() != 1)
+            return null;
+        return snList.get(0);
     }
 
+    /**
+     *
+     * @param tradId
+     * @param db
+     *            the GraphDatabaseService where the tradition is stored
+     * @return
+     */
+    public static Node getTraditionNode(String tradId, GraphDatabaseService db) {
+        Node tradition = null;
+        try (Transaction tx = db.beginTx()) {
+            tradition = db.findNode(Nodes.TRADITION, "id", tradId);
+            tx.success();
+        }
+        return tradition;
+    }
     /**
      *
      * @param db: the GraphDatabaseService where the Database should be entered
@@ -74,9 +73,13 @@ public class DatabaseService {
      */
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
         ArrayList<Node> result = new ArrayList<>();
-        Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
-        while (allRels.hasNext()) {
-            result.add(allRels.next().getEndNode());
+        GraphDatabaseService db = startNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
+            while (allRels.hasNext()) {
+                result.add(allRels.next().getEndNode());
+            }
+            tx.success();
         }
         return result;
     }
@@ -90,18 +93,12 @@ public class DatabaseService {
      * @param db
      * @return
      */
-    public static boolean checkIfUserExists(String userId, GraphDatabaseService db) {
+    public static boolean userExists(String userId, GraphDatabaseService db) {
+        Node extantUser;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (userId:USER {id:'"
-                    + userId + "'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-            if (nodes.hasNext()) {
-                return true;
-            }
+            extantUser = db.findNode(Nodes.USER, "id", userId);
             tx.success();
-        }catch (Exception e) {
-            return false;
         }
-        return false;
+        return extantUser != null;
     }
 }

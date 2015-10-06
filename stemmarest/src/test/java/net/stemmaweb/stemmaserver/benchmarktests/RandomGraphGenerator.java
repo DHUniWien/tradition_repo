@@ -63,7 +63,7 @@ class RandomGraphGenerator {
 
                 currentUser = db.createNode(Nodes.USER);
                 currentUser.setProperty("id", Integer.toString(k));
-                currentUser.setProperty("isAdmin", Integer.toString(randomGenerator.nextInt(2)));
+                currentUser.setProperty("role", "user");
 
                 rootNode.createRelationshipTo(currentUser, ERelations.SEQUENCE);
 

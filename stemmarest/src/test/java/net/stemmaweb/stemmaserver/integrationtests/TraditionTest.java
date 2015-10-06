@@ -78,7 +78,7 @@ public class TraditionTest {
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
-            node.setProperty("isAdmin", "1");
+            node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
             tx.success();
@@ -155,7 +155,7 @@ public class TraditionTest {
        an order that is not guaranteed. */
     @Test(expected = org.junit.ComparisonFailure.class)
     public void getAllRelationshipsTest() {
-        String jsonPayload = "{\"isAdmin\":0,\"id\":1}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":1}";
         jerseyTest.resource()
                 .path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON)
@@ -321,7 +321,7 @@ public class TraditionTest {
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "42");
-            node.setProperty("isAdmin", "1");
+            node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.OWNS_TRADITION);
             tx.success();
@@ -472,7 +472,7 @@ public class TraditionTest {
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "42");
-            node.setProperty("isAdmin", "1");
+            node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
             tx.success();
@@ -564,10 +564,7 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
 
-        Node startNode;
-        try (Transaction tx = db.beginTx()) {
-            startNode = DatabaseService.getStartNode(tradId, db);
-        }
+        Node startNode = DatabaseService.getStartNode(tradId, db);
 
         assertTrue(startNode == null);
     }

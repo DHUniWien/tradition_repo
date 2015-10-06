@@ -72,7 +72,7 @@ public class Neo4JAndGraphMLParserUnitTest {
     		
     		Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
-			node.setProperty("isAdmin", "1");
+			node.setProperty("role", "admin");
 
 			rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
     		tx.success();

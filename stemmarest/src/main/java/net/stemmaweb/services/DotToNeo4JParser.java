@@ -4,6 +4,7 @@ import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.crypto.Data;
 
 import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.objects.*;
@@ -66,17 +67,20 @@ public class DotToNeo4JParser implements IResource
     }
 
     private Status saveToNeo(Graph stemma, String tradId, Boolean replace) {
+        // Check for the existence of the tradition
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Status.NOT_FOUND;
+
         String stemmaName = stemma.getId().getLabel();
         // Sometimes the stemma name will be an ID instead of a label. (Quotes?)
         if (stemmaName.equals("")) {
             stemmaName = stemma.getId().getId();
         }
         try (Transaction tx = db.beginTx()) {
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
             // First check that no stemma with this name already exists for this tradition,
             // unless we intend to replace it.
-            for (Relationship stemmaRel : traditionNode.getRelationships(ERelations.HAS_STEMMA)) {
-                Node priorStemma = stemmaRel.getEndNode();
+            for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
                 if (priorStemma.getProperty("name").equals(stemmaName)) {
                     if (replace) {
                         // TODO Remove the relationships from this stemma and the hypothetical nodes no longer connected.
@@ -88,7 +92,6 @@ public class DotToNeo4JParser implements IResource
                     }
                 }
             }
-
             // Get a list of the existing (extant) tradition witnesses
             HashMap<String, Node> traditionWitnesses = new HashMap<>();
             DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)

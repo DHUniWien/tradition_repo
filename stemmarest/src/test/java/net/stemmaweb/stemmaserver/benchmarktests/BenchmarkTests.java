@@ -368,7 +368,7 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void createAndDeleteAUser(){
-        String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
         ClientResponse response = jerseyTest.resource()
                 .path("/user/createuser")
                 .type(MediaType.APPLICATION_JSON)

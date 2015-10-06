@@ -52,7 +52,7 @@ public class User implements IResource {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response create(UserModel userModel) {
 
-        if (DatabaseService.checkIfUserExists(userModel.getId(),db)) {
+        if (DatabaseService.userExists(userModel.getId(), db)) {
 
             return Response.status(Response.Status.CONFLICT)
                     .entity("Error: A user with this id already exists")
@@ -60,12 +60,13 @@ public class User implements IResource {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result rootNodeSearch = db.execute("match (n:ROOT) return n");
-            Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", userModel.getId());
-            node.setProperty("isAdmin", userModel.getIsAdmin());
+            node.setProperty("role", userModel.getRole());
+            node.setProperty("email", userModel.getEmail());
+            node.setProperty("active", userModel.getActive());
 
             rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
 
@@ -95,7 +96,7 @@ public class User implements IResource {
             if (nodes.hasNext()) {
                 Node node = nodes.next();
                 userModel.setId((String) node.getProperty("id"));
-                userModel.setIsAdmin((String) node.getProperty("isAdmin"));
+                userModel.setRole((String) node.getProperty("role"));
             } else {
                 return Response.status(Status.NO_CONTENT).build();
             }
@@ -178,7 +179,7 @@ public class User implements IResource {
 
         ArrayList<TraditionModel> traditions = new ArrayList<>();
 
-        if (!DatabaseService.checkIfUserExists(userId, db)) {
+        if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Status.NOT_FOUND).build();
         }
 

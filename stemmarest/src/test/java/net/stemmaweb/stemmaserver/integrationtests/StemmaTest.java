@@ -11,13 +11,10 @@ import java.util.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import com.alexmerz.graphviz.ParseException;
-import com.alexmerz.graphviz.Parser;
-import com.alexmerz.graphviz.objects.Edge;
-import com.alexmerz.graphviz.objects.Graph;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Stemma;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -79,7 +76,7 @@ public class StemmaTest {
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
-            node.setProperty("isAdmin", "1");
+            node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
@@ -195,13 +192,9 @@ public class StemmaTest {
     @Test
     public void setStemmaTest() {
 
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (t:TRADITION {id:'" + tradId +
-                    "'})--(s:STEMMA) return count(s) AS res");
-            assertEquals(2L, result.columnAs("res").next());
-
-            tx.success();
-        }
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+        assertEquals(2, stemmata.size());
 
         String input = "graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}";
 

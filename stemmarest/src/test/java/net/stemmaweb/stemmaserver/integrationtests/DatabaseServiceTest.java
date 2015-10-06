@@ -55,7 +55,7 @@ public class DatabaseServiceTest {
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
-            node.setProperty("isAdmin", "1");
+            node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
@@ -85,13 +85,11 @@ public class DatabaseServiceTest {
     }
 
     @Test
-    public void getStartNodeTest(){
-        try(Transaction tx = db.beginTx())
-        {
-            assertEquals("#START#", DatabaseService.getStartNode("1001",db)
+    public void getStartNodeTest() {
+        try (Transaction tx = db.beginTx()) {
+            assertEquals("#START#", DatabaseService.getStartNode("1001", db)
                     .getProperty("text")
                     .toString());
-            tx.success();
         }
     }
 

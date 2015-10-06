@@ -67,7 +67,7 @@ public class Tradition implements IResource {
     public Response changeTraditionMetadata(TraditionModel tradition,
             @PathParam("tradId") String witnessId) {
 
-        if (!DatabaseService.checkIfUserExists(tradition.getOwnerId(), db)) {
+        if (!DatabaseService.userExists(tradition.getOwnerId(), db)) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Error: A user with this id does not exist")
                     .build();
@@ -183,13 +183,12 @@ public class Tradition implements IResource {
     @Path("getallrelationships/fromtradition/{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllRelationships(@PathParam("tradId") String tradId) {
-
+        // TODO is this redundant??
         ArrayList<RelationshipModel> relList = new ArrayList<>();
-
-        try (Transaction tx = db.beginTx()) {
 
             Node startNode = DatabaseService.getStartNode(tradId, db);
 
+        try (Transaction tx = db.beginTx()) {
             for (Node node : db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
@@ -203,7 +202,6 @@ public class Tradition implements IResource {
                     relList.add(relMod);
                 }
             }
-            tx.success();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
@@ -322,7 +320,7 @@ public class Tradition implements IResource {
 
 
 
-        if (!DatabaseService.checkIfUserExists(userId, db)) {
+        if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Response.Status.CONFLICT)
                     .entity("Error: No user with this id exists")
                     .build();
