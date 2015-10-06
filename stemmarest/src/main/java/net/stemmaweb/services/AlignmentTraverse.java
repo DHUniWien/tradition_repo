@@ -9,18 +9,39 @@ import org.neo4j.graphdb.traversal.BranchState;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
- * Created by tla on 01/10/15.
+ * Provides a custom PathExpansion class that traverses the reading graph in a
+ * logical order (taking into account both sequences and alignment relationships.)
+ *
+ * @author tla
  */
 public class AlignmentTraverse implements PathExpander {
 
-    public Iterable expand(Path path, BranchState state) {
-        ArrayList<Relationship> relevantRelations = new ArrayList<Relationship>();
+    @Override
+    public Iterable<Relationship> expand(Path path, BranchState state) {
+        return expansion(path, Direction.OUTGOING);
+    }
+
+    @Override
+    public PathExpander reverse() {
+        return new PathExpander() {
+            @Override
+            public Iterable<Relationship> expand(Path path, BranchState branchState) {
+                return expansion(path, Direction.INCOMING);
+            }
+
+            @Override
+            public PathExpander reverse() {
+                return null;
+            }
+        };
+    }
+
+    private Iterable<Relationship> expansion(Path path, Direction dir) {
+        ArrayList<Relationship> relevantRelations = new ArrayList<>();
         // Get the sequence relationships
-        Iterator<Relationship> sequenceLinks = path.endNode().getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).iterator();
+        Iterator<Relationship> sequenceLinks = path.endNode().getRelationships(dir, ERelations.SEQUENCE).iterator();
         while (sequenceLinks.hasNext()) {
             relevantRelations.add(sequenceLinks.next());
         }
@@ -37,7 +58,4 @@ public class AlignmentTraverse implements PathExpander {
         return relevantRelations;
     }
 
-    public PathExpander reverse() {
-        return null;
-    }
 }
