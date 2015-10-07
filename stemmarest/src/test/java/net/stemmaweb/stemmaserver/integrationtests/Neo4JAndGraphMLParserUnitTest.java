@@ -6,9 +6,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -18,6 +18,7 @@ import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
@@ -28,7 +29,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluators;
@@ -58,18 +58,10 @@ public class Neo4JAndGraphMLParserUnitTest {
 		exportResource = new Neo4JToGraphMLParser();
 		
         // Populate the test database with the root node and a user with id 1
+        DatabaseService.createRootNode(db);
     	try(Transaction tx = db.beginTx())
     	{
-    		Result result = db.execute("match (n:ROOT) return n");
-    		Iterator<Node> nodes = result.columnAs("n");
-    		Node rootNode = null;
-    		if(!nodes.hasNext())
-    		{
-    			rootNode = db.createNode(Nodes.ROOT);
-    			rootNode.setProperty("name", "Root node");
-    			rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-    		}
-    		
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
     		Node node = db.createNode(Nodes.USER);
 			node.setProperty("id", "1");
 			node.setProperty("role", "admin");
@@ -175,7 +167,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	private void removeOutputFile(){
 		String filename = "upload/output.xml";
 		File file = new File(filename);
-		file.delete();
+		assertTrue(file.delete());
 	}
 	
 	/**
@@ -214,19 +206,9 @@ public class Neo4JAndGraphMLParserUnitTest {
 		File file = new File(outputFile);
 		
 		assertTrue(file.exists());
-	}
-	
-	/**
-	 * try to import an exported tradition
-	 */
-	@Test
-	public void graphMLExportImportTest(){
-		
-		String filename = "upload/output.xml";
-		Response actualResponse = null;
 		try
 		{
-			actualResponse = importResource.parseGraphML(filename, "1", "Tradition");
+			actualResponse = importResource.parseGraphML(file.getPath(), "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
@@ -253,14 +235,17 @@ public class Neo4JAndGraphMLParserUnitTest {
             // this error should not occur
             assertTrue(false);
         }
+        assertEquals(Response.status(Response.Status.OK).build().getStatus(),
+                parseResponse.getStatus());
 
         // Check that we have witness α
-        Node alpha = null;
+        Node alpha;
         try (Transaction tx = db.beginTx()) {
             alpha = db.findNode(Nodes.WITNESS, "sigil", "α");
             assertNotNull(alpha);
             // Check that witness α is marked as needing quotes
             assertTrue((Boolean) alpha.getProperty("quotesigil"));
+            tx.success();
         }
     }
 
@@ -304,26 +289,18 @@ public class Neo4JAndGraphMLParserUnitTest {
         assertEquals(319, readings.size()); // really 319
 
         // Check for the correct number of sequence paths. Do this with a traversal.
-        int sequenceCount = 0;
+        AtomicInteger sequenceCount = new AtomicInteger(0);
+        Node startNode = DatabaseService.getStartNode(traditionId, db);
+        assertNotNull(startNode);
         try (Transaction tx = db.beginTx()) {
-            Node startNode = null;
-            for (ReadingModel reading : readings) {
-                if (reading.getIs_start() != null && reading.getIs_start().equals("1")) {
-                    startNode = db.getNodeById(Long.valueOf(reading.getId()));
-                    break;
-                }
-            }
-            assertNotNull(startNode);
-            for (Relationship sequence : db.traversalDescription().depthFirst()
+            db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                    .relationships()) {
-                sequenceCount++;
-            }
+                    .relationships().forEach(x -> sequenceCount.getAndIncrement());
             tx.success();
         }
-        assertEquals(376, sequenceCount); // should be 376
+        assertEquals(376, sequenceCount.get()); // should be 376
 
 
         // Check for the correct number of witnesses
@@ -341,6 +318,17 @@ public class Neo4JAndGraphMLParserUnitTest {
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(7, relations.size());
+
+        // Spot-check a correct relationship setup
+        try(Transaction tx = db.beginTx()) {
+            // With this query we are working around some obnoxious problems with divergent
+            // Unicode renderings of some Greek letters.
+            Result result = db.execute("match (q:READING {text:'πνεύματος'})-->(bs:READING {text:'βλασφημίας'})-->(a:READING {text:'ἀπορία'}), " +
+                    "(q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
+            assertTrue(result.hasNext());
+            tx.success();
+        }
+
     }
 
 
@@ -370,14 +358,15 @@ public class Neo4JAndGraphMLParserUnitTest {
             assertTrue(false);
         }
 
-        // Set the language
+        /* // Set the language
         String jsonPayload = "{\"language\":\"Greek\"}";
         ClientResponse jerseyResponse = jerseyTest
                 .resource()
                 .path("/tradition/changemetadata/fromtradition/" + traditionId)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, jsonPayload);
-        // assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+        */
 
         // Add a stemma
         String newStemma = "digraph Stemma {\n" +
@@ -423,23 +412,28 @@ public class Neo4JAndGraphMLParserUnitTest {
                 "    7 -> E;\n" +
                 "    7 -> G;\n" +
                 "}\n";
-        jerseyResponse = jerseyTest
+        ClientResponse jerseyResponse = jerseyTest
                 .resource()
                 .path("/stemma/newstemma/intradition/" + traditionId)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
-        // Merge a couple of nodes - TODO why does Cypher not return both instances of πνεύματος?
+        // Merge a couple of nodes
         Node blasphemias;
         Node aporia;
         Node blasphemia;
         try(Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (q:READING {text:'πνεύματος'})-->(bs:READING {text:'βλασφημίας'})-->(a:READING {text:'ἀπορία'})," +
-                    " (q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
-            blasphemias = db.getNodeById(46);
-            aporia = db.getNodeById(57);
-            blasphemia = db.getNodeById(35);
+            // With this query we are working around some obnoxious problems with divergent
+            // Unicode renderings of some Greek letters.
+            Result result = db.execute("match (q:READING {text:'πνεύματος'})-->(bs:READING {text:'βλασφημίας'})-->(a:READING {text:'ἀπορία'}), " +
+                    "(q)-->(b:READING {text:'βλασφημία'}) return bs, a, b");
+            assertTrue (result.hasNext());
+            Map<String, Object> row = result.next();
+            blasphemias = (Node) row.get("bs");
+            aporia = (Node) row.get("a");
+            blasphemia = (Node) row.get("b");
+            tx.success();
         }
 
         CharacterModel characterModel = new CharacterModel();
@@ -453,6 +447,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         try(Transaction tx = db.beginTx()) {
             assertEquals("βλασφημίας ἀπορία", blasphemias.getProperty("text"));
+            tx.success();
         }
 
         // Add a new
@@ -507,26 +502,18 @@ public class Neo4JAndGraphMLParserUnitTest {
         assertEquals(318, readings.size());
 
         // Check for the correct number of sequence paths. Do this with a traversal.
-        int sequenceCount = 0;
+        AtomicInteger sequenceCount = new AtomicInteger(0);
+        Node startNode = DatabaseService.getStartNode(traditionId, db);
+        assertNotNull(startNode);
         try (Transaction tx = db.beginTx()) {
-            Node startNode = null;
-            for (ReadingModel reading : readings) {
-                if (reading.getIs_start() != null && reading.getIs_start().equals("1")) {
-                    startNode = db.getNodeById(Long.valueOf(reading.getId()));
-                    break;
-                }
-            }
-            assertNotNull(startNode);
-            for (Relationship sequence : db.traversalDescription().depthFirst()
+            db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                    .relationships()) {
-                sequenceCount++;
-            }
+                    .relationships().forEach(x -> sequenceCount.getAndIncrement());
             tx.success();
         }
-        assertEquals(375, sequenceCount);
+        assertEquals(375, sequenceCount.get());
 
 
         // Check for the correct number of witnesses

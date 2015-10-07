@@ -123,12 +123,12 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n14">
       <data key="dn9">87</data>
-      <data key="dn10">καταλύσαντι</data>
+      <data key="dn10">καταλύσαντι</data>
       <data key="dn0">w100</data>
     </node>
     <node id="n15">
       <data key="dn9">87</data>
-      <data key="dn10">κατακλύσαντι</data>
+      <data key="dn10">κατακλύσαντι</data>
       <data key="dn0">w103</data>
     </node>
     <node id="n16">
@@ -158,7 +158,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n21">
       <data key="dn9">10</data>
-      <data key="dn10">πνεύματος</data>
+      <data key="dn10">πνεύματος</data>
       <data key="dn0">w11</data>
     </node>
     <node id="n22">
@@ -213,7 +213,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n32">
       <data key="dn9">11</data>
-      <data key="dn10">βλασφημία</data>
+      <data key="dn10">βλασφημία</data>
       <data key="dn0">w12</data>
     </node>
     <node id="n33">
@@ -278,7 +278,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n45">
       <data key="dn9">110</data>
-      <data key="dn10">κατακινούσης</data>
+      <data key="dn10">κατακινούσης</data>
       <data key="dn0">w131</data>
     </node>
     <node id="n46">
@@ -378,7 +378,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n65">
       <data key="dn9">13</data>
-      <data key="dn10">αὐτόθεν</data>
+      <data key="dn10">αὐτόθεν</data>
       <data key="dn0">w15</data>
     </node>
     <node id="n66">
@@ -598,7 +598,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n109">
       <data key="dn9">166</data>
-      <data key="dn10">μέλος</data>
+      <data key="dn10">μέλος</data>
       <data key="dn0">w193</data>
     </node>
     <node id="n110">
@@ -788,7 +788,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n147">
       <data key="dn9">198</data>
-      <data key="dn10">παρανάλωμα</data>
+      <data key="dn10">παρανάλωμα</data>
       <data key="dn0">w230</data>
     </node>
     <node id="n148">
@@ -818,7 +818,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n153">
       <data key="dn9">201</data>
-      <data key="dn10">ἐχθρόν</data>
+      <data key="dn10">ἐχθρόν</data>
       <data key="dn0">w236</data>
     </node>
     <node id="n154">
@@ -918,7 +918,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n173">
       <data key="dn9">216</data>
-      <data key="dn10">θάλπει</data>
+      <data key="dn10">θάλπει</data>
       <data key="dn0">w256</data>
     </node>
     <node id="n174">
@@ -1163,7 +1163,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n222">
       <data key="dn9">257</data>
-      <data key="dn10">παρεστήση</data>
+      <data key="dn10">παρεστήση</data>
       <data key="dn0">w301</data>
     </node>
     <node id="n223">
@@ -1323,7 +1323,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n254">
       <data key="dn9">34</data>
-      <data key="dn10">κρίνεται</data>
+      <data key="dn10">κρίνεται</data>
       <data key="dn0">w39</data>
     </node>
     <node id="n255">
@@ -1343,7 +1343,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n258">
       <data key="dn9">37</data>
-      <data key="dn10">κρίνει</data>
+      <data key="dn10">κρίνει</data>
       <data key="dn0">w42</data>
     </node>
     <node id="n259">
@@ -1598,7 +1598,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n309">
       <data key="dn9">9</data>
-      <data key="dn10">ἁγίου</data>
+      <data key="dn10">ἁγίου</data>
       <data key="dn0">w9</data>
     </node>
     <node id="n310">
@@ -1623,7 +1623,7 @@ http://graphml.graphdrawing.org/xmlns ">
     </node>
     <node id="n314">
       <data key="dn9">84</data>
-      <data key="dn10">ἀπιστεία</data>
+      <data key="dn10">ἀπιστεία</data>
       <data key="dn0">w94</data>
     </node>
     <node id="n315">
@@ -11185,8 +11185,8 @@ http://graphml.graphdrawing.org/xmlns ">
       <data key="de6">maybe</data>
       <data key="de1">0</data>
       <data key="de11">lexical</data>
-      <data key="de9">καταλύσαντι</data>
-      <data key="de8">κατακλύσαντι</data>
+      <data key="de9">καταλύσαντι</data>
+      <data key="de8">κατακλύσαντι</data>
     </edge>
     <edge source="n14" target="n318" id="e1">
       <data key="de10">local</data>
@@ -11194,7 +11194,7 @@ http://graphml.graphdrawing.org/xmlns ">
       <data key="de1">0</data>
       <data key="de11">lexical</data>
       <data key="de9">κατακλείσαντι</data>
-      <data key="de8">καταλύσαντι</data>
+      <data key="de8">καταλύσαντι</data>
     </edge>
     <edge source="n15" target="n318" id="e2">
       <data key="de10">local</data>
@@ -11203,14 +11203,14 @@ http://graphml.graphdrawing.org/xmlns ">
       <data key="de1">0</data>
       <data key="de11">lexical</data>
       <data key="de9">κατακλείσαντι</data>
-      <data key="de8">κατακλύσαντι</data>
+      <data key="de8">κατακλύσαντι</data>
     </edge>
     <edge source="n65" target="n75" id="e3">
       <data key="de10">local</data>
       <data key="de6">maybe</data>
       <data key="de1">0</data>
       <data key="de11">grammatical</data>
-      <data key="de9">αὐτόθεν</data>
+      <data key="de9">αὐτόθεν</data>
       <data key="de8">αὐτόθι</data>
     </edge>
     <edge source="n258" target="n259" id="e4">
@@ -11218,7 +11218,7 @@ http://graphml.graphdrawing.org/xmlns ">
       <data key="de6">no</data>
       <data key="de1">0</data>
       <data key="de11">grammatical</data>
-      <data key="de9">κρίνει</data>
+      <data key="de9">κρίνει</data>
       <data key="de8">κρίνῃ</data>
     </edge>
     <edge source="n284" target="n285" id="e5">
