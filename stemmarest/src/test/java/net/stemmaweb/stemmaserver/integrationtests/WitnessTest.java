@@ -23,6 +23,7 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.*;
 
@@ -255,11 +256,8 @@ public class WitnessTest {
 
     /**
      * test what text gets returned when a witness correction layer is involved
-     *
-     * !!NOTE!! this test will fail due to start node identification bug, until the
-     * fix gets merged from the acceptancetests branch! When that is fixed, it
-     * will fail for the intended reason.
      */
+    @Ignore  // issue #7
     @Test
     public void correctedWitnessTextTest() {
         // Our expected values

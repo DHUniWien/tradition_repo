@@ -18,6 +18,7 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -164,6 +165,7 @@ public class UserTest {
     /**
      * Test if a user is correctly removed with all his subgraphs
      */
+    @Ignore  // issue #3
     @Test
     public void deleteUserTest(){
 
