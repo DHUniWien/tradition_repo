@@ -22,6 +22,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -66,15 +67,9 @@ public class TraditionTest {
         /*
          * Populate the test database with the root node and a user with id 1
          */
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
 
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
@@ -88,21 +83,11 @@ public class TraditionTest {
          * load a tradition to the test DB
          */
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            tradId = Util.getValueFromJson(r, "tradId");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
-        }
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-
-            tx.success();
         }
 
         /*
@@ -114,32 +99,25 @@ public class TraditionTest {
 
     @Test
     public void getAllTraditionsTest() {
+        HashSet<String> expectedIds = new HashSet<>();
+        expectedIds.add(tradId);
+
         // import a second tradition into the db
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
-
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            expectedIds.add(Util.getValueFromJson(r, "tradId"));
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
         }
 
-        TraditionModel trad1 = new TraditionModel();
-        trad1.setId("1001");
-        trad1.setName("Tradition");
-        TraditionModel trad2 = new TraditionModel();
-        trad2.setId("1002");
-        trad2.setName("Tradition");
-
         List<TraditionModel> traditions = jerseyTest.resource().path("/tradition/getalltraditions")
                 .get(new GenericType<List<TraditionModel>>() {});
-        TraditionModel firstTradition = traditions.get(0);
-        assertEquals(trad1.getId(), firstTradition.getId());
-        assertEquals(trad1.getName(), firstTradition.getName());
-
-        TraditionModel lastTradition = traditions.get(1);
-        assertEquals(trad2.getId(), lastTradition.getId());
-        assertEquals(trad2.getName(), lastTradition.getName());
+        for (TraditionModel returned : traditions) {
+            assertTrue(expectedIds.contains(returned.getId()));
+            assertEquals("Tradition", returned.getName());
+        }
     }
 
     @Test

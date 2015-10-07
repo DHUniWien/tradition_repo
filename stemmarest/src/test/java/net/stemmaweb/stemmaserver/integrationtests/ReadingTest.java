@@ -21,6 +21,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,19 +97,11 @@ public class ReadingTest {
          * load a tradition to the test DB
          */
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            tradId = Util.getValueFromJson(r, "tradId");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
-        }
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
         }
 
         /*
@@ -122,7 +115,7 @@ public class ReadingTest {
     /**
      * Contains 29 readings at the beginning.
      *
-     * @return
+     * @return a list of readings in the tradition
      */
     private List<ReadingModel> testNumberOfReadingsAndWitnesses(int number) {
         List<ReadingModel> listOfReadings = jerseyTest.resource()
@@ -173,6 +166,7 @@ public class ReadingTest {
             String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "A");
             assertEquals(expectedWitnessA, resp.getEntity());
+            tx.success();
         }
     }
 
@@ -211,6 +205,7 @@ public class ReadingTest {
             String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "A");
             assertEquals(expectedWitnessA, resp.getEntity());
+            tx.success();
         }
     }
 
@@ -242,6 +237,7 @@ public class ReadingTest {
             assertEquals("the reading does not have such property: 'test'."
                     + " no changes to the reading have been done",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -280,6 +276,7 @@ public class ReadingTest {
             assertTrue(readingModel != null);
             assertEquals(expectedReadingModel.getRank(), readingModel.getRank());
             assertEquals(expectedReadingModel.getText(), readingModel.getText());
+            tx.success();
         }
     }
 
@@ -355,6 +352,7 @@ public class ReadingTest {
                 String val2 = duplicatedSweet.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
+            tx.success();
          }
     }
 
@@ -433,6 +431,7 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
+            tx.success();
         }
     }
 
@@ -508,6 +507,7 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
+            tx.success();
         }
     }
 
@@ -547,6 +547,7 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
+            tx.success();
         }
     }
 
@@ -572,6 +573,7 @@ public class ReadingTest {
             assertEquals(
                     "The witness list has to contain at least one witness",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -596,6 +598,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals("The reading has to be in at least two witnesses",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -621,6 +624,7 @@ public class ReadingTest {
             assertEquals(
                     "The reading has to be in the witnesses to be duplicated",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -694,6 +698,7 @@ public class ReadingTest {
                 assertTrue(rel.getOtherNode(stayingNode) != stayingNode);
             }
             assertEquals(2, numberOfRelationships);
+            tx.success();
         }
     }
 
@@ -730,6 +735,7 @@ public class ReadingTest {
             assertTrue(nodes.hasNext());
             nodes.next();    // second Node
             assertFalse(nodes.hasNext());
+            tx.success();
         }
     }
 
@@ -766,6 +772,7 @@ public class ReadingTest {
             assertTrue(nodes.hasNext());
             nodes.next();    // second node
             assertFalse(nodes.hasNext());
+            tx.success();
         }
     }
 
@@ -803,6 +810,7 @@ public class ReadingTest {
             assertTrue(nodes.hasNext());
             nodes.next();    // second node
             assertFalse(nodes.hasNext());
+            tx.success();
         }
     }
 
@@ -831,6 +839,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals("Readings to be merged do not contain the same text",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -851,26 +860,26 @@ public class ReadingTest {
             tx.success();
         }
 
-            // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter(" ");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/0")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+        // split reading
+        CharacterModel characterModel = new CharacterModel();
+        characterModel.setCharacter(" ");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/splitreading/ofreading/" + node.getId()
+                        + "/withsplitindex/0")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, characterModel);
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            GraphModel readingsAndRelationshipsModel = response
-                    .getEntity(GraphModel.class);
-            assertEquals("the", readingsAndRelationshipsModel.getReadings()
-                    .get(0).getText());
-            assertEquals("root", readingsAndRelationshipsModel.getReadings()
-                    .get(1).getText());
-            assertEquals(1, readingsAndRelationshipsModel.getRelationships()
-                    .size());
+        GraphModel readingsAndRelationshipsModel = response
+                .getEntity(GraphModel.class);
+        assertEquals("the", readingsAndRelationshipsModel.getReadings()
+                .get(0).getText());
+        assertEquals("root", readingsAndRelationshipsModel.getReadings()
+                .get(1).getText());
+        assertEquals(1, readingsAndRelationshipsModel.getRelationships()
+                .size());
 
         try (Transaction tx = db.beginTx()) {
             result = db.execute("match (w:READING {text:'the'}) return w");
@@ -899,6 +908,7 @@ public class ReadingTest {
 
             // should contain one reading more now
             testNumberOfReadingsAndWitnesses(30);
+            tx.success();
         }
     }
 
@@ -927,6 +937,7 @@ public class ReadingTest {
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
             testNumberOfReadingsAndWitnesses(32);
+            tx.success();
         }
     }
 
@@ -962,6 +973,7 @@ public class ReadingTest {
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
             testNumberOfReadingsAndWitnesses(32);
+            tx.success();
         }
     }
 
@@ -990,6 +1002,7 @@ public class ReadingTest {
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of-the-world\"}";
 
             testNumberOfReadingsAndWitnesses(30);
+            tx.success();
         }
     }
 
@@ -1018,6 +1031,7 @@ public class ReadingTest {
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood the-world\"}";
 
             testNumberOfReadingsAndWitnesses(30);
+            tx.success();
         }
     }
 
@@ -1046,6 +1060,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals("no such separator exists",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -1073,6 +1088,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals("The separator does not apear in the index location in the text",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -1102,6 +1118,7 @@ public class ReadingTest {
             expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r t\"}";
 
             testNumberOfReadingsAndWitnesses(30);
+            tx.success();
         }
     }
 
@@ -1131,6 +1148,7 @@ public class ReadingTest {
             expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the r ot\"}";
 
             testNumberOfReadingsAndWitnesses(30);
+            tx.success();
         }
     }
 
@@ -1166,6 +1184,7 @@ public class ReadingTest {
             expectedWitnessC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
 
             testNumberOfReadingsAndWitnesses(32);
+            tx.success();
         }
     }
 
@@ -1195,6 +1214,7 @@ public class ReadingTest {
                     response.getEntity(String.class));
 
             testNumberOfReadingsAndWitnesses(29);
+            tx.success();
         }
     }
 
@@ -1225,6 +1245,7 @@ public class ReadingTest {
                     response.getEntity(String.class));
 
             testNumberOfReadingsAndWitnesses(29);
+            tx.success();
         }
     }
 
@@ -1256,6 +1277,7 @@ public class ReadingTest {
             assertEquals(
                     "There has to be a rank-gap after a reading to be split",
                     response.getEntity(String.class));
+            tx.success();
         }
     }
 
@@ -1263,7 +1285,6 @@ public class ReadingTest {
      * test that all readings of a tradition are returned sorted ascending
      * according to rank
      */
-    // TODO test assumes an arbitrary traversal order
     @Test(expected = org.junit.ComparisonFailure.class)
     public void allReadingsOfTraditionTest() {
         List<ReadingModel> listOfReadings = jerseyTest.resource()
@@ -1291,7 +1312,7 @@ public class ReadingTest {
 
     @Test
     public void allReadingsOfTraditionNotFoundTest() {
-        String falseTradId = tradId + 1;
+        String falseTradId = "I don't exist";
         ClientResponse response = jerseyTest.resource()
                 .path("/reading/getallreadings/fromtradition/" + falseTradId)
                 .get(ClientResponse.class);
@@ -1393,7 +1414,6 @@ public class ReadingTest {
     }
 
     // compress with concatenate set to 0: one space between words
-    // TODO test assumes an arbitrary traversal order
     @Test(expected = org.junit.ComparisonFailure.class)
     public void compressReadingsNoConcatenatingNoTextTest() {
         Node showers, sweet;
@@ -1453,11 +1473,12 @@ public class ReadingTest {
             for (int i = 0; i < listOfReadings.size(); i++) {
                 assertEquals(expectedRanks[i],
                         (int) (long) listOfReadings.get(i).getRank());
-            }}
+            }
+            tx.success();
+        }
     }
 
     // compress with concatenate set to 0: one space between words
-    // TODO test assumes an arbitrary traversal order
     @Test(expected = org.junit.ComparisonFailure.class)
     public void compressReadingsNoConcatenatingWithTextTest() {
         Node showers, sweet;
@@ -1518,6 +1539,7 @@ public class ReadingTest {
             for (int i = 0; i < listOfReadings.size(); i++) {
                 assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i).getRank());
             }
+            tx.success();
         }
     }
 
@@ -1565,6 +1587,7 @@ public class ReadingTest {
             String expectedWitnessA = "{\"text\":\"when april with his showerstestsweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "A");
             assertEquals(expectedWitnessA, resp.getEntity());
+            tx.success();
         }
     }
 
@@ -1612,6 +1635,7 @@ public class ReadingTest {
             String expectedWitnessA = "{\"text\":\"when april with his showers\"sweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "A");
             assertEquals(expectedWitnessA, resp.getEntity());
+            tx.success();
         }
     }
 
@@ -1656,9 +1680,10 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            String expectedWitnessB = "{\"text\":\"when april his showers/sweet with fruit the march of drought has pierced to the root\"}";
+            expectedWitnessB = "{\"text\":\"when april his showers/sweet with fruit the march of drought has pierced to the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "B");
             assertEquals(expectedWitnessB, resp.getEntity());
+            tx.success();
         }
     }
 
@@ -1706,6 +1731,7 @@ public class ReadingTest {
             String expectedWitnessA = "{\"text\":\"when april with his showerssweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "A");
             assertEquals(expectedWitnessA, resp.getEntity());
+            tx.success();
         }
     }
 
@@ -1746,6 +1772,7 @@ public class ReadingTest {
 
             assertEquals("showers", showers.getProperty("text"));
             assertEquals("fruit", fruit.getProperty("text"));
+            tx.success();
         }
     }
 
@@ -1757,6 +1784,7 @@ public class ReadingTest {
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             withReadId = nodes.next().getId();
+            tx.success();
         }
 
         ReadingModel actualResponse = jerseyTest
@@ -1775,6 +1803,7 @@ public class ReadingTest {
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             piercedReadId = nodes.next().getId();
+            tx.success();
         }
 
         ReadingModel actualResponse = jerseyTest
@@ -1800,6 +1829,7 @@ public class ReadingTest {
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             readId = nodes.next().getId();
+            tx.success();
         }
 
         ClientResponse response = jerseyTest
@@ -1820,6 +1850,7 @@ public class ReadingTest {
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             readId = nodes.next().getId();
+            tx.success();
         }
         ReadingModel actualResponse = jerseyTest
                 .resource()
@@ -1838,6 +1869,7 @@ public class ReadingTest {
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             ofId = nodes.next().getId();
+            tx.success();
         }
         ReadingModel actualResponse = jerseyTest
                 .resource()
@@ -1862,6 +1894,7 @@ public class ReadingTest {
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             readId = nodes.next().getId();
+            tx.success();
         }
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -1881,6 +1914,7 @@ public class ReadingTest {
             assert (nodes.hasNext());
             long rank = 2;
             assertEquals(rank, nodes.next().getProperty("rank"));
+            tx.success();
         }
     }
 
@@ -1892,6 +1926,7 @@ public class ReadingTest {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
             assertTrue(tradNodesIt.hasNext());
+            tx.success();
         }
     }
 
@@ -1903,6 +1938,7 @@ public class ReadingTest {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
+            tx.success();
         }
     }
 

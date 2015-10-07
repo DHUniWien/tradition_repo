@@ -19,10 +19,12 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -76,16 +78,9 @@ public class RelationTest {
         /*
          * Populate the test database with the root node and a user with id 1
          */
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("role", "admin");
@@ -98,21 +93,11 @@ public class RelationTest {
          * load a tradition to the test DB
          */
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            tradId = Util.getValueFromJson(r, "tradId");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
-        }
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-
-            tx.success();
         }
 
         /*
@@ -156,6 +141,7 @@ public class RelationTest {
             assertEquals("true",loadedRelationship.getProperty("is_significant"));
             assertEquals("april",loadedRelationship.getProperty("reading_a"));
             assertEquals("showers",loadedRelationship.getProperty("reading_b"));
+            tx.success();
         }
     }
 
@@ -280,12 +266,9 @@ public class RelationTest {
             nodes.next();   // march2
             assertFalse(nodes.hasNext());
 
-            relCounter = 0;
-            for (Relationship relationship : march1.getRelationships(ERelations.RELATED)) {
-                relCounter++;
-            }
+            Iterable<Relationship> rels = march1.getRelationships(ERelations.RELATED);
 
-            assertEquals(0, relCounter);
+            assertFalse(rels.iterator().hasNext());
             String expectedText = "{\"text\":\"when april with his showers sweet with " +
                     "fruit the drought of march has pierced unto the root\"}";
             Response resp = witness.getWitnessAsText(tradId, "A");

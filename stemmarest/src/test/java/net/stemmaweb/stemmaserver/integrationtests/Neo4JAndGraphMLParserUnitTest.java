@@ -188,17 +188,19 @@ public class Neo4JAndGraphMLParserUnitTest {
 		
 		removeOutputFile();
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+        String traditionId = null;
 		try
 		{
-			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+			Response response = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            traditionId = Util.getValueFromJson(response, "tradId");
 		}
 		catch(FileNotFoundException f)
 		{
 			// this error should not occur
 			assertTrue(false);
 		}
-		
-		Response actualResponse = exportResource.parseNeo4J("1001");
+		assertNotNull(traditionId);
+		Response actualResponse = exportResource.parseNeo4J(traditionId);
 		
 		assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 		
@@ -272,13 +274,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for success and get the tradition id
 		assertEquals(Response.status(Response.Status.OK).build().getStatus(),
                 parseResponse.getStatus());
-        String traditionId = "NONE";
-		try {
-            JSONObject content = new JSONObject((String) parseResponse.getEntity());
-            traditionId = String.valueOf(content.get("tradId"));
-		} catch (JSONException e) {
-			assertTrue(false);
-		}
+        String traditionId = Util.getValueFromJson(parseResponse, "tradId");
 
 		// Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest
@@ -485,13 +481,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.OK).build().getStatus(),
                 parseResponse.getStatus());
-        traditionId = "NONE";
-        try {
-            JSONObject content = new JSONObject((String) parseResponse.getEntity());
-            traditionId = String.valueOf(content.get("tradId"));
-        } catch (JSONException e) {
-            assertTrue(false);
-        }
+        traditionId = Util.getValueFromJson(parseResponse, "tradId");
 
         // Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest

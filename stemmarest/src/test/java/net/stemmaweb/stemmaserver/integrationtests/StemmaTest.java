@@ -80,21 +80,11 @@ public class StemmaTest {
          * load a tradition to the test DB
          */
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            tradId = Util.getValueFromJson(r, "tradId");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
-        }
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-
-            tx.success();
         }
 
         /*

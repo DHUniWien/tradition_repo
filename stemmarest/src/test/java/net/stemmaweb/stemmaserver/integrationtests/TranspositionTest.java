@@ -9,6 +9,7 @@ import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -22,7 +23,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Iterator;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -48,7 +48,6 @@ public class TranspositionTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLToNeo4JParser importResource;
 
 
     @Before
@@ -56,7 +55,7 @@ public class TranspositionTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
 
-        importResource = new GraphMLToNeo4JParser();
+        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
         Relation relation = new Relation();
 
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
@@ -65,16 +64,9 @@ public class TranspositionTest {
         /*
          * Populate the test database with the root node and a user with id 1
          */
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("role", "admin");
@@ -197,6 +189,7 @@ public class TranspositionTest {
             assertEquals("true", loadedRelationship.getProperty("is_significant"));
             assertEquals("the", loadedRelationship.getProperty("reading_a"));
             assertEquals("rood", loadedRelationship.getProperty("reading_b"));
+            tx.success();
         }
 
         // Now create the transposition, which should work this time
@@ -229,6 +222,7 @@ public class TranspositionTest {
             assertEquals("true", loadedRelationship.getProperty("is_significant"));
             assertEquals("teh", loadedRelationship.getProperty("reading_a"));
             assertEquals("root", loadedRelationship.getProperty("reading_b"));
+            tx.success();
         }
     }
 

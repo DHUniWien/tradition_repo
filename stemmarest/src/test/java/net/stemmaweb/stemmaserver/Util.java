@@ -4,7 +4,10 @@ import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -95,5 +98,17 @@ public class Util {
 
         stemma.getEdges().forEach(edgeCollector);
         return collected;
+    }
+
+    public static String getValueFromJson (Response r, String key) {
+        String value = null;
+        try {
+            JSONObject content = new JSONObject((String) r.getEntity());
+            if (content.has(key))
+                value = String.valueOf(content.get(key));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return value;
     }
 }

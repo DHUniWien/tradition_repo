@@ -1,10 +1,12 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import net.stemmaweb.rest.ERelations;
@@ -30,6 +32,8 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 public class DatabaseServiceTest {
 
     private GraphDatabaseService db;
+    private String traditionId;
+    private String userId;
 
     @Before
     public void setUp() throws Exception {
@@ -43,18 +47,12 @@ public class DatabaseServiceTest {
         /*
          * Populate the test database with the root node and a user with id 1
          */
+        userId = "simon";
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
+            node.setProperty("id", userId);
             node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
@@ -78,7 +76,7 @@ public class DatabaseServiceTest {
             Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
             Iterator<Node> nodes = result.columnAs("t");
             assertTrue(nodes.hasNext());
-            String tradId = (String) nodes.next().getProperty("id");
+            traditionId = (String) nodes.next().getProperty("id");
 
             tx.success();
         }
@@ -87,10 +85,29 @@ public class DatabaseServiceTest {
     @Test
     public void getStartNodeTest() {
         try (Transaction tx = db.beginTx()) {
-            assertEquals("#START#", DatabaseService.getStartNode("1001", db)
+            assertEquals("#START#", DatabaseService.getStartNode(traditionId, db)
                     .getProperty("text")
                     .toString());
+            tx.success();
         }
+    }
+
+    @Test
+    public void getTraditionNodeTest() {
+        Node foundTradition = DatabaseService.getTraditionNode(traditionId, db);
+        assertNotNull(foundTradition);
+    }
+
+    @Test
+    public void getRelatedTest() {
+        Node tradition = DatabaseService.getTraditionNode(traditionId, db);
+        ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS);
+        assertEquals(3, witnesses.size());
+    }
+
+    @Test
+    public void userExistsTest() {
+        assertTrue(DatabaseService.userExists(userId, db));
     }
 
     /**

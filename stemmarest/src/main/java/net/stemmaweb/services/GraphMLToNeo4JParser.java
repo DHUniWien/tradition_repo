@@ -47,6 +47,12 @@ public class GraphMLToNeo4JParser implements IResource
      */
     public Response parseGraphML(InputStream xmldata, String userId, String tradName)
             throws FileNotFoundException {
+        String tradId = UUID.randomUUID().toString();
+        return parseGraphML(xmldata, userId, tradName, tradId);
+    }
+
+    public Response parseGraphML(InputStream xmldata, String userId, String tradName, String tradId)
+            throws FileNotFoundException {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
@@ -73,16 +79,9 @@ public class GraphMLToNeo4JParser implements IResource
         Relationship currentRel = null; // holds the current relationship
 
         try (Transaction tx = db.beginTx()) {
-            // retrieves the last inserted tradition ID and increments it
-            // TODO maybe this should be a UUID.
             graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
-            String prefix = graphRoot.getProperty("LAST_INSERTED_TRADITION_ID").toString();
-            last_inserted_id = Integer.parseInt(prefix);
-            last_inserted_id++;
-            prefix = String.valueOf(last_inserted_id) + "_";
-
             traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            traditionNode.setProperty("id", String.valueOf(last_inserted_id));
+            traditionNode.setProperty("id", tradId);
 
             outer:
             while (true) {
@@ -115,8 +114,7 @@ public class GraphMLToNeo4JParser implements IResource
                                     String val = reader.getElementText();
 
                                     switch (attr) {
-                                        case "id":  // TODO do we need to save the ID?
-                                            currentRel.setProperty("id", prefix + val);
+                                        case "id":
                                             break;
                                         case "witness":
                                             // Check that this is a sequence relationship
@@ -175,8 +173,8 @@ public class GraphMLToNeo4JParser implements IResource
                                 }
                                 break;
                             case "edge":
-                                String sourceName = prefix + reader.getAttributeValue("", "source");
-                                String targetName = prefix + reader.getAttributeValue("", "target");
+                                String sourceName = reader.getAttributeValue("", "source");
+                                String targetName = reader.getAttributeValue("", "target");
                                 Node from = db.getNodeById(idToNeo4jId.get(sourceName));
                                 Node to = db.getNodeById(idToNeo4jId.get(targetName));
                                 ERelations relKind = (currentGraph.equals("relationships")) ?
@@ -214,7 +212,7 @@ public class GraphMLToNeo4JParser implements IResource
                                 if (!currentGraph.equals("relationships")) {
                                     // only store nodes for the sequence graph
                                     currentNode = db.createNode(Nodes.READING);
-                                    String nodeId = prefix + reader.getAttributeValue("", "id");
+                                    String nodeId = reader.getAttributeValue("", "id");
 
                                     idToNeo4jId.put(nodeId, currentNode.getId());
                                 }
@@ -251,9 +249,6 @@ public class GraphMLToNeo4JParser implements IResource
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
 
-            graphRoot.setProperty("LAST_INSERTED_TRADITION_ID",
-                            prefix.substring(0, prefix.length() - 1));
-
             tx.success();
         } catch(Exception e) {
             e.printStackTrace();
@@ -267,11 +262,11 @@ public class GraphMLToNeo4JParser implements IResource
 
         for(String graph : graphs) {
             DotToNeo4JParser parser = new DotToNeo4JParser(db);
-            parser.importStemmaFromDot(graph, last_inserted_id + "", false);
+            parser.importStemmaFromDot(graph, tradId, false);
         }
 
         return Response.status(Response.Status.OK)
-                .entity("{\"tradId\":" + last_inserted_id + "}")
+                .entity("{\"tradId\":" + tradId + "}")
                 .build();
     }
 
