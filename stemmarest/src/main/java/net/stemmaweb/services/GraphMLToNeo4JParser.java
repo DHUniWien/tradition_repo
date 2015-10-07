@@ -38,12 +38,9 @@ public class GraphMLToNeo4JParser implements IResource
     /**
      * Reads xml file input stream and imports it into Neo4J Database
      *
-     * @param xmldata
-     *            - the GraphML file stream
-     * @param userId
-     *            - the user id who will own the tradition
-     * @param tradName
-     *            tradition name that should be used
+     * @param xmldata - the GraphML file stream
+     * @param userId - the user id who will own the tradition
+     * @param tradName - tradition name that should be used
      * @return Http Response with the id of the imported tradition
      * @throws FileNotFoundException
      */
@@ -232,9 +229,9 @@ public class GraphMLToNeo4JParser implements IResource
             // Create the witness nodes
             for (String sigil: witnesses.keySet()) {
                 Node witnessNode = db.createNode(Nodes.WITNESS);
-                // TODO see if the sigil will need to be quoted in DOT files
                 witnessNode.setProperty("sigil", sigil);
                 witnessNode.setProperty("hypothetical", false);
+                witnessNode.setProperty("quotesigil", !isDotId(sigil));
                 traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
             }
 
@@ -269,5 +266,10 @@ public class GraphMLToNeo4JParser implements IResource
         return Response.status(Response.Status.OK)
                 .entity("{\"tradId\":" + last_inserted_id + "}")
                 .build();
+    }
+
+    private Boolean isDotId (String nodeid) {
+        return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
+                || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
 }

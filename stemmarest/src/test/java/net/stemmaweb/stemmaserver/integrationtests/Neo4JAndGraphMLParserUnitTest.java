@@ -240,6 +240,30 @@ public class Neo4JAndGraphMLParserUnitTest {
 		traditionNodeExistsTest();
 	}
 
+    /**
+     * import a tradition with Unicode sigla
+     */
+    @Test
+    public void unicodeSigilTest() {
+        File testfile = new File("src/TestXMLFiles/john.xml");
+        Response parseResponse = null;
+        try {
+            parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "John tradition");
+        } catch(FileNotFoundException f) {
+            // this error should not occur
+            assertTrue(false);
+        }
+
+        // Check that we have witness α
+        Node alpha = null;
+        try (Transaction tx = db.beginTx()) {
+            alpha = db.findNode(Nodes.WITNESS, "sigil", "α");
+            assertNotNull(alpha);
+            // Check that witness α is marked as needing quotes
+            assertTrue((Boolean) alpha.getProperty("quotesigil"));
+        }
+    }
+
 	/**
 	 * Ports of test suite from Perl Text::Tradition::Parser::Self.
 	 *
