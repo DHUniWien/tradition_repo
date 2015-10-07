@@ -35,6 +35,12 @@ public class GraphMLToNeo4JParser implements IResource
         return parseGraphML(in, userId, tradName);
     }
 
+    public Response parseGraphML(String filename, String userId, String tradName, String tradId)
+            throws FileNotFoundException {
+        File file = new File(filename);
+        InputStream in = new FileInputStream(file);
+        return parseGraphML(in, userId, tradName, tradId);
+    }
     /**
      * Reads xml file input stream and imports it into Neo4J Database. This method assumes
      * that the GraphML describes a valid graph as exported from the legacy Stemmaweb.
@@ -71,7 +77,6 @@ public class GraphMLToNeo4JParser implements IResource
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
-        int last_inserted_id;
         Node graphRoot;
         Node traditionNode;             // this will be the entry point of the graph
         Node currentNode = null;	    // holds the current node

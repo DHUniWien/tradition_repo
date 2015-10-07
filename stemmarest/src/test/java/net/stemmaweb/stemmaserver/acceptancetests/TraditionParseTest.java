@@ -25,16 +25,14 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.Response;
-import javax.xml.crypto.Data;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -89,19 +87,13 @@ public class TraditionParseTest {
         assumeTrue(testdir.exists() && testdir.isDirectory());
 
         HashMap<String, TraditionXMLParser> traditionNames = new HashMap<>();
-        FileFilter xmlFilter = new FileFilter() {
-            @Override
-            public boolean accept(File pathname) {
-                return pathname.getName().endsWith("xml");
-            }
-        };
-        File[] fileList = testdir.listFiles(xmlFilter);
+        File[] fileList = testdir.listFiles(x -> x.getName().endsWith("xml"));
         int i = 1;
         for (File testfile : fileList) {
             if (testfile.getName().endsWith("xml")) {
                 // Get its name via direct XML parsing
                 System.out.println(String.format("Working on %d/%d: %s", i++, fileList.length, testfile.getName()));
-                String tradId = "";
+                String tradId = testfile.getName().replace(".xml", "");
                 SAXParserFactory sfax = SAXParserFactory.newInstance();
                 TraditionXMLParser handler = new TraditionXMLParser();
                 try {
@@ -115,7 +107,7 @@ public class TraditionParseTest {
 
                 // Parse it via importGraphML and get the tradition ID
                 try {
-                    Response response = importResource.parseGraphML(testfile.getPath(), "1", "");
+                    Response response = importResource.parseGraphML(testfile.getPath(), "1", "", tradId);
                     assertEquals(response.getStatus(), 200);
                     JSONObject result = new JSONObject(response.getEntity().toString());
                     assertTrue(result.has("tradId"));
@@ -154,18 +146,16 @@ public class TraditionParseTest {
             // Do this with a traversal.
             Node startNode = DatabaseService.getStartNode(tm.getId(), db);
             assertNotNull(startNode);
-            int foundEdges = 0;
+            AtomicInteger foundEdges = new AtomicInteger(0);
             try (Transaction tx = db.beginTx()) {
-                for (Relationship r : db.traversalDescription().breadthFirst()
+                db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                         .evaluator(Evaluators.all())
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                        .relationships()) {
-                    foundEdges++;
-                    tx.success();
-                }
+                        .relationships().forEach(x -> foundEdges.getAndIncrement());
+                tx.success();
             }
-            assertEquals(handler.numEdges, foundEdges);
+            assertEquals(handler.numEdges, foundEdges.get());
 
             // Number of relationships
             ArrayList<RelationshipModel> dbRelations = jerseyTest.resource()
