@@ -64,16 +64,9 @@ public class StemmaTest {
         /*
          * Populate the test database with the root node and a user with id 1
          */
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("role", "admin");
@@ -111,8 +104,7 @@ public class StemmaTest {
         jerseyTest.setUp();
     }
 
-    /* TODO: Test dependent on arbitrary ordering of nodes and edges */
-    @Test(expected = org.junit.ComparisonFailure.class)
+    @Test
 	public void getAllStemmataTest() {
         List<String> stemmata = jerseyTest
                 .resource()
@@ -121,15 +113,15 @@ public class StemmaTest {
                 });
         assertEquals(2, stemmata.size());
 
-        String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "
+        String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; }";
-        assertEquals(expected, stemmata.get(0));
+                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; \n}";
+        Util.assertStemmasEquivalent(expected, stemmata.get(0));
 
-        String expected2 = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  "
+        String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; }";
-        assertEquals(expected2, stemmata.get(1));
+                + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; \n}";
+        Util.assertStemmasEquivalent(expected2, stemmata.get(1));
     }
 
     @Test
@@ -154,8 +146,7 @@ public class StemmaTest {
         assertEquals(expectedResponse.getStatus(), resp.getStatus());
     }
 
-    /* TODO: Test dependent on arbitrary ordering of nodes and edges */
-    @Test(expected = org.junit.ComparisonFailure.class)
+    @Test
 	public void getStemmaTest() {
         String stemmaTitle = "stemma";
         String str = jerseyTest
@@ -164,10 +155,10 @@ public class StemmaTest {
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
-        String expected = "digraph \"stemma\" {  0 [ class=hypothetical ];  "
+        String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; }";
-        assertEquals(expected, str);
+                + "C [ class=extant ];\n 0 -> A;  0 -> B;  A -> C; \n}";
+        Util.assertStemmasEquivalent(expected, str);
 
         String stemmaTitle2 = "Semstem 1402333041_0";
         String str2 = jerseyTest
@@ -176,10 +167,10 @@ public class StemmaTest {
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
-        String expected2 = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  "
+        String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];\n  "
                 + "A [ class=extant ];  B [ class=extant ];  "
-                + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; }";
-        assertEquals(expected2, str2);
+                + "C [ class=extant ];\n 0 -- A;  A -- B;  B -- C; \n}";
+        Util.assertStemmasEquivalent(expected2, str2);
 
         ClientResponse getStemmaResponse = jerseyTest
                 .resource()

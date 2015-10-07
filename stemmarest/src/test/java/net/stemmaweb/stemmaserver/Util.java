@@ -2,16 +2,21 @@ package net.stemmaweb.stemmaserver;
 
 import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.Parser;
+import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Created by tla on 06/10/15.
+ * A collection of testing utility functions that are useful in multiple tests.
+ *
+ * @author tla
  */
 public class Util {
 
@@ -30,12 +35,13 @@ public class Util {
         }
         ArrayList<Graph> expectedGraphs = p.getGraphs();
 
+        Parser q = new Parser();
         try {
-            p.parse(actualStream);
+            q.parse(actualStream);
         } catch (ParseException e) {
             assertTrue(false);
         }
-        ArrayList<Graph> actualGraphs = p.getGraphs();
+        ArrayList<Graph> actualGraphs = q.getGraphs();
 
         assertEquals(expectedGraphs.size(), actualGraphs.size());
 
@@ -60,16 +66,34 @@ public class Util {
 
             // ...and the expected edges. Just count them for now; comparison is complicated
             // for undirected graphs.
-            HashSet<String> expectedEdges = new HashSet<>();
-            expectedStemma.getEdges().forEach(e -> expectedNodes.add(
-                    e.getSource().getNode().getId().getId() + " - " +
-                            e.getTarget().getNode().getId().getId()));
-            HashSet<String> actualEdges = new HashSet<>();
-            actualStemma.getEdges().forEach(e -> actualNodes.add(
-                    e.getSource().getNode().getId().getId() + " - " +
-                            e.getTarget().getNode().getId().getId()));
+            HashSet<String> expectedEdges = collectEdges(expectedStemma);
+            HashSet<String> actualEdges = collectEdges(actualStemma);
             assertEquals(expectedEdges.size(), actualEdges.size());
+            for (String graphEdge : actualEdges) {
+                assertTrue(expectedEdges.contains(graphEdge));
+            }
             i++;
         }
+    }
+
+    private static HashSet<String> collectEdges (Graph stemma) {
+        HashSet<String> collected = new HashSet<>();
+        // The collector for directed graphs
+        Consumer<Edge> edgeCollector = e -> collected.add(
+                e.getSource().getNode().getId().getId() + " - " +
+                        e.getTarget().getNode().getId().getId());
+
+        // The collector for undirected graphs
+        if (stemma.getType() == 1)
+            edgeCollector = e -> {
+                ArrayList<String> vector = new ArrayList<>();
+                vector.add(e.getSource().getNode().getId().getId());
+                vector.add(e.getTarget().getNode().getId().getId());
+                Collections.sort(vector);
+                collected.add(vector.get(0) + " - " + vector.get(1));
+                };
+
+        stemma.getEdges().forEach(edgeCollector);
+        return collected;
     }
 }
