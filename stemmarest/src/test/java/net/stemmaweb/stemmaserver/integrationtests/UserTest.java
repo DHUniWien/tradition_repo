@@ -1,10 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import java.util.Iterator;
 import java.util.List;
 
@@ -14,7 +10,9 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
@@ -30,6 +28,8 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -59,27 +59,20 @@ public class UserTest {
          * resource.
          */
         User userResource = new User();
+        Tradition traditionResource = new Tradition();
 
         /*
          * Populate the test database with the root node
          */
-        try(Transaction tx = db.beginTx())
-        {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            if(!nodes.hasNext())
-            {
-                Node node = db.createNode(Nodes.ROOT);
-                node.setProperty("name", "Root node");
-                node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-            tx.success();
-        }
+        DatabaseService.createRootNode(db);
 
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(userResource).create();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(userResource)
+                .addResource(traditionResource)
+                .create();
         jerseyTest.setUp();
     }
 
@@ -119,12 +112,15 @@ public class UserTest {
     @Test
     public void createConflictingUserTest(){
 
-        String jsonPayload = "{\"role\":\"user\",\"id\":42}";
+        String firstUser = "{\"role\":\"user\",\"id\":42}";
+        String secondUser = "{\"role\":\"admin\",\"id\":42}";
         ClientResponse dummyJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-        ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, firstUser);
+        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
+                dummyJSON.getStatus());
 
+        ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
+                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, secondUser);
         assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),
                 returnJSON.getStatus());
     }
@@ -232,39 +228,58 @@ public class UserTest {
         {
 
             /*
-             * Remove user 1 with all his traditions
+             * Try to remove user 1 with all traditions. This should fail
              */
             ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
+                    .delete(ClientResponse.class);
+            assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), actualResponse.getStatus());
+
+            /*
+             * Check that user 1 is still there
+             */
+            Node user = db.findNode(Nodes.USER, "id", "1");
+            assertNotNull(user);
+
+            /*
+             * Check that tradition 842 is still there
+             */
+            Node tradition = db.findNode(Nodes.TRADITION, "id", "842");
+            assertNotNull(tradition);
+
+            /*
+             * Delete tradition 842
+             */
+            actualResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/842")
+                    .delete(ClientResponse.class);
+            assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+            tradition = db.findNode(Nodes.TRADITION, "id", "842");
+            assertNull(tradition);
+
+            /*
+             * Try again to remove user 1
+             */
+            actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
 
             /*
-             * Check if user 1 is removed
+             * Check that user 1 is now gone
              */
-            Result result = db.execute("match (userId:USER {id:'1'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-            assertFalse(nodes.hasNext());
-
-            /*
-             * Check if tradition 842 is removed
-             */
-            result = db.execute("match (tradId:TRADITION {id:'842'}) return tradId");
-            nodes = result.columnAs("tradId");
-            assertFalse(nodes.hasNext());
+            user = db.findNode(Nodes.USER, "id", "2");
+            assertNull(user);
 
             /*
              * Check if user 2 still exists
              */
-            result = db.execute("match (userId:USER {id:'2'}) return userId");
-            nodes = result.columnAs("userId");
-            assertTrue(nodes.hasNext());
+            user = db.findNode(Nodes.USER, "id", "2");
+            assertNotNull(user);
 
             /*
              * Check if tradition 843 is removed
              */
-            result = db.execute("match (tradId:TRADITION {id:'843'}) return tradId");
-            nodes = result.columnAs("tradId");
-            assertTrue(nodes.hasNext());
+            tradition = db.findNode(Nodes.TRADITION, "id", "843");
+            assertNotNull(tradition);
+
             tx.success();
         }
     }

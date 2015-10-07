@@ -702,8 +702,9 @@ public class RelationTest {
                 .resource()
                 .path("/relation/getallrelationships/fromtradition/" + (newTradId))
                 .get(ClientResponse.class);
-		assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatusInfo().getStatusCode());
-		assertEquals("no relationships were found", response.getEntity(String.class));	}
+		assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals("[]", response.getEntity(String.class));
+    }
 
     /**
      * Shut down the jersey server

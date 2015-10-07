@@ -2,12 +2,16 @@ package net.stemmaweb.stemmaserver.acceptancetests;
 
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.printer.GraphViz;
+import net.stemmaweb.rest.*;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
 import org.codehaus.jettison.json.JSONException;
@@ -15,22 +19,25 @@ import org.codehaus.jettison.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.Response;
+import javax.xml.crypto.Data;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -51,16 +58,9 @@ public class TraditionParseTest {
         importResource = new GraphMLToNeo4JParser();
 
         // Create a root node and test user
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("role", "admin");
@@ -71,7 +71,13 @@ public class TraditionParseTest {
 
         // Create the Jersey test server
         Tradition tradition = new Tradition();
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
+        Reading reading = new Reading();
+        Relation relation = new Relation();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(tradition)
+                .addResource(reading)
+                .addResource(relation)
+                .create();
         jerseyTest.setUp();
     }
 
@@ -82,10 +88,19 @@ public class TraditionParseTest {
         File testdir = new File("src/TestProductionFiles");
         assumeTrue(testdir.exists() && testdir.isDirectory());
 
-        HashMap<String, String> traditionNames = new HashMap<String, String>();
-        for (File testfile : testdir.listFiles()) {
+        HashMap<String, TraditionXMLParser> traditionNames = new HashMap<>();
+        FileFilter xmlFilter = new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.getName().endsWith("xml");
+            }
+        };
+        File[] fileList = testdir.listFiles(xmlFilter);
+        int i = 1;
+        for (File testfile : fileList) {
             if (testfile.getName().endsWith("xml")) {
                 // Get its name via direct XML parsing
+                System.out.println(String.format("Working on %d/%d: %s", i++, fileList.length, testfile.getName()));
                 String tradId = "";
                 SAXParserFactory sfax = SAXParserFactory.newInstance();
                 TraditionXMLParser handler = new TraditionXMLParser();
@@ -112,19 +127,71 @@ public class TraditionParseTest {
                     assertTrue("JSON parsing error", false);
                 }
 
-                traditionNames.put(tradId, handler.traditionName);
+                // Now save its parse data by ID
+                traditionNames.put(tradId, handler);
             }
         }
 
-        // Now check to make sure that the names match
+        // Now go through each tradition and make sure that the data that
+        // we parsed is reflected in the DB.
         for (TraditionModel tm : jerseyTest.resource()
                 .path("/tradition/getalltraditions")
                 .get(new GenericType<List<TraditionModel>>() {
                 })) {
-            assertEquals(tm.getName(), traditionNames.get(tm.getId()));
+
+            // Name
+            System.out.println("Checking " + tm.getName());
+            TraditionXMLParser handler = traditionNames.get(tm.getId());
+            assertEquals(tm.getName(), handler.traditionName);
+
+            // Number of nodes
+            ArrayList<ReadingModel> dbReadings = jerseyTest.resource()
+                    .path("/reading/getallreadings/fromtradition/" + tm.getId())
+                    .get(new GenericType<ArrayList<ReadingModel>>() {});
+            assertEquals(handler.numNodes, dbReadings.size());
+
+            // Number of sequence edges
+            // Do this with a traversal.
+            Node startNode = DatabaseService.getStartNode(tm.getId(), db);
+            assertNotNull(startNode);
+            int foundEdges = 0;
+            try (Transaction tx = db.beginTx()) {
+                for (Relationship r : db.traversalDescription().breadthFirst()
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .evaluator(Evaluators.all())
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                        .relationships()) {
+                    foundEdges++;
+                    tx.success();
+                }
+            }
+            assertEquals(handler.numEdges, foundEdges);
+
+            // Number of relationships
+            ArrayList<RelationshipModel> dbRelations = jerseyTest.resource()
+                    .path("/relation/getallrelationships/fromtradition/" + tm.getId())
+                    .get(new GenericType<ArrayList<RelationshipModel>>() {});
+            assertEquals(handler.numRelationships, dbRelations.size());
+
+            // Number of witnesses
+            ArrayList<WitnessModel> dbWitnesses = jerseyTest.resource()
+                    .path("/tradition/getallwitnesses/fromtradition/" + tm.getId())
+                    .get(new GenericType<ArrayList<WitnessModel>>() {});
+            assertEquals(handler.numWitnesses, dbWitnesses.size());
         }
     }
 
+    private void toSVG(String traditionID, String outFile)
+    {
+        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        String dot = parser.parseNeo4J(traditionID).getEntity().toString();
+
+        GraphViz gv = new GraphViz();
+        String type = "svg";
+        File out = new File(outFile + "." + type);   // Linux
+        gv.add(dot);
+        gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
+    }
 
     @After
     public void tearDown() throws Exception {
