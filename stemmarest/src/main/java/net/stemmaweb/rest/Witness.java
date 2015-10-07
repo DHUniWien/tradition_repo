@@ -29,7 +29,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 
 @Path("/witness")
-public class Witness implements IResource {
+public class Witness {
 
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();

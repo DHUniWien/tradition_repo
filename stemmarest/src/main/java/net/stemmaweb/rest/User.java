@@ -36,7 +36,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 
 @Path("/user")
-public class User implements IResource {
+public class User {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -55,7 +55,7 @@ public class User implements IResource {
         if (DatabaseService.userExists(userModel.getId(), db)) {
 
             return Response.status(Response.Status.CONFLICT)
-                    .entity("Error: A user with this id already exists")
+                    .entity("Error: A user with this id already exists at " + db.toString())
                     .build();
         }
 

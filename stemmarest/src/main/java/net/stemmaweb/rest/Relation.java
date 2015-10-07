@@ -37,7 +37,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 
 @Path("/relation")
-public class Relation implements IResource {
+public class Relation {
 
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();

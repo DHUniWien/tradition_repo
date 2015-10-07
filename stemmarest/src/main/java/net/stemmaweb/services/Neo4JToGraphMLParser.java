@@ -18,7 +18,6 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.IResource;
 
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.Direction;
@@ -36,8 +35,7 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  * 
  * @author PSE FS 2015 Team2
  */
-public class Neo4JToGraphMLParser implements IResource
-{
+public class Neo4JToGraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 

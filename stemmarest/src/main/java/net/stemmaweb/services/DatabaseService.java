@@ -52,12 +52,10 @@ public class DatabaseService {
      */
     public static void createRootNode(GraphDatabaseService db) {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            if (!nodes.hasNext()) {
+            Node result = db.findNode(Nodes.ROOT, "name", "Root node");
+            if (result == null) {
                 Node node = db.createNode(Nodes.ROOT);
                 node.setProperty("name", "Root node");
-                // node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
             }
             tx.success();
         }

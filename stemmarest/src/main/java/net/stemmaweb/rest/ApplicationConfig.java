@@ -8,8 +8,8 @@ import javax.ws.rs.core.Application;
 
 import net.stemmaweb.services.DatabaseService;
 
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 
 /**
  * This is the main configuration and setup class.
@@ -38,12 +38,25 @@ public class ApplicationConfig extends Application {
     @PostConstruct
     public void initializeApp()
     {
-        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-        GraphDatabaseService db = dbFactory.newEmbeddedDatabase(DB_PATH);
-
+        // Connect to the database, create the root node if necessary, and leave.
+        GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
         DatabaseService.createRootNode(db);
+        registerShutdownHook(db);
+    }
 
-        db.shutdown();
+    private static void registerShutdownHook( final GraphDatabaseService graphDb )
+    {
+        // Registers a shutdown hook for the Neo4j instance so that it
+        // shuts down nicely when the VM exits (even if you "Ctrl-C" the
+        // running application).
+        Runtime.getRuntime().addShutdownHook( new Thread()
+        {
+            @Override
+            public void run()
+            {
+                graphDb.shutdown();
+            }
+        } );
     }
 
 }

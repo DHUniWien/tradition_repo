@@ -26,7 +26,7 @@ import org.neo4j.graphdb.*;
  * @author PSE FS 2015 Team2
  */
 @Path("/stemma")
-public class Stemma implements IResource {
+public class Stemma {
 
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();

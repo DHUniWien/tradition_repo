@@ -4,12 +4,10 @@ import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.xml.crypto.Data;
 
 import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.objects.*;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
 import com.alexmerz.graphviz.Parser;
@@ -21,8 +19,7 @@ import org.neo4j.graphdb.Node;
  * This class provides methods for exporting Dot File from Neo4J
  * @author PSE FS 2015 Team2
  */
-public class DotToNeo4JParser implements IResource
-{
+public class DotToNeo4JParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
     private String errorMessage = null;

@@ -13,7 +13,6 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.*;
@@ -23,8 +22,7 @@ import org.neo4j.graphdb.*;
  * 
  * @author PSE FS 2015 Team2
  */
-public class GraphMLToNeo4JParser implements IResource
-{
+public class GraphMLToNeo4JParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
