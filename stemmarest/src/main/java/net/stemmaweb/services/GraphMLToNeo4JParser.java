@@ -36,7 +36,8 @@ public class GraphMLToNeo4JParser implements IResource
     }
 
     /**
-     * Reads xml file input stream and imports it into Neo4J Database
+     * Reads xml file input stream and imports it into Neo4J Database. This method assumes
+     * that the GraphML describes a valid graph as exported from the legacy Stemmaweb.
      *
      * @param xmldata - the GraphML file stream
      * @param userId - the user id who will own the tradition
@@ -174,21 +175,27 @@ public class GraphMLToNeo4JParser implements IResource
                                 }
                                 break;
                             case "edge":
-                                // TODO why are namespaces not being used?
                                 String sourceName = prefix + reader.getAttributeValue("", "source");
                                 String targetName = prefix + reader.getAttributeValue("", "target");
                                 Node from = db.getNodeById(idToNeo4jId.get(sourceName));
                                 Node to = db.getNodeById(idToNeo4jId.get(targetName));
                                 ERelations relKind = (currentGraph.equals("relationships")) ?
                                         ERelations.RELATED : ERelations.SEQUENCE;
-                                // See if there is a (probably sequence) relationship already
+                                // Sequence relationships are specified multiple times in the graph, once
+                                // per witness. Reading relationships should be specified only once.
                                 if (from.hasRelationship(relKind, Direction.BOTH)) {
                                     Iterator<Relationship> existingRels = from.getRelationships(relKind, Direction.BOTH).iterator();
                                     while (existingRels.hasNext()) {
                                         Relationship qr = existingRels.next();
                                         if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
-                                            // TODO sanity check that the relationships match?
-                                            // If a RELATED link appears twice, the second one will override.
+                                            // If a RELATED link already exists, we have a problem.
+                                            if (relKind.equals(ERelations.RELATED))
+                                                return Response.status(Response.Status.BAD_REQUEST)
+                                                        .entity("Error: Tradition specifies the reading relationship " +
+                                                                sourceName + " -- " + targetName +
+                                                                "twice")
+                                                        .build();
+                                            // It's a SEQUENCE link, so we are good.
                                             currentRel = qr;
                                             break;
                                         }
