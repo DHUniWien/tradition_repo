@@ -46,14 +46,20 @@ public class GraphMLToNeo4JParser implements IResource
      *            tradition name that should be used
      * @return Http Response with the id of the imported tradition
      * @throws FileNotFoundException
-     * @throws XMLStreamException
      */
     public Response parseGraphML(InputStream xmldata, String userId, String tradName)
             throws FileNotFoundException {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
-
+        try {
+            reader = factory.createXMLStreamReader(xmldata);
+        } catch (XMLStreamException e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Error: Parsing of tradition file failed!")
+                    .build();
+        }
         // Some variables to collect information
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
@@ -63,9 +69,9 @@ public class GraphMLToNeo4JParser implements IResource
         // Some state variables
         int last_inserted_id;
         Node graphRoot;
-        Node traditionNode = null;    // this will be the entry point of the graph
-        Node currentNode = null;	     // holds the current node
-        String currentGraph = null;
+        Node traditionNode;             // this will be the entry point of the graph
+        Node currentNode = null;	    // holds the current node
+        String currentGraph = null;     // holds the ID of the current XML graph element
         Relationship currentRel = null; // holds the current relationship
 
         try (Transaction tx = db.beginTx()) {
@@ -80,7 +86,6 @@ public class GraphMLToNeo4JParser implements IResource
             traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
             traditionNode.setProperty("id", String.valueOf(last_inserted_id));
 
-            reader = factory.createXMLStreamReader(xmldata);
             outer:
             while (true) {
                 // START READING THE GRAPHML FILE
@@ -111,24 +116,27 @@ public class GraphMLToNeo4JParser implements IResource
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
                                     String val = reader.getElementText();
 
-                                    if (attr.equals("id"))
-                                        currentRel.setProperty("id", prefix + val);
-                                    else if (attr.equals("witness"))
-                                    {
-                                        // Check that this is a sequence relationship
-                                        assert currentRel.isType(ERelations.SEQUENCE);
-                                        // Add the witness to the current relationship's "witnesses" array
-                                        String[] witList = (String[]) currentRel.getProperty("witnesses");
-                                        ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
-                                        currentWits.add(val);
-                                        currentRel.setProperty("witnesses", currentWits.toArray(new String[currentWits.size()]));
+                                    switch (attr) {
+                                        case "id":  // TODO do we need to save the ID?
+                                            currentRel.setProperty("id", prefix + val);
+                                            break;
+                                        case "witness":
+                                            // Check that this is a sequence relationship
+                                            assert currentRel.isType(ERelations.SEQUENCE);
+                                            // Add the witness to the current relationship's "witnesses" array
+                                            String[] witList = (String[]) currentRel.getProperty("witnesses");
+                                            ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
+                                            currentWits.add(val);
+                                            currentRel.setProperty("witnesses", currentWits.toArray(new String[currentWits.size()]));
 
-                                        // Store the existence of this witness
-                                        // TODO implement a.c. / p.c. logic
-                                        witnesses.put(val, true);
+                                            // Store the existence of this witness
+                                            // TODO implement a.c. / p.c. logic
+                                            witnesses.put(val, true);
+                                            break;
+                                        default:
+                                            currentRel.setProperty(attr, val);
+                                            break;
                                     }
-                                    else
-                                        currentRel.setProperty(attr, val);
                                 } else if (currentNode != null) {
                                     // Working on either the tradition itself, or a node.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
@@ -172,7 +180,7 @@ public class GraphMLToNeo4JParser implements IResource
                                 // TODO why are namespaces not being used?
                                 String sourceName = prefix + reader.getAttributeValue("", "source");
                                 String targetName = prefix + reader.getAttributeValue("", "target");
-                                Node from = db.getNodeById(idToNeo4jId.get(sourceName));;
+                                Node from = db.getNodeById(idToNeo4jId.get(sourceName));
                                 Node to = db.getNodeById(idToNeo4jId.get(targetName));
                                 ERelations relKind = (currentGraph.equals("relationships")) ?
                                         ERelations.RELATED : ERelations.SEQUENCE;
