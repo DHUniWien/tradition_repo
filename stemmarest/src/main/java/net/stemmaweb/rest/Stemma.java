@@ -3,12 +3,8 @@ package net.stemmaweb.rest;
 import java.util.ArrayList;
 import java.util.Map;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
+import javax.ws.rs.*;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -25,91 +21,52 @@ import org.neo4j.graphdb.*;
  * Can be called using http://BASE_URL/stemma
  * @author PSE FS 2015 Team2
  */
-@Path("/stemma")
 public class Stemma {
 
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseService db;
+    private String tradId;
+    private String name;
 
-    /**
-     * Gets a list of all Stemmata available, as dot format
-     *
-     * @param tradId
-     * @return Http Response ok and a list of DOT JSON strings on success or an
-     *         ERROR in JSON format
-     */
-    @GET
-    @Path("getallstemmata/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllStemmata(@PathParam("tradId") String tradId) {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        // make sure that the node exists
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-
-        // find all stemmata associated with this tradition
-        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        ArrayList<String> stemmataList = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            for (Node stemma : stemmata) {
-                System.out.println(stemma.getProperty("name"));
-                Response localResp = parser.parseNeo4JStemma(tradId, stemma.getProperty("name")
-                        .toString());
-                String dot = (String) localResp.getEntity();
-                stemmataList.add(dot);
-            }
-        }
-
-        return Response.ok(stemmataList).build();
+    public Stemma (String traditionId, String requestedName) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+        name = requestedName;
     }
 
     /**
      * Returns JSON string with a Stemma of a tradition in DOT format
      *
-     * @param tradId
-     * @param stemmaTitle
      * @return Http Response ok and DOT JSON string on success or an ERROR in
      *         JSON format
      */
     @GET
-    @Path("getstemma/fromtradition/{tradId}/withtitle/{stemmaTitle}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getStemma(@PathParam("tradId") String tradId,@PathParam("stemmaTitle") String stemmaTitle) {
+    public Response getStemma() {
 
         Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        return parser.parseNeo4JStemma(tradId, stemmaTitle);
+        return parser.parseNeo4JStemma(tradId, name);
     }
 
-    /**
-     * Puts the Stemma of a DOT file in the database
-     *
-     * @param tradId
-     * @return Http Response ok and DOT JSON string on success or an ERROR in
-     *         JSON format
-     */
-    @POST
-    @Path("newstemma/intradition/{tradId}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response setStemma(@PathParam("tradId") String tradId, String dot) {
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        return parser.importStemmaFromDot(dot, tradId, false);
+    @DELETE  // TODO implement
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteStemma() {
+        return Response.status(Status.SERVICE_UNAVAILABLE).build();
     }
-
     /**
      * Reorients a stemma tree with a given new root node
      *
      * @param tradId
-     * @param stemmaTitle
+     * @param name
      * @param nodeId
      * @return Http Response ok and DOT JSON string on success or an ERROR in
      *         JSON format
      */
     @POST
-    @Path("reorientstemma/fromtradition/{tradId}/withtitle/{stemmaTitle}/withnewrootnode/{nodeId}")
+    @Path("reorient/{nodeId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response reorientStemma(@PathParam("tradId") String tradId,
-                                   @PathParam("stemmaTitle") String stemmaTitle,
+                                   @PathParam("name") String name,
                                    @PathParam("nodeId") String nodeId) {
 
         Response resp;
@@ -118,7 +75,7 @@ public class Stemma {
         {
             // Get the stemma and the witness
             Result foundStemma = db.execute("match (:TRADITION {id:'" + tradId
-                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + stemmaTitle
+                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
                     + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
             if(!foundStemma.hasNext()) {
                 return Response.status(Status.NOT_FOUND).build();
@@ -139,8 +96,7 @@ public class Stemma {
 
         tx.success();
         }
-        resp = getStemma(tradId, stemmaTitle);
-        return resp;
+        return getStemma();
 
     }
 

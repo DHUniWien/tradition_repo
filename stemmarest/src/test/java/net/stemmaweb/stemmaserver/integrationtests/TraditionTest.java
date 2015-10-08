@@ -93,12 +93,10 @@ public class TraditionTest {
          * Create a JersyTestServer serving the Resource under test
          */
         Tradition tradition = new Tradition();
-        Stemma stemma = new Stemma();
         Relation relation = new Relation();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(tradition)
-                .addResource(relation)
-                .addResource(stemma).create();
+                .addResource(relation).create();
         jerseyTest.setUp();
     }
 
@@ -185,7 +183,7 @@ public class TraditionTest {
     public void getAllWitnessesTest() {
         Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
         List<WitnessModel> witnesses = jerseyTest.resource()
-                .path("/tradition/getallwitnesses/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/witnesses")
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(expectedWitnesses.size(), witnesses.size());
         for (WitnessModel w: witnesses) {
@@ -196,7 +194,7 @@ public class TraditionTest {
     @Test
     public void getAllWitnessesTraditionNotFoundTest() {
         ClientResponse resp = jerseyTest.resource()
-                .path("/tradition/getallwitnesses/fromtradition/" + 10000)
+                .path("/tradition/10000/witnesses")
                 .get(ClientResponse.class);
 
         assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
@@ -585,15 +583,15 @@ public class TraditionTest {
         }
         ClientResponse jerseyResponse = jerseyTest
                 .resource()
-                .path("/stemma/newstemma/intradition/" + florId)
+                .path("/tradition/" + florId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newStemma);
+                .put(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // re-root the stemma
         jerseyResponse = jerseyTest
                 .resource()
-                .path("/stemma/reorientstemma/fromtradition/" + florId + "/withtitle/Stemma/withnewrootnode/2")
+                .path("/tradition/" + florId + "/stemma/Stemma/reorient/2")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());

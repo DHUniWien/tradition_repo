@@ -13,7 +13,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Stemma;
+import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -56,7 +56,6 @@ public class StemmaTest {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-        Stemma stemma = new Stemma();
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
@@ -90,7 +89,8 @@ public class StemmaTest {
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(stemma).create();
+        Tradition tradition = new Tradition();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
         jerseyTest.setUp();
     }
 
@@ -98,7 +98,7 @@ public class StemmaTest {
 	public void getAllStemmataTest() {
         List<String> stemmata = jerseyTest
                 .resource()
-                .path("/stemma/getallstemmata/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/stemmata")
                 .get(new GenericType<List<String>>() {
                 });
         assertEquals(2, stemmata.size());
@@ -118,7 +118,7 @@ public class StemmaTest {
     public void getAllStemmataNotFoundErrorTest() {
         ClientResponse getStemmaResponse = jerseyTest
 				.resource()
-                .path("/stemma/getallstemmata/fromtradition/" + 10000)
+                .path("/tradition/10000/stemmata")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getStemmaResponse.getStatus());
@@ -128,7 +128,7 @@ public class StemmaTest {
 	public void getAllStemmataStatusTest() {
         ClientResponse resp = jerseyTest
 				.resource()
-                .path("/stemma/getallstemmata/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/stemmata")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
 
@@ -141,7 +141,7 @@ public class StemmaTest {
         String stemmaTitle = "stemma";
         String str = jerseyTest
                 .resource()
-                .path("/stemma/getstemma/fromtradition/" + tradId + "/withtitle/" + stemmaTitle)
+                .path("/tradition/" + tradId + "/stemma/" + stemmaTitle)
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
@@ -153,7 +153,7 @@ public class StemmaTest {
         String stemmaTitle2 = "Semstem 1402333041_0";
         String str2 = jerseyTest
                 .resource()
-                .path("/stemma/getstemma/fromtradition/" + tradId + "/withtitle/" + stemmaTitle2)
+                .path("/tradition/" + tradId + "/stemma/" + stemmaTitle2)
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
@@ -164,7 +164,7 @@ public class StemmaTest {
 
         ClientResponse getStemmaResponse = jerseyTest
                 .resource()
-                .path("/stemma/getstemma/fromtradition/" + tradId + "/withtitle/gugus")
+                .path("/tradition/" + tradId + "/stemma/gugus")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getStemmaResponse.getStatus());
@@ -181,9 +181,9 @@ public class StemmaTest {
 
         ClientResponse actualStemmaResponse = jerseyTest
                 .resource()
-                .path("/stemma/newstemma/intradition/" + tradId)
+                .path("/tradition/" + tradId + "/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, input);
+                .put(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -197,7 +197,7 @@ public class StemmaTest {
         String stemmaTitle = "Semstem 1402333041_1";
         String str = jerseyTest
                 .resource()
-                .path("/stemma/getstemma/fromtradition/" + tradId + "/withtitle/" + stemmaTitle)
+                .path("/tradition/" + tradId + "/stemma/" + stemmaTitle)
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
@@ -212,9 +212,9 @@ public class StemmaTest {
 
 		ClientResponse actualStemmaResponse = jerseyTest
                 .resource()
-                .path("/stemma/newstemma/intradition/" + tradId)
+                .path("/tradition/" + tradId + "/stemma" )
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, emptyInput);
+                .put(ClientResponse.class, emptyInput);
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), actualStemmaResponse.getStatus());
     }
 
@@ -239,8 +239,7 @@ public class StemmaTest {
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + newNodeId)
+                    .path("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + newNodeId)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
@@ -252,8 +251,7 @@ public class StemmaTest {
 
             ClientResponse actualStemmaResponseSecond = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + secondNodeId)
+                    .path("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + secondNodeId)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponseSecond.getStatus());
@@ -275,16 +273,14 @@ public class StemmaTest {
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + falseNode)
+                    .path("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + falseNode)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
 
             ClientResponse actualStemmaResponse2 = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            falseTitle + "/withnewrootnode/" + rightNode)
+                    .path("/tradition/" + tradId + "/stemma/" + falseTitle + "/reorient/" + rightNode)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse2.getStatus());
@@ -313,8 +309,7 @@ public class StemmaTest {
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + newNodeId)
+                    .path("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + newNodeId)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
@@ -341,16 +336,16 @@ public class StemmaTest {
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + falseNode)
+                    .path("/tradition/" + tradId + "/stemma/" +
+                            stemmaTitle + "/reorient/" + falseNode)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse.getStatus());
 
             ClientResponse actualStemmaResponse2 = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            falseTitle + "/withnewrootnode/" + rightNode)
+                    .path("/tradition/" + tradId + "/stemma/" +
+                            falseTitle + "/reorient/" + rightNode)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse2.getStatus());
@@ -369,16 +364,16 @@ public class StemmaTest {
 
             ClientResponse actualStemmaResponse = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + newNode)
+                    .path("/tradition/" + tradId + "/stemma/" +
+                            stemmaTitle + "/reorient/" + newNode)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
 
             ClientResponse actualStemmaResponse2 = jerseyTest
                     .resource()
-                    .path("/stemma/reorientstemma/fromtradition/" + tradId + "/withtitle/" +
-                            stemmaTitle + "/withnewrootnode/" + newNode)
+                    .path("/tradition/" + tradId + "/stemma/" +
+                            stemmaTitle + "/reorient/" + newNode)
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponse2.getStatus());

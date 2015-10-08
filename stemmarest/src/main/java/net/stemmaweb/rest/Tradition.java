@@ -7,13 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -56,6 +50,92 @@ public class Tradition {
     public Witness getWitness(@PathParam("tradId") String tradId, @PathParam("sigil") String sigil) {
         return new Witness(tradId, sigil);
     }
+    @Path("/{tradId}/stemma/{name}")
+    public Stemma getStemma(@PathParam("tradId") String tradId, @PathParam("name") String name) {
+        return new Stemma(tradId, name);
+    }
+
+    /**
+     * Resource creation calls
+     */
+    @PUT  // a new stemma
+    @Path("{tradId}/stemma")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response newStemma(@PathParam("tradId") String tradId, String dot) {
+        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        return parser.importStemmaFromDot(dot, tradId, false);
+    }
+    @POST  // a replacement stemma TODO test
+    @Path("{tradId}/stemma")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response replaceStemma(@PathParam("tradId") String tradId, String dot) {
+        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        return parser.importStemmaFromDot(dot, tradId, true);
+    }
+
+    /**
+     * Collection retrieval calls
+     */
+
+    /**
+     * Gets a list of all the witnesses of a tradition with the given id.
+     *
+     * @param tradId ID of the tradition to look up
+     * @return Http Response 200 and a list of witness models in JSON on success
+     *         or an ERROR in JSON format
+     */
+    @GET
+    @Path("{tradId}/witnesses")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllWitnesses(@PathParam("tradId") String tradId) {
+        Node traditionNode = getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+
+        ArrayList<WitnessModel> witnessList = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS).forEach(r -> witnessList.add(new WitnessModel(r)));
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(witnessList).build();
+    }
+
+    /**
+     * Gets a list of all Stemmata available, as dot format
+     *
+     * @param tradId
+     * @return Http Response ok and a list of DOT JSON strings on success or an
+     *         ERROR in JSON format
+     */
+    @GET
+    @Path("{tradId}/stemmata")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllStemmata(@PathParam("tradId") String tradId) {
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+
+        // find all stemmata associated with this tradition
+        ArrayList<String> stemmata = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)
+                    .forEach(x -> stemmata.add(x.getProperty("name").toString()));
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        ArrayList<String> stemmataList = new ArrayList<>();
+        stemmata.forEach( stemma -> {
+                        Response localResp = parser.parseNeo4JStemma(tradId, stemma);
+                        stemmataList.add((String) localResp.getEntity());
+                    });
+
+        return Response.ok(stemmataList).build();
+    }
+
 
     /**
      * Changes the metadata of the tradition.
@@ -144,38 +224,6 @@ public class Tradition {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(traditionList).build();
-    }
-
-    /**
-     * Gets a list of all the witnesses of a tradition with the given id.
-     *
-     * @param tradId ID of the tradition to look up
-     * @return Http Response 200 and a list of witness models in JSON on success
-     *         or an ERROR in JSON format
-     */
-    @GET
-    @Path("getallwitnesses/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllWitnesses(@PathParam("tradId") String tradId) {
-
-        ArrayList<WitnessModel> witnessList = new ArrayList<>();
-
-        try (Transaction tx = db.beginTx()) {
-            Node traditionNode = getTraditionNode(tradId, db);
-            if (traditionNode == null)
-                return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
-
-            for (Relationship witnessRel : traditionNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
-                Node witness = witnessRel.getEndNode();
-                WitnessModel witM = new WitnessModel(witness);
-                witnessList.add(witM);
-            }
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.ok(witnessList).build();
     }
 
     /**

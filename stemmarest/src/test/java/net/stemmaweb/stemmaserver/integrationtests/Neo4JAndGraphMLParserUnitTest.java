@@ -73,12 +73,10 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Create a JerseyTestServer for the necessary REST API calls
         Reading reading = new Reading();
         Relation relation = new Relation();
-        Stemma stemma = new Stemma();
         Tradition tradition = new Tradition();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(reading)
                 .addResource(relation)
-                .addResource(stemma)
                 .addResource(tradition)
                 .create();
         jerseyTest.setUp();
@@ -302,7 +300,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the correct number of witnesses
         List<WitnessModel> witnesses = jerseyTest
                 .resource()
-                .path("/tradition/getallwitnesses/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/witnesses")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, witnesses.size());  // should be 13
@@ -410,9 +408,9 @@ public class Neo4JAndGraphMLParserUnitTest {
                 "}\n";
         ClientResponse jerseyResponse = jerseyTest
                 .resource()
-                .path("/stemma/newstemma/intradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newStemma);
+                .put(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // Merge a couple of nodes
@@ -509,7 +507,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the correct number of witnesses
         List<WitnessModel> witnesses = jerseyTest
                 .resource()
-                .path("/tradition/getallwitnesses/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/witnesses")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, witnesses.size());
@@ -526,7 +524,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the existence of the stemma
         List<String> stemmata = jerseyTest
                 .resource()
-                .path("/stemma/getallstemmata/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/stemmata")
                 .get(new GenericType<List<String>>() {
                 });
         assertEquals(1, stemmata.size());

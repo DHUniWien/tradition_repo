@@ -8,10 +8,8 @@ import java.util.Iterator;
 
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
-import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -54,14 +52,12 @@ public class Benchmark1kNodes extends BenchmarkTests {
         readingResoruce = new Reading();
         relationResource = new Relation();
         importResource = new GraphMLToNeo4JParser();
-        stemmaResource = new Stemma();
 
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(userResource)
                 .addResource(traditionResource)
                 .addResource(relationResource)
-                .addResource(readingResoruce)
-                .addResource(stemmaResource).create();
+                .addResource(readingResoruce).create();
         try {
             jerseyTest.setUp();
         } catch (Exception e) {

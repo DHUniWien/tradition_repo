@@ -133,7 +133,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllWitnesses(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/getallwitnesses/fromtradition/1001")
+                .path("/tradition/1001/witnesses")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -273,7 +273,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllStemmata(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/stemma/getallstemmata/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/stemmata")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
