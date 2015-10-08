@@ -344,7 +344,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getUserById(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/user/getuser/withid/0")
+                .path("/user/0")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -357,7 +357,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getTraditionsOfAUser(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/user/gettraditions/ofuser/0")
+                .path("/user/0/traditions")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -370,13 +370,13 @@ public abstract class BenchmarkTests {
     public void createAndDeleteAUser(){
         String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
         ClientResponse response = jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, jsonPayload);
+                .put(ClientResponse.class, jsonPayload);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/user/deleteuser/withid/1337")
+                .path("/user/1337")
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }

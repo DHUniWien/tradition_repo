@@ -92,8 +92,8 @@ public class UserTest {
         }
 
         String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
-        ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+        ClientResponse returnJSON = jerseyTest.resource().path("/user")
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 returnJSON.getStatus());
 
@@ -115,13 +115,13 @@ public class UserTest {
 
         String firstUser = "{\"role\":\"user\",\"id\":42}";
         String secondUser = "{\"role\":\"admin\",\"id\":42}";
-        ClientResponse dummyJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, firstUser);
+        ClientResponse dummyJSON = jerseyTest.resource().path("/user")
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, firstUser);
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 dummyJSON.getStatus());
 
-        ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, secondUser);
+        ClientResponse returnJSON = jerseyTest.resource().path("/user")
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, secondUser);
         assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),
                 returnJSON.getStatus());
     }
@@ -136,13 +136,13 @@ public class UserTest {
         userModel.setId("43");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         UserModel actualResponse = jerseyTest
                 .resource()
-                .path("/user/getuser/withid/43")
+                .path("/user/43")
                 .get(UserModel.class);
         assertEquals("43",actualResponse.getId());
         assertEquals("user",actualResponse.getRole());
@@ -157,7 +157,7 @@ public class UserTest {
     public void getInvalidUserTest(){
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/user/getuser/withid/43")
+                .path("/user/43")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), actualResponse.getStatus());
     }
@@ -175,9 +175,9 @@ public class UserTest {
         userModel.setId("1");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         /*
          * Create User 2
@@ -186,9 +186,9 @@ public class UserTest {
         userModel.setId("2");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         /*
          * Create a test tradition for user 1
@@ -231,7 +231,7 @@ public class UserTest {
             /*
              * Try to remove user 1 with all traditions. This should fail
              */
-            ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
+            ClientResponse actualResponse = jerseyTest.resource().path("/user/1")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), actualResponse.getStatus());
 
@@ -259,7 +259,7 @@ public class UserTest {
             /*
              * Try again to remove user 1
              */
-            actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
+            actualResponse = jerseyTest.resource().path("/user/1")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
 
@@ -297,9 +297,9 @@ public class UserTest {
         userModel.setId("1");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         /*
          * Create a test tradition for user 1
@@ -321,7 +321,7 @@ public class UserTest {
              */
             ClientResponse actualResponse = jerseyTest
                     .resource()
-                    .path("/user/deleteuser/withid/2")
+                    .path("/user/2")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
 
@@ -364,9 +364,9 @@ public class UserTest {
         String jsonPayload = "{\"role\":\"user\",\"id\":837462}";
         jerseyTest
                 .resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, jsonPayload);
+                .put(ClientResponse.class, jsonPayload);
         
         try(Transaction tx = db.beginTx())
         {
@@ -387,7 +387,7 @@ public class UserTest {
         trad.setName("TestTradition");
         List<TraditionModel> traditions = jerseyTest
                 .resource()
-                .path("/user/gettraditions/ofuser/837462")
+                .path("/user/837462/traditions")
                 .get(new GenericType<List<TraditionModel>>() {
                 });
         TraditionModel tradLoaded = traditions.get(0);
@@ -396,14 +396,14 @@ public class UserTest {
 
         ClientResponse getStemmaResponse = jerseyTest
                 .resource()
-                .path("/user/gettraditions/ofuser/837462")
+                .path("/user/837462/traditions")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.ok().build().getStatus(), getStemmaResponse.getStatus());
 
         ClientResponse getNotFoundStemmaResponse = jerseyTest
                 .resource()
-                .path("/user/gettraditions/ofuser/xy")
+                .path("/user/xy/traditions")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getNotFoundStemmaResponse.getStatus());

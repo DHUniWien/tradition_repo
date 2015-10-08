@@ -1,17 +1,9 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -21,13 +13,11 @@ import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
-import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * Comprises all the API calls related to a user.
@@ -43,12 +33,11 @@ public class User {
     /**
      * Creates a user based on the parameters submitted in JSON.
      *
-     * @param userModel
-     *            in JSON Format
-     * @return a userModel in JSON on success or an ERROR in JSON format
+     * @param userModel -  in JSON format
+     * @return A JSON UserModel or a JSON error message
      */
-    @POST
-    @Path("createuser")
+    @PUT
+    @Path("/")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response create(UserModel userModel) {
 
@@ -81,10 +70,10 @@ public class User {
      * Gets a user by the id.
      *
      * @param userId The ID to look up
-     * @return UserModel as JSON or an ERROR in JSON format
+     * @return A JSON UserModel or a JSON error message
      */
     @GET
-    @Path("getuser/withid/{userId}")
+    @Path("/{userId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getUserById(@PathParam("userId") String userId) {
         UserModel userModel = new UserModel();
@@ -105,13 +94,13 @@ public class User {
     }
 
     /**
-     * Removes a user and all his traditions
+     * Removes a user and all its traditions
      *
      * @param userId The ID of the user to delete
      * @return OK on success or an ERROR in JSON format
      */
     @DELETE
-    @Path("deleteuser/withid/{userId}")
+    @Path("/{userId}")
     public Response deleteUserById(@PathParam("userId") String userId) {
         Node foundUser;
         try (Transaction tx = db.beginTx()) {
@@ -142,10 +131,10 @@ public class User {
      * Get all Traditions of a user
      *
      * @param userId The ID to look up
-     * @return OK on success or an ERROR in JSON format
+     * @return A JSON list of TraditionModel objects
      */
     @GET
-    @Path("gettraditions/ofuser/{userId}")
+    @Path("/{userId}/traditions")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTraditionsByUserId(@PathParam("userId") String userId) {
 
