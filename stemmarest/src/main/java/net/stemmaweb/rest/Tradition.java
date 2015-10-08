@@ -1,30 +1,26 @@
 package net.stemmaweb.rest;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import javax.ws.rs.*;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLStreamException;
 
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
@@ -77,7 +73,7 @@ public class Tradition {
         return parser.importStemmaFromDot(dot, tradId, true);
     }
 
-    /**
+    /*****************************
      * Collection retrieval calls
      */
 
@@ -169,6 +165,292 @@ public class Tradition {
         return Response.ok(relList).build();
     }
 
+    /**
+     * Returns a list of all readings in a tradition
+     *
+     * @param tradId
+     *            the id of the tradition
+     * @return the list of readings in json format on success or an ERROR in
+     *         JSON format
+     */
+    @GET
+    @Path("{tradId}/readings")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllReadings(@PathParam("tradId") String tradId) {
+        Node startNode = DatabaseService.getStartNode(tradId, db);
+        if (startNode == null) {
+            return Response.status(Status.NOT_FOUND)
+                    .entity("Could not find tradition with this id").build();
+        }
+
+        ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                    .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(readingModels).build();
+    }
+
+    /**
+     * Get all readings which have the same text and the same rank between given
+     * ranks
+     *
+     * @param tradId
+     *            the id of the tradition in which to look for identical
+     *            readings
+     * @param startRank
+     *            the rank from where to start the search
+     * @param endRank
+     *            the end rank of the search range
+     * @return a list of lists as a json ok response: each list contain
+     *         identical readings on success or an ERROR in JSON format
+     */
+    // TODO refactor all these traversals somewhere!
+    @GET
+    @Path("{tradId}/identicalreadings/{startRank}/{endRank}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getIdenticalReadings(@PathParam("tradId") String tradId,
+                                         @PathParam("startRank") long startRank,
+                                         @PathParam("endRank") long endRank) {
+        Node startNode = DatabaseService.getStartNode(tradId, db);
+        if (startNode == null) {
+            return Response.status(Status.NOT_FOUND)
+                    .entity("Could not find tradition with this id").build();
+        }
+
+        ArrayList<List<ReadingModel>> identicalReadings;
+        try {
+            ArrayList<ReadingModel> readingModels =
+                    getAllReadingsFromTraditionBetweenRanks(startNode, startRank, endRank);
+            identicalReadings = identifyIdenticalReadings(readingModels, startRank, endRank);
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+
+        Boolean isEmpty = true;
+        for (List<ReadingModel> list : identicalReadings) {
+            if (list.size() > 0) {
+                isEmpty = false;
+                break;
+            }
+        }
+        if (isEmpty)
+            return Response.status(Status.NOT_FOUND)
+                    .entity("no identical readings were found")
+                    .build();
+
+        return Response.ok(identicalReadings).build();
+    }
+
+    // Retrieve all readings of a tradition between two ranks as Nodes
+    private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
+        ArrayList<Node> readings = new ArrayList<>();
+
+        Evaluator e = path -> {
+            Integer rank = Integer.parseInt(path.endNode().getProperty("rank").toString());
+            if( rank > endRank )
+                return Evaluation.EXCLUDE_AND_PRUNE;
+            if ( rank < startRank)
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        };
+        try (Transaction tx = db.beginTx()) {
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(e).uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(startNode).nodes().forEach(readings::add);
+            tx.success();
+        }
+        return readings;
+    }
+    // Retrieve all readings of a tradition between two ranks as ReadingModels
+    private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
+            Node startNode, long startRank, long endRank) {
+        ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        getReadingsBetweenRanks(startRank, endRank, startNode)
+                .forEach(x -> readingModels.add(new ReadingModel(x)));
+        Collections.sort(readingModels);
+        return readingModels;
+    }
+
+    // Gets identical readings in a tradition between the given ranks
+    private ArrayList<List<ReadingModel>> identifyIdenticalReadings(
+            ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
+        ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<>();
+
+        for (int i = 0; i <= readingModels.size() - 2; i++)
+            while (Objects.equals(readingModels.get(i).getRank(), readingModels.get(i + 1)
+                    .getRank()) && i + 1 < readingModels.size()) {
+                ArrayList<ReadingModel> identicalReadings = new ArrayList<>();
+
+                if (readingModels.get(i).getText()
+                        .equals(readingModels.get(i + 1).getText())
+                        && readingModels.get(i).getRank() < endRank
+                        && readingModels.get(i).getRank() > startRank) {
+                    identicalReadings.add(readingModels.get(i));
+                    identicalReadings.add(readingModels.get(i + 1));
+                }
+                identicalReadingsList.add(identicalReadings);
+                i++;
+            }
+        return identicalReadingsList;
+    }
+
+    /**
+     * Returns a list of a list of readingModels with could be one the same rank
+     * without problems
+     * TODO use AlignmentTraverse for this...?
+     *
+     * @param tradId - the tradition to query
+     * @param startRank - where to start
+     * @param endRank - where to end
+     * @return list of readings that could be at the same rank in JSON format or
+     *         an ERROR in JSON format
+     */
+    @GET
+    @Path("{tradId}/mergeablereadings/{startRank}/{endRank}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCouldBeIdenticalReadings(
+            @PathParam("tradId") String tradId,
+            @PathParam("startRank") long startRank,
+            @PathParam("endRank") long endRank) {
+        Node startNode = DatabaseService.getStartNode(tradId, db);
+        if (startNode == null) {
+            return Response.status(Status.NOT_FOUND)
+                    .entity("Could not find tradition with this id").build();
+        }
+
+        ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings;
+        try (Transaction tx = db.beginTx()) {
+            ArrayList<Node> questionedReadings = getReadingsBetweenRanks(
+                    startRank, endRank, startNode);
+
+            couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings);
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        if (couldBeIdenticalReadings.size() == 0)
+            return Response.status(Status.NOT_FOUND)
+                    .entity("no identical readings were found")
+                    .build();
+
+        return Response.ok(couldBeIdenticalReadings).build();
+    }
+
+    /**
+     * Makes separate lists for every group of readings with identical text and
+     * different ranks and send the list for further test
+     *
+     * @param questionedReadings -
+     * @return list of lists of identical readings
+     */
+    private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
+            ArrayList<Node> questionedReadings) {
+
+        ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
+
+        for (Node nodeA : questionedReadings) {
+            ArrayList<Node> sameText = new ArrayList<>();
+            for (Node nodeB : questionedReadings)
+                if (!nodeA.equals(nodeB)
+                        && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
+                        && !nodeA.getProperty("rank").toString().equals(nodeB.getProperty("rank").toString())) {
+                    sameText.add(nodeB);
+                    sameText.add(nodeA);
+                }
+            if (sameText.size() > 0) {
+                couldBeIdenticalCheck(sameText, couldBeIdenticalReadings);
+            }
+        }
+        return couldBeIdenticalReadings;
+    }
+
+    /**
+     * Adds all the words that could be on the same rank to the result list
+     *
+     * @param sameText -
+     * @param couldBeIdenticalReadings -
+     */
+    private void couldBeIdenticalCheck(ArrayList<Node> sameText,
+                                       ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings) {
+
+        Node biggerRankNode;
+        Node smallerRankNode;
+        long biggerRank;
+        long smallerRank;
+        long rank;
+        boolean gotOne;
+
+        ArrayList<ReadingModel> couldBeIdentical = new ArrayList<>();
+
+        for (int i = 0; i < sameText.size() - 1; i++) {
+            long rankA = (long) sameText.get(i).getProperty("rank");
+            long rankB = (long) sameText.get(i + 1).getProperty("rank");
+
+            if (rankA < rankB) {
+                biggerRankNode = sameText.get(i + 1);
+                smallerRankNode = sameText.get(i);
+                smallerRank = rankA;
+                biggerRank = rankB;
+            } else {
+                biggerRankNode = sameText.get(i);
+                smallerRankNode = sameText.get(i + 1);
+                smallerRank = rankB;
+                biggerRank = rankA;
+            }
+
+            gotOne = false;
+            Iterable<Relationship> rels = smallerRankNode
+                    .getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+
+            for (Relationship rel : rels) {
+                rank = (long) rel.getEndNode().getProperty("rank");
+                if (rank <= biggerRank) {
+                    gotOne = true;
+                    break;
+                }
+            }
+
+            if (gotOne) {
+                gotOne = false;
+
+                Iterable<Relationship> rels2 = biggerRankNode
+                        .getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+
+                for (Relationship rel : rels2) {
+                    rank = (long) rel.getStartNode().getProperty("rank");
+                    if (rank >= smallerRank) {
+                        gotOne = true;
+                        break;
+                    }
+                }
+            }
+            if (!gotOne) {
+                if (!couldBeIdentical
+                        .contains(new ReadingModel(smallerRankNode))) {
+                    couldBeIdentical.add(new ReadingModel(smallerRankNode));
+                }
+                if (!couldBeIdentical
+                        .contains(new ReadingModel(biggerRankNode))) {
+                    couldBeIdentical.add(new ReadingModel(biggerRankNode));
+                }
+            }
+            if (couldBeIdentical.size() > 0) {
+                couldBeIdenticalReadings.add(couldBeIdentical);
+            }
+        }
+    }
+
+    /******************************
+     * Tradition-specific calls
+     */
 
     /**
      * Changes the metadata of the tradition.

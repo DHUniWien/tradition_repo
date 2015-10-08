@@ -117,7 +117,7 @@ public class ReadingTest {
      */
     private List<ReadingModel> testNumberOfReadingsAndWitnesses(int number) {
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(number, listOfReadings.size());
         Response resp;
@@ -154,7 +154,7 @@ public class ReadingTest {
 
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/changeproperties/ofreading/" + node.getId())
+                    .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, chgModel);
 
@@ -193,7 +193,7 @@ public class ReadingTest {
 
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/changeproperties/ofreading/" + node.getId())
+                    .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, chgModel);
 
@@ -226,7 +226,7 @@ public class ReadingTest {
             chgModel.setProperties(models);
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/changeproperties/ofreading/" + node.getId())
+                    .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, chgModel);
 
@@ -244,7 +244,7 @@ public class ReadingTest {
         String expected = "{\"id\":\"16\",\"is_common\":\"0\",\"language\":\"Default\",\"rank\":2,\"text\":\"april\"}";
 
         ClientResponse resp = jerseyTest.resource()
-                .path("/reading/getreading/withreadingid/" + 16)
+                .path("/reading/" + 16)
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
         ObjectMapper mapper = new ObjectMapper();
@@ -268,7 +268,7 @@ public class ReadingTest {
             expectedReadingModel = new ReadingModel(node);
 
             ReadingModel readingModel = jerseyTest.resource()
-                    .path("/reading/getreading/withreadingid/" + node.getId())
+                    .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
             assertTrue(readingModel != null);
@@ -281,7 +281,7 @@ public class ReadingTest {
     @Test
     public void getReadingWithFalseIdTest() {
         ClientResponse response = jerseyTest.resource()
-                .path("/reading/getreading/withreadingid/" + 200)
+                .path("/reading/" + 200)
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
         assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
@@ -289,7 +289,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingTest() {
+    public void duplicateTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'showers'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -307,7 +307,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", "
                     + secondNode.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicatereading")
+                    .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
@@ -355,7 +355,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingWithDuplicateForTwoWitnessesTest() {
+    public void duplicateWithDuplicateForTwoWitnessesTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -367,7 +367,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"C\" ]}";
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/duplicatereading")
+                    .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
@@ -434,7 +434,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingWithDuplicateForOneWitnessTest() {
+    public void duplicateWithDuplicateForOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -444,7 +444,7 @@ public class ReadingTest {
 
             // duplicate reading
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
-            ClientResponse response = jerseyTest.resource().path("/reading/duplicatereading")
+            ClientResponse response = jerseyTest.resource().path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -510,7 +510,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingWitnessCrossingTest() {
+    public void duplicateWitnessCrossingTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'of'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -522,7 +522,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + node.getId()
                     + "], \"witnesses\":[\"A\",\"B\" ]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicatereading")
+                    .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
@@ -550,7 +550,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingWithNoWitnessesInJSONTest() {
+    public void duplicateWithNoWitnessesInJSONTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -562,7 +562,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId()
                     + "], \"witnesses\":[]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicatereading")
+                    .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
@@ -576,7 +576,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingWithOnlyOneWitnessTest() {
+    public void duplicateWithOnlyOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -588,7 +588,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId()
                     + "], \"witnesses\":[\"C\"]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicatereading")
+                    .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
@@ -601,7 +601,7 @@ public class ReadingTest {
     }
 
     @Test
-    public void duplicateReadingWithNotAllowedWitnessesTest() {
+    public void duplicateWithNotAllowedWitnessesTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'root'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
@@ -613,7 +613,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId()
                     + "], \"witnesses\":[\"C\"]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicatereading")
+                    .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
@@ -640,8 +640,8 @@ public class ReadingTest {
             // merge readings
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/mergereadings/first/" + firstNode.getId()
-                            + "/second/" + secondNode.getId())
+                    .path("/reading/" + firstNode.getId()
+                            + "/merge/" + secondNode.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
@@ -714,8 +714,8 @@ public class ReadingTest {
             // merge readings
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/mergereadings/first/" + firstNode.getId()
-                            + "/second/" + secondNode.getId())
+                    .path("/reading/" + firstNode.getId()
+                            + "/merge/" + secondNode.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
@@ -751,8 +751,8 @@ public class ReadingTest {
             // merge readings
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/mergereadings/first/" + firstNode.getId()
-                            + "/second/" + secondNode.getId())
+                    .path("/reading/" + firstNode.getId()
+                            + "/merge/" + secondNode.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
@@ -788,8 +788,8 @@ public class ReadingTest {
             // merge readings
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/mergereadings/first/" + firstNode.getId()
-                            + "/second/" + secondNode.getId())
+                    .path("/reading/" + firstNode.getId()
+                            + "/merge/" + secondNode.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
@@ -828,8 +828,8 @@ public class ReadingTest {
             // merge readings
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/mergereadings/first/" + firstNode.getId()
-                            + "/second/" + secondNode.getId())
+                    .path("/reading/" + firstNode.getId()
+                            + "/merge/" + secondNode.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class);
 
@@ -863,8 +863,8 @@ public class ReadingTest {
         characterModel.setCharacter(" ");
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/splitreading/ofreading/" + node.getId()
-                        + "/withsplitindex/0")
+                .path("/reading/" + node.getId()
+                        + "/split/0")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, characterModel);
 
@@ -925,8 +925,8 @@ public class ReadingTest {
             characterModel.setCharacter("-");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/0")
+                    .path("/reading/" + node.getId()
+                            + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -961,8 +961,8 @@ public class ReadingTest {
             characterModel.setCharacter("/");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/0")
+                    .path("/reading/" + node.getId()
+                            + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -990,8 +990,8 @@ public class ReadingTest {
             characterModel.setCharacter("-");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/4")
+                    .path("/reading/" + node.getId()
+                            + "/split/4")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1019,8 +1019,8 @@ public class ReadingTest {
             characterModel.setCharacter("-of-");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/4")
+                    .path("/reading/" + node.getId()
+                            + "/split/4")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1049,8 +1049,8 @@ public class ReadingTest {
             characterModel.setCharacter("/");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/2")
+                    .path("/reading/" + node.getId()
+                            + "/split/2")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1077,8 +1077,8 @@ public class ReadingTest {
             characterModel.setCharacter("t");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/2")
+                    .path("/reading/" + node.getId()
+                            + "/split/2")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1105,8 +1105,8 @@ public class ReadingTest {
             characterModel.setCharacter("oo");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/1")
+                    .path("/reading/" + node.getId()
+                            + "/split/1")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1135,8 +1135,8 @@ public class ReadingTest {
             characterModel.setCharacter("o");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/1")
+                    .path("/reading/" + node.getId()
+                            + "/split/1")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1172,8 +1172,8 @@ public class ReadingTest {
             characterModel.setCharacter("\"");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/0")
+                    .path("/reading/" + node.getId()
+                            + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1201,8 +1201,8 @@ public class ReadingTest {
             characterModel.setCharacter("");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/7")
+                    .path("/reading/" + node.getId()
+                            + "/split/7")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1231,8 +1231,8 @@ public class ReadingTest {
             characterModel.setCharacter(" ");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + node.getId()
-                            + "/withsplitindex/0")
+                    .path("/reading/" + node.getId()
+                            + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1265,8 +1265,8 @@ public class ReadingTest {
             characterModel.setCharacter("");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/splitreading/ofreading/" + untoMe.getId()
-                            + "/withsplitindex/0")
+                    .path("/reading/" + untoMe.getId()
+                            + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1286,7 +1286,7 @@ public class ReadingTest {
     @Test(expected = org.junit.ComparisonFailure.class)
     public void allReadingsOfTraditionTest() {
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
         Collections.sort(listOfReadings);
@@ -1312,7 +1312,7 @@ public class ReadingTest {
     public void allReadingsOfTraditionNotFoundTest() {
         String falseTradId = "I don't exist";
         ClientResponse response = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + falseTradId)
+                .path("/tradition/" + falseTradId + "/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
@@ -1326,8 +1326,8 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/reading/getidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/3/toendrank/8")
+                .path("/tradition/" + tradId
+                        + "/identicalreadings/3/8")
                 .get(new GenericType<List<List<ReadingModel>>>() {
                 });
         assertEquals(1, listOfIdenticalReadings.size());
@@ -1345,8 +1345,8 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/reading/getidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/8")
+                .path("/tradition/" + tradId
+                        + "/identicalreadings/1/8")
                 .get(new GenericType<List<List<ReadingModel>>>() {
                 });
         assertEquals(2, listOfIdenticalReadings.size());
@@ -1367,8 +1367,8 @@ public class ReadingTest {
     public void identicalReadingsNoResultTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/getidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/10/toendrank/15")
+                .path("/tradition/" + tradId
+                        + "/identicalreadings/10/15")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
@@ -1380,8 +1380,8 @@ public class ReadingTest {
     public void couldBeIdenticalReadingsTest() {
         List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest
                 .resource()
-                .path("/reading/couldbeidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/15")
+                .path("/tradition/" + tradId
+                        + "/mergeablereadings/1/15")
                 .get(new GenericType<List<List<ReadingModel>>>() {
                 });
         assertEquals(2, couldBeIdenticalReadings.size());
@@ -1401,8 +1401,8 @@ public class ReadingTest {
     public void couldBeIdenticalReadingsNoResultTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/couldbeidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/9")
+                .path("/tradition/" + tradId
+                        + "/mergeablereadings/1/9")
                 .get(ClientResponse.class);
 
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
@@ -1430,8 +1430,8 @@ public class ReadingTest {
             characterModel.setCharacter("");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/"
-                            + showers.getId() + "/read2id/" + sweet.getId() + "/concatenate/0")
+                    .path("/reading/"
+                            + showers.getId() + "/concatenate/" + sweet.getId() + "/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1495,9 +1495,9 @@ public class ReadingTest {
             characterModel.setCharacter("shouldNotBeDesplayd");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/"
-                            + showers.getId() + "/read2id/" + sweet.getId()
-                            + "/concatenate/0")
+                    .path("/reading/"
+                            + showers.getId() + "/concatenate/" + sweet.getId()
+                            + "/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1560,8 +1560,8 @@ public class ReadingTest {
             characterModel.setCharacter("test");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/" + showers.getId() + "/read2id/" +
-                            sweet.getId() + "/concatenate/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/" +
+                            sweet.getId() + "/1")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1608,8 +1608,8 @@ public class ReadingTest {
             characterModel.setCharacter("\"");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/" + showers.getId() + "/read2id/"
-                            + sweet.getId() + "/concatenate/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/"
+                            + sweet.getId() + "/1")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1656,8 +1656,8 @@ public class ReadingTest {
             characterModel.setCharacter("/");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/" + showers.getId() + "/read2id/"
-                            + sweet.getId() + "/concatenate/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/"
+                            + sweet.getId() + "/1")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1704,8 +1704,8 @@ public class ReadingTest {
             characterModel.setCharacter("");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/" + showers.getId() + "/read2id/"
-                            + sweet.getId() + "/concatenate/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/"
+                            + sweet.getId() + "/1")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1754,8 +1754,8 @@ public class ReadingTest {
             characterModel.setCharacter("shouldNotBeDesplayd");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/compressreadings/read1id/" + showers.getId() + "/read2id/"
-                            + fruit.getId() + "/concatenate/0/")
+                    .path("/reading/" + showers.getId() + "/concatenate/"
+                            + fruit.getId() + "/0/")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1787,8 +1787,8 @@ public class ReadingTest {
 
         ReadingModel actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getnextreading/fromwitness/A/ofreading/"
-                        + withReadId).get(ReadingModel.class);
+                .path("/reading/" + withReadId + "/next/witness/A"
+                       ).get(ReadingModel.class);
         assertEquals("his", actualResponse.getText());
     }
 
@@ -1806,13 +1806,13 @@ public class ReadingTest {
 
         ReadingModel actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getnextreading/fromwitness/A/ofreading/" + piercedReadId)
+                .path("/reading/" + piercedReadId +"/next/A")
                 .get(ReadingModel.class);
         assertEquals("unto me", actualResponse.getText());
 
         actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getnextreading/fromwitness/B/ofreading/" + piercedReadId)
+                .path("/reading/" + piercedReadId + "/next/B")
                 .get(ReadingModel.class);
         assertEquals("to", actualResponse.getText());
     }
@@ -1832,7 +1832,7 @@ public class ReadingTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/getnextreading/fromwitness/B/ofreading/" + readId)
+                .path("/reading/" + readId + "/next/B" )
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
@@ -1852,7 +1852,7 @@ public class ReadingTest {
         }
         ReadingModel actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getpreviousreading/fromwitness/A/ofreading/" + readId)
+                .path("/reading/" + readId + "/prior/A")
                 .get(ReadingModel.class);
         assertEquals("april", actualResponse.getText());
     }
@@ -1871,13 +1871,13 @@ public class ReadingTest {
         }
         ReadingModel actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getpreviousreading/fromwitness/A/ofreading/" + ofId)
+                .path("/reading/" + ofId + "/prior/A")
                 .get(ReadingModel.class);
         assertEquals("drought", actualResponse.getText());
 
         actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getpreviousreading/fromwitness/B/ofreading/" + ofId)
+                .path("/reading/" + ofId + "/prior/B")
                 .get(ReadingModel.class);
         assertEquals("march", actualResponse.getText());
     }
@@ -1896,7 +1896,7 @@ public class ReadingTest {
         }
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/reading/getpreviousreading/fromwitness/A/ofreading/" + readId)
+                .path("/reading/" + readId + "/prior/A")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 actualResponse.getStatus());

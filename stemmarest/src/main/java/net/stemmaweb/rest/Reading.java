@@ -2,12 +2,7 @@ package net.stemmaweb.rest;
 
 import java.util.*;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -19,7 +14,6 @@ import net.stemmaweb.model.KeyPropertyModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
@@ -51,16 +45,13 @@ public class Reading {
 
     /**
      * Returns a single reading by global neo4j id
-     *
-     * @param readId
-     *            to get the reading from the database
+     * @param readId -
      * @return the reading fetched by the id
      */
     @GET
-    @Path("getreading/withreadingid/{readId}")
+    @Path("{readId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getReading(@PathParam("readId") long readId) {
-
         ReadingModel reading;
         Node readingNode;
         try (Transaction tx = db.beginTx()) {
@@ -88,7 +79,7 @@ public class Reading {
      * @return ok response with a model of the modified reading in json format
      */
     @POST
-    @Path("changeproperties/ofreading/{readId}")
+    @Path("{readId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response changeReadingProperties(@PathParam("readId") long readId,
@@ -128,8 +119,9 @@ public class Reading {
      *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
      *         with a detailed message else
      */
-    @POST
-    @Path("duplicatereading")
+    // TODO make this readingId/duplicate
+    @PUT
+    @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response duplicateReading(DuplicateModel duplicateModel) {
@@ -270,9 +262,9 @@ public class Reading {
      *
      * @param newWitnesses
      *            the witnesses the duplicated reading will belong to
-     * @param originalRel
-     * @param originNode
-     * @param targetNode
+     * @param originalRel -
+     * @param originNode -
+     * @param targetNode -
      * @return a list of the deleted edges
      */
     private ArrayList<RelationshipModel> transferNewWitnessesFromOriginalReadingToAddedReading(
@@ -331,7 +323,7 @@ public class Reading {
      * Merges two readings into one single reading in a specific tradition.
      * Opposite of duplicate
      *
-     * @param firstReadId
+     * @param readId
      *            the id of the first reading to be merged
      * @param secondReadId
      *            the id of the second reading to be merged
@@ -339,16 +331,16 @@ public class Reading {
      *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
      */
     @POST
-    @Path("mergereadings/first/{firstReadId}/second/{secondReadId}")
+    @Path("{readId}/merge/{secondReadId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response mergeReadings(@PathParam("firstReadId") long firstReadId,
+    public Response mergeReadings(@PathParam("readId") long readId,
                                   @PathParam("secondReadId") long secondReadId) {
 
         Node stayingReading;
         Node deletingReading;
 
         try (Transaction tx = db.beginTx()) {
-            stayingReading = db.getNodeById(firstReadId);
+            stayingReading = db.getNodeById(readId);
             deletingReading = db.getNodeById(secondReadId);
 
             if (!canBeMerged(stayingReading, deletingReading)) {
@@ -414,26 +406,6 @@ public class Reading {
     private boolean doContainSameText(Node stayingReading, Node deletingReading) {
         return stayingReading.getProperty("text").toString()
                 .equals(deletingReading.getProperty("text").toString());
-    }
-
-    /**
-     * Checks if the two readings have a relationship between them.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     * @return check whether two readings contain a relationship between them
-     */
-    private boolean doContainRelationshipBetweenEachOther(Node stayingReading, Node deletingReading) {
-        for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
-            for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
-                if (firstRel.equals(secondRel)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     /**
@@ -579,7 +551,7 @@ public class Reading {
      *            the index of the first letter of the second word: "unto" with
      *            index 2 gets "un" and "to". if the index is zero the reading
      *            is split using the separator
-     * @_param separator
+     * @param model
      *            the string which is between the words to be split, if no
      *            separator is specified (empty String) the reading is split
      *            using whitespace as default. If a splitIndex and a separator
@@ -592,7 +564,7 @@ public class Reading {
      *         Status.INTERNAL_SERVER_ERROR with a detailed message else
      */
     @POST
-    @Path("splitreading/ofreading/{readId}/withsplitindex/{splitIndex}")
+    @Path("{readId}/split/{splitIndex}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response splitReading(@PathParam("readId") long readId,
@@ -775,7 +747,7 @@ public class Reading {
      *         or an ERROR in JSON format
      */
     @GET
-    @Path("getnextreading/fromwitness/{witnessId}/ofreading/{readId}")
+    @Path("{readId}/next/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getNextReadingInWitness(
             @PathParam("witnessId") String witnessId,
@@ -820,7 +792,7 @@ public class Reading {
      *         or an ERROR in JSON format
      */
     @GET
-    @Path("getpreviousreading/fromwitness/{witnessId}/ofreading/{readId}")
+    @Path("{readId}/prior/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getPreviousReadingInWitness(
             @PathParam("witnessId") String witnessId,
@@ -858,328 +830,11 @@ public class Reading {
     }
 
     /**
-     * Returns a list of all readings in a tradition
-     *
-     * @param tradId
-     *            the id of the tradition
-     * @return the list of readings in json format on success or an ERROR in
-     *         JSON format
-     */
-    @GET
-    @Path("getallreadings/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllReadings(@PathParam("tradId") String tradId) {
-
-        ArrayList<ReadingModel> readingModels = new ArrayList<>();
-
-        // actually does want the start node
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        if (startNode == null) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id").build();
-        }
-        try (Transaction tx = db.beginTx()) {
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-                    .nodes()) {
-                ReadingModel tempReading = new ReadingModel(node);
-                readingModels.add(tempReading);
-            }
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.ok(readingModels).build();
-    }
-
-    /**
-     * Get all readings which have the same text and the same rank between given
-     * ranks
-     *
-     * @param tradId
-     *            the id of the tradition in which to look for identical
-     *            readings
-     * @param startRank
-     *            the rank from where to start the search
-     * @param endRank
-     *            the end rank of the search range
-     * @return a list of lists as a json ok response: each list contain
-     *         identical readings on success or an ERROR in JSON format
-     */
-    @GET
-    @Path("getidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getIdenticalReadings(@PathParam("tradId") String tradId,
-                                         @PathParam("startRank") long startRank,
-                                         @PathParam("endRank") long endRank) {
-
-        ArrayList<ReadingModel> readingModels;
-
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        if (startNode == null) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id").build();
-        }
-
-        try (Transaction tx = db.beginTx()) {
-            readingModels = getAllReadingsFromTraditionBetweenRanks(startNode, startRank, endRank);
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        ArrayList<List<ReadingModel>> identicalReadings;
-        identicalReadings = getIdenticalReadingsAsList(readingModels, startRank, endRank);
-
-        Boolean isEmpty = true;
-        for (List<ReadingModel> list : identicalReadings) {
-            if (list.size() > 0) {
-                isEmpty = false;
-                break;
-            }
-        }
-        if (isEmpty)
-            return Response.status(Status.NOT_FOUND)
-                    .entity("no identical readings were found")
-                    .build();
-
-        return Response.ok(identicalReadings).build();
-    }
-
-    /**
-     * Helper method to retrieve all readings from a tradition
-     *
-     * @param startNode
-     * @param startRank
-     * @param endRank
-     * @return list of readings of a tradition
-     */
-    private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
-            Node startNode, long startRank, long endRank) {
-
-        ArrayList<ReadingModel> readingModels = new ArrayList<>();
-
-        for (Node node : db.traversalDescription().depthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .evaluator(Evaluators.all()).uniqueness(Uniqueness.NODE_GLOBAL)
-                .traverse(startNode).nodes()) {
-            long nodeRank = (long) node.getProperty("rank");
-
-            if (nodeRank <= endRank && nodeRank >= startRank) {
-                ReadingModel tempReading = new ReadingModel(node);
-                readingModels.add(tempReading);
-            }
-        }
-        Collections.sort(readingModels);
-        return readingModels;
-    }
-
-    /**
-     * Returns a list of a list of readingModels with could be one the same rank
-     * without problems
-     *
-     * @param tradId
-     * @param startRank
-     * @param endRank
-     * @return list of readings that could be at the same rank in JSON format or
-     *         an ERROR in JSON format
-     */
-    @GET
-    @Path("couldbeidenticalreadings/fromtradition/{tradId}/fromstartrank/{startRank}/toendrank/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getCouldBeIdenticalReadings(
-            @PathParam("tradId") String tradId,
-            @PathParam("startRank") long startRank,
-            @PathParam("endRank") long endRank) {
-
-        ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings;
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        if (startNode == null) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id").build();
-        }
-
-        try (Transaction tx = db.beginTx()) {
-            ArrayList<Node> questionedReadings = getReadingsBetweenRanks(
-                    startRank, endRank, startNode);
-
-            couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings);
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        if (couldBeIdenticalReadings.size() == 0)
-            return Response.status(Status.NOT_FOUND)
-                    .entity("no identical readings were found")
-                    .build();
-
-        return Response.ok(couldBeIdenticalReadings).build();
-    }
-
-    /**
-     * Makes separate lists for every group of readings with identical text and
-     * different ranks and send the list for further test
-     *
-     * @param questionedReadings
-     * @return list of lists of identical readings
-     */
-    private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
-            ArrayList<Node> questionedReadings) {
-
-        ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
-
-        for (Node nodeA : questionedReadings) {
-            ArrayList<Node> sameText = new ArrayList<>();
-            for (Node nodeB : questionedReadings)
-                if (!nodeA.equals(nodeB)
-                        && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
-                        && !nodeA.getProperty("rank").toString().equals(nodeB.getProperty("rank").toString())) {
-                    sameText.add(nodeB);
-                    sameText.add(nodeA);
-                }
-            if (sameText.size() > 0) {
-                couldBeIdenticalCheck(sameText, couldBeIdenticalReadings);
-            }
-        }
-        return couldBeIdenticalReadings;
-    }
-
-    /**
-     * Adds all the words that could be on the same rank to the result list
-     *
-     * @param sameText
-     * @param couldBeIdenticalReadings
-     */
-    private void couldBeIdenticalCheck(ArrayList<Node> sameText,
-            ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings) {
-
-        Node biggerRankNode;
-        Node smallerRankNode;
-        long biggerRank;
-        long smallerRank;
-        long rank;
-        boolean gotOne;
-
-        ArrayList<ReadingModel> couldBeIdentical = new ArrayList<>();
-
-        for (int i = 0; i < sameText.size() - 1; i++) {
-            long rankA = (long) sameText.get(i).getProperty("rank");
-            long rankB = (long) sameText.get(i + 1).getProperty("rank");
-
-            if (rankA < rankB) {
-                biggerRankNode = sameText.get(i + 1);
-                smallerRankNode = sameText.get(i);
-                smallerRank = rankA;
-                biggerRank = rankB;
-            } else {
-                biggerRankNode = sameText.get(i);
-                smallerRankNode = sameText.get(i + 1);
-                smallerRank = rankB;
-                biggerRank = rankA;
-            }
-
-            gotOne = false;
-            Iterable<Relationship> rels = smallerRankNode
-                    .getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-
-            for (Relationship rel : rels) {
-                rank = (long) rel.getEndNode().getProperty("rank");
-                if (rank <= biggerRank) {
-                    gotOne = true;
-                    break;
-                }
-            }
-
-            if (gotOne) {
-                gotOne = false;
-
-                Iterable<Relationship> rels2 = biggerRankNode
-                        .getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
-
-                for (Relationship rel : rels2) {
-                    rank = (long) rel.getStartNode().getProperty("rank");
-                    if (rank >= smallerRank) {
-                        gotOne = true;
-                        break;
-                    }
-                }
-            }
-            if (!gotOne) {
-                if (!couldBeIdentical
-                        .contains(new ReadingModel(smallerRankNode))) {
-                    couldBeIdentical.add(new ReadingModel(smallerRankNode));
-                }
-                if (!couldBeIdentical
-                        .contains(new ReadingModel(biggerRankNode))) {
-                    couldBeIdentical.add(new ReadingModel(biggerRankNode));
-                }
-            }
-            if (couldBeIdentical.size() > 0) {
-                couldBeIdenticalReadings.add(couldBeIdentical);
-            }
-        }
-    }
-
-    /**
-     * Returns all readings between two ranks of readings
-     *
-     * @param startRank
-     * @param endRank
-     * @param startNode
-     * @return list of readings
-     */
-    private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
-        ArrayList<Node> readings = new ArrayList<>();
-
-        for (Node node : db.traversalDescription().breadthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode).nodes()) {
-            if ((Long) node.getProperty("rank") > startRank
-                    && (Long) node.getProperty("rank") < endRank) {
-                readings.add(node);
-            }
-        }
-        return readings;
-    }
-
-    /**
-     * Gets identical readings in a tradition between the given ranks
-     *
-     * @param readingModels
-     *            list of all readings sorted by rank
-     * @param startRank
-     * @param endRank
-     * @return list of the identical readings as readingModels
-     */
-    private ArrayList<List<ReadingModel>> getIdenticalReadingsAsList(
-            ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
-        ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<>();
-
-        for (int i = 0; i <= readingModels.size() - 2; i++)
-            while (Objects.equals(readingModels.get(i).getRank(), readingModels.get(i + 1)
-                    .getRank()) && i + 1 < readingModels.size()) {
-                ArrayList<ReadingModel> identicalReadings = new ArrayList<>();
-
-                if (readingModels.get(i).getText()
-                        .equals(readingModels.get(i + 1).getText())
-                        && readingModels.get(i).getRank() < endRank
-                        && readingModels.get(i).getRank() > startRank) {
-                    identicalReadings.add(readingModels.get(i));
-                    identicalReadings.add(readingModels.get(i + 1));
-                }
-                identicalReadingsList.add(identicalReadings);
-                i++;
-            }
-        return identicalReadingsList;
-    }
-
-    /**
      * Compress two readings into one. Texts will be concatenated together (with
      * or without a space or extra text. The reading with the lower rank will be
      * given first. Opposite of split
      *
-     * @param readId1
+     * @param readId
      *            the id of the first reading
      * @param readId2
      *            the id of the second reading
@@ -1188,7 +843,7 @@ public class Reading {
      *            concatenate is set to 1, the compressing will be done with
      *            with_str between the texts of the readings. If it is 0, texts
      *            will be concatenate with a single space.
-     * @_param with_str
+     * @param character
      *            the string which will come between the texts of the readings
      *            if con is set to 1 could also be an empty string. Is given as
      *            a String to avoid problems with 'unsafe' characters in the URL
@@ -1198,10 +853,10 @@ public class Reading {
      *         concatenated
      */
     @POST
-    @Path("compressreadings/read1id/{read1Id}/read2id/{read2Id}/concatenate/{con}")
+    @Path("{readId}/concatenate/{read2Id}/{con}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response compressReadings(@PathParam("read1Id") long readId1,
+    public Response compressReadings(@PathParam("readId") long readId,
                                      @PathParam("read2Id") long readId2,
                                      @PathParam("con") String con, CharacterModel character) {
 
@@ -1222,7 +877,7 @@ public class Reading {
         }
 
         try (Transaction tx = db.beginTx()) {
-            read1 = db.getNodeById(readId1);
+            read1 = db.getNodeById(readId);
             read2 = db.getNodeById(readId2);
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
                 tx.success();
