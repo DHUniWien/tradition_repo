@@ -54,6 +54,10 @@ public class Tradition {
     public Stemma getStemma(@PathParam("tradId") String tradId, @PathParam("name") String name) {
         return new Stemma(tradId, name);
     }
+    @Path("/{tradId}/relation")
+    public Relation getRelation(@PathParam("tradId") String tradId) {
+        return new Relation(tradId);
+    }
 
     /**
      * Resource creation calls
@@ -105,7 +109,7 @@ public class Tradition {
     /**
      * Gets a list of all Stemmata available, as dot format
      *
-     * @param tradId
+     * @param tradId - the tradition whose stemmata to retrieve
      * @return Http Response ok and a list of DOT JSON strings on success or an
      *         ERROR in JSON format
      */
@@ -134,6 +138,35 @@ public class Tradition {
                     });
 
         return Response.ok(stemmataList).build();
+    }
+
+    /**
+     * Gets a list of all relationships of a tradition with the given id.
+     *
+     * @param tradId ID of the tradition to look up
+     * @return Http Response 200 and a list of relationship model in JSON
+     */
+    @GET
+    @Path("{tradId}/relationships")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllRelationships(@PathParam("tradId") String tradId) {
+        ArrayList<RelationshipModel> relList = new ArrayList<>();
+
+        Node startNode = DatabaseService.getStartNode(tradId, db);
+        try (Transaction tx = db.beginTx()) {
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(startNode).nodes().forEach(
+                    n -> n.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(
+                            r -> relList.add(new RelationshipModel(r)))
+            );
+
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(relList).build();
     }
 
 
@@ -224,42 +257,6 @@ public class Tradition {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(traditionList).build();
-    }
-
-    /**
-     * Gets a list of all relationships of a tradition with the given id.
-     *
-     * @param tradId ID of the tradition to look up
-     * @return Http Response 200 and a list of relationship model in JSON
-     */
-    @GET
-    @Path("getallrelationships/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllRelationships(@PathParam("tradId") String tradId) {
-        // TODO is this redundant??
-        ArrayList<RelationshipModel> relList = new ArrayList<>();
-
-            Node startNode = DatabaseService.getStartNode(tradId, db);
-
-        try (Transaction tx = db.beginTx()) {
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode).nodes()) {
-
-                Iterable<Relationship> rels = node.getRelationships(ERelations.RELATED,
-                        Direction.OUTGOING);
-                for(Relationship rel : rels)
-                {
-                    RelationshipModel relMod = new RelationshipModel(rel);
-                    relList.add(relMod);
-                }
-            }
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.ok(relList).build();
     }
 
     /**

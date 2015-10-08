@@ -72,11 +72,9 @@ public class Neo4JAndGraphMLParserUnitTest {
 
         // Create a JerseyTestServer for the necessary REST API calls
         Reading reading = new Reading();
-        Relation relation = new Relation();
         Tradition tradition = new Tradition();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(reading)
-                .addResource(relation)
                 .addResource(tradition)
                 .create();
         jerseyTest.setUp();
@@ -308,7 +306,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the correct number of relationships
         List<RelationshipModel> relations = jerseyTest
                 .resource()
-                .path("/tradition/getallrelationships/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/relationships")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(7, relations.size());
@@ -456,9 +454,9 @@ public class Neo4JAndGraphMLParserUnitTest {
 
         jerseyResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + traditionId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
 
         // Export the GraphML
@@ -515,7 +513,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the correct number of relationships
         List<RelationshipModel> relations = jerseyTest
                 .resource()
-                .path("/tradition/getallrelationships/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/relationships")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<RelationshipModel>>() {
                 });

@@ -13,11 +13,8 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
-import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 
 import org.junit.Rule;
@@ -53,10 +50,7 @@ public abstract class BenchmarkTests {
      */
     static User userResource;
     static Tradition traditionResource;
-    static Witness witnessResource;
     static Reading readingResoruce;
-    static Relation relationResource;
-    static Stemma stemmaResource;
     static GraphMLToNeo4JParser importResource ;
 
     static File testfile;
@@ -145,7 +139,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllRelationships(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/relation/getallrelationships/fromtradition/"+tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -313,7 +307,6 @@ public abstract class BenchmarkTests {
     @Test
     public void createAndDeleteARelationship(){
         RelationshipModel relationship = new RelationshipModel();
-        String relationshipId = "";
         relationship.setSource(theRoot + "");
         relationship.setTarget(untoMe + "");
         relationship.setType("grammatical");
@@ -325,14 +318,14 @@ public abstract class BenchmarkTests {
 
 
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/relation/createrelationship/")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
-        relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+        String relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
-                .path("/relation/deleterelationshipbyid/withrelationship/" + relationshipId)
+                .path("/tradition/" + tradId + "/relation/" + relationshipId)
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
     }

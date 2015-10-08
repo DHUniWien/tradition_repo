@@ -8,7 +8,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -56,8 +56,6 @@ public class TranspositionTest {
 
 
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
-        Relation relation = new Relation();
-
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 
 
@@ -111,7 +109,8 @@ public class TranspositionTest {
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(relation).create();
+        Tradition tradition = new Tradition();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
         jerseyTest.setUp();
     }
 
@@ -127,9 +126,9 @@ public class TranspositionTest {
         shouldnotexist.setTarget(rootId.toString());
         shouldnotexist.setScope("local");
 
-        ClientResponse checkme = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/" + tradId)
+        ClientResponse checkme = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, shouldnotexist);
+                .delete(ClientResponse.class, shouldnotexist);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), checkme.getStatus());
 
         // Now set up the relationship to be created
@@ -144,9 +143,9 @@ public class TranspositionTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
     }
 
@@ -171,9 +170,9 @@ public class TranspositionTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         // Make sure it is there
@@ -204,9 +203,9 @@ public class TranspositionTest {
 
         actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         // and make sure it is there.

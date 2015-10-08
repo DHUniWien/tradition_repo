@@ -93,10 +93,8 @@ public class TraditionTest {
          * Create a JersyTestServer serving the Resource under test
          */
         Tradition tradition = new Tradition();
-        Relation relation = new Relation();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(tradition)
-                .addResource(relation).create();
+                .addResource(tradition).create();
         jerseyTest.setUp();
     }
 
@@ -154,7 +152,7 @@ public class TraditionTest {
         rel.setScope("local");
 
         List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/getallrelationships/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(new GenericType<List<RelationshipModel>>() {});
         RelationshipModel relLoaded = relationships.get(2);
 
@@ -173,7 +171,7 @@ public class TraditionTest {
     public void getAllRelationshipsCorrectAmountTest() {
 
         List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/getallrelationships/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(new GenericType<List<RelationshipModel>>() {});
 
         assertEquals(3, relationships.size());
@@ -612,9 +610,9 @@ public class TraditionTest {
                 rel.setSource(rdg1.getId());
                 rel.setTarget(rdg2.getId());
                 jerseyResponse = jerseyTest.resource()
-                        .path("/relation/createrelationship")
+                        .path("/tradition/" + tradId + "/relation")
                         .type(MediaType.APPLICATION_JSON)
-                        .post(ClientResponse.class, rel);
+                        .put(ClientResponse.class, rel);
                 assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
             }
 
@@ -627,9 +625,9 @@ public class TraditionTest {
             txrel.setSource(String.valueOf(tx1.getId()));
             txrel.setTarget(String.valueOf(tx2.getId()));
             jerseyResponse = jerseyTest.resource()
-                    .path("/relation/createrelationship")
+                    .path("/tradition/" + tradId + "/relation")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, txrel);
+                    .put(ClientResponse.class, txrel);
             assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
             tx.success();
         }

@@ -1,10 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
@@ -15,10 +11,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -29,18 +22,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.NotFoundException;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.ClientResponse.Status;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -68,10 +58,7 @@ public class RelationTest {
 
 
         importResource = new GraphMLToNeo4JParser();
-        Relation relation = new Relation();
-
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
-
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -101,7 +88,8 @@ public class RelationTest {
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(relation).create();
+        Tradition tradition = new Tradition();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
         jerseyTest.setUp();
     }
 
@@ -122,9 +110,9 @@ public class RelationTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -160,9 +148,9 @@ public class RelationTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
     }
 
@@ -183,9 +171,9 @@ public class RelationTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                 actualResponse.getStatus());
     }
@@ -211,14 +199,14 @@ public class RelationTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
         relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
-                .path("/relation/deleterelationshipbyid/withrelationship/" + relationshipId)
+                .path("/tradition/" + tradId + "/relation/" + relationshipId)
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
@@ -240,19 +228,14 @@ public class RelationTest {
             Node march2 = nodes.next();
             assertFalse(nodes.hasNext());
 
-            Relationship rel = null;
-            int relCounter = 0;
-            for (Relationship tempRel : march1.getRelationships(ERelations.RELATED)) {
-                rel = tempRel;
-                relCounter++;
-            }
+            Relationship rel = march1.getSingleRelationship(ERelations.RELATED, Direction.BOTH);
             //checks that the correct relationship has been found
-            assertEquals(1, relCounter);
-            assertEquals(march2.getId(), rel.getOtherNode(march1).getId());
+            assertNotNull(rel);
+            assertEquals(march2, rel.getOtherNode(march1));
 
             ClientResponse removalResponse = jerseyTest
                     .resource()
-                    .path("/relation/deleterelationshipbyid/withrelationship/" + rel.getId())
+                    .path("/tradition/" + tradId + "/relation/" + rel.getId())
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
@@ -289,7 +272,7 @@ public class RelationTest {
     public void deleteRelationshipThatDoesNotExistTest() {
         ClientResponse removalResponse = jerseyTest
                 .resource()
-                .path("/relation/deleterelationshipbyid/withrelationship/1337")
+                .path("/tradition/" + tradId + "/relation/1337")
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                 removalResponse.getStatus());
@@ -317,9 +300,9 @@ public class RelationTest {
 
         ClientResponse actualResponse1 = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships1 = actualResponse1.getEntity(GraphModel.class);
         relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
 
@@ -335,9 +318,9 @@ public class RelationTest {
 
         ClientResponse actualResponse2 = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships2 = actualResponse2.getEntity(GraphModel.class);
         relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
 
@@ -351,9 +334,9 @@ public class RelationTest {
 
         ClientResponse removalResponse = jerseyTest
                 .resource()
-                .path("/relation/deleterelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, removeModel);
+                .delete(ClientResponse.class, removeModel);
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -383,9 +366,9 @@ public class RelationTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships1 = actualResponse.getEntity(GraphModel.class);
         relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
 
@@ -400,9 +383,9 @@ public class RelationTest {
 
         actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships2 = actualResponse.getEntity(GraphModel.class);
         relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
 
@@ -410,9 +393,9 @@ public class RelationTest {
 
         ClientResponse removalResponse = jerseyTest
                 .resource()
-                .path("/relation/deleterelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -447,9 +430,9 @@ public class RelationTest {
         // This relationship should be makeable
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         relationship.setSource("21");
@@ -463,11 +446,11 @@ public class RelationTest {
         // this one should not be makeable, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
-                // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
+                .put(ClientResponse.class, relationship);
 
+        // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
                 actualResponse.getEntity(String.class));
@@ -498,9 +481,9 @@ public class RelationTest {
         // This relationship should be makeable
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -535,9 +518,9 @@ public class RelationTest {
         // this one should not be makeable, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class,relationship);
+                .put(ClientResponse.class, relationship);
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
@@ -578,9 +561,9 @@ public class RelationTest {
         relationship.setReading_b("pierced");
 
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals(
@@ -608,10 +591,10 @@ public class RelationTest {
     public void getRelationshipTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/getallrelationships/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/relation/getallrelationships/fromtradition/" + tradId)
+				.path("/tradition/" + tradId + "/relationships")
                 .get(new GenericType<List<RelationshipModel>>() {
 				});
 		assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -635,7 +618,7 @@ public class RelationTest {
     public void getRelationshipCorrectStatusTest(){
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/getallrelationships/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         assertEquals(Response.ok().build().getStatus(), response.getStatus());
 	}
@@ -647,7 +630,7 @@ public class RelationTest {
     public void getRelationshipExceptionTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/getallrelationships/fromtradition/" + 6999)
+                .path("/tradition/6999/relationships")
                 .type(MediaType.APPLICATION_JSON)
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
@@ -655,35 +638,23 @@ public class RelationTest {
 
     @Test
 	public void getNoRelationshipTest(){
-        String newTradId;
         /**
          * load a tradition with no Realtionships to the test DB
          */
 		File testfile = new File("src/TestXMLFiles/testTraditionNoRealtions.xml");
+        String newTradId = null;
 		try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            newTradId = Util.getValueFromJson(r, "tradId");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
         }
-        /**
-         * gets the generated id of the new inserted tradition
-         */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            String tradId1 = (String) nodes.next().getProperty("id");
-            assertTrue(nodes.hasNext());
-            String tradId2 = (String) nodes.next().getProperty("id");
-            newTradId = tradId1.equals(tradId) ? tradId2 : tradId1;
-            tx.success();
-        }
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/getallrelationships/fromtradition/" + (newTradId))
+                .path("/tradition/" + newTradId + "/relationships")
                 .get(ClientResponse.class);
-		assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         assertEquals("[]", response.getEntity(String.class));
     }
 

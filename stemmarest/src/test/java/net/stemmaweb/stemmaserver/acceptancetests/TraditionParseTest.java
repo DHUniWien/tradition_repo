@@ -70,11 +70,9 @@ public class TraditionParseTest {
         // Create the Jersey test server
         Tradition tradition = new Tradition();
         Reading reading = new Reading();
-        Relation relation = new Relation();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(tradition)
                 .addResource(reading)
-                .addResource(relation)
                 .create();
         jerseyTest.setUp();
     }

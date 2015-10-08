@@ -7,7 +7,6 @@ import java.io.FileNotFoundException;
 import java.util.Iterator;
 
 import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -38,20 +37,17 @@ public class Benchmark100kNodes extends BenchmarkTests {
 
         RandomGraphGenerator rgg = new RandomGraphGenerator();
 
-        GraphDatabaseService db = new TestGraphDatabaseFactory().newImpermanentDatabase();
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider(db);
-
+        GraphDatabaseService db = new GraphDatabaseServiceProvider(
+                new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 		
         userResource = new User();
         traditionResource = new Tradition();
         readingResoruce = new Reading();
-        relationResource = new Relation();
         importResource = new GraphMLToNeo4JParser();
 
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(userResource)
                 .addResource(traditionResource)
-                .addResource(relationResource)
                 .addResource(readingResoruce).create();
         try {
             jerseyTest.setUp();

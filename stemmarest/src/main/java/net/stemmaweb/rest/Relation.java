@@ -2,13 +2,7 @@ package net.stemmaweb.rest;
 
 import java.util.ArrayList;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -24,9 +18,7 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 
@@ -36,22 +28,26 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * @author PSE FS 2015 Team2
  */
 
-@Path("/relation")
 public class Relation {
 
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseService db;
+    private String tradId;
+
+    public Relation (String traditionId) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+    }
     
     /**
      * Creates a new relationship between the two nodes specified.
      *
-     * @param relationshipModel
+     * @param relationshipModel - JSON structure of the relationship to create
      * @return Http Response 201 and a model containing the created relationship
      *         and the readings involved in JSON on success or an ERROR in JSON
      *         format
      */
-    @POST
-    @Path("createrelationship")
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response create(RelationshipModel relationshipModel) {
@@ -121,72 +117,15 @@ public class Relation {
     }
 
     /**
-     * Gets all the next nodes with the given constraints.
+     * Remove all instances of the relationship specified.
      *
-     * @param reading
-     * @param direction
-     * @param depth
-     * @return
-     */
-    private ResourceIterable<Node> getNextNodes(Node reading, Direction direction,
-            int depth) {
-        return db.traversalDescription().breadthFirst().relationships(ERelations.SEQUENCE, direction)
-                .evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
-                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(reading).nodes();
-    }
-
-    /**
-     * Get a list of all relationships from a given tradition.
-     *
-     * @param tradId
-     * @return a list of the relationships in JSON on success or an ERROR in
-     *         JSON format
-     */
-    @GET
-    @Path("getallrelationships/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllRelationships(@PathParam("tradId") String tradId) {
-        ArrayList<RelationshipModel> relationships = new ArrayList<>();
-
-        try (Transaction tx = db.beginTx()) {
-            Node startNode = DatabaseService.getStartNode(tradId, db);
-            for (Relationship rel: db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .relationships(ERelations.RELATED, Direction.BOTH)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode)
-                    .relationships()) {
-                if(rel.getType().name().equals(ERelations.RELATED.name())){
-                    RelationshipModel tempRel = new RelationshipModel(rel);
-                    relationships.add(tempRel);
-                }
-            }
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-
-        return Response.ok(relationships).build();
-    }
-    
-  
-    /**
-     * Remove all relationships, as it is done in
-     * https://github.com/tla/stemmaweb
-     * /blob/master/lib/stemmaweb/Controller/Relation.pm line 271) in
-     * Relationships of type RELATED between the two nodes.
-     *
-     * @param relationshipModel
-     * @param tradId
+     * @param relationshipModel - the JSON specification of the relationship(s) to delete
      * @return HTTP Response 404 when no node was found, 200 When relationships
      *         where removed
      */
-    @POST
-    @Path("deleterelationship/fromtradition/{tradId}")
+    @DELETE
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response delete(RelationshipModel relationshipModel,
-            @PathParam("tradId") String tradId) {
+    public Response delete(RelationshipModel relationshipModel) {
         switch (relationshipModel.getScope()) {
             case "local":
 
@@ -255,13 +194,13 @@ public class Relation {
     /**
      * Removes a relationship by ID
      *
-     * @param relationshipId
+     * @param relationshipId - the ID of the relationship to delete
      * @return HTTP Response 404 when no Relationship was found with id, 200 and
      *         a model of the relationship in JSON when the Relationship was
      *         removed
      */
     @DELETE
-    @Path("deleterelationshipbyid/withrelationship/{relationshipId}")
+    @Path("{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId) {
         RelationshipModel relationshipModel;
 
