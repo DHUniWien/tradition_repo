@@ -275,7 +275,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 		// Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest
                 .resource()
-                .path("/reading/getallreadings/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/readings")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(319, readings.size()); // really 319
@@ -432,8 +432,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         characterModel.setCharacter(" ");
         jerseyResponse = jerseyTest
                 .resource()
-                .path("/reading/compressreadings/read1id/"
-                        + blasphemias.getId() + "/read2id/" + aporia.getId() + "/concatenate/1")
+                .path("/reading/" + blasphemias.getId() + "/concatenate/" + aporia.getId() + "/1")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, characterModel);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
@@ -482,7 +481,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         // Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest
                 .resource()
-                .path("/reading/getallreadings/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId + "/readings")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(318, readings.size());

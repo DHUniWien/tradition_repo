@@ -12,10 +12,7 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -71,8 +68,6 @@ public class ReadingTest {
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-        Reading reading = new Reading();
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 
 		File testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
@@ -105,8 +100,10 @@ public class ReadingTest {
         /*
          * Create a JersyTestServer serving the Resource under test
          */
+        Reading reading = new Reading();
+        Tradition tradition = new Tradition();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(reading).create();
+                .addResource(reading).addResource(tradition).create();
         jerseyTest.setUp();
     }
 
@@ -309,7 +306,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+                    .put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -369,7 +366,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+                    .put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -445,7 +442,7 @@ public class ReadingTest {
             // duplicate reading
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
             ClientResponse response = jerseyTest.resource().path("/reading/duplicate")
-                    .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+                    .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -524,7 +521,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+                    .put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -564,7 +561,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+                    .put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -590,7 +587,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+                    .put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -615,7 +612,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+                    .put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -1402,7 +1399,7 @@ public class ReadingTest {
         ClientResponse response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId
-                        + "/mergeablereadings/1/9")
+                        + "/mergeablereadings/2/8")
                 .get(ClientResponse.class);
 
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
@@ -1787,7 +1784,7 @@ public class ReadingTest {
 
         ReadingModel actualResponse = jerseyTest
                 .resource()
-                .path("/reading/" + withReadId + "/next/witness/A"
+                .path("/reading/" + withReadId + "/next/A"
                        ).get(ReadingModel.class);
         assertEquals("his", actualResponse.getText());
     }

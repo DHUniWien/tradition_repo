@@ -136,7 +136,7 @@ public class TraditionParseTest {
 
             // Number of nodes
             ArrayList<ReadingModel> dbReadings = jerseyTest.resource()
-                    .path("/reading/getallreadings/fromtradition/" + tm.getId())
+                    .path("/tradition/" + tm.getId() + "/readings")
                     .get(new GenericType<ArrayList<ReadingModel>>() {});
             assertEquals(handler.numNodes, dbReadings.size());
 
@@ -157,13 +157,13 @@ public class TraditionParseTest {
 
             // Number of relationships
             ArrayList<RelationshipModel> dbRelations = jerseyTest.resource()
-                    .path("/relation/getallrelationships/fromtradition/" + tm.getId())
+                    .path("/tradition/" + tm.getId() + "/relationships")
                     .get(new GenericType<ArrayList<RelationshipModel>>() {});
             assertEquals(handler.numRelationships, dbRelations.size());
 
             // Number of witnesses
             ArrayList<WitnessModel> dbWitnesses = jerseyTest.resource()
-                    .path("/tradition/getallwitnesses/fromtradition/" + tm.getId())
+                    .path("/tradition/" + tm.getId() + "/witnesses")
                     .get(new GenericType<ArrayList<WitnessModel>>() {});
             assertEquals(handler.numWitnesses, dbWitnesses.size());
         }

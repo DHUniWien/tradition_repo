@@ -101,7 +101,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getReading(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getreading/withreadingid/20")
+                .path("/reading/20")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -231,7 +231,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getNextReadingOfAWitness(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getnextreading/fromwitness/A/ofreading/"+untoMe)
+                .path("/reading/" + untoMe + "/next/A")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -243,7 +243,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getpreviousReadingOfAWitness(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getpreviousreading/fromwitness/A/ofreading/" +untoMe)
+                .path("/reading/" + untoMe + "/prior/A")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -255,7 +255,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllReadingsOfATradition(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/1001")
+                .path("/tradition/1001/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -280,8 +280,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getIdenticalReadingsOfATradition(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/8")
+                .path("/tradition/" + tradId + "/identicalreadings/1/8")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -293,8 +292,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getCouldBeIdentical(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/couldbeidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/15")
+                .path("/tradition/" + tradId + "/mergeablereadings/1/15")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
