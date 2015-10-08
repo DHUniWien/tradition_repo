@@ -80,7 +80,7 @@ public class User {
     /**
      * Gets a user by the id.
      *
-     * @param userId
+     * @param userId The ID to look up
      * @return UserModel as JSON or an ERROR in JSON format
      */
     @GET
@@ -90,13 +90,10 @@ public class User {
         UserModel userModel = new UserModel();
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-
-            if (nodes.hasNext()) {
-                Node node = nodes.next();
-                userModel.setId((String) node.getProperty("id"));
-                userModel.setRole((String) node.getProperty("role"));
+            Node foundUser = db.findNode(Nodes.USER, "id", userId);
+            if (foundUser != null) {
+                userModel.setId((String) foundUser.getProperty("id"));
+                userModel.setRole((String) foundUser.getProperty("role"));
             } else {
                 return Response.status(Status.NO_CONTENT).build();
             }
@@ -110,58 +107,33 @@ public class User {
     /**
      * Removes a user and all his traditions
      *
-     * @param userId
+     * @param userId The ID of the user to delete
      * @return OK on success or an ERROR in JSON format
      */
     @DELETE
     @Path("deleteuser/withid/{userId}")
     public Response deleteUserById(@PathParam("userId") String userId) {
-
+        Node foundUser;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (userId:USER {id:'" + userId + "'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
+            foundUser = db.findNode(Nodes.USER, "id", userId);
 
-            if (nodes.hasNext()) {
-                Node node = nodes.next();
+            if (foundUser != null) {
+                // See if the user owns any traditions
+                ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
+                if (userTraditions.size() > 0)
+                    return Response.status(Status.PRECONDITION_FAILED)
+                            .entity("User's traditions must be deleted first")
+                            .build();
 
-                /*
-                 * Find all the nodes and relations to remove
-                 */
-                Set<Relationship> removableRelations = new HashSet<>();
-                Set<Node> removableNodes = new HashSet<>();
-                for (Node currentNode : db.traversalDescription()
-                        .depthFirst()
-                        .relationships(ERelations.OWNS_TRADITION, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
-                        .relationships(ERelations.RELATED, Direction.OUTGOING)
-                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                        .traverse(node)
-                        .nodes())
-                {
-                    for(Relationship currentRelationship : currentNode.getRelationships()){
-                        removableRelations.add(currentRelationship);
-                    }
-                    removableNodes.add(currentNode);
-                }
-
-                /*
-                 * Remove the nodes and relations
-                 */
-                for(Relationship removableRel:removableRelations){
-                    removableRel.delete();
-                }
-                for(Node remNode:removableNodes){
-                    remNode.delete();
-                }
+                // Otherwise, do the deed.
+                foundUser.getRelationships().forEach(Relationship::delete);
+                foundUser.delete();
+                tx.success();
             } else {
-                return Response.status(Response.Status.NOT_FOUND)
+                return Response.status(Status.NOT_FOUND)
                         .entity("A user with this ID was not found")
                         .build();
             }
-
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.status(Response.Status.OK).build();
     }
@@ -169,7 +141,7 @@ public class User {
     /**
      * Get all Traditions of a user
      *
-     * @param userId
+     * @param userId The ID to look up
      * @return OK on success or an ERROR in JSON format
      */
     @GET

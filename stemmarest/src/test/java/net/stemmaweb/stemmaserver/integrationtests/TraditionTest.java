@@ -5,18 +5,22 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -26,10 +30,7 @@ import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -60,8 +61,6 @@ public class TraditionTest {
 
 
         importResource = new GraphMLToNeo4JParser();
-        Tradition tradition = new Tradition();
-
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
 
         /*
@@ -93,7 +92,13 @@ public class TraditionTest {
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
+        Tradition tradition = new Tradition();
+        Stemma stemma = new Stemma();
+        Relation relation = new Relation();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(tradition)
+                .addResource(relation)
+                .addResource(stemma).create();
         jerseyTest.setUp();
     }
 
@@ -545,6 +550,112 @@ public class TraditionTest {
         Node startNode = DatabaseService.getStartNode(tradId, db);
 
         assertTrue(startNode == null);
+    }
+
+    /**
+     * Test that all the nodes of a tradition have been removed
+     */
+    @Test
+    public void deleteTraditionCompletelyTest() {
+        // count the total number of nodes
+        AtomicInteger numNodes = new AtomicInteger(0);
+        try (Transaction tx = db.beginTx()) {
+            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.success();
+        }
+        int originalNodeCount = numNodes.get();
+
+        // upload the florilegium
+        String testfile = "src/TestXMLFiles/florilegium_graphml.xml";
+        String florId = null;
+        try {
+            Response r = importResource.parseGraphML(testfile, "1", "Tradition");
+            florId = Util.getValueFromJson(r, "tradId");
+        } catch (FileNotFoundException f) {
+            // this error should not occur
+            assertTrue(false);
+        }
+        // give it a stemma
+        String newStemma = null;
+        try {
+            byte[] encStemma = Files.readAllBytes(Paths.get("src/TestXMLFiles/florilegium.dot"));
+            newStemma = new String(encStemma, Charset.forName("utf-8"));
+        } catch (IOException e) {
+            assertTrue(false);
+        }
+        ClientResponse jerseyResponse = jerseyTest
+                .resource()
+                .path("/stemma/newstemma/intradition/" + florId)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemma);
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+
+        // re-root the stemma
+        jerseyResponse = jerseyTest
+                .resource()
+                .path("/stemma/reorientstemma/fromtradition/" + florId + "/withtitle/Stemma/withnewrootnode/2")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemma);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+
+        // give it some relationships - rank 37, rank 13, ranks 217/219
+        try (Transaction tx = db.beginTx()) {
+            int[] alignRanks = {37, 60};
+            for (int r : alignRanks) {
+                ResourceIterator<Node> atRank = db.findNodes(Nodes.READING, "rank", r);
+                assertTrue(atRank.hasNext());
+                ReadingModel rdg1 = new ReadingModel(atRank.next());
+                ReadingModel rdg2 = new ReadingModel(atRank.next());
+                RelationshipModel rel = new RelationshipModel();
+                rel.setReading_a(rdg1.getText());
+                rel.setReading_b(rdg2.getText());
+                rel.setType("grammatical");
+                rel.setScope("local");
+                rel.setSource(rdg1.getId());
+                rel.setTarget(rdg2.getId());
+                jerseyResponse = jerseyTest.resource()
+                        .path("/relation/createrelationship")
+                        .type(MediaType.APPLICATION_JSON)
+                        .post(ClientResponse.class, rel);
+                assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+            }
+
+            // and a transposition, for kicks
+            Node tx1 = db.findNode(Nodes.READING, "rank", 217);
+            Node tx2 = db.findNode(Nodes.READING, "rank", 219);
+            RelationshipModel txrel = new RelationshipModel();
+            txrel.setType("transposition");
+            txrel.setScope("local");
+            txrel.setSource(String.valueOf(tx1.getId()));
+            txrel.setTarget(String.valueOf(tx2.getId()));
+            jerseyResponse = jerseyTest.resource()
+                    .path("/relation/createrelationship")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, txrel);
+            assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+            tx.success();
+        }
+
+        // now count the nodes
+        numNodes.set(0);
+        try (Transaction tx = db.beginTx()) {
+            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.success();
+        }
+        assertTrue(numNodes.get() > originalNodeCount);
+
+        // delete the florilegium
+        jerseyResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/" + florId)
+                .type(MediaType.APPLICATION_JSON).delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+
+        // nodes should be back to original number
+        numNodes.set(0);
+        try (Transaction tx = db.beginTx()) {
+            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.success();
+        }
+        assertEquals(originalNodeCount, numNodes.get());
     }
 
     /**

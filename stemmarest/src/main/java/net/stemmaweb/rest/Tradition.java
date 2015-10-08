@@ -1,10 +1,6 @@
 package net.stemmaweb.rest;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -144,7 +140,7 @@ public class Tradition {
     /**
      * Gets a list of all the witnesses of a tradition with the given id.
      *
-     * @param tradId
+     * @param tradId ID of the tradition to look up
      * @return Http Response 200 and a list of witness models in JSON on success
      *         or an ERROR in JSON format
      */
@@ -176,7 +172,7 @@ public class Tradition {
     /**
      * Gets a list of all relationships of a tradition with the given id.
      *
-     * @param tradId
+     * @param tradId ID of the tradition to look up
      * @return Http Response 200 and a list of relationship model in JSON
      */
     @GET
@@ -202,6 +198,7 @@ public class Tradition {
                     relList.add(relMod);
                 }
             }
+            tx.success();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
@@ -211,8 +208,8 @@ public class Tradition {
     /**
      * Helper method for getting the tradition node with a given tradition id
      *
-     * @param tradId
-     * @param engine
+     * @param tradId ID of the tradition to look up
+     * @param engine the graph database to query
      * @return the root tradition node
      */
     private Node getTraditionNode(String tradId, GraphDatabaseService engine) {
@@ -228,7 +225,7 @@ public class Tradition {
     /**
      * Returns GraphML file from specified tradition owned by user
      *
-     * @param tradId
+     * @param tradId  ID of the tradition to look up
      * @return XML data
      */
     @GET
@@ -242,60 +239,53 @@ public class Tradition {
     /**
      * Removes a complete tradition
      *
-     * @param tradId
+     * @param tradId ID of the tradition to delete
      * @return http response
      */
     @DELETE
     @Path("deletetradition/withid/{tradId}")
     public Response deleteTraditionById(@PathParam("tradId") String tradId) {
-
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (tradId:TRADITION {id:'" + tradId
-                    + "'}) return tradId");
-            Iterator<Node> nodes = result.columnAs("tradId");
-
-            if (nodes.hasNext()) {
-                Node node = nodes.next();
-
+        Node foundTradition = DatabaseService.getTraditionNode(tradId, db);
+        if (foundTradition != null) {
+            try (Transaction tx = db.beginTx()) {
                 /*
                  * Find all the nodes and relations to remove
                  */
                 Set<Relationship> removableRelations = new HashSet<>();
                 Set<Node> removableNodes = new HashSet<>();
-                for (Node currentNode : db.traversalDescription()
+                db.traversalDescription()
                         .depthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .relationships(ERelations.COLLATION, Direction.OUTGOING)
+                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_END, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_WITNESS, Direction.OUTGOING)
                         .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_ARCHETYPE, Direction.OUTGOING)
+                        .relationships(ERelations.TRANSMITTED, Direction.OUTGOING)
                         .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                        .traverse(node)
-                        .nodes())
-                {
-                    for(Relationship currentRelationship : currentNode.getRelationships()){
-                        removableRelations.add(currentRelationship);
-                    }
-                    removableNodes.add(currentNode);
-                }
+                        .traverse(foundTradition)
+                        .nodes().forEach(x -> {
+                    x.getRelationships().forEach(removableRelations::add);
+                    removableNodes.add(x);
+                });
 
                 /*
                  * Remove the nodes and relations
                  */
-                for(Relationship removableRel:removableRelations){
-                    removableRel.delete();
-                }
-                for(Node remNode:removableNodes){
-                    remNode.delete();
-                }
-            } else {
-                return Response.status(Response.Status.NOT_FOUND)
-                        .entity("A tradition with this id was not found!")
-                        .build();
+                removableRelations.forEach(Relationship::delete);
+                removableNodes.forEach(Node::delete);
+                tx.success();
+            } catch (Exception e) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
             }
-
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        } else {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("A tradition with this id was not found!")
+                    .build();
         }
+
         return Response.status(Response.Status.OK).build();
     }
 
@@ -326,50 +316,23 @@ public class Tradition {
                     .build();
         }
 
-        GraphMLToNeo4JParser parser = new GraphMLToNeo4JParser();
-        Response resp = parser.parseGraphML(uploadedInputStream, userId, name);
-        // nodes are unique
-
-        return resp;
+        return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
     }
 
     /**
      * Returns DOT file from specified tradition owned by user
      *
-     * @param tradId
+     * @param tradId ID of the tradition to export
      * @return XML data
      */
     @GET
     @Path("getdot/fromtradition/{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getDot(@PathParam("tradId") String tradId) {
-
-        String filename = "upload/output.dot";
-
-        File file = new File(filename);
-        file.delete();
-
         if(getTraditionNode(tradId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        parser.parseNeo4J(tradId);
-
-        String everything = "";
-        try(BufferedReader br = new BufferedReader(new FileReader(filename))) {
-            StringBuilder sb = new StringBuilder();
-            String line = br.readLine();
-
-            while (line != null) {
-                sb.append(line);
-                sb.append(System.lineSeparator());
-                line = br.readLine();
-            }
-            everything = sb.toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return Response.ok(everything).build();
+        return parser.parseNeo4J(tradId);
     }
 }

@@ -4,7 +4,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.*;
 
 import javax.ws.rs.core.Response;
@@ -35,19 +36,16 @@ public class Neo4JToDotParser
 
     public Response parseNeo4J(String tradId)
     {
-        String filename = "upload/output.dot";
-
         Node startNode = DatabaseService.getStartNode(tradId, db);
+        if(startNode==null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
 
+        File output;
+        String result;
         try (Transaction tx = db.beginTx()) {
-            if(startNode==null) {
-                return Response.status(Status.NOT_FOUND).build();
-            }
-
-            File file = new File(filename);
-
-            file.createNewFile();
-            out = new FileOutputStream(file);
+            output = File.createTempFile("graph_", "dot");
+            out = new FileOutputStream(output);
 
             write("digraph { ");
 
@@ -93,6 +91,10 @@ public class Neo4JToDotParser
             out.flush();
             out.close();
 
+            // Now pull the string back out of the output file.
+            byte[] encDot = Files.readAllBytes(output.toPath());
+            result = new String(encDot, Charset.forName("utf-8"));
+
             tx.success();
         } catch (IOException e) {
             e.printStackTrace();
@@ -101,10 +103,11 @@ public class Neo4JToDotParser
                     .build();
         }
 
+        // Here is where to generate pictures from the file for debugging.
         // writePNGFromDotFile(filename,"upload/file");
         // writeSVGFromDotFile(filename,"upload/file");
 
-        return Response.ok().build();
+        return Response.ok().entity(result).build();
     }
 
     /**
