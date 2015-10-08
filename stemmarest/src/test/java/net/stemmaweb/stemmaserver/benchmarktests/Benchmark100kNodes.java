@@ -11,7 +11,6 @@ import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
-import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -46,7 +45,6 @@ public class Benchmark100kNodes extends BenchmarkTests {
 		
         userResource = new User();
         traditionResource = new Tradition();
-        witnessResource = new Witness();
         readingResoruce = new Reading();
         relationResource = new Relation();
         importResource = new GraphMLToNeo4JParser();
@@ -55,7 +53,6 @@ public class Benchmark100kNodes extends BenchmarkTests {
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(userResource)
                 .addResource(traditionResource)
-                .addResource(witnessResource)
                 .addResource(relationResource)
                 .addResource(readingResoruce)
                 .addResource(stemmaResource).create();

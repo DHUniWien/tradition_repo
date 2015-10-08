@@ -200,7 +200,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsText(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/witness/gettext/fromtradition/1001/ofwitness/W0")
+                .path("/tradition/1001/witness/W0/text")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -212,7 +212,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsTextBetweenRanks(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/witness/gettext/fromtradition/1001/ofwitness/W0/fromstartrank/2/toendrank/5")
+                .path("/tradition/1001/witness/W0/text/2/5")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -224,7 +224,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsReadings(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/witness/getreadinglist/fromtradition/1001/ofwitness/W0")
+                .path("/tradition/1001/witness/W0/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }

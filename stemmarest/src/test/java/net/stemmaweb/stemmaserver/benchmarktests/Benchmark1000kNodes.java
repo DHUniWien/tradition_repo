@@ -53,7 +53,6 @@ public class Benchmark1000kNodes extends BenchmarkTests {
 
         userResource = new User();
         traditionResource = new Tradition();
-        witnessResource = new Witness();
         readingResoruce = new Reading();
         relationResource = new Relation();
         importResource = new GraphMLToNeo4JParser();
@@ -62,7 +61,6 @@ public class Benchmark1000kNodes extends BenchmarkTests {
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(userResource)
                 .addResource(traditionResource)
-                .addResource(witnessResource)
                 .addResource(relationResource)
                 .addResource(readingResoruce)
                 .addResource(stemmaResource).create();

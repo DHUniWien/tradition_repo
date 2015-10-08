@@ -66,7 +66,6 @@ public class ReadingTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private Witness witness;
 
     @Before
     public void setUp() throws Exception {
@@ -75,7 +74,6 @@ public class ReadingTest {
 
         Reading reading = new Reading();
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
-        witness = new Witness();
 
 		File testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
         /*
@@ -124,13 +122,13 @@ public class ReadingTest {
         assertEquals(number, listOfReadings.size());
         Response resp;
 
-        resp = witness.getWitnessAsText(tradId, "A");
+        resp = new Witness(tradId, "A").getWitnessAsText();
         assertEquals(expectedWitnessA, resp.getEntity());
 
-        resp = witness.getWitnessAsText(tradId, "B");
+        resp = new Witness(tradId, "B").getWitnessAsText();
         assertEquals(expectedWitnessB, resp.getEntity());
 
-        resp = witness.getWitnessAsText(tradId, "C");
+        resp = new Witness(tradId, "C").getWitnessAsText();
         assertEquals(expectedWitnessC, resp.getEntity());
 
         return listOfReadings;
@@ -164,7 +162,7 @@ public class ReadingTest {
             assertEquals("snow", node.getProperty("text"));
 
             String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "A");
+            Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
         }
@@ -203,7 +201,7 @@ public class ReadingTest {
             assertEquals("snow", node.getProperty("text"));
             assertEquals("hebrew", node.getProperty("language"));
             String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "A");
+            Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
         }
@@ -1585,7 +1583,7 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             String expectedWitnessA = "{\"text\":\"when april with his showerstestsweet with fruit the drought of march has pierced unto me the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "A");
+            Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
         }
@@ -1633,7 +1631,7 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             String expectedWitnessA = "{\"text\":\"when april with his showers\"sweet with fruit the drought of march has pierced unto me the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "A");
+            Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
         }
@@ -1681,7 +1679,7 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             expectedWitnessB = "{\"text\":\"when april his showers/sweet with fruit the march of drought has pierced to the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "B");
+            Response resp = new Witness(tradId, "B").getWitnessAsText();
             assertEquals(expectedWitnessB, resp.getEntity());
             tx.success();
         }
@@ -1729,7 +1727,7 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             String expectedWitnessA = "{\"text\":\"when april with his showerssweet with fruit the drought of march has pierced unto me the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "A");
+            Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
         }

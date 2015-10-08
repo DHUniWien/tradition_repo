@@ -60,7 +60,6 @@ public class RelationTest {
      */
     private JerseyTest jerseyTest;
     private GraphMLToNeo4JParser importResource;
-    private Witness witness;
 
 
     @Before
@@ -69,7 +68,6 @@ public class RelationTest {
 
 
         importResource = new GraphMLToNeo4JParser();
-        witness = new Witness();
         Relation relation = new Relation();
 
 		File testfile = new File("src/TestXMLFiles/testTradition.xml");
@@ -271,12 +269,12 @@ public class RelationTest {
             assertFalse(rels.iterator().hasNext());
             String expectedText = "{\"text\":\"when april with his showers sweet with " +
                     "fruit the drought of march has pierced unto the root\"}";
-            Response resp = witness.getWitnessAsText(tradId, "A");
+            Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedText, resp.getEntity());
 
             expectedText = "{\"text\":\"when showers sweet with april fruit the march " +
                     "of drought has pierced to the root\"}";
-            resp = witness.getWitnessAsText(tradId, "B");
+            resp = new Witness(tradId, "B").getWitnessAsText();
             assertEquals(expectedText, resp.getEntity());
 
             tx.success();

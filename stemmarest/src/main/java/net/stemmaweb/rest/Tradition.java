@@ -49,6 +49,15 @@ public class Tradition {
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     /**
+     * Delegated API calls
+     */
+
+    @Path("/{tradId}/witness/{sigil}")
+    public Witness getWitness(@PathParam("tradId") String tradId, @PathParam("sigil") String sigil) {
+        return new Witness(tradId, sigil);
+    }
+
+    /**
      * Changes the metadata of the tradition.
      *
      * @param tradition

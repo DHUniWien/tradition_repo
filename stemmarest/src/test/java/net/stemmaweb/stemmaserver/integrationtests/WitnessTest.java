@@ -12,6 +12,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -39,7 +40,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
  */
 public class WitnessTest {
     private String tradId;
-
     private GraphDatabaseService db;
 
     /*
@@ -47,8 +47,6 @@ public class WitnessTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-
-    private Witness witness;
 
 
     @Before
@@ -62,8 +60,6 @@ public class WitnessTest {
          * resource.
          */
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
-        witness = new Witness();
-
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -94,8 +90,9 @@ public class WitnessTest {
         /*
          * Create a JersyTestServer serving the Resource under test
          */
+        Tradition tradition = new Tradition();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(witness)
+                .addResource(tradition)
                 .create();
         jerseyTest.setUp();
     }
@@ -104,12 +101,12 @@ public class WitnessTest {
     public void witnessAsTextTestA() {
         String expectedText = constructResult("when april with his showers sweet with "
                 + "fruit the drought of march has pierced unto the root");
-        Response resp = witness.getWitnessAsText(tradId, "A");
+        Response resp = new Witness(tradId, "A").getWitnessAsText();
         assertEquals(expectedText, resp.getEntity());
 
         String returnedText = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A")
+                .path("/tradition/" + tradId + "/witness/A/text")
                 .get(String.class);
         assertEquals(expectedText, returnedText);
     }
@@ -118,7 +115,7 @@ public class WitnessTest {
     public void witnessAsTextNotExistingTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/D")
+                .path("/tradition/" + tradId + "/witness/D/text")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
@@ -130,12 +127,12 @@ public class WitnessTest {
     public void witnessAsTextTestB() {
         String expectedText = constructResult("when showers sweet with april fruit the march "
                 + "of drought has pierced to the root");
-        Response resp = witness.getWitnessAsText(tradId, "B");
+        Response resp = new Witness(tradId, "B").getWitnessAsText();
         assertEquals(expectedText, resp.getEntity());
 
         String returnedText = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/B")
+                .path("/tradition/" + tradId + "/witness/B/text")
                 .get(String.class);
         assertEquals(expectedText, returnedText);
     }
@@ -147,7 +144,7 @@ public class WitnessTest {
                 "pierced", "unto", "the", "root" };
         List<ReadingModel> listOfReadings = jerseyTest
                 .resource()
-                .path("/witness/getreadinglist/fromtradition/" + tradId + "/ofwitness/A")
+                .path("/tradition/" + tradId + "/witness/A/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
         assertEquals(texts.length, listOfReadings.size());
@@ -160,7 +157,7 @@ public class WitnessTest {
     public void witnessAsListNotExistingTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/witness/getreadinglist/fromtradition/" + tradId + "/ofwitness/D")
+                .path("/tradition/" + tradId + "/witness/D/readings")
                 .get(ClientResponse.class);
 		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 		assertEquals("no witness with this id was found", response.getEntity(String.class));
@@ -171,8 +168,7 @@ public class WitnessTest {
 
         String expectedText = constructResult("april with his showers");
         String response = jerseyTest.resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
-                        + "fromstartrank/2/toendrank/5")
+                .path("/tradition/" + tradId + "/witness/A/text/2/5")
 				.get(String.class);
 		assertEquals(expectedText, response);
 	}
@@ -185,8 +181,7 @@ public class WitnessTest {
         String expectedText = constructResult("april with his showers");
         String response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
-                        + "fromstartrank/2/toendrank/5")
+                .path("/tradition/" + tradId + "/witness/A/text/5/2")
 				.get(String.class);
 		assertEquals(expectedText, response);
 	}
@@ -198,8 +193,7 @@ public class WitnessTest {
 	public void witnessBetweenRanksSameRanksTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
-                        + "fromstartrank/5/toendrank/5")
+                .path("/tradition/" + tradId + "/witness/A/text/5/5")
 				.get(ClientResponse.class);
 		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertEquals("end-rank is equal to start-rank", response.getEntity(String.class));
@@ -211,8 +205,7 @@ public class WitnessTest {
         String expectedText = "{\"text\":\"showers sweet with fruit the drought of march has pierced unto the root\"}";
         String response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + tradId + "/ofwitness/A/"
-                        + "fromstartrank/5/toendrank/30")
+                .path("/tradition/" + tradId + "/witness/A/text/5/30")
 				.get(String.class);
 		assertEquals(expectedText, response);
 
@@ -268,17 +261,17 @@ public class WitnessTest {
         // Now get the witness text for each of our complex sigla.
         String response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + newId + "/ofwitness/Q")
+                .path("/tradition/" + newId + "/witness/Q/text")
                 .get(String.class);
         assertEquals(constructResult(qText), response);
         response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + newId + "/ofwitness/E")
+                .path("/tradition/" + newId + "/witness/E/text")
                 .get(String.class);
         assertEquals(constructResult(eText), response);
         response = jerseyTest
                 .resource()
-                .path("/witness/gettext/fromtradition/" + newId + "/ofwitness/T")
+                .path("/tradition/" + newId + "/witness/T/text")
                 .get(String.class);
         assertEquals(constructResult(tText), response);
     }
