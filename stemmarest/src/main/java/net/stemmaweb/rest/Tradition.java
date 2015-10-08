@@ -461,7 +461,7 @@ public class Tradition {
      *         ERROR in JSON format
      */
     @POST
-    @Path("changemetadata/fromtradition/{tradId}")
+    @Path("{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response changeTraditionMetadata(TraditionModel tradition,
@@ -515,7 +515,7 @@ public class Tradition {
      *         success or Http Response 500
      */
     @GET
-    @Path("getalltraditions")
+    @Path("all")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllTraditions() {
         List<TraditionModel> traditionList = new ArrayList<>();
@@ -565,7 +565,7 @@ public class Tradition {
      * @return XML data
      */
     @GET
-    @Path("gettradition/withid/{tradId}")
+    @Path("{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTradition(@PathParam("tradId") String tradId) {
         Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
@@ -579,7 +579,7 @@ public class Tradition {
      * @return http response
      */
     @DELETE
-    @Path("deletetradition/withid/{tradId}")
+    @Path("{tradId}")
     public Response deleteTraditionById(@PathParam("tradId") String tradId) {
         Node foundTradition = DatabaseService.getTraditionNode(tradId, db);
         if (foundTradition != null) {
@@ -632,10 +632,9 @@ public class Tradition {
      *         an ERROR in JSON format
      * @throws XMLStreamException
      */
-    @POST
+    @PUT
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
-    @Path("/newtraditionwithgraphml")
     public Response importGraphMl(@FormDataParam("name") String name,
                                   @FormDataParam("language") String language,
                                   @FormDataParam("public") String is_public,
@@ -662,7 +661,7 @@ public class Tradition {
      * @return XML data
      */
     @GET
-    @Path("getdot/fromtradition/{tradId}")
+    @Path("{tradId}/dot")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getDot(@PathParam("tradId") String tradId) {
         if(getTraditionNode(tradId, db) == null)

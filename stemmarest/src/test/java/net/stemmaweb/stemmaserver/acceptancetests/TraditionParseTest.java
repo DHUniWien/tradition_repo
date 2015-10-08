@@ -125,7 +125,7 @@ public class TraditionParseTest {
         // Now go through each tradition and make sure that the data that
         // we parsed is reflected in the DB.
         for (TraditionModel tm : jerseyTest.resource()
-                .path("/tradition/getalltraditions")
+                .path("/tradition/all")
                 .get(new GenericType<List<TraditionModel>>() {
                 })) {
 

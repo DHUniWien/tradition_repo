@@ -75,7 +75,7 @@ public abstract class BenchmarkTests {
         textInfo.setOwnerId("1");
 
         ClientResponse ownerChangeResponse = jerseyTest.resource()
-                .path("/tradition/changemetadata/fromtradition/1001")
+                .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
@@ -87,7 +87,7 @@ public abstract class BenchmarkTests {
         textInfo.setOwnerId("0");
 
         ownerChangeResponse = jerseyTest.resource()
-                .path("/tradition/changemetadata/fromtradition/1001")
+                .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
@@ -113,7 +113,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllTraditions(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/getalltraditions")
+                .path("/tradition/all")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -152,7 +152,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getTradition(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/gettradition/withid/"+tradId)
+                .path("/tradition/"+tradId)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -182,7 +182,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getDot(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/getdot/fromtradition/"+tradId)
+                .path("/tradition/" + tradId + "/dot")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }

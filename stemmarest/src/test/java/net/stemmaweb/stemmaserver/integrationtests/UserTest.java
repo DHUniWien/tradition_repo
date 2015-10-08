@@ -250,7 +250,7 @@ public class UserTest {
             /*
              * Delete tradition 842
              */
-            actualResponse = jerseyTest.resource().path("/tradition/deletetradition/withid/842")
+            actualResponse = jerseyTest.resource().path("/tradition/842")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
             tradition = db.findNode(Nodes.TRADITION, "id", "842");

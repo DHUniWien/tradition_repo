@@ -354,7 +354,7 @@ public class Neo4JAndGraphMLParserUnitTest {
         String jsonPayload = "{\"language\":\"Greek\"}";
         ClientResponse jerseyResponse = jerseyTest
                 .resource()
-                .path("/tradition/changemetadata/fromtradition/" + traditionId)
+                .path("/tradition/" + traditionId)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, jsonPayload);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
