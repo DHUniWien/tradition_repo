@@ -20,7 +20,9 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.*;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -89,12 +91,11 @@ public class TraditionTest {
             assertTrue(false);
         }
 
-        /*
-         * Create a JersyTestServer serving the Resource under test
-         */
-        Tradition tradition = new Tradition();
+        // Create a JerseyTestServer for the necessary REST API calls
+        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(tradition).create();
+                .addResource(webResource)
+                .create();
         jerseyTest.setUp();
     }
 
@@ -113,7 +114,7 @@ public class TraditionTest {
             assertTrue(false);
         }
 
-        List<TraditionModel> traditions = jerseyTest.resource().path("/tradition/all")
+        List<TraditionModel> traditions = jerseyTest.resource().path("/traditions")
                 .get(new GenericType<List<TraditionModel>>() {});
         for (TraditionModel returned : traditions) {
             assertTrue(expectedIds.contains(returned.getId()));
@@ -125,7 +126,7 @@ public class TraditionTest {
     public void getAllTraditionsWithParameterNotFoundTest() {
         ClientResponse resp = jerseyTest
                 .resource()
-                .path("/tradition/all" + 2342)
+                .path("/traditions/" + 2342)
                 .get(ClientResponse.class);
         assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
     }

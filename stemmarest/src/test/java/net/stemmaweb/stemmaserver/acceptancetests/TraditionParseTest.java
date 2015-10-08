@@ -7,7 +7,9 @@ import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.printer.GraphViz;
-import net.stemmaweb.rest.*;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -68,11 +70,9 @@ public class TraditionParseTest {
         }
 
         // Create the Jersey test server
-        Tradition tradition = new Tradition();
-        Reading reading = new Reading();
+        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(tradition)
-                .addResource(reading)
+                .addResource(webResource)
                 .create();
         jerseyTest.setUp();
     }
@@ -125,7 +125,7 @@ public class TraditionParseTest {
         // Now go through each tradition and make sure that the data that
         // we parsed is reflected in the DB.
         for (TraditionModel tm : jerseyTest.resource()
-                .path("/tradition/all")
+                .path("/traditions")
                 .get(new GenericType<List<TraditionModel>>() {
                 })) {
 

@@ -1,8 +1,11 @@
 package net.stemmaweb.rest;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.ws.rs.*;
+import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -18,14 +21,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.*;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
@@ -34,24 +30,27 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * @author PSE FS 2015 Team2
  */
 
-@Path("/reading")
 public class Reading {
 
     private String errorMessage; // global error message used for submethod
                                     // calls
 
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseService db;
+    private Long readId;
+
+    public Reading (String requestedId) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        readId = Long.valueOf(requestedId);
+    }
 
     /**
      * Returns a single reading by global neo4j id
-     * @param readId -
      * @return the reading fetched by the id
      */
     @GET
-    @Path("{readId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getReading(@PathParam("readId") long readId) {
+    public Response getReading() {
         ReadingModel reading;
         Node readingNode;
         try (Transaction tx = db.beginTx()) {
@@ -68,8 +67,6 @@ public class Reading {
     /**
      * Changes properties of a reading according to its keys
      *
-     * @param readId
-     *            the id of the reading to be changed
      * @param changeModels
      *            an array of changeReadingModel objects. Will be converted from
      *            a json string. Example: a json string for an array size 1
@@ -79,11 +76,9 @@ public class Reading {
      * @return ok response with a model of the modified reading in json format
      */
     @POST
-    @Path("{readId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response changeReadingProperties(@PathParam("readId") long readId,
-            ReadingChangePropertyModel changeModels) {
+    public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
         ReadingModel modelToReturn;
         Node reading;
         try (Transaction tx = db.beginTx()) {
@@ -119,7 +114,7 @@ public class Reading {
      *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
      *         with a detailed message else
      */
-    // TODO make this readingId/duplicate
+    // TODO consider moving this to Tradition or Root
     @PUT
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -323,18 +318,15 @@ public class Reading {
      * Merges two readings into one single reading in a specific tradition.
      * Opposite of duplicate
      *
-     * @param readId
-     *            the id of the first reading to be merged
      * @param secondReadId
      *            the id of the second reading to be merged
      * @return Status.ok if the merge was successful.
      *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
      */
     @POST
-    @Path("{readId}/merge/{secondReadId}")
+    @Path("merge/{secondReadId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response mergeReadings(@PathParam("readId") long readId,
-                                  @PathParam("secondReadId") long secondReadId) {
+    public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
 
         Node stayingReading;
         Node deletingReading;
@@ -545,8 +537,6 @@ public class Reading {
      * Splits up a single reading into several ones in a specific tradition.
      * Opposite of compress
      *
-     * @param readId
-     *            the id of the reading to be split
      * @param splitIndex
      *            the index of the first letter of the second word: "unto" with
      *            index 2 gets "un" and "to". if the index is zero the reading
@@ -564,11 +554,10 @@ public class Reading {
      *         Status.INTERNAL_SERVER_ERROR with a detailed message else
      */
     @POST
-    @Path("{readId}/split/{splitIndex}")
+    @Path("split/{splitIndex}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response splitReading(@PathParam("readId") long readId,
-                                 @PathParam("splitIndex") int splitIndex,
+    public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  CharacterModel model) {
         assert (model != null);
         GraphModel readingsAndRelationships;
@@ -740,44 +729,39 @@ public class Reading {
      *
      * @param witnessId
      *            : the id (name) of the witness
-     * @param readId
-     *            : the id of the reading
      *
      * @return http.ok and a model of the requested reading in json on success
      *         or an ERROR in JSON format
      */
     @GET
-    @Path("{readId}/next/{witnessId}")
+    @Path("next/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getNextReadingInWitness(
-            @PathParam("witnessId") String witnessId,
-            @PathParam("readId") long readId) {
-
-        Evaluator witnessEvaluator = Witness.getEvalForWitness(witnessId);
-
+    public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId) {
         try (Transaction tx = db.beginTx()) {
-            Node reading = db.getNodeById(readId);
-
-            // TODO: for-statement does not loop!
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(witnessEvaluator)
-                    .evaluator(Evaluators.toDepth(1))
-                    .uniqueness(Uniqueness.NONE).traverse(reading).nodes()) {
-
-                if (new ReadingModel(node).getText().equals("#END#")) {
-                    return Response.status(Status.NOT_FOUND)
-                            .entity("this was the last reading of this witness")
-                            .build();
-                } else {
-                    return Response.ok(new ReadingModel(node)).build();
-                }
+            Node read = db.getNodeById(readId);
+            Node next;
+            Iterable<Relationship> incoming = read.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING);
+            Collection<Relationship> matching = StreamSupport.stream(incoming.spliterator(), false)
+                    .filter(x -> isPathFor(x, witnessId))
+                    .collect(Collectors.toList());
+            if (matching.size() != 1) {
+                String message = matching.isEmpty()
+                        ? "There is no next reading!"
+                        : "There is more than one next reading!";
+                return Response.status(Status.INTERNAL_SERVER_ERROR)
+                        .entity(message)
+                        .build();
             }
+            next = matching.iterator().next().getEndNode();
+            ReadingModel result = new ReadingModel(next);
+            if (result.getIs_end() != null)
+                return Response.status(Status.NOT_FOUND)
+                        .entity("this was the last reading of this witness").build();
             tx.success();
+            return Response.ok(result).build();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Status.NOT_FOUND).entity("given readings not found").build();
     }
 
     /**
@@ -785,48 +769,51 @@ public class Reading {
      *
      * @param witnessId
      *            : the id (name) of the witness
-     * @param readId
-     *            : the id of the reading
      *
      * @return http.ok and a model of the requested reading in json on success
      *         or an ERROR in JSON format
      */
     @GET
-    @Path("{readId}/prior/{witnessId}")
+    @Path("prior/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getPreviousReadingInWitness(
-            @PathParam("witnessId") String witnessId,
-            @PathParam("readId") long readId) {
-
-        final String WITNESS_ID = witnessId;
-
-        Evaluator witnessEvaluator = Witness.getEvalForWitness(WITNESS_ID);
-
+    public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId) {
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
-
-            // TODO: for-statement does not loop!
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.INCOMING)
-                    .evaluator(witnessEvaluator)
-                    .evaluator(Evaluators.toDepth(1))
-                    .uniqueness(Uniqueness.NONE).traverse(read).nodes()) {
-
-                if (new ReadingModel(node).getText().equals("#START#")) {
-                    return Response
-                            .status(Status.NOT_FOUND)
-                            .entity("there is no previous reading to this reading")
-                            .build();
-                } else {
-                    return Response.ok(new ReadingModel(node)).build();
-                }
+            Node prior;
+            Iterable<Relationship> incoming = read.getRelationships(ERelations.SEQUENCE, Direction.INCOMING);
+            Collection<Relationship> matching = StreamSupport.stream(incoming.spliterator(), false)
+                    .filter(x -> isPathFor(x, witnessId))
+                    .collect(Collectors.toList());
+            if (matching.size() != 1) {
+                String message = matching.isEmpty()
+                        ? "There is no prior reading!"
+                        : "There is more than one prior reading!";
+                return Response.status(Status.INTERNAL_SERVER_ERROR)
+                        .entity(message)
+                        .build();
             }
+            prior = matching.iterator().next().getStartNode();
+            ReadingModel result = new ReadingModel(prior);
+            if (result.getIs_start() != null)
+                return Response.status(Status.NOT_FOUND)
+                        .entity("this was the first reading of this witness").build();
             tx.success();
+            return Response.ok(result).build();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Status.NOT_FOUND)
-                .entity("given readings not found").build();
+    }
+
+    // Assumes that we are already in a transaction!
+    private Boolean isPathFor(Relationship sequence, String sigil) {
+        if (sequence.hasProperty("witnesses")) {
+            String[] wits = (String []) sequence.getProperty("witnesses");
+            for (String wit : wits) {
+                if (wit.equals(sigil))
+                    return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -834,8 +821,6 @@ public class Reading {
      * or without a space or extra text. The reading with the lower rank will be
      * given first. Opposite of split
      *
-     * @param readId
-     *            the id of the first reading
      * @param readId2
      *            the id of the second reading
      * @param con
@@ -853,11 +838,10 @@ public class Reading {
      *         concatenated
      */
     @POST
-    @Path("{readId}/concatenate/{read2Id}/{con}")
+    @Path("concatenate/{read2Id}/{con}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response compressReadings(@PathParam("readId") long readId,
-                                     @PathParam("read2Id") long readId2,
+    public Response compressReadings(@PathParam("read2Id") long readId2,
                                      @PathParam("con") String con, CharacterModel character) {
 
         Node read1, read2;

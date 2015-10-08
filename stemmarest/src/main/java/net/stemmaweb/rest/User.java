@@ -1,7 +1,6 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
@@ -16,7 +15,6 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 
 /**
@@ -25,64 +23,29 @@ import org.neo4j.graphdb.Transaction;
  * @author PSE FS 2015 Team2
  */
 
-@Path("/user")
 public class User {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseService db;
+    private String userId;
 
-    /**
-     * Creates a user based on the parameters submitted in JSON.
-     *
-     * @param userModel -  in JSON format
-     * @return A JSON UserModel or a JSON error message
-     */
-    @PUT
-    @Path("/")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response create(UserModel userModel) {
-
-        if (DatabaseService.userExists(userModel.getId(), db)) {
-
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("Error: A user with this id already exists at " + db.toString())
-                    .build();
-        }
-
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", userModel.getId());
-            node.setProperty("role", userModel.getRole());
-            node.setProperty("email", userModel.getEmail());
-            node.setProperty("active", userModel.getActive());
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.status(Response.Status.CREATED).entity(userModel).build();
+    public User (String requestedId) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        userId = requestedId;
     }
 
     /**
      * Gets a user by the id.
      *
-     * @param userId The ID to look up
      * @return A JSON UserModel or a JSON error message
      */
     @GET
-    @Path("/{userId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getUserById(@PathParam("userId") String userId) {
-        UserModel userModel = new UserModel();
-
+    public Response getUserById() {
+        UserModel userModel;
         try (Transaction tx = db.beginTx()) {
             Node foundUser = db.findNode(Nodes.USER, "id", userId);
             if (foundUser != null) {
-                userModel.setId((String) foundUser.getProperty("id"));
-                userModel.setRole((String) foundUser.getProperty("role"));
+                userModel = new UserModel(foundUser);
             } else {
                 return Response.status(Status.NO_CONTENT).build();
             }
@@ -96,12 +59,10 @@ public class User {
     /**
      * Removes a user and all its traditions
      *
-     * @param userId The ID of the user to delete
      * @return OK on success or an ERROR in JSON format
      */
     @DELETE
-    @Path("/{userId}")
-    public Response deleteUserById(@PathParam("userId") String userId) {
+    public Response deleteUser() {
         Node foundUser;
         try (Transaction tx = db.beginTx()) {
             foundUser = db.findNode(Nodes.USER, "id", userId);
@@ -130,38 +91,33 @@ public class User {
     /**
      * Get all Traditions of a user
      *
-     * @param userId The ID to look up
      * @return A JSON list of TraditionModel objects
      */
     @GET
-    @Path("/{userId}/traditions")
+    @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTraditionsByUserId(@PathParam("userId") String userId) {
-
-        ArrayList<TraditionModel> traditions = new ArrayList<>();
-
+    public Response getUserTraditions() {
         if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'" + userId
-                    + "'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            while (tradIterator.hasNext()) {
-                if (tradIterator.hasNext()) {
-                    Node tradNode = tradIterator.next();
-                    TraditionModel tradition = new TraditionModel();
-
-                    tradition.setId(tradNode.getProperty("id").toString());
-                    tradition.setName(tradNode.getProperty("name").toString());
-                    traditions.add(tradition);
-                }
-            }
-            tx.success();
+        ArrayList<TraditionModel> traditions = new ArrayList<>();
+        try {
+            Node thisUser = getUserNode();
+            DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION)
+                    .forEach(x -> traditions.add(new TraditionModel(x)));
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(traditions).build();
+    }
+
+    private Node getUserNode() {
+        Node foundUser;
+        try (Transaction tx = db.beginTx()) {
+            foundUser = db.findNode(Nodes.USER, "id", userId);
+            tx.success();
+        }
+        return foundUser;
     }
 }

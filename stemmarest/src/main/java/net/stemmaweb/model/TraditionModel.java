@@ -4,6 +4,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 
 /**
  * 
@@ -18,6 +20,25 @@ public class TraditionModel {
     private String language;
     private String isPublic;
     private String ownerId;
+
+    public TraditionModel() {}
+
+    public TraditionModel(Node node) {
+        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+            setId(node.getProperty("id").toString());
+            if (node.hasProperty("name"))
+                setName(node.getProperty("name").toString());
+            if (node.hasProperty("language"))
+                setLanguage(node.getProperty("language").toString());
+            // TODO make boolean
+            if (node.hasProperty("isPublic"))
+                setIsPublic(node.getProperty("isPublic").toString());
+            // TODO necessary?
+            if (node.hasProperty("ownerId"))
+                setOwnerId(node.getProperty("ownerId").toString());
+            tx.success();
+        }
+    }
 
     public String getName() {
         return name;

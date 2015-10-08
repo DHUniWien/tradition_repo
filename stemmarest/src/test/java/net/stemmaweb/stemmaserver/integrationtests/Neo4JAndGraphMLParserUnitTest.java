@@ -17,7 +17,9 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -71,11 +73,9 @@ public class Neo4JAndGraphMLParserUnitTest {
     	}
 
         // Create a JerseyTestServer for the necessary REST API calls
-        Reading reading = new Reading();
-        Tradition tradition = new Tradition();
+        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(reading)
-                .addResource(tradition)
+                .addResource(webResource)
                 .create();
         jerseyTest.setUp();
 

@@ -33,44 +33,49 @@ import com.sun.jersey.multipart.FormDataParam;
  * @author PSE FS 2015 Team2
  */
 
-@Path("/tradition")
 public class Tradition {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseService db;
+    private String traditionId;
+    
+    public Tradition (String requestedId) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        traditionId = requestedId;
+    }
 
     /**
      * Delegated API calls
      */
 
-    @Path("/{tradId}/witness/{sigil}")
-    public Witness getWitness(@PathParam("tradId") String tradId, @PathParam("sigil") String sigil) {
-        return new Witness(tradId, sigil);
+    @Path("/witness/{sigil}")
+    public Witness getWitness(@PathParam("sigil") String sigil) {
+        return new Witness(traditionId, sigil);
     }
-    @Path("/{tradId}/stemma/{name}")
-    public Stemma getStemma(@PathParam("tradId") String tradId, @PathParam("name") String name) {
-        return new Stemma(tradId, name);
+    @Path("/stemma/{name}")
+    public Stemma getStemma(@PathParam("name") String name) {
+        return new Stemma(traditionId, name);
     }
-    @Path("/{tradId}/relation")
-    public Relation getRelation(@PathParam("tradId") String tradId) {
-        return new Relation(tradId);
+    @Path("/relation")
+    public Relation getRelation() {
+        return new Relation(traditionId);
     }
 
     /**
      * Resource creation calls
      */
     @PUT  // a new stemma
-    @Path("{tradId}/stemma")
+    @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response newStemma(@PathParam("tradId") String tradId, String dot) {
+    public Response newStemma(String dot) {
         DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        return parser.importStemmaFromDot(dot, tradId, false);
+        return parser.importStemmaFromDot(dot, traditionId, false);
     }
     @POST  // a replacement stemma TODO test
-    @Path("{tradId}/stemma")
+    @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response replaceStemma(@PathParam("tradId") String tradId, String dot) {
+    public Response replaceStemma(String dot) {
         DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        return parser.importStemmaFromDot(dot, tradId, true);
+        return parser.importStemmaFromDot(dot, traditionId, true);
     }
 
     /*****************************
@@ -80,15 +85,14 @@ public class Tradition {
     /**
      * Gets a list of all the witnesses of a tradition with the given id.
      *
-     * @param tradId ID of the tradition to look up
      * @return Http Response 200 and a list of witness models in JSON on success
      *         or an ERROR in JSON format
      */
     @GET
-    @Path("{tradId}/witnesses")
+    @Path("/witnesses")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllWitnesses(@PathParam("tradId") String tradId) {
-        Node traditionNode = getTraditionNode(tradId, db);
+    public Response getAllWitnesses() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 
@@ -105,15 +109,14 @@ public class Tradition {
     /**
      * Gets a list of all Stemmata available, as dot format
      *
-     * @param tradId - the tradition whose stemmata to retrieve
      * @return Http Response ok and a list of DOT JSON strings on success or an
      *         ERROR in JSON format
      */
     @GET
-    @Path("{tradId}/stemmata")
+    @Path("/stemmata")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllStemmata(@PathParam("tradId") String tradId) {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+    public Response getAllStemmata() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
@@ -129,7 +132,7 @@ public class Tradition {
         Neo4JToDotParser parser = new Neo4JToDotParser(db);
         ArrayList<String> stemmataList = new ArrayList<>();
         stemmata.forEach( stemma -> {
-                        Response localResp = parser.parseNeo4JStemma(tradId, stemma);
+                        Response localResp = parser.parseNeo4JStemma(traditionId, stemma);
                         stemmataList.add((String) localResp.getEntity());
                     });
 
@@ -139,16 +142,15 @@ public class Tradition {
     /**
      * Gets a list of all relationships of a tradition with the given id.
      *
-     * @param tradId ID of the tradition to look up
      * @return Http Response 200 and a list of relationship model in JSON
      */
     @GET
-    @Path("{tradId}/relationships")
+    @Path("/relationships")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllRelationships(@PathParam("tradId") String tradId) {
+    public Response getAllRelationships() {
         ArrayList<RelationshipModel> relList = new ArrayList<>();
 
-        Node startNode = DatabaseService.getStartNode(tradId, db);
+        Node startNode = DatabaseService.getStartNode(traditionId, db);
         try (Transaction tx = db.beginTx()) {
             db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
@@ -168,16 +170,14 @@ public class Tradition {
     /**
      * Returns a list of all readings in a tradition
      *
-     * @param tradId
-     *            the id of the tradition
      * @return the list of readings in json format on success or an ERROR in
      *         JSON format
      */
     @GET
-    @Path("{tradId}/readings")
+    @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllReadings(@PathParam("tradId") String tradId) {
-        Node startNode = DatabaseService.getStartNode(tradId, db);
+    public Response getAllReadings() {
+        Node startNode = DatabaseService.getStartNode(traditionId, db);
         if (startNode == null) {
             return Response.status(Status.NOT_FOUND)
                     .entity("Could not find tradition with this id").build();
@@ -201,9 +201,6 @@ public class Tradition {
      * Get all readings which have the same text and the same rank between given
      * ranks
      *
-     * @param tradId
-     *            the id of the tradition in which to look for identical
-     *            readings
      * @param startRank
      *            the rank from where to start the search
      * @param endRank
@@ -213,12 +210,11 @@ public class Tradition {
      */
     // TODO refactor all these traversals somewhere!
     @GET
-    @Path("{tradId}/identicalreadings/{startRank}/{endRank}")
+    @Path("/identicalreadings/{startRank}/{endRank}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getIdenticalReadings(@PathParam("tradId") String tradId,
-                                         @PathParam("startRank") long startRank,
+    public Response getIdenticalReadings(@PathParam("startRank") long startRank,
                                          @PathParam("endRank") long endRank) {
-        Node startNode = DatabaseService.getStartNode(tradId, db);
+        Node startNode = DatabaseService.getStartNode(traditionId, db);
         if (startNode == null) {
             return Response.status(Status.NOT_FOUND)
                     .entity("Could not find tradition with this id").build();
@@ -307,20 +303,18 @@ public class Tradition {
      * without problems
      * TODO use AlignmentTraverse for this...?
      *
-     * @param tradId - the tradition to query
      * @param startRank - where to start
      * @param endRank - where to end
      * @return list of readings that could be at the same rank in JSON format or
      *         an ERROR in JSON format
      */
     @GET
-    @Path("{tradId}/mergeablereadings/{startRank}/{endRank}")
+    @Path("/mergeablereadings/{startRank}/{endRank}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCouldBeIdenticalReadings(
-            @PathParam("tradId") String tradId,
             @PathParam("startRank") long startRank,
             @PathParam("endRank") long endRank) {
-        Node startNode = DatabaseService.getStartNode(tradId, db);
+        Node startNode = DatabaseService.getStartNode(traditionId, db);
         if (startNode == null) {
             return Response.status(Status.NOT_FOUND)
                     .entity("Could not find tradition with this id").build();
@@ -358,13 +352,12 @@ public class Tradition {
 
         for (Node nodeA : questionedReadings) {
             ArrayList<Node> sameText = new ArrayList<>();
-            for (Node nodeB : questionedReadings)
-                if (!nodeA.equals(nodeB)
-                        && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
-                        && !nodeA.getProperty("rank").toString().equals(nodeB.getProperty("rank").toString())) {
-                    sameText.add(nodeB);
-                    sameText.add(nodeA);
-                }
+            questionedReadings.stream().filter(nodeB -> !nodeA.equals(nodeB)
+                    && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
+                    && !nodeA.getProperty("rank").toString().equals(nodeB.getProperty("rank").toString())).forEach(nodeB -> {
+                sameText.add(nodeB);
+                sameText.add(nodeA);
+            });
             if (sameText.size() > 0) {
                 couldBeIdenticalCheck(sameText, couldBeIdenticalReadings);
             }
@@ -461,11 +454,9 @@ public class Tradition {
      *         ERROR in JSON format
      */
     @POST
-    @Path("{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response changeTraditionMetadata(TraditionModel tradition,
-            @PathParam("tradId") String witnessId) {
+    public Response changeTraditionMetadata(TraditionModel tradition) {
 
         if (!DatabaseService.userExists(tradition.getOwnerId(), db)) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -474,20 +465,20 @@ public class Tradition {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (witnessId:TRADITION {id:'" + witnessId
-                    + "'}) return witnessId");
-            Iterator<Node> nodes = result.columnAs("witnessId");
+            Result result = db.execute("match (traditionId:TRADITION {id:'" + traditionId
+                    + "'}) return traditionId");
+            Iterator<Node> nodes = result.columnAs("traditionId");
 
             if (nodes.hasNext()) {
                 // Remove the old ownership
-                String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + witnessId + "'}) "
+                String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + traditionId + "'}) "
                         + "MATCH tradition<-[r:OWNS_TRADITION]-(:USER) DELETE r";
                 result = db.execute(removeRelationQuery);
                 System.out.println(result.toString());
 
                 // Add the new ownership
                 String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId()
-                        + "'}) " + "MATCH(tradition: TRADITION {id:'" + witnessId + "'}) "
+                        + "'}) " + "MATCH(tradition: TRADITION {id:'" + traditionId + "'}) "
                         + "SET tradition.name = '" + tradition.getName() + "' "
                         + "SET tradition.public = '" + tradition.getIsPublic() + "' "
                         + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
@@ -509,79 +500,25 @@ public class Tradition {
     }
 
     /**
-     * Gets a list of all the complete traditions in the database.
-     *
-     * @return Http Response 200 and a list of tradition models in JSON on
-     *         success or Http Response 500
-     */
-    @GET
-    @Path("all")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllTraditions() {
-        List<TraditionModel> traditionList = new ArrayList<>();
-
-        try (Transaction tx = db.beginTx()) {
-
-            Result result = db.execute("match (u:USER)-[:OWNS_TRADITION]->(n:TRADITION) return n");
-            Iterator<Node> traditions = result.columnAs("n");
-            while(traditions.hasNext())
-            {
-                Node trad = traditions.next();
-                TraditionModel tradModel = new TraditionModel();
-                if(trad.hasProperty("id"))
-                    tradModel.setId(trad.getProperty("id").toString());
-                if(trad.hasProperty("name"))
-                    tradModel.setName(trad.getProperty("name").toString());
-                traditionList.add(tradModel);
-            }
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.ok(traditionList).build();
-    }
-
-    /**
-     * Helper method for getting the tradition node with a given tradition id
-     *
-     * @param tradId ID of the tradition to look up
-     * @param engine the graph database to query
-     * @return the root tradition node
-     */
-    private Node getTraditionNode(String tradId, GraphDatabaseService engine) {
-        Result result = engine.execute("match (n:TRADITION {id: '" + tradId + "'}) return n");
-        Iterator<Node> nodes = result.columnAs("n");
-
-        if (nodes.hasNext()) {
-            return nodes.next();
-        }
-        return null;
-    }
-
-    /**
      * Returns GraphML file from specified tradition owned by user
      *
-     * @param tradId  ID of the tradition to look up
      * @return XML data
      */
     @GET
-    @Path("{tradId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTradition(@PathParam("tradId") String tradId) {
+    public Response getTradition() {
         Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
-        return parser.parseNeo4J(tradId);
+        return parser.parseNeo4J(traditionId);
     }
 
     /**
      * Removes a complete tradition
      *
-     * @param tradId ID of the tradition to delete
      * @return http response
      */
     @DELETE
-    @Path("{tradId}")
-    public Response deleteTraditionById(@PathParam("tradId") String tradId) {
-        Node foundTradition = DatabaseService.getTraditionNode(tradId, db);
+    public Response deleteTraditionById() {
+        Node foundTradition = DatabaseService.getTraditionNode(traditionId, db);
         if (foundTradition != null) {
             try (Transaction tx = db.beginTx()) {
                 /*
@@ -626,48 +563,18 @@ public class Tradition {
     }
 
     /**
-     * Imports a tradition by given GraphML file and meta data
-     *
-     * @return Http Response with the id of the imported tradition on success or
-     *         an ERROR in JSON format
-     * @throws XMLStreamException
-     */
-    @PUT
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response importGraphMl(@FormDataParam("name") String name,
-                                  @FormDataParam("language") String language,
-                                  @FormDataParam("public") String is_public,
-                                  @FormDataParam("userId") String userId,
-                                  @FormDataParam("file") InputStream uploadedInputStream,
-                                  @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException,
-            XMLStreamException {
-
-
-
-        if (!DatabaseService.userExists(userId, db)) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("Error: No user with this id exists")
-                    .build();
-        }
-
-        return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
-    }
-
-    /**
      * Returns DOT file from specified tradition owned by user
      *
-     * @param tradId ID of the tradition to export
      * @return XML data
      */
     @GET
-    @Path("{tradId}/dot")
+    @Path("/dot")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getDot(@PathParam("tradId") String tradId) {
-        if(getTraditionNode(tradId, db) == null)
+    public Response getDot() {
+        if(DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        return parser.parseNeo4J(tradId);
+        return parser.parseNeo4J(traditionId);
     }
 }

@@ -13,6 +13,7 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Reading;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -48,10 +49,8 @@ public abstract class BenchmarkTests {
      * In order not to measure the startup time of jerseytest the startup needs to be done @BeforeClass
      * so all jerseyTest related objects need to be static.
      */
-    static User userResource;
-    static Tradition traditionResource;
-    static Reading readingResoruce;
-    static GraphMLToNeo4JParser importResource ;
+    static Root webResource;
+    static GraphMLToNeo4JParser importResource;
 
     static File testfile;
 
@@ -113,7 +112,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllTraditions(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/all")
+                .path("/traditions")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -165,8 +164,6 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void importGraphMl(){
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
-
         try {
             importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {

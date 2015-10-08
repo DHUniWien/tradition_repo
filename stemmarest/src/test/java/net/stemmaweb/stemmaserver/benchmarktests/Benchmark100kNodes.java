@@ -6,9 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
-import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.User;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -39,16 +37,11 @@ public class Benchmark100kNodes extends BenchmarkTests {
 
         GraphDatabaseService db = new GraphDatabaseServiceProvider(
                 new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-		
-        userResource = new User();
-        traditionResource = new Tradition();
-        readingResoruce = new Reading();
-        importResource = new GraphMLToNeo4JParser();
 
+        webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(userResource)
-                .addResource(traditionResource)
-                .addResource(readingResoruce).create();
+                .addResource(webResource)
+                .create();
         try {
             jerseyTest.setUp();
         } catch (Exception e) {
@@ -57,10 +50,10 @@ public class Benchmark100kNodes extends BenchmarkTests {
         }
 
         rgg.role(db, 10, 10, 10, 100);
-		
-		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 
-		try {
+        importResource = new GraphMLToNeo4JParser();
+		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
+        try {
 			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
 		} catch (FileNotFoundException f) {
 			// this error should not occur

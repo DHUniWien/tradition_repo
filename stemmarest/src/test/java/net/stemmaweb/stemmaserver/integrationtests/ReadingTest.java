@@ -12,7 +12,10 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
 import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.*;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -97,13 +100,11 @@ public class ReadingTest {
             assertTrue(false);
         }
 
-        /*
-         * Create a JersyTestServer serving the Resource under test
-         */
-        Reading reading = new Reading();
-        Tradition tradition = new Tradition();
+        // Create a JerseyTestServer for the necessary REST API calls
+        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(reading).addResource(tradition).create();
+                .addResource(webResource)
+                .create();
         jerseyTest.setUp();
     }
 
@@ -304,7 +305,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", "
                     + secondNode.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicate")
+                    .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, jsonPayload);
 
@@ -364,7 +365,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"C\" ]}";
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/duplicate")
+                    .path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, jsonPayload);
 
@@ -441,7 +442,7 @@ public class ReadingTest {
 
             // duplicate reading
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
-            ClientResponse response = jerseyTest.resource().path("/reading/duplicate")
+            ClientResponse response = jerseyTest.resource().path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -519,7 +520,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + node.getId()
                     + "], \"witnesses\":[\"A\",\"B\" ]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicate")
+                    .path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, jsonPayload);
 
@@ -559,7 +560,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId()
                     + "], \"witnesses\":[]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicate")
+                    .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, jsonPayload);
 
@@ -585,7 +586,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId()
                     + "], \"witnesses\":[\"C\"]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicate")
+                    .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, jsonPayload);
 
@@ -610,7 +611,7 @@ public class ReadingTest {
             String jsonPayload = "{\"readings\":[" + firstNode.getId()
                     + "], \"witnesses\":[\"C\"]}";
             ClientResponse response = jerseyTest.resource()
-                    .path("/reading/duplicate")
+                    .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, jsonPayload);
 
@@ -1897,7 +1898,7 @@ public class ReadingTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 actualResponse.getStatus());
-        assertEquals("there is no previous reading to this reading",
+        assertEquals("this was the first reading of this witness",
                 actualResponse.getEntity(String.class));
     }
 

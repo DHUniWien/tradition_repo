@@ -10,15 +10,13 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.User;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -51,28 +49,18 @@ public class UserTest {
 
     @Before
     public void setUp() throws Exception {
-
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-
-        /*
-         * The Resource under test. The mockDbFactory will be injected into this
-         * resource.
-         */
-        User userResource = new User();
-        Tradition traditionResource = new Tradition();
-
         /*
          * Populate the test database with the root node
          */
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         DatabaseService.createRootNode(db);
 
         /*
          * Create a JersyTestServer serving the Resource under test
          */
+        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(userResource)
-                .addResource(traditionResource)
+                .addResource(webResource)
                 .create();
         jerseyTest.setUp();
     }

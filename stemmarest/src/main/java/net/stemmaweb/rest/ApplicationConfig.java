@@ -25,13 +25,8 @@ public class ApplicationConfig extends Application {
     @Override
     public Set<Class<?>> getClasses() {
         Set<Class<?>> s = new HashSet<>();
-        s.add(Witness.class);
-        s.add(User.class);
-        s.add(Tradition.class);
-        s.add(Relation.class);
-        s.add(Stemma.class);
-        s.add(Reading.class);
-        
+        s.add(Root.class);
+
         return s;
     }
     

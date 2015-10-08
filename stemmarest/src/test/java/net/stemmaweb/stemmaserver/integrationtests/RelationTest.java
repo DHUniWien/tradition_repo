@@ -11,7 +11,10 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.rest.*;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
@@ -85,11 +88,11 @@ public class RelationTest {
             assertTrue(false);
         }
 
-        /*
-         * Create a JersyTestServer serving the Resource under test
-         */
-        Tradition tradition = new Tradition();
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(tradition).create();
+        // Create a JerseyTestServer for the necessary REST API calls
+        Root webResource = new Root();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(webResource)
+                .create();
         jerseyTest.setUp();
     }
 

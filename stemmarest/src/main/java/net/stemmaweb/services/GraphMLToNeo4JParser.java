@@ -85,6 +85,7 @@ public class GraphMLToNeo4JParser {
             graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
             traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
             traditionNode.setProperty("id", tradId);
+            traditionNode.setProperty("name", tradName);
 
             outer:
             while (true) {
@@ -185,9 +186,7 @@ public class GraphMLToNeo4JParser {
                                 // Sequence relationships are specified multiple times in the graph, once
                                 // per witness. Reading relationships should be specified only once.
                                 if (from.hasRelationship(relKind, Direction.BOTH)) {
-                                    Iterator<Relationship> existingRels = from.getRelationships(relKind, Direction.BOTH).iterator();
-                                    while (existingRels.hasNext()) {
-                                        Relationship qr = existingRels.next();
+                                    for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
                                         if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
                                             // If a RELATED link already exists, we have a problem.
                                             if (relKind.equals(ERelations.RELATED))
