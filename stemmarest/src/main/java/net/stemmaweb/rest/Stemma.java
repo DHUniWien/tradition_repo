@@ -1,7 +1,9 @@
 package net.stemmaweb.rest;
 
-import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
@@ -9,11 +11,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.DotToNeo4JParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.Neo4JToDotParser;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 /**
@@ -48,17 +50,87 @@ public class Stemma {
         return parser.parseNeo4JStemma(tradId, name);
     }
 
-    @DELETE  // TODO implement
+    @POST  // a replacement stemma TODO test
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response replaceStemma(String dot) {
+        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        // Wrap this entire thing in a transaction so that we can roll back
+        // the deletion if the replacement import fails.
+        try (Transaction tx = db.beginTx()) {
+            String originalName = name;
+            Response deletionResult = deleteStemma();
+            if (deletionResult.getStatus() != 200)
+                return deletionResult;
+
+            Response replaceResult = parser.importStemmaFromDot(dot, tradId);
+            if (replaceResult.getStatus() != 201)
+                return replaceResult;
+
+            // Check that the names matched.
+            JSONObject content = new JSONObject(replaceResult.getEntity().toString());
+            if (!content.get("name").equals(originalName)) {
+                String errormsg = "Name mismatch between original and replacement stemma";
+                return Response.status(Status.BAD_REQUEST)
+                        .entity("{\"error\":\"" + errormsg + "\"}").build();
+            }
+
+            // OK, we can commit it.
+            tx.success();
+            return Response.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+    @DELETE
     @Produces(MediaType.APPLICATION_JSON)
     public Response deleteStemma() {
-        return Response.status(Status.SERVICE_UNAVAILABLE).build();
+        Node stemmaNode = getStemmaNode();
+        assert stemmaNode != null;
+        try (Transaction tx = db.beginTx()) {
+            Set<Relationship> removableRelations = new HashSet<>();
+            Set<Node> removableNodes = new HashSet<>();
+
+            // The stemma is removable
+            removableNodes.add(stemmaNode);
+            removableRelations.add(stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING));
+
+            // Its HAS_WITNESS relations are removable
+            stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)
+                .forEach(x -> {
+                    removableRelations.add(x);
+                    removableNodes.add(x.getEndNode());
+                });
+            stemmaNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE)
+                    .forEach(removableRelations::add);
+
+            // Its associated TRANSMISSION relations are removable
+            removableNodes
+                    .forEach(n -> n.getRelationships(ERelations.TRANSMITTED, Direction.BOTH)
+                            .forEach(r -> {
+                                        if (r.getProperty("hypothesis").toString().equals(name))
+                                            removableRelations.add(r);
+                                    }
+                            ));
+
+            // Its witnesses are removable if they have no links left
+            removableRelations.forEach(Relationship::delete);
+            removableNodes.stream().filter(x -> !x.hasRelationship()).forEach(Node::delete);
+            tx.success();
+            return Response.ok().build();
+        } catch (Exception e ){
+            return Response.status(Status.INTERNAL_SERVER_ERROR)
+                    .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+        }
     }
     /**
      * Reorients a stemma tree with a given new root node
      *
-     * @param tradId
-     * @param name
-     * @param nodeId
+     * @param tradId - tradition ID
+     * @param name   - stemma name
+     * @param nodeId - archetype node
      * @return Http Response ok and DOT JSON string on success or an ERROR in
      *         JSON format
      */
@@ -68,8 +140,6 @@ public class Stemma {
     public Response reorientStemma(@PathParam("tradId") String tradId,
                                    @PathParam("name") String name,
                                    @PathParam("nodeId") String nodeId) {
-
-        Response resp;
 
         try (Transaction tx = db.beginTx())
         {
@@ -98,6 +168,18 @@ public class Stemma {
         }
         return getStemma();
 
+    }
+
+    private Node getStemmaNode () {
+        try (Transaction tx = db.beginTx()) {
+            Result query = db.execute("match (:TRADITION {id:'" + tradId
+                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
+            ResourceIterator<Node> foundStemma = query.columnAs("s");
+            tx.success();
+            if (!foundStemma.hasNext())
+                return null;
+            return foundStemma.next();
+        }
     }
 
 }

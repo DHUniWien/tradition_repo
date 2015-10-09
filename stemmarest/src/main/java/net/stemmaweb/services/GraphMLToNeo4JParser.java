@@ -264,7 +264,7 @@ public class GraphMLToNeo4JParser {
 
         for(String graph : graphs) {
             DotToNeo4JParser parser = new DotToNeo4JParser(db);
-            parser.importStemmaFromDot(graph, tradId, false);
+            parser.importStemmaFromDot(graph, tradId);
         }
 
         return Response.status(Response.Status.OK)

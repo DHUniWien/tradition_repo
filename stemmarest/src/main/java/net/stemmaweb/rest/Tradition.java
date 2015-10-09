@@ -1,6 +1,5 @@
 package net.stemmaweb.rest;
 
-import java.io.*;
 import java.util.*;
 
 import javax.ws.rs.*;
@@ -8,7 +7,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.xml.stream.XMLStreamException;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
@@ -22,9 +20,6 @@ import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
-
-import com.sun.jersey.core.header.FormDataContentDisposition;
-import com.sun.jersey.multipart.FormDataParam;
 
 
 /**
@@ -43,7 +38,7 @@ public class Tradition {
         traditionId = requestedId;
     }
 
-    /**
+    /*********************
      * Delegated API calls
      */
 
@@ -60,7 +55,7 @@ public class Tradition {
         return new Relation(traditionId);
     }
 
-    /**
+    /*************************
      * Resource creation calls
      */
     @PUT  // a new stemma
@@ -68,14 +63,7 @@ public class Tradition {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response newStemma(String dot) {
         DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        return parser.importStemmaFromDot(dot, traditionId, false);
-    }
-    @POST  // a replacement stemma TODO test
-    @Path("/stemma")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response replaceStemma(String dot) {
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
-        return parser.importStemmaFromDot(dot, traditionId, true);
+        return parser.importStemmaFromDot(dot, traditionId);
     }
 
     /*****************************

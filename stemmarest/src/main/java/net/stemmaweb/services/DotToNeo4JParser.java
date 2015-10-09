@@ -22,55 +22,57 @@ import org.neo4j.graphdb.Node;
 public class DotToNeo4JParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
-    private String errorMessage = null;
+    private String messageValue = null;
 
     public DotToNeo4JParser(GraphDatabaseService db) {
         this.db = db;
     }
 
-    public Response importStemmaFromDot(String dot, String tradId, Boolean replace) {
-        Status result = Status.NO_CONTENT;
-
+    public Response importStemmaFromDot(String dot, String tradId) {
+        Status result = null;
         // Split the dot string into separate lines if necessary. Having
         // single-line dot seems to confuse the parser.
-        if (dot.indexOf('\n') == -1)
+        if (dot.indexOf('\n') == -1) {
             dot = dot.replaceAll("; ", ";\n");
+            dot = dot.replaceAll("\\{ ", "{\n");
+            dot = dot.replaceAll(" \\}", "\n}");
+        }
         StringBuffer dotstream = new StringBuffer(dot);
         Parser p = new Parser();
         try {
             p.parse(dotstream);
         } catch (ParseException e) {
-            errorMessage = e.toString();
+            messageValue = e.toString();
             result = Status.BAD_REQUEST;
         }
         ArrayList<Graph> parsedgraphs = p.getGraphs();
         if (parsedgraphs.size() == 0) {
-            errorMessage = "No graphs were found in this DOT specification.";
+            messageValue = "No graphs were found in this DOT specification.";
+            result = Status.BAD_REQUEST;
+        } else if (parsedgraphs.size() > 1) {
+            messageValue = "More than one graph was found in this DOT specification.";
             result = Status.BAD_REQUEST;
         }
 
-        // Save each graph into Neo4J. TODO will there ever be more than one?
-        for (Graph stemma : parsedgraphs) {
-            result = saveToNeo(stemma, tradId, replace);
-            if (!result.equals(Status.OK) && !result.equals(Status.CREATED)) {
-                break;
-            }
-        }
+        // Save the graph into Neo4J.
+        if (result == null)
+            result = saveToNeo(parsedgraphs.get(0), tradId);
 
-        if (errorMessage != null)
-            return Response.status(result).entity(errorMessage).build();
-        else
-            return Response.status(result).build();
+        // Return our answer.
+        String returnKey = result == Status.CREATED ? "name" : "error";
+        return Response.status(result)
+                .entity(simpleJSON(returnKey, messageValue))
+                .build();
     }
 
-    private Status saveToNeo(Graph stemma, String tradId, Boolean replace) {
+    private Status saveToNeo(Graph stemma, String tradId) {
         // Check for the existence of the tradition
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if (traditionNode == null)
             return Status.NOT_FOUND;
 
         String stemmaName = stemma.getId().getLabel();
-        // Sometimes the stemma name will be an ID instead of a label. (Quotes?)
+        // If the stemma name wasn't quoted, it will be an id.
         if (stemmaName.equals("")) {
             stemmaName = stemma.getId().getId();
         }
@@ -79,14 +81,8 @@ public class DotToNeo4JParser {
             // unless we intend to replace it.
             for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
                 if (priorStemma.getProperty("name").equals(stemmaName)) {
-                    if (replace) {
-                        // TODO Remove the relationships from this stemma and the hypothetical nodes no longer connected.
-                        errorMessage = "Replacement of stemmas not yet implemented.";
-                        return Status.BAD_REQUEST;
-                    } else {
-                        errorMessage = "A stemma by this name already exists for this tradition.";
-                        return Status.CONFLICT;
-                    }
+                    messageValue = "A stemma by this name already exists for this tradition.";
+                    return Status.CONFLICT;
                 }
             }
             // Get a list of the existing (extant) tradition witnesses
@@ -108,6 +104,10 @@ public class DotToNeo4JParser {
                 // If the witness ID is empty then the sigil was the label, probably
                 // Unicode, and needs to be quoted on output.
                 boolean quoteSigil = witness.getId().getId().equals("");
+                if (witness.getAttribute("class") == null) {
+                    messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
+                    return Status.BAD_REQUEST;
+                }
                 Boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
                 // Check for the existence of a node by this name
                 Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
@@ -115,7 +115,7 @@ public class DotToNeo4JParser {
                     // Check that the requested witness isn't hypothetical unless the
                     // existing one is!
                     if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical"))) {
-                        errorMessage = "The extant tradition witness " + sigil
+                        messageValue = "The extant tradition witness " + sigil
                                 + " cannot be a hypothetical stemma node.";
                         return Status.CONFLICT;
                     }
@@ -125,9 +125,8 @@ public class DotToNeo4JParser {
                     existingWitness.setProperty("hypothetical", hypothetical);
                     existingWitness.setProperty("quotesigil", quoteSigil);
                     // Does it have a label separate from its ID?
-                    // TODO check for a Unicode ID and separate label
-                    String displayLabel = witness.getId().getLabel();
-                    if (!displayLabel.equals("") && !quoteSigil) {
+                    String displayLabel = witness.getAttribute("label");
+                    if (displayLabel != null) {
                         existingWitness.setProperty("label", displayLabel);
                     }
                     traditionWitnesses.put(sigil, existingWitness);
@@ -169,7 +168,8 @@ public class DotToNeo4JParser {
                     if (rootNode == null) {
                         rootNode = pathEnd;
                     } else if (!rootNode.equals(pathEnd)) {
-                        errorMessage = "Multiple archetype nodes found in this stemma: "
+                        assert pathEnd != null;
+                        messageValue = "Multiple archetype nodes found in this stemma: "
                                 + rootNode.getProperty("sigil") + " and "
                                 + pathEnd.getProperty("sigil");
                         return Status.BAD_REQUEST;
@@ -184,14 +184,11 @@ public class DotToNeo4JParser {
 
             tx.success();
         } catch (Exception e) {
-            errorMessage = e.toString();
+            messageValue = e.toString();
             return Status.INTERNAL_SERVER_ERROR;
         }
-
-        if(replace)
-            return Status.OK;
-        else
-            return Status.CREATED;
+        messageValue = stemmaName;
+        return Status.CREATED;
     }
 
     private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {
@@ -201,6 +198,10 @@ public class DotToNeo4JParser {
             sigil = n.getId().getLabel();
         }
         return sigil;
+    }
+
+    private static String simpleJSON (String key, String value) {
+        return String.format("{\"%s\":\"%s\"}", key, value );
     }
 
 }
