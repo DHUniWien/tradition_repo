@@ -58,7 +58,7 @@ public class Benchmark1000kNodes extends BenchmarkTests {
         rgg.role(db, 10, 100, 10, 100);
 
         importResource = new GraphMLToNeo4JParser();
-        testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
+        testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         try {
             tradId = importResource.parseGraphML(testfile.getPath(), "1", "Tradition")
                     .getEntity()

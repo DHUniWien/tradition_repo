@@ -61,7 +61,7 @@ public class RelationTest {
 
 
         importResource = new GraphMLToNeo4JParser();
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -644,7 +644,7 @@ public class RelationTest {
         /**
          * load a tradition with no Realtionships to the test DB
          */
-		File testfile = new File("src/TestXMLFiles/testTraditionNoRealtions.xml");
+		File testfile = new File("src/TestFiles/testTraditionNoRealtions.xml");
         String newTradId = null;
 		try {
             Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");

@@ -87,7 +87,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLImportFileNotFoundExceptionTest()
 	{
-		File testfile = new File("src/TestXMLFiles/SapientiaFileNotExisting.xml");
+		File testfile = new File("src/TestFiles/SapientiaFileNotExisting.xml");
 		try
 		{
 			importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
@@ -107,7 +107,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLImportXMLStreamErrorTest()
 	{
 		Response actualResponse = null;
-		File testfile = new File("src/TestXMLFiles/SapientiaWithError.xml");
+		File testfile = new File("src/TestFiles/SapientiaWithError.xml");
 		try
 		{
 			actualResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
@@ -128,7 +128,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLImportSuccessTest(){
 		Response actualResponse = null;
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
 		try
 		{
 			actualResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
@@ -183,7 +183,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 	public void graphMLExportSuccessTest(){
 		
 		removeOutputFile();
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
         String traditionId = null;
 		try
 		{
@@ -225,7 +225,7 @@ public class Neo4JAndGraphMLParserUnitTest {
      */
     @Test
     public void unicodeSigilTest() {
-        File testfile = new File("src/TestXMLFiles/john.xml");
+        File testfile = new File("src/TestFiles/john.xml");
         Response parseResponse = null;
         try {
             parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "John tradition");
@@ -256,7 +256,7 @@ public class Neo4JAndGraphMLParserUnitTest {
     @Test
 	public void importFlorilegiumTest () {
 		Response parseResponse = null;
-		File testfile = new File("src/TestXMLFiles/florilegium_graphml.xml");
+		File testfile = new File("src/TestFiles/florilegium_graphml.xml");
 		try
 		{
 			parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
@@ -331,7 +331,7 @@ public class Neo4JAndGraphMLParserUnitTest {
     @Test
     public void exportFlorilegiumTest () {
         Response parseResponse = null;
-        File testfile = new File("src/TestXMLFiles/florilegium_graphml.xml");
+        File testfile = new File("src/TestFiles/florilegium_graphml.xml");
         try {
             parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {

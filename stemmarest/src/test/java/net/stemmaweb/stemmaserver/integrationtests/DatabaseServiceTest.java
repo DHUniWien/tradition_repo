@@ -42,7 +42,7 @@ public class DatabaseServiceTest {
 
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
 
         /*
          * Populate the test database with the root node and a user with id 1

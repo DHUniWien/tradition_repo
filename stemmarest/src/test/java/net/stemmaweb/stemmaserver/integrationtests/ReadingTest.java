@@ -73,7 +73,7 @@ public class ReadingTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
 
-		File testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
+		File testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         /*
          * Populate the test database with the root node and a user with id 1
          */

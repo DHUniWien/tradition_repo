@@ -56,7 +56,7 @@ public class TranspositionTest {
 
 
         GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
 
 
         /*

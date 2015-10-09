@@ -63,7 +63,7 @@ public class TraditionTest {
 
 
         importResource = new GraphMLToNeo4JParser();
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -105,7 +105,7 @@ public class TraditionTest {
         expectedIds.add(tradId);
 
         // import a second tradition into the db
-		File testfile = new File("src/TestXMLFiles/testTradition.xml");
+		File testfile = new File("src/TestFiles/testTradition.xml");
         try {
             Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
             expectedIds.add(Util.getValueFromJson(r, "tradId"));
@@ -563,7 +563,7 @@ public class TraditionTest {
         int originalNodeCount = numNodes.get();
 
         // upload the florilegium
-        String testfile = "src/TestXMLFiles/florilegium_graphml.xml";
+        String testfile = "src/TestFiles/florilegium_graphml.xml";
         String florId = null;
         try {
             Response r = importResource.parseGraphML(testfile, "1", "Tradition");
@@ -575,7 +575,7 @@ public class TraditionTest {
         // give it a stemma
         String newStemma = null;
         try {
-            byte[] encStemma = Files.readAllBytes(Paths.get("src/TestXMLFiles/florilegium.dot"));
+            byte[] encStemma = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
             newStemma = new String(encStemma, Charset.forName("utf-8"));
         } catch (IOException e) {
             assertTrue(false);
