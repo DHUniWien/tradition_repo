@@ -35,13 +35,14 @@ class RandomGraphGenerator {
 
         Random randomGenerator = new Random();
 
-        String loremIpsum = "Lorem ipsum dolor sit amet consetetur sadipscing elitr sed diam nonumy eirmod tempor "
-                + "invidunt ut labore et dolore magna aliquyam erat sed diam voluptua At vero eos et "
-                + "accusam et justo duo dolores et ea rebum Stet clita kasd gubergren no sea takimata "
-                + "sanctus est Lorem ipsum dolor sit amet Lorem ipsum dolor sit amet consetetur sadipscing "
-                + "elitr sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat "
-                + "sed diam voluptua At vero eos et accusam et justo duo dolores et ea rebum Stet clita "
-                + "kasd gubergren no sea takimata sanctus est Lorem ipsum dolor sit amet";
+        String loremIpsum = "Lorem ipsum dolor sit amet consetetur sadipscing elitr sed diam "
+                + "nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat sed diam "
+                + "voluptua At vero eos et accusam et justo duo dolores et ea rebum Stet clita "
+                + "kasd gubergren no sea takimata sanctus est Lorem ipsum dolor sit amet Lorem "
+                + "ipsum dolor sit amet consetetur sadipscing elitr sed diam nonumy eirmod tempor "
+                + "invidunt ut labore et dolore magna aliquyam erat sed diam voluptua At vero eos "
+                + "et accusam et justo duo dolores et ea rebum Stet clita kasd gubergren no sea "
+                + "takimata sanctus est Lorem ipsum dolor sit amet";
         String[] loremIpsumArray = loremIpsum.split(" ");
 
         DatabaseService.createRootNode(db);
@@ -52,7 +53,7 @@ class RandomGraphGenerator {
             tx.success();
         }
 
-        for(int k=0;k<cardOfUsers;k++) {
+        for(int k = 0; k < cardOfUsers; k++) {
             Node currentUser;
             try (Transaction tx = db.beginTx()) {
                 currentUser = db.createNode(Nodes.USER);
@@ -67,7 +68,7 @@ class RandomGraphGenerator {
             /**
              * Create the Traditions
              */
-            for(int i=0;i<cardOfTraditionsPerUser;i++) {
+            for(int i=0; i < cardOfTraditionsPerUser; i++) {
                 int ind = 0;
                 System.out.print("Import User: " +(k+1)+"/"+cardOfUsers+" [");
                 for( ; ind < (int)((double) i/cardOfTraditionsPerUser * 20.0); ind++) {
@@ -97,7 +98,7 @@ class RandomGraphGenerator {
 
                     traditionRootNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
-                    for(int l=0; l < cardOfWitnesses; l++){
+                    for(int l = 0; l < cardOfWitnesses; l++){
                         WitnessBranch witnessBranch = new WitnessBranch();
                         witnessBranch.setLastNode(startNode);
                         witnessBranch.setName("W"+l);
@@ -116,7 +117,7 @@ class RandomGraphGenerator {
                     ArrayList<Node> nodesOfCurrentRank = new ArrayList<>();
                     int numberOfNodesOnThisRank = randomGenerator.nextInt(cardOfWitnesses)+1;
                     try(Transaction tx = db.beginTx()){
-                        for(int m = 0; m < numberOfNodesOnThisRank; m++){
+                        for(int m = 0; m < numberOfNodesOnThisRank; m++) {
                             Node wordNode = db.createNode(Nodes.READING);
 
                             wordNode.setProperty("text", loremIpsumArray[randomGenerator
@@ -129,7 +130,7 @@ class RandomGraphGenerator {
                         }
                         tx.success();
                     }
-                    try(Transaction tx = db.beginTx()){
+                    try(Transaction tx = db.beginTx()) {
 
                         int moduloIndex = 0;
 

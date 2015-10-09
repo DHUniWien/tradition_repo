@@ -59,8 +59,9 @@ public class TraditionTest {
     @Before
     public void setUp() throws Exception {
 
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
+                .newImpermanentDatabase())
+                .getDatabase();
 
         importResource = new GraphMLToNeo4JParser();
 		File testfile = new File("src/TestFiles/testTradition.xml");

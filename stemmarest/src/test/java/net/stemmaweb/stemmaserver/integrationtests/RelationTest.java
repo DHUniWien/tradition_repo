@@ -3,6 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -119,7 +120,7 @@ public class RelationTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
             relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
@@ -205,7 +206,7 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
+        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
         relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
@@ -306,7 +307,7 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(GraphModel.class);
+        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
         relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
 
         relationship = new RelationshipModel();
@@ -324,7 +325,7 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(GraphModel.class);
+        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
         relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
 
         /*
@@ -349,7 +350,6 @@ public class RelationTest {
         }
     }
 
-
     @Test(expected=NotFoundException.class)
     public void deleteRelationshipDocumentWideTest() {
         /*
@@ -372,7 +372,7 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse.getEntity(GraphModel.class);
+        GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
         relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
 
         relationship.setSource("27");
@@ -389,7 +389,7 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse.getEntity(GraphModel.class);
+        GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
         relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
 
         relationship.setScope("document");
@@ -609,8 +609,6 @@ public class RelationTest {
                     || rel.getReading_b().equals("drought")
                     || rel.getReading_b().equals("march"));
             assertTrue(rel.getType().equals("transposition"));
-//                    || rel.getType().equals("transposition")
-//                    || rel.getType().equals("transposition"));
         }
     }
 
@@ -624,9 +622,9 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         assertEquals(Response.ok().build().getStatus(), response.getStatus());
-	}
+    }
 
-	/**
+    /**
      * Test if the get relationship method returns the correct not found error on a non existing tradid
      */
     @Test
@@ -635,13 +633,13 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/6999/relationships")
                 .type(MediaType.APPLICATION_JSON)
-				.get(ClientResponse.class);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
     }
 
     @Test
-	public void getNoRelationshipTest(){
-        /**
+    public void getNoRelationshipTest(){
+         /**
          * load a tradition with no Realtionships to the test DB
          */
 		File testfile = new File("src/TestFiles/testTraditionNoRealtions.xml");

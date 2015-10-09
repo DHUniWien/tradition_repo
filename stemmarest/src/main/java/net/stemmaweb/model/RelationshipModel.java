@@ -223,7 +223,4 @@ public class RelationshipModel {
     public void setWitness(String witness) {
         this.witness = witness;
     }
-
-
-
 }

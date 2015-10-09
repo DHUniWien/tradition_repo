@@ -21,7 +21,11 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
 
+import org.neo4j.cypher.EntityNotFoundException;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
@@ -56,8 +60,9 @@ public class Reading {
         try (Transaction tx = db.beginTx()) {
             readingNode = db.getNodeById(readId);
             reading = new ReadingModel(readingNode);
-
             tx.success();
+        } catch (NotFoundException e) {
+            return Response.status(Status.NO_CONTENT).build();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
@@ -336,7 +341,7 @@ public class Reading {
             deletingReading = db.getNodeById(secondReadId);
 
             if (!canBeMerged(stayingReading, deletingReading)) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorMessage).build();
+                return Response.status(Status.CONFLICT).entity(errorMessage).build();
             }
             merge(stayingReading, deletingReading);
 
@@ -358,11 +363,12 @@ public class Reading {
      * @return true if readings can be merged, false if not
      */
     private boolean canBeMerged(Node stayingReading, Node deletingReading) {
+        /**
         if (!doContainSameText(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged do not contain the same text";
             return false;
         }
-
+        */
         if (containClassTwoRelationships(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged cannot contain class 2 relationships " +
                     "(transposition / repetition)";

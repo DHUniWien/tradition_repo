@@ -5,17 +5,16 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.sun.jersey.api.client.GenericType;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.User;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 
 import org.junit.Rule;
@@ -316,8 +315,9 @@ public abstract class BenchmarkTests {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
-        String relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+        ArrayList<GraphModel> readingsAndRelationships =
+                actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>() {});
+        String relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)

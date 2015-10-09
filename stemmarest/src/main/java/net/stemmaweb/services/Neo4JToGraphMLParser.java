@@ -391,7 +391,7 @@ public class Neo4JToGraphMLParser {
                 writer.writeEndElement();
 
                 for(String prop : props) {
-                    if(prop!=null) {
+                    if(prop!=null && false == prop.equals("tradition_id")) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key",nodeMap.get(prop));
                         writer.writeCharacters(node.getProperty(prop).toString());

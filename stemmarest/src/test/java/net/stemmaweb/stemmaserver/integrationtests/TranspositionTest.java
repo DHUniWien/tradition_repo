@@ -2,6 +2,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
@@ -19,10 +20,12 @@ import org.junit.Test;
 import org.neo4j.graphdb.*;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -177,8 +180,8 @@ public class TranspositionTest {
 
         // Make sure it is there
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
-            relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+            ArrayList<GraphModel> readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
+            relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(theId, (Long) loadedRelationship.getStartNode().getId());
@@ -210,8 +213,8 @@ public class TranspositionTest {
 
         // and make sure it is there.
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
-            relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+            ArrayList<GraphModel> readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
+            relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(tehId, (Long) loadedRelationship.getStartNode().getId());

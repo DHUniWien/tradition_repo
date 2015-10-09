@@ -71,7 +71,7 @@ public class ReadingService {
      * @param secondReading
      * @return
      */
-    public static boolean wouldGetCyclic(GraphDatabaseService db,
+    public static boolean  wouldGetCyclic(GraphDatabaseService db,
                                          Node firstReading,
                                          Node secondReading) {
         Node lowerRankReading, higherRankReading;

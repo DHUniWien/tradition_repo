@@ -157,8 +157,8 @@ public class WitnessTest {
                 .resource()
                 .path("/tradition/" + tradId + "/witness/D/readings")
                 .get(ClientResponse.class);
-		assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-		assertEquals("no witness with this id was found", response.getEntity(String.class));
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals("no witness with this id was found", response.getEntity(String.class));
     }
 
     @Test
@@ -171,10 +171,10 @@ public class WitnessTest {
 		assertEquals(expectedText, response);
 	}
 
-	/**
-	 * as ranks are adjusted should give same result as previous test
-	 */
-	@Test
+    /**
+     * as ranks are adjusted should give same result as previous test
+     */
+    @Test
     public void witnessBetweenRanksWrongWayTest() {
         String expectedText = constructResult("april with his showers");
         String response = jerseyTest
@@ -184,11 +184,11 @@ public class WitnessTest {
 		assertEquals(expectedText, response);
 	}
 
-	/**
-	 * gives same ranks for start and end should return error
-	 */
-	@Test
-	public void witnessBetweenRanksSameRanksTest() {
+    /**
+     * gives same ranks for start and end should return error
+     */
+    @Test
+    public void witnessBetweenRanksSameRanksTest() {
         ClientResponse response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witness/A/text/5/5")
@@ -204,14 +204,12 @@ public class WitnessTest {
         String response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witness/A/text/5/30")
-				.get(String.class);
-		assertEquals(expectedText, response);
-
-	}
-
-	/**
-	 * test if the tradition node exists
-	 */
+                .get(String.class);
+        assertEquals(expectedText, response);
+    }
+    /**
+     * test if the tradition node exists
+     */
     @Test
     public void traditionNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
