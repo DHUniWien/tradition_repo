@@ -16,18 +16,13 @@ import javax.ws.rs.core.Response.Status;
 import com.sun.istack.NotNull;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
 import net.stemmaweb.model.*;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.Witness;
-import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Stemma;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,11 +54,6 @@ public class GenericTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private Witness witness;
-    private Tradition tradition;
-    private Reading reading;
-    private Relation relation;
-    private Stemma stemma;
     private GraphMLToNeo4JParser importResource;
 
     @Before
@@ -74,25 +64,14 @@ public class GenericTest {
                 .getDatabase();
 
         importResource = new GraphMLToNeo4JParser();
-        reading = new Reading();
-        relation = new Relation();
-        stemma = new Stemma();
-        tradition = new Tradition();
-        witness = new Witness();
+        Root webResource = new Root();
 
         /*
          * Populate the test database with the root node and a user with id 1
          */
+        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = null;
-            if (!nodes.hasNext()) {
-                rootNode = db.createNode(Nodes.ROOT);
-                rootNode.setProperty("name", "Root node");
-                rootNode.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
@@ -106,11 +85,7 @@ public class GenericTest {
          */
         jerseyTest = JerseyTestServerFactory
                 .newJerseyTestServer()
-                .addResource(reading)
-                .addResource(relation)
-                .addResource(stemma)
-                .addResource(tradition)
-                .addResource(witness)
+                .addResource(webResource)
                 .create();
         jerseyTest.setUp();
     }
@@ -155,12 +130,11 @@ public class GenericTest {
         // Status: Done (with .xml-file)
         // TODO make a tabular collation parser
 
-        Tradition tradition = new Tradition();
         String tradId;
         /**
          * load a tradition to the test DB
          */
-        File testFile = new File("src/TestXMLFiles/simple.xml");
+        File testFile = new File("src/TestFiles/simple.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -180,7 +154,7 @@ public class GenericTest {
 
         List<WitnessModel> witnesses = jerseyTest
                 .resource()
-                .path("/tradition/getallwitnesses/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/witnesses")
                 .get(new GenericType<List<WitnessModel>>() {
                 });
         assert (witnesses.size() == 3) : "Unexpected number of witnesses.";
@@ -207,9 +181,9 @@ public class GenericTest {
         boolean found_witness_a = false;
         boolean found_witness_x = false;
         for (WitnessModel witness : witnesses) {
-            if (witness.getId().equals("A")) {
+            if (witness.getSigil().equals("A")) {
                 found_witness_a = true;
-            } else if (witness.getId().equals("X")) {
+            } else if (witness.getSigil().equals("X")) {
                 found_witness_x = true;
             }
         }
@@ -233,13 +207,12 @@ public class GenericTest {
 
         */
 
-        Tradition tradition = new Tradition();
         String tradId;
 
         /**
          * load a tradition to the test DB
          */
-        File testFile = new File("src/TestXMLFiles/Collatex-16.xml");
+        File testFile = new File("src/TestFiles/Collatex-16.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -269,7 +242,7 @@ public class GenericTest {
         */
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
         /*
@@ -331,9 +304,9 @@ public class GenericTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         ArrayList<GraphModel> tmpGraphModel = response.getEntity(new GenericType<ArrayList<GraphModel>>(){});
         assertEquals(tmpGraphModel.size(), 1L);
@@ -361,9 +334,9 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
 
@@ -380,7 +353,7 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/deleterelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -399,7 +372,7 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/deleterelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -418,7 +391,7 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/deleterelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
@@ -439,9 +412,9 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
 
@@ -457,9 +430,10 @@ public class GenericTest {
         relationship.setTarget(n13);
         relationship.setScope("local");
 
+        // TODO redo this test with a call to /relationships
         response = jerseyTest
                 .resource()
-                .path("/relation/deleterelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -471,11 +445,10 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/getrelationship/fromtradition/" + tradId)
-                .queryParams(queryParams)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
-        assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(String.class), "RELATED");
+        // assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        // assertEquals(response.getEntity(String.class), "RELATED");
 
 
         /*
@@ -485,7 +458,7 @@ public class GenericTest {
         my $c1 = $t1->collation;
         */
 
-        File testFile2 = new File("src/TestXMLFiles/legendfrag.xml");
+        File testFile2 = new File("src/TestFiles/legendfrag.xml");
         try {
             importResource.parseGraphML(testFile2.getPath(), "1", "TraditionB");
         } catch (FileNotFoundException f) {
@@ -509,7 +482,7 @@ public class GenericTest {
         }
 
         listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId2)
+                .path("/tradition/" + tradId2 + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
         String r8_1="", r9_2="";
@@ -544,9 +517,9 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
@@ -560,9 +533,9 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertNotEquals(Status.OK.getStatusCode(), response.getStatus());
     }
 
@@ -582,7 +555,7 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
-        File testFile = new File("src/TestXMLFiles/legendfrag.xml");
+        File testFile = new File("src/TestFiles/legendfrag.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -608,7 +581,7 @@ public class GenericTest {
         */
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
 
@@ -634,9 +607,9 @@ public class GenericTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
 
@@ -651,13 +624,14 @@ public class GenericTest {
         queryParams.add("node1", r9_2);
         queryParams.add("node2", r9_3);
 
+        // TODO use call to /relationships
         response = jerseyTest
                 .resource()
-                .path("/relation/getrelationship/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .queryParams(queryParams)
                 .get(ClientResponse.class);
-        assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(String.class), "RELATED");
+        // assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        // assertEquals(response.getEntity(String.class), "RELATED");
 
         /*
         # This time the link ought to fail
@@ -677,9 +651,9 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
@@ -705,7 +679,7 @@ public class GenericTest {
         my $t3 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/lf2.xml' );
         */
 
-        File testFile = new File("src/TestXMLFiles/lf2.xml");
+        File testFile = new File("src/TestFiles/lf2.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -731,7 +705,7 @@ public class GenericTest {
          */
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
 
@@ -790,9 +764,9 @@ public class GenericTest {
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         /*
@@ -811,9 +785,9 @@ public class GenericTest {
 
         ClientResponse actualResponse2 = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship2);
+                .put(ClientResponse.class, relationship2);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse2.getStatus());
 
         /*
@@ -834,10 +808,10 @@ public class GenericTest {
 
         ClientResponse actualResponse3 = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship3);
-        assertEquals(Status.BAD_REQUEST.getStatusCode(), actualResponse3.getStatus());
+                .put(ClientResponse.class, relationship3);
+        assertEquals(Status.CONFLICT.getStatusCode(), actualResponse3.getStatus());
 
         /*
         # Test 3.3: make the parallel, and then make the transposition again.
@@ -856,9 +830,9 @@ public class GenericTest {
 
         ClientResponse actualResponse4 = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship4);
+                .put(ClientResponse.class, relationship4);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse4.getStatus());
 
         /*
@@ -877,9 +851,9 @@ public class GenericTest {
 
         ClientResponse actualResponse5 = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship5);
+                .put(ClientResponse.class, relationship5);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse5.getStatus());
 
     }
@@ -894,25 +868,15 @@ public class GenericTest {
             my $c4 = $t4->collation;
         **/
 
-        File testFile = new File("src/TestXMLFiles/globalrel_text.xml");
+        Response parseResponse = null;
+        File testFile = new File("src/TestFiles/globalrel_test.xml");
         try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
+            parseResponse = importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
         }
-
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        String tradId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
+        String tradId = Util.getValueFromJson(parseResponse, "tradId");
 
 
         /**
@@ -920,7 +884,7 @@ public class GenericTest {
          */
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
 
@@ -954,9 +918,9 @@ public class GenericTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/relation/createrelationship")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
 
@@ -984,7 +948,7 @@ public class GenericTest {
             my $c = $t->collation;
         **/
 
-        File testFile = new File("src/TestXMLFiles/COLLATEX-16.xml");
+        File testFile = new File("src/TestFiles/COLLATEX-16.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -1013,7 +977,7 @@ public class GenericTest {
          */
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
 
@@ -1060,7 +1024,7 @@ public class GenericTest {
         characterModel.setCharacter(" ");
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1")
+                .path("/reading/"+n3+"/concatenate/"+n4+"/1")
                 .post(ClientResponse.class, characterModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1070,7 +1034,7 @@ public class GenericTest {
          */
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + n4)
+                .path("/reading/" + n4)
                 .get(ClientResponse.class);
 
         assertEquals(ClientResponse.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1080,7 +1044,7 @@ public class GenericTest {
          */
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + n3)
+                .path("/reading/" + n3)
                 .get(ClientResponse.class);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1095,7 +1059,7 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/reading/mergereadings/first/" + n9 + "/second/" + n10)
+                .path("/reading/" + n9 + "/merge/" + n10)
                 .post(ClientResponse.class, characterModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1105,7 +1069,7 @@ public class GenericTest {
          */
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + n10)
+                .path("/reading/" + n10)
                 .get(ClientResponse.class);
 
         assertEquals(ClientResponse.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1115,7 +1079,7 @@ public class GenericTest {
          */
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + n9)
+                .path("/reading/" + n9)
                 .get(ClientResponse.class);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1176,7 +1140,7 @@ public class GenericTest {
             is( ref( $st ), 'Text::Tradition', "Got a tradition from test file" );
             ok( $st->has_witness('Ba96'), "Tradition has the affected witness" );
          */
-        File testFile = new File("src/TestXMLFiles/collatecorr.xml");
+        File testFile = new File("src/TestFiles/collatecorr.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition_08");
         } catch (FileNotFoundException f) {
