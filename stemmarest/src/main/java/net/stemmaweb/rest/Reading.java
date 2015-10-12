@@ -874,6 +874,7 @@ public class Reading implements IResource {
 
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 
+        // actually does want the start node
         Node startNode = DatabaseService.getStartNode(tradId, db);
         if (startNode == null) {
             return Response.status(Status.NOT_FOUND)

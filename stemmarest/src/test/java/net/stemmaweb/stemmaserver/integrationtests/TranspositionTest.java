@@ -221,7 +221,8 @@ public class TranspositionTest {
 
         // and make sure it is there.
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.getEntity(GraphModel.class);
+            ArrayList<GraphModel> tmpGraphModel = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
+            GraphModel readingsAndRelationships = tmpGraphModel.get(0);
             relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 

@@ -3,9 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
@@ -26,17 +24,14 @@ import net.stemmaweb.rest.Stemma;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.cypher.internal.compiler.v2_0.ast.False;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -204,17 +199,14 @@ public class GenericTest {
         // where { $_ =~ /\A$xml10_name_rx\z/ },
         // message { 'Sigil must be a valid XML attribute string' };
 
-        boolean found_witness_a = false;
-        boolean found_witness_x = false;
-        for (WitnessModel witness : witnesses) {
-            if (witness.getId().equals("A")) {
-                found_witness_a = true;
-            } else if (witness.getId().equals("X")) {
-                found_witness_x = true;
-            }
+
+        Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "X"));
+        assertEquals(expectedWitnesses.size(), witnesses.size());
+        for (WitnessModel w: witnesses) {
+            assertTrue(expectedWitnesses.contains(w.getSigil()));
         }
-        assertTrue("There is no witness A", found_witness_a);
-        assertFalse("There is an unexpected witness X", found_witness_x);
+//        assertTrue("There is no witness A", found_witness_a);
+//        assertFalse("There is an unexpected witness X", found_witness_x);
     }
 
     // ######## Relationship tests
@@ -683,7 +675,6 @@ public class GenericTest {
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
-
         /*
         try {
             $c2->calculate_ranks();
@@ -894,7 +885,7 @@ public class GenericTest {
             my $c4 = $t4->collation;
         **/
 
-        File testFile = new File("src/TestXMLFiles/globalrel_text.xml");
+        File testFile = new File("src/TestXMLFiles/globalrel_test.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -925,12 +916,13 @@ public class GenericTest {
                 });
 
         String r463_2 = "", r463_4 = "";
+        Node test_reading;
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
-            if (cur_rank == 4L && cur_text.equals("henricus")) {
+            if (cur_rank == 8L && cur_text.equals("hämehen")) {
                 r463_2 = cur_reading.getId();
-            } else if (cur_rank == 4L && cur_text.equals("henricus")) {
+            } else if (cur_rank == 9L && cur_text.equals("Hämehen")) {
                 r463_4 = cur_reading.getId();
             }
         }
@@ -959,7 +951,7 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-
+//        ReadingService.recalculateRanks(db, )
         /**
             $c4->calculate_ranks();
             # Do our readings now share a rank?
@@ -967,8 +959,21 @@ public class GenericTest {
                 "Expected readings now at same rank" );
         **/
         //TODO (sk_20150928): implement test!
-    }
+        response = jerseyTest
+                .resource()
+                .path("/reading/getreading/withreadingid/" + r463_2)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        long rank_r463_2 = response.getEntity(ReadingModel.class).getRank();
 
+        response = jerseyTest
+                .resource()
+                .path("/reading/getreading/withreadingid/" + r463_4)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        long rank_r463_4 = response.getEntity(ReadingModel.class).getRank();
+        assertEquals(rank_r463_2, rank_r463_4);
+    }
 
     // ######## Collation tests
 

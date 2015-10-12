@@ -1,6 +1,7 @@
 package net.stemmaweb.services;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
@@ -52,7 +53,7 @@ public class DotToNeo4JParser implements IResource
      * adds all nodes below tradId
      * @return
      */
-    private boolean nextObject(String tradId)
+    private boolean nextObject(String tradId) throws Exception
     {
         // check either graph or node/edge is next
         int i;
@@ -102,7 +103,7 @@ public class DotToNeo4JParser implements IResource
             }
             dot = dot.substring(i+1);
         } else if((i = dot.indexOf('{')) < dot.indexOf(';') && i>0) {
-            // this holds something like ' graph "stemma" ' or 'digraph "stem23423" '
+            // this holds something like 'graph stemma {' or 'digraph "TM hypothesis" {'
             Node node = db.createNode(Nodes.STEMMA);
             String tmp = dot.substring(0, i);
             if(tmp.contains("digraph")) {
@@ -110,9 +111,14 @@ public class DotToNeo4JParser implements IResource
             } else if(tmp.contains("graph")) {
                 node.setProperty("type", "graph");
             }
-            String[] name = tmp.split("\"");
-            if(name.length == 3) {
-                node.setProperty("name", name[1]);
+            String[] declaration = tmp.split(" ");
+            if(declaration.length >= 2) {
+                String name = String.join(" ", Arrays.copyOfRange(declaration, 1, declaration.length));
+                name = name.replaceAll("\"", "");
+                node.setProperty("name", name);
+            } else {
+                throw new Exception("Could not find stemma name in graph declaration");
+                // Something went wrong with parsing.
             }
 
             Node trad = db.findNodes(Nodes.TRADITION, "id", tradId).next();

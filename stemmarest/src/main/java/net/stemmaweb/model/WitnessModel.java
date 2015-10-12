@@ -4,21 +4,33 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.neo4j.graphdb.Node;
 
 /**
- * This model holds a witness. The id is also the witness name, e.g. 'Mk10'
+ * This model holds a witness. The sigil is also the witness name, e.g. 'Mk10'
  * @author PSE FS 2015 Team2
  */
 
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class WitnessModel {
-    private String id;
+    private String sigil;
 
-    public String getId() {
-        return id;
+    public WitnessModel() {
     }
-    public void setId(String id) {
-        this.id = id;
+    /**
+     * Generates a model from a Neo4j Node
+     * @param node
+     */
+    public WitnessModel(Node node) {
+        if (node.hasProperty("sigil"))
+            sigil = (String) node.getProperty("sigil");
+    }
+
+    public String getSigil() {
+        return sigil;
+    }
+    public void setSigil(String id) {
+        this.sigil = id;
     }
 }

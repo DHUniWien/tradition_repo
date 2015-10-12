@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @JsonInclude(Include.NON_NULL)
 public class ReadingModel implements Comparable<ReadingModel> {
 
+    // TODO change these to the correct data type!
     private String grammar_invalid; // dn0
     private String id;              // dn1
     private String is_common;       // dn2

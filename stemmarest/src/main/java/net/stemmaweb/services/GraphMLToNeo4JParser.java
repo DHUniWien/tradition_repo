@@ -4,9 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.xml.namespace.QName;
@@ -58,257 +56,191 @@ public class GraphMLToNeo4JParser implements IResource
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
 
+        // Some variables to collect information
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
-
-        int depth = 0;       // 0 root, 1 <graphml>, 2 <graph>, 3 <node>, 4 <data>
-        int type_nd = 0;     // 0 = no, 1 = edge, 2 = node
-        HashMap<String, String> map = new HashMap<>(); // to store all keys of the introduction part
-
-        Node from = null;    // a round-trip store for the start node of a path
-        Node to = null;      // a round-trip store for the end node of a path
-
-        LinkedList<String> witnesses = new LinkedList<>();
-        // a round-trip store for witness names of a single relationship
-        int last_inserted_id;
-
+        HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
+        HashMap<String, Boolean> witnesses = new HashMap<>();  // to store witnesses found
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
+        // Some state variables
+        int last_inserted_id;
+        Node graphRoot;
+        Node traditionNode = null;          // this will be the entry point of the graph
+        Node currentNode = null;            // holds the current node
+        String currentGraph = null;
+        Relationship currentRel = null;     // holds the current relationship
+
         try (Transaction tx = db.beginTx()) {
-            reader = factory.createXMLStreamReader(xmldata);
-            // retrieves the last inserted Tradition id
-            String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
-                    .next()
-                    .getProperty("LAST_INSERTED_TRADITION_ID")
-                    .toString();
+            // retrieves the last inserted tradition ID and increments it
+            // TODO maybe this should be a UUID.
+            graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
+            String prefix = graphRoot.getProperty("LAST_INSERTED_TRADITION_ID").toString();
             last_inserted_id = Integer.parseInt(prefix);
             last_inserted_id++;
             prefix = String.valueOf(last_inserted_id) + "_";
 
-            Node tradRootNode = null;    // this will be the entry point of the graph
+            traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
+            traditionNode.setProperty("id", String.valueOf(last_inserted_id));
 
-            Node currNode;               // holds the current node
-            currNode = db.createNode(Nodes.TRADITION);    // create the root node of tradition
-            Relationship rel = null;     // holds the current relationship
-
-            int graphNumber = 0;         // holds the current graph number
-
-            int firstNode = 0;           // flag to get START NODE (always == n1) == 2
-
-            label:
+            reader = factory.createXMLStreamReader(xmldata);
+            outer:
             while (true) {
                 // START READING THE GRAPHML FILE
                 int event = reader.next(); // gets the next <element>
 
                 switch (event) {
                     case XMLStreamConstants.END_ELEMENT:
-                        if (reader.getLocalName().equals("graph") ||
-                                reader.getLocalName().equals("graphml") ||
-                                reader.getLocalName().equals("node") ||
-                                reader.getLocalName().equals("edge")) {
-                            depth--;
-                            type_nd = 0;
+                        if (reader.getLocalName().equals("graph")) {
+                            // Clear out the currentGraph string.
+                            currentGraph = null;
+                        } else if (reader.getLocalName().equals("node")){
+                            // Finished working on currentNode
+                            currentNode = null;
+                        } else if (reader.getLocalName().equals("edge")) {
+                            // Finished working on currentRel
+                            currentRel = null;
                         }
                         break;
                     case XMLStreamConstants.END_DOCUMENT:
                         reader.close();
-                        break label;
+                        break outer;
                     case XMLStreamConstants.START_ELEMENT:
                         String local_name = reader.getLocalName();
                         switch (local_name) {
                             case "data":
-                                switch (depth) {
-                                    case 3:
-                                        if (type_nd == 1 && rel != null) {    // edge
-                                            String attr = reader.getAttributeValue(0);
-                                            String val = reader.getElementText();
+                                if (currentRel != null) {
+                                    // We are working on a relationship node. Apply the data.
+                                    String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String val = reader.getElementText();
 
-                                            if (map.get(attr) != null) {
-                                                if (map.get(attr).equals("id")) {
-                                                    rel.setProperty("id", prefix + val);
-                                                    rel.setProperty(attr, val);
-                                                } else if (map.get(attr).equals("witness")) {
-                                                    witnesses.add(val);
-                                                } else {
-                                                    rel.setProperty(map.get(attr), val);
-                                                }
-                                            }
-                                            if (map.get(attr).equals("is_end")) {
-                                                tradRootNode.createRelationshipTo(currNode, ERelations.HAS_END);
-                                            }
-                                        } else if (type_nd == 2 && currNode != null) {
-                                            if (map.get(reader.getAttributeValue(0)).equals("rank")) {
-                                                currNode.setProperty(map.get(reader.getAttributeValue(0)),
-                                                        Long.parseLong(reader.getElementText()));
-                                            } else {
-                                                currNode.setProperty(map.get(reader.getAttributeValue(0)),
-                                                        reader.getElementText());
-                                            }
-                                        }
-                                        break;
-                                    case 2:
-                                        String attr = reader.getAttributeValue(0);
-                                        String text = reader.getElementText();
-                                        // needs implementation of meta data here
-                                        String map_attr = map.get(attr);
-                                        switch (map_attr) {
-                                            case "name":
-                                                String tradNameToUse = text;
-                                                if (!tradName.equals("")) {
-                                                    tradNameToUse = tradName;
-                                                }
+                                    if (attr.equals("id"))
+                                        currentRel.setProperty("id", prefix + val);
+                                    else if (attr.equals("witness"))
+                                    {
+                                        // Check that this is a sequence relationship
+                                        assert currentRel.isType(ERelations.SEQUENCE);
+                                        // Add the witness to the current relationship's "witnesses" array
+                                        String[] witList = (String[]) currentRel.getProperty("witnesses");
+                                        ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
+                                        currentWits.add(val);
+                                        currentRel.setProperty("witnesses", currentWits.toArray(new String[currentWits.size()]));
 
-                                                tradRootNode = currNode;
-                                                currNode.setProperty("id", prefix.substring(0,
-                                                        prefix.length() - 1));
+                                        // Store the existence of this witness
+                                        // TODO implement a.c. / p.c. logic
+                                        witnesses.put(val, true);
+                                    }
+                                    else
+                                        currentRel.setProperty(attr, val);
+                                } else if (currentNode != null) {
+                                    // Working on either the tradition itself, or a node.
+                                    String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String text = reader.getElementText();
+                                    switch (attr) {
+                                        // Tradition node attributes
+                                        case "name":
+                                            if (text.equals(""))
+                                                text = tradName;
+                                            currentNode.setProperty(attr, text);
+                                            break;
+                                        case "stemmata":
+                                            stemmata = text;
+                                            break;
+                                        case "user":
+                                            // Use the user ID from the file if we are asked to
+                                            if (userId.equals("FILE"))
+                                                userId = text;
+                                            break;
 
-                                                currNode.setProperty("name", tradNameToUse);
-                                                break;
-                                            case "stemmata":
-                                                stemmata = text;
-                                                break;
-                                            default:
-                                                currNode.setProperty(map.get(attr), text);
-                                                break;
-                                        }
-
-                                        break;
+                                        // Reading node attributes
+                                        case "id":  // We don't use the old reading IDs
+                                            break;
+                                        case "rank":
+                                            currentNode.setProperty(attr, Long.parseLong(text));
+                                            break;
+                                        case "is_start":
+                                            traditionNode.createRelationshipTo(currentNode, ERelations.COLLATION);
+                                            currentNode.setProperty(attr, text);
+                                            break;
+                                        case "is_end":
+                                            traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
+                                            currentNode.setProperty(attr, text);
+                                            break;
+                                        default:
+                                            currentNode.setProperty(attr, text);
+                                    }
                                 }
                                 break;
                             case "edge":
-                                // this definitely needs refactoring!
-                                String fromNodeName = prefix + reader.getAttributeValue(0);
-                                String toNodeName = prefix + reader.getAttributeValue(1);
-                                if (from == null || to == null) {
-                                    Node fromTmp = null;
-                                    if (idToNeo4jId.get(fromNodeName) != null) {
-                                        fromTmp = db.getNodeById(idToNeo4jId.get(fromNodeName));
-                                    }
-                                    Node toTmp = db.getNodeById(idToNeo4jId.get(toNodeName));
-
-                                    if (fromTmp != null && !(fromTmp.equals(from) && toTmp.equals(to))) {
-                                        to = toTmp;
-                                        from = fromTmp;
-                                        if (rel != null) {
-                                            //System.out.println(witnesses.toString());
-                                            String[] witnessesArray = new String[witnesses.size()];
-                                            witnessesArray = witnesses.toArray(witnessesArray);
-                                            rel.setProperty("witnesses", witnessesArray);
-                                            witnesses.clear();
+                                // TODO why are namespaces not being used?
+                                String sourceName = prefix + reader.getAttributeValue("", "source");
+                                String targetName = prefix + reader.getAttributeValue("", "target");
+                                Node from = db.getNodeById(idToNeo4jId.get(sourceName));;
+                                Node to = db.getNodeById(idToNeo4jId.get(targetName));
+                                ERelations relKind = (currentGraph.equals("relationships")) ?
+                                        ERelations.RELATED : ERelations.SEQUENCE;
+                                // See if there is a (probably sequence) relationship already
+                                if (from.hasRelationship(relKind, Direction.BOTH)) {
+                                    Iterator<Relationship> existingRels = from.getRelationships(relKind, Direction.BOTH).iterator();
+                                    while (existingRels.hasNext()) {
+                                        Relationship qr = existingRels.next();
+                                        if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
+                                            // TODO sanity check that the relationships match?
+                                            // If a RELATED link appears twice, the second one will override.
+                                            currentRel = qr;
+                                            break;
                                         }
-                                        ERelations relKind = (graphNumber <= 1) ?
-                                                ERelations.SEQUENCE : ERelations.RELATED;
-                                        rel = fromTmp.createRelationshipTo(toTmp, relKind);
-                                        rel.setProperty("id", prefix + reader.getAttributeValue(2));
-                                    }
-                                } else if (!(from.getProperty("id").equals(fromNodeName)
-                                            && to.getProperty("id").equals(toNodeName))) {
-                                    Node fromTmp = db.getNodeById(idToNeo4jId.get(fromNodeName));
-                                    Node toTmp = db.getNodeById(idToNeo4jId.get(toNodeName));
-                                    if (!(fromTmp.equals(from) && toTmp.equals(to))) {
-                                        to = toTmp;
-                                        from = fromTmp;
-                                        if (rel != null) {
-                                            //System.out.println(witnesses.toString());
-                                            String[] witnessesArray = new String[witnesses.size()];
-                                            witnessesArray = witnesses.toArray(witnessesArray);
-                                            if (witnessesArray.length > 0) {
-                                                rel.setProperty("witnesses", witnessesArray);
-                                            }
-                                            witnesses.clear();
-                                        }
-                                        ERelations relKind = (graphNumber <= 1) ?
-                                                ERelations.SEQUENCE : ERelations.RELATED;
-                                        rel = fromTmp.createRelationshipTo(toTmp, relKind);
-                                        rel.setProperty("id", prefix + reader.getAttributeValue(2));
                                     }
                                 }
-
-                                depth++;
-                                type_nd = 1;
+                                // If not, create it (with an empty witness list for SEQUENCEs.)
+                                if (currentRel == null) {
+                                    currentRel = from.createRelationshipTo(to, relKind);
+                                    if (relKind.equals(ERelations.SEQUENCE)) {
+                                        String[] witList = {};
+                                        currentRel.setProperty("witnesses", witList);
+                                    }
+                                }
                                 break;
                             case "node":
-                                if (graphNumber <= 1) {
-                                    // only store nodes for graph 1, ignore all others (unused)
-                                    currNode = db.createNode(Nodes.READING);
+                                if (!currentGraph.equals("relationships")) {
+                                    // only store nodes for the sequence graph
+                                    currentNode = db.createNode(Nodes.READING);
+                                    String nodeId = prefix + reader.getAttributeValue("", "id");
 
-                                    currNode.setProperty("id", prefix + reader.getAttributeValue(0));
-                                    currNode.setProperty("tradition_id", last_inserted_id);
-
-                                    idToNeo4jId.put(prefix + reader.getAttributeValue(0),
-                                            currNode.getId());
-
-                                    if (firstNode == 1) {
-                                        tradRootNode.createRelationshipTo(currNode, ERelations.COLLATION);
-                                        firstNode++;
-                                    }
-                                    if (firstNode < 1) {
-                                        firstNode++;
-                                    }
+                                    idToNeo4jId.put(nodeId, currentNode.getId());
                                 }
-                                depth++;
-                                type_nd = 2;
                                 break;
                             case "key":
-                                String key = "";
-                                String value = "";
-                                QName q_attr_name = new QName("attr.name");
-                                QName q_id = new QName("id");
-
-                                for (int i = 0; i < reader.getAttributeCount(); i++) {
-                                    QName reader_name = reader.getAttributeName(i);
-                                    if (reader_name.equals(q_attr_name)) {
-                                        value = reader.getAttributeValue(i);
-                                    } else if (reader_name.equals(q_id)) {
-                                        key = reader.getAttributeValue(i);
-                                    }
-                                }
-                                map.put(key, value);
-                                break;
-                            case "graphml":
-                                depth++;
+                                String key = reader.getAttributeValue("", "id");
+                                String value = reader.getAttributeValue("", "attr.name");
+                                keymap.put(key, value);
                                 break;
                             case "graph":
-                                depth++;
-                                graphNumber++;
+                                currentGraph = reader.getAttributeValue("", "id");
+                                currentNode = traditionNode;
                                 break;
                         }
                         break;
                 }
             }
-            if(rel!=null) {     // add relationship props to last relationship
-                String[] witnessesArray = new String[witnesses.size()];
-                witnessesArray = witnesses.toArray(witnessesArray);
-                rel.setProperty("witnesses", witnessesArray);
-                witnesses.clear();
+
+            // Create the witness nodes
+            for (String sigil: witnesses.keySet()) {
+                Node witnessNode = db.createNode(Nodes.WITNESS);
+                witnessNode.setProperty("sigil", sigil);
+                traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
             }
 
-            Result result = db.execute("match (n:TRADITION {id:'"+ last_inserted_id
-                    +"'})-[:COLLATION]->(s:READING) return s");
-            Iterator<Node> nodes = result.columnAs("s");
-            Node startNode = nodes.next();
-            for (Node node : db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode)
-                    .nodes()) {
-                if(node.hasProperty("id")) {
-                    node.removeProperty("id");
-                }
-                for(Relationship relation : node.getRelationships()) {
-                    if(relation.hasProperty("id")) {
-                        relation.removeProperty("id");
-                    }
-                }
+            // Set the user if it exists in the system; auto-create the user if it doesn't exist
+            Node userNode = db.findNode(Nodes.USER, "id", userId);
+            if (userNode == null) {
+                userNode = db.createNode(Nodes.USER);
+                userNode.setProperty("id", userId);
+                graphRoot.createRelationshipTo(userNode, ERelations.SYSTEMUSER);
             }
+            userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
 
-            Result userNodeSearch = db.execute("match (user:USER {id:'" + userId + "'}) return user");
-            Node userNode = (Node) userNodeSearch.columnAs("user").next();
-            userNode.createRelationshipTo(tradRootNode, ERelations.OWNS_TRADITION);
-
-            db.findNodes(Nodes.ROOT, "name", "Root node")
-                    .next()
-                    .setProperty("LAST_INSERTED_TRADITION_ID",
-                            prefix.substring(0, prefix.length() - 1));
+            graphRoot.setProperty("LAST_INSERTED_TRADITION_ID",
+                    prefix.substring(0, prefix.length() - 1));
 
             tx.success();
         } catch(Exception e) {

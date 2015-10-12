@@ -5,8 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -203,23 +202,14 @@ public class TraditionTest {
     @Test
     public void getAllWitnessesTest() {
 
-        WitnessModel witA = new WitnessModel();
-        witA.setId("A");
-        WitnessModel witB = new WitnessModel();
-        witB.setId("B");
-        WitnessModel witC = new WitnessModel();
-        witC.setId("C");
-
+        Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
         List<WitnessModel> witnesses = jerseyTest.resource()
                 .path("/tradition/getallwitnesses/fromtradition/" + tradId)
                 .get(new GenericType<List<WitnessModel>>() {});
-        WitnessModel witLoaded0 = witnesses.get(0);
-        WitnessModel witLoaded1 = witnesses.get(1);
-        WitnessModel witLoaded2 = witnesses.get(2);
-
-        assertEquals(witA.getId(), witLoaded0.getId());
-        assertEquals(witB.getId(), witLoaded1.getId());
-        assertEquals(witC.getId(), witLoaded2.getId());
+        assertEquals(expectedWitnesses.size(), witnesses.size());
+        for (WitnessModel w: witnesses) {
+            assertTrue(expectedWitnesses.contains(w.getSigil()));
+        }
     }
 
     @Test
