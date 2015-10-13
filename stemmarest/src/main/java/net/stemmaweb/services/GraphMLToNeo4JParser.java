@@ -152,7 +152,8 @@ public class GraphMLToNeo4JParser implements IResource
                                             break;
 
                                         // Reading node attributes
-                                        case "id":  // We don't use the old reading IDs
+                                        case "id":  // We don't use the old reading IDs, but we can use it to set a 'tradition_id'
+                                            currentNode.setProperty("tradition_id", last_inserted_id);
                                             break;
                                         case "rank":
                                             currentNode.setProperty(attr, Long.parseLong(text));

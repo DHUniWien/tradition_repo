@@ -227,7 +227,7 @@ public class Neo4JAndGraphMLParserUnitTest {
      *
      * #1: parse a file, check for the correct number of readings, paths, and witnesses
      */
-
+    @Ignore
     @Test
     public void importFlorilegiumTest () {
         Response parseResponse = null;
@@ -305,7 +305,7 @@ public class Neo4JAndGraphMLParserUnitTest {
     /**
      * #2: parse a file, mess around with the tradition, export it, check the result
      */
-
+    @Ignore
     @Test
     public void exportFlorilegiumTest () {
         Response parseResponse = null;
@@ -510,7 +510,6 @@ public class Neo4JAndGraphMLParserUnitTest {
 
         // Check for the correct language setting
     }
-
 
     /**
      * Shut down the jersey server

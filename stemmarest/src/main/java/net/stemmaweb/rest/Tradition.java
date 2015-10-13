@@ -5,11 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -32,12 +28,7 @@ import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.services.Neo4JToDotParser;
 import net.stemmaweb.services.Neo4JToGraphMLParser;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.sun.jersey.core.header.FormDataContentDisposition;
@@ -373,4 +364,105 @@ public class Tradition implements IResource {
 
         return Response.ok(everything).build();
     }
+
+    /**
+     * Recalculate ranks starting from 'startNode'
+     * Someone would typically use it after inserting a RELATION or a new Node into the graph,
+     * where the startNode will be one of the RELATION-nodes or the new node itself.
+     *
+     * @param tradId
+     * @return XML data
+     */
+    @GET
+    @Path("recalculaterank/intradition/{tradId}/startnode/{nodeId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response recalculateRank(@PathParam("tradId") String tradId,
+                                    @PathParam("nodeId") Long nodeId) {
+
+        Comparator<Node> rankComparator = (n1, n2) -> {
+            int compVal = Long.valueOf((Long) n1.getProperty("rank"))
+                    .compareTo(Long.valueOf((Long) n2.getProperty("rank")));
+            if (compVal == 0) {
+                compVal = Long.valueOf(n1.getId()).compareTo(Long.valueOf(n2.getId()));
+            }
+            return compVal;
+        };
+        SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
+        ArrayList<Node> nodesToUpdate = new ArrayList<>();
+
+        long startNodeRank = 0L;
+
+        try (Transaction tx = db.beginTx()) {
+            Node startNode = db.getNodeById(nodeId);
+
+//    private void recalculateRanks(Node startNode, int startRank) {
+
+
+            Iterable<Relationship> relationships = startNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+            for (Relationship relationship : relationships) {
+                startNodeRank = Math.max(startNodeRank, (long)relationship.getStartNode().getProperty("rank") + 1L);
+            }
+            if ((long)startNode.getProperty("rank") < startNodeRank) {
+                startNode.setProperty("rank", startNodeRank);
+            }
+
+            Node currentNode = startNode;
+            Node iterNode;
+
+            while (currentNode != null) {
+                // Look, if a RELATED node has a higher rank
+                long currentNodeRank = (long)currentNode.getProperty("rank");
+                long relatedNodeRank = 0L;
+                relationships = currentNode.getRelationships(ERelations.RELATED);
+                if (relationships.iterator().hasNext() == true) {
+                    for (Relationship relationship : relationships) {
+                        Node otherNode = relationship.getOtherNode(currentNode);
+                        relatedNodeRank = Math.max(relatedNodeRank, (long) otherNode.getProperty("rank"));
+                    }
+
+                    if (currentNodeRank != relatedNodeRank) {
+                        // We have to update the current Node
+                        currentNode.setProperty("rank", Math.max(relatedNodeRank, (long) currentNode.getProperty("rank")));
+                        currentNodeRank = (long) currentNode.getProperty("rank");
+
+                        // UPDATE nodes on RELATED vertices, if necessary
+                        relationships = currentNode.getRelationships(ERelations.RELATED);
+                        for (Relationship relationship : relationships) {
+                            iterNode = relationship.getOtherNode(currentNode);
+                            if ((long) iterNode.getProperty("rank") < currentNodeRank) {
+                                iterNode.setProperty("rank", currentNodeRank);
+                                nodesToProcess.add(iterNode);
+                            }
+                        }
+                    }
+                }
+
+                // Update nodes on OUTGOING & SEQUENCE vertices, if necessary
+                relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+                // OUTGOING includes SEQUENCE (outgoing) and RELATED
+                for (Relationship relationship : relationships) {
+                    iterNode = relationship.getEndNode();
+                    if ((long) iterNode.getProperty("rank") <= currentNodeRank) {
+                        iterNode.setProperty("rank", currentNodeRank + 1L);
+                        nodesToProcess.add(iterNode);
+                    }
+                }
+
+                nodesToUpdate.add(currentNode);
+                if (nodesToProcess.isEmpty()) {
+                    currentNode = null;
+                } else {
+                    currentNode = nodesToProcess.first();
+                    nodesToProcess.remove(currentNode);
+                }
+            }
+            tx.success();
+        } catch (NotFoundException e) {
+            return Response.status(Status.NO_CONTENT).build();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok().build();
+    }
 }
+

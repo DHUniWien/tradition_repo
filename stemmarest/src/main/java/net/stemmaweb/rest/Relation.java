@@ -101,8 +101,7 @@ public class Relation implements IResource {
                             }
                         }
                     }
-//                    ReadingService.recalculateRanks(db, readingA);
-                    recalculateRanks(readingA);
+//                    recalculateRanks(readingA);
                     tx.success();
                 } catch (Exception e) {
                     return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -192,6 +191,12 @@ public class Relation implements IResource {
         return Response.status(Response.Status.CREATED).entity(readingsAndRelationshipModel).build();
     }
 
+    /*
+     * Recalculate ranks starting from 'startNode'
+     * You would typically use it after inserting a RELATION or a new Node into the graph,
+     * where the startNode will be one of the RELATION-nodes or the new node itself.
+     * In addition, you can also set the Rank for the given node.
+     */
     private void recalculateRanks(Node startNode, int startRank) {
         Comparator<Node> rankComparator = (n1, n2) -> {
             int compVal = Long.valueOf((Long) n1.getProperty("rank"))
@@ -201,23 +206,11 @@ public class Relation implements IResource {
             }
             return compVal;
         };
-        /*
-        Comparator<Node> rankComparator = new Comparator<Node>() {
-            @Override
-            public int compare(Node n1, Node n2) {
-                int compVal = Long.valueOf((Long) n1.getProperty("rank"))
-                        .compareTo(Long.valueOf((Long) n2.getProperty("rank")));
-                if (compVal == 0) {
-                    compVal = Long.valueOf(n1.getId()).compareTo(Long.valueOf(n2.getId()));
-                }
-                return compVal;
-            }
-        };
-*/
+
         SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
         ArrayList<Node> nodesToUpdate = new ArrayList<>();
 
-        long startNodeRank = 0L;
+        long startNodeRank = startRank;
 
         Iterable<Relationship> relationships = startNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
         for (Relationship relationship : relationships) {
@@ -237,12 +230,7 @@ public class Relation implements IResource {
             relationships = currentNode.getRelationships(ERelations.RELATED);
             if (relationships.iterator().hasNext() == true) {
                 for (Relationship relationship : relationships) {
-                    Node otherNode;
-                    if (relationship.getStartNode().equals(currentNode)) {
-                        otherNode = relationship.getEndNode();
-                    } else {
-                        otherNode = relationship.getStartNode();
-                    }
+                    Node otherNode = relationship.getOtherNode(currentNode);
                     relatedNodeRank = Math.max(relatedNodeRank, (long) otherNode.getProperty("rank"));
                 }
 
@@ -286,7 +274,6 @@ public class Relation implements IResource {
                 nodesToProcess.remove(currentNode);
             }
         }
-        int a = 0;
     }
 
     /*

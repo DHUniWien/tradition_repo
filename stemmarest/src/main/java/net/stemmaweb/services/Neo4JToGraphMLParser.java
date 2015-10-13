@@ -364,7 +364,7 @@ public class Neo4JToGraphMLParser implements IResource
 
             props = traditionNode.getPropertyKeys();
             for(String prop : props) {
-                if(prop !=null && !prop.equals("id")) {
+                if(prop !=null && !prop.equals("id") && !prop.equals("tradition_id")) {
                     writer.writeStartElement("data");
                     writer.writeAttribute("key", graphMap.get(prop));
                     writer.writeCharacters(traditionNode.getProperty(prop).toString());
@@ -396,7 +396,7 @@ public class Neo4JToGraphMLParser implements IResource
                 writer.writeEndElement();
 
                 for(String prop : props) {
-                    if(prop!=null && false == prop.equals("tradition_id")) {
+                    if(prop!=null && !prop.equals("tradition_id")) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key",nodeMap.get(prop));
                         writer.writeCharacters(node.getProperty(prop).toString());

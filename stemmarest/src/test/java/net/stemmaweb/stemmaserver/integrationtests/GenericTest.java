@@ -200,7 +200,7 @@ public class GenericTest {
         // message { 'Sigil must be a valid XML attribute string' };
 
 
-        Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "X"));
+        Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
         assertEquals(expectedWitnesses.size(), witnesses.size());
         for (WitnessModel w: witnesses) {
             assertTrue(expectedWitnesses.contains(w.getSigil()));
@@ -555,7 +555,7 @@ public class GenericTest {
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
-        assertNotEquals(Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
     }
 
 
@@ -723,8 +723,7 @@ public class GenericTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/reading/getallreadings/fromtradition/" + tradId)
-                .get(new GenericType<List<ReadingModel>>() {
-                });
+                .get(new GenericType<List<ReadingModel>>() {});
 
         String r28_2 = "", r28_3 = "", r29_2 = "", r29_3 = "", r36_3 = "", r36_4 = "", r38_2 = "", r38_3 = "";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -779,12 +778,12 @@ public class GenericTest {
         relationship.setTarget(r38_3);
         relationship.setType("transposition");
 
-        ClientResponse actualResponse = jerseyTest
+        ClientResponse response = jerseyTest
                 .resource()
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         try {
@@ -800,12 +799,12 @@ public class GenericTest {
         relationship2.setTarget(r38_2);
         relationship2.setType("transposition");
 
-        ClientResponse actualResponse2 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship2);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse2.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         # Test 3.2: try to make a transposition that could be a parallel.
@@ -823,12 +822,12 @@ public class GenericTest {
         relationship3.setTarget(r29_2);
         relationship3.setType("transposition");
 
-        ClientResponse actualResponse3 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship3);
-        assertEquals(Status.BAD_REQUEST.getStatusCode(), actualResponse3.getStatus());
+        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
         /*
         # Test 3.3: make the parallel, and then make the transposition again.
@@ -845,12 +844,12 @@ public class GenericTest {
         relationship4.setTarget(r29_3);
         relationship4.setType("orthographic");
 
-        ClientResponse actualResponse4 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship4);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse4.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         try {
@@ -866,13 +865,12 @@ public class GenericTest {
         relationship5.setTarget(r29_2);
         relationship5.setType("transposition");
 
-        ClientResponse actualResponse5 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/relation/createrelationship")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship5);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse5.getStatus());
-
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     }
 
 
@@ -912,18 +910,21 @@ public class GenericTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/reading/getallreadings/fromtradition/" + tradId)
-                .get(new GenericType<List<ReadingModel>>() {
-                });
+                .get(new GenericType<List<ReadingModel>>() {});
 
         String r463_2 = "", r463_4 = "";
-        Node test_reading;
         for (ReadingModel cur_reading : listOfReadings) {
-            long cur_rank = cur_reading.getRank();
-            String cur_text = cur_reading.getText();
-            if (cur_rank == 8L && cur_text.equals("hämehen")) {
-                r463_2 = cur_reading.getId();
-            } else if (cur_rank == 9L && cur_text.equals("Hämehen")) {
-                r463_4 = cur_reading.getId();
+            switch (String.valueOf(cur_reading.getRank())) {
+                case "8":
+                    if (cur_reading.getText().equals("hämehen")) {
+                        r463_2 = cur_reading.getId();
+                    }
+                    break;
+                case "9":
+                    if (cur_reading.getText().equals("Hämehen")) {
+                        r463_4 = cur_reading.getId();
+                    }
+                    break;
             }
         }
 
@@ -942,7 +943,8 @@ public class GenericTest {
         relationship.setSource(r463_2);
         relationship.setTarget(r463_4);
         relationship.setType("orthographic");
-        relationship.setScope("document");
+//        relationship.setScope("document");
+        relationship.setScope("local");
 
         ClientResponse response = jerseyTest
                 .resource()
@@ -951,13 +953,19 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-//        ReadingService.recalculateRanks(db, )
         /**
             $c4->calculate_ranks();
             # Do our readings now share a rank?
             is( $c4->reading('r463.2')->rank, $c4->reading('r463.4')->rank,
                 "Expected readings now at same rank" );
         **/
+
+        response = jerseyTest
+                .resource()
+                .path("/tradition/recalculaterank/intradition/" + tradId + "/startnode/" + r463_2)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
         //TODO (sk_20150928): implement test!
         response = jerseyTest
                 .resource()
@@ -1060,12 +1068,13 @@ public class GenericTest {
          *  # Combine n3 and n4 ( with his )
          *  $c->merge_readings( 'n3', 'n4', 1 );
          */
-
+        String blub = "/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1";
         CharacterModel characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1")
+                .path("/reading/compressreadings/read1id/" + n3 + "/read2id/" + n4 + "/concatenate/1")
+                .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, characterModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1090,7 +1099,7 @@ public class GenericTest {
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         ReadingModel reading = response.getEntity(ReadingModel.class);
-        assertEquals("withhis", reading.getText());
+        assertEquals("with his", reading.getText());
 
 
         /**

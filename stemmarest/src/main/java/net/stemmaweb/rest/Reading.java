@@ -40,8 +40,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 @Path("/reading")
 public class Reading implements IResource {
 
-    private String errorMessage; // global error message used for submethod
-                                    // calls
+    private String errorMessage; // global error message used for sub-method calls
 
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();

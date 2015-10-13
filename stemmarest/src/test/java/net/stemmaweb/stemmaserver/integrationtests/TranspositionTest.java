@@ -137,9 +137,11 @@ public class TranspositionTest {
         shouldnotexist.setTarget(rootId.toString());
         shouldnotexist.setScope("local");
 
-        ClientResponse checkme = jerseyTest.resource().path("/relation/deleterelationship/fromtradition/" + tradId)
+        ClientResponse checkme = jerseyTest
+                .resource()
+                .path("/relation/deleterelationship/fromtradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, shouldnotexist);
+                .delete(ClientResponse.class, shouldnotexist);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), checkme.getStatus());
 
         // Now set up the relationship to be created
