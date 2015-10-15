@@ -3,9 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
@@ -20,6 +18,7 @@ import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -27,11 +26,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.cypher.internal.compiler.v2_0.ast.False;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
@@ -178,17 +173,14 @@ public class GenericTest {
         // where { $_ =~ /\A$xml10_name_rx\z/ },
         // message { 'Sigil must be a valid XML attribute string' };
 
-        boolean found_witness_a = false;
-        boolean found_witness_x = false;
-        for (WitnessModel witness : witnesses) {
-            if (witness.getSigil().equals("A")) {
-                found_witness_a = true;
-            } else if (witness.getSigil().equals("X")) {
-                found_witness_x = true;
-            }
+
+        Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
+        assertEquals(expectedWitnesses.size(), witnesses.size());
+        for (WitnessModel w: witnesses) {
+            assertTrue(expectedWitnesses.contains(w.getSigil()));
         }
-        assertTrue("There is no witness A", found_witness_a);
-        assertFalse("There is an unexpected witness X", found_witness_x);
+//        assertTrue("There is no witness A", found_witness_a);
+//        assertFalse("There is an unexpected witness X", found_witness_x);
     }
 
     // ######## Relationship tests
@@ -535,8 +527,8 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        assertNotEquals(Status.OK.getStatusCode(), response.getStatus());
+                .post(ClientResponse.class, relationship);
+        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
     }
 
 
@@ -657,7 +649,6 @@ public class GenericTest {
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
-
         /*
         try {
             $c2->calculate_ranks();
@@ -762,12 +753,12 @@ public class GenericTest {
         relationship.setTarget(r38_3);
         relationship.setType("transposition");
 
-        ClientResponse actualResponse = jerseyTest
+        ClientResponse response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         try {
@@ -783,12 +774,12 @@ public class GenericTest {
         relationship2.setTarget(r38_2);
         relationship2.setType("transposition");
 
-        ClientResponse actualResponse2 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship2);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse2.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         # Test 3.2: try to make a transposition that could be a parallel.
@@ -806,12 +797,12 @@ public class GenericTest {
         relationship3.setTarget(r29_2);
         relationship3.setType("transposition");
 
-        ClientResponse actualResponse3 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship3);
-        assertEquals(Status.CONFLICT.getStatusCode(), actualResponse3.getStatus());
+        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
         /*
         # Test 3.3: make the parallel, and then make the transposition again.
@@ -828,12 +819,12 @@ public class GenericTest {
         relationship4.setTarget(r29_3);
         relationship4.setType("orthographic");
 
-        ClientResponse actualResponse4 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship4);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse4.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         try {
@@ -849,13 +840,12 @@ public class GenericTest {
         relationship5.setTarget(r29_2);
         relationship5.setType("transposition");
 
-        ClientResponse actualResponse5 = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship5);
-        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse5.getStatus());
-
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     }
 
 
@@ -890,12 +880,17 @@ public class GenericTest {
 
         String r463_2 = "", r463_4 = "";
         for (ReadingModel cur_reading : listOfReadings) {
-            long cur_rank = cur_reading.getRank();
-            String cur_text = cur_reading.getText();
-            if (cur_rank == 4L && cur_text.equals("henricus")) {
-                r463_2 = cur_reading.getId();
-            } else if (cur_rank == 4L && cur_text.equals("henricus")) {
-                r463_4 = cur_reading.getId();
+            switch (String.valueOf(cur_reading.getRank())) {
+                case "8":
+                    if (cur_reading.getText().equals("hämehen")) {
+                        r463_2 = cur_reading.getId();
+                    }
+                    break;
+                case "9":
+                    if (cur_reading.getText().equals("Hämehen")) {
+                        r463_4 = cur_reading.getId();
+                    }
+                    break;
             }
         }
 
@@ -914,7 +909,8 @@ public class GenericTest {
         relationship.setSource(r463_2);
         relationship.setTarget(r463_4);
         relationship.setType("orthographic");
-        relationship.setScope("document");
+//        relationship.setScope("document");
+        relationship.setScope("local");
 
         ClientResponse response = jerseyTest
                 .resource()
@@ -923,16 +919,35 @@ public class GenericTest {
                 .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-
         /**
             $c4->calculate_ranks();
             # Do our readings now share a rank?
             is( $c4->reading('r463.2')->rank, $c4->reading('r463.4')->rank,
                 "Expected readings now at same rank" );
         **/
-        //TODO (sk_20150928): implement test!
-    }
 
+        response = jerseyTest
+                .resource()
+                .path("/tradition/recalculaterank/intradition/" + tradId + "/startnode/" + r463_2)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        //TODO (sk_20150928): implement test!
+        response = jerseyTest
+                .resource()
+                .path("/reading/getreading/withreadingid/" + r463_2)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        long rank_r463_2 = response.getEntity(ReadingModel.class).getRank();
+
+        response = jerseyTest
+                .resource()
+                .path("/reading/getreading/withreadingid/" + r463_4)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        long rank_r463_4 = response.getEntity(ReadingModel.class).getRank();
+        assertEquals(rank_r463_2, rank_r463_4);
+    }
 
     // ######## Collation tests
 
@@ -1019,12 +1034,12 @@ public class GenericTest {
          *  # Combine n3 and n4 ( with his )
          *  $c->merge_readings( 'n3', 'n4', 1 );
          */
-
+        String blub = "/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1";
         CharacterModel characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/"+n3+"/concatenate/"+n4+"/1")
+                .path("/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1")
                 .post(ClientResponse.class, characterModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1049,7 +1064,7 @@ public class GenericTest {
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         ReadingModel reading = response.getEntity(ReadingModel.class);
-        assertEquals("withhis", reading.getText());
+        assertEquals("with his", reading.getText());
 
 
         /**

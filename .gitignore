@@ -9,3 +9,4 @@ stemmarest/upload/*
 stemmarest/stemmarest.iml
 !stemmarest/upload/notempty
 Tests/*
+stemmarest/src/test/java/net/stemmaweb/stemmaserver/.DS_Store
