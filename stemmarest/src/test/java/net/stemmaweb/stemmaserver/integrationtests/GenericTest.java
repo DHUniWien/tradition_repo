@@ -527,7 +527,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
     }
 
@@ -928,21 +928,21 @@ public class GenericTest {
 
         response = jerseyTest
                 .resource()
-                .path("/tradition/recalculaterank/intradition/" + tradId + "/startnode/" + r463_2)
+                .path("/tradition/" + tradId + "/recalculaterank/start/" + r463_2)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
         //TODO (sk_20150928): implement test!
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + r463_2)
+                .path("/reading/" + r463_2)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         long rank_r463_2 = response.getEntity(ReadingModel.class).getRank();
 
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + r463_4)
+                .path("/reading/" + r463_4)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         long rank_r463_4 = response.getEntity(ReadingModel.class).getRank();
@@ -1034,12 +1034,13 @@ public class GenericTest {
          *  # Combine n3 and n4 ( with his )
          *  $c->merge_readings( 'n3', 'n4', 1 );
          */
-        String blub = "/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1";
+        String blub = "/reading/"+n3+"/concatenate/"+n4+"/1";
         CharacterModel characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1")
+                .path("/reading/" + n3 + "/concatenate/" + n4 + "/1")
+                .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, characterModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
