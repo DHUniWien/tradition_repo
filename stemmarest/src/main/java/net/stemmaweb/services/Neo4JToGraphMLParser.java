@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
-import java.util.Iterator;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -20,14 +19,12 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.IResource;
 
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.w3c.dom.Document;
@@ -39,8 +36,7 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  * 
  * @author PSE FS 2015 Team2
  */
-public class Neo4JToGraphMLParser implements IResource
-{
+public class Neo4JToGraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -487,16 +483,16 @@ public class Neo4JToGraphMLParser implements IResource
                     writer.writeAttribute("target", endNode);
                     writer.writeAttribute("id", "e" + edgeId++);
                     for(String prop : props) {
-                        if (rel.hasProperty(prop)) {
-                            String value = rel.getProperty(prop).toString();
-                            if (!value.equals("")) {
-                                writer.writeStartElement("data");
-                                String keyId = relationMap.get(prop);
-                                writer.writeAttribute("key", keyId);
-                                writer.writeCharacters(value);
-                                writer.writeEndElement();
+                            if (rel.hasProperty(prop)) {
+                                String value = rel.getProperty(prop).toString();
+                                if (!value.equals("")) {
+                                    writer.writeStartElement("data");
+                                    String keyId = relationMap.get(prop);
+                                    writer.writeAttribute("key", keyId);
+                                    writer.writeCharacters(value);
+                                    writer.writeEndElement();
+                                }
                             }
-                        }
                     }
                     writer.writeEndElement(); // end edge
                 }

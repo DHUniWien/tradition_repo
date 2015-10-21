@@ -1,11 +1,13 @@
 package net.stemmaweb.model;
 
+import javax.annotation.Nonnull;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.neo4j.graphdb.Transaction;
 
 /**
  * Provides a model for a reading outside of the database. Can be parsed into a
@@ -38,40 +40,43 @@ public class ReadingModel implements Comparable<ReadingModel> {
 
     /**
      * Generates a model from a Neo4j Node
-     * @param node
+     * @param node -
      */
     public ReadingModel(Node node) {
-        if (node.hasProperty("grammar_invalid"))
-            this.setGrammar_invalid(node.getProperty("grammar_invalid").toString());
-        this.setId(String.valueOf(node.getId()));
-        if (node.hasProperty("is_common"))
-            this.setIs_common(node.getProperty("is_common").toString());
-        if (node.hasProperty("is_end"))
-            this.setIs_end(node.getProperty("is_end").toString());
-        if (node.hasProperty("is_lacuna"))
-            this.setIs_lacuna(node.getProperty("is_lacuna").toString());
-        if (node.hasProperty("is_lemma"))
-            this.setIs_lemma(node.getProperty("is_lemma").toString());
-        if (node.hasProperty("is_nonsense"))
-            this.setIs_nonsense(node.getProperty("is_nonsense").toString());
-        if (node.hasProperty("is_ph"))
-            this.setIs_ph(node.getProperty("is_ph").toString());
-        if (node.hasProperty("is_start"))
-            this.setIs_start(node.getProperty("is_start").toString());
-        if (node.hasProperty("join_next"))
-            this.setJoin_next(node.getProperty("join_next").toString());
-        if (node.hasProperty("join_prior"))
-            this.setJoin_prior(node.getProperty("join_prior").toString());
-        if (node.hasProperty("language"))
-            this.setLanguage(node.getProperty("language").toString());
-        if (node.hasProperty("lexemes"))
-            this.setLexemes(node.getProperty("lexemes").toString());
-        if (node.hasProperty("normal_form"))
-            this.setNormal_form(node.getProperty("normal_form").toString());
-        if (node.hasProperty("rank"))
-            this.setRank(Long.parseLong(node.getProperty("rank").toString()));
-        if (node.hasProperty("text"))
-            this.setText(node.getProperty("text").toString());
+        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+            if (node.hasProperty("grammar_invalid"))
+                this.setGrammar_invalid(node.getProperty("grammar_invalid").toString());
+            this.setId(String.valueOf(node.getId()));
+            if (node.hasProperty("is_common"))
+                this.setIs_common(node.getProperty("is_common").toString());
+            if (node.hasProperty("is_end"))
+                this.setIs_end(node.getProperty("is_end").toString());
+            if (node.hasProperty("is_lacuna"))
+                this.setIs_lacuna(node.getProperty("is_lacuna").toString());
+            if (node.hasProperty("is_lemma"))
+                this.setIs_lemma(node.getProperty("is_lemma").toString());
+            if (node.hasProperty("is_nonsense"))
+                this.setIs_nonsense(node.getProperty("is_nonsense").toString());
+            if (node.hasProperty("is_ph"))
+                this.setIs_ph(node.getProperty("is_ph").toString());
+            if (node.hasProperty("is_start"))
+                this.setIs_start(node.getProperty("is_start").toString());
+            if (node.hasProperty("join_next"))
+                this.setJoin_next(node.getProperty("join_next").toString());
+            if (node.hasProperty("join_prior"))
+                this.setJoin_prior(node.getProperty("join_prior").toString());
+            if (node.hasProperty("language"))
+                this.setLanguage(node.getProperty("language").toString());
+            if (node.hasProperty("lexemes"))
+                this.setLexemes(node.getProperty("lexemes").toString());
+            if (node.hasProperty("normal_form"))
+                this.setNormal_form(node.getProperty("normal_form").toString());
+            if (node.hasProperty("rank"))
+                this.setRank(Long.parseLong(node.getProperty("rank").toString()));
+            if (node.hasProperty("text"))
+                this.setText(node.getProperty("text").toString());
+            tx.success();
+        }
     }
 
     public ReadingModel() {
@@ -206,7 +211,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
     }
 
     @Override
-    public int compareTo(ReadingModel readingModel) {
+    public int compareTo(@Nonnull ReadingModel readingModel) {
         Long compareRank = readingModel.getRank();
         return (int) (this.rank - compareRank);
     }

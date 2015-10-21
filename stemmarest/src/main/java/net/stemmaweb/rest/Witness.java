@@ -1,6 +1,8 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Locale;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -28,29 +30,31 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * @author PSE FS 2015 Team2
  */
 
-@Path("/witness")
-public class Witness implements IResource {
+public class Witness {
 
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private GraphDatabaseService db;
+    private String tradId;
+    private String sigil;
+
+    public Witness (String traditionId, String requestedSigil) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+        sigil = requestedSigil;
+    }
 
     /**
      * finds a witness in the database and returns it as a string
      *
-     * @param tradId
-     *            : the name of the tradition which the witness is in
-     * @param witnessId
-     *            : the id of the witness
      * @return a witness as a string
      */
     @GET
-    @Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}")
+    @Path("/text")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getWitnessAsText(@PathParam("tradId") String tradId,
-            @PathParam("witnessId") String witnessId) {
+    public Response getWitnessAsText() {
 
         String witnessAsText = "";
-        final String WITNESS_ID = witnessId;
+        final String WITNESS_ID = sigil;
         Node startNode = DatabaseService.getStartNode(tradId, db);
         Evaluator e = Witness.getEvalForWitness(WITNESS_ID);
 
@@ -83,25 +87,21 @@ public class Witness implements IResource {
      * those ranks). if end-rank is too high or start-rank too low will return
      * till the end/from the start of the witness
      *
-     * @param tradId
-     *            : the name of the tradition which the witness is in
-     * @param witnessId
-     *            : the id of the witness
+     * @param start - the starting rank
+     * @param end   - the end rank
      * @return a witness as a string
      */
     @GET
-    @Path("gettext/fromtradition/{tradId}/ofwitness/{witnessId}/fromstartrank/{startRank}/toendrank/{endRank}")
+    @Path("/text/{start}/{end}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getWitnessAsTextBetweenRanks(
-            @PathParam("tradId") String tradId,
-            @PathParam("witnessId") String witnessId,
-            @PathParam("startRank") String startRankAsString,
-            @PathParam("endRank") String endRankAsString) {
+            @PathParam("start") String start,
+            @PathParam("end") String end) {
 
         String witnessAsText = "";
-        final String WITNESS_ID = witnessId;
-        long startRank = Long.parseLong(startRankAsString);
-        long endRank = Long.parseLong(endRankAsString);
+        final String WITNESS_ID = sigil;
+        long startRank = Long.parseLong(start);
+        long endRank = Long.parseLong(end);
 
         if (endRank == startRank) {
             return Response.status(Status.INTERNAL_SERVER_ERROR)
@@ -158,18 +158,13 @@ public class Witness implements IResource {
     /**
      * finds a witness in the database and returns it as a list of readings
      *
-     * @param tradId
-     *            : the name of the tradition which the witness is in
-     * @param witnessId
-     *            : the id of the witness
      * @return a witness as a list of models of readings in json format
      */
     @GET
-    @Path("getreadinglist/fromtradition/{tradId}/ofwitness/{witnessId}")
+    @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getWitnessAsReadings(@PathParam("tradId") String tradId,
-            @PathParam("witnessId") String witnessId) {
-        final String WITNESS_ID = witnessId;
+    public Response getWitnessAsReadings() {
+        final String WITNESS_ID = sigil;
 
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 

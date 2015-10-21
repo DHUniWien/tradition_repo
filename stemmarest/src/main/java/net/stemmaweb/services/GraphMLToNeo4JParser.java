@@ -7,26 +7,22 @@ import java.io.InputStream;
 import java.util.*;
 
 import javax.ws.rs.core.Response;
-import javax.xml.namespace.QName;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * This class provides a method for importing GraphMl (XML) File into Neo4J
  * 
  * @author PSE FS 2015 Team2
  */
-public class GraphMLToNeo4JParser implements IResource
-{
+public class GraphMLToNeo4JParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -37,25 +33,41 @@ public class GraphMLToNeo4JParser implements IResource
         return parseGraphML(in, userId, tradName);
     }
 
+    public Response parseGraphML(String filename, String userId, String tradName, String tradId)
+            throws FileNotFoundException {
+        File file = new File(filename);
+        InputStream in = new FileInputStream(file);
+        return parseGraphML(in, userId, tradName, tradId);
+    }
     /**
-     * Reads xml file input stream and imports it into Neo4J Database
+     * Reads xml file input stream and imports it into Neo4J Database. This method assumes
+     * that the GraphML describes a valid graph as exported from the legacy Stemmaweb.
      *
-     * @param xmldata
-     *            - the GraphML file stream
-     * @param userId
-     *            - the user id who will own the tradition
-     * @param tradName
-     *            tradition name that should be used
+     * @param xmldata - the GraphML file stream
+     * @param userId - the user id who will own the tradition
+     * @param tradName - tradition name that should be used
      * @return Http Response with the id of the imported tradition
      * @throws FileNotFoundException
-     * @throws XMLStreamException
      */
     public Response parseGraphML(InputStream xmldata, String userId, String tradName)
+            throws FileNotFoundException {
+        String tradId = UUID.randomUUID().toString();
+        return parseGraphML(xmldata, userId, tradName, tradId);
+    }
+
+    public Response parseGraphML(InputStream xmldata, String userId, String tradName, String tradId)
             throws FileNotFoundException {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
-
+        try {
+            reader = factory.createXMLStreamReader(xmldata);
+        } catch (XMLStreamException e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Error: Parsing of tradition file failed!")
+                    .build();
+        }
         // Some variables to collect information
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
@@ -63,26 +75,18 @@ public class GraphMLToNeo4JParser implements IResource
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
-        int last_inserted_id;
         Node graphRoot;
-        Node traditionNode = null;          // this will be the entry point of the graph
-        Node currentNode = null;            // holds the current node
-        String currentGraph = null;
-        Relationship currentRel = null;     // holds the current relationship
+        Node traditionNode;             // this will be the entry point of the graph
+        Node currentNode = null;	    // holds the current node
+        String currentGraph = null;     // holds the ID of the current XML graph element
+        Relationship currentRel = null; // holds the current relationship
 
         try (Transaction tx = db.beginTx()) {
-            // retrieves the last inserted tradition ID and increments it
-            // TODO maybe this should be a UUID.
             graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
-            String prefix = graphRoot.getProperty("LAST_INSERTED_TRADITION_ID").toString();
-            last_inserted_id = Integer.parseInt(prefix);
-            last_inserted_id++;
-            prefix = String.valueOf(last_inserted_id) + "_";
-
             traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            traditionNode.setProperty("id", String.valueOf(last_inserted_id));
+            traditionNode.setProperty("id", tradId);
+            traditionNode.setProperty("name", tradName);
 
-            reader = factory.createXMLStreamReader(xmldata);
             outer:
             while (true) {
                 // START READING THE GRAPHML FILE
@@ -113,24 +117,26 @@ public class GraphMLToNeo4JParser implements IResource
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
                                     String val = reader.getElementText();
 
-                                    if (attr.equals("id"))
-                                        currentRel.setProperty("id", prefix + val);
-                                    else if (attr.equals("witness"))
-                                    {
-                                        // Check that this is a sequence relationship
-                                        assert currentRel.isType(ERelations.SEQUENCE);
-                                        // Add the witness to the current relationship's "witnesses" array
-                                        String[] witList = (String[]) currentRel.getProperty("witnesses");
-                                        ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
-                                        currentWits.add(val);
-                                        currentRel.setProperty("witnesses", currentWits.toArray(new String[currentWits.size()]));
+                                    switch (attr) {
+                                        case "id":
+                                            break;
+                                        case "witness":
+                                            // Check that this is a sequence relationship
+                                            assert currentRel.isType(ERelations.SEQUENCE);
+                                            // Add the witness to the current relationship's "witnesses" array
+                                            String[] witList = (String[]) currentRel.getProperty("witnesses");
+                                            ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
+                                            currentWits.add(val);
+                                            currentRel.setProperty("witnesses", currentWits.toArray(new String[currentWits.size()]));
 
-                                        // Store the existence of this witness
-                                        // TODO implement a.c. / p.c. logic
-                                        witnesses.put(val, true);
+                                            // Store the existence of this witness
+                                            // TODO implement a.c. / p.c. logic
+                                            witnesses.put(val, true);
+                                            break;
+                                        default:
+                                            currentRel.setProperty(attr, val);
+                                            break;
                                     }
-                                    else
-                                        currentRel.setProperty(attr, val);
                                 } else if (currentNode != null) {
                                     // Working on either the tradition itself, or a node.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
@@ -152,8 +158,7 @@ public class GraphMLToNeo4JParser implements IResource
                                             break;
 
                                         // Reading node attributes
-                                        case "id":  // We don't use the old reading IDs, but we can use it to set a 'tradition_id'
-                                            currentNode.setProperty("tradition_id", last_inserted_id);
+                                        case "id":  // We don't use the old reading IDs
                                             break;
                                         case "rank":
                                             currentNode.setProperty(attr, Long.parseLong(text));
@@ -172,21 +177,25 @@ public class GraphMLToNeo4JParser implements IResource
                                 }
                                 break;
                             case "edge":
-                                // TODO why are namespaces not being used?
-                                String sourceName = prefix + reader.getAttributeValue("", "source");
-                                String targetName = prefix + reader.getAttributeValue("", "target");
-                                Node from = db.getNodeById(idToNeo4jId.get(sourceName));;
+                                String sourceName = reader.getAttributeValue("", "source");
+                                String targetName = reader.getAttributeValue("", "target");
+                                Node from = db.getNodeById(idToNeo4jId.get(sourceName));
                                 Node to = db.getNodeById(idToNeo4jId.get(targetName));
                                 ERelations relKind = (currentGraph.equals("relationships")) ?
                                         ERelations.RELATED : ERelations.SEQUENCE;
-                                // See if there is a (probably sequence) relationship already
+                                // Sequence relationships are specified multiple times in the graph, once
+                                // per witness. Reading relationships should be specified only once.
                                 if (from.hasRelationship(relKind, Direction.BOTH)) {
-                                    Iterator<Relationship> existingRels = from.getRelationships(relKind, Direction.BOTH).iterator();
-                                    while (existingRels.hasNext()) {
-                                        Relationship qr = existingRels.next();
+                                    for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
                                         if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
-                                            // TODO sanity check that the relationships match?
-                                            // If a RELATED link appears twice, the second one will override.
+                                            // If a RELATED link already exists, we have a problem.
+                                            if (relKind.equals(ERelations.RELATED))
+                                                return Response.status(Response.Status.BAD_REQUEST)
+                                                        .entity("Error: Tradition specifies the reading relationship " +
+                                                                sourceName + " -- " + targetName +
+                                                                "twice")
+                                                        .build();
+                                            // It's a SEQUENCE link, so we are good.
                                             currentRel = qr;
                                             break;
                                         }
@@ -205,8 +214,8 @@ public class GraphMLToNeo4JParser implements IResource
                                 if (!currentGraph.equals("relationships")) {
                                     // only store nodes for the sequence graph
                                     currentNode = db.createNode(Nodes.READING);
-                                    String nodeId = prefix + reader.getAttributeValue("", "id");
-
+                                    currentNode.setProperty("tradition_id", tradId);
+                                    String nodeId = reader.getAttributeValue("", "id");
                                     idToNeo4jId.put(nodeId, currentNode.getId());
                                 }
                                 break;
@@ -228,6 +237,8 @@ public class GraphMLToNeo4JParser implements IResource
             for (String sigil: witnesses.keySet()) {
                 Node witnessNode = db.createNode(Nodes.WITNESS);
                 witnessNode.setProperty("sigil", sigil);
+                witnessNode.setProperty("hypothetical", false);
+                witnessNode.setProperty("quotesigil", !isDotId(sigil));
                 traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
             }
 
@@ -240,9 +251,6 @@ public class GraphMLToNeo4JParser implements IResource
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
 
-            graphRoot.setProperty("LAST_INSERTED_TRADITION_ID",
-                    prefix.substring(0, prefix.length() - 1));
-
             tx.success();
         } catch(Exception e) {
             e.printStackTrace();
@@ -252,15 +260,20 @@ public class GraphMLToNeo4JParser implements IResource
                     .build();
         }
 
-        String[] graphs = stemmata.split("\\}");
+        String[] graphs = stemmata.split("\n");
 
         for(String graph : graphs) {
             DotToNeo4JParser parser = new DotToNeo4JParser(db);
-            parser.parseDot(graph, last_inserted_id + "");
+            parser.importStemmaFromDot(graph, tradId);
         }
 
         return Response.status(Response.Status.OK)
-                .entity("{\"tradId\":" + last_inserted_id + "}")
+                .entity("{\"tradId\":" + tradId + "}")
                 .build();
+    }
+
+    private Boolean isDotId (String nodeid) {
+        return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
+                || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
 }

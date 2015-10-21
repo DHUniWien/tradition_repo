@@ -1,12 +1,12 @@
 package net.stemmaweb.stemmaserver.benchmarktests;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Random;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.*;
 
 
@@ -45,26 +45,20 @@ class RandomGraphGenerator {
                 + "takimata sanctus est Lorem ipsum dolor sit amet";
         String[] loremIpsumArray = loremIpsum.split(" ");
 
-        try(Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            if(!nodes.hasNext()) {
-                Node node = db.createNode(Nodes.ROOT);
-                node.setProperty("name", "Root node");
-                node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
+        DatabaseService.createRootNode(db);
+        Node rootNode;
+        int currId = 1001;
+        try (Transaction tx = db.beginTx()) {
+            rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             tx.success();
         }
 
         for(int k = 0; k < cardOfUsers; k++) {
             Node currentUser;
             try (Transaction tx = db.beginTx()) {
-                Result rootNodeSearch = db.execute("match (n:ROOT) return n");
-                Node rootNode = (Node) rootNodeSearch.columnAs("n").next();
-
                 currentUser = db.createNode(Nodes.USER);
                 currentUser.setProperty("id", Integer.toString(k));
-                currentUser.setProperty("isAdmin", Integer.toString(randomGenerator.nextInt(2)));
+                currentUser.setProperty("role", "user");
 
                 rootNode.createRelationshipTo(currentUser, ERelations.SEQUENCE);
 
@@ -87,17 +81,10 @@ class RandomGraphGenerator {
                 ArrayList<WitnessBranch> witnessUnconnectedBranches = new ArrayList<>();
                 Node traditionRootNode;
                 try (Transaction tx = db.beginTx()) {
-                    String prefix = db.findNodes(Nodes.ROOT, "name", "Root node")
-                            .next()
-                            .getProperty("LAST_INSERTED_TRADITION_ID")
-                            .toString();
+                    String tradId = String.valueOf(currId++);
                     traditionRootNode = db.createNode(Nodes.TRADITION);
-                    Node rootNode = db.findNodes(Nodes.ROOT, "name", "Root node").next();
-                    rootNode.setProperty("LAST_INSERTED_TRADITION_ID",
-                            Integer.toString(Integer.parseInt(prefix) + 1));
-
-                    traditionRootNode.setProperty("name", "TestTradition_"+prefix);
-                    traditionRootNode.setProperty("id", prefix);
+                    traditionRootNode.setProperty("name", "TestTradition_" + tradId);
+                    traditionRootNode.setProperty("id", tradId);
                     currentUser.createRelationshipTo(traditionRootNode, ERelations.SEQUENCE);
 
                     /**

@@ -1,146 +1,207 @@
 package net.stemmaweb.services;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.alexmerz.graphviz.ParseException;
+import com.alexmerz.graphviz.objects.*;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.IResource;
 import net.stemmaweb.rest.Nodes;
 
-import org.neo4j.graphdb.GraphDatabaseService;
+import com.alexmerz.graphviz.Parser;
+
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 
 /**
  * This class provides methods for exporting Dot File from Neo4J
  * @author PSE FS 2015 Team2
  */
-public class DotToNeo4JParser implements IResource
-{
+public class DotToNeo4JParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
-    private String dot = "";
-    private List<Node> nodes = new ArrayList<>();
+    private String messageValue = null;
 
     public DotToNeo4JParser(GraphDatabaseService db) {
         this.db = db;
     }
 
-    public Response parseDot(String dot, String tradId) {
-        this.dot = dot;
+    public Response importStemmaFromDot(String dot, String tradId) {
+        Status result = null;
+        // Split the dot string into separate lines if necessary. Having
+        // single-line dot seems to confuse the parser.
+        if (dot.indexOf('\n') == -1) {
+            dot = dot.replaceAll("; ", ";\n");
+            dot = dot.replaceAll("\\{ ", "{\n");
+            dot = dot.replaceAll(" \\}", "\n}");
+        }
+        StringBuffer dotstream = new StringBuffer(dot);
+        Parser p = new Parser();
+        try {
+            p.parse(dotstream);
+        } catch (ParseException e) {
+            messageValue = e.toString();
+            result = Status.BAD_REQUEST;
+        }
+        ArrayList<Graph> parsedgraphs = p.getGraphs();
+        if (parsedgraphs.size() == 0) {
+            messageValue = "No graphs were found in this DOT specification.";
+            result = Status.BAD_REQUEST;
+        } else if (parsedgraphs.size() > 1) {
+            messageValue = "More than one graph was found in this DOT specification.";
+            result = Status.BAD_REQUEST;
+        }
 
+        // Save the graph into Neo4J.
+        if (result == null)
+            result = saveToNeo(parsedgraphs.get(0), tradId);
+
+        // Return our answer.
+        String returnKey = result == Status.CREATED ? "name" : "error";
+        return Response.status(result)
+                .entity(simpleJSON(returnKey, messageValue))
+                .build();
+    }
+
+    private Status saveToNeo(Graph stemma, String tradId) {
+        // Check for the existence of the tradition
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Status.NOT_FOUND;
+
+        String stemmaName = stemma.getId().getLabel();
+        // If the stemma name wasn't quoted, it will be an id.
+        if (stemmaName.equals("")) {
+            stemmaName = stemma.getId().getId();
+        }
         try (Transaction tx = db.beginTx()) {
-            while(nextObject(tradId));
-            if(nodes.size()==0) {
-                return Response.status(Status.NOT_FOUND).build();
-            } else {
-                nodes.get(0).createRelationshipTo(nodes.get(1), ERelations.STEMMA);
+            // First check that no stemma with this name already exists for this tradition,
+            // unless we intend to replace it.
+            for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
+                if (priorStemma.getProperty("name").equals(stemmaName)) {
+                    messageValue = "A stemma by this name already exists for this tradition.";
+                    return Status.CONFLICT;
+                }
             }
-            tx.success();
-        } catch(Exception e) {
-            e.printStackTrace();
-            return Response.status(Status.NOT_FOUND).build();
-        }
-        return Response.ok(dot).build();
-    }
+            // Get a list of the existing (extant) tradition witnesses
+            HashMap<String, Node> traditionWitnesses = new HashMap<>();
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
+                    .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
 
-    /**
-     * parses a dot into neo4j, object for object, returns false when no more objects exist
-     * adds all nodes below tradId
-     * @return
-     */
-    private boolean nextObject(String tradId) throws Exception
-    {
-        // check either graph or node/edge is next
-        int i;
+            // Create the new stemma node
+            Node stemmaNode = db.createNode(Nodes.STEMMA);
+            stemmaNode.setProperty("name", stemmaName);
+            Boolean isDirected = stemma.getType() == 2;
+            stemmaNode.setProperty("directed", isDirected);
 
-        if(((dot.indexOf('{') == -1) && (dot.indexOf(';') != -1)) ||
-                (dot.indexOf(';') < dot.indexOf('{'))) {
-            i = dot.indexOf(';');
-            String tmp = dot.substring(0, i);
-            boolean undirected;
-
-            if((undirected = tmp.contains("--")) || tmp.contains("-&gt;") || tmp.contains("->")) {
-                String[] spliced;
-
-                if(undirected) {
-                    spliced = tmp.split("--");
-                } else {
-                    spliced = (tmp.contains("->")) ? tmp.split("->") : tmp.split("-&gt;");
+            // Create the nodes as Witness nodes; use existing witnesses if they exist.
+            // Store the collection of them for later traversal.
+            HashMap<Node, Boolean> witnessesVisited = new HashMap<>();
+            for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
+                String sigil = getNodeSigil(witness);
+                // If the witness ID is empty then the sigil was the label, probably
+                // Unicode, and needs to be quoted on output.
+                boolean quoteSigil = witness.getId().getId().equals("");
+                if (witness.getAttribute("class") == null) {
+                    messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
+                    return Status.BAD_REQUEST;
                 }
-                spliced[0] = spliced[0].replaceAll(" ", "");
-                spliced[1] = spliced[1].replaceAll(" ", "");
-                Node source = findNodeById(spliced[0]);
-                Node target = findNodeById(spliced[1]);
-                if(source != null && target != null) {
-                    source.createRelationshipTo(target, ERelations.STEMMA);
-                }
-            } else if(tmp.length()>0) {
-                Node node = db.createNode(Nodes.WITNESS);
-                if(dot.indexOf('[')!=-1) {
-                    String[] spliced = tmp.split("\\[");
-
-                    spliced[0] = spliced[0].replaceAll(" ", "");
-                    spliced[1] = spliced[1].replaceAll(" ", "");
-
-                    node.setProperty("id", spliced[0].trim());
-
-                    spliced[1] = spliced[1].replaceAll("\\[", "");
-                    spliced[1] = spliced[1].replaceAll("\\]", "");
-
-                    // replace this with the use of the correct delimiter of properties
-                    String[] sub = spliced[1].split(",");
-                    for(String str : sub) {
-                        String[] arr = str.split("=");
-                        node.setProperty(arr[0].trim(), arr[1].trim());
+                Boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
+                // Check for the existence of a node by this name
+                Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
+                if (existingWitness != null) {
+                    // Check that the requested witness isn't hypothetical unless the
+                    // existing one is!
+                    if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical"))) {
+                        messageValue = "The extant tradition witness " + sigil
+                                + " cannot be a hypothetical stemma node.";
+                        return Status.CONFLICT;
                     }
-                    nodes.add(node);
+                } else {
+                    existingWitness = db.createNode(Nodes.WITNESS);
+                    existingWitness.setProperty("sigil", sigil);
+                    existingWitness.setProperty("hypothetical", hypothetical);
+                    existingWitness.setProperty("quotesigil", quoteSigil);
+                    // Does it have a label separate from its ID?
+                    String displayLabel = witness.getAttribute("label");
+                    if (displayLabel != null) {
+                        existingWitness.setProperty("label", displayLabel);
+                    }
+                    traditionWitnesses.put(sigil, existingWitness);
                 }
-            }
-            dot = dot.substring(i+1);
-        } else if((i = dot.indexOf('{')) < dot.indexOf(';') && i>0) {
-            // this holds something like 'graph stemma {' or 'digraph "TM hypothesis" {'
-            Node node = db.createNode(Nodes.STEMMA);
-            String tmp = dot.substring(0, i);
-            if(tmp.contains("digraph")) {
-                node.setProperty("type", "digraph");
-            } else if(tmp.contains("graph")) {
-                node.setProperty("type", "graph");
-            }
-            String[] declaration = tmp.split(" ");
-            if(declaration.length >= 2) {
-                String name = String.join(" ", Arrays.copyOfRange(declaration, 1, declaration.length));
-                name = name.replaceAll("\"", "");
-                node.setProperty("name", name);
-            } else {
-                throw new Exception("Could not find stemma name in graph declaration");
-                // Something went wrong with parsing.
+                stemmaNode.createRelationshipTo(existingWitness, ERelations.HAS_WITNESS);
+                witnessesVisited.put(existingWitness, false);
             }
 
-            Node trad = db.findNodes(Nodes.TRADITION, "id", tradId).next();
-            if(trad != null) {
-                trad.createRelationshipTo(node, ERelations.STEMMA);
+            // Create the edges; each edge has the stemma label as a property.
+            for (Edge transmission : stemma.getEdges()) {
+                Node sourceWit = traditionWitnesses.get(getNodeSigil(transmission.getSource().getNode()));
+                Node targetWit = traditionWitnesses.get(getNodeSigil(transmission.getTarget().getNode()));
+                Relationship txEdge = sourceWit.createRelationshipTo(targetWit, ERelations.TRANSMITTED);
+                txEdge.setProperty("hypothesis", stemmaName);
             }
-            nodes.add(node);
-            dot = dot.substring(i+1);
+
+            // If the graph is directed, we need to identify the archetype and
+            // make sure that there is only one.
+            if (isDirected) {
+                Node rootNode = null;
+                // For each node, check that it is connected
+                witnesscheck:
+                for (Node witness : witnessesVisited.keySet()) {
+                    // If this witness has already been visited in another traversal, skip it.
+                    if (witnessesVisited.get(witness))
+                        continue;
+                    ResourceIterable<Node> pathNodes = db.traversalDescription().depthFirst()
+                            .relationships(ERelations.TRANSMITTED, Direction.INCOMING)
+                            .traverse(witness).nodes();
+                    Node pathEnd = null;
+                    for (Node pNode : pathNodes) {
+                        // If we have been to this point of a path before we can stop checking it.
+                        if (witnessesVisited.get(pNode))
+                            break witnesscheck;
+                        // Otherwise, record that we have been here.
+                        witnessesVisited.put(pNode, true);
+                        pathEnd = pNode;
+                    }
+                    if (rootNode == null) {
+                        rootNode = pathEnd;
+                    } else if (!rootNode.equals(pathEnd)) {
+                        assert pathEnd != null;
+                        messageValue = "Multiple archetype nodes found in this stemma: "
+                                + rootNode.getProperty("sigil") + " and "
+                                + pathEnd.getProperty("sigil");
+                        return Status.BAD_REQUEST;
+                    }
+                }
+                // We have a single root node; mark it.
+                stemmaNode.createRelationshipTo(rootNode, ERelations.HAS_ARCHETYPE);
+            }
+
+            // Save the stemma to the tradition.
+            traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
+
+            tx.success();
+        } catch (Exception e) {
+            messageValue = e.toString();
+            return Status.INTERNAL_SERVER_ERROR;
         }
-        else {
-            return false;
-        }
-        return true;
+        messageValue = stemmaName;
+        return Status.CREATED;
     }
 
-    private Node findNodeById(String id)
-    {
-        for(Node n : nodes) {
-            if(n.hasProperty("id") && n.getProperty("id").equals(id)) {
-                return n;
-            }
+    private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {
+        String sigil = n.getId().getId();
+        // If the sigil is in quotes it will be a label, not an ID.
+        if (sigil.equals("")) {
+            sigil = n.getId().getLabel();
         }
-        return null;
+        return sigil;
     }
+
+    private static String simpleJSON (String key, String value) {
+        return String.format("{\"%s\":\"%s\"}", key, value );
+    }
+
 }

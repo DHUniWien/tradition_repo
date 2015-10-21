@@ -14,12 +14,7 @@ import com.sun.jersey.api.client.GenericType;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Stemma;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.User;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 
 import org.junit.Rule;
@@ -53,13 +48,8 @@ public abstract class BenchmarkTests {
      * In order not to measure the startup time of jerseytest the startup needs to be done @BeforeClass
      * so all jerseyTest related objects need to be static.
      */
-    static User userResource;
-    static Tradition traditionResource;
-    static Witness witnessResource;
-    static Reading readingResoruce;
-    static Relation relationResource;
-    static Stemma stemmaResource;
-    static GraphMLToNeo4JParser importResource ;
+    static Root webResource;
+    static GraphMLToNeo4JParser importResource;
 
     static File testfile;
 
@@ -83,7 +73,7 @@ public abstract class BenchmarkTests {
         textInfo.setOwnerId("1");
 
         ClientResponse ownerChangeResponse = jerseyTest.resource()
-                .path("/tradition/changemetadata/fromtradition/1001")
+                .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
@@ -95,7 +85,7 @@ public abstract class BenchmarkTests {
         textInfo.setOwnerId("0");
 
         ownerChangeResponse = jerseyTest.resource()
-                .path("/tradition/changemetadata/fromtradition/1001")
+                .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
@@ -108,9 +98,8 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void getReading(){
-        ClientResponse actualResponse = jerseyTest
-                .resource()
-                .path("/reading/getreading/withreadingid/20")
+        ClientResponse actualResponse = jerseyTest.resource()
+                .path("/reading/20")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -121,9 +110,8 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void getAllTraditions(){
-        ClientResponse actualResponse = jerseyTest
-                .resource()
-                .path("/tradition/getalltraditions")
+        ClientResponse actualResponse = jerseyTest.resource()
+                .path("/traditions")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -137,7 +125,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllWitnesses(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/getallwitnesses/fromtradition/1001")
+                .path("/tradition/1001/witnesses")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -149,7 +137,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllRelationships(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/relation/getallrelationships/fromtradition/"+tradId)
+                .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -161,9 +149,8 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void getTradition(){
-        ClientResponse actualResponse = jerseyTest
-                .resource()
-                .path("/tradition/gettradition/withid/"+tradId)
+        ClientResponse actualResponse = jerseyTest.resource()
+                .path("/tradition/"+tradId)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -176,8 +163,6 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void importGraphMl(){
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
-
         try {
             importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
@@ -193,7 +178,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getDot(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/getdot/fromtradition/"+tradId)
+                .path("/tradition/" + tradId + "/dot")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -205,7 +190,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsText(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/witness/gettext/fromtradition/1001/ofwitness/W0")
+                .path("/tradition/1001/witness/W0/text")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -217,7 +202,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsTextBetweenRanks(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/witness/gettext/fromtradition/1001/ofwitness/W0/fromstartrank/2/toendrank/5")
+                .path("/tradition/1001/witness/W0/text/2/5")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -229,7 +214,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsReadings(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/witness/getreadinglist/fromtradition/1001/ofwitness/W0")
+                .path("/tradition/1001/witness/W0/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -242,7 +227,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getNextReadingOfAWitness(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getnextreading/fromwitness/A/ofreading/"+untoMe)
+                .path("/reading/" + untoMe + "/next/A")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -254,7 +239,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getpreviousReadingOfAWitness(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getpreviousreading/fromwitness/A/ofreading/" +untoMe)
+                .path("/reading/" + untoMe + "/prior/A")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -266,7 +251,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllReadingsOfATradition(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getallreadings/fromtradition/1001")
+                .path("/tradition/1001/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -278,7 +263,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getAllStemmata(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/stemma/getallstemmata/fromtradition/" + tradId)
+                .path("/tradition/" + tradId + "/stemmata")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -291,8 +276,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getIdenticalReadingsOfATradition(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/getidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/8")
+                .path("/tradition/" + tradId + "/identicalreadings/1/8")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -304,8 +288,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getCouldBeIdentical(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/reading/couldbeidenticalreadings/fromtradition/" + tradId
-                        + "/fromstartrank/1/toendrank/15")
+                .path("/tradition/" + tradId + "/mergeablereadings/1/15")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -318,7 +301,6 @@ public abstract class BenchmarkTests {
     @Test
     public void createAndDeleteARelationship(){
         RelationshipModel relationship = new RelationshipModel();
-        String relationshipId = "";
         relationship.setSource(theRoot + "");
         relationship.setTarget(untoMe + "");
         relationship.setType("grammatical");
@@ -330,15 +312,15 @@ public abstract class BenchmarkTests {
 
 
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/relation/createrelationship/")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
-        ArrayList<GraphModel> graphModelList = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        GraphModel readingsAndRelationships = graphModelList.get(0);
-        relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+                .put(ClientResponse.class, relationship);
+        ArrayList<GraphModel> readingsAndRelationships =
+                actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>() {});
+        String relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
-                .path("/relation/deleterelationshipbyid/withrelationship/" + relationshipId)
+                .path("/tradition/" + tradId + "/relation/" + relationshipId)
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
     }
@@ -350,7 +332,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getUserById(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/user/getuser/withid/0")
+                .path("/user/0")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -363,7 +345,7 @@ public abstract class BenchmarkTests {
     @Test
     public void getTraditionsOfAUser(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/user/gettraditions/ofuser/0")
+                .path("/user/0/traditions")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
@@ -374,15 +356,15 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void createAndDeleteAUser(){
-        String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
         ClientResponse response = jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, jsonPayload);
+                .put(ClientResponse.class, jsonPayload);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/user/deleteuser/withid/1337")
+                .path("/user/1337")
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }

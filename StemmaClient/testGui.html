@@ -7,8 +7,8 @@
 	<script src="jquery.runner-min.js"></script>
 	<script type="text/javascript">
 	
-	var baseurl = "http://tomcat.stemmaweb.net:8080/stemmarest/";
-	// var baseurl = "http://localhost:8080/";
+	// var baseurl = "http://tomcat.stemmaweb.net:8080/stemmarest/";
+	var baseurl = "http://localhost:8080/";
 	
 		$(document).ready(function(){
 			// do jQuery
@@ -46,7 +46,7 @@
 			 }
 			 else 
 			 {				 
-				 formJSON = formJSON + '"' + 'isAdmin' + '":' + 1;
+				 formJSON = formJSON + '"role":"admin"';
 			 }
  			if(index < (selects.length - 18)) {
  				formJSON += ',';

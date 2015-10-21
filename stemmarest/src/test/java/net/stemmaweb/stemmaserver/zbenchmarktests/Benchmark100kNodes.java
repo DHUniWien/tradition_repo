@@ -6,12 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.Iterator;
 
-import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.Stemma;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.User;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -40,25 +35,13 @@ public class Benchmark100kNodes extends BenchmarkTests {
 
         RandomGraphGenerator rgg = new RandomGraphGenerator();
 
-        GraphDatabaseService db = new TestGraphDatabaseFactory().newImpermanentDatabase();
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider(db);
+        GraphDatabaseService db = new GraphDatabaseServiceProvider(
+                new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-		
-        userResource = new User();
-        traditionResource = new Tradition();
-        witnessResource = new Witness();
-        readingResoruce = new Reading();
-        relationResource = new Relation();
-        importResource = new GraphMLToNeo4JParser();
-        stemmaResource = new Stemma();
-
+        webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(userResource)
-                .addResource(traditionResource)
-                .addResource(witnessResource)
-                .addResource(relationResource)
-                .addResource(readingResoruce)
-                .addResource(stemmaResource).create();
+                .addResource(webResource)
+                .create();
         try {
             jerseyTest.setUp();
         } catch (Exception e) {
@@ -67,10 +50,10 @@ public class Benchmark100kNodes extends BenchmarkTests {
         }
 
         rgg.role(db, 10, 10, 10, 100);
-		
-		testfile = new File("src/TestXMLFiles/ReadingstestTradition.xml");
 
-		try {
+        importResource = new GraphMLToNeo4JParser();
+		testfile = new File("src/TestFiles/ReadingstestTradition.xml");
+        try {
 			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
 		} catch (FileNotFoundException f) {
 			// this error should not occur

@@ -1,10 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import java.util.Iterator;
 import java.util.List;
 
@@ -14,7 +10,8 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.User;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
@@ -30,6 +27,8 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -50,36 +49,19 @@ public class UserTest {
 
     @Before
     public void setUp() throws Exception {
-
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-
-        /*
-         * The Resource under test. The mockDbFactory will be injected into this
-         * resource.
-         */
-        User userResource = new User();
-
         /*
          * Populate the test database with the root node
          */
-        try(Transaction tx = db.beginTx())
-        {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            if(!nodes.hasNext())
-            {
-                Node node = db.createNode(Nodes.ROOT);
-                node.setProperty("name", "Root node");
-                node.setProperty("LAST_INSERTED_TRADITION_ID", "1000");
-            }
-            tx.success();
-        }
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+        DatabaseService.createRootNode(db);
 
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer().addResource(userResource).create();
+        Root webResource = new Root();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(webResource)
+                .create();
         jerseyTest.setUp();
     }
 
@@ -97,9 +79,9 @@ public class UserTest {
             tx.success();
         }
 
-        String jsonPayload = "{\"isAdmin\":0,\"id\":1337}";
-        ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+        String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
+        ClientResponse returnJSON = jerseyTest.resource().path("/user")
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 returnJSON.getStatus());
 
@@ -119,12 +101,15 @@ public class UserTest {
     @Test
     public void createConflictingUserTest(){
 
-        String jsonPayload = "{\"isAdmin\":0,\"id\":42}";
-        ClientResponse dummyJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
-        ClientResponse returnJSON = jerseyTest.resource().path("/user/createuser")
-                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
+        String firstUser = "{\"role\":\"user\",\"id\":42}";
+        String secondUser = "{\"role\":\"admin\",\"id\":42}";
+        ClientResponse dummyJSON = jerseyTest.resource().path("/user")
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, firstUser);
+        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
+                dummyJSON.getStatus());
 
+        ClientResponse returnJSON = jerseyTest.resource().path("/user")
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, secondUser);
         assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),
                 returnJSON.getStatus());
     }
@@ -137,18 +122,18 @@ public class UserTest {
     public void getUserTest(){
         UserModel userModel = new UserModel();
         userModel.setId("43");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         UserModel actualResponse = jerseyTest
                 .resource()
-                .path("/user/getuser/withid/43")
+                .path("/user/43")
                 .get(UserModel.class);
         assertEquals("43",actualResponse.getId());
-        assertEquals("0",actualResponse.getIsAdmin());
+        assertEquals("user",actualResponse.getRole());
 
 
     }
@@ -160,7 +145,7 @@ public class UserTest {
     public void getInvalidUserTest(){
         ClientResponse actualResponse = jerseyTest
                 .resource()
-                .path("/user/getuser/withid/43")
+                .path("/user/43")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NO_CONTENT.getStatusCode(), actualResponse.getStatus());
     }
@@ -176,22 +161,22 @@ public class UserTest {
          */
         UserModel userModel = new UserModel();
         userModel.setId("1");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         /*
          * Create User 2
          */
         userModel = new UserModel();
         userModel.setId("2");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         /*
          * Create a test tradition for user 1
@@ -232,39 +217,58 @@ public class UserTest {
         {
 
             /*
-             * Remove user 1 with all his traditions
+             * Try to remove user 1 with all traditions. This should fail
              */
-            ClientResponse actualResponse = jerseyTest.resource().path("/user/deleteuser/withid/1")
+            ClientResponse actualResponse = jerseyTest.resource().path("/user/1")
+                    .delete(ClientResponse.class);
+            assertEquals(Response.Status.PRECONDITION_FAILED.getStatusCode(), actualResponse.getStatus());
+
+            /*
+             * Check that user 1 is still there
+             */
+            Node user = db.findNode(Nodes.USER, "id", "1");
+            assertNotNull(user);
+
+            /*
+             * Check that tradition 842 is still there
+             */
+            Node tradition = db.findNode(Nodes.TRADITION, "id", "842");
+            assertNotNull(tradition);
+
+            /*
+             * Delete tradition 842
+             */
+            actualResponse = jerseyTest.resource().path("/tradition/842")
+                    .delete(ClientResponse.class);
+            assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
+            tradition = db.findNode(Nodes.TRADITION, "id", "842");
+            assertNull(tradition);
+
+            /*
+             * Try again to remove user 1
+             */
+            actualResponse = jerseyTest.resource().path("/user/1")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
 
             /*
-             * Check if user 1 is removed
+             * Check that user 1 is now gone
              */
-            Result result = db.execute("match (userId:USER {id:'1'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-            assertFalse(nodes.hasNext());
-
-            /*
-             * Check if tradition 842 is removed
-             */
-            result = db.execute("match (tradId:TRADITION {id:'842'}) return tradId");
-            nodes = result.columnAs("tradId");
-            assertFalse(nodes.hasNext());
+            user = db.findNode(Nodes.USER, "id", "1");
+            assertNull(user);
 
             /*
              * Check if user 2 still exists
              */
-            result = db.execute("match (userId:USER {id:'2'}) return userId");
-            nodes = result.columnAs("userId");
-            assertTrue(nodes.hasNext());
+            user = db.findNode(Nodes.USER, "id", "2");
+            assertNotNull(user);
 
             /*
              * Check if tradition 843 is removed
              */
-            result = db.execute("match (tradId:TRADITION {id:'843'}) return tradId");
-            nodes = result.columnAs("tradId");
-            assertTrue(nodes.hasNext());
+            tradition = db.findNode(Nodes.TRADITION, "id", "843");
+            assertNotNull(tradition);
+
             tx.success();
         }
     }
@@ -279,11 +283,11 @@ public class UserTest {
          */
         UserModel userModel = new UserModel();
         userModel.setId("1");
-        userModel.setIsAdmin("0");
+        userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, userModel);
+                .put(ClientResponse.class, userModel);
 
         /*
          * Create a test tradition for user 1
@@ -305,7 +309,7 @@ public class UserTest {
              */
             ClientResponse actualResponse = jerseyTest
                     .resource()
-                    .path("/user/deleteuser/withid/2")
+                    .path("/user/2")
                     .delete(ClientResponse.class);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualResponse.getStatus());
 
@@ -345,12 +349,12 @@ public class UserTest {
      */
     @Test
     public void getUserTraditions(){
-        String jsonPayload = "{\"isAdmin\":0,\"id\":837462}";
+        String jsonPayload = "{\"role\":\"user\",\"id\":837462}";
         jerseyTest
                 .resource()
-                .path("/user/createuser")
+                .path("/user")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, jsonPayload);
+                .put(ClientResponse.class, jsonPayload);
         
         try(Transaction tx = db.beginTx())
         {
@@ -371,7 +375,7 @@ public class UserTest {
         trad.setName("TestTradition");
         List<TraditionModel> traditions = jerseyTest
                 .resource()
-                .path("/user/gettraditions/ofuser/837462")
+                .path("/user/837462/traditions")
                 .get(new GenericType<List<TraditionModel>>() {
                 });
         TraditionModel tradLoaded = traditions.get(0);
@@ -380,14 +384,14 @@ public class UserTest {
 
         ClientResponse getStemmaResponse = jerseyTest
                 .resource()
-                .path("/user/gettraditions/ofuser/837462")
+                .path("/user/837462/traditions")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.ok().build().getStatus(), getStemmaResponse.getStatus());
 
         ClientResponse getNotFoundStemmaResponse = jerseyTest
                 .resource()
-                .path("/user/gettraditions/ofuser/xy")
+                .path("/user/xy/traditions")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getNotFoundStemmaResponse.getStatus());

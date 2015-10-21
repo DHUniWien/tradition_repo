@@ -17,7 +17,6 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 
@@ -27,25 +26,29 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * @author PSE FS 2015 Team2
  */
 
-@Path("/relation")
-public class Relation implements IResource {
+public class Relation {
 
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
-
+    private GraphDatabaseService db;
+    private String tradId;
     private static final String SCOPE_LOCAL = "local";
     private static final String SCOPE_GLOBAL = "document";
 
+
+    public Relation (String traditionId) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+    }
+    
     /**
      * Creates a new relationship between the two nodes specified.
      *
-     * @param relationshipModel
+     * @param relationshipModel - JSON structure of the relationship to create
      * @return Http Response 201 and a model containing the created relationship
      *         and the readings involved in JSON on success or an ERROR in JSON
      *         format
      */
-    @POST
-    @Path("createrelationship")
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response create(RelationshipModel relationshipModel) {
@@ -65,14 +68,14 @@ public class Relation implements IResource {
                     Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
-                    HashMap<Long, HashSet> ranks = new HashMap<>();
+                    HashMap<Long, HashSet<Long>> ranks = new HashMap<>();
                     Result resultA = db.execute("match (n {text: '" + readingA.getProperty("text") + "'}) return n");
                     Iterator<Node> nodesA = resultA.columnAs("n");
                     while (nodesA.hasNext()) {
                         Node cur_node = nodesA.next();
                         long node_id = cur_node.getId();
                         long node_rank = (Long) cur_node.getProperty("rank");
-                        HashSet cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
+                        HashSet<Long> cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
                         cur_set.add(node_id);
                         ranks.putIfAbsent(node_rank, cur_set);
                     }
@@ -131,7 +134,7 @@ public class Relation implements IResource {
             Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
             Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
-            if (false == readingA.getProperty("tradition_id").equals(readingB.getProperty("tradition_id"))) {
+            if (!readingA.getProperty("tradition_id").equals(readingB.getProperty("tradition_id"))) {
                 return Response.status(Status.CONFLICT)
                         .entity("Cannot create relationship across traditions")
                         .build();
@@ -287,123 +290,33 @@ public class Relation implements IResource {
     /**
      * Checks, if a reading is a "Meta"-reading
      *
-     * @param reading
-     * @return
+     * @param reading - the reading to check
+     * @return true or false
      */
     private boolean isMetaReading(Node reading) {
-        if (reading != null &&
+        return reading != null &&
                 ((reading.hasProperty("is_lacuna") && reading.getProperty("is_lacuna").equals("1")) ||
                         (reading.hasProperty("is_start") && reading.getProperty("is_start").equals("1")) ||
                         (reading.hasProperty("is_ph") && reading.getProperty("is_ph").equals("1")) ||
                         (reading.hasProperty("is_end") && reading.getProperty("is_end").equals("1"))
-                )) {
-            return true;
-        }
-        return false;
+                );
     }
 
     /**
-     * Gets all the next nodes with the given constraints.
+     * Checks if a relationship between the two nodes specified would produce a
+     * cross-relationship. A cross relationship is a relationship that
+     * crosses another one created before which is not allowed.
+     * Remove all instances of the relationship specified.
      *
-     * @param reading
-     * @param direction
-     * @param depth
-     * @return
-     */
-    private ResourceIterable<Node> getNextNodes(Node reading, Direction direction, int depth) {
-        return db.traversalDescription().breadthFirst().relationships(ERelations.SEQUENCE, direction)
-                .evaluator(Evaluators.excludeStartPosition()).evaluator(Evaluators.toDepth(depth))
-                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(reading).nodes();
-    }
-
-    /**
-     * Get a list of all relationships from a given tradition.
-     *
-     * @param tradId
-     * @return a list of the relationships in JSON on success or an ERROR in
-     *         JSON format
-     */
-    @GET
-    @Path("getrelationship/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getRelationship(@PathParam("tradId") String tradId,
-                                    @QueryParam("node1")String node1,
-                                    @QueryParam("node2") String node2) {
-        RelationshipType relType = null;
-
-        try (Transaction tx = db.beginTx()) {
-            Node relStartNode = db.getNodeById(Long.parseLong(node1));
-            Node relEndNode = db.getNodeById(Long.parseLong(node2));
-            for (Relationship rel: relStartNode.getRelationships()) {
-                if(relStartNode.equals(rel.getStartNode()) && relEndNode.equals(rel.getEndNode())) {
-                    relType = rel.getType();
-                }
-            }
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        if (relType.equals(null))
-            return Response.status(Status.NOT_FOUND).entity("no relationships were found").build();
-        GenericEntity<RelationshipType> reship = new GenericEntity<RelationshipType>(relType) {};
-        return Response.ok(relType.name()).build();
-    }
-
-
-    /**
-     * Get a list of all relationships from a given tradition.
-     *
-     * @param tradId
-     * @return a list of the relationships in JSON on success or an ERROR in
-     *         JSON format
-     */
-    @GET
-    @Path("getallrelationships/fromtradition/{tradId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllRelationships(@PathParam("tradId") String tradId) {
-        ArrayList<RelationshipModel> relationships = new ArrayList<>();
-
-        try (Transaction tx = db.beginTx()) {
-            Node startNode = DatabaseService.getStartNode(tradId, db);
-            for (Relationship rel: db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .relationships(ERelations.RELATED, Direction.BOTH)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode)
-                    .relationships()) {
-                if(rel.getType().name().equals(ERelations.RELATED.name())){
-                    RelationshipModel tempRel = new RelationshipModel(rel);
-                    relationships.add(tempRel);
-                }
-            }
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        if (relationships.size() ==0)
-            return Response.status(Status.NOT_FOUND).entity("no relationships were found").build();
-
-        return Response.ok(relationships).build();
-    }
-
-
-    /**
-     * Remove all relationships, as it is done in
-     * https://github.com/tla/stemmaweb
-     * /blob/master/lib/stemmaweb/Controller/Relation.pm line 271) in
-     * Relationships of type RELATED between the two nodes.
-     *
-     * @param relationshipModel
-     * @param tradId
+     * @param relationshipModel - the JSON specification of the relationship(s) to delete
      * @return HTTP Response 404 when no node was found, 200 When relationships
      *         where removed
      */
     @DELETE
-    @Path("deleterelationship/fromtradition/{tradId}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response delete(RelationshipModel relationshipModel, @PathParam("tradId") String tradId) {
+
+    public Response delete(RelationshipModel relationshipModel) {
         long deleted_relations = 0L; // Number of deleted relationships
 
         switch (relationshipModel.getScope()) {
@@ -477,13 +390,13 @@ public class Relation implements IResource {
     /**
      * Removes a relationship by ID
      *
-     * @param relationshipId
+     * @param relationshipId - the ID of the relationship to delete
      * @return HTTP Response 404 when no Relationship was found with id, 200 and
      *         a model of the relationship in JSON when the Relationship was
      *         removed
      */
     @DELETE
-    @Path("deleterelationshipbyid/withrelationship/{relationshipId}")
+    @Path("{relationshipId}")
     public Response deleteById(@PathParam("relationshipId") String relationshipId) {
         RelationshipModel relationshipModel;
 

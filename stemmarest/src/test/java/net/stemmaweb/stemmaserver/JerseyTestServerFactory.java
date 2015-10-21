@@ -32,7 +32,7 @@ public class JerseyTestServerFactory {
 
     /**
      *
-     * @param resource
+     * @param resource -
      * @return this JerseyTestServerFactory
      */
     public JerseyTestServerFactory addResource(Object resource) {
@@ -72,13 +72,10 @@ public class JerseyTestServerFactory {
 
             @Override
             protected ClientFactory getClientFactory() {
-                return new ClientFactory() {
-                    @Override
-                    public Client create(ClientConfig clientConfig) {
-                        Client client = Client.create(clientConfig);
-                        client.addFilter(new LoggingFilter());
-                        return client;
-                    }
+                return clientConfig -> {
+                    Client client = Client.create(clientConfig);
+                    client.addFilter(new LoggingFilter());
+                    return client;
                 };
             }
 

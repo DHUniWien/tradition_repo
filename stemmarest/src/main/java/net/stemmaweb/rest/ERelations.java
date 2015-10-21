@@ -16,8 +16,10 @@ public enum ERelations implements RelationshipType {
     LEMMA_TEXT,     // to indicate word sequence
     HAS_END,        // between tradition part and END node
     HAS_WITNESS,    // links text witnesses to the tradition
-
+    HAS_STEMMA,     // this type is used to make a stemma tree (directed/undirected)
+    HAS_ARCHETYPE,  // used to point from the stemma node to its archetype
+    TRANSMITTED,    // links witnesses in the stemma to each other
+    
     // Undirected types
     RELATED,        // this type is used to show relationships between readings (undirected)
-    STEMMA          // this type is used to make a stemma tree (directed/undirected)
 }
