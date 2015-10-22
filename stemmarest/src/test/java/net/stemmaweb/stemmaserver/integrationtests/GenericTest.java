@@ -2,30 +2,25 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.lang.reflect.Array;
 import java.util.*;
 
-import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.istack.NotNull;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.internal.compiler.v2_0.ast.False;
 import org.neo4j.graphdb.*;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -527,7 +522,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .put(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
     }
 
@@ -756,8 +751,8 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
-        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+                .put(ClientResponse.class, relationship);
+        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
         try {
@@ -777,7 +772,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship2);
+                .put(ClientResponse.class, relationship2);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
@@ -800,7 +795,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship3);
+                .put(ClientResponse.class, relationship3);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
         /*
@@ -822,7 +817,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship4);
+                .put(ClientResponse.class, relationship4);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /*
@@ -843,7 +838,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship5);
+                .put(ClientResponse.class, relationship5);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     }
 
@@ -925,23 +920,19 @@ public class GenericTest {
                 "Expected readings now at same rank" );
         **/
 
-        response = jerseyTest
-                .resource()
-                .path("/tradition/recalculaterank/intradition/" + tradId + "/startnode/" + r463_2)
-                .get(ClientResponse.class);
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        Tradition tradition = new Tradition(tradId);
+        assertEquals(tradition.recalculateRank(Long.parseLong(r463_2)), true);
 
-        //TODO (sk_20150928): implement test!
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + r463_2)
+                .path("/reading/" + r463_2)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         long rank_r463_2 = response.getEntity(ReadingModel.class).getRank();
 
         response = jerseyTest
                 .resource()
-                .path("/reading/getreading/withreadingid/" + r463_4)
+                .path("/reading/" + r463_4)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         long rank_r463_4 = response.getEntity(ReadingModel.class).getRank();

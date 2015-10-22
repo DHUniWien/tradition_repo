@@ -572,14 +572,10 @@ public class Tradition {
      * Someone would typically use it after inserting a RELATION or a new Node into the graph,
      * where the startNode will be one of the RELATION-nodes or the new node itself.
      *
-     * @param tradId
+     * @nodeId
      * @return XML data
      */
-    @GET
-    @Path("recalculaterank/intradition/{tradId}/startnode/{nodeId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response recalculateRank(@PathParam("tradId") String tradId,
-                                    @PathParam("nodeId") Long nodeId) {
+      public boolean recalculateRank (Long nodeId) {
 
         Comparator<Node> rankComparator = (n1, n2) -> {
             int compVal = Long.valueOf((Long) n1.getProperty("rank"))
@@ -596,9 +592,6 @@ public class Tradition {
 
         try (Transaction tx = db.beginTx()) {
             Node startNode = db.getNodeById(nodeId);
-
-//    private void recalculateRanks(Node startNode, int startRank) {
-
 
             Iterable<Relationship> relationships = startNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
             for (Relationship relationship : relationships) {
@@ -619,19 +612,19 @@ public class Tradition {
                 if (relationships.iterator().hasNext() == true) {
                     for (Relationship relationship : relationships) {
                         Node otherNode = relationship.getOtherNode(currentNode);
-                        relatedNodeRank = Math.max(relatedNodeRank, (long) otherNode.getProperty("rank"));
+                        relatedNodeRank = Math.max(relatedNodeRank, (Long) otherNode.getProperty("rank"));
                     }
 
                     if (currentNodeRank != relatedNodeRank) {
                         // We have to update the current Node
-                        currentNode.setProperty("rank", Math.max(relatedNodeRank, (long) currentNode.getProperty("rank")));
-                        currentNodeRank = (long) currentNode.getProperty("rank");
+                        currentNode.setProperty("rank", Math.max(relatedNodeRank, (Long) currentNode.getProperty("rank")));
+                        currentNodeRank = (Long) currentNode.getProperty("rank");
 
                         // UPDATE nodes on RELATED vertices, if necessary
                         relationships = currentNode.getRelationships(ERelations.RELATED);
                         for (Relationship relationship : relationships) {
                             iterNode = relationship.getOtherNode(currentNode);
-                            if ((long) iterNode.getProperty("rank") < currentNodeRank) {
+                            if ((Long) iterNode.getProperty("rank") < currentNodeRank) {
                                 iterNode.setProperty("rank", currentNodeRank);
                                 nodesToProcess.add(iterNode);
                             }
@@ -660,11 +653,11 @@ public class Tradition {
             }
             tx.success();
         } catch (NotFoundException e) {
-            return Response.status(Status.NO_CONTENT).build();
+            return false; //Response.status(Status.NO_CONTENT).build();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.ok().build();
+        return true; // Response.ok().build();
     }
 }
 

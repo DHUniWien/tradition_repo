@@ -1,6 +1,8 @@
 package net.stemmaweb.model;
 
-import javax.annotation.Nonnull;
+//import javax.annotation.Nonnull;
+import checkers.nullness.quals.NonNull;
+
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.neo4j.graphdb.Node;
@@ -211,7 +213,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
     }
 
     @Override
-    public int compareTo(@Nonnull ReadingModel readingModel) {
+    public int compareTo(@NonNull ReadingModel readingModel) {
         Long compareRank = readingModel.getRank();
         return (int) (this.rank - compareRank);
     }

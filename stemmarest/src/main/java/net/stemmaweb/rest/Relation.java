@@ -104,7 +104,6 @@ public class Relation {
                             }
                         }
                     }
-//                    recalculateRanks(readingA);
                     tx.success();
                 } catch (Exception e) {
                     return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -151,7 +150,7 @@ public class Relation {
                         !relationshipModel.getType().equals("repetition")) {
                     return Response
                             .status(Status.CONFLICT)
-                            .entity("This relationship creation is not allowed. Merging the two related readings would result in a cyclic graph.")
+                            .entity("This relationship creation is not allowed, it would result in a cyclic graph.")
                             .build();
                 }
             } else if (relationshipModel.getType().equals("transposition")
