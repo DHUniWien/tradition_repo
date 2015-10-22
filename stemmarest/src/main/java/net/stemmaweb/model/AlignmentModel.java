@@ -2,11 +2,9 @@ package net.stemmaweb.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,13 +28,56 @@ public class AlignmentModel {
     private long length;
     private ArrayList<HashMap<String, Object>> alignment;
 
+    // Get an alignment table with no conflation based on relationship
     public AlignmentModel(Node traditionNode) {
+        this(traditionNode, new ArrayList<>());
+    }
+
+    // Get an alignment table where some of the related readings are conflated.
+    public AlignmentModel(Node traditionNode, ArrayList<String> conflateRelationships) {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {
             // First get the length, that's the easy part.
+            Node startNode = DatabaseService.getRelated(traditionNode, ERelations.COLLATION).get(0);
             Node endNode = DatabaseService.getRelated(traditionNode, ERelations.HAS_END).get(0);
             length = (long) endNode.getProperty("rank") - 1;
+
+            // Make a reference list of readings, and their conflation partners.
+            // We arbitrarily use the first reading we come to as the reference
+            // for all the readings that are equivalent to it.
+            HashMap<Node, Node> conflatedReadings = new HashMap<>();
+            if (conflateRelationships.size() > 0) {
+                PathExpander relationConflater = new PathExpander() {
+                    @Override
+                    public Iterable<Relationship> expand(Path path, BranchState branchState) {
+                        ArrayList<Relationship> relevantRelations = new ArrayList<>();
+                        for (Relationship rel : path.endNode().getRelationships(ERelations.RELATED))
+                            if (conflateRelationships.contains(rel.getProperty("type").toString()))
+                                relevantRelations.add(rel);
+                        return relevantRelations;
+                    }
+
+                    @Override
+                    public PathExpander reverse() {
+                        return null;
+                    }
+                };
+                db.traversalDescription().depthFirst()
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .evaluator(Evaluators.all())
+                        .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                        .nodes().forEach(x -> {
+                    if (!conflatedReadings.containsKey(x)) {
+                        // Traverse the readings for the given relationships.
+                        db.traversalDescription().depthFirst()
+                                .expand(relationConflater)
+                                .evaluator(Evaluators.all())
+                                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(x)
+                                .nodes().forEach(y -> conflatedReadings.put(x, y));
+                    }
+                });
+            }
 
             // Now make the alignment.
             alignment = new ArrayList<>();
@@ -44,25 +85,35 @@ public class AlignmentModel {
             // Get the witnesses in the database
             ArrayList<Node> witnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
             for (Node w : witnesses) {
-                // Get the REST Witness
-                String tradId = traditionNode.getProperty("id").toString();
-                String sigil = w.getProperty("sigil").toString();
-                Witness witness = new Witness(tradId, sigil);
-
                 // Make the object for the JSON witness row
+                String sigil = w.getProperty("sigil").toString();
                 HashMap<String, Object> witnessRow = new HashMap<>();
                 witnessRow.put("witness", sigil);
 
-                // Get the witness readings
-                ArrayList<ReadingModel> witReadings = (ArrayList<ReadingModel>) witness.getWitnessAsReadings().getEntity();
                 // Make the object for the JSON token array
+                // Get the witness readings
+                // Extract this from the graph DB, not from the REST API.
+                // Then it will be easier to use conflatedRelations.
+                // But then it will be extra-clear that some refactoring is needed.
                 ArrayList<HashMap<String, String>> tokens = new ArrayList<>();
-                for (ReadingModel r : witReadings) {
+                for (Node r : db.traversalDescription().depthFirst()
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .evaluator(getEvalForWitness(sigil))
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                        .traverse(startNode)
+                        .nodes()) {
+                    if (r.hasProperty("is_end"))
+                        continue;
+                    // Get the reading we should use
+                    if (conflatedReadings.containsKey(r))
+                        r = conflatedReadings.get(r);
+
                     // Make the reading token
                     HashMap<String, String> readingToken = new HashMap<>();
-                    readingToken.put("t", r.getText());
+                    readingToken.put("t", r.getProperty("text").toString());
+
                     // Put it at its proper rank
-                    int currRankIndex = r.getRank().intValue() - 1;
+                    long currRankIndex = (long) r.getProperty("rank") - 1;
                     for (int i = tokens.size(); i < currRankIndex; i++)
                         tokens.add(null);
                     tokens.add(readingToken);
@@ -90,4 +141,29 @@ public class AlignmentModel {
     public long getLength () {
         return length;
     }
+
+    private static Evaluator getEvalForWitness(final String WITNESS_ID) {
+        return path -> {
+
+            if (path.length() == 0) {
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            }
+
+            boolean includes = false;
+            boolean continues = false;
+
+            if (path.lastRelationship().hasProperty("witnesses")) {
+                String[] arr = (String[]) path.lastRelationship()
+                        .getProperty("witnesses");
+                for (String str : arr) {
+                    if (str.equals(WITNESS_ID)) {
+                        includes = true;
+                        continues = true;
+                    }
+                }
+            }
+            return Evaluation.of(includes, continues);
+        };
+    }
+
 }
