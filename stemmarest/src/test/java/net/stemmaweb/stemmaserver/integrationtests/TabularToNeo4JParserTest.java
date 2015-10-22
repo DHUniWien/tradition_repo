@@ -19,7 +19,6 @@ import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashSet;
 
 /**
  * Test tabular parsing of various forms.

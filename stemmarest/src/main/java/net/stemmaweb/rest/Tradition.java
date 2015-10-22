@@ -572,21 +572,20 @@ public class Tradition {
      * Someone would typically use it after inserting a RELATION or a new Node into the graph,
      * where the startNode will be one of the RELATION-nodes or the new node itself.
      *
-     * @nodeId
+     * @param nodeId Where to start the recalculation
      * @return XML data
      */
       public boolean recalculateRank (Long nodeId) {
 
         Comparator<Node> rankComparator = (n1, n2) -> {
-            int compVal = Long.valueOf((Long) n1.getProperty("rank"))
-                    .compareTo(Long.valueOf((Long) n2.getProperty("rank")));
+            int compVal = ((Long) n1.getProperty("rank"))
+                    .compareTo((Long) n2.getProperty("rank"));
             if (compVal == 0) {
-                compVal = Long.valueOf(n1.getId()).compareTo(Long.valueOf(n2.getId()));
+                compVal = Long.valueOf(n1.getId()).compareTo(n2.getId());
             }
             return compVal;
         };
         SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
-        ArrayList<Node> nodesToUpdate = new ArrayList<>();
 
         long startNodeRank = 0L;
 
@@ -609,7 +608,7 @@ public class Tradition {
                 long currentNodeRank = (long)currentNode.getProperty("rank");
                 long relatedNodeRank = 0L;
                 relationships = currentNode.getRelationships(ERelations.RELATED);
-                if (relationships.iterator().hasNext() == true) {
+                if (relationships.iterator().hasNext()) {
                     for (Relationship relationship : relationships) {
                         Node otherNode = relationship.getOtherNode(currentNode);
                         relatedNodeRank = Math.max(relatedNodeRank, (Long) otherNode.getProperty("rank"));
@@ -643,7 +642,6 @@ public class Tradition {
                     }
                 }
 
-                nodesToUpdate.add(currentNode);
                 if (nodesToProcess.isEmpty()) {
                     currentNode = null;
                 } else {

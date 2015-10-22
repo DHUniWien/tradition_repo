@@ -92,7 +92,11 @@ public class Root {
             return new TabularToNeo4JParser().parseExcel(uploadedInputStream, userId, name, filetype);
         // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
         // Otherwise assume GraphML, for backwards compatibility.
-        return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
+        if (filetype.equals("graphml"))
+            return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
+
+        // If we got this far, it was an unrecognized filetype.
+        return Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
     }
 
     /**

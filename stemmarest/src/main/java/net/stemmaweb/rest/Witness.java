@@ -1,8 +1,6 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Locale;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -204,30 +202,26 @@ public class Witness {
     }
 
     public static Evaluator getEvalForWitness(final String WITNESS_ID) {
-        Evaluator e = new Evaluator() {
-            @Override
-            public Evaluation evaluate(org.neo4j.graphdb.Path path) {
+        return path -> {
 
-                if (path.length() == 0) {
-                    return Evaluation.EXCLUDE_AND_CONTINUE;
-                }
+            if (path.length() == 0) {
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            }
 
-                boolean includes = false;
-                boolean continues = false;
+            boolean includes = false;
+            boolean continues = false;
 
-                if (path.lastRelationship().hasProperty("witnesses")) {
-                    String[] arr = (String[]) path.lastRelationship()
-                            .getProperty("witnesses");
-                    for (String str : arr) {
-                        if (str.equals(WITNESS_ID)) {
-                            includes = true;
-                            continues = true;
-                        }
+            if (path.lastRelationship().hasProperty("witnesses")) {
+                String[] arr = (String[]) path.lastRelationship()
+                        .getProperty("witnesses");
+                for (String str : arr) {
+                    if (str.equals(WITNESS_ID)) {
+                        includes = true;
+                        continues = true;
                     }
                 }
-                return Evaluation.of(includes, continues);
             }
+            return Evaluation.of(includes, continues);
         };
-        return e;
     }
 }

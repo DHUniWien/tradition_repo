@@ -39,7 +39,7 @@ public class RelationshipModel {
 
     /**
      * Creates a relationshipModel directly from a Relationship from Neo4J db
-     * @param rel
+     * @param rel - The relationship node to initialize from
      */
     public RelationshipModel(Relationship rel){
         target = rel.getStartNode().getId() + "";
