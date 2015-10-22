@@ -104,8 +104,7 @@ public class Neo4JToDotParser
         }
 
         // Here is where to generate pictures from the file for debugging.
-        // writePNGFromDotFile(filename,"upload/file");
-        // writeSVGFromDotFile(filename,"upload/file");
+        // writeFromDot(output, "svg");
 
         return Response.ok().entity(result).build();
     }
@@ -114,10 +113,10 @@ public class Neo4JToDotParser
      * Parses a Stemma of a tradition in a JSON string in DOT format
      * don't throw error far enough
      *
-     * @param tradId
-     * @param stemmaTitle
-     * @param singleLine
-     * @return
+     * @param tradId - the ID of the tradition in question
+     * @param stemmaTitle - the desired stemma
+     * @param singleLine - whether the result needs to omit linebreaks
+     * @return a Response with the result
      */
 
     public Response parseNeo4JStemma(String tradId, String stemmaTitle, Boolean singleLine)
@@ -182,8 +181,7 @@ public class Neo4JToDotParser
 
         String joinString = singleLine ? " " : "\n";
         String output = String.join(joinString, outputLines);
-        // writePNGFromDot(output,"upload/file");
-        writeSVGFromDot(output, "upload/file");
+        writeFromDot(output, "svg");
 
         return Response.ok(output).build();
     }
@@ -204,8 +202,8 @@ public class Neo4JToDotParser
      * Returns all the stemmata associated with a tradition, in a format
      * suitable for inclusion in an XML file.
      *
-     * @param tradId
-     * @return
+     * @param tradId - the ID of the tradition
+     * @return a string full of stemma dotfiles, one per line
      */
     public String getAllStemmataAsDot(String tradId) {
         ArrayList<String> stemmaList = new ArrayList<>();
@@ -278,28 +276,19 @@ public class Neo4JToDotParser
     }
 
 
-    private void writePNGFromDot(String dot, String outFile)
+    private File writeFromDot(String dot, String format)
     {
         GraphViz gv = new GraphViz();
         gv.add(dot);
-
-        String type = "png";
-
-        File out = new File(outFile + "." + type);   // Linux
-//	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
-        gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
-    }
-
-    private void writeSVGFromDot(String dot, String outFile)
-    {
-        GraphViz gv = new GraphViz();
-        gv.add(dot);
-
-        String type = "svg";
-
-        File out = new File(outFile + "." + type);   // Linux
-//	      File out = new File("c:/eclipse.ws/graphviz-java-api/out." + type);    // Windows
-        gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
+        File result;
+        try {
+            result = File.createTempFile("graph_", "." + format);
+        } catch (Exception e) {
+            System.out.println("Could not write " + format + " to temporary file");
+            return null;
+        }
+        gv.writeGraphToFile(gv.getGraph(gv.getDotSource(), format), result);
+        return result;
     }
 
 }

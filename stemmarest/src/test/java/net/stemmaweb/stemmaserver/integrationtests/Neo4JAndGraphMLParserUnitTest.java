@@ -31,7 +31,6 @@ import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluators;
@@ -157,16 +156,7 @@ public class Neo4JAndGraphMLParserUnitTest {
 			tx.success();
     	}
 	}
-	
-	/**
-	 * remove output file
-	 */
-	private void removeOutputFile(){
-		String filename = "upload/output.xml";
-		File file = new File(filename);
-		assertTrue(file.delete());
-	}
-	
+
 	/**
 	 * try to export a non existent tradition 
 	 */
@@ -183,7 +173,6 @@ public class Neo4JAndGraphMLParserUnitTest {
 	@Test
 	public void graphMLExportSuccessTest(){
 		
-		removeOutputFile();
 		File testfile = new File("src/TestFiles/testTradition.xml");
         String traditionId = null;
 		try
@@ -198,16 +187,12 @@ public class Neo4JAndGraphMLParserUnitTest {
 		}
 		assertNotNull(traditionId);
 		Response actualResponse = exportResource.parseNeo4J(traditionId);
-		
 		assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 		
-		String outputFile = "upload/output.xml";
-		File file = new File(outputFile);
-		
-		assertTrue(file.exists());
+		String xmlOutput = actualResponse.getEntity().toString();
 		try
 		{
-			actualResponse = importResource.parseGraphML(file.getPath(), "1", "Tradition");
+			actualResponse = importResource.parseGraphML(xmlOutput, "1", "Tradition");
 		}
 		catch(FileNotFoundException f)
 		{
@@ -460,15 +445,12 @@ public class Neo4JAndGraphMLParserUnitTest {
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
 
         // Export the GraphML
-        removeOutputFile();
         parseResponse = exportResource.parseNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), parseResponse.getStatus());
-        File outputFile = new File("upload/output.xml");
-        assertTrue(outputFile.exists());
 
         // Re-import and test the result
         try {
-            parseResponse = importResource.parseGraphML(outputFile.getPath(), "1", "Tradition 2");
+            parseResponse = importResource.parseGraphML(parseResponse.getEntity().toString(), "1", "Tradition 2");
         } catch(FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);

@@ -494,7 +494,7 @@ public class Tradition {
      * @return XML data
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_XML)
     public Response getTradition() {
         Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
         return parser.parseNeo4J(traditionId);

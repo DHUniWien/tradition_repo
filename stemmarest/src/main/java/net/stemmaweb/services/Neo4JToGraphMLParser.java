@@ -8,7 +8,6 @@ import java.util.HashMap;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -47,9 +46,7 @@ public class Neo4JToGraphMLParser {
         int edgeCountGraph2 = 0;
         int nodeCountGraph2 = 0;
 
-        String filename = "upload/output.xml";
-
-        Node traditionNode = null;
+        Node traditionNode;
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
         if(traditionStartNode == null) {
             return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
@@ -63,10 +60,9 @@ public class Neo4JToGraphMLParser {
             tx.success();
         }
 
+        File file;
         try (Transaction tx = db.beginTx()) {
-            File file = new File(filename);
-            //file.delete();
-            file.createNewFile();
+            file = File.createTempFile("output", ".xml");
             OutputStream out = new FileOutputStream(file);
 
             XMLOutputFactory output = XMLOutputFactory.newInstance();
@@ -506,7 +502,7 @@ public class Neo4JToGraphMLParser {
 
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-            Document doc = docBuilder.parse(filename);
+            Document doc = docBuilder.parse(file.getAbsolutePath());
      
             // Get the staff element by tag name directly
             org.w3c.dom.Node graph0 = doc.getElementsByTagName("graph").item(0);
@@ -525,10 +521,11 @@ public class Neo4JToGraphMLParser {
             nodesCount = attr.getNamedItem("parse.nodes");
             nodesCount.setTextContent(nodeCountGraph2 + "");
 
+            // TODO What is the point of this transformer call?
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             DOMSource source = new DOMSource(doc);
-            StreamResult resultFile = new StreamResult(new File(filename));
+            StreamResult resultFile = new StreamResult(file);
             transformer.transform(source, resultFile);
             tx.success();
         } catch(Exception e) {
@@ -540,6 +537,6 @@ public class Neo4JToGraphMLParser {
                     .build();
         }
 
-        return Response.ok(filename, MediaType.APPLICATION_XML).build();
+        return Response.ok(file.toString(), MediaType.APPLICATION_XML).build();
     }
 }
