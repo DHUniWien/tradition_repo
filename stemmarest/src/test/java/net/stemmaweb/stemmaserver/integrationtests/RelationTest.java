@@ -415,7 +415,6 @@ public class RelationTest {
     /**
      * Test that cross relations may not be made
      */
-    @Ignore     // TODO until node re-ranking works
     @Test
     public void createRelationshipTestWithCrossRelationConstraint() {
         RelationshipModel relationship = new RelationshipModel();
@@ -436,6 +435,9 @@ public class RelationTest {
                 .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
+        Tradition tradition = new Tradition(tradId);
+        assertEquals(tradition.recalculateRank(20L), true);
+
         relationship.setSource("21");
         relationship.setTarget("28");
         relationship.setType("grammatical");
@@ -453,7 +455,7 @@ public class RelationTest {
 
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
-        assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
+        assertEquals("This relationship creation is not allowed, it would result in a cyclic graph.",
                 actualResponse.getEntity(String.class));
 
         try (Transaction tx = db.beginTx()) {
