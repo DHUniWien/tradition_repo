@@ -7,6 +7,7 @@ import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.services.TabularToNeo4JParser;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -64,6 +65,7 @@ public class Root {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     public Response importGraphMl(@FormDataParam("name") String name,
+                                  @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
@@ -79,6 +81,17 @@ public class Root {
                     .build();
         }
 
+        if (filetype.equals("csv"))
+            // Pass it off to the CSV reader
+            return new TabularToNeo4JParser().parseCSV(uploadedInputStream, userId, name, ',');
+        if (filetype.equals("tsv"))
+            // Pass it off to the CSV reader with tab separators
+            return new TabularToNeo4JParser().parseCSV(uploadedInputStream, userId, name, '\t');
+        if (filetype.startsWith("xls"))
+            // Pass it off to the Excel reader
+            return new TabularToNeo4JParser().parseExcel(uploadedInputStream, userId, name, filetype);
+        // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
+        // Otherwise assume GraphML, for backwards compatibility.
         return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
     }
 

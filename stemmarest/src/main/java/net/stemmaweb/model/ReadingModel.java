@@ -1,8 +1,6 @@
 package net.stemmaweb.model;
 
-//import javax.annotation.Nonnull;
-import checkers.nullness.quals.NonNull;
-
+import org.checkerframework.checker.nullness.qual.NonNull;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.neo4j.graphdb.Node;

@@ -652,8 +652,6 @@ public class Tradition {
                 }
             }
             tx.success();
-        } catch (NotFoundException e) {
-            return false; //Response.status(Status.NO_CONTENT).build();
         } catch (Exception e) {
             return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }

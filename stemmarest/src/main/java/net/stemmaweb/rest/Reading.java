@@ -23,6 +23,7 @@ import net.stemmaweb.services.RelationshipService;
 
 import org.neo4j.cypher.EntityNotFoundException;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
