@@ -42,7 +42,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
  * @author PSE FS 2015 Team2
  *
  */
-public class Neo4JAndGraphMLParserUnitTest {
+public class GraphMLInputOutputTest {
 
     private GraphDatabaseService db;
 

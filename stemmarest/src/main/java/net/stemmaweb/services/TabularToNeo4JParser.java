@@ -1,6 +1,6 @@
 package net.stemmaweb.services;
 
-import au.com.bytecode.opencsv.CSVReader;
+import com.opencsv.CSVReader;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;

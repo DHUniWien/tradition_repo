@@ -567,6 +567,20 @@ public class Tradition {
         return parser.parseNeo4J(traditionId);
     }
 
+    @GET
+    @Path("/json")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getJson() {
+        return new Neo4JToTabularParser(db).exportAsJSON(traditionId);
+    }
+
+
+    @GET
+    @Path("/csv")
+    @Produces(MediaType.TEXT_XML)
+    public Response get() {
+        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, ',');
+    }
     /**
      * Recalculate ranks starting from 'startNode'
      * Someone would typically use it after inserting a RELATION or a new Node into the graph,

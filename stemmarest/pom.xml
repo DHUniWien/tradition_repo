@@ -180,6 +180,11 @@
             <artifactId>checker-qual</artifactId>
             <version>1.9.6</version>
         </dependency>
+        <dependency>
+            <groupId>com.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>3.4</version>
+        </dependency>
     </dependencies>
     <properties>
         <powermock.version>1.6.1</powermock.version>

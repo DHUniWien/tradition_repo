@@ -1,29 +1,36 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.TabularToNeo4JParser;
+import net.stemmaweb.services.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Test tabular parsing of various forms.
  */
-public class TabularToNeo4JParserTest extends TestCase {
+public class TabularInputOutputTest extends TestCase {
 
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
@@ -135,6 +142,50 @@ public class TabularToNeo4JParserTest extends TestCase {
                 foundReading = true;
         assertTrue(foundReading);
     }
+
+    // testOutputJSON
+    public void testJSONExport() throws Exception {
+        // Set up some data
+        GraphMLToNeo4JParser graphImporter = new GraphMLToNeo4JParser();
+        String traditionId = null;
+        try
+        {
+            Response response = graphImporter.parseGraphML("src/TestFiles/testTradition.xml", "1", "Tradition");
+            traditionId = Util.getValueFromJson(response, "tradId");
+        }
+        catch(FileNotFoundException f)
+        {
+            // this error should not occur
+            assertTrue(false);
+        }
+        assertNotNull(traditionId);
+
+        // Get it back out
+        ClientResponse result = jerseyTest
+                .resource()
+                .path("/tradition/" + traditionId + "/json")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        // Get the JSON out
+        JSONObject table = result.getEntity(JSONObject.class);
+        assertTrue(table.has("alignment"));
+        assertTrue(table.has("length"));
+        assertEquals(18, table.getInt("length"));
+        JSONArray resultAlignment = table.getJSONArray("alignment");
+        int i;
+        for (i = 0; i < resultAlignment.length(); i++) {
+            JSONObject resultWitness = resultAlignment.getJSONObject(0);
+            assertTrue(resultWitness.has("witness"));
+            assertTrue(resultWitness.has("tokens"));
+            assertEquals(18, resultWitness.getJSONArray("tokens").length());
+        }
+        assertEquals(3, i);
+    }
+
+    // testOutputCSV
+
+    // testOutputExcel
 
     public void tearDown() throws Exception {
         db.shutdown();
