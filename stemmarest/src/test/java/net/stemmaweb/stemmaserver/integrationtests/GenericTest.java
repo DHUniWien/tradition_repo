@@ -920,8 +920,7 @@ public class GenericTest {
                 "Expected readings now at same rank" );
         **/
 
-        Tradition tradition = new Tradition(tradId);
-        assertEquals(tradition.recalculateRank(Long.parseLong(r463_2)), true);
+        assertEquals(new Tradition(tradId).recalculateRank(Long.parseLong(r463_2)), true);
 
         response = jerseyTest
                 .resource()
