@@ -22,23 +22,27 @@ public class Neo4JToTabularParser {
         this.db = db;
     }
 
-    public Response exportAsJSON(String tradId) {
+    public Response exportAsJSON(String tradId, ArrayList<String> conflate) {
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if(traditionNode==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         // Get the model.
-        AlignmentModel asJson = new AlignmentModel(traditionNode);
+        AlignmentModel asJson = new AlignmentModel(traditionNode, conflate);
         return Response.ok(asJson, MediaType.APPLICATION_JSON_TYPE).build();
     }
 
-    public Response exportAsCSV(String tradId, char separator) {
+    public Response exportAsJSON(String tradId) {
+        return exportAsJSON(tradId, new ArrayList<>());
+    }
+
+    public Response exportAsCSV(String tradId, char separator, ArrayList<String> conflate) {
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if(traditionNode==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         // Get the model.
-        AlignmentModel asJson = new AlignmentModel(traditionNode);
+        AlignmentModel asJson = new AlignmentModel(traditionNode, conflate);
 
         // Write the CSV to a string that we can return.
         StringWriter sw = new StringWriter();
@@ -64,6 +68,10 @@ public class Neo4JToTabularParser {
             return Response.serverError().entity(e.getMessage()).build();
         }
         return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
+    }
+
+    public Response exportAsCSV(String tradId, char separator) {
+        return exportAsCSV(tradId, separator, new ArrayList<>());
     }
 
 }

@@ -22,7 +22,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -181,6 +181,54 @@ public class TabularInputOutputTest extends TestCase {
             assertEquals(18, resultWitness.getJSONArray("tokens").length());
         }
         assertEquals(3, i);
+    }
+
+    public void testConflatedJSONExport () throws Exception {
+        GraphMLToNeo4JParser graphImporter = new GraphMLToNeo4JParser();
+        String traditionId = null;
+        try
+        {
+            Response response = graphImporter.parseGraphML("src/TestFiles/globalrel_test.xml", "1", "Tradition");
+            traditionId = Util.getValueFromJson(response, "tradId");
+        }
+        catch(FileNotFoundException f)
+        {
+            // this error should not occur
+            assertTrue(false);
+        }
+        assertNotNull(traditionId);
+        // Get it back out
+        ArrayList<String> toConflate = new ArrayList<>();
+        toConflate.add("collated");
+        ClientResponse result = jerseyTest
+                .resource()
+                .path("/tradition/" + traditionId + "/json")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, toConflate);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        // Get the JSON out
+        JSONObject table = result.getEntity(JSONObject.class);
+        assertTrue(table.has("alignment"));
+        assertTrue(table.has("length"));
+        assertEquals(10, table.getInt("length"));
+        // Every reading at rank 6 should be identical
+        JSONArray witnesses = table.getJSONArray("alignment");
+        HashSet<String> readingsAt6 = new HashSet<>();
+        for (int i = 0; i < witnesses.length(); i++) {
+            Object r6 = witnesses.getJSONObject(i).getJSONArray("tokens").get(5);
+            if (!r6.toString().equals("null"))
+                readingsAt6.add(((JSONObject) r6).getString("t"));
+        }
+        assertEquals(1, readingsAt6.size());
+
+        // Every reading at rank 9 should be identical
+        HashSet<String> readingsAt9 = new HashSet<>();
+        for (int i = 0; i < witnesses.length(); i++) {
+            Object r9 = witnesses.getJSONObject(i).getJSONArray("tokens").get(8);
+            if (!r9.toString().equals("null"))
+                readingsAt9.add(((JSONObject) r9).getString("t"));
+        }
+        assertEquals(1, readingsAt9.size());
     }
 
     // testOutputCSV

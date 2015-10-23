@@ -69,12 +69,14 @@ public class AlignmentModel {
                         .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
                         .nodes().forEach(x -> {
                     if (!conflatedReadings.containsKey(x)) {
+                        conflatedReadings.put(x, x);
                         // Traverse the readings for the given relationships.
-                        db.traversalDescription().depthFirst()
+                        ResourceIterable<Node> equivalent = db.traversalDescription().depthFirst()
                                 .expand(relationConflater)
                                 .evaluator(Evaluators.all())
                                 .uniqueness(Uniqueness.NODE_GLOBAL).traverse(x)
-                                .nodes().forEach(y -> conflatedReadings.put(x, y));
+                                .nodes();
+                                equivalent.forEach(y -> conflatedReadings.put(y, x));
                     }
                 });
             }

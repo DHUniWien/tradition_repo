@@ -575,12 +575,37 @@ public class Tradition {
     }
 
 
+    // TODO rethink this API.
+    @POST
+    @Path("/json")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getJson(ArrayList<String> conflatedRelationships) {
+        return new Neo4JToTabularParser(db).exportAsJSON(traditionId, conflatedRelationships);
+    }
+
     @GET
     @Path("/csv")
-    @Produces(MediaType.TEXT_XML)
-    public Response get() {
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getCsv() {
         return new Neo4JToTabularParser(db).exportAsCSV(traditionId, ',');
     }
+
+    @GET
+    @Path("/tsv")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getTsv() {
+        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, '\t');
+    }
+
+    @POST
+    @Path("/tsv")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getTsv(ArrayList<String> conflatedRelationships) {
+        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, '\t', conflatedRelationships);
+    }
+
+
+
     /**
      * Recalculate ranks starting from 'startNode'
      * Someone would typically use it after inserting a RELATION or a new Node into the graph,
