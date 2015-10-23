@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * A class for writing a graph out to various forms of table: JSON, CSV, Excel, etc.
@@ -22,7 +23,7 @@ public class Neo4JToTabularParser {
         this.db = db;
     }
 
-    public Response exportAsJSON(String tradId, ArrayList<String> conflate) {
+    public Response exportAsJSON(String tradId, List<String> conflate) {
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if(traditionNode==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
@@ -36,7 +37,7 @@ public class Neo4JToTabularParser {
         return exportAsJSON(tradId, new ArrayList<>());
     }
 
-    public Response exportAsCSV(String tradId, char separator, ArrayList<String> conflate) {
+    public Response exportAsCSV(String tradId, char separator, List<String> conflate) {
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if(traditionNode==null) {
             return Response.status(Response.Status.NOT_FOUND).build();

@@ -9,6 +9,7 @@ import org.neo4j.graphdb.traversal.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * JSON-aware data model for exporting an alignment in tabular format.
@@ -34,7 +35,7 @@ public class AlignmentModel {
     }
 
     // Get an alignment table where some of the related readings are conflated.
-    public AlignmentModel(Node traditionNode, ArrayList<String> conflateRelationships) {
+    public AlignmentModel(Node traditionNode, List<String> conflateRelationships) {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {

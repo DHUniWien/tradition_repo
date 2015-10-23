@@ -198,13 +198,13 @@ public class TabularInputOutputTest extends TestCase {
         }
         assertNotNull(traditionId);
         // Get it back out
-        ArrayList<String> toConflate = new ArrayList<>();
-        toConflate.add("collated");
         ClientResponse result = jerseyTest
                 .resource()
                 .path("/tradition/" + traditionId + "/json")
+                .queryParam("conflate", "collated")
+                .queryParam("conflate", "spelling")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, toConflate);
+                .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Get the JSON out
         JSONObject table = result.getEntity(JSONObject.class);

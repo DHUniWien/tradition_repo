@@ -489,18 +489,6 @@ public class Tradition {
     }
 
     /**
-     * Returns GraphML file from specified tradition owned by user
-     *
-     * @return XML data
-     */
-    @GET
-    @Produces(MediaType.APPLICATION_XML)
-    public Response getTradition() {
-        Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
-        return parser.parseNeo4J(traditionId);
-    }
-
-    /**
      * Removes a complete tradition
      *
      * @return http response
@@ -551,14 +539,31 @@ public class Tradition {
         return Response.status(Response.Status.OK).build();
     }
 
+    /***************************
+     * Tradition export API
+     *
+     */
+
     /**
-     * Returns DOT file from specified tradition owned by user
+     * Returns GraphML file from specified tradition owned by user
      *
      * @return XML data
      */
     @GET
+    @Produces(MediaType.APPLICATION_XML)
+    public Response getTradition() {
+        Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
+        return parser.parseNeo4J(traditionId);
+    }
+
+    /**
+     * Returns DOT file from specified tradition owned by user
+     *
+     * @return Plaintext dot format
+     */
+    @GET
     @Path("/dot")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
     public Response getDot() {
         if(DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
@@ -567,41 +572,43 @@ public class Tradition {
         return parser.parseNeo4J(traditionId);
     }
 
+    /**
+     * Returns a JSON representation of a tradition.
+     *
+     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @return the JSON alignment
+     */
     @GET
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getJson() {
-        return new Neo4JToTabularParser(db).exportAsJSON(traditionId);
+    public Response getJson(@QueryParam("conflate") List<String> toConflate) {
+        return new Neo4JToTabularParser(db).exportAsJSON(traditionId, toConflate);
     }
 
-
-    // TODO rethink this API.
-    @POST
-    @Path("/json")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getJson(ArrayList<String> conflatedRelationships) {
-        return new Neo4JToTabularParser(db).exportAsJSON(traditionId, conflatedRelationships);
-    }
-
+    /**
+     * Returns a CSV representation of a tradition.
+     *
+     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @return the CSV alignment as plaintext
+     */
     @GET
     @Path("/csv")
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getCsv() {
-        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, ',');
+    public Response getCsv(@QueryParam("conflate") List<String> toConflate) {
+        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, ',', toConflate);
     }
 
+    /**
+     * Returns a tab-separated representation of a tradition.
+     *
+     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @return the TSV alignment as plaintext
+     */
     @GET
     @Path("/tsv")
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getTsv() {
-        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, '\t');
-    }
-
-    @POST
-    @Path("/tsv")
-    @Produces(MediaType.TEXT_PLAIN)
-    public Response getTsv(ArrayList<String> conflatedRelationships) {
-        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, '\t', conflatedRelationships);
+    public Response getTsv(@QueryParam("conflate") List<String> toConflate) {
+        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, '\t', toConflate);
     }
 
 
