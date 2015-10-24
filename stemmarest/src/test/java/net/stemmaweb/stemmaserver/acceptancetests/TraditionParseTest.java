@@ -126,8 +126,7 @@ public class TraditionParseTest {
         // we parsed is reflected in the DB.
         for (TraditionModel tm : jerseyTest.resource()
                 .path("/traditions")
-                .get(new GenericType<List<TraditionModel>>() {
-                })) {
+                .get(new GenericType<List<TraditionModel>>() {})) {
 
             // Name
             System.out.println("Checking " + tm.getName());
@@ -169,6 +168,7 @@ public class TraditionParseTest {
         }
     }
 
+    @SuppressWarnings("unused")
     private void toSVG(String traditionID, String outFile)
     {
         Neo4JToDotParser parser = new Neo4JToDotParser(db);

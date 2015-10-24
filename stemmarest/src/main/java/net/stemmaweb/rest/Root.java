@@ -67,6 +67,7 @@ public class Root {
     public Response importGraphMl(@FormDataParam("name") String name,
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
+                                  @FormDataParam("direction") String direction,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("file") InputStream uploadedInputStream,

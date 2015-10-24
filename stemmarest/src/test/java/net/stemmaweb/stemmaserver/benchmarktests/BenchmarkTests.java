@@ -69,7 +69,7 @@ public abstract class BenchmarkTests {
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("1");
 
         ClientResponse ownerChangeResponse = jerseyTest.resource()
@@ -81,7 +81,7 @@ public abstract class BenchmarkTests {
         textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("0");
 
         ownerChangeResponse = jerseyTest.resource()

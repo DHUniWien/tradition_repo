@@ -71,6 +71,7 @@ public class GraphMLToNeo4JParser {
         // Some variables to collect information
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
+        HashMap<String, String> keytypes = new HashMap<>(); // to store data key value types
         HashMap<String, Boolean> witnesses = new HashMap<>();  // to store witnesses found
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
@@ -222,7 +223,9 @@ public class GraphMLToNeo4JParser {
                             case "key":
                                 String key = reader.getAttributeValue("", "id");
                                 String value = reader.getAttributeValue("", "attr.name");
+                                String type = reader.getAttributeValue("", "attr.type");
                                 keymap.put(key, value);
+                                keytypes.put(value, type);
                                 break;
                             case "graph":
                                 currentGraph = reader.getAttributeValue("", "id");

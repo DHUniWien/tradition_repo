@@ -447,6 +447,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON)
     public Response changeTraditionMetadata(TraditionModel tradition) {
 
+        // Check whether the user in the passed model exists
         if (!DatabaseService.userExists(tradition.getOwnerId(), db)) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Error: A user with this id does not exist")
@@ -454,33 +455,29 @@ public class Tradition {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (traditionId:TRADITION {id:'" + traditionId
-                    + "'}) return traditionId");
-            Iterator<Node> nodes = result.columnAs("traditionId");
-
-            if (nodes.hasNext()) {
-                // Remove the old ownership
-                String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + traditionId + "'}) "
-                        + "MATCH tradition<-[r:OWNS_TRADITION]-(:USER) DELETE r";
-                result = db.execute(removeRelationQuery);
-                System.out.println(result.toString());
-
-                // Add the new ownership
-                String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId()
-                        + "'}) " + "MATCH(tradition: TRADITION {id:'" + traditionId + "'}) "
-                        + "SET tradition.name = '" + tradition.getName() + "' "
-                        + "SET tradition.public = '" + tradition.getIsPublic() + "' "
-                        + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-                result = db.execute(createNewRelationQuery);
-                System.out.println(result.toString());
-
-            } else {
-                // Tradition not found
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
+            if( traditionNode == null ) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity("Tradition not found")
                         .build();
             }
 
+            Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwnerId());
+            Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
+            if(!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwnerId())) {
+                // Remove the old ownership
+                oldOwnership.delete();
+
+                // Add the new ownership
+                newUser.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
+            }
+            // Now set the other properties that were passed
+            // TODO: this should be more...automatic.
+            traditionNode.setProperty("name", tradition.getName());
+            traditionNode.setProperty("is_public", tradition.getIsPublic());
+            traditionNode.setProperty("language", tradition.getLanguage());
+            traditionNode.setProperty("direction", tradition.getDirection());
+            traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
             tx.success();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
