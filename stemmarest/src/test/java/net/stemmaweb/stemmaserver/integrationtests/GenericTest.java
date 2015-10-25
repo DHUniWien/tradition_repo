@@ -14,7 +14,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -44,7 +44,7 @@ public class GenericTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
 
     @Before
     public void setUp() throws Exception {
@@ -53,7 +53,7 @@ public class GenericTest {
                 .newImpermanentDatabase())
                 .getDatabase();
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
         Root webResource = new Root();
 
         /*

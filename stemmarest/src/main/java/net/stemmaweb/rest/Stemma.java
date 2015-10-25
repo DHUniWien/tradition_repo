@@ -10,9 +10,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.services.DotToNeo4JParser;
+import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.Neo4JToDotParser;
+import net.stemmaweb.exporter.DotExporter;
 
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
@@ -45,14 +45,14 @@ public class Stemma {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getStemma() {
 
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        DotExporter parser = new DotExporter(db);
         return parser.parseNeo4JStemma(tradId, name);
     }
 
-    @POST  // a replacement stemma TODO test
+    @POST  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
     public Response replaceStemma(String dot) {
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        DotParser parser = new DotParser(db);
         // Wrap this entire thing in a transaction so that we can roll back
         // the deletion if the replacement import fails.
         try (Transaction tx = db.beginTx()) {

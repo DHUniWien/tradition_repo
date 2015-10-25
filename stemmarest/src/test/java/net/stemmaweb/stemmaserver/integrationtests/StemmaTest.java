@@ -15,9 +15,9 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.DotToNeo4JParser;
+import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -42,7 +42,7 @@ public class StemmaTest {
     private String tradId;
 
     private GraphDatabaseService db;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
 
     /*
      * JerseyTest is the test environment to Test api calls it provides a
@@ -55,7 +55,7 @@ public class StemmaTest {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
 
 		File testfile = new File("src/TestFiles/testTradition.xml");
 
@@ -434,7 +434,7 @@ public class StemmaTest {
         // Add two stemmata and check the node count
         String stemmaCM = null;
         String stemmaTF = null;
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        DotParser parser = new DotParser(db);
         try {
             byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
             stemmaCM = new String(encoded, Charset.forName("utf-8"));

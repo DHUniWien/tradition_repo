@@ -8,10 +8,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import net.stemmaweb.exporter.DotExporter;
+import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
@@ -62,7 +66,7 @@ public class Tradition {
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response newStemma(String dot) {
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        DotParser parser = new DotParser(db);
         return parser.importStemmaFromDot(dot, traditionId);
     }
 
@@ -117,7 +121,7 @@ public class Tradition {
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        DotExporter parser = new DotExporter(db);
         ArrayList<String> stemmataList = new ArrayList<>();
         stemmata.forEach( stemma -> {
                         Response localResp = parser.parseNeo4JStemma(traditionId, stemma);
@@ -550,7 +554,7 @@ public class Tradition {
     @GET
     @Produces(MediaType.APPLICATION_XML)
     public Response getTradition() {
-        Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
+        GraphMLExporter parser = new GraphMLExporter();
         return parser.parseNeo4J(traditionId);
     }
 
@@ -566,7 +570,7 @@ public class Tradition {
         if(DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        DotExporter parser = new DotExporter(db);
         return parser.parseNeo4J(traditionId);
     }
 
@@ -580,7 +584,7 @@ public class Tradition {
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getJson(@QueryParam("conflate") List<String> toConflate) {
-        return new Neo4JToTabularParser(db).exportAsJSON(traditionId, toConflate);
+        return new TabularExporter(db).exportAsJSON(traditionId, toConflate);
     }
 
     /**
@@ -593,7 +597,7 @@ public class Tradition {
     @Path("/csv")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getCsv(@QueryParam("conflate") List<String> toConflate) {
-        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, ',', toConflate);
+        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate);
     }
 
     /**
@@ -606,7 +610,7 @@ public class Tradition {
     @Path("/tsv")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getTsv(@QueryParam("conflate") List<String> toConflate) {
-        return new Neo4JToTabularParser(db).exportAsCSV(traditionId, '\t', toConflate);
+        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate);
     }
 
 

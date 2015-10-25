@@ -18,7 +18,7 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -71,7 +71,7 @@ public class ReadingTest {
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+        GraphMLParser importResource = new GraphMLParser();
 
 		File testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         /*

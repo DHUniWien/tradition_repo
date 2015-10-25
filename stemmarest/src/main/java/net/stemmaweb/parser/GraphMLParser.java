@@ -1,4 +1,4 @@
-package net.stemmaweb.services;
+package net.stemmaweb.parser;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +15,7 @@ import javax.xml.stream.XMLStreamReader;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 
 /**
@@ -22,7 +23,7 @@ import org.neo4j.graphdb.*;
  * 
  * @author PSE FS 2015 Team2
  */
-public class GraphMLToNeo4JParser {
+public class GraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -268,7 +269,7 @@ public class GraphMLToNeo4JParser {
         String[] graphs = stemmata.split("\n");
 
         for(String graph : graphs) {
-            DotToNeo4JParser parser = new DotToNeo4JParser(db);
+            DotParser parser = new DotParser(db);
             parser.importStemmaFromDot(graph, tradId);
         }
 

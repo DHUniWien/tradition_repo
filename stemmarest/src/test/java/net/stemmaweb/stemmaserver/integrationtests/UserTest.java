@@ -1,8 +1,10 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -71,11 +73,9 @@ public class UserTest {
     @Test
     public void createUserTest(){
 
-        Result result;
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (userId:USER {id:'1337'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-            assertFalse(nodes.hasNext());
+            Node notaUser = db.findNode(Nodes.USER, "id", "1337");
+            assertTrue(notaUser == null);
             tx.success();
         }
 
@@ -85,13 +85,12 @@ public class UserTest {
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 returnJSON.getStatus());
 
-
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (userId:USER {id:'1337'}) return userId");
-            Iterator<Node> nodes = result.columnAs("userId");
-            assertTrue(nodes.hasNext());
-            tx.success();
-        }
+        // Now check the list of users and make sure that the new user is there.
+        List<UserModel> allUsers = jerseyTest.resource().path("/users")
+                .type(MediaType.APPLICATION_JSON).get(new GenericType<List<UserModel>>() {});
+        assertEquals(1, allUsers.size());
+        Optional<UserModel> newUser = allUsers.stream().filter(x -> x.getId().equals("1337")).findFirst();
+        assertTrue(newUser.isPresent());
     }
 
 

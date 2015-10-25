@@ -1,4 +1,4 @@
-package net.stemmaweb.services;
+package net.stemmaweb.exporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -15,6 +15,7 @@ import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -24,13 +25,13 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * 
  * @author PSE FS 2015 Team2
  */
-public class Neo4JToDotParser
+public class DotExporter
 {
     private GraphDatabaseService db;
 
     private OutputStream out = null;
 
-    public Neo4JToDotParser(GraphDatabaseService db){
+    public DotExporter(GraphDatabaseService db){
         this.db = db;
     }
 

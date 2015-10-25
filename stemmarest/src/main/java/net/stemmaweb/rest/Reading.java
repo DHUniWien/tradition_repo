@@ -115,7 +115,6 @@ public class Reading {
      *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
      *         with a detailed message else
      */
-    // TODO consider moving this to Tradition or Root
     @PUT
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)

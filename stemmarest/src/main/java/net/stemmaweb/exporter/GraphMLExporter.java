@@ -1,4 +1,4 @@
-package net.stemmaweb.services;
+package net.stemmaweb.exporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,6 +20,8 @@ import javax.xml.transform.stream.StreamResult;
 import net.stemmaweb.rest.ERelations;
 
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -35,7 +37,7 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  * 
  * @author PSE FS 2015 Team2
  */
-public class Neo4JToGraphMLParser {
+public class GraphMLExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -367,7 +369,7 @@ public class Neo4JToGraphMLParser {
             writer.writeStartElement("data");
             writer.writeAttribute("key", "dg3");
 
-            Neo4JToDotParser parser = new Neo4JToDotParser(db);
+            DotExporter parser = new DotExporter(db);
 
             writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
             writer.writeEndElement();

@@ -20,7 +20,6 @@ import org.neo4j.graphdb.Transaction;
 @JsonInclude(Include.NON_NULL)
 public class ReadingModel implements Comparable<ReadingModel> {
 
-    // TODO change these to the correct data type!
     private Boolean grammar_invalid; // dn0
     private String id;              // dn1
     private Boolean is_common = false;       // dn2

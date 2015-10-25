@@ -1,8 +1,9 @@
-package net.stemmaweb.services;
+package net.stemmaweb.parser;
 
 import com.opencsv.CSVReader;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
@@ -19,7 +20,7 @@ import java.util.*;
  * Reads a variety of tabular formats (TSV, CSV, XLS, XLSX) and parses the data
  * into a tradition.
  */
-public class TabularToNeo4JParser {
+public class TabularParser {
     private GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 
     /**

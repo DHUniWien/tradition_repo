@@ -1,7 +1,8 @@
-package net.stemmaweb.services;
+package net.stemmaweb.exporter;
 
 import com.opencsv.CSVWriter;
 import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 
@@ -16,10 +17,10 @@ import java.util.List;
 /**
  * A class for writing a graph out to various forms of table: JSON, CSV, Excel, etc.
  */
-public class Neo4JToTabularParser {
+public class TabularExporter {
 
     private GraphDatabaseService db;
-    public Neo4JToTabularParser(GraphDatabaseService db){
+    public TabularExporter(GraphDatabaseService db){
         this.db = db;
     }
 

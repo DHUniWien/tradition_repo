@@ -15,7 +15,7 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,7 +49,7 @@ public abstract class BenchmarkTests {
      * so all jerseyTest related objects need to be static.
      */
     static Root webResource;
-    static GraphMLToNeo4JParser importResource;
+    static GraphMLParser importResource;
 
     static File testfile;
 

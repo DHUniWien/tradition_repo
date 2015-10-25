@@ -12,7 +12,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import org.junit.After;
 import org.junit.Before;
@@ -57,7 +57,7 @@ public class TranspositionTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
 
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+        GraphMLParser importResource = new GraphMLParser();
 		File testfile = new File("src/TestFiles/testTradition.xml");
 
 

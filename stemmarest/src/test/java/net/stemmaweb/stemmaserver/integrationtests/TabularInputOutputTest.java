@@ -5,6 +5,8 @@ import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -34,7 +36,7 @@ public class TabularInputOutputTest extends TestCase {
 
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
-    private TabularToNeo4JParser importResource;
+    private TabularParser importResource;
 
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
@@ -50,7 +52,7 @@ public class TabularInputOutputTest extends TestCase {
             tx.success();
         }
 
-        importResource = new TabularToNeo4JParser();
+        importResource = new TabularParser();
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
@@ -146,7 +148,7 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() throws Exception {
         // Set up some data
-        GraphMLToNeo4JParser graphImporter = new GraphMLToNeo4JParser();
+        GraphMLParser graphImporter = new GraphMLParser();
         String traditionId = null;
         try
         {
@@ -184,7 +186,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testConflatedJSONExport () throws Exception {
-        GraphMLToNeo4JParser graphImporter = new GraphMLToNeo4JParser();
+        GraphMLParser graphImporter = new GraphMLParser();
         String traditionId = null;
         try
         {

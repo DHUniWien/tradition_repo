@@ -22,8 +22,8 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.services.Neo4JToGraphMLParser;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.exporter.GraphMLExporter;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -46,8 +46,8 @@ public class GraphMLInputOutputTest {
 
     private GraphDatabaseService db;
 
-	private GraphMLToNeo4JParser importResource;
-	private Neo4JToGraphMLParser exportResource;
+	private GraphMLParser importResource;
+	private GraphMLExporter exportResource;
 
     private JerseyTest jerseyTest;
 
@@ -56,8 +56,8 @@ public class GraphMLInputOutputTest {
 
 		db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 		
-		importResource = new GraphMLToNeo4JParser();
-		exportResource = new Neo4JToGraphMLParser();
+		importResource = new GraphMLParser();
+		exportResource = new GraphMLExporter();
 		
         // Populate the test database with the root node and a user with id 1
         DatabaseService.createRootNode(db);

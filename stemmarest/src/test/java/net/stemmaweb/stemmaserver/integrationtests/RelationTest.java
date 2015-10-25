@@ -15,7 +15,7 @@ import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -49,7 +49,7 @@ public class RelationTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
 
 
     @Before
@@ -57,7 +57,7 @@ public class RelationTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
 		File testfile = new File("src/TestFiles/testTradition.xml");
 
         /*

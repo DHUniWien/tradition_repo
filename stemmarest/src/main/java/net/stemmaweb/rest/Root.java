@@ -6,8 +6,8 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.services.TabularToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.parser.TabularParser;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -84,17 +84,17 @@ public class Root {
 
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
-            return new TabularToNeo4JParser().parseCSV(uploadedInputStream, userId, name, ',');
+            return new TabularParser().parseCSV(uploadedInputStream, userId, name, ',');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
-            return new TabularToNeo4JParser().parseCSV(uploadedInputStream, userId, name, '\t');
+            return new TabularParser().parseCSV(uploadedInputStream, userId, name, '\t');
         if (filetype.startsWith("xls"))
             // Pass it off to the Excel reader
-            return new TabularToNeo4JParser().parseExcel(uploadedInputStream, userId, name, filetype);
+            return new TabularParser().parseExcel(uploadedInputStream, userId, name, filetype);
         // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
         // Otherwise assume GraphML, for backwards compatibility.
         if (filetype.equals("graphml"))
-            return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
+            return new GraphMLParser().parseGraphML(uploadedInputStream, userId, name);
 
         // If we got this far, it was an unrecognized filetype.
         return Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
@@ -166,7 +166,6 @@ public class Root {
     @GET
     @Path("/users")
     @Produces(MediaType.APPLICATION_JSON)
-    // TODO test this
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
 
