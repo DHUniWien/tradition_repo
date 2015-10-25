@@ -81,8 +81,7 @@ public class Util {
 
     private static String newline_dot (String dot) {
         if (!dot.contains("\n"))
-            dot = dot.replace("{", "{\n");
-            dot = dot.replace("}", "\n}");
+            dot = dot.replace("  ", "\n");
         return dot;
     }
 

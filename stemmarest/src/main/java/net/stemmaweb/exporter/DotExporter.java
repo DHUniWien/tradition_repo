@@ -180,7 +180,7 @@ public class DotExporter
             tx.success();
         }
 
-        String joinString = singleLine ? " " : "\n";
+        String joinString = singleLine ? "  " : "\n";
         String output = String.join(joinString, outputLines);
         writeFromDot(output, "svg");
 
@@ -193,10 +193,6 @@ public class DotExporter
         if (witness.hasProperty("quotesigil") && (Boolean) witness.getProperty("quotesigil"))
             witnessSigil = String.format("\"%s\"", witnessSigil);
         return witnessSigil;
-    }
-
-    public Response parseNeo4JStemma(String tradId, String stemmaTitle) {
-        return parseNeo4JStemma(tradId, stemmaTitle, false);
     }
 
     /**
@@ -237,10 +233,8 @@ public class DotExporter
             @Override
             public Iterable<Relationship> expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
-                Iterator<Relationship> stemmaLinks = path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, Direction.BOTH).iterator();
-                while(stemmaLinks.hasNext()) {
-                    Relationship link = stemmaLinks.next();
+                for (Relationship link : path.endNode()
+                        .getRelationships(ERelations.TRANSMITTED, Direction.BOTH)) {
                     if (link.getProperty("hypothesis").equals(stemmaName)) {
                         goodPaths.add(link);
                     }
