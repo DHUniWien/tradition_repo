@@ -11,10 +11,7 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
@@ -101,8 +98,8 @@ public class Tradition {
     /**
      * Gets a list of all Stemmata available, as dot format
      *
-     * @return Http Response ok and a list of DOT JSON strings on success or an
-     *         ERROR in JSON format
+     * @return Http Response ok and a collection of StemmaModels that include
+     * the dot
      */
     @GET
     @Path("/stemmata")
@@ -113,22 +110,17 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         // find all stemmata associated with this tradition
-        ArrayList<String> stemmata = new ArrayList<>();
+        ArrayList<StemmaModel> stemmata = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)
-                    .forEach(x -> stemmata.add(x.getProperty("name").toString()));
+                    .forEach(x -> stemmata.add(new StemmaModel(x)));
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        DotExporter parser = new DotExporter(db);
-        ArrayList<String> stemmataList = new ArrayList<>();
-        stemmata.forEach( stemma -> {
-                        Response localResp = parser.parseNeo4JStemma(traditionId, stemma);
-                        stemmataList.add((String) localResp.getEntity());
-                    });
 
-        return Response.ok(stemmataList).build();
+        return Response.ok(stemmata).build();
     }
 
     /**

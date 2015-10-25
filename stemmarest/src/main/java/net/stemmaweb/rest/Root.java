@@ -10,6 +10,7 @@ import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.parser.TabularParser;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 
 import javax.ws.rs.*;
@@ -150,14 +151,19 @@ public class Root {
     @GET
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllTraditions() {
+    public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            db.findNodes(Nodes.TRADITION)
-                    .forEachRemaining(t -> traditionList.add(new TraditionModel(t)));
+            ResourceIterator<Node> nodeList;
+            if (publiconly)
+                nodeList = db.findNodes(Nodes.TRADITION, "is_public", true);
+            else
+                nodeList = db.findNodes(Nodes.TRADITION);
+            nodeList.forEachRemaining(t -> traditionList.add(new TraditionModel(t)));
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(traditionList).build();

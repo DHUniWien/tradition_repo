@@ -502,14 +502,14 @@ public class GraphMLInputOutputTest {
         assertEquals(8, relations.size());
 
         // Check for the existence of the stemma
-        List<String> stemmata = jerseyTest
+        List<StemmaModel> stemmata = jerseyTest
                 .resource()
                 .path("/tradition/" + traditionId + "/stemmata")
-                .get(new GenericType<List<String>>() {
+                .get(new GenericType<List<StemmaModel>>() {
                 });
         assertEquals(1, stemmata.size());
 
-        Util.assertStemmasEquivalent(newStemma, stemmata.get(0));
+        Util.assertStemmasEquivalent(newStemma, stemmata.get(0).getDot());
 
         // Check for the correct language setting
     }
