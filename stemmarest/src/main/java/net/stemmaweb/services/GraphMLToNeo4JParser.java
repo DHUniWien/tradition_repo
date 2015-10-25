@@ -116,6 +116,7 @@ public class GraphMLToNeo4JParser {
                                 if (currentRel != null) {
                                     // We are working on a relationship node. Apply the data.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String keytype = keytypes.get(attr);
                                     String val = reader.getElementText();
 
                                     switch (attr) {
@@ -135,16 +136,18 @@ public class GraphMLToNeo4JParser {
                                             witnesses.put(val, true);
                                             break;
                                         default:
-                                            currentRel.setProperty(attr, val);
+                                            setTypedProperty(currentRel, attr, keytype, val);
                                             break;
                                     }
                                 } else if (currentNode != null) {
                                     // Working on either the tradition itself, or a node.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String keytype = keytypes.get(attr);
                                     String text = reader.getElementText();
                                     switch (attr) {
                                         // Tradition node attributes
                                         case "name":
+                                            // TODO is this redundant?
                                             if (text.equals(""))
                                                 text = tradName;
                                             currentNode.setProperty(attr, text);
@@ -161,19 +164,18 @@ public class GraphMLToNeo4JParser {
                                         // Reading node attributes
                                         case "id":  // We don't use the old reading IDs
                                             break;
-                                        case "rank":
-                                            currentNode.setProperty(attr, Long.parseLong(text));
-                                            break;
                                         case "is_start":
-                                            traditionNode.createRelationshipTo(currentNode, ERelations.COLLATION);
-                                            currentNode.setProperty(attr, text);
+                                            if(text.equals("1") || text.equals("true"))
+                                                traditionNode.createRelationshipTo(currentNode, ERelations.COLLATION);
+                                            setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         case "is_end":
-                                            traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
-                                            currentNode.setProperty(attr, text);
+                                            if (text.equals("1") || text.equals("true"))
+                                                traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
+                                            setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         default:
-                                            currentNode.setProperty(attr, text);
+                                            setTypedProperty(currentNode, attr, keytype, text);
                                     }
                                 }
                                 break;
@@ -273,6 +275,21 @@ public class GraphMLToNeo4JParser {
         return Response.status(Response.Status.OK)
                 .entity("{\"tradId\":" + tradId + "}")
                 .build();
+    }
+
+    private void setTypedProperty( PropertyContainer ent, String attr, String type, String val ) {
+        Object realval;
+        switch (type) {
+            case "int":
+                realval = Long.valueOf(val);
+                break;
+            case "boolean":
+                realval = val.equals("1") || val.equals("true");
+                break;
+            default:
+                realval = val;
+        }
+        ent.setProperty(attr, realval);
     }
 
     private Boolean isDotId (String nodeid) {

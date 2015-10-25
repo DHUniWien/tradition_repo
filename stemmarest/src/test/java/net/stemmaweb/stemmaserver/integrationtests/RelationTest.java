@@ -3,7 +3,6 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.lang.reflect.GenericArrayType;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -22,7 +21,6 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.*;
 
@@ -105,8 +103,8 @@ public class RelationTest {
         relationship.setSource("16");
         relationship.setTarget("24");
         relationship.setType("repetition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("showers");
 
@@ -125,8 +123,8 @@ public class RelationTest {
             assertEquals(16L, loadedRelationship.getStartNode().getId());
             assertEquals(24L, loadedRelationship.getEndNode().getId());
             assertEquals("repetition", loadedRelationship.getProperty("type"));
-            assertEquals("0",loadedRelationship.getProperty("alters_meaning"));
-            assertEquals("true",loadedRelationship.getProperty("is_significant"));
+            assertEquals(0L,loadedRelationship.getProperty("alters_meaning"));
+            assertEquals("yes",loadedRelationship.getProperty("is_significant"));
             assertEquals("april",loadedRelationship.getProperty("reading_a"));
             assertEquals("showers",loadedRelationship.getProperty("reading_b"));
             tx.success();
@@ -143,8 +141,8 @@ public class RelationTest {
         relationship.setSource("16");
         relationship.setTarget("1337");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("showers");
 
@@ -166,8 +164,8 @@ public class RelationTest {
         relationship.setSource("1337");
         relationship.setTarget("24");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("showers");
 
@@ -193,8 +191,8 @@ public class RelationTest {
         relationship.setSource("16");
         relationship.setTarget("24");
         relationship.setType("transposition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("showers");
         relationship.setScope("local");
@@ -294,8 +292,8 @@ public class RelationTest {
         relationship.setSource("16");
         relationship.setTarget("24");
         relationship.setType("transposition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("showers");
         relationship.setScope("local");
@@ -312,8 +310,8 @@ public class RelationTest {
         relationship.setSource("16");
         relationship.setTarget("24");
         relationship.setType("repetition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("showers");
         relationship.setScope("local");
@@ -359,8 +357,8 @@ public class RelationTest {
         relationship.setSource("16");
         relationship.setTarget("17");
         relationship.setType("transposition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("pierced");
         relationship.setScope("local");
@@ -376,8 +374,8 @@ public class RelationTest {
         relationship.setSource("27");
         relationship.setTarget("17");
         relationship.setType("transposition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("april");
         relationship.setReading_b("pierced");
         relationship.setScope("local");
@@ -422,8 +420,8 @@ public class RelationTest {
         relationship.setTarget("20");
 
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("root");
         relationship.setReading_b("teh");
 
@@ -441,8 +439,8 @@ public class RelationTest {
         relationship.setSource("21");
         relationship.setTarget("28");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("root");
         relationship.setReading_b("the");
 
@@ -469,15 +467,14 @@ public class RelationTest {
         }
     }
 
-    // @Ignore // TODO until node re-ranking works
     @Test
     public void createRelationshipTestWithCrossRelationConstraintNotDirectlyCloseToEachOther() {
         RelationshipModel relationship = new RelationshipModel();
         relationship.setSource("6");
         relationship.setTarget("20");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("root");
         relationship.setReading_b("teh");
 
@@ -519,8 +516,8 @@ public class RelationTest {
         relationship.setTarget(node.getId() + "");
 
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("rood");
         relationship.setReading_b("unto");
 
@@ -565,8 +562,8 @@ public class RelationTest {
         relationship.setSource(firstNode.getId() + "");
         relationship.setTarget(secondNode.getId() + "");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("showers");
         relationship.setReading_b("pierced");
 

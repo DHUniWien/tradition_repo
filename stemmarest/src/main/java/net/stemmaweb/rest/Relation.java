@@ -163,18 +163,13 @@ public class Relation {
 
             relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
-            relationshipAtoB.setProperty("a_derivable_from_b",
-                    nullToEmptyString(relationshipModel.getA_derivable_from_b()));
-            relationshipAtoB.setProperty("alters_meaning",
-                    nullToEmptyString(relationshipModel.getAlters_meaning()));
-            relationshipAtoB.setProperty("b_derivable_from_a",
-                    nullToEmptyString(relationshipModel.getB_derivable_from_a()));
+            relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
+            relationshipAtoB.setProperty("alters_meaning", relationshipModel.getAlters_meaning());
+            relationshipAtoB.setProperty("b_derivable_from_a", relationshipModel.getB_derivable_from_a());
             relationshipAtoB.setProperty("displayform",
                     nullToEmptyString(relationshipModel.getDisplayform()));
-            relationshipAtoB.setProperty("is_significant",
-                    nullToEmptyString(relationshipModel.getIs_significant()));
-            relationshipAtoB.setProperty("non_independent",
-                    nullToEmptyString(relationshipModel.getNon_independent()));
+            relationshipAtoB.setProperty("is_significant", relationshipModel.getIs_significant());
+            relationshipAtoB.setProperty("non_independent", relationshipModel.getNon_independent());
             relationshipAtoB.setProperty("reading_a",
                     nullToEmptyString(relationshipModel.getReading_a()));
             relationshipAtoB.setProperty("reading_b",
@@ -188,6 +183,7 @@ public class Relation {
 
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.status(Response.Status.CREATED).entity(readingsAndRelationshipModel).build();

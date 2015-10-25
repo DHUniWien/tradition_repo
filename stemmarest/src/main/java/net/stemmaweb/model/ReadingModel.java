@@ -21,17 +21,17 @@ import org.neo4j.graphdb.Transaction;
 public class ReadingModel implements Comparable<ReadingModel> {
 
     // TODO change these to the correct data type!
-    private String grammar_invalid; // dn0
+    private Boolean grammar_invalid; // dn0
     private String id;              // dn1
-    private String is_common;       // dn2
-    private String is_end;          // dn3
-    private String is_lacuna;       // dn4
-    private String is_lemma;        // dn5
-    private String is_nonsense;     // dn6
-    private String is_ph;           // dn7
-    private String is_start;        // dn8
-    private String join_next;       // dn9
-    private String join_prior;      // dn10
+    private Boolean is_common = false;       // dn2
+    private Boolean is_end = false;          // dn3
+    private Boolean is_lacuna = false;       // dn4
+    private Boolean is_lemma = false;        // dn5
+    private Boolean is_nonsense = false;     // dn6
+    private Boolean is_ph = false;           // dn7
+    private Boolean is_start = false;        // dn8
+    private Boolean join_next = false;       // dn9
+    private Boolean join_prior = false;      // dn10
     private String language;        // dn11
     private String lexemes;         // dn12
     private String normal_form;     // dn13
@@ -45,26 +45,26 @@ public class ReadingModel implements Comparable<ReadingModel> {
     public ReadingModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
             if (node.hasProperty("grammar_invalid"))
-                this.setGrammar_invalid(node.getProperty("grammar_invalid").toString());
+                this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
             this.setId(String.valueOf(node.getId()));
             if (node.hasProperty("is_common"))
-                this.setIs_common(node.getProperty("is_common").toString());
+                this.setIs_common((Boolean) node.getProperty("is_common"));
             if (node.hasProperty("is_end"))
-                this.setIs_end(node.getProperty("is_end").toString());
+                this.setIs_end((Boolean) node.getProperty("is_end"));
             if (node.hasProperty("is_lacuna"))
-                this.setIs_lacuna(node.getProperty("is_lacuna").toString());
+                this.setIs_lacuna((Boolean) node.getProperty("is_lacuna"));
             if (node.hasProperty("is_lemma"))
-                this.setIs_lemma(node.getProperty("is_lemma").toString());
+                this.setIs_lemma((Boolean) node.getProperty("is_lemma"));
             if (node.hasProperty("is_nonsense"))
-                this.setIs_nonsense(node.getProperty("is_nonsense").toString());
+                this.setIs_nonsense((Boolean) node.getProperty("is_nonsense"));
             if (node.hasProperty("is_ph"))
-                this.setIs_ph(node.getProperty("is_ph").toString());
+                this.setIs_ph((Boolean) node.getProperty("is_ph"));
             if (node.hasProperty("is_start"))
-                this.setIs_start(node.getProperty("is_start").toString());
+                this.setIs_start((Boolean) node.getProperty("is_start"));
             if (node.hasProperty("join_next"))
-                this.setJoin_next(node.getProperty("join_next").toString());
+                this.setJoin_next((Boolean) node.getProperty("join_next"));
             if (node.hasProperty("join_prior"))
-                this.setJoin_prior(node.getProperty("join_prior").toString());
+                this.setJoin_prior((Boolean) node.getProperty("join_prior"));
             if (node.hasProperty("language"))
                 this.setLanguage(node.getProperty("language").toString());
             if (node.hasProperty("lexemes"))
@@ -82,11 +82,11 @@ public class ReadingModel implements Comparable<ReadingModel> {
     public ReadingModel() {
     }
 
-    public String getGrammar_invalid() {
+    public Boolean getGrammar_invalid() {
         return grammar_invalid;
     }
 
-    public void setGrammar_invalid(String grammar_invalid) {
+    public void setGrammar_invalid(Boolean grammar_invalid) {
         this.grammar_invalid = grammar_invalid;
     }
 
@@ -98,75 +98,75 @@ public class ReadingModel implements Comparable<ReadingModel> {
         this.id = id;
     }
 
-    public String getIs_common() {
+    public Boolean getIs_common() {
         return is_common;
     }
 
-    public void setIs_common(String is_common) {
+    public void setIs_common(Boolean is_common) {
         this.is_common = is_common;
     }
 
-    public String getIs_end() {
+    public Boolean getIs_end() {
         return is_end;
     }
 
-    public void setIs_end(String is_end) {
+    public void setIs_end(Boolean is_end) {
         this.is_end = is_end;
     }
 
-    public String getIs_lacuna() {
+    public Boolean getIs_lacuna() {
         return is_lacuna;
     }
 
-    public void setIs_lacuna(String is_lacuna) {
+    public void setIs_lacuna(Boolean is_lacuna) {
         this.is_lacuna = is_lacuna;
     }
 
-    public String getIs_lemma() {
+    public Boolean getIs_lemma() {
         return is_lemma;
     }
 
-    public void setIs_lemma(String is_lemma) {
+    public void setIs_lemma(Boolean is_lemma) {
         this.is_lemma = is_lemma;
     }
 
-    public String getIs_nonsense() {
+    public Boolean getIs_nonsense() {
         return is_nonsense;
     }
 
-    public void setIs_nonsense(String is_nonsense) {
+    public void setIs_nonsense(Boolean is_nonsense) {
         this.is_nonsense = is_nonsense;
     }
 
-    public String getIs_ph() {
+    public Boolean getIs_ph() {
         return is_ph;
     }
 
-    public void setIs_ph(String is_ph) {
+    public void setIs_ph(Boolean is_ph) {
         this.is_ph = is_ph;
     }
 
-    public String getIs_start() {
+    public Boolean getIs_start() {
         return is_start;
     }
 
-    public void setIs_start(String is_start) {
+    public void setIs_start(Boolean is_start) {
         this.is_start = is_start;
     }
 
-    public String getJoin_next() {
+    public Boolean getJoin_next() {
         return join_next;
     }
 
-    public void setJoin_next(String join_next) {
+    public void setJoin_next(Boolean join_next) {
         this.join_next = join_next;
     }
 
-    public String getJoin_prior() {
+    public Boolean getJoin_prior() {
         return join_prior;
     }
 
-    public void setJoin_prior(String join_prior) {
+    public void setJoin_prior(Boolean join_prior) {
         this.join_prior = join_prior;
     }
 

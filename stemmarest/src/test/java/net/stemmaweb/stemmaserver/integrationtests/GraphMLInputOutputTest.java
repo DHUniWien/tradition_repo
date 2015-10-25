@@ -432,8 +432,8 @@ public class GraphMLInputOutputTest {
         relationship.setSource(String.valueOf(blasphemias.getId()));
         relationship.setTarget(String.valueOf(blasphemia.getId()));
         relationship.setType("lexical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("βλασφημίας ἀπορία");
         relationship.setReading_b("βλασφημία");
 

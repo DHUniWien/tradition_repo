@@ -180,6 +180,7 @@ public class Tradition {
                     .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(readingModels).build();

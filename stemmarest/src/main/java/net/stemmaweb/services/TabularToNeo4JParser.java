@@ -114,12 +114,12 @@ public class TabularToNeo4JParser {
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
             // Make the start node
             Node startNode = db.createNode(Nodes.READING);
-            startNode.setProperty("is_start", "1");
-            startNode.setProperty("rank", 0);
+            startNode.setProperty("is_start", true);
+            startNode.setProperty("rank", 0L);
             startNode.setProperty("text", "#START#");
             traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
             Node endNode = db.createNode(Nodes.READING);
-            endNode.setProperty("is_end", "1");
+            endNode.setProperty("is_end", true);
             endNode.setProperty("rank", tableData.size());
             endNode.setProperty("text", "#END#");
             traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
@@ -161,7 +161,7 @@ public class TabularToNeo4JParser {
                         readingNode.setProperty("rank", idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))
-                            readingNode.setProperty("is_lacuna", "1");
+                            readingNode.setProperty("is_lacuna", true);
                         createdReadings.put(reading, readingNode);
                     }
                     // Does the reading have a relationship with lastNode? If not, create it.

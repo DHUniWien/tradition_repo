@@ -477,8 +477,7 @@ public class GenericTest {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
             if (cur_rank == 9L
-                    && cur_reading.getIs_lacuna() != null
-                    && cur_reading.getIs_lacuna().equals("1")) {
+                    && cur_reading.getIs_lacuna()) {
                 r8_1 = cur_reading.getId();
             } else if (cur_rank == 4L && cur_text.equals("henricus")) {
                 r9_2 = cur_reading.getId();

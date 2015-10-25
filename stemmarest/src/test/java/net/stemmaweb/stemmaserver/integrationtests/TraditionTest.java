@@ -150,7 +150,7 @@ public class TraditionTest {
         rel.setReading_a("april");
         rel.setIs_significant("no");
         rel.setReading_b("april");
-        rel.setAlters_meaning("0");
+        rel.setAlters_meaning(0L);
         rel.setType("transposition");
         rel.setScope("local");
 

@@ -304,8 +304,8 @@ public abstract class BenchmarkTests {
         relationship.setSource(theRoot + "");
         relationship.setTarget(untoMe + "");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("the root");
         relationship.setReading_b("unto me");
         relationship.setScope("local");
