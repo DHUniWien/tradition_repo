@@ -426,7 +426,7 @@ public class GenericTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(Long.class), Long.valueOf(1L));
 
-        MultivaluedMap queryParams = new MultivaluedMapImpl();
+        MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
         queryParams.add("node1", n24);
         queryParams.add("node2", n23);
 
@@ -606,7 +606,7 @@ public class GenericTest {
         is( $trel2->type, 'lexical', "Blocking relationship is not a collation" );
         */
 
-        MultivaluedMap queryParams = new MultivaluedMapImpl();
+        MultivaluedMap <String, String>queryParams = new MultivaluedMapImpl();
         queryParams.add("node1", r9_2);
         queryParams.add("node2", r9_3);
 
@@ -919,8 +919,6 @@ public class GenericTest {
                 "Expected readings now at same rank" );
         **/
 
-        assertEquals(new Tradition(tradId).recalculateRank(Long.parseLong(r463_2)), true);
-
         response = jerseyTest
                 .resource()
                 .path("/reading/" + r463_2)
@@ -1104,12 +1102,7 @@ public class GenericTest {
         ok( 0, "Unexpected error on bad reading merge: $@" );
     }
 
-    try {
-        $c->calculate_ranks();
-        ok( 1, "Graph is still evidently whole" );
-    } catch( Text::Tradition::Error $e ) {
-        ok( 0, "Caught a rank exception: " . $e->message );
-    }
+    ## and then make sure that the graph is not broken.
 
     ## TODO again with the tabular / CSV input.
             # Test right-to-left reading merge.
@@ -1152,7 +1145,7 @@ public class GenericTest {
             assertTrue(false);
         }
 
-        String tradId = null;
+        String tradId;
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
             Iterator<Node> nodes = result.columnAs("t");
@@ -1212,11 +1205,7 @@ public class GenericTest {
         ok( 0, "Reading duplication with all witnesses threw the wrong error" );
         }
 
-        try {
-        $sc->calculate_ranks();
-        ok( 1, "Graph is still evidently whole" );
-        } catch( Text::Tradition::Error $e ) {
-        ok( 0, "Caught a rank exception: " . $e->message );
+        ## and then check that the graph is not broken
         }
 
         ## TODO add output as adjacency list, as tabular, as TEI, etc. etc.

@@ -435,7 +435,6 @@ public class RelationTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
         ArrayList<GraphModel> tmpGraphModel = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
         assertEquals(tmpGraphModel.size(), 1L);
-        assertEquals(new Tradition(tradId).recalculateRank(6L), true);
 
         Tradition tradition = new Tradition(tradId);
         assertEquals(tradition.recalculateRank(20L), true);
@@ -493,8 +492,19 @@ public class RelationTest {
         assertEquals(tmpGraphModel.size(), 1L);
         String relationshipId = tmpGraphModel.get(0).getRelationships().get(0).getId();
 
-        Tradition tradition = new Tradition(tradId);
-        assertEquals(tradition.recalculateRank(6L), true);
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/6")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long) 18L);
+
+        response = jerseyTest
+                .resource()
+                .path("/reading/20")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long)18L);
 
         try (Transaction tx = db.beginTx()) {
             Relationship rel = db.getRelationshipById(Integer.parseInt(relationshipId));
@@ -606,12 +616,11 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         List<RelationshipModel> relationships = jerseyTest.resource()
-				.path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {
-				});
-		assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-		for (RelationshipModel rel : relationships) {
-			assertTrue(rel.getId().equals("35")
+                .path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        for (RelationshipModel rel : relationships) {
+            assertTrue(rel.getId().equals("35")
                     || rel.getId().equals("36")
                     || rel.getId().equals("37"));
             assertTrue(rel.getReading_b().equals("april")

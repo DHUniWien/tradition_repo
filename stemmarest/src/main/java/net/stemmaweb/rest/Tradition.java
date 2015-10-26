@@ -26,14 +26,15 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 /**
  * Comprises all the api calls related to a tradition.
  * Can be called using http://BASE_URL/tradition
+ *
  * @author PSE FS 2015 Team2
  */
 
 public class Tradition {
     private GraphDatabaseService db;
     private String traditionId;
-    
-    public Tradition (String requestedId) {
+
+    public Tradition(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         traditionId = requestedId;
@@ -47,10 +48,12 @@ public class Tradition {
     public Witness getWitness(@PathParam("sigil") String sigil) {
         return new Witness(traditionId, sigil);
     }
+
     @Path("/stemma/{name}")
     public Stemma getStemma(@PathParam("name") String name) {
         return new Stemma(traditionId, name);
     }
+
     @Path("/relation")
     public Relation getRelation() {
         return new Relation(traditionId);
@@ -75,7 +78,7 @@ public class Tradition {
      * Gets a list of all the witnesses of a tradition with the given id.
      *
      * @return Http Response 200 and a list of witness models in JSON on success
-     *         or an ERROR in JSON format
+     * or an ERROR in JSON format
      */
     @GET
     @Path("/witnesses")
@@ -155,7 +158,7 @@ public class Tradition {
      * Returns a list of all readings in a tradition
      *
      * @return the list of readings in json format on success or an ERROR in
-     *         JSON format
+     * JSON format
      */
     @GET
     @Path("/readings")
@@ -186,12 +189,10 @@ public class Tradition {
      * Get all readings which have the same text and the same rank between given
      * ranks
      *
-     * @param startRank
-     *            the rank from where to start the search
-     * @param endRank
-     *            the end rank of the search range
+     * @param startRank the rank from where to start the search
+     * @param endRank   the end rank of the search range
      * @return a list of lists as a json ok response: each list contain
-     *         identical readings on success or an ERROR in JSON format
+     * identical readings on success or an ERROR in JSON format
      */
     // TODO refactor all these traversals somewhere!
     @GET
@@ -235,9 +236,9 @@ public class Tradition {
 
         Evaluator e = path -> {
             Integer rank = Integer.parseInt(path.endNode().getProperty("rank").toString());
-            if( rank > endRank )
+            if (rank > endRank)
                 return Evaluation.EXCLUDE_AND_PRUNE;
-            if ( rank < startRank)
+            if (rank < startRank)
                 return Evaluation.EXCLUDE_AND_CONTINUE;
             return Evaluation.INCLUDE_AND_CONTINUE;
         };
@@ -250,6 +251,7 @@ public class Tradition {
         }
         return readings;
     }
+
     // Retrieve all readings of a tradition between two ranks as ReadingModels
     private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
             Node startNode, long startRank, long endRank) {
@@ -289,9 +291,9 @@ public class Tradition {
      * TODO use AlignmentTraverse for this...?
      *
      * @param startRank - where to start
-     * @param endRank - where to end
+     * @param endRank   - where to end
      * @return list of readings that could be at the same rank in JSON format or
-     *         an ERROR in JSON format
+     * an ERROR in JSON format
      */
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
@@ -354,7 +356,7 @@ public class Tradition {
     /**
      * Adds all the words that could be on the same rank to the result list
      *
-     * @param sameText -
+     * @param sameText                 -
      * @param couldBeIdenticalReadings -
      */
     private void couldBeIdenticalCheck(ArrayList<Node> sameText,
@@ -434,10 +436,9 @@ public class Tradition {
     /**
      * Changes the metadata of the tradition.
      *
-     * @param tradition
-     *            in JSON Format
+     * @param tradition in JSON Format
      * @return OK and information about the tradition in JSON on success or an
-     *         ERROR in JSON format
+     * ERROR in JSON format
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
@@ -559,7 +560,7 @@ public class Tradition {
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getDot() {
-        if(DatabaseService.getTraditionNode(traditionId, db) == null)
+        if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         DotExporter parser = new DotExporter(db);
@@ -615,8 +616,7 @@ public class Tradition {
      * @param nodeId Where to start the recalculation
      * @return XML data
      */
-      public boolean recalculateRank (Long nodeId) {
-
+    public boolean recalculateRank(Long nodeId) {
         Comparator<Node> rankComparator = (n1, n2) -> {
             int compVal = ((Long) n1.getProperty("rank"))
                     .compareTo((Long) n2.getProperty("rank"));
@@ -627,41 +627,23 @@ public class Tradition {
         };
         SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
 
-        long startNodeRank = 0L;
-
         try (Transaction tx = db.beginTx()) {
-            Node startNode = db.getNodeById(nodeId);
-
-            Iterable<Relationship> relationships = startNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
-            for (Relationship relationship : relationships) {
-                startNodeRank = Math.max(startNodeRank, (long)relationship.getStartNode().getProperty("rank") + 1L);
-            }
-            if ((long)startNode.getProperty("rank") < startNodeRank) {
-                startNode.setProperty("rank", startNodeRank);
-            }
-
-            Node currentNode = startNode;
+            Node currentNode = db.getNodeById(nodeId);
             Node iterNode;
 
             while (currentNode != null) {
-                // Look, if a RELATED node has a higher rank
-                long currentNodeRank = (long)currentNode.getProperty("rank");
-                long relatedNodeRank = 0L;
-                relationships = currentNode.getRelationships(ERelations.RELATED);
-                if (relationships.iterator().hasNext()) {
+                long nominalRank = getRank(nodeId);
+                if (!currentNode.getProperty("rank").equals(nominalRank)) {
+                    currentNode.setProperty("rank", nominalRank);
+
+                    // Look, if a RELATED node has a higher rank
+                    long currentNodeRank = (long) currentNode.getProperty("rank");
+
+                    // UPDATE nodes on RELATED vertices, if necessary
+                    Iterable<Relationship> relationships = currentNode.getRelationships(ERelations.RELATED);
                     for (Relationship relationship : relationships) {
-                        Node otherNode = relationship.getOtherNode(currentNode);
-                        relatedNodeRank = Math.max(relatedNodeRank, (Long) otherNode.getProperty("rank"));
-                    }
-
-                    if (currentNodeRank != relatedNodeRank) {
-                        // We have to update the current Node
-                        currentNode.setProperty("rank", Math.max(relatedNodeRank, (Long) currentNode.getProperty("rank")));
-                        currentNodeRank = (Long) currentNode.getProperty("rank");
-
-                        // UPDATE nodes on RELATED vertices, if necessary
-                        relationships = currentNode.getRelationships(ERelations.RELATED);
-                        for (Relationship relationship : relationships) {
+                        if (!relationship.getProperty("type").equals("transposition") &&
+                                !relationship.getProperty("type").equals("repetition")) {
                             iterNode = relationship.getOtherNode(currentNode);
                             if ((Long) iterNode.getProperty("rank") < currentNodeRank) {
                                 iterNode.setProperty("rank", currentNodeRank);
@@ -669,16 +651,16 @@ public class Tradition {
                             }
                         }
                     }
-                }
 
-                // Update nodes on OUTGOING & SEQUENCE vertices, if necessary
-                relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-                // OUTGOING includes SEQUENCE (outgoing) and RELATED
-                for (Relationship relationship : relationships) {
-                    iterNode = relationship.getEndNode();
-                    if ((long) iterNode.getProperty("rank") <= currentNodeRank) {
-                        iterNode.setProperty("rank", currentNodeRank + 1L);
-                        nodesToProcess.add(iterNode);
+                    // Update nodes on OUTGOING & SEQUENCE vertices, if necessary
+                    relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+                    // OUTGOING includes SEQUENCE (outgoing) and RELATED
+                    for (Relationship relationship : relationships) {
+                        iterNode = relationship.getEndNode();
+                        if ((long) iterNode.getProperty("rank") <= currentNodeRank) {
+                            iterNode.setProperty("rank", currentNodeRank + 1L);
+                            nodesToProcess.add(iterNode);
+                        }
                     }
                 }
 
@@ -694,6 +676,32 @@ public class Tradition {
             return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return true; // Response.ok().build();
+    }
+
+    private long getRank(Long nodeId) {
+        long nodeRank;
+
+        try (Transaction tx = db.beginTx()) {
+            Node currentNode = db.getNodeById(nodeId);
+            nodeRank = (long)currentNode.getProperty("rank");
+
+            Iterable<Relationship> relationships = currentNode.getRelationships(Direction.BOTH);
+            for (Relationship relationship : relationships) {
+                if (relationship.getType().name().equals(ERelations.SEQUENCE.name())
+                        && relationship.getEndNode().getId() == nodeId) {
+                    nodeRank = Math.max(nodeRank, (long) relationship.getStartNode().getProperty("rank") + 1L);
+                } else if (relationship.getType().name().equals(ERelations.RELATED.name())) {
+                    if (!relationship.getProperty("type").equals("transposition") &&
+                            !relationship.getProperty("type").equals("repetition")) {
+                        nodeRank = Math.max(nodeRank, (long) relationship.getOtherNode(currentNode).getProperty("rank"));
+                    }
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            nodeRank = -1L;
+        }
+        return nodeRank;
     }
 }
 

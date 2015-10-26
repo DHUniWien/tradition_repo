@@ -16,6 +16,7 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
+import org.apache.commons.lang.ObjectUtils;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -39,7 +40,7 @@ public class Relation {
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
     }
-    
+
     /**
      * Creates a new relationship between the two nodes specified.
      *
@@ -96,10 +97,12 @@ public class Relation {
                                 relship.setTarget(Long.toString(node_id));
                                 relship.setType(relationshipModel.getType());
                                 response = this.create_local(relship);
-                                if (Status.CREATED.getStatusCode() != response.getStatus()) {
-                                    return response;
-                                } else {
-                                    entities.add((GraphModel)response.getEntity());
+                                if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
+                                    if (Status.CREATED.getStatusCode() != response.getStatus()) {
+                                        return response;
+                                    } else {
+                                        entities.add((GraphModel) response.getEntity());
+                                    }
                                 }
                             }
                         }
@@ -161,6 +164,16 @@ public class Relation {
                         .build();
             } // TODO add constraints about witness uniqueness or lack thereof
 
+            // Check, if relationship already exists
+            Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
+            for (Relationship relationship : relationships) {
+                if (relationship.getOtherNode(readingA).equals(readingB)
+                        && relationship.getProperty("type").equals(relationshipModel.getType())) {
+                    tx.success();
+                    return Response.status(Status.NOT_MODIFIED).build();
+                }
+            }
+
             relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
             relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
@@ -180,6 +193,12 @@ public class Relation {
             changedReadings.add(new ReadingModel(readingB));
             createdRelationships.add(new RelationshipModel(relationshipAtoB));
             readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
+
+            // Recalculate the ranks, if necessary
+            if (readingA.getProperty("rank") != readingB.getProperty("rank")) {
+                new Tradition(tradId).recalculateRank(readingA.getId());
+                new Tradition(tradId).recalculateRank(readingB.getId());
+            }
 
             tx.success();
         } catch (Exception e) {

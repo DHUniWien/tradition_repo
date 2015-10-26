@@ -591,7 +591,7 @@ public class TraditionTest {
 
         // give it some relationships - rank 37, rank 13, ranks 217/219
         try (Transaction tx = db.beginTx()) {
-            int[] alignRanks = {37, 60};
+            int[] alignRanks = {77, 110};
             for (int r : alignRanks) {
                 ResourceIterator<Node> atRank = db.findNodes(Nodes.READING, "rank", r);
                 assertTrue(atRank.hasNext());
