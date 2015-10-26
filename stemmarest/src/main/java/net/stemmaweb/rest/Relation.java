@@ -163,18 +163,13 @@ public class Relation {
 
             relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
-            relationshipAtoB.setProperty("a_derivable_from_b",
-                    nullToEmptyString(relationshipModel.getA_derivable_from_b()));
-            relationshipAtoB.setProperty("alters_meaning",
-                    nullToEmptyString(relationshipModel.getAlters_meaning()));
-            relationshipAtoB.setProperty("b_derivable_from_a",
-                    nullToEmptyString(relationshipModel.getB_derivable_from_a()));
+            relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
+            relationshipAtoB.setProperty("alters_meaning", relationshipModel.getAlters_meaning());
+            relationshipAtoB.setProperty("b_derivable_from_a", relationshipModel.getB_derivable_from_a());
             relationshipAtoB.setProperty("displayform",
                     nullToEmptyString(relationshipModel.getDisplayform()));
-            relationshipAtoB.setProperty("is_significant",
-                    nullToEmptyString(relationshipModel.getIs_significant()));
-            relationshipAtoB.setProperty("non_independent",
-                    nullToEmptyString(relationshipModel.getNon_independent()));
+            relationshipAtoB.setProperty("is_significant", relationshipModel.getIs_significant());
+            relationshipAtoB.setProperty("non_independent", relationshipModel.getNon_independent());
             relationshipAtoB.setProperty("reading_a",
                     nullToEmptyString(relationshipModel.getReading_a()));
             relationshipAtoB.setProperty("reading_b",
@@ -188,102 +183,10 @@ public class Relation {
 
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.status(Response.Status.CREATED).entity(readingsAndRelationshipModel).build();
-    }
-
-    /*
-     * Recalculate ranks starting from 'startNode'
-     * You would typically use it after inserting a RELATION or a new Node into the graph,
-     * where the startNode will be one of the RELATION-nodes or the new node itself.
-     * In addition, you can also set the Rank for the given node.
-     */
-    private void recalculateRanks(Node startNode, int startRank) {
-        Comparator<Node> rankComparator = (n1, n2) -> {
-            int compVal = Long.valueOf((Long) n1.getProperty("rank"))
-                    .compareTo(Long.valueOf((Long) n2.getProperty("rank")));
-            if (compVal == 0) {
-                compVal = Long.valueOf(n1.getId()).compareTo(Long.valueOf(n2.getId()));
-            }
-            return compVal;
-        };
-
-        SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
-        ArrayList<Node> nodesToUpdate = new ArrayList<>();
-
-        long startNodeRank = startRank;
-
-        Iterable<Relationship> relationships = startNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
-        for (Relationship relationship : relationships) {
-            startNodeRank = Math.max(startNodeRank, (long)relationship.getStartNode().getProperty("rank") + 1L);
-        }
-        if ((long)startNode.getProperty("rank") < startNodeRank) {
-            startNode.setProperty("rank", startNode);
-        }
-
-        Node currentNode = startNode;
-        Node iterNode;
-        long currentNodeRank = (long)currentNode.getProperty("rank");
-
-        while (currentNode != null) {
-            // Look, if a RELATED node has a higher rank
-            long relatedNodeRank = 0L;
-            relationships = currentNode.getRelationships(ERelations.RELATED);
-            if (relationships.iterator().hasNext() == true) {
-                for (Relationship relationship : relationships) {
-                    Node otherNode = relationship.getOtherNode(currentNode);
-                    relatedNodeRank = Math.max(relatedNodeRank, (long) otherNode.getProperty("rank"));
-                }
-
-                if (currentNodeRank != relatedNodeRank) {
-                    // We have to update the current Node
-                    currentNode.setProperty("rank", Math.max(relatedNodeRank, (long) currentNode.getProperty("rank")));
-                    currentNodeRank = (long) currentNode.getProperty("rank");
-
-                    // UPDATE nodes on RELATED vertices, if necessary
-                    relationships = currentNode.getRelationships(ERelations.RELATED);
-                    for (Relationship relationship : relationships) {
-                        if (relationship.getStartNode().equals(currentNode)) {
-                            iterNode = relationship.getEndNode();
-                        } else {
-                            iterNode = relationship.getStartNode();
-                        }
-                        if ((long) iterNode.getProperty("rank") < currentNodeRank) {
-                            iterNode.setProperty("rank", currentNodeRank);
-                            nodesToProcess.add(iterNode);
-                        }
-                    }
-                }
-            }
-
-            // Update nodes on OUTGOING & SEQUENCE vertices, if necessary
-            relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-            // OUTGOING includes SEQUENCE (outgoing) and RELATED
-            for (Relationship relationship : relationships) {
-                iterNode = relationship.getEndNode();
-                if ((long) iterNode.getProperty("rank") <= currentNodeRank) {
-                    iterNode.setProperty("rank", currentNodeRank + 1L);
-                    nodesToProcess.add(iterNode);
-                }
-            }
-
-            nodesToUpdate.add(currentNode);
-            if (nodesToProcess.isEmpty()) {
-                currentNode = null;
-            } else {
-                currentNode = nodesToProcess.first();
-                nodesToProcess.remove(currentNode);
-            }
-        }
-    }
-
-    /*
-            SortedSet<Node> processing_nodes = new TreeSet<>((n1, n2) -> (int) n1.getProperty("rank") - (int) n2.getProperty("rank"));
-     */
-
-    private void recalculateRanks(Node startNode) {
-        recalculateRanks(startNode, -1);
     }
 
     /**

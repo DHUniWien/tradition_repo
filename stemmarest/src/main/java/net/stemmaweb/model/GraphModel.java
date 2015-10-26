@@ -24,8 +24,8 @@ public class GraphModel {
         this.relationships = relationships;
     }
 
+    @SuppressWarnings("unused")  // It's used by response.getEntity(GenericType blah)
     public GraphModel() {
-
     }
 
     public List<ReadingModel> getReadings() {

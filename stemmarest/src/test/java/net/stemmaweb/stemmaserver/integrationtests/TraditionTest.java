@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -25,7 +26,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -54,7 +55,7 @@ public class TraditionTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
 
     @Before
     public void setUp() throws Exception {
@@ -63,7 +64,7 @@ public class TraditionTest {
                 .newImpermanentDatabase())
                 .getDatabase();
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
 		File testfile = new File("src/TestFiles/testTradition.xml");
 
         /*
@@ -149,7 +150,7 @@ public class TraditionTest {
         rel.setReading_a("april");
         rel.setIs_significant("no");
         rel.setReading_b("april");
-        rel.setAlters_meaning("0");
+        rel.setAlters_meaning(0L);
         rel.setType("transposition");
         rel.setScope("local");
 
@@ -292,45 +293,39 @@ public class TraditionTest {
     @Test
     public void changeMetadataOfATraditionTest() {
 
+        Result result;
+        Node newUser;
         /*
          * Create a second user with id 42
          */
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
-            Iterator<Node> nodes = result.columnAs("n");
-            Node rootNode = nodes.next();
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+            newUser = db.createNode(Nodes.USER);
+            newUser.setProperty("id", "42");
+            newUser.setProperty("role", "admin");
 
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "42");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.OWNS_TRADITION);
+            rootNode.createRelationshipTo(newUser, ERelations.SYSTEMUSER);
             tx.success();
         }
 
         /*
          * The user with id 42 has no tradition
          */
-        Result result;
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            assertTrue(!tradIterator.hasNext());
-
+            Iterable<Relationship> ownedTraditions = newUser.getRelationships(ERelations.OWNS_TRADITION);
             tx.success();
-
+            assertFalse(ownedTraditions.iterator().hasNext());
         }
 
         /*
-         * The user with id 1 has tradition
+         * Verify that user 1 has tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
+            Node origUser = db.findNode(Nodes.USER, "id", "1");
+            Iterable<Relationship> ownership = origUser.getRelationships(ERelations.OWNS_TRADITION);
+            assertTrue(ownership.iterator().hasNext());
+            Node tradNode = ownership.iterator().next().getEndNode();
+            TraditionModel tradition = new TraditionModel(tradNode);
 
             assertTrue(tradition.getId().equals(tradId));
             assertTrue(tradition.getName().equals("Tradition"));
@@ -339,31 +334,29 @@ public class TraditionTest {
         }
 
         /*
-         * Change the owner of the tradition
+         * Change the owner of the tradition, and another of its properties
          */
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setDirection("RL");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("42");
 
         ClientResponse ownerChangeResponse = jerseyTest.resource().path("/tradition/" + tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, textInfo);
-        assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
+        assertEquals(Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
         /*
          * Test if user with id 42 has now the tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
+            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            TraditionModel tradition = new TraditionModel(tradNode);
 
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("RenamedTraditionName"));
-
+            assertEquals("42", tradition.getOwnerId());
+            assertEquals(tradId, tradition.getId());
+            assertEquals("RenamedTraditionName", tradition.getName());
+            assertEquals("RL", tradition.getDirection());
             tx.success();
 
         }
@@ -410,7 +403,7 @@ public class TraditionTest {
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("1337");
 
         ClientResponse removalResponse = jerseyTest.resource().path("/tradition/" + tradId).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, textInfo);
@@ -495,7 +488,7 @@ public class TraditionTest {
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("42");
 
         ClientResponse removalResponse = jerseyTest.resource().path("/tradition/1337").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, textInfo);

@@ -14,7 +14,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -44,7 +44,7 @@ public class GenericTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
 
     @Before
     public void setUp() throws Exception {
@@ -53,7 +53,7 @@ public class GenericTest {
                 .newImpermanentDatabase())
                 .getDatabase();
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
         Root webResource = new Root();
 
         /*
@@ -477,8 +477,7 @@ public class GenericTest {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
             if (cur_rank == 9L
-                    && cur_reading.getIs_lacuna() != null
-                    && cur_reading.getIs_lacuna().equals("1")) {
+                    && cur_reading.getIs_lacuna()) {
                 r8_1 = cur_reading.getId();
             } else if (cur_rank == 4L && cur_text.equals("henricus")) {
                 r9_2 = cur_reading.getId();

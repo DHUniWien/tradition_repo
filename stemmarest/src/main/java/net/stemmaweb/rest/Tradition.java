@@ -8,10 +8,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.exporter.DotExporter;
+import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.TabularExporter;
+import net.stemmaweb.model.*;
+import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
@@ -62,7 +63,7 @@ public class Tradition {
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response newStemma(String dot) {
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        DotParser parser = new DotParser(db);
         return parser.importStemmaFromDot(dot, traditionId);
     }
 
@@ -97,8 +98,8 @@ public class Tradition {
     /**
      * Gets a list of all Stemmata available, as dot format
      *
-     * @return Http Response ok and a list of DOT JSON strings on success or an
-     *         ERROR in JSON format
+     * @return Http Response ok and a collection of StemmaModels that include
+     * the dot
      */
     @GET
     @Path("/stemmata")
@@ -109,22 +110,17 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         // find all stemmata associated with this tradition
-        ArrayList<String> stemmata = new ArrayList<>();
+        ArrayList<StemmaModel> stemmata = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)
-                    .forEach(x -> stemmata.add(x.getProperty("name").toString()));
+                    .forEach(x -> stemmata.add(new StemmaModel(x)));
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        ArrayList<String> stemmataList = new ArrayList<>();
-        stemmata.forEach( stemma -> {
-                        Response localResp = parser.parseNeo4JStemma(traditionId, stemma);
-                        stemmataList.add((String) localResp.getEntity());
-                    });
 
-        return Response.ok(stemmataList).build();
+        return Response.ok(stemmata).build();
     }
 
     /**
@@ -180,6 +176,7 @@ public class Tradition {
                     .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(readingModels).build();
@@ -447,6 +444,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON)
     public Response changeTraditionMetadata(TraditionModel tradition) {
 
+        // Check whether the user in the passed model exists
         if (!DatabaseService.userExists(tradition.getOwnerId(), db)) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("Error: A user with this id does not exist")
@@ -454,50 +452,34 @@ public class Tradition {
         }
 
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (traditionId:TRADITION {id:'" + traditionId
-                    + "'}) return traditionId");
-            Iterator<Node> nodes = result.columnAs("traditionId");
-
-            if (nodes.hasNext()) {
-                // Remove the old ownership
-                String removeRelationQuery = "MATCH (tradition:TRADITION {id: '" + traditionId + "'}) "
-                        + "MATCH tradition<-[r:OWNS_TRADITION]-(:USER) DELETE r";
-                result = db.execute(removeRelationQuery);
-                System.out.println(result.toString());
-
-                // Add the new ownership
-                String createNewRelationQuery = "MATCH(user:USER {id:'" + tradition.getOwnerId()
-                        + "'}) " + "MATCH(tradition: TRADITION {id:'" + traditionId + "'}) "
-                        + "SET tradition.name = '" + tradition.getName() + "' "
-                        + "SET tradition.public = '" + tradition.getIsPublic() + "' "
-                        + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-                result = db.execute(createNewRelationQuery);
-                System.out.println(result.toString());
-
-            } else {
-                // Tradition not found
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
+            if( traditionNode == null ) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity("Tradition not found")
                         .build();
             }
 
+            Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwnerId());
+            Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
+            if(!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwnerId())) {
+                // Remove the old ownership
+                oldOwnership.delete();
+
+                // Add the new ownership
+                newUser.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
+            }
+            // Now set the other properties that were passed
+            // TODO: this should be more...automatic.
+            traditionNode.setProperty("name", tradition.getName());
+            traditionNode.setProperty("is_public", tradition.getIsPublic());
+            traditionNode.setProperty("language", tradition.getLanguage());
+            traditionNode.setProperty("direction", tradition.getDirection());
+            traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
             tx.success();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(tradition).build();
-    }
-
-    /**
-     * Returns GraphML file from specified tradition owned by user
-     *
-     * @return XML data
-     */
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTradition() {
-        Neo4JToGraphMLParser parser = new Neo4JToGraphMLParser();
-        return parser.parseNeo4J(traditionId);
     }
 
     /**
@@ -551,42 +533,99 @@ public class Tradition {
         return Response.status(Response.Status.OK).build();
     }
 
+    /***************************
+     * Tradition export API
+     *
+     */
+
     /**
-     * Returns DOT file from specified tradition owned by user
+     * Returns GraphML file from specified tradition owned by user
      *
      * @return XML data
      */
     @GET
+    @Produces(MediaType.APPLICATION_XML)
+    public Response getTradition() {
+        GraphMLExporter parser = new GraphMLExporter();
+        return parser.parseNeo4J(traditionId);
+    }
+
+    /**
+     * Returns DOT file from specified tradition owned by user
+     *
+     * @return Plaintext dot format
+     */
+    @GET
     @Path("/dot")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
     public Response getDot() {
         if(DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        DotExporter parser = new DotExporter(db);
         return parser.parseNeo4J(traditionId);
     }
+
+    /**
+     * Returns a JSON representation of a tradition.
+     *
+     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @return the JSON alignment
+     */
+    @GET
+    @Path("/json")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getJson(@QueryParam("conflate") List<String> toConflate) {
+        return new TabularExporter(db).exportAsJSON(traditionId, toConflate);
+    }
+
+    /**
+     * Returns a CSV representation of a tradition.
+     *
+     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @return the CSV alignment as plaintext
+     */
+    @GET
+    @Path("/csv")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getCsv(@QueryParam("conflate") List<String> toConflate) {
+        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate);
+    }
+
+    /**
+     * Returns a tab-separated representation of a tradition.
+     *
+     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @return the TSV alignment as plaintext
+     */
+    @GET
+    @Path("/tsv")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getTsv(@QueryParam("conflate") List<String> toConflate) {
+        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate);
+    }
+
+
 
     /**
      * Recalculate ranks starting from 'startNode'
      * Someone would typically use it after inserting a RELATION or a new Node into the graph,
      * where the startNode will be one of the RELATION-nodes or the new node itself.
      *
-     * @nodeId
+     * @param nodeId Where to start the recalculation
      * @return XML data
      */
       public boolean recalculateRank (Long nodeId) {
 
         Comparator<Node> rankComparator = (n1, n2) -> {
-            int compVal = Long.valueOf((Long) n1.getProperty("rank"))
-                    .compareTo(Long.valueOf((Long) n2.getProperty("rank")));
+            int compVal = ((Long) n1.getProperty("rank"))
+                    .compareTo((Long) n2.getProperty("rank"));
             if (compVal == 0) {
-                compVal = Long.valueOf(n1.getId()).compareTo(Long.valueOf(n2.getId()));
+                compVal = Long.valueOf(n1.getId()).compareTo(n2.getId());
             }
             return compVal;
         };
         SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
-        ArrayList<Node> nodesToUpdate = new ArrayList<>();
 
         long startNodeRank = 0L;
 
@@ -609,7 +648,7 @@ public class Tradition {
                 long currentNodeRank = (long)currentNode.getProperty("rank");
                 long relatedNodeRank = 0L;
                 relationships = currentNode.getRelationships(ERelations.RELATED);
-                if (relationships.iterator().hasNext() == true) {
+                if (relationships.iterator().hasNext()) {
                     for (Relationship relationship : relationships) {
                         Node otherNode = relationship.getOtherNode(currentNode);
                         relatedNodeRank = Math.max(relatedNodeRank, (Long) otherNode.getProperty("rank"));
@@ -643,7 +682,6 @@ public class Tradition {
                     }
                 }
 
-                nodesToUpdate.add(currentNode);
                 if (nodesToProcess.isEmpty()) {
                     currentNode = null;
                 } else {
@@ -652,8 +690,6 @@ public class Tradition {
                 }
             }
             tx.success();
-        } catch (NotFoundException e) {
-            return false; //Response.status(Status.NO_CONTENT).build();
         } catch (Exception e) {
             return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }

@@ -15,7 +15,7 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,7 +49,7 @@ public abstract class BenchmarkTests {
      * so all jerseyTest related objects need to be static.
      */
     static Root webResource;
-    static GraphMLToNeo4JParser importResource;
+    static GraphMLParser importResource;
 
     static File testfile;
 
@@ -69,7 +69,7 @@ public abstract class BenchmarkTests {
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("1");
 
         ClientResponse ownerChangeResponse = jerseyTest.resource()
@@ -81,7 +81,7 @@ public abstract class BenchmarkTests {
         textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic("0");
+        textInfo.setIsPublic(false);
         textInfo.setOwnerId("0");
 
         ownerChangeResponse = jerseyTest.resource()
@@ -304,8 +304,8 @@ public abstract class BenchmarkTests {
         relationship.setSource(theRoot + "");
         relationship.setTarget(untoMe + "");
         relationship.setType("grammatical");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("the root");
         relationship.setReading_b("unto me");
         relationship.setScope("local");

@@ -16,7 +16,7 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -59,7 +59,7 @@ public class WitnessTest {
          * The Resource under test. The mockDbFactory will be injected into this
          * resource.
          */
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+        GraphMLParser importResource = new GraphMLParser();
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -244,7 +244,7 @@ public class WitnessTest {
 
         // Read in the tradition in question
         File testfile = new File("src/TestFiles/florilegium_graphml.xml");
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+        GraphMLParser importResource = new GraphMLParser();
         Response parseResponse = null;
         try {
             parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "Florilegium");

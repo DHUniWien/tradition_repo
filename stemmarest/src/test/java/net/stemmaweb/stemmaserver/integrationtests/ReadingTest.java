@@ -18,7 +18,7 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -71,7 +71,7 @@ public class ReadingTest {
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+        GraphMLParser importResource = new GraphMLParser();
 
 		File testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         /*
@@ -239,7 +239,7 @@ public class ReadingTest {
 
     @Test
     public void getReadingJsonTest() throws JsonProcessingException {
-        String expected = "{\"id\":\"16\",\"is_common\":\"0\",\"language\":\"Default\",\"rank\":2,\"text\":\"april\"}";
+        String expected = "{\"id\":\"16\",\"is_common\":false,\"is_end\":false,\"is_lacuna\":false,\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false,\"join_prior\":false,\"language\":\"Default\",\"rank\":2,\"text\":\"april\"}";
 
         ClientResponse resp = jerseyTest.resource()
                 .path("/reading/" + 16)

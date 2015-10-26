@@ -21,11 +21,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
 
-import org.neo4j.cypher.EntityNotFoundException;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.NotFoundException;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
@@ -118,7 +115,6 @@ public class Reading {
      *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
      *         with a detailed message else
      */
-    // TODO consider moving this to Tradition or Root
     @PUT
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -759,7 +755,7 @@ public class Reading {
             }
             next = matching.iterator().next().getEndNode();
             ReadingModel result = new ReadingModel(next);
-            if (result.getIs_end() != null)
+            if (result.getIs_end())
                 return Response.status(Status.NOT_FOUND)
                         .entity("this was the last reading of this witness").build();
             tx.success();
@@ -799,7 +795,7 @@ public class Reading {
             }
             prior = matching.iterator().next().getStartNode();
             ReadingModel result = new ReadingModel(prior);
-            if (result.getIs_start() != null)
+            if (result.getIs_start())
                 return Response.status(Status.NOT_FOUND)
                         .entity("this was the first reading of this witness").build();
             tx.success();

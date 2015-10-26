@@ -23,12 +23,12 @@ import static org.junit.Assert.assertTrue;
  */
 public class Util {
 
-    // TODO add tests to check all the possible stemma creation/edition return paths
-
     // Helper method
     public static void assertStemmasEquivalent (String expected, String actual) {
-        StringBuffer expectedStream = new StringBuffer(expected);
-        StringBuffer actualStream = new StringBuffer(actual);
+        // Add strategic newlines to each string if it has none.
+
+        StringBuffer expectedStream = new StringBuffer(newline_dot(expected));
+        StringBuffer actualStream = new StringBuffer(newline_dot(actual));
 
         Parser p = new Parser();
         try {
@@ -77,6 +77,12 @@ public class Util {
             }
             i++;
         }
+    }
+
+    private static String newline_dot (String dot) {
+        if (!dot.contains("\n"))
+            dot = dot.replace("  ", "\n");
+        return dot;
     }
 
     private static HashSet<String> collectEdges (Graph stemma) {

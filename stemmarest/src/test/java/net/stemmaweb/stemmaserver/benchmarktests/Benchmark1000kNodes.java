@@ -8,7 +8,7 @@ import java.util.Iterator;
 
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.AfterClass;
@@ -57,7 +57,7 @@ public class Benchmark1000kNodes extends BenchmarkTests {
         }
         rgg.role(db, 10, 100, 10, 100);
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
         testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         try {
             tradId = importResource.parseGraphML(testfile.getPath(), "1", "Tradition")

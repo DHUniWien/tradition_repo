@@ -11,13 +11,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.DotToNeo4JParser;
+import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -42,7 +43,7 @@ public class StemmaTest {
     private String tradId;
 
     private GraphDatabaseService db;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
 
     /*
      * JerseyTest is the test environment to Test api calls it provides a
@@ -55,7 +56,7 @@ public class StemmaTest {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
 
 		File testfile = new File("src/TestFiles/testTradition.xml");
 
@@ -98,22 +99,29 @@ public class StemmaTest {
 
     @Test
 	public void getAllStemmataTest() {
-        List<String> stemmata = jerseyTest
+        List<StemmaModel> stemmata = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemmata")
-                .get(new GenericType<List<String>>() {
+                .get(new GenericType<List<StemmaModel>>() {
                 });
         assertEquals(2, stemmata.size());
 
         String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
                 + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; \n}";
-        Util.assertStemmasEquivalent(expected, stemmata.get(0));
+        StemmaModel firstStemma = stemmata.get(0);
+        Util.assertStemmasEquivalent(expected, firstStemma.getDot());
+        assertEquals("stemma", firstStemma.getIdentifier());
+        assertFalse(firstStemma.getIs_undirected());
 
         String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
                 + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; \n}";
-        Util.assertStemmasEquivalent(expected2, stemmata.get(1));
+        StemmaModel secondStemma = stemmata.get(1);
+        Util.assertStemmasEquivalent(expected2, secondStemma.getDot());
+        assertEquals("Semstem 1402333041_0", secondStemma.getIdentifier());
+        assertTrue(secondStemma.getIs_undirected());
+        assertNull(secondStemma.getFrom_jobid());
     }
 
     @Test
@@ -141,28 +149,28 @@ public class StemmaTest {
     @Test
 	public void getStemmaTest() {
         String stemmaTitle = "stemma";
-        String str = jerseyTest
+        StemmaModel stemma = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/" + stemmaTitle)
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
+                .get(StemmaModel.class);
 
         String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
                 + "C [ class=extant ];\n 0 -> A;  0 -> B;  A -> C; \n}";
-        Util.assertStemmasEquivalent(expected, str);
+        Util.assertStemmasEquivalent(expected, stemma.getDot());
 
         String stemmaTitle2 = "Semstem 1402333041_0";
-        String str2 = jerseyTest
+        StemmaModel stemma2 = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/" + stemmaTitle2)
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
+                .get(StemmaModel.class);
 
         String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];\n  "
                 + "A [ class=extant ];  B [ class=extant ];  "
                 + "C [ class=extant ];\n 0 -- A;  A -- B;  B -- C; \n}";
-        Util.assertStemmasEquivalent(expected2, str2);
+        Util.assertStemmasEquivalent(expected2, stemma2.getDot());
 
         ClientResponse getStemmaResponse = jerseyTest
                 .resource()
@@ -197,14 +205,14 @@ public class StemmaTest {
         }
 
         String stemmaTitle = "Semstem 1402333041_1";
-        String str = jerseyTest
+        StemmaModel stemma = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/" + stemmaTitle)
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
+                .get(StemmaModel.class);
 
         // Parse the resulting stemma and make sure it matches
-        Util.assertStemmasEquivalent(input, str);
+        Util.assertStemmasEquivalent(input, stemma.getDot());
     }
 
     @Test
@@ -434,7 +442,7 @@ public class StemmaTest {
         // Add two stemmata and check the node count
         String stemmaCM = null;
         String stemmaTF = null;
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        DotParser parser = new DotParser(db);
         try {
             byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
             stemmaCM = new String(encoded, Charset.forName("utf-8"));
@@ -465,12 +473,12 @@ public class StemmaTest {
 
         // Check the remaining stemma
         String tfTitle = "TF Stemma";
-        String remainingStemma = jerseyTest
+        StemmaModel remainingStemma = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/" + tfTitle)
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
-        Util.assertStemmasEquivalent(stemmaTF, remainingStemma);
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(stemmaTF, remainingStemma.getDot());
     }
 
     @Test
@@ -489,12 +497,12 @@ public class StemmaTest {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
         assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
 
-        String replacedStemma = jerseyTest
+        StemmaModel replacedStemma = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
-        Util.assertStemmasEquivalent(input, replacedStemma);
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(input, replacedStemma.getDot());
     }
 
     @Test
@@ -517,12 +525,12 @@ public class StemmaTest {
 
         // Do we still have the old one?
         assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
-        String storedStemma = jerseyTest
+        StemmaModel storedStemma = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
-        Util.assertStemmasEquivalent(original, storedStemma);
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(original, storedStemma.getDot());
     }
 
     @Test
@@ -546,12 +554,12 @@ public class StemmaTest {
 
         // Do we still have the old one?
         assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
-        String storedStemma = jerseyTest
+        StemmaModel storedStemma = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .get(String.class);
-        Util.assertStemmasEquivalent(original, storedStemma);
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(original, storedStemma.getDot());
     }
 
 

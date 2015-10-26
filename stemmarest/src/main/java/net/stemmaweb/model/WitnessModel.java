@@ -16,11 +16,12 @@ import org.neo4j.graphdb.Node;
 public class WitnessModel {
     private String sigil;
 
+    @SuppressWarnings("unused")     // It's used by response.getEntity(GenericType blah)
     public WitnessModel() {
     }
     /**
      * Generates a model from a Neo4j Node
-     * @param node
+     * @param node - the witness node to initialize from
      */
     public WitnessModel(Node node) {
         if (node.hasProperty("sigil"))

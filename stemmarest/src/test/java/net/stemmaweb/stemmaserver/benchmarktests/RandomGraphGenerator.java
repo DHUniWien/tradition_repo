@@ -85,16 +85,16 @@ class RandomGraphGenerator {
                     traditionRootNode = db.createNode(Nodes.TRADITION);
                     traditionRootNode.setProperty("name", "TestTradition_" + tradId);
                     traditionRootNode.setProperty("id", tradId);
-                    currentUser.createRelationshipTo(traditionRootNode, ERelations.SEQUENCE);
+                    currentUser.createRelationshipTo(traditionRootNode, ERelations.OWNS_TRADITION);
 
                     /**
                      * Create start node
                      */
                     Node startNode = db.createNode(Nodes.READING);
                     startNode.setProperty("text", "#START#");
-                    startNode.setProperty("is_start", "1");
-                    startNode.setProperty("rank", "0");
-                    startNode.setProperty("is_common", "0");
+                    startNode.setProperty("is_start", true);
+                    startNode.setProperty("rank", 0L);
+                    startNode.setProperty("is_common", false);
 
                     traditionRootNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
@@ -123,7 +123,7 @@ class RandomGraphGenerator {
                             wordNode.setProperty("text", loremIpsumArray[randomGenerator
                                     .nextInt(loremIpsumArray.length)]);
                             wordNode.setProperty("rank", Integer.toString(u));
-                            wordNode.setProperty("is_common", "0");
+                            wordNode.setProperty("is_common", false);
                             wordNode.setProperty("language", "latin");
 
                             nodesOfCurrentRank.add(wordNode);
@@ -188,8 +188,9 @@ class RandomGraphGenerator {
                     endNode = db.createNode(Nodes.READING);
                     endNode.setProperty("text", "#END#");
                     endNode.setProperty("rank", maxRank);
-                    endNode.setProperty("is_start", "0");
-                    endNode.setProperty("is_common", "0");
+                    endNode.setProperty("is_start", false);
+                    endNode.setProperty("is_end", true);
+                    endNode.setProperty("is_common", true);
                     traditionRootNode.createRelationshipTo(endNode, ERelations.HAS_END);
                     tx.success();
                 }

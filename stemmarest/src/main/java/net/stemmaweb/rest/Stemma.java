@@ -1,6 +1,5 @@
 package net.stemmaweb.rest;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -11,11 +10,13 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.services.DotToNeo4JParser;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.Neo4JToDotParser;
+import net.stemmaweb.exporter.DotExporter;
 
 import org.codehaus.jettison.json.JSONObject;
+import org.neo4j.cypher.internal.compiler.v2_0.functions.Str;
 import org.neo4j.graphdb.*;
 
 /**
@@ -39,21 +40,25 @@ public class Stemma {
     /**
      * Returns JSON string with a Stemma of a tradition in DOT format
      *
-     * @return Http Response ok and DOT JSON string on success or an ERROR in
+     * @return Http Response ok and a stemma model on success or an ERROR in
      *         JSON format
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getStemma() {
-
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
-        return parser.parseNeo4JStemma(tradId, name);
+        Node stemmaNode = getStemmaNode();
+        if (stemmaNode == null) {
+            return Response.status(Status.NOT_FOUND)
+                    .entity(String.format("No stemma %s found for tradition %s", name, tradId)).build();
+        }
+        StemmaModel result = new StemmaModel(stemmaNode);
+        return Response.ok().entity(result).build();
     }
 
-    @POST  // a replacement stemma TODO test
+    @POST  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
     public Response replaceStemma(String dot) {
-        DotToNeo4JParser parser = new DotToNeo4JParser(db);
+        DotParser parser = new DotParser(db);
         // Wrap this entire thing in a transaction so that we can roll back
         // the deletion if the replacement import fails.
         try (Transaction tx = db.beginTx()) {

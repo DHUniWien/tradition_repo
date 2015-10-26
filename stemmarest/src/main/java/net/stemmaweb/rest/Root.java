@@ -6,9 +6,11 @@ import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.parser.TabularParser;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 
 import javax.ws.rs.*;
@@ -64,7 +66,9 @@ public class Root {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
     public Response importGraphMl(@FormDataParam("name") String name,
+                                  @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
+                                  @FormDataParam("direction") String direction,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("file") InputStream uploadedInputStream,
@@ -79,7 +83,22 @@ public class Root {
                     .build();
         }
 
-        return new GraphMLToNeo4JParser().parseGraphML(uploadedInputStream, userId, name);
+        if (filetype.equals("csv"))
+            // Pass it off to the CSV reader
+            return new TabularParser().parseCSV(uploadedInputStream, userId, name, ',');
+        if (filetype.equals("tsv"))
+            // Pass it off to the CSV reader with tab separators
+            return new TabularParser().parseCSV(uploadedInputStream, userId, name, '\t');
+        if (filetype.startsWith("xls"))
+            // Pass it off to the Excel reader
+            return new TabularParser().parseExcel(uploadedInputStream, userId, name, filetype);
+        // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
+        // Otherwise assume GraphML, for backwards compatibility.
+        if (filetype.equals("graphml"))
+            return new GraphMLParser().parseGraphML(uploadedInputStream, userId, name);
+
+        // If we got this far, it was an unrecognized filetype.
+        return Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
     }
 
     /**
@@ -132,14 +151,19 @@ public class Root {
     @GET
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllTraditions() {
+    public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            db.findNodes(Nodes.TRADITION)
-                    .forEachRemaining(t -> traditionList.add(new TraditionModel(t)));
+            ResourceIterator<Node> nodeList;
+            if (publiconly)
+                nodeList = db.findNodes(Nodes.TRADITION, "is_public", true);
+            else
+                nodeList = db.findNodes(Nodes.TRADITION);
+            nodeList.forEachRemaining(t -> traditionList.add(new TraditionModel(t)));
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(traditionList).build();
@@ -148,7 +172,6 @@ public class Root {
     @GET
     @Path("/users")
     @Produces(MediaType.APPLICATION_JSON)
-    // TODO test this
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
 

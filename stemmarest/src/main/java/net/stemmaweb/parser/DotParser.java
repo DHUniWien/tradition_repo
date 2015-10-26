@@ -1,4 +1,4 @@
-package net.stemmaweb.services;
+package net.stemmaweb.parser;
 
 import java.util.*;
 
@@ -12,6 +12,8 @@ import net.stemmaweb.rest.Nodes;
 
 import com.alexmerz.graphviz.Parser;
 
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 
@@ -19,12 +21,12 @@ import org.neo4j.graphdb.Node;
  * This class provides methods for exporting Dot File from Neo4J
  * @author PSE FS 2015 Team2
  */
-public class DotToNeo4JParser {
+public class DotParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
     private String messageValue = null;
 
-    public DotToNeo4JParser(GraphDatabaseService db) {
+    public DotParser(GraphDatabaseService db) {
         this.db = db;
     }
 

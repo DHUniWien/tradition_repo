@@ -12,8 +12,8 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
-import net.stemmaweb.services.Neo4JToDotParser;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
 import org.codehaus.jettison.json.JSONException;
@@ -48,14 +48,14 @@ import static org.junit.Assume.assumeTrue;
 public class TraditionParseTest {
 
     private GraphDatabaseService db;
-    private GraphMLToNeo4JParser importResource;
+    private GraphMLParser importResource;
     private JerseyTest jerseyTest;
 
     @Before
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        importResource = new GraphMLToNeo4JParser();
+        importResource = new GraphMLParser();
 
         // Create a root node and test user
         DatabaseService.createRootNode(db);
@@ -126,8 +126,7 @@ public class TraditionParseTest {
         // we parsed is reflected in the DB.
         for (TraditionModel tm : jerseyTest.resource()
                 .path("/traditions")
-                .get(new GenericType<List<TraditionModel>>() {
-                })) {
+                .get(new GenericType<List<TraditionModel>>() {})) {
 
             // Name
             System.out.println("Checking " + tm.getName());
@@ -169,9 +168,10 @@ public class TraditionParseTest {
         }
     }
 
+    @SuppressWarnings("unused")
     private void toSVG(String traditionID, String outFile)
     {
-        Neo4JToDotParser parser = new Neo4JToDotParser(db);
+        DotExporter parser = new DotExporter(db);
         String dot = parser.parseNeo4J(traditionID).getEntity().toString();
 
         GraphViz gv = new GraphViz();

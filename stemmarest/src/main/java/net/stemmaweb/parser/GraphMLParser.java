@@ -1,4 +1,4 @@
-package net.stemmaweb.services;
+package net.stemmaweb.parser;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +15,7 @@ import javax.xml.stream.XMLStreamReader;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 
 /**
@@ -22,7 +23,7 @@ import org.neo4j.graphdb.*;
  * 
  * @author PSE FS 2015 Team2
  */
-public class GraphMLToNeo4JParser {
+public class GraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -71,6 +72,7 @@ public class GraphMLToNeo4JParser {
         // Some variables to collect information
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
+        HashMap<String, String> keytypes = new HashMap<>(); // to store data key value types
         HashMap<String, Boolean> witnesses = new HashMap<>();  // to store witnesses found
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
@@ -115,6 +117,7 @@ public class GraphMLToNeo4JParser {
                                 if (currentRel != null) {
                                     // We are working on a relationship node. Apply the data.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String keytype = keytypes.get(attr);
                                     String val = reader.getElementText();
 
                                     switch (attr) {
@@ -134,16 +137,18 @@ public class GraphMLToNeo4JParser {
                                             witnesses.put(val, true);
                                             break;
                                         default:
-                                            currentRel.setProperty(attr, val);
+                                            setTypedProperty(currentRel, attr, keytype, val);
                                             break;
                                     }
                                 } else if (currentNode != null) {
                                     // Working on either the tradition itself, or a node.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String keytype = keytypes.get(attr);
                                     String text = reader.getElementText();
                                     switch (attr) {
                                         // Tradition node attributes
                                         case "name":
+                                            // TODO is this redundant?
                                             if (text.equals(""))
                                                 text = tradName;
                                             currentNode.setProperty(attr, text);
@@ -160,19 +165,18 @@ public class GraphMLToNeo4JParser {
                                         // Reading node attributes
                                         case "id":  // We don't use the old reading IDs
                                             break;
-                                        case "rank":
-                                            currentNode.setProperty(attr, Long.parseLong(text));
-                                            break;
                                         case "is_start":
-                                            traditionNode.createRelationshipTo(currentNode, ERelations.COLLATION);
-                                            currentNode.setProperty(attr, text);
+                                            if(text.equals("1") || text.equals("true"))
+                                                traditionNode.createRelationshipTo(currentNode, ERelations.COLLATION);
+                                            setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         case "is_end":
-                                            traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
-                                            currentNode.setProperty(attr, text);
+                                            if (text.equals("1") || text.equals("true"))
+                                                traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
+                                            setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         default:
-                                            currentNode.setProperty(attr, text);
+                                            setTypedProperty(currentNode, attr, keytype, text);
                                     }
                                 }
                                 break;
@@ -222,7 +226,9 @@ public class GraphMLToNeo4JParser {
                             case "key":
                                 String key = reader.getAttributeValue("", "id");
                                 String value = reader.getAttributeValue("", "attr.name");
+                                String type = reader.getAttributeValue("", "attr.type");
                                 keymap.put(key, value);
+                                keytypes.put(value, type);
                                 break;
                             case "graph":
                                 currentGraph = reader.getAttributeValue("", "id");
@@ -263,13 +269,28 @@ public class GraphMLToNeo4JParser {
         String[] graphs = stemmata.split("\n");
 
         for(String graph : graphs) {
-            DotToNeo4JParser parser = new DotToNeo4JParser(db);
+            DotParser parser = new DotParser(db);
             parser.importStemmaFromDot(graph, tradId);
         }
 
         return Response.status(Response.Status.OK)
                 .entity("{\"tradId\":" + tradId + "}")
                 .build();
+    }
+
+    private void setTypedProperty( PropertyContainer ent, String attr, String type, String val ) {
+        Object realval;
+        switch (type) {
+            case "int":
+                realval = Long.valueOf(val);
+                break;
+            case "boolean":
+                realval = val.equals("1") || val.equals("true");
+                break;
+            default:
+                realval = val;
+        }
+        ent.setProperty(attr, realval);
     }
 
     private Boolean isDotId (String nodeid) {

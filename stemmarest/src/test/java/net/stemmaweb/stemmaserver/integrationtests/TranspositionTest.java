@@ -12,7 +12,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.GraphMLToNeo4JParser;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import org.junit.After;
 import org.junit.Before;
@@ -20,7 +20,6 @@ import org.junit.Test;
 import org.neo4j.graphdb.*;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
@@ -58,7 +57,7 @@ public class TranspositionTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
 
-        GraphMLToNeo4JParser importResource = new GraphMLToNeo4JParser();
+        GraphMLParser importResource = new GraphMLParser();
 		File testfile = new File("src/TestFiles/testTradition.xml");
 
 
@@ -139,8 +138,8 @@ public class TranspositionTest {
         relationship.setSource(tehId.toString());
         relationship.setTarget(rootId.toString());
         relationship.setType("transposition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("teh");
         relationship.setReading_b("root");
 
@@ -166,8 +165,8 @@ public class TranspositionTest {
         relationship.setSource(theId.toString());
         relationship.setTarget(roodId.toString());
         relationship.setType("uncertain");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("the");
         relationship.setReading_b("rood");
 
@@ -187,8 +186,8 @@ public class TranspositionTest {
             assertEquals(theId, (Long) loadedRelationship.getStartNode().getId());
             assertEquals(roodId, (Long) loadedRelationship.getEndNode().getId());
             assertEquals("uncertain", loadedRelationship.getProperty("type"));
-            assertEquals("0", loadedRelationship.getProperty("alters_meaning"));
-            assertEquals("true", loadedRelationship.getProperty("is_significant"));
+            assertEquals(0L, loadedRelationship.getProperty("alters_meaning"));
+            assertEquals("yes", loadedRelationship.getProperty("is_significant"));
             assertEquals("the", loadedRelationship.getProperty("reading_a"));
             assertEquals("rood", loadedRelationship.getProperty("reading_b"));
             tx.success();
@@ -199,8 +198,8 @@ public class TranspositionTest {
         relationship.setSource(tehId.toString());
         relationship.setTarget(rootId.toString());
         relationship.setType("transposition");
-        relationship.setAlters_meaning("0");
-        relationship.setIs_significant("true");
+        relationship.setAlters_meaning(0L);
+        relationship.setIs_significant("yes");
         relationship.setReading_a("teh");
         relationship.setReading_b("root");
 
@@ -220,8 +219,8 @@ public class TranspositionTest {
             assertEquals(tehId, (Long) loadedRelationship.getStartNode().getId());
             assertEquals(rootId, (Long) loadedRelationship.getEndNode().getId());
             assertEquals("transposition", loadedRelationship.getProperty("type"));
-            assertEquals("0", loadedRelationship.getProperty("alters_meaning"));
-            assertEquals("true", loadedRelationship.getProperty("is_significant"));
+            assertEquals(0L, loadedRelationship.getProperty("alters_meaning"));
+            assertEquals("yes", loadedRelationship.getProperty("is_significant"));
             assertEquals("teh", loadedRelationship.getProperty("reading_a"));
             assertEquals("root", loadedRelationship.getProperty("reading_b"));
             tx.success();
