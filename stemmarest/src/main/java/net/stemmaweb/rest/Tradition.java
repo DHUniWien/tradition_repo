@@ -557,6 +557,7 @@ public class Tradition {
      * @return TraditionModel
      */
     @GET
+    @Path("/info")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTraditionInfo() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
