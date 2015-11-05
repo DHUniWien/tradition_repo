@@ -4,6 +4,7 @@ import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
+import net.stemmaweb.parser.CollateXParser;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.parser.GraphMLParser;
@@ -93,6 +94,8 @@ public class Root {
             // Pass it off to the Excel reader
             return new TabularParser().parseExcel(uploadedInputStream, userId, name, filetype);
         // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
+        if (filetype.equals("collatex"))
+            return new CollateXParser().parseCollateX(uploadedInputStream, userId, name, direction);
         // Otherwise assume GraphML, for backwards compatibility.
         if (filetype.equals("graphml"))
             return new GraphMLParser().parseGraphML(uploadedInputStream, userId, name);

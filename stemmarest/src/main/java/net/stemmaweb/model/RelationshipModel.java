@@ -35,6 +35,7 @@ public class RelationshipModel {
     private String reading_b;           // de9
     private String scope;               // de10
     private String type;                // de11
+    // TODO is witness ever used??
     private String witness;             // de12
 
     public RelationshipModel(){
