@@ -4,10 +4,13 @@ import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
+import com.sun.jersey.api.client.ClientResponse;
+import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
 import javax.ws.rs.core.Response;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -113,6 +116,19 @@ public class Util {
             if (content.has(key))
                 value = String.valueOf(content.get(key));
         } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return value;
+    }
+
+    public static String getValueFromJson (ClientResponse r, String key) {
+        String value = null;
+        InputStream response = r.getEntityInputStream();
+        try {
+            JSONObject content = new JSONObject(IOUtils.toString(response, "UTF-8"));
+            if (content.has(key))
+                value = String.valueOf(content.get(key));
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return value;
