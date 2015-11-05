@@ -552,6 +552,22 @@ public class Tradition {
     }
 
     /**
+     * Returns the tradition metadata
+     *
+     * @return TraditionModel
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTraditionInfo() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+
+        TraditionModel metadata = new TraditionModel(traditionNode);
+        return Response.ok(metadata).build();
+    }
+
+    /**
      * Returns DOT file from specified tradition owned by user
      *
      * @return Plaintext dot format
