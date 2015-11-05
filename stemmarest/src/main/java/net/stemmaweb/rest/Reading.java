@@ -895,7 +895,7 @@ public class Reading {
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Status.INTERNAL_SERVER_ERROR).entity(errorMessage).build();
+        return Response.status(Status.CONFLICT).entity(errorMessage).build();
     }
 
     /**
@@ -983,6 +983,11 @@ public class Reading {
             errorMessage = "reading has other relations. could not compress";
             return false;
         }
+
+        if (1 != numberOfPredecessors(read2)) {
+            errorMessage = "reading has more then one predecessor. could not compress";
+            return false;
+        }
         return true;
     }
 
@@ -995,11 +1000,10 @@ public class Reading {
      */
     private boolean hasNotNormalRelationships(Node read) {
         String type;
-        String normal;
+        String normal = ERelations.SEQUENCE.toString();
 
         for (Relationship rel : read.getRelationships()) {
             type = rel.getType().name();
-            normal = ERelations.SEQUENCE.toString();
 
             if (!type.equals(normal)) {
                 return true;
@@ -1025,5 +1029,20 @@ public class Reading {
             }
         }
         return from1to2;
+    }
+
+    /**
+     * checks if a reading has relationships which are not SEQUENCE
+     *
+     * @param read
+     *            the reading
+     * @return true if it has, false otherwise
+     */
+    private int numberOfPredecessors(Node read) {
+        int numberOfPredecessors = 0;
+        for (Relationship rel : read.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
+            numberOfPredecessors++;
+        }
+        return numberOfPredecessors;
     }
 }

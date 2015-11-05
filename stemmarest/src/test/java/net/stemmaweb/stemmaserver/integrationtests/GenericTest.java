@@ -966,7 +966,7 @@ public class GenericTest {
                 .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
-        String n3="", n4="", n9="", n10="", n21 = "";
+        String n3="", n4="", n9="", n10="", n21 = "", n22 = "";
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
@@ -978,22 +978,26 @@ public class GenericTest {
                 n9 = cur_reading.getId();
             } else if (cur_rank == 18L && cur_text.equals("root")) {
                 n10 = cur_reading.getId();
-            } else if (cur_rank == 16L && cur_text.equals("unto")) {
-                n21 = cur_reading.getId();
+            } else if (cur_rank == 16L) {
+                if (cur_text.equals("unto")) {
+                    n21 = cur_reading.getId();
+                } else if (cur_text.equals("to")) {
+                    n22 = cur_reading.getId();
+                }
             }
         }
 
         // split reading
         CharacterModel characterModel_ = new CharacterModel();
         characterModel_.setCharacter("");
-        ClientResponse response_ = jerseyTest
+        ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + n21 + "/split/2")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel_);
 
-        assertEquals(Status.OK.getStatusCode(), response_.getStatusInfo().getStatusCode());
-        GraphModel graphModel = response_.getEntity(GraphModel.class);
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        GraphModel graphModel = response.getEntity(GraphModel.class);
         String n21a;
         if (graphModel.getReadings().get(0).getId().equals(n21)) {
             n21a = graphModel.getReadings().get(1).getId();
@@ -1008,7 +1012,7 @@ public class GenericTest {
         String blub = "/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1";
         CharacterModel characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
-        ClientResponse response = jerseyTest
+        response = jerseyTest
                 .resource()
                 .path("/reading/" + n3 + "/concatenate/" + n4 + "/1")
                 .type(MediaType.APPLICATION_JSON)
@@ -1077,6 +1081,8 @@ public class GenericTest {
 
 
         /**
+         * merge n22 with n21a
+         *
          * # Try to combine n21 and n21p0. This should break.
          * my $remaining = $c->reading('n21');
          * $remaining ||= $c->reading('n22');  # one of these should still exist
@@ -1091,10 +1097,19 @@ public class GenericTest {
          */
 
         characterModel = new CharacterModel();
+        characterModel.setCharacter("");
+        response = jerseyTest
+                .resource()
+                .path("/reading/" + n22 + "/merge/" + n21a)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, characterModel);
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+
+        characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
         response = jerseyTest
                 .resource()
-                .path("/reading/" + n21 + "/concatenate/" + n21a + "/1")
+                .path("/reading/" + n21 + "/concatenate/" + n22 + "/1")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, characterModel);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -1170,13 +1185,6 @@ public class GenericTest {
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(17, listOfReadings.size());
 
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/readings")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-
-        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
         /*
         # Detach the erroneously collated reading

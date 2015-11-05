@@ -24,6 +24,7 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -1251,7 +1252,11 @@ public class ReadingTest {
     /**
      * tests the splitting of a reading when there is no rank-gap after it
      * should return error
+     * (this test isn't necessary anymore, since we now perform a recalculation
+     *  of the rank(s) after each reading-operation.
+     *  but, we could use this test to verify that this recalculation works correctly.)
      */
+    @Ignore
     @Test
     public void splitReadingNoAvailableRankTest() {
         try (Transaction tx = db.beginTx()) {
@@ -1758,7 +1763,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
-            assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+            assertEquals(Response.Status.CONFLICT.getStatusCode(),
                     response.getStatus());
             assertEquals("reading are not neighbors. could not compress",
                     response.getEntity(String.class));
