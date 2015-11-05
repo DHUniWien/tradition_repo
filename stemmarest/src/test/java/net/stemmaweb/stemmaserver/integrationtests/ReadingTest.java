@@ -1086,7 +1086,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
-            assertEquals("The separator does not apear in the index location in the text",
+            assertEquals("The separator does not appear in the index location in the text",
                     response.getEntity(String.class));
             tx.success();
         }
@@ -1233,8 +1233,7 @@ public class ReadingTest {
             characterModel.setCharacter(" ");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/0")
+                    .path("/reading/" + node.getId() + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 
@@ -1267,8 +1266,7 @@ public class ReadingTest {
             characterModel.setCharacter("");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/" + untoMe.getId()
-                            + "/split/0")
+                    .path("/reading/" + untoMe.getId() + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, characterModel);
 

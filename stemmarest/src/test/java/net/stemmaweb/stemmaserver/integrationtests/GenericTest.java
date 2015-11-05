@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
@@ -10,6 +9,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import com.sun.jersey.core.util.MultivaluedMapImpl;
+import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
@@ -45,6 +45,7 @@ public class GenericTest {
      */
     private JerseyTest jerseyTest;
     private GraphMLParser importResource;
+    private TabularParser importTabResource;
 
     @Before
     public void setUp() throws Exception {
@@ -54,6 +55,7 @@ public class GenericTest {
                 .getDatabase();
 
         importResource = new GraphMLParser();
+        importTabResource = new TabularParser();
         Root webResource = new Root();
 
         /*
@@ -80,11 +82,23 @@ public class GenericTest {
         jerseyTest.setUp();
     }
 
+    private String getTranscriptionId() {
+        String tradId;
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
+            Iterator<Node> nodes = result.columnAs("t");
+            assertTrue(nodes.hasNext());
+            tradId = (String) nodes.next().getProperty("id");
+            tx.success();
+        }
+        assertNotNull(tradId);
+        return tradId;
+    }
     // Tradition test
 
     @Test
     public void test_01() {
-        /* Pearl-Specification:
+        /** Pearl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
             is( $t->name, 'empty', "object has the right name" );
@@ -105,7 +119,7 @@ public class GenericTest {
 
     @Test
     public void test_02() {
-        /* Pearl-Specification (Part a):
+        /** Pearl-Specification (Part a):
             my $simple = 't/data/simple.txt';
             my $s = Text::Tradition->new(
             'name'  => 'inline',
@@ -117,30 +131,29 @@ public class GenericTest {
             is( scalar $s->witnesses, 3, "object has three witnesses" );
         */
 
-        // Status: Done (with .xml-file)
-        // TODO make a tabular collation parser
-
-        String tradId;
         /**
          * load a tradition to the test DB
          */
+        try {
+            InputStream inputstream = new FileInputStream("src/TestFiles/simple.txt");
+            importTabResource.parseCSV(inputstream, "1", "Tradition", '\t');
+        } catch (IOException e) {
+            // this error should not occur
+            assertTrue(false);
+        }
+        /* loads the same data, but from the xml version
         File testFile = new File("src/TestFiles/simple.xml");
         try {
             importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
-        }
+        }*/
+
         /**
          * gets the generated id of the inserted tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
+        String tradId = this.getTranscriptionId();
 
         List<WitnessModel> witnesses = jerseyTest
                 .resource()
@@ -150,7 +163,7 @@ public class GenericTest {
         assert (witnesses.size() == 3) : "Unexpected number of witnesses.";
 
 
-    /* Pearl-Specification (Part b):
+    /** Pearl-Specification (Part b):
         ## NOW
         my $wit_a = $s->witness('A');
         is( ref( $wit_a ), 'Text::Tradition::Witness', "Found a witness A" );
@@ -182,7 +195,7 @@ public class GenericTest {
 
     @Test
     public void test_03() {
-        /*
+        /**
         ## NOW - test that local and non-local relationship addition and deletion works
         my $cxfile = 't/data/Collatex-16.xml';
         my $t = Text::Tradition->new(
@@ -193,8 +206,6 @@ public class GenericTest {
         my $c = $t->collation;
 
         */
-
-        String tradId;
 
         /**
          * load a tradition to the test DB
@@ -210,29 +221,13 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
-
-        /* we don't need this ...
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/relation/getallrelationships/fromtradition/" + tradId)
-                .get(ClientResponse.class);
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/relation/getallrelationships/fromtradition/" + tradId)
-                .get(new GenericType<List<RelationshipModel>>() {});
-        */
+        String tradId = this.getTranscriptionId();
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
-        /*
+        /**
         determine ids of nodes that we are going to use in the following
          */
         String n1="", n2="", n12="", n13="", n21="", n22="", n23="", n24="";
@@ -269,14 +264,7 @@ public class GenericTest {
             }
         }
 
-        /* ... and we don't need this either
-        List<String> stemmata = jerseyTest
-                .resource()
-                .path("/stemma/getallstemmata/fromtradition/" + tradId)
-                .get(new GenericType<List<String>>() {});
-        */
-
-        /*
+        /**
         my @v1 = $c->add_relationship( 'n21', 'n22', { 'type' => 'lexical' } ); # 'unto', 'to'
         is( scalar @v1, 1, "Added a single relationship" );
         is( $v1[0]->[0], 'n21', "Got correct node 1" );
@@ -307,7 +295,7 @@ public class GenericTest {
         relationshipId1 = readingsAndRelationship1.getRelationships().get(0).getId();
         */
 
-        /*
+        /**
         my @v2 = $c->add_relationship( 'n24', 'n23',  # 'the', 'teh' near the end
         { 'type' => 'spelling', 'scope' => 'global' } );
         is( scalar @v2, 2, "Added a global relationship with two instances" );
@@ -328,7 +316,7 @@ public class GenericTest {
         assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
 
 
-        /*
+        /**
         @v1 = $c->del_relationship( 'n22', 'n21' );
         is( scalar @v1, 1, "Deleted first relationship" );
          */
@@ -347,7 +335,7 @@ public class GenericTest {
         assertEquals(response.getEntity(Long.class), Long.valueOf(1));
 
 
-        /*
+        /**
         @v2 = $c->del_relationship( 'n12', 'n13', 'everywhere' ); 'the', 'the' before drought/march
         is( scalar @v2, 2, "Deleted second global relationship" );
          */
@@ -366,7 +354,7 @@ public class GenericTest {
         assertEquals(response.getEntity(Long.class), Long.valueOf(2L));
 
 
-        /*
+        /**
         my @v3 = $c->del_relationship( 'n1', 'n2' );  # 'when', 'april'
         is( scalar @v3, 0, "Nothing deleted on non-existent relationship" );
         removeModel = new RelationshipModel();
@@ -385,7 +373,7 @@ public class GenericTest {
         assertEquals(response.getEntity(Long.class), Long.valueOf(0L));
 
 
-        /*
+        /**
         my @v4 = $c->add_relationship( 'n24', 'n23',
                 { 'type' => 'spelling', 'scope' => 'global' } );
         is( @v4, 2, "Re-added global relationship" );
@@ -406,7 +394,7 @@ public class GenericTest {
         assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
 
 
-        /*
+        /**
         @v4 = $c->del_relationship( 'n12', 'n13' );  # not everywhere
         is( @v4, 1, "Only specified relationship deleted this time" );
         ok( $c->get_relationship( 'n24', 'n23' ), "Other globally-added relationship exists" );
@@ -417,7 +405,7 @@ public class GenericTest {
         relationship.setTarget(n13);
         relationship.setScope("local");
 
-        // TODO redo this test with a call to /relationships
+        // TODO redo this test with a call to /relationships (done)
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
@@ -426,19 +414,30 @@ public class GenericTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(Long.class), Long.valueOf(1L));
 
-        MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
-        queryParams.add("node1", n24);
-        queryParams.add("node2", n23);
+        // we don't need this, because we are going to get all relationships
+        /* MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
+         * queryParams.add("node1", n24);
+         * queryParams.add("node2", n23);
+         */
 
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relationships")
+//                .queryParams(queryParams)
                 .get(ClientResponse.class);
-        // assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        // assertEquals(response.getEntity(String.class), "RELATED");
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        boolean foundTraditon = false;
+        ArrayList<RelationshipModel> relList = response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){});
+        for (RelationshipModel relItem : relList) {
+            if ((relItem.getSource().equals(n23) && relItem.getTarget().equals(n24)) ||
+                    (relItem.getSource().equals(n24) && relItem.getTarget().equals(n23))) {
+                foundTraditon = true;
+            }
+        }
+        assertTrue(foundTraditon);
 
 
-        /*
+        /**
         # Test 1.3: attempt relationship with a meta reading (should fail)
         $t1 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/legendfrag.xml' );
         ok( $t1, "Parsed test fragment file" );
@@ -476,8 +475,7 @@ public class GenericTest {
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
-            if (cur_rank == 9L
-                    && cur_reading.getIs_lacuna()) {
+            if (cur_rank == 9L && cur_reading.getIs_lacuna()) {
                 r8_1 = cur_reading.getId();
             } else if (cur_rank == 4L && cur_text.equals("henricus")) {
                 r9_2 = cur_reading.getId();
@@ -485,7 +483,7 @@ public class GenericTest {
         }
 
 
-        /*
+        /**
         try {
             $c1->add_relationship( 'r8.1', 'r9.2', { 'type' => 'collated' } );  # 8.1 is lacuna, 9.2 is "henricus"
             ok( 0, "Allowed a meta-reading to be used in a relationship" );
@@ -509,7 +507,7 @@ public class GenericTest {
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
-        /* SK: Tests if we are able to create a relationship from the 1st to the 2nd tradition */
+        /** SK: Tests if we are able to create a relationship from the 1st to the 2nd tradition */
 
         relationship = new RelationshipModel();
         relationship.setSource(r9_2);
@@ -528,7 +526,7 @@ public class GenericTest {
 
     @Test
     public void test_04() {
-        /*
+        /**
         # Test 2.1: try to equate nodes that are prevented with a real intermediate equivalence
         my $t2;
         warnings_exist {
@@ -552,17 +550,9 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
+        String tradId = this.getTranscriptionId();
 
-
-        /*
+        /**
         $c2->add_relationship( 'r9.2', 'r9.3', { 'type' => 'lexical' } );
         */
 
@@ -599,27 +589,39 @@ public class GenericTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
 
-        /*
+        /**
         my $trel2 = $c2->get_relationship( 'r9.2', 'r9.3' );
         is( ref( $trel2 ), 'Text::Tradition::Collation::Relationship',
                 "Created blocking relationship" );
         is( $trel2->type, 'lexical', "Blocking relationship is not a collation" );
         */
 
-        MultivaluedMap <String, String>queryParams = new MultivaluedMapImpl();
-        queryParams.add("node1", r9_2);
-        queryParams.add("node2", r9_3);
+        // we don't need this, because we are going to get all relationships
+        /* MultivaluedMap <String, String>queryParams = new MultivaluedMapImpl();
+         * queryParams.add("node1", r9_2);
+         * queryParams.add("node2", r9_3);
+         */
 
         // TODO use call to /relationships
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relationships")
-                .queryParams(queryParams)
                 .get(ClientResponse.class);
-        // assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        // assertEquals(response.getEntity(String.class), "RELATED");
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
 
-        /*
+        ArrayList<RelationshipModel> relList = response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){});
+        found_expected_tradition: {
+            for (RelationshipModel relItem : relList) {
+                if ((relItem.getSource().equals(r9_2) && relItem.getTarget().equals(r9_3)) ||
+                        (relItem.getSource().equals(r9_3) && relItem.getTarget().equals(r9_2))) {
+                    assertEquals("lexical", relItem.getType());
+                    break found_expected_tradition;
+                }
+            }
+            assertTrue(false);
+        }
+
+        /**
         # This time the link ought to fail
         try {
             $c2->add_relationship( 'r8.6', 'r10.3', { 'type' => 'orthographic' } );
@@ -643,7 +645,7 @@ public class GenericTest {
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
-        /*
+        /**
         try {
             $c2->calculate_ranks();
             ok( 1, "Successfully calculated ranks" );
@@ -651,15 +653,15 @@ public class GenericTest {
             ok( 0, "Collation now has a cycle: " . $e->message );
         }
         */
-
-        //TODO (sk_20150928): implement recalculation of ranks!
-
+        // We don't need this anymore, since the (re)calculation of ranks now happens
+        // automatically after a relationship is created.
+        // We should might create a test to verify the recalculation of ranks (before -> after)!
     }
 
 
     @Test
     public void test_05() {
-        /*
+        /**
         # Test 3.1: make a straightforward pair of transpositions.
         my $t3 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/lf2.xml' );
         */
@@ -675,15 +677,7 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
-
+        String tradId = this.getTranscriptionId();
 
         /**
          * determine node ids
@@ -726,11 +720,10 @@ public class GenericTest {
                         r38_3 = cur_reading.getId();
                     }
                     break;
-
             }
         }
 
-        /*
+        /**
         # Test 1: try to equate nodes that are prevented with an intermediate collation
         my $c3 = $t3->collation;
         try {
@@ -753,7 +746,7 @@ public class GenericTest {
                 .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
 
-        /*
+        /**
         try {
             $c3->add_relationship( 'r36.3', 'r38.2', { 'type' => 'transposition' } );
             ok( 1, "Added straightforward transposition complement" );
@@ -774,7 +767,7 @@ public class GenericTest {
                 .put(ClientResponse.class, relationship2);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-        /*
+        /**
         # Test 3.2: try to make a transposition that could be a parallel.
         try {
             $c3->add_relationship( 'r28.2', 'r29.2', { 'type' => 'transposition' } );
@@ -797,7 +790,7 @@ public class GenericTest {
                 .put(ClientResponse.class, relationship3);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
-        /*
+        /**
         # Test 3.3: make the parallel, and then make the transposition again.
         try {
             $c3->add_relationship( 'r28.3', 'r29.3', { 'type' => 'orthographic' } );
@@ -819,7 +812,7 @@ public class GenericTest {
                 .put(ClientResponse.class, relationship4);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-        /*
+        /**
         try {
             $c3->add_relationship( 'r28.2', 'r29.2', { 'type' => 'transposition' } );
             ok( 1, "Added straightforward transposition complement" );
@@ -902,8 +895,8 @@ public class GenericTest {
         relationship.setSource(r463_2);
         relationship.setTarget(r463_4);
         relationship.setType("orthographic");
-//        relationship.setScope("document");
-        relationship.setScope("local");
+        relationship.setScope("document");
+//        relationship.setScope("local");
 
         ClientResponse response = jerseyTest
                 .resource()
@@ -956,22 +949,14 @@ public class GenericTest {
             // this error should not occur
             assertTrue(false);
         }
-        /*
+        /**
         my $rno = scalar $c->readings;
         # Split n21 ('unto') for testing purposes into n21p0 ('un', 'join_next' => 1 ) and n21 ('to')...
         */
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
-
+        String tradId = this.getTranscriptionId();
 
         /**
          *  determine node ids
@@ -979,8 +964,7 @@ public class GenericTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
-                .get(new GenericType<List<ReadingModel>>() {
-                });
+                .get(new GenericType<List<ReadingModel>>() {});
 
         String n3="", n4="", n9="", n10="", n21 = "";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -999,22 +983,23 @@ public class GenericTest {
             }
         }
 
-        //TODO (SK): modify 'splitreading', since it wants a 'rank-gap'
-        /*
-        CharacterModel characterModel = new CharacterModel();
-        characterModel.setCharacter("");
-        String split_idx = "2";
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/reading/splitreading/ofreading/" + n21
-                        + "/withsplitindex/2")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        // split reading
+        CharacterModel characterModel_ = new CharacterModel();
+        characterModel_.setCharacter("");
+        ClientResponse response_ = jerseyTest
+                    .resource()
+                    .path("/reading/" + n21 + "/split/2")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, characterModel_);
 
-        GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-        */
-
+        assertEquals(Status.OK.getStatusCode(), response_.getStatusInfo().getStatusCode());
+        GraphModel graphModel = response_.getEntity(GraphModel.class);
+        String n21a;
+        if (graphModel.getReadings().get(0).getId().equals(n21)) {
+            n21a = graphModel.getReadings().get(1).getId();
+        } else {
+            n21a = graphModel.getReadings().get(0).getId();
+        }
 
         /**
          *  # Combine n3 and n4 ( with his )
@@ -1066,6 +1051,7 @@ public class GenericTest {
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
+
         /**
          *  ok( !$c->reading('n10'), "Reading n10 is gone" );
          */
@@ -1075,6 +1061,7 @@ public class GenericTest {
                 .get(ClientResponse.class);
 
         assertEquals(ClientResponse.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
+
 
         /**
          *  is( $c->reading('n9')->text, 'rood', "Reading n9 has an unchanged word" );
@@ -1088,43 +1075,66 @@ public class GenericTest {
         reading = response.getEntity(ReadingModel.class);
         assertEquals("rood", reading.getText());
 
-/*
 
-    # Try to combine n21 and n21p0. This should break.
-    my $remaining = $c->reading('n21');
-    $remaining ||= $c->reading('n22');  # one of these should still exist
-    try {
-        $c->merge_readings( 'n21p0', $remaining, 1 );
-        ok( 0, "Bad reading merge changed the graph" );
-    } catch( Text::Tradition::Error $e ) {
-        like( $e->message, qr/neither concatenated nor collated/, "Expected exception from bad concatenation" );
-    } catch {
-        ok( 0, "Unexpected error on bad reading merge: $@" );
+        /**
+         * # Try to combine n21 and n21p0. This should break.
+         * my $remaining = $c->reading('n21');
+         * $remaining ||= $c->reading('n22');  # one of these should still exist
+         * try {
+         *      $c->merge_readings( 'n21p0', $remaining, 1 );
+         *      ok( 0, "Bad reading merge changed the graph" );
+         * } catch( Text::Tradition::Error $e ) {
+         *      like( $e->message, qr/neither concatenated nor collated/, "Expected exception from bad concatenation" );
+         * } catch {
+         *      ok( 0, "Unexpected error on bad reading merge: $@" );
+         * }
+         */
+
+        characterModel = new CharacterModel();
+        characterModel.setCharacter(" ");
+        response = jerseyTest
+                .resource()
+                .path("/reading/" + n21 + "/concatenate/" + n21a + "/1")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, characterModel);
+        assertEquals(Status.CONFLICT.getStatusCode(), response.getStatusInfo().getStatusCode());
+
+        /**
+         ## and then make sure that the graph is not broken.
+        **/
+        /**
+        ## TODO again with the tabular / CSV input.
+                # Test right-to-left reading merge.
+                my $rtl = Text::Tradition->new(
+                'name'  => 'inline',
+                'input' => 'Tabular',
+                'sep_char' => ',',
+                'direction' => 'RL',
+                'file'  => 't/data/arabic_snippet.csv'
+                );
+         */
+
+        try {
+            InputStream inputstream = new FileInputStream("src/TestFiles/arabic_snippet.csv");
+            importTabResource.parseCSV(inputstream, "1", "inline", ',');
+        } catch (IOException e) {
+            // this error should not occur
+            assertTrue(false);
+        }
+
+        /**
+        my $rtlc = $rtl->collation;
+        is( $rtlc->reading('r8.1')->text, 'سبب', "Got target first reading in RTL text" );
+        my $pt = $rtlc->path_text('A');
+        my @path = $rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' );
+        is( $rtlc->reading('r9.1')->text, 'صلاح', "Got target second reading in RTL text" );
+        $rtlc->merge_readings( 'r8.1', 'r9.1', 1 );
+        is( $rtlc->reading('r8.1')->text, 'سبب صلاح', "Got target merged reading in RTL text" );
+        is( $rtlc->path_text('A'), $pt, "Path text is still correct" );
+        is( scalar($rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' )),
+        scalar(@path) - 1, "Path was shortened" );
     }
-
-    ## and then make sure that the graph is not broken.
-
-    ## TODO again with the tabular / CSV input.
-            # Test right-to-left reading merge.
-            my $rtl = Text::Tradition->new(
-            'name'  => 'inline',
-            'input' => 'Tabular',
-            'sep_char' => ',',
-            'direction' => 'RL',
-            'file'  => 't/data/arabic_snippet.csv'
-            );
-    my $rtlc = $rtl->collation;
-    is( $rtlc->reading('r8.1')->text, 'سبب', "Got target first reading in RTL text" );
-    my $pt = $rtlc->path_text('A');
-    my @path = $rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' );
-    is( $rtlc->reading('r9.1')->text, 'صلاح', "Got target second reading in RTL text" );
-    $rtlc->merge_readings( 'r8.1', 'r9.1', 1 );
-    is( $rtlc->reading('r8.1')->text, 'سبب صلاح', "Got target merged reading in RTL text" );
-    is( $rtlc->path_text('A'), $pt, "Path text is still correct" );
-    is( scalar($rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' )),
-    scalar(@path) - 1, "Path was shortened" );
-}
-*/
+    */
     }
 
 
@@ -1145,23 +1155,30 @@ public class GenericTest {
             assertTrue(false);
         }
 
-        String tradId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
-        }
-        assertNotNull(tradId);
+        String tradId = this.getTranscriptionId();
 
-/*
+        /**
         my $sc = $st->collation;
         my $numr = 17;
         ok( $sc->reading('n131'), "Tradition has the affected reading" );
         is( scalar( $sc->readings ), $numr, "There are $numr readings in the graph" );
         is( $sc->end->rank, 14, "There are fourteen ranks in the graph" );
+        */
+        List<ReadingModel> listOfReadings = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(17, listOfReadings.size());
 
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/readings")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+
+        /*
         # Detach the erroneously collated reading
         my( $newr, @del_rdgs ) = $sc->duplicate_reading( 'n131', 'Ba96' );
         ok( $newr, "New reading was created" );

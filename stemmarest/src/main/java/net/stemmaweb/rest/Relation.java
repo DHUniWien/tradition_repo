@@ -165,16 +165,26 @@ public class Relation {
             } // TODO add constraints about witness uniqueness or lack thereof
 
             // Check, if relationship already exists
-            Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
-            for (Relationship relationship : relationships) {
-                if (relationship.getOtherNode(readingA).equals(readingB)
-                        && relationship.getProperty("type").equals(relationshipModel.getType())) {
-                    tx.success();
-                    return Response.status(Status.NOT_MODIFIED).build();
+            found_exisiting_relationship: {
+                Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
+                for (Relationship relationship : relationships) {
+                    if (relationship.getOtherNode(readingA).equals(readingB)) {
+                        if (relationship.getProperty("type").equals(relationshipModel.getType())) {
+                            tx.success();
+                            return Response.status(Status.NOT_MODIFIED).build();
+                        }
+                        // TODO SK->TLA ask about additional rules!
+                        String oldRelType = (String) relationship.getProperty("type");
+                        if (oldRelType.equals("collated")) {
+                            // We use the existing relation, instead of delete it and create a new one
+                            relationshipAtoB = relationship;
+                            break found_exisiting_relationship;
+                        }
+                    }
                 }
+                relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             }
 
-            relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
             relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
             relationshipAtoB.setProperty("alters_meaning", relationshipModel.getAlters_meaning());

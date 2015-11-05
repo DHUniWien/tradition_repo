@@ -565,8 +565,7 @@ public class Reading {
         Node originalReading;
         try (Transaction tx = db.beginTx()) {
             originalReading = db.getNodeById(readId);
-            String originalText = originalReading.getProperty("text")
-                    .toString();
+            String originalText = originalReading.getProperty("text").toString();
             if (splitIndex >= originalText.length()) {
                 return Response.status(Status.INTERNAL_SERVER_ERROR)
                         .entity("The index must be smaller than the text length")
@@ -575,7 +574,8 @@ public class Reading {
 
             if (!originalText.contains(model.getCharacter())) {
                 return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("no such separator exists").build();
+                        .entity("no such separator exists")
+                        .build();
             }
 
             if (splitIndex != 0 && !model.getCharacter().equals("")) {
@@ -583,7 +583,7 @@ public class Reading {
                         splitIndex + model.getCharacter().length());
                 if (!textToRemove.equals(model.getCharacter())) {
                     return Response.status(Status.INTERNAL_SERVER_ERROR)
-                            .entity("The separator does not apear in the index location in the text")
+                            .entity("The separator does not appear in the index location in the text")
                             .build();
                 }
             }
@@ -597,9 +597,25 @@ public class Reading {
             String[] splitWords = splitUpText(splitIndex, model.getCharacter(), originalText);
 
             if (!hasRankGap(originalReading, splitWords.length)) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("There has to be a rank-gap after a reading to be split")
-                        .build();
+                // TODO (sk): ask TLA, if modification of the rank will be ok
+                Long rankGap = (Long) originalReading.getProperty("rank") + splitWords.length;
+                String tradId = originalReading.getProperty("tradition_id").toString();
+                for (Relationship rel : originalReading.getRelationships(
+                        Direction.OUTGOING, ERelations.SEQUENCE)) {
+                    Node nextNode = rel.getEndNode();
+                    if (nextNode.hasProperty("rank") &&
+                            ((long)nextNode.getProperty("rank") <= rankGap)) {
+                        nextNode.setProperty("rank", rankGap);
+                        new Tradition(tradId).recalculateRank(nextNode.getId());
+                    }
+                }
+                /*
+                if (!hasRankGap(originalReading, splitWords.length)) {
+                    return Response.status(Status.INTERNAL_SERVER_ERROR)
+                            .entity("There has to be a rank-gap after a reading to be split")
+                            .build();
+                }
+                */
             }
 
             readingsAndRelationships = split(originalReading, splitWords);
