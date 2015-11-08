@@ -33,7 +33,7 @@ public class TabularParser {
      *
      * @return Response
      */
-    public Response parseCSV(InputStream fileData, String userId, String tradName, char sepChar) {
+    public Response parseCSV(InputStream fileData, String userId, String tradName, String direction, char sepChar) {
         // Parse the CSV file
         ArrayList<String[]> csvRows = new ArrayList<>();
         try {
@@ -45,7 +45,7 @@ public class TabularParser {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
-        return parseTableToTradition(csvRows, userId, tradName);
+        return parseTableToTradition(csvRows, userId, tradName, direction);
     }
 
     /**
@@ -58,7 +58,7 @@ public class TabularParser {
      *
      * @return Response
      */
-    public Response parseExcel(InputStream fileData, String userId, String tradName, String excelType) {
+    public Response parseExcel(InputStream fileData, String userId, String tradName, String direction, String excelType) {
         ArrayList<String[]> excelRows;
         try {
             if (excelType.equals("xls")) {
@@ -72,7 +72,7 @@ public class TabularParser {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
-        return parseTableToTradition(excelRows, userId, tradName);
+        return parseTableToTradition(excelRows, userId, tradName, direction);
     }
 
     // Extract a table from the first sheet of an Excel workbook.
@@ -97,7 +97,7 @@ public class TabularParser {
         return excelRows;
     }
 
-    private Response parseTableToTradition(ArrayList<String[]> tableData, String userId, String tradName) {
+    private Response parseTableToTradition(ArrayList<String[]> tableData, String userId, String tradName, String direction) {
         String response;
         Response.Status result = Response.Status.OK;
         Node traditionNode;
@@ -107,6 +107,7 @@ public class TabularParser {
             traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
             traditionNode.setProperty("id", tradId);
             traditionNode.setProperty("name", tradName);
+            traditionNode.setProperty("direction", direction);
             Node userNode = db.findNode(Nodes.USER, "id", userId);
             if (userNode == null) {
                 result = Response.Status.PRECONDITION_FAILED;

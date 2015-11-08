@@ -105,7 +105,7 @@ public class TraditionParseTest {
 
                 // Parse it via importGraphML and get the tradition ID
                 try {
-                    Response response = importResource.parseGraphML(testfile.getPath(), "1", "", tradId);
+                    Response response = importResource.parseGraphML(testfile.getPath(), "1", "SOMETRADITION", tradId);
                     assertEquals(response.getStatus(), 200);
                     JSONObject result = new JSONObject(response.getEntity().toString());
                     assertTrue(result.has("tradId"));

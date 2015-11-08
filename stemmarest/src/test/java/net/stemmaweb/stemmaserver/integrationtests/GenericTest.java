@@ -136,7 +136,7 @@ public class GenericTest {
          */
         try {
             InputStream inputstream = new FileInputStream("src/TestFiles/simple.txt");
-            importTabResource.parseCSV(inputstream, "1", "Tradition", '\t');
+            importTabResource.parseCSV(inputstream, "1", "Tradition", "LR", '\t');
         } catch (IOException e) {
             // this error should not occur
             assertTrue(false);
@@ -1131,7 +1131,7 @@ public class GenericTest {
 
         try {
             InputStream inputstream = new FileInputStream("src/TestFiles/arabic_snippet.csv");
-            importTabResource.parseCSV(inputstream, "1", "inline", ',');
+            importTabResource.parseCSV(inputstream, "1", "inline", "RL", ',');
         } catch (IOException e) {
             // this error should not occur
             assertTrue(false);

@@ -63,7 +63,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testParseCSV() throws Exception {
         InputStream fileStream = new FileInputStream("src/TestFiles/florilegium_simple.csv");
-        Response result = importResource.parseCSV(fileStream, "1", "Florilegium", ',');
+        Response result = importResource.parseCSV(fileStream, "1", "Florilegium", "LR", ',');
         assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
 
         String tradId = Util.getValueFromJson(result, "tradId");
@@ -91,13 +91,13 @@ public class TabularInputOutputTest extends TestCase {
     public void testParseExcel() throws Exception {
         // Test a bad file
         InputStream fileStream = new FileInputStream("src/TestFiles/armexample_bad.xlsx");
-        Response result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "xlsx");
+        Response result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "LR", "xlsx");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), result.getStatus());
         assertTrue(result.getEntity().toString().contains("has too many columns!"));
 
         // Test a good XLS file
         fileStream = new FileInputStream("src/TestFiles/armexample.xls");
-        result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "xls");
+        result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "LR", "xls");
         assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
 
         // Now retrieve the tradition and test what it has.
@@ -119,7 +119,7 @@ public class TabularInputOutputTest extends TestCase {
 
         // Test a good XLSX file
         fileStream = new FileInputStream("src/TestFiles/armexample.xlsx");
-        result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "xlsx");
+        result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "LR", "xlsx");
         assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
 
         // Now retrieve the tradition and test what it has.

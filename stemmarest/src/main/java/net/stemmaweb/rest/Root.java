@@ -69,7 +69,7 @@ public class Root {
     public Response importGraphMl(@FormDataParam("name") String name,
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
-                                  @FormDataParam("direction") String direction,
+                                  @DefaultValue("LR") @FormDataParam("direction") String direction,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("file") InputStream uploadedInputStream,
@@ -86,17 +86,18 @@ public class Root {
 
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
-            return new TabularParser().parseCSV(uploadedInputStream, userId, name, ',');
+            return new TabularParser().parseCSV(uploadedInputStream, userId, name, direction, ',');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
-            return new TabularParser().parseCSV(uploadedInputStream, userId, name, '\t');
+            return new TabularParser().parseCSV(uploadedInputStream, userId, name, direction, '\t');
         if (filetype.startsWith("xls"))
             // Pass it off to the Excel reader
-            return new TabularParser().parseExcel(uploadedInputStream, userId, name, filetype);
+            return new TabularParser().parseExcel(uploadedInputStream, userId, name, direction, filetype);
         // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
         if (filetype.equals("collatex"))
             return new CollateXParser().parseCollateX(uploadedInputStream, userId, name, direction);
-        // Otherwise assume GraphML, for backwards compatibility.
+        // Otherwise assume GraphML, for backwards compatibility. Text direction will be taken
+        // from the GraphML file.
         if (filetype.equals("graphml"))
             return new GraphMLParser().parseGraphML(uploadedInputStream, userId, name);
 
