@@ -3,6 +3,7 @@ package net.stemmaweb.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
@@ -99,9 +100,10 @@ public class AlignmentModel {
                 // Then it will be easier to use conflatedRelations.
                 // But then it will be extra-clear that some refactoring is needed.
                 ArrayList<HashMap<String, String>> tokens = new ArrayList<>();
+                Evaluator e = new WitnessPath(sigil).getEvalForWitness();
                 for (Node r : db.traversalDescription().depthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                        .evaluator(getEvalForWitness(sigil))
+                        .evaluator(e)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(startNode)
                         .nodes()) {
@@ -144,29 +146,4 @@ public class AlignmentModel {
     public long getLength () {
         return length;
     }
-
-    private static Evaluator getEvalForWitness(final String WITNESS_ID) {
-        return path -> {
-
-            if (path.length() == 0) {
-                return Evaluation.EXCLUDE_AND_CONTINUE;
-            }
-
-            boolean includes = false;
-            boolean continues = false;
-
-            if (path.lastRelationship().hasProperty("witnesses")) {
-                String[] arr = (String[]) path.lastRelationship()
-                        .getProperty("witnesses");
-                for (String str : arr) {
-                    if (str.equals(WITNESS_ID)) {
-                        includes = true;
-                        continues = true;
-                    }
-                }
-            }
-            return Evaluation.of(includes, continues);
-        };
-    }
-
 }

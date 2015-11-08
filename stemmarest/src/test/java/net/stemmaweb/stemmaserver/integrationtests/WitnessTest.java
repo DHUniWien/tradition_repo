@@ -117,7 +117,7 @@ public class WitnessTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
-        assertEquals("no witness with this id was found",
+        assertEquals("Could not find single witness with this sigil",
                 response.getEntity(String.class));
     }
 
@@ -158,7 +158,7 @@ public class WitnessTest {
                 .path("/tradition/" + tradId + "/witness/D/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertEquals("no witness with this id was found", response.getEntity(String.class));
+        assertEquals("Could not find single witness with this sigil", response.getEntity(String.class));
     }
 
     @Test
@@ -193,7 +193,7 @@ public class WitnessTest {
                 .resource()
                 .path("/tradition/" + tradId + "/witness/A/text/5/5")
 				.get(ClientResponse.class);
-		assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+		assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         assertEquals("end-rank is equal to start-rank", response.getEntity(String.class));
     }
 
@@ -234,7 +234,6 @@ public class WitnessTest {
     /**
      * test what text gets returned when a witness correction layer is involved
      */
-    @Ignore  // issue #7
     @Test
     public void correctedWitnessTextTest() {
         // Our expected values
@@ -252,7 +251,7 @@ public class WitnessTest {
             // this error should not occur
             assertTrue(false);
         }
-        String newId = parseResponse.getEntity().toString().replaceAll("\\D+", "");
+        String newId = Util.getValueFromJson(parseResponse, "tradId");
 
         // Now get the witness text for each of our complex sigla.
         String response = jerseyTest

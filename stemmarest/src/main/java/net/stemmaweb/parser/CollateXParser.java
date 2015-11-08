@@ -69,6 +69,7 @@ public class CollateXParser {
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
+            Long highestRank = 0L;
             for (int i = 0; i < readingNodes.getLength(); i++) {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
@@ -80,21 +81,26 @@ public class CollateXParser {
                     String keyId = dataAttrs.getNamedItem("key").getNodeValue();
                     String keyVal = dataNodes.item(j).getTextContent();
                     if (dataKeys.get(keyId).equals("rank")) {
-                        reading.setProperty(keyId, Long.valueOf(keyVal));
-                        // Detect start and end nodes
-                        if (keyVal.equals("0")) {
+                        Long rankVal = Long.valueOf(keyVal);
+                        reading.setProperty("rank", rankVal);
+                        highestRank = rankVal > highestRank ? rankVal : highestRank;
+                        // Detect start node
+                        if (rankVal == 0) {
                             traditionNode.createRelationshipTo(reading, ERelations.COLLATION);
                             reading.setProperty("is_start", true);
-                        } else if (Integer.valueOf(keyVal).equals(dataNodes.getLength() - 1)) {
-                            traditionNode.createRelationshipTo(reading, ERelations.HAS_END);
-                            reading.setProperty("is_end", true);
                         }
                     } else if (dataKeys.get(keyId).equals("tokens"))
                         reading.setProperty("text", keyVal);
                 }
-
                 createdReadings.put(cxId, reading);
             }
+            // Identify the end node. Assuming that there is only one.
+            final Long hr = highestRank;
+            Node endNode = createdReadings.values().stream()
+                    .filter(x -> Long.valueOf(x.getProperty("rank").toString()).equals(hr))
+                    .findFirst().get();
+            endNode.setProperty("is_end", true);
+            traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
 
             // Create all the sequences and keep track of the witnesses we see
             HashSet<String> seenWitnesses = new HashSet<>();

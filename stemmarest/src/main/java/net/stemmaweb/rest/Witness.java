@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -14,11 +15,8 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Evaluation;
+import net.stemmaweb.services.WitnessPath;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -50,33 +48,17 @@ public class Witness {
     @Path("/text")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getWitnessAsText() {
-
-        String witnessAsText = "";
-        final String WITNESS_ID = sigil;
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        Evaluator e = Witness.getEvalForWitness(WITNESS_ID);
-
+        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+        Node endNode = DatabaseService.getRelated(tradNode, ERelations.HAS_END).get(0);
+        String endRank;
         try (Transaction tx = db.beginTx()) {
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(e).uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                    .traverse(startNode).nodes()) {
-                if (!node.getProperty("text").equals("#END#")) {
-                    witnessAsText += node.getProperty("text") + " ";
-                }
-            }
+            endRank = endNode.getProperty("rank").toString();
             tx.success();
-        } catch (Exception exception) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
         }
-        if (witnessAsText.equals("")) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("no witness with this id was found")
-                    .build();
-        }
-        return Response.status(Response.Status.OK)
-                .entity("{\"text\":\"" + witnessAsText.trim() + "\"}")
-                .build();
+        return getWitnessAsTextBetweenRanks("0", endRank);
     }
 
     /**
@@ -97,36 +79,26 @@ public class Witness {
             @PathParam("end") String end) {
 
         String witnessAsText = "";
-        final String WITNESS_ID = sigil;
         long startRank = Long.parseLong(start);
         long endRank = Long.parseLong(end);
 
         if (endRank == startRank) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR)
+            return Response.status(Status.BAD_REQUEST)
                     .entity("end-rank is equal to start-rank")
                     .build();
         }
 
         if (endRank < startRank) {
-            //TODO: want work!  swapRanks(startRank, endRank);
             long tempRank = startRank;
             startRank = endRank;
             endRank = tempRank;
         }
 
-        Evaluator e = Witness.getEvalForWitness(WITNESS_ID);
         Node startNode = DatabaseService.getStartNode(tradId, db);
-
         try (Transaction tx = db.beginTx()) {
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(e)
-                    .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                    .traverse(startNode)
-                    .nodes()) {
+            for (Node node : traverseReadings(startNode)) {
                 long nodeRank = Long.parseLong( node.getProperty("rank").toString());
-                if (nodeRank >= startRank && nodeRank <= endRank &&
-                        !node.getProperty("text").equals("#END#")) {
+                if (nodeRank >= startRank && nodeRank <= endRank) {
                     witnessAsText += node.getProperty("text") + " ";
                 }
             }
@@ -137,7 +109,7 @@ public class Witness {
 
         if (witnessAsText.equals("")) {
             return Response.status(Status.NOT_FOUND)
-                    .entity("no witness with this id was found")
+                    .entity("Could not find single witness with this sigil")
                     .build();
         }
         return Response.status(Response.Status.OK)
@@ -145,13 +117,6 @@ public class Witness {
                 .build();
 
     }
-/*
-    private void swapRanks(long startRank, long endRank) {
-        long tempRank = endRank;
-        endRank = startRank;
-        startRank = tempRank;
-    }
-*/
 
     /**
      * finds a witness in the database and returns it as a list of readings
@@ -162,8 +127,6 @@ public class Witness {
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getWitnessAsReadings() {
-        final String WITNESS_ID = sigil;
-
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 
         Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -173,26 +136,17 @@ public class Witness {
                     .build();
         }
 
-        Evaluator e = Witness.getEvalForWitness(WITNESS_ID);
-
         try (Transaction tx = db.beginTx()) {
-
-            for (Node startNodes : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(e)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode)
-                    .nodes()) {
-                readingModels.add(new ReadingModel(startNodes));
-            }
+            readingModels.addAll(traverseReadings(startNode).stream().map(ReadingModel::new).collect(Collectors.toList()));
             tx.success();
-        } catch (Exception exception) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
         }
 
         if (readingModels.size() == 0) {
             return Response.status(Status.NOT_FOUND)
-                    .entity("no witness with this id was found")
+                    .entity("Could not find single witness with this sigil")
                     .build();
         }
         if (readingModels.get(readingModels.size() - 1).getText().equals("#END#")) {
@@ -201,27 +155,27 @@ public class Witness {
         return Response.status(Status.OK).entity(readingModels).build();
     }
 
-    public static Evaluator getEvalForWitness(final String WITNESS_ID) {
-        return path -> {
+    private ArrayList<Node> traverseReadings(Node startNode) throws Exception {
+        Evaluator e = new WitnessPath(sigil).getEvalForWitness();
+        ArrayList<Node> result = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(e)
+                    .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                    .traverse(startNode)
+                    .nodes()
+            .forEach(x -> {
+                if (!booleanValue(x, "is_end"))
+                    result.add(x);
+            });
+            tx.success();
+        }
+        return result;
+    }
 
-            if (path.length() == 0) {
-                return Evaluation.EXCLUDE_AND_CONTINUE;
-            }
-
-            boolean includes = false;
-            boolean continues = false;
-
-            if (path.lastRelationship().hasProperty("witnesses")) {
-                String[] arr = (String[]) path.lastRelationship()
-                        .getProperty("witnesses");
-                for (String str : arr) {
-                    if (str.equals(WITNESS_ID)) {
-                        includes = true;
-                        continues = true;
-                    }
-                }
-            }
-            return Evaluation.of(includes, continues);
-        };
+    // NOTE needs to be in transaction
+    private Boolean booleanValue(Node n, String p) {
+        return n.hasProperty(p) && Boolean.parseBoolean(n.getProperty(p).toString());
     }
 }
