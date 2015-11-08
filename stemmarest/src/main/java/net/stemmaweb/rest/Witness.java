@@ -96,10 +96,15 @@ public class Witness {
 
         Node startNode = DatabaseService.getStartNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
+            Boolean joinPrior = false;
             for (Node node : traverseReadings(startNode)) {
                 long nodeRank = Long.parseLong( node.getProperty("rank").toString());
-                if (nodeRank >= startRank && nodeRank <= endRank) {
-                    witnessAsText += node.getProperty("text") + " ";
+                if (nodeRank >= startRank && nodeRank <= endRank
+                        && !booleanValue(node, "is_lacuna")) {
+                    if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
+                        witnessAsText += " ";
+                    witnessAsText += node.getProperty("text").toString();
+                    joinPrior = booleanValue(node, "join_prior");
                 }
             }
             tx.success();
