@@ -292,7 +292,7 @@ public class GraphMLExporter {
 
             writer.writeEmptyElement("key");
             writer.writeAttribute("attr.name", "extra");
-            writer.writeAttribute("attr.type", "boolean");
+            writer.writeAttribute("attr.type", "string");
             writer.writeAttribute("for", "edge");
             writer.writeAttribute("id", "de5");
 
@@ -409,23 +409,29 @@ public class GraphMLExporter {
                     .relationships() ) {
                 if(rel!=null) {
                     edgeCountGraph1++;
-                    String[] witnesses = null;
-                    if (rel.hasProperty("witnesses")) {
-                        witnesses = (String[]) rel.getProperty("witnesses");
-                    }
-                    for (String witness : witnesses) {
-                        writer.writeStartElement("edge");
+                    for (String property : rel.getPropertyKeys()) {
+                        String[] witnesses = (String[]) rel.getProperty(property);
+                        for (String witness : witnesses) {
+                            writer.writeStartElement("edge");
 
-                        writer.writeAttribute("source", rel.getStartNode().getId() + "");
-                        writer.writeAttribute("target", rel.getEndNode().getId() + "");
-                        writer.writeAttribute("id", "e" + edgeId++);
+                            writer.writeAttribute("source", rel.getStartNode().getId() + "");
+                            writer.writeAttribute("target", rel.getEndNode().getId() + "");
+                            writer.writeAttribute("id", "e" + edgeId++);
 
-                        writer.writeStartElement("data");
-                        writer.writeAttribute("key", "de12");
-                        writer.writeCharacters(witness);
+                            if (!property.equals("witnesses")) {
+                                writer.writeStartElement("data");
+                                writer.writeAttribute("key", "de5");
+                                writer.writeCharacters(property);
+                                writer.writeEndElement();
+                            }
 
-                        writer.writeEndElement();
-                        writer.writeEndElement(); // end edge
+                            writer.writeStartElement("data");
+                            writer.writeAttribute("key", "de12");
+                            writer.writeCharacters(witness);
+                            writer.writeEndElement(); // end data key
+                            writer.writeEndElement(); // end edge
+                        }
+
                     }
                 }
             }

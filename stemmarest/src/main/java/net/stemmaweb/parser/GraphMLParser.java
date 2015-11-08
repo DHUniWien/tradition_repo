@@ -82,6 +82,8 @@ public class GraphMLParser {
         Node currentNode = null;	    // holds the current node
         String currentGraph = null;     // holds the ID of the current XML graph element
         Relationship currentRel = null; // holds the current relationship
+        String edgeWitness = null;
+        String witnessClass = "witnesses";
 
         try (Transaction tx = db.beginTx()) {
             graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
@@ -103,7 +105,19 @@ public class GraphMLParser {
                             // Finished working on currentNode
                             currentNode = null;
                         } else if (reader.getLocalName().equals("edge")) {
+                            // If this is an edge relationship, record the witness information
+                            // either in "witnesses" or in the field indicated by "extra"
+                            if (currentRel.isType(ERelations.SEQUENCE)) {
+                                String[] witList = {};
+                                if (currentRel.hasProperty(witnessClass))
+                                    witList = (String []) currentRel.getProperty(witnessClass);
+                                ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
+                                currentWits.add(edgeWitness);
+                                currentRel.setProperty(witnessClass, currentWits.toArray(new String[currentWits.size()]));
+                            }
+
                             // Finished working on currentRel
+                            witnessClass = "witnesses";
                             currentRel = null;
                         }
                         break;
@@ -126,17 +140,21 @@ public class GraphMLParser {
                                         case "witness":
                                             // Check that this is a sequence relationship
                                             assert currentRel.isType(ERelations.SEQUENCE);
-                                            // Add the witness to the current relationship's "witnesses" array
-                                            String[] witList = (String[]) currentRel.getProperty("witnesses");
-                                            ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
-                                            currentWits.add(val);
-                                            currentRel.setProperty("witnesses", currentWits.toArray(new String[currentWits.size()]));
-
+                                            edgeWitness = val;
                                             // Store the existence of this witness
-                                            // TODO implement a.c. / p.c. logic
                                             witnesses.put(val, true);
                                             break;
+                                        case "extra":
+                                            assert currentRel.isType(ERelations.SEQUENCE);
+                                            // If the key type is a Boolean, the witness class is always a.c.;
+                                            // otherwise it is the value of val.
+                                            if (keytype.equals("boolean"))
+                                                witnessClass = "a.c.";
+                                            else
+                                                witnessClass = val;
+                                            break;
                                         default:
+                                            assert currentRel.isType(ERelations.RELATED);
                                             setTypedProperty(currentRel, attr, keytype, val);
                                             break;
                                     }
@@ -205,14 +223,9 @@ public class GraphMLParser {
                                         }
                                     }
                                 }
-                                // If not, create it (with an empty witness list for SEQUENCEs.)
-                                if (currentRel == null) {
+                                // If not, create it.
+                                if (currentRel == null)
                                     currentRel = from.createRelationshipTo(to, relKind);
-                                    if (relKind.equals(ERelations.SEQUENCE)) {
-                                        String[] witList = {};
-                                        currentRel.setProperty("witnesses", witList);
-                                    }
-                                }
                                 break;
                             case "node":
                                 if (!currentGraph.equals("relationships")) {
