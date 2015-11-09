@@ -47,7 +47,7 @@
           <app xml:id="a1"><rdg wit="#A #C #P #S #T #D #E #F #H #K #Q"><witStart/></rdg></app>
           <app xml:id="a1.0">
             <rdg wit="#A #P #S #K">Μαξίμου</rdg>
-            <rdg wit="F #H">Μαξίμου ἁγίου</rdg>
+            <rdg wit="#F #H">Μαξίμου ἁγίου</rdg>
             <rdg wit="#C #D #E #T #Q"/>
           </app>
         </head>

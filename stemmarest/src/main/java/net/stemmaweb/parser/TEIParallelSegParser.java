@@ -1,5 +1,6 @@
 package net.stemmaweb.parser;
 
+import com.sun.org.apache.xerces.internal.impl.XMLStreamReaderImpl;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Tradition;
@@ -73,12 +74,12 @@ public class TEIParallelSegParser {
             Node startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
             startNode.setProperty("text", "#START#");
+            startNode.setProperty("rank", 0);
             traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
             // State variables
             Boolean inHeader = false;
             Boolean inText = false;
-            Boolean inWord = false;
             Boolean skip = false;
             HashMap<String, Node> priorNode = new HashMap<>();
             HashMap<String, Boolean> activeWitnesses = new HashMap<>();
@@ -88,7 +89,6 @@ public class TEIParallelSegParser {
             // TODO consider supporting illegible readings, gaps, etc.
             parseloop: while (true) {
                 int event = reader.next();
-                String local_name = reader.getLocalName();
 
                 switch(event) {
                     case XMLStreamConstants.END_DOCUMENT:
@@ -97,7 +97,7 @@ public class TEIParallelSegParser {
 
                     case XMLStreamConstants.END_ELEMENT:
                         skip = false;
-                        switch(local_name) {
+                        switch(reader.getLocalName()) {
                             case "teiHeader":
                                 inHeader = false;
                                 break;
@@ -122,6 +122,7 @@ public class TEIParallelSegParser {
                                 Node endNode = db.createNode(Nodes.READING);
                                 endNode.setProperty("text", "#END#");
                                 endNode.setProperty("is_end", true);
+                                endNode.setProperty("rank", 0);
                                 traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
                                 HashSet<Node> lastNodes = new HashSet<>();
                                 activeWitnesses.keySet().forEach(x -> lastNodes.add(priorNode.get(x)));
@@ -141,14 +142,11 @@ public class TEIParallelSegParser {
                                 }));
                                 break;
 
-                            case "w": // This delineates a new word, no matter the whitespace.
-                                inWord = false;
-                                break;
-
                         }
+                        break;
 
                     case XMLStreamConstants.START_ELEMENT:
-                        switch(local_name) {
+                        switch(reader.getLocalName()) {
 
                             // Deal with information from the TEI header
                             case "teiHeader":
@@ -157,7 +155,7 @@ public class TEIParallelSegParser {
 
                             case "witness":
                                 if(inHeader) {
-                                    String sigil = reader.getAttributeValue("", "xml:id");
+                                    String sigil = reader.getAttributeValue(reader.getNamespaceURI("xml"), "id");
                                     Node witnessNode = db.createNode(Nodes.WITNESS);
                                     witnessNode.setProperty("sigil", sigil);
                                     witnessNode.setProperty("hypothetical", false);
@@ -184,7 +182,9 @@ public class TEIParallelSegParser {
                             case "rdg":
                             case "lem":
                                 readingWitnesses = parseWitnesses(reader.getAttributeValue("", "wit"));
-                                witClass = reader.getAttributeValue("", "type");
+                                String variantClass = reader.getAttributeValue("", "type");
+                                if (variantClass != null)
+                                    witClass = variantClass;
                                 break;
 
                             case "witStart":
@@ -192,10 +192,6 @@ public class TEIParallelSegParser {
                                 break;
                             case "witEnd":
                                 readingWitnesses.forEach(x -> activeWitnesses.put(x, false));
-                                break;
-
-                            case "w": // This delineates a new word, no matter the whitespace.
-                                inWord = false;
                                 break;
 
                             case "witDetail":
@@ -208,65 +204,31 @@ public class TEIParallelSegParser {
                         break;
 
                     case XMLStreamConstants.CHARACTERS:
-                        if(inText && !skip) {
+                        if(inText && !skip && !reader.isWhiteSpace()) {
                             // Split the character stream into whitespace-separate words
                             String[] words = reader.getText().split("\\s");
-                            // See if this stream of characters begins in the middle of a word
-                            // final Boolean inWordNow = inWord && !words[0].equals("");
                             // Make the new chain of reading nodes
                             HashSet<Node> allPriors = new HashSet<>();
                             readingWitnesses.forEach(x -> allPriors.add(priorNode.get(x)));
-                            int s = 0;
-                            Node pn = null;
-                            if (inWord) {
-                                if (allPriors.size() == 1) {
-                                    pn = allPriors.iterator().next();
-                                    // Add the first word to the prior reading
-                                    pn.setProperty("text", pn.getProperty("text").toString() + words[0]);
-                                } else {
-                                    // More complicated. We make a join-prior reading to join onto the
-                                    // respective prior nodes.
-                                    if (!words[0].equals("")) {
-                                        Node wordNode = db.createNode(Nodes.READING);
-                                        wordNode.setProperty("text", words[0]);
-                                        wordNode.setProperty("join_prior", true);
-                                        // Connect them up on this witness
-                                        HashSet<Relationship> priorLinks = new HashSet<>();
-                                        allPriors.forEach(n -> {
-                                            Relationship seq = n.createRelationshipTo(wordNode, ERelations.SEQUENCE);
-                                            priorLinks.add(seq);
-                                        });
-                                        final String wc = witClass;
-                                        readingWitnesses.forEach(w -> priorLinks.forEach(l -> {
-                                            if(l.getStartNode().equals(priorNode.get(w)))
-                                                addWitness(l, w, wc);
-                                        }));
-                                        pn = wordNode;
-                                   } // else we aren't really in the middle of a word, and the prior node
-                                     // will depend on the witness. Then pn will be undefined.
-                                }
-                                s = 1;
-                            }
 
                             // Make the chain of readings we need
                             ArrayList<Node> chain = new ArrayList<>();
-                            for (int i = s; i < words.length; i++) {
-                                String word = words[i];
+                            for (String word : words) {
                                 Node wordNode = db.createNode(Nodes.READING);
                                 wordNode.setProperty("text", word);
+                                wordNode.setProperty("rank", 0);
                                 if (!chain.isEmpty()) {
-                                    Node lastNode = chain.get(chain.size()-1);
+                                    Node lastNode = chain.get(chain.size() - 1);
                                     Relationship seq = lastNode.createRelationshipTo(wordNode, ERelations.SEQUENCE);
-                                    seq.setProperty(witClass, readingWitnesses.toArray());
+                                    seq.setProperty(witClass, readingWitnesses.toArray(new String[readingWitnesses.size()]));
                                 }
                                 chain.add(wordNode);
                             }
 
                             // Attach the chain to the relevant prior node
-                            if (pn != null) {
-                                Relationship seq = pn.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
-                                seq.setProperty(witClass, readingWitnesses.toArray());
-                            } else { // We have to iterate through multiple prior nodes.
+                            if (chain.size() == 0)
+                                System.out.println("debug");
+                            else {
                                 Node firstNode = chain.get(0);
                                 HashSet<Relationship> priorLinks = new HashSet<>();
                                 allPriors.forEach(n -> {
@@ -282,22 +244,20 @@ public class TEIParallelSegParser {
 
                             // Set the new prior node for these witnesses
                             readingWitnesses.forEach(w -> priorNode.put(w, chain.get(chain.size() - 1)));
-
-                           // Note whether we ended in the middle of a word
-                            inWord = !reader.getText().endsWith(" ");
                         }
                         break;
                 }
-            }
+            } // end parseloop
 
             // Now calculate the whole tradition.
             Tradition newTrad = new Tradition(tradId);
-            Boolean nodesRanked = newTrad.recalculateRank(startNode.getId());
-            if(nodesRanked)
-                tx.success();
-            else
+            if(!newTrad.recalculateRank(startNode.getId()))
                 return Response.serverError().entity("Unable to rank final graph").build();
+            tx.success();
         } catch (Exception e) {
+            System.out.println(String.format("Error encountered in XML line %d column %d",
+                    ((XMLStreamReaderImpl) reader).getLineNumber(),
+                    ((XMLStreamReaderImpl) reader).getColumnNumber()));
             e.printStackTrace();
             return Response.serverError().build();
         }
