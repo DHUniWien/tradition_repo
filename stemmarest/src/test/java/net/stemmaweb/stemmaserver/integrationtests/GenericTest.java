@@ -4,11 +4,9 @@ import java.io.*;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.jersey.core.util.MultivaluedMapImpl;
 import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
@@ -85,8 +83,8 @@ public class GenericTest {
     private String getTranscriptionId(String tradName) {
         String tradId;
         try (Transaction tx = db.beginTx()) {
-//            Result result = db.execute("match (u:USER)--(t:TRADITION) RETURN t");
-            Result result = db.execute("match (u:USER)--(t:TRADITION) WHERE t.name='"+tradName+"' RETURN t");
+            String query = "match (u:USER)--(t:TRADITION) WHERE t.name='"+tradName+"' RETURN t";
+            Result result = db.execute(query);
             Iterator<Node> nodes = result.columnAs("t");
             assertTrue(nodes.hasNext());
             tradId = (String) nodes.next().getProperty("id");
@@ -109,8 +107,18 @@ public class GenericTest {
         // Status: Test not possible, since there is no API-method to create a 'Tradition'
         // TODO: Implement API-method "CreateTradition()"
 
-        String NAME = "empty";
-
+/*        String tradName = "empty";
+        TraditionModel traditionModel = new TraditionModel();
+        traditionModel.setName(tradName);
+        traditionModel.setOwnerId("1");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/tradition")
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, traditionModel);
+        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
+*/
+        int a = 0;
         // Tests:
         // assertEquals(isType(tradition), TRADITION);
         // assertEquals(tradition.getName(), NAME);
@@ -1163,6 +1171,7 @@ public class GenericTest {
                 .get(new GenericType<List<ReadingModel>>() {});
 
         String r8_1="", r9_1="";
+        Long startRank = 0L, endRank=0L;
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
@@ -1172,6 +1181,17 @@ public class GenericTest {
                 r9_1 = cur_reading.getId();
             }
         }
+
+        String pt = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/witness/A/text")
+                .get(String.class);
+        listOfReadings = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/witness/A/readings")
+                .get(new GenericType<List<ReadingModel>>() {
+                });
+        int patLength = listOfReadings.size();
 
         characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
@@ -1191,6 +1211,18 @@ public class GenericTest {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         reading = response.getEntity(ReadingModel.class);
         assertEquals("سبب صلاح", reading.getText());
+
+        String returnedText = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/witness/A/text")
+                .get(String.class);
+        assertEquals(pt, returnedText);
+        listOfReadings = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/witness/A/readings")
+                .get(new GenericType<List<ReadingModel>>() {
+                });
+        assertEquals(patLength-1, listOfReadings.size());
     }
 
 

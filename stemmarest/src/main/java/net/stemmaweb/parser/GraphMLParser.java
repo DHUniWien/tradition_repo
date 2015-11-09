@@ -79,7 +79,7 @@ public class GraphMLParser {
         // Some state variables
         Node graphRoot;
         Node traditionNode;             // this will be the entry point of the graph
-        Node currentNode = null;	    // holds the current node
+        Node currentNode = null;        // holds the current node
         String currentGraph = null;     // holds the ID of the current XML graph element
         Relationship currentRel = null; // holds the current relationship
         String edgeWitness = null;
