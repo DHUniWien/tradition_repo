@@ -121,6 +121,7 @@ public class GraphMLExporter {
             graphMap.put("stemweb_jobid", "dg4");
             graphMap.put("user", "dg5");
             graphMap.put("version", "dg6");
+            graphMap.put("direction", "dg7");
 
             writer.writeEmptyElement("key");
             writer.writeAttribute("attr.name", "language");
@@ -163,6 +164,12 @@ public class GraphMLExporter {
             writer.writeAttribute("attr.type", "string");
             writer.writeAttribute("for", "graph");
             writer.writeAttribute("id", "dg6");
+
+            writer.writeEmptyElement("key");
+            writer.writeAttribute("attr.name", "direction");
+            writer.writeAttribute("attr.type", "string");
+            writer.writeAttribute("for", "graph");
+            writer.writeAttribute("id", "dg7");
 
             writer.writeEmptyElement("key");
             writer.writeAttribute("attr.name", "grammar_invalid");

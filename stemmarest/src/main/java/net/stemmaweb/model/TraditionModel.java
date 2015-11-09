@@ -30,7 +30,7 @@ public class TraditionModel {
     private String language;
     private Direction direction;
     private Boolean isPublic;
-    private int stemweb_jobid;
+    private Integer stemweb_jobid;
     private String ownerId;
 
     public TraditionModel() {}
@@ -92,6 +92,6 @@ public class TraditionModel {
     public void setOwnerId(String ownerId) {
         this.ownerId = ownerId;
     }
-    public int getStemweb_jobid () { return stemweb_jobid; }
+    public Integer getStemweb_jobid () { return stemweb_jobid; }
     public void setStemweb_jobid (int stemweb_jobid ) { this.stemweb_jobid = stemweb_jobid; }
 }

@@ -1,9 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -36,6 +32,8 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  *
@@ -336,7 +334,7 @@ public class GraphMLInputOutputTest {
             assertTrue(false);
         }
 
-        /* // Set the language
+        // Set the language
         String jsonPayload = "{\"language\":\"Greek\"}";
         ClientResponse jerseyResponse = jerseyTest
                 .resource()
@@ -344,7 +342,7 @@ public class GraphMLInputOutputTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, jsonPayload);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
-        */
+        assertEquals("Greek", Util.getValueFromJson(jerseyResponse, "language"));
 
         // Add a stemma
         String newStemma = "digraph Stemma {\n" +
@@ -390,7 +388,7 @@ public class GraphMLInputOutputTest {
                 "    7 -> E;\n" +
                 "    7 -> G;\n" +
                 "}\n";
-        ClientResponse jerseyResponse = jerseyTest
+        jerseyResponse = jerseyTest
                 .resource()
                 .path("/tradition/" + traditionId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)

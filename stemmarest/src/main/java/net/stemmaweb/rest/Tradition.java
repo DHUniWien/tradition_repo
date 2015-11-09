@@ -445,13 +445,6 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON)
     public Response changeTraditionMetadata(TraditionModel tradition) {
 
-        // Check whether the user in the passed model exists
-        if (!DatabaseService.userExists(tradition.getOwnerId(), db)) {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("Error: A user with this id does not exist")
-                    .build();
-        }
-
         try (Transaction tx = db.beginTx()) {
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
             if( traditionNode == null ) {
@@ -460,24 +453,36 @@ public class Tradition {
                         .build();
             }
 
-            Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwnerId());
-            Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
-            if(!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwnerId())) {
-                // Remove the old ownership
-                oldOwnership.delete();
+            if (tradition.getOwnerId() != null) {
+                Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwnerId());
+                if (newUser == null) {
+                    return Response.status(Response.Status.NOT_FOUND)
+                            .entity("Error: A user with this id does not exist")
+                            .build();
+                }
+                Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
+                if (!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwnerId())) {
+                    // Remove the old ownership
+                    oldOwnership.delete();
 
-                // Add the new ownership
-                newUser.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
+                    // Add the new ownership
+                    newUser.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
+                }
             }
             // Now set the other properties that were passed
-            // TODO: this should be more...automatic.
-            traditionNode.setProperty("name", tradition.getName());
-            traditionNode.setProperty("is_public", tradition.getIsPublic());
-            traditionNode.setProperty("language", tradition.getLanguage());
-            traditionNode.setProperty("direction", tradition.getDirection());
-            traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
+            if (tradition.getName() != null )
+                traditionNode.setProperty("name", tradition.getName());
+            if (tradition.getIsPublic() != null )
+                traditionNode.setProperty("is_public", tradition.getIsPublic());
+            if (tradition.getLanguage() != null )
+                traditionNode.setProperty("language", tradition.getLanguage());
+            if (tradition.getDirection() != null )
+                traditionNode.setProperty("direction", tradition.getDirection());
+            if (tradition.getStemweb_jobid() != null )
+                traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(tradition).build();
