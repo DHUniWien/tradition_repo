@@ -47,6 +47,10 @@ public class TabularParser {
         }
         return parseTableToTradition(csvRows, userId, tradName, direction);
     }
+    public Response parseCSV(InputStream fileData, String userId, String tradName, char sepChar) {
+        return parseCSV(fileData, userId, tradName, "LR", sepChar);
+    }
+
 
     /**
      * Parse an Excel file stream into a graph.
@@ -73,6 +77,10 @@ public class TabularParser {
                     .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
         return parseTableToTradition(excelRows, userId, tradName, direction);
+    }
+
+    public Response parseExcel(InputStream fileData, String userId, String tradName, String excelType) {
+        return parseExcel(fileData, userId, tradName, "LR", excelType);
     }
 
     // Extract a table from the first sheet of an Excel workbook.
@@ -122,7 +130,7 @@ public class TabularParser {
             traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
             Node endNode = db.createNode(Nodes.READING);
             endNode.setProperty("is_end", true);
-            endNode.setProperty("rank", tableData.size());
+            endNode.setProperty("rank", (long) tableData.size());
             endNode.setProperty("text", "#END#");
             traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
 
@@ -160,7 +168,7 @@ public class TabularParser {
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
                         readingNode = db.createNode(Nodes.READING);
-                        readingNode.setProperty("rank", idx);
+                        readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))
                             readingNode.setProperty("is_lacuna", true);

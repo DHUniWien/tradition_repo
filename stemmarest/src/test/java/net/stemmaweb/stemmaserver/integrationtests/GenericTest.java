@@ -82,10 +82,11 @@ public class GenericTest {
         jerseyTest.setUp();
     }
 
-    private String getTranscriptionId() {
+    private String getTranscriptionId(String tradName) {
         String tradId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
+//            Result result = db.execute("match (u:USER)--(t:TRADITION) RETURN t");
+            Result result = db.execute("match (u:USER)--(t:TRADITION) WHERE t.name='"+tradName+"' RETURN t");
             Iterator<Node> nodes = result.columnAs("t");
             assertTrue(nodes.hasNext());
             tradId = (String) nodes.next().getProperty("id");
@@ -134,9 +135,10 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
+        String tradName = "Tradition";
         try {
             InputStream inputstream = new FileInputStream("src/TestFiles/simple.txt");
-            importTabResource.parseCSV(inputstream, "1", "Tradition", "LR", '\t');
+            importTabResource.parseCSV(inputstream, "1", tradName, '\t');
         } catch (IOException e) {
             // this error should not occur
             assertTrue(false);
@@ -153,7 +155,7 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId();
+        String tradId = this.getTranscriptionId(tradName);
 
         List<WitnessModel> witnesses = jerseyTest
                 .resource()
@@ -210,9 +212,10 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
+        String tradName = "Tradition";
         File testFile = new File("src/TestFiles/Collatex-16.xml");
         try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
+            importResource.parseGraphML(testFile.getPath(), "1", tradName);
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -221,7 +224,7 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId();
+        String tradId = this.getTranscriptionId(tradName);
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
@@ -539,9 +542,10 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
+        String tradName = "Tradition";
         File testFile = new File("src/TestFiles/legendfrag.xml");
         try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
+            importResource.parseGraphML(testFile.getPath(), "1", tradName);
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -550,7 +554,7 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId();
+        String tradId = this.getTranscriptionId(tradName);
 
         /**
         $c2->add_relationship( 'r9.2', 'r9.3', { 'type' => 'lexical' } );
@@ -665,10 +669,10 @@ public class GenericTest {
         # Test 3.1: make a straightforward pair of transpositions.
         my $t3 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/lf2.xml' );
         */
-
+        String tradName = "Tradition";
         File testFile = new File("src/TestFiles/lf2.xml");
         try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
+            importResource.parseGraphML(testFile.getPath(), "1", tradName);
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -677,7 +681,7 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId();
+        String tradId = this.getTranscriptionId(tradName);
 
         /**
          * determine node ids
@@ -941,10 +945,10 @@ public class GenericTest {
                     );
             my $c = $t->collation;
         **/
-
+        String tradName = "Tradition";
         File testFile = new File("src/TestFiles/COLLATEX-16.xml");
         try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
+            importResource.parseGraphML(testFile.getPath(), "1", tradName);
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -956,7 +960,7 @@ public class GenericTest {
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId();
+        String tradId = this.getTranscriptionId(tradName);
 
         /**
          *  determine node ids
@@ -1009,7 +1013,7 @@ public class GenericTest {
          *  # Combine n3 and n4 ( with his )
          *  $c->merge_readings( 'n3', 'n4', 1 );
          */
-        String blub = "/reading/compressreadings/read1id/"+n3+"/read2id/"+n4+"/concatenate/1";
+
         CharacterModel characterModel = new CharacterModel();
         characterModel.setCharacter(" ");
         response = jerseyTest
@@ -1129,27 +1133,64 @@ public class GenericTest {
                 );
          */
 
+        tradName = "inline";
         try {
             InputStream inputstream = new FileInputStream("src/TestFiles/arabic_snippet.csv");
-            importTabResource.parseCSV(inputstream, "1", "inline", "RL", ',');
+            importTabResource.parseCSV(inputstream, "1", tradName, "RL", ',');
         } catch (IOException e) {
             // this error should not occur
             assertTrue(false);
         }
 
+        tradId = this.getTranscriptionId(tradName);
+
         /**
-        my $rtlc = $rtl->collation;
-        is( $rtlc->reading('r8.1')->text, 'سبب', "Got target first reading in RTL text" );
-        my $pt = $rtlc->path_text('A');
-        my @path = $rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' );
-        is( $rtlc->reading('r9.1')->text, 'صلاح', "Got target second reading in RTL text" );
-        $rtlc->merge_readings( 'r8.1', 'r9.1', 1 );
-        is( $rtlc->reading('r8.1')->text, 'سبب صلاح', "Got target merged reading in RTL text" );
-        is( $rtlc->path_text('A'), $pt, "Path text is still correct" );
-        is( scalar($rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' )),
-        scalar(@path) - 1, "Path was shortened" );
-    }
-    */
+         my $rtlc = $rtl->collation;
+         is( $rtlc->reading('r8.1')->text, 'سبب', "Got target first reading in RTL text" );
+         my $pt = $rtlc->path_text('A');
+         my @path = $rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' );
+         is( $rtlc->reading('r9.1')->text, 'صلاح', "Got target second reading in RTL text" );
+         $rtlc->merge_readings( 'r8.1', 'r9.1', 1 );
+         is( $rtlc->reading('r8.1')->text, 'سبب صلاح', "Got target merged reading in RTL text" );
+         is( $rtlc->path_text('A'), $pt, "Path text is still correct" );
+         is( scalar($rtlc->reading_sequence( $rtlc->start, $rtlc->end, 'A' )),
+         scalar(@path) - 1, "Path was shortened" );
+         }
+         */
+
+        listOfReadings = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+
+        String r8_1="", r9_1="";
+        for (ReadingModel cur_reading : listOfReadings) {
+            long cur_rank = cur_reading.getRank();
+            String cur_text = cur_reading.getText();
+            if (cur_rank == 8L && cur_text.equals("سبب")) {
+                r8_1 = cur_reading.getId();
+            } else if (cur_rank == 9L && cur_text.equals("صلاح")) {
+                r9_1 = cur_reading.getId();
+            }
+        }
+
+        characterModel = new CharacterModel();
+        characterModel.setCharacter(" ");
+        response = jerseyTest
+                .resource()
+                .path("/reading/" + r8_1 + "/concatenate/" + r9_1 + "/1")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, characterModel);
+
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+
+        response = jerseyTest
+                .resource()
+                .path("/reading/" + r8_1)
+                .get(ClientResponse.class);
+
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        reading = response.getEntity(ReadingModel.class);
+        assertEquals("سبب صلاح", reading.getText());
     }
 
 
@@ -1162,15 +1203,16 @@ public class GenericTest {
             is( ref( $st ), 'Text::Tradition', "Got a tradition from test file" );
             ok( $st->has_witness('Ba96'), "Tradition has the affected witness" );
          */
+        String tradName = "Tradition_08";
         File testFile = new File("src/TestFiles/collatecorr.xml");
         try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition_08");
+            importResource.parseGraphML(testFile.getPath(), "1", tradName);
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
         }
 
-        String tradId = this.getTranscriptionId();
+        String tradId = this.getTranscriptionId(tradName);
 
         /**
         my $sc = $st->collation;

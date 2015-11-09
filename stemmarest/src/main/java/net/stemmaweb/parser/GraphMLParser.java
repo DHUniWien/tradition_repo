@@ -167,9 +167,10 @@ public class GraphMLParser {
                                         // Tradition node attributes
                                         case "name":
                                             // TODO is this redundant?
-                                            if (text.equals(""))
-                                                text = tradName;
-                                            currentNode.setProperty(attr, text);
+                                            if (((String)currentNode.getProperty("name")).length() == 0
+                                                    && text.length() > 0) {
+                                                currentNode.setProperty(attr, text);
+                                            }
                                             break;
                                         case "stemmata":
                                             stemmata = text;
