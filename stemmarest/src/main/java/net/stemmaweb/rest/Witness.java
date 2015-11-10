@@ -3,10 +3,8 @@ package net.stemmaweb.rest;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.GET;
+import javax.ws.rs.*;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -39,48 +37,64 @@ public class Witness {
         sigil = requestedSigil;
     }
 
+
     /**
-     * finds a witness in the database and returns it as a string
+     * finds a witness in the database and returns it as a string; if start and end are
+     * specified, a substring of the full witness text between those ranks inclusive is
+     * returned. if end-rank is too high or start-rank too low will return up to the end
+     * / from the start of the witness
      *
+     * @param start - the starting rank
+     * @param end   - the end rank
      * @return a witness as a string
+     *
      */
     @GET
     @Path("/text")
     @Produces(MediaType.APPLICATION_JSON)
+    public Response getWitnessAsText(@QueryParam("start") @DefaultValue("0") String start,
+                                     @QueryParam("end") @DefaultValue("E") String end) {
+        return getWitnessAsTextWithLayer(null, start, end);
+    }
+
+    // Backwards compatibility for API
     public Response getWitnessAsText() {
-        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
-        Node endNode = DatabaseService.getRelated(tradNode, ERelations.HAS_END).get(0);
-        String endRank;
-        try (Transaction tx = db.beginTx()) {
-            endRank = endNode.getProperty("rank").toString();
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
-        }
-        return getWitnessAsTextBetweenRanks("0", endRank);
+        return getWitnessAsTextWithLayer(null, "0", "E");
     }
 
     /**
-     * find a requested witness in the data base and return it as a string
-     * according to define start and end readings (including the readings in
-     * those ranks). if end-rank is too high or start-rank too low will return
-     * till the end/from the start of the witness
+     * Returns the text of a particular witness layer, as above.
      *
+     * @param layer - the text layer to return, e.g. "a.c."
      * @param start - the starting rank
      * @param end   - the end rank
      * @return a witness as a string
      */
     @GET
-    @Path("/text/{start}/{end}")
+    @Path("/text/{layer}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getWitnessAsTextBetweenRanks(
-            @PathParam("start") String start,
-            @PathParam("end") String end) {
+    public Response getWitnessAsTextWithLayer(
+            @PathParam("layer") String layer,
+            @QueryParam("start") @DefaultValue("0") String start,
+            @QueryParam("end") @DefaultValue("E") String end) {
 
         String witnessAsText = "";
+
         long startRank = Long.parseLong(start);
-        long endRank = Long.parseLong(end);
+        long endRank;
+        if (end.equals("E")) {
+            // Find the rank of the graph's end.
+            Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+            Node endNode = DatabaseService.getRelated(tradNode, ERelations.HAS_END).get(0);
+            try (Transaction tx = db.beginTx()) {
+                endRank = Long.valueOf(endNode.getProperty("rank").toString());
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().entity(e.getMessage()).build();
+            }
+        } else
+            endRank = Long.parseLong(end);
 
         if (endRank == startRank) {
             return Response.status(Status.BAD_REQUEST)
@@ -89,6 +103,7 @@ public class Witness {
         }
 
         if (endRank < startRank) {
+            // Swap them around.
             long tempRank = startRank;
             startRank = endRank;
             endRank = tempRank;
@@ -97,7 +112,7 @@ public class Witness {
         Node startNode = DatabaseService.getStartNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
             Boolean joinPrior = false;
-            for (Node node : traverseReadings(startNode)) {
+            for (Node node : traverseReadings(startNode, layer)) {
                 long nodeRank = Long.parseLong( node.getProperty("rank").toString());
                 if (nodeRank >= startRank && nodeRank <= endRank
                         && !booleanValue(node, "is_lacuna")) {
@@ -132,6 +147,13 @@ public class Witness {
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getWitnessAsReadings() {
+        return getWitnessAsReadings(null);
+    }
+
+    @GET
+    @Path("/readings/{layer}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getWitnessAsReadings(@PathParam("layer") String witnessClass) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 
         Node startNode = DatabaseService.getStartNode(tradId, db);
@@ -142,7 +164,7 @@ public class Witness {
         }
 
         try (Transaction tx = db.beginTx()) {
-            readingModels.addAll(traverseReadings(startNode).stream().map(ReadingModel::new).collect(Collectors.toList()));
+            readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -160,8 +182,13 @@ public class Witness {
         return Response.status(Status.OK).entity(readingModels).build();
     }
 
-    private ArrayList<Node> traverseReadings(Node startNode) throws Exception {
-        Evaluator e = new WitnessPath(sigil).getEvalForWitness();
+    private ArrayList<Node> traverseReadings(Node startNode, String witnessClass) throws Exception {
+        Evaluator e;
+        if (witnessClass == null)
+            e = new WitnessPath(sigil).getEvalForWitness();
+        else
+            e = new WitnessPath(sigil, witnessClass).getEvalForWitness();
+
         ArrayList<Node> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             db.traversalDescription().depthFirst()

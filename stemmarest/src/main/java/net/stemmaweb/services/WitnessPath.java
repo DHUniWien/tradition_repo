@@ -1,5 +1,9 @@
 package net.stemmaweb.services;
 
+import net.stemmaweb.rest.ERelations;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
@@ -11,6 +15,10 @@ public class WitnessPath {
     private final String sigil;
     private final String alternative;
 
+    public WitnessPath (String sigil, String alternative) {
+        this.sigil = sigil;
+        this.alternative = alternative;
+    }
     public WitnessPath (String sigil) {
         this.sigil = sigil;
         this.alternative = null;
@@ -23,104 +31,38 @@ public class WitnessPath {
                 return Evaluation.EXCLUDE_AND_CONTINUE;
             }
 
-            if (alternative != null && path.lastRelationship().hasProperty(alternative)) {
-                // Follow the alternative instead of the main witness path
-                String[] arr = (String[]) path.lastRelationship().getProperty(alternative);
-                for (String str : arr) {
-                    if (str.equals(sigil)) {
-                        return Evaluation.INCLUDE_AND_CONTINUE;
+            if (alternative != null) {
+                // Follow the alternative path if it includes the witness
+                if (path.lastRelationship().hasProperty(alternative)
+                        && witnessIn(path.lastRelationship().getProperty(alternative))) {
+                    return Evaluation.INCLUDE_AND_CONTINUE;
+
+                // Don't follow the main path if the alternative path exists
+                } else if (path.lastRelationship().hasProperty("witnesses")) {
+                    Node priorNode = path.lastRelationship().getStartNode();
+                    for (Relationship r : priorNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+                        if (r.hasProperty(alternative) && witnessIn(r.getProperty(alternative)))
+                            return Evaluation.EXCLUDE_AND_PRUNE;
                     }
                 }
             }
 
-            if (path.lastRelationship().hasProperty("witnesses")) {
-                String[] arr = (String[]) path.lastRelationship()
-                        .getProperty("witnesses");
-                for (String str : arr) {
-                    if (str.equals(sigil)) {
-                        return Evaluation.INCLUDE_AND_CONTINUE;
-                    }
-                }
-            }
+            // Follow the main path in the absence of an alternative
+            if (path.lastRelationship().hasProperty("witnesses")
+                    && witnessIn(path.lastRelationship().getProperty("witnesses")))
+                return Evaluation.INCLUDE_AND_CONTINUE;
+
             return Evaluation.EXCLUDE_AND_PRUNE;
         };
     }
-}
 
-/* public class WitnessPath implements PathEvaluator {
-
-    private final String sigil;
-    private final String alternative;
-
-    public WitnessPath (String sigil) {
-        this.sigil = sigil;
-        this.alternative = null;
-    }
-
-    public WitnessPath (String sigil, String alternative) {
-        this.sigil = sigil;
-        this.alternative = alternative;
-    }
-
-    @Override
-    public Evaluation evaluate(Path path, BranchState branchState) {
-        return evaluate(path);
-    }
-
-    @Override
-    public Evaluation evaluate(Path path) {
-        if (path.length() == 0) {
-            return Evaluation.EXCLUDE_AND_CONTINUE;
-        }
-
-        String[] arr;
-        if (alternative != null && path.lastRelationship().hasProperty(alternative)) {
-            // Follow the alternative instead of the main witness path
-            arr = (String[]) path.lastRelationship().getProperty(alternative);
-            for (String str : arr) {
-                if (str.equals(sigil)) {
-                    return Evaluation.INCLUDE_AND_CONTINUE;
-                }
+    private Boolean witnessIn (Object property) {
+        String[] arr = (String []) property;
+        for (String str : arr) {
+            if (str.equals(sigil)) {
+                return true;
             }
         }
-
-        // Fall back to the main witness path
-        if (path.lastRelationship().hasProperty("witnesses")) {
-            arr = (String[]) path.lastRelationship()
-                    .getProperty("witnesses");
-            for (String str : arr) {
-                if (str.equals(sigil)) {
-                    return Evaluation.INCLUDE_AND_CONTINUE;
-                }
-            }
-        }
-        return Evaluation.EXCLUDE_AND_PRUNE;
+        return false;
     }
 }
-
-/*
-    private static Evaluator getEvalForWitness(final String WITNESS_ID) {
-        return path -> {
-
-            if (path.length() == 0) {
-                return Evaluation.EXCLUDE_AND_CONTINUE;
-            }
-
-            boolean includes = false;
-            boolean continues = false;
-
-            if (path.lastRelationship().hasProperty("witnesses")) {
-                String[] arr = (String[]) path.lastRelationship()
-                        .getProperty("witnesses");
-                for (String str : arr) {
-                    if (str.equals(WITNESS_ID)) {
-                        includes = true;
-                        continues = true;
-                    }
-                }
-            }
-            return Evaluation.of(includes, continues);
-        };
-    }
-
- */
