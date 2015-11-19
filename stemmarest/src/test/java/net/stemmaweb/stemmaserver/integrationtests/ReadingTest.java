@@ -1,12 +1,14 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
@@ -72,9 +74,7 @@ public class ReadingTest {
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        GraphMLParser importResource = new GraphMLParser();
 
-		File testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         /*
          * Populate the test database with the root node and a user with id 1
          */
@@ -90,23 +90,37 @@ public class ReadingTest {
             tx.success();
         }
 
-        /**
-         * load a tradition to the test DB
-         */
-        try {
-            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
-            tradId = Util.getValueFromJson(r, "tradId");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(webResource)
                 .create();
         jerseyTest.setUp();
+
+        /**
+         * load a tradition to the test DB
+         * and gets the generated id of the inserted tradition
+         */
+        ClientResponse jerseyResult = null;
+        try {
+            FormDataMultiPart form = new FormDataMultiPart();
+            form.field("filetype", "graphml")
+                    .field("name", "Tradition")
+                    .field("direction", "LR")
+                    .field("userId", "1");
+            FormDataBodyPart fdp = new FormDataBodyPart("file",
+                    new FileInputStream("src/TestFiles/ReadingstestTradition.xml"),
+                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
+            form.bodyPart(fdp);
+            jerseyResult = jerseyTest.resource()
+                    .path("/tradition")
+                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                    .put(ClientResponse.class, form);
+        } catch (FileNotFoundException e) {
+            assertTrue(false);
+        }
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }
 
     /**
@@ -836,7 +850,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
 //            assertEquals("Readings to be merged do not contain the same text",
 //                    response.getEntity(String.class));
-            //TODO (SK 20151001: decide if this test is still neccessar;
+            //TODO (SK 20151001: decide if this test is still necessary;
             //                   if so, modify it, otherwise we can remove it.
             assertEquals("Readings to be merged would make the graph cyclic",
                     response.getEntity(String.class));
@@ -1330,10 +1344,8 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId
-                        + "/identicalreadings/3/8")
-                .get(new GenericType<List<List<ReadingModel>>>() {
-                });
+                .path("/tradition/" + tradId + "/identicalreadings/3/8")
+                .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(1, listOfIdenticalReadings.size());
         identicalReadings = listOfIdenticalReadings.get(0);
         assertEquals(2, identicalReadings.size());
@@ -1349,10 +1361,8 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId
-                        + "/identicalreadings/1/8")
-                .get(new GenericType<List<List<ReadingModel>>>() {
-                });
+                .path("/tradition/" + tradId + "/identicalreadings/1/8")
+                .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(2, listOfIdenticalReadings.size());
 
         identicalReadings = listOfIdenticalReadings.get(0);
@@ -1371,8 +1381,7 @@ public class ReadingTest {
     public void identicalReadingsNoResultTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId
-                        + "/identicalreadings/10/15")
+                .path("/tradition/" + tradId + "/identicalreadings/10/15")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
@@ -1384,10 +1393,8 @@ public class ReadingTest {
     public void couldBeIdenticalReadingsTest() {
         List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId
-                        + "/mergeablereadings/1/15")
-                .get(new GenericType<List<List<ReadingModel>>>() {
-                });
+                .path("/tradition/" + tradId + "/mergeablereadings/1/15")
+                .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(2, couldBeIdenticalReadings.size());
 
         assertEquals(couldBeIdenticalReadings.get(0).get(0).getText(),
@@ -1405,8 +1412,7 @@ public class ReadingTest {
     public void couldBeIdenticalReadingsNoResultTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId
-                        + "/mergeablereadings/2/8")
+                .path("/tradition/" + tradId + "/mergeablereadings/2/8")
                 .get(ClientResponse.class);
 
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),

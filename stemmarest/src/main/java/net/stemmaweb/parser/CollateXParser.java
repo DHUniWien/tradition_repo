@@ -30,14 +30,14 @@ public class CollateXParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseCollateX(String filename, String userId, String tradName, String direction)
+    public Response parseCollateX(String filename, String tradId)
             throws FileNotFoundException {
         File file = new File(filename);
         InputStream in = new FileInputStream(file);
-        return parseCollateX(in, userId, tradName, direction);
+        return parseCollateX(in, tradId);
     }
 
-    public Response parseCollateX(InputStream filestream, String userId, String tradName, String direction)
+    public Response parseCollateX(InputStream filestream, String tradId)
     {
         // Try this the DOM parsing way
         Document doc;
@@ -57,14 +57,16 @@ public class CollateXParser {
             NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
-        String tradId = UUID.randomUUID().toString();
+//        String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
+            // Get the tradition node
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
             // Create the tradition node
-            Node traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
+/*            Node traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
             traditionNode.setProperty("id", tradId);
             traditionNode.setProperty("name", tradName);
             traditionNode.setProperty("direction", direction);
-
+*/
 
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
@@ -150,7 +152,7 @@ public class CollateXParser {
                 traditionNode.createRelationshipTo(witness, ERelations.HAS_WITNESS);
             });
 
-
+/*
             // Set the user if it exists in the system; auto-create the user if it doesn't exist
             Node userNode = db.findNode(Nodes.USER, "id", userId);
             if (userNode == null) {
@@ -159,7 +161,7 @@ public class CollateXParser {
                 db.findNode(Nodes.ROOT, "name", "Root node").createRelationshipTo(userNode, ERelations.SYSTEMUSER);
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-
+*/
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

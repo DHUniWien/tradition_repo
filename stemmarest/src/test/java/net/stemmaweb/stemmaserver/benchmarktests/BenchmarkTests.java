@@ -1,9 +1,11 @@
 package net.stemmaweb.stemmaserver.benchmarktests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
@@ -11,12 +13,15 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.parser.GraphMLParser;
+//import net.stemmaweb.parser.GraphMLParser;
 
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
@@ -49,7 +54,7 @@ public abstract class BenchmarkTests {
      * so all jerseyTest related objects need to be static.
      */
     static Root webResource;
-    static GraphMLParser importResource;
+//    static GraphMLParser importResource;
 
     static File testfile;
 
@@ -59,6 +64,29 @@ public abstract class BenchmarkTests {
     static long untoMe;
 
     static JerseyTest jerseyTest;
+
+    public static String createTraditionFromFile(String tName, String tDir, String userId,
+                                                 String fName, String fType) throws FileNotFoundException {
+        FormDataMultiPart form = new FormDataMultiPart();
+        if (fType != null) form.field("filetype", fType);
+        if (tName != null) form.field("name", tName);
+        if (tDir != null) form.field("direction", tDir);
+        if (userId != null) form.field("userId", userId);
+        if (fName != null) {
+            FormDataBodyPart fdp = new FormDataBodyPart("file",
+                    new FileInputStream(fName),
+                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
+            form.bodyPart(fdp);
+        }
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .put(ClientResponse.class, form);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
+        assert(tradId.length() != 0);
+        return  tradId;
+    }
 
     /**
      * Measure the speed to change the owner of a Tradition and change it back
@@ -89,7 +117,6 @@ public abstract class BenchmarkTests {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
-
     }
 
     /**
@@ -164,7 +191,11 @@ public abstract class BenchmarkTests {
     @Test
     public void importGraphMl(){
         try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
+            String fileName = testfile.getPath();
+            createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+//            tradId = Util.getValueFromJson(jerseyResult, "tradId");
+
+//            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);

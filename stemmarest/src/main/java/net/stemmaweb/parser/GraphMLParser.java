@@ -27,36 +27,23 @@ public class GraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseGraphML(String filename, String userId, String tradName)
+    public Response parseGraphML(String filename, String userId, String tradId)
         throws FileNotFoundException {
         File file = new File(filename);
         InputStream in = new FileInputStream(file);
-        return parseGraphML(in, userId, tradName);
+        return parseGraphML(in, userId, tradId);
     }
 
-    public Response parseGraphML(String filename, String userId, String tradName, String tradId)
-            throws FileNotFoundException {
-        File file = new File(filename);
-        InputStream in = new FileInputStream(file);
-        return parseGraphML(in, userId, tradName, tradId);
-    }
     /**
      * Reads xml file input stream and imports it into Neo4J Database. This method assumes
      * that the GraphML describes a valid graph as exported from the legacy Stemmaweb.
      *
      * @param xmldata - the GraphML file stream
-     * @param userId - the user id who will own the tradition
-     * @param tradName - tradition name that should be used
+     * @param tradId - the tradition's ID
      * @return Http Response with the id of the imported tradition
      * @throws FileNotFoundException
      */
-    public Response parseGraphML(InputStream xmldata, String userId, String tradName)
-            throws FileNotFoundException {
-        String tradId = UUID.randomUUID().toString();
-        return parseGraphML(xmldata, userId, tradName, tradId);
-    }
-
-    public Response parseGraphML(InputStream xmldata, String userId, String tradName, String tradId)
+    public Response parseGraphML(InputStream xmldata, String userId, String tradId)
             throws FileNotFoundException {
         XMLInputFactory factory;
         XMLStreamReader reader;
@@ -77,19 +64,16 @@ public class GraphMLParser {
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
-        Node graphRoot;
         Node traditionNode;             // this will be the entry point of the graph
         Node currentNode = null;        // holds the current node
         String currentGraph = null;     // holds the ID of the current XML graph element
         Relationship currentRel = null; // holds the current relationship
         String edgeWitness = null;
         String witnessClass = "witnesses";
+        String userIdFile = null;
 
         try (Transaction tx = db.beginTx()) {
-            graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
-            traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            traditionNode.setProperty("id", tradId);
-            traditionNode.setProperty("name", tradName);
+            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
 
             outer:
             while (true) {
@@ -178,7 +162,7 @@ public class GraphMLParser {
                                         case "user":
                                             // Use the user ID from the file if we are asked to
                                             if (userId.equals("FILE"))
-                                                userId = text;
+                                                userIdFile = text;
                                             break;
 
                                         // Reading node attributes
@@ -262,15 +246,13 @@ public class GraphMLParser {
                 traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
             }
 
-            // Set the user if it exists in the system; auto-create the user if it doesn't exist
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
-            if (userNode == null) {
-                userNode = db.createNode(Nodes.USER);
-                userNode.setProperty("id", userId);
-                graphRoot.createRelationshipTo(userNode, ERelations.SYSTEMUSER);
+            // Change the userID, in case we should use the file's userID
+            if (userIdFile != null) {
+                Node userNode = db.findNode(Nodes.USER, "id", userId);
+                if (userNode != null) {
+                    userNode.setProperty("id", userIdFile);
+                }
             }
-            userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-
             tx.success();
         } catch(Exception e) {
             e.printStackTrace();
@@ -287,7 +269,7 @@ public class GraphMLParser {
             parser.importStemmaFromDot(graph, tradId);
         }
 
-        return Response.status(Response.Status.OK)
+        return Response.status(Response.Status.CREATED)
                 .entity("{\"tradId\":" + tradId + "}")
                 .build();
     }

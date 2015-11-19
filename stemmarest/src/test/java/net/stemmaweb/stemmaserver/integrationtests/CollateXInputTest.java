@@ -23,6 +23,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 
@@ -59,14 +60,39 @@ public class CollateXInputTest extends TestCase {
         jerseyTest.setUp();
     }
 
-    public void testParseCollateX() throws Exception {
-        Response result = importResource.parseCollateX("src/TestFiles/plaetzchen_cx.xml", "1", "Auch hier", "LR");
-        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+    private ClientResponse createTraditionFromFile(String tName, String tDir, String userId,
+                                                   String fName, String fType) throws FileNotFoundException {
+        FormDataMultiPart form = new FormDataMultiPart();
+        if (fType != null) form.field("filetype", fType);
+        if (tName != null) form.field("name", tName);
+        if (tDir != null) form.field("direction", tDir);
+        if (userId != null) form.field("userId", userId);
+        if (fName != null) {
+            FormDataBodyPart fdp = new FormDataBodyPart("file",
+                    new FileInputStream(fName),
+                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
+            form.bodyPart(fdp);
+        }
+        return  jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .put(ClientResponse.class, form);
+    }
 
-        String tradId = Util.getValueFromJson(result, "tradId");
+    public void testParseCollateX() throws Exception {
+        ClientResponse cResult = null;
+        try {
+            String fileName = "src/TestFiles/plaetzchen_cx.xml";
+            cResult = createTraditionFromFile("Auch hier", "LR", "1", fileName, "collatex");
+        } catch (FileNotFoundException e) {
+            assertTrue(false);
+        }
+        assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
+
+        String tradId = Util.getValueFromJson(cResult, "tradId");
         Tradition tradition = new Tradition(tradId);
 
-        result = tradition.getAllWitnesses();
+        Response result = tradition.getAllWitnesses();
         ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(3, allWitnesses.size());
 
@@ -86,23 +112,15 @@ public class CollateXInputTest extends TestCase {
     }
 
     public void testParseCollateXJersey() throws Exception {
-        File uploadFile = new File("src/TestFiles/plaetzchen_cx.xml");
-        FormDataMultiPart form = new FormDataMultiPart();
-        form.field("filetype", "collatex")
-                .field("name", "Auch hier")
-                .field("userId", "1")
-                .field("direction", "LR");
-        FormDataBodyPart fdp = new FormDataBodyPart("file",
-                new FileInputStream(uploadFile),
-                MediaType.APPLICATION_OCTET_STREAM_TYPE);
-        form.bodyPart(fdp);
-
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
+        ClientResponse cResult = null;
+        try {
+            String fileName = "src/TestFiles/plaetzchen_cx.xml";
+            cResult = createTraditionFromFile("Auch hier", "LR", "1", fileName, "collatex");
+        } catch (FileNotFoundException e) {
+            assertTrue(false);
+        }
+        assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
+        String tradId = Util.getValueFromJson(cResult, "tradId");
         Tradition tradition = new Tradition(tradId);
 
         Response result = tradition.getTraditionInfo();
@@ -124,8 +142,10 @@ public class CollateXInputTest extends TestCase {
         assertEquals(10, allReadings.size());
         Boolean foundReading = false;
         for (ReadingModel r : allReadings)
-            if (r.getText().equals("Plätzchen"))
+            if (r.getText().equals("Plätzchen")) {
                 foundReading = true;
+                break;
+            }
         assertTrue(foundReading);
     }
 

@@ -57,14 +57,16 @@ public class Benchmark1000kNodes extends BenchmarkTests {
         }
         rgg.role(db, 10, 100, 10, 100);
 
-        importResource = new GraphMLParser();
+//        importResource = new GraphMLParser();
         testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         try {
-            tradId = importResource.parseGraphML(testfile.getPath(), "1", "Tradition")
+            String fileName = testfile.getPath();
+            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+/*            tradId = importResource.parseGraphML(testfile.getPath(), "1", "Tradition")
                     .getEntity()
                     .toString()
                     .replace("{\"tradId\":", "")
-                    .replace("}", "");
+                    .replace("}", "");*/
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);

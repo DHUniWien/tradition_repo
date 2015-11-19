@@ -27,13 +27,12 @@ public class TabularParser {
      * Parse a comma- or tab-separated file stream into a graph.
      *
      * @param fileData - an InputStream containing the CSV/TSV data
-     * @param userId - the ID of the owner
-     * @param tradName - the name to be assigned to the tradition
+     * @param tradId - the tradition's ID
      * @param sepChar - the record separator to use (either comma or tab)
      *
      * @return Response
      */
-    public Response parseCSV(InputStream fileData, String userId, String tradName, String direction, char sepChar) {
+    public Response parseCSV(InputStream fileData, String tradId, char sepChar) {
         // Parse the CSV file
         ArrayList<String[]> csvRows = new ArrayList<>();
         try {
@@ -45,42 +44,33 @@ public class TabularParser {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
-        return parseTableToTradition(csvRows, userId, tradName, direction);
+        return parseTableToTradition(csvRows, tradId);
     }
-    public Response parseCSV(InputStream fileData, String userId, String tradName, char sepChar) {
-        return parseCSV(fileData, userId, tradName, "LR", sepChar);
-    }
-
 
     /**
      * Parse an Excel file stream into a graph.
      *
      * @param fileData - an InputStream containing the CSV/TSV data
-     * @param userId - the ID of the owner
-     * @param tradName - the name to be assigned to the tradition
+     * @param tradId - the tradition's ID
      * @param excelType - either 'xls' or 'xlsx'
      *
      * @return Response
      */
-    public Response parseExcel(InputStream fileData, String userId, String tradName, String direction, String excelType) {
+    public Response parseExcel(InputStream fileData, String tradId, String excelType) {
         ArrayList<String[]> excelRows;
         try {
+            Object workbook;
             if (excelType.equals("xls")) {
-                HSSFWorkbook workbook = new HSSFWorkbook(fileData);
-                excelRows = getTableFromWorkbook(workbook);
+                workbook = new HSSFWorkbook(fileData);
             } else { // it must be xlsx
-                XSSFWorkbook workbook = new XSSFWorkbook(fileData);
-                excelRows = getTableFromWorkbook(workbook);
+                workbook = new XSSFWorkbook(fileData);
             }
+            excelRows = getTableFromWorkbook((Workbook)workbook);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
-        return parseTableToTradition(excelRows, userId, tradName, direction);
-    }
-
-    public Response parseExcel(InputStream fileData, String userId, String tradName, String excelType) {
-        return parseExcel(fileData, userId, tradName, "LR", excelType);
+        return parseTableToTradition(excelRows, tradId);
     }
 
     // Extract a table from the first sheet of an Excel workbook.
@@ -105,15 +95,15 @@ public class TabularParser {
         return excelRows;
     }
 
-    private Response parseTableToTradition(ArrayList<String[]> tableData, String userId, String tradName, String direction) {
+    private Response parseTableToTradition(ArrayList<String[]> tableData, String tradId) {
         String response;
         Response.Status result = Response.Status.OK;
         Node traditionNode;
-        String tradId = UUID.randomUUID().toString();
+//        String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node and tie it to the user
-            traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            traditionNode.setProperty("id", tradId);
+            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+/*            traditionNode.setProperty("id", tradId);
             traditionNode.setProperty("name", tradName);
             traditionNode.setProperty("direction", direction);
             Node userNode = db.findNode(Nodes.USER, "id", userId);
@@ -122,6 +112,7 @@ public class TabularParser {
                 throw new Exception("No user with ID " + userId + " found!");
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
+*/
             // Make the start node
             Node startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);

@@ -1,14 +1,19 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.List;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -50,15 +55,9 @@ public class WitnessTest {
 
     @Before
     public void setUp() throws Exception {
-		File testfile = new File("src/TestFiles/testTradition.xml");
+//		File testfile = new File("src/TestFiles/testTradition.xml");
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-        /*
-         * The Resource under test. The mockDbFactory will be injected into this
-         * resource.
-         */
-        GraphMLParser importResource = new GraphMLParser();
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -74,24 +73,46 @@ public class WitnessTest {
             tx.success();
         }
 
-
-        /**
-         * load a tradition to the test DB
-         */
-        try {
-            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
-            tradId = Util.getValueFromJson(r, "tradId");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(webResource)
                 .create();
         jerseyTest.setUp();
+
+        /**
+         * load a tradition to the test DB
+         */
+        try {
+            String fileName = "src/TestFiles/testTradition.xml";
+            tradId = createTraditionFromFile("Tradition", "LR", "1",fileName , "graphml");
+        } catch (FileNotFoundException e) {
+            assertTrue(false);
+        }
+    }
+
+    private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
+                                           String fType) throws FileNotFoundException {
+
+        FormDataMultiPart form = new FormDataMultiPart();
+        if (fType != null) form.field("filetype", fType);
+        if (tName != null) form.field("name", tName);
+        if (tDir != null) form.field("direction", tDir);
+        if (userId != null) form.field("userId", userId);
+        if (fName != null) {
+            FormDataBodyPart fdp = new FormDataBodyPart("file",
+                    new FileInputStream(fName),
+                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
+            form.bodyPart(fdp);
+        }
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .put(ClientResponse.class, form);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
+        assert(tradId.length() != 0);
+        return  tradId;
     }
 
     @Test
@@ -168,9 +189,9 @@ public class WitnessTest {
                 .path("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "2")
                 .queryParam("end", "5")
-				.get(String.class);
-		assertEquals(expectedText, response);
-	}
+                .get(String.class);
+        assertEquals(expectedText, response);
+    }
 
     /**
      * as ranks are adjusted should give same result as previous test
@@ -183,9 +204,9 @@ public class WitnessTest {
                 .path("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "5")
                 .queryParam("end", "2")
-				.get(String.class);
-		assertEquals(expectedText, response);
-	}
+                .get(String.class);
+        assertEquals(expectedText, response);
+    }
 
     /**
      * gives same ranks for start and end should return error
@@ -197,8 +218,8 @@ public class WitnessTest {
                 .path("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "5")
                 .queryParam("end", "5")
-				.get(ClientResponse.class);
-		assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         assertEquals("end-rank is equal to start-rank", response.getEntity(String.class));
     }
 
@@ -251,17 +272,14 @@ public class WitnessTest {
         String eacText = "Ἡ περὶ τῆς τοῦ πνεύματος τοῦ ἁγίου βλασφημίας ἀπορία αὐτόθεν ἔχει τὴν λύσιν· ὁ δὲ δεύτερος ἐστὶν οὗτος· ὅτάν τις ἐν ἁμαρτίαις ἐνεχόμενος, ἀκούων δὲ τοῦ κυρίου λέγοντος μὴ κρίνετε φοβούμενος οὐδένα κρίνει ἐν τῇ ἐξετάσει τῶν βεβιωμένων ὡς φύλαξ τῆς ἐντολῆς οὐ κρίνεται· εἰ μὴ τὸ γενέσθαι πιστόν, εἰκότως ὅταν ἐν ἁμαρτίαις τίς ὢν οἰκονομεῖται ἐκ τῆς προνοίας ἐν συμφοραῖς, ἐν ἀνάγκαις, ἐν νόσοις ὡς οὐκ οἶδε γὰρ διὰ τῶν τοιούτων καθαίρει αὐτὸν ὁ θεός τῷ ἐν ἀπιστίᾳ τὸν βίον καταλύσαντι οὔτε ἐνταῦθα οὔτε ἐν τῷ μέλλοντι ἀφεθήσεται τῆς ἀπιστίας καὶ ἀθεΐας ἡ ἁμαρτία. Ἰσιδώρου Πηλουσίου Γρηγορίου Νύσης Ἤκουσά που τῆς ἁγίας γραφῆς κατακρινούσης ἐκείνους, οἳ κατὰ τῆς τοῦ θεοῦ βλασφημίας αἴτιοι γίνονται. Οὐαὶ γὰρ φησὶν δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν. Νείλου μοναχοῦ Ὄψις γυναικὸς βέλος ἐστὶ πεφαρμακευμένον ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. Θάλλει βοτάνη ἑστῶσα παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν συντυχίαις γυναικῶν.";
         String tacText = "Ἡ περὶ τῆς τοῦ πνεύματος τοῦ ἁγίου βλασφημίας ἀπορία αὐτόθι ἔχει τὴν λύσιν· ὁ δὲ δεύτερος ἐστὶν οὗτος· ὅτάν τις ἐν ἁμαρτίαις ἐνεχόμενος, ἀκούων δὲ τοῦ κυρίου λέγοντος μὴ κρίνεται φοβούμενος οὐδένα κρίνει ἐν τῇ ἐξετάσει τῶν βεβιωμένων ὡς φύλαξ τῆς ἐντολῆς οὐ κρίνεται· εἰ μὴ τὸ γενέσθαι πιστόν, εἰκότως ὅταν ἐν ἁμαρτίαις τίς ὢν οἰκονομεῖται ἐκ τῆς προνοίας ἐν συμφοραῖς, ἐν ἀνάγκαις, ἐν νόσοις ὡς οὐκ οἶδε γὰρ διὰ τῶν τοιούτων καθαίρει αὐτὸν ὁ θεός οὖν τῷ ἐν ἀπιστίᾳ τὸν βίον κατακλείσαντι οὔτε ἐνταῦθα οὔτε ἐν τῷ μέλλοντι ἀφεθήσεται τῆς ἀπιστίας καὶ ἀθεΐας ἡ ἁμαρτία. Γρηγορίου Νύσης Ἤκουσά που τῆς ἁγίας γραφῆς κατακρινούσης ἐκείνους, οἳ κατὰ τῆς τοῦ θεοῦ βλασφημίας αἴτιοι γίνονται. Οὐαὶ γὰρ φησὶν δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν. Νείλου μοναχοῦ Ὄψις γυναικὸς μέλος ἐστὶ πεφαρμακευμένον ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τὸν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. Θάλλει βοτάνη ἐστῶσα παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν συντυχίαις γυναικῶν.";
 
-        // Read in the tradition in question
-        File testfile = new File("src/TestFiles/florilegium_graphml.xml");
-        GraphMLParser importResource = new GraphMLParser();
-        Response parseResponse = null;
+        // Create the tradition in question
+        String newId = null;
         try {
-            parseResponse = importResource.parseGraphML(testfile.getPath(), "1", "Florilegium");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
+            String fileName = "src/TestFiles/florilegium_graphml.xml";
+            newId = createTraditionFromFile("Florilegium", "LR", "1", fileName, "graphml");
+        } catch (FileNotFoundException e) {
             assertTrue(false);
         }
-        String newId = Util.getValueFromJson(parseResponse, "tradId");
 
         // Now get the witness text for each of our complex sigla.
         String response = jerseyTest

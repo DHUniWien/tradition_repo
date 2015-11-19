@@ -1,6 +1,8 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
@@ -26,8 +28,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 /**
  * Test tabular parsing of various forms.
@@ -61,15 +64,37 @@ public class TabularInputOutputTest extends TestCase {
         jerseyTest.setUp();
     }
 
-    public void testParseCSV() throws Exception {
-        InputStream fileStream = new FileInputStream("src/TestFiles/florilegium_simple.csv");
-        Response result = importResource.parseCSV(fileStream, "1", "Florilegium", "LR", ',');
-        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+    private ClientResponse createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
+        FormDataMultiPart form = new FormDataMultiPart();
+        if (fType != null) form.field("filetype", fType);
+        if (tName != null) form.field("name", tName);
+        if (tDir != null) form.field("direction", tDir);
+        if (userId != null) form.field("userId", userId);
+        try {
+            if (fName != null) {
+                FormDataBodyPart fdp = new FormDataBodyPart("file",
+                        new FileInputStream(fName),
+                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
+                form.bodyPart(fdp);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            assertFalse(true);
+        }
+        return jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .put(ClientResponse.class, form);
+    }
 
-        String tradId = Util.getValueFromJson(result, "tradId");
+    public void testParseCSV() throws Exception {
+        ClientResponse response = createTraditionFromFile("Florilegium", "LR", "1",
+                "src/TestFiles/florilegium_simple.csv", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
         Tradition tradition = new Tradition(tradId);
 
-        result = tradition.getAllWitnesses();
+        Response result = tradition.getAllWitnesses();
         ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(13, allWitnesses.size());
 
@@ -90,21 +115,22 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testParseExcel() throws Exception {
         // Test a bad file
-        InputStream fileStream = new FileInputStream("src/TestFiles/armexample_bad.xlsx");
-        Response result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "LR", "xlsx");
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), result.getStatus());
-        assertTrue(result.getEntity().toString().contains("has too many columns!"));
+        ClientResponse response = createTraditionFromFile("Armenian XLS", "LR", "1",
+                "src/TestFiles/armexample_bad.xlsx", "xlsx");
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        assertTrue(response.getEntity(String.class).contains("has too many columns!"));
+
 
         // Test a good XLS file
-        fileStream = new FileInputStream("src/TestFiles/armexample.xls");
-        result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "LR", "xls");
-        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+        response = createTraditionFromFile("Armenian XLS", "LR", "1",
+                "src/TestFiles/armexample.xls", "xls");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
 
         // Now retrieve the tradition and test what it has.
-        String tradId = Util.getValueFromJson(result, "tradId");
         Tradition tradition = new Tradition(tradId);
 
-        result = tradition.getAllWitnesses();
+        Response result = tradition.getAllWitnesses();
         ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(3, allWitnesses.size());
 
@@ -118,12 +144,12 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(foundReading);
 
         // Test a good XLSX file
-        fileStream = new FileInputStream("src/TestFiles/armexample.xlsx");
-        result = importResource.parseExcel(fileStream, "1", "Armenian XLS", "LR", "xlsx");
-        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+        response = createTraditionFromFile("Armenian XLS", "LR", "1",
+                "src/TestFiles/armexample.xlsx", "xlsx");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         // Now retrieve the tradition and test what it has.
-        tradId = Util.getValueFromJson(result, "tradId");
+        tradId = Util.getValueFromJson(response, "tradId");
         tradition = new Tradition(tradId);
 
         result = tradition.getAllWitnesses();
@@ -148,19 +174,10 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() throws Exception {
         // Set up some data
-        GraphMLParser graphImporter = new GraphMLParser();
-        String traditionId = null;
-        try
-        {
-            Response response = graphImporter.parseGraphML("src/TestFiles/testTradition.xml", "1", "Tradition");
-            traditionId = Util.getValueFromJson(response, "tradId");
-        }
-        catch(FileNotFoundException f)
-        {
-            // this error should not occur
-            assertTrue(false);
-        }
-        assertNotNull(traditionId);
+        ClientResponse response = createTraditionFromFile("Tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
 
         // Get it back out
         ClientResponse result = jerseyTest
@@ -186,18 +203,10 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testConflatedJSONExport () throws Exception {
-        GraphMLParser graphImporter = new GraphMLParser();
-        String traditionId = null;
-        try
-        {
-            Response response = graphImporter.parseGraphML("src/TestFiles/globalrel_test.xml", "1", "Tradition");
-            traditionId = Util.getValueFromJson(response, "tradId");
-        }
-        catch(FileNotFoundException f)
-        {
-            // this error should not occur
-            assertTrue(false);
-        }
+        ClientResponse response = createTraditionFromFile("Tradition", "LR", "1",
+                "src/TestFiles/globalrel_test.xml", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
         assertNotNull(traditionId);
         // Get it back out
         ClientResponse result = jerseyTest

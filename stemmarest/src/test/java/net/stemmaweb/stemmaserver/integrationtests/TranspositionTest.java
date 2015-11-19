@@ -3,6 +3,8 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
@@ -14,6 +16,7 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,6 +26,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map;
@@ -56,11 +60,6 @@ public class TranspositionTest {
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
-
-        GraphMLParser importResource = new GraphMLParser();
-		File testfile = new File("src/TestFiles/testTradition.xml");
-
-
         /*
          * Populate the test database with the root node and a user with id 1
          */
@@ -75,15 +74,31 @@ public class TranspositionTest {
             tx.success();
         }
 
+        // Create a JerseyTestServer for the necessary REST API calls
+        Root webResource = new Root();
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(webResource)
+                .create();
+        jerseyTest.setUp();
+
         /**
-         * load a tradition to the test DB
+         * create a tradition inside the test DB
          */
-        try {
-            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        FormDataMultiPart form = new FormDataMultiPart();
+        form.field("filetype", "graphml")
+                .field("name", "Tradition")
+                .field("direction", "LR")
+                .field("userId", "1");
+        FormDataBodyPart fdp = new FormDataBodyPart("file",
+                new FileInputStream("src/TestFiles/testTradition.xml"),
+                MediaType.APPLICATION_OCTET_STREAM_TYPE);
+        form.bodyPart(fdp);
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .put(ClientResponse.class, form);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+
         /**
          * gets the generated ids that we need for our tests
          */
@@ -108,12 +123,6 @@ public class TranspositionTest {
             tx.success();
         }
 
-        // Create a JerseyTestServer for the necessary REST API calls
-        Root webResource = new Root();
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
-                .create();
-        jerseyTest.setUp();
     }
 
     /**

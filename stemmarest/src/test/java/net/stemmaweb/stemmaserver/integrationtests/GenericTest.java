@@ -3,10 +3,15 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.io.*;
 import java.util.*;
 
+import java.io.File;
+import java.io.FileInputStream;
+
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
@@ -42,8 +47,7 @@ public class GenericTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLParser importResource;
-    private TabularParser importTabResource;
+    private String rootNodeId;
 
     @Before
     public void setUp() throws Exception {
@@ -52,8 +56,6 @@ public class GenericTest {
                 .newImpermanentDatabase())
                 .getDatabase();
 
-        importResource = new GraphMLParser();
-        importTabResource = new TabularParser();
         Root webResource = new Root();
 
         /*
@@ -62,6 +64,7 @@ public class GenericTest {
         DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
             Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+            rootNodeId = ((Long)rootNode.getId()).toString();
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("isAdmin", "1");
@@ -80,23 +83,39 @@ public class GenericTest {
         jerseyTest.setUp();
     }
 
-    private String getTranscriptionId(String tradName) {
-        String tradId;
-        try (Transaction tx = db.beginTx()) {
-            String query = "match (u:USER)--(t:TRADITION) WHERE t.name='"+tradName+"' RETURN t";
-            Result result = db.execute(query);
-            Iterator<Node> nodes = result.columnAs("t");
-            assertTrue(nodes.hasNext());
-            tradId = (String) nodes.next().getProperty("id");
-            tx.success();
+    private String createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
+        String tradId = "";
+        try {
+            FormDataMultiPart form = new FormDataMultiPart();
+            if (fType != null) form.field("filetype", fType);
+            if (tName != null) form.field("name", tName);
+            if (tDir != null) form.field("direction", tDir);
+            if (userId != null) form.field("userId", userId);
+            if (fName != null) {
+                FormDataBodyPart fdp = new FormDataBodyPart("file",
+                        new FileInputStream(fName),
+                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
+                form.bodyPart(fdp);
+            }
+            ClientResponse jerseyResult = jerseyTest.resource()
+                    .path("/tradition")
+                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                    .put(ClientResponse.class, form);
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+            tradId = Util.getValueFromJson(jerseyResult, "tradId");
+        } catch (Exception e) {
+            e.printStackTrace();
+            assertFalse(true);
         }
-        assertNotNull(tradId);
-        return tradId;
+        assert(tradId.length() != 0);
+        return  tradId;
     }
+
+
     // Tradition test
 
     @Test
-    public void test_01() {
+    public void test_01() throws FileNotFoundException {
         /** Pearl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
@@ -107,23 +126,40 @@ public class GenericTest {
         // Status: Test not possible, since there is no API-method to create a 'Tradition'
         // TODO: Implement API-method "CreateTradition()"
 
-/*        String tradName = "empty";
-        TraditionModel traditionModel = new TraditionModel();
-        traditionModel.setName(tradName);
-        traditionModel.setOwnerId("1");
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/tradition")
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, traditionModel);
-        assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-*/
-        int a = 0;
-        // Tests:
-        // assertEquals(isType(tradition), TRADITION);
-        // assertEquals(tradition.getName(), NAME);
-        // assertNotEquals(tradition.getId(), Null);
-        // assertEquals(hasRelationship(tradition), false);
+        String TRADNAME = "empty";
+        String tradId = createTraditionFromFile(TRADNAME, null, "1", null, null);
+
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            assertEquals(TRADNAME, tradNode.getProperty("name"));
+            assertNotNull(tradNode.getId());
+            assertEquals(true, tradNode.hasRelationship());
+            Iterable<Relationship> relationships = tradNode.getRelationships();
+            // There should be only one relationship between the USER and TRADITION nodes
+            int rel_count = 0;
+            for(Relationship relationship: relationships) {
+                rel_count += 1;
+                assertEquals("OWNS_TRADITION", relationship.getType().name());
+                assertEquals("USER", relationship
+                        .getStartNode()
+                        .getLabels()
+                        .iterator()
+                        .next()
+                        .toString());
+                assertEquals("TRADITION", relationship
+                        .getEndNode()
+                        .getLabels()
+                        .iterator()
+                        .next()
+                        .toString());
+            }
+            assertEquals(1, rel_count);
+            tx.success();
+        }
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/readings")
+                .get(ClientResponse.class);
+        assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
     }
 
     @Test
@@ -143,33 +179,22 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
-        String tradName = "Tradition";
-        try {
-            InputStream inputstream = new FileInputStream("src/TestFiles/simple.txt");
-            importTabResource.parseCSV(inputstream, "1", tradName, '\t');
-        } catch (IOException e) {
-            // this error should not occur
-            assertTrue(false);
-        }
-        /* loads the same data, but from the xml version
-        File testFile = new File("src/TestFiles/simple.xml");
-        try {
-            importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }*/
+
+        String fName = "src/TestFiles/simple.txt";
+        String fType = "tsv";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId(tradName);
 
         List<WitnessModel> witnesses = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witnesses")
-                .get(new GenericType<List<WitnessModel>>() {
-                });
+                .get(new GenericType<List<WitnessModel>>() {});
         assert (witnesses.size() == 3) : "Unexpected number of witnesses.";
 
 
@@ -220,19 +245,17 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
-        String tradName = "Tradition";
-        File testFile = new File("src/TestFiles/Collatex-16.xml");
-        try {
-            importResource.parseGraphML(testFile.getPath(), "1", tradName);
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        String fName = "src/TestFiles/Collatex-16.xml";
+        String fType = "graphml";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
          * gets the generated id of the inserted tradition
          */
-        String tradId = this.getTranscriptionId(tradName);
+//        String tradId = this.getTraditionId(tradName);
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
@@ -434,7 +457,6 @@ public class GenericTest {
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relationships")
-//                .queryParams(queryParams)
                 .get(ClientResponse.class);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
         boolean foundTraditon = false;
@@ -455,17 +477,17 @@ public class GenericTest {
         my $c1 = $t1->collation;
         */
 
-        File testFile2 = new File("src/TestFiles/legendfrag.xml");
-        try {
-            importResource.parseGraphML(testFile2.getPath(), "1", "TraditionB");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        fName = "src/TestFiles/legendfrag.xml";
+        fType = "graphml";
+        tName = "TraditionB";
+        tDir = "LR";
+        userId = "1";
+        String tradId2 = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
          * gets the generated id of the inserted 2nd tradition
          */
+/*
         String tradId2;
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (u:USER)--(t:TRADITION) return t");
@@ -477,7 +499,7 @@ public class GenericTest {
             }
             tx.success();
         }
-
+*/
         listOfReadings = jerseyTest.resource()
                 .path("/tradition/" + tradId2 + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
@@ -550,19 +572,12 @@ public class GenericTest {
         /**
          * load a tradition to the test DB
          */
-        String tradName = "Tradition";
-        File testFile = new File("src/TestFiles/legendfrag.xml");
-        try {
-            importResource.parseGraphML(testFile.getPath(), "1", tradName);
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        String tradId = this.getTranscriptionId(tradName);
+        String fName = "src/TestFiles/legendfrag.xml";
+        String fType = "graphml";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
         $c2->add_relationship( 'r9.2', 'r9.3', { 'type' => 'lexical' } );
@@ -677,19 +692,12 @@ public class GenericTest {
         # Test 3.1: make a straightforward pair of transpositions.
         my $t3 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/lf2.xml' );
         */
-        String tradName = "Tradition";
-        File testFile = new File("src/TestFiles/lf2.xml");
-        try {
-            importResource.parseGraphML(testFile.getPath(), "1", tradName);
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        String tradId = this.getTranscriptionId(tradName);
+        String fName = "src/TestFiles/lf2.xml";
+        String fType = "graphml";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
          * determine node ids
@@ -856,16 +864,12 @@ public class GenericTest {
             my $c4 = $t4->collation;
         **/
 
-        Response parseResponse = null;
-        File testFile = new File("src/TestFiles/globalrel_test.xml");
-        try {
-            parseResponse = importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-        String tradId = Util.getValueFromJson(parseResponse, "tradId");
-
+        String fName = "src/TestFiles/globalrel_test.xml";
+        String fType = "graphml";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
          * determine node ids
@@ -873,8 +877,7 @@ public class GenericTest {
 
         List<ReadingModel> listOfReadings = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
-                .get(new GenericType<List<ReadingModel>>() {
-                });
+                .get(new GenericType<List<ReadingModel>>() {});
 
         String r463_2 = "", r463_4 = "";
         for (ReadingModel cur_reading : listOfReadings) {
@@ -953,22 +956,17 @@ public class GenericTest {
                     );
             my $c = $t->collation;
         **/
-        String tradName = "Tradition";
-        File testFile = new File("src/TestFiles/COLLATEX-16.xml");
-        try {
-            importResource.parseGraphML(testFile.getPath(), "1", tradName);
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        String fName = "src/TestFiles/COLLATEX-16.xml";
+        String fType = "graphml";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
+
         /**
         my $rno = scalar $c->readings;
         # Split n21 ('unto') for testing purposes into n21p0 ('un', 'join_next' => 1 ) and n21 ('to')...
         */
-        /**
-         * gets the generated id of the inserted tradition
-         */
-        String tradId = this.getTranscriptionId(tradName);
 
         /**
          *  determine node ids
@@ -1141,16 +1139,12 @@ public class GenericTest {
                 );
          */
 
-        tradName = "inline";
-        try {
-            InputStream inputstream = new FileInputStream("src/TestFiles/arabic_snippet.csv");
-            importTabResource.parseCSV(inputstream, "1", tradName, "RL", ',');
-        } catch (IOException e) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
-        tradId = this.getTranscriptionId(tradName);
+        fName = "src/TestFiles/arabic_snippet.csv";
+        fType = "csv";
+        tName = "inline";
+        tDir = "LR";
+        userId = "1";
+        String tradId2 = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
          my $rtlc = $rtl->collation;
@@ -1167,11 +1161,10 @@ public class GenericTest {
          */
 
         listOfReadings = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/readings")
+                .path("/tradition/" + tradId2 + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
         String r8_1="", r9_1="";
-        Long startRank = 0L, endRank=0L;
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
@@ -1184,11 +1177,11 @@ public class GenericTest {
 
         String pt = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+                .path("/tradition/" + tradId2 + "/witness/A/text")
                 .get(String.class);
         listOfReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/witness/A/readings")
+                .path("/tradition/" + tradId2 + "/witness/A/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
         int patLength = listOfReadings.size();
@@ -1214,12 +1207,12 @@ public class GenericTest {
 
         String returnedText = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+                .path("/tradition/" + tradId2 + "/witness/A/text")
                 .get(String.class);
         assertEquals(pt, returnedText);
         listOfReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/witness/A/readings")
+                .path("/tradition/" + tradId2 + "/witness/A/readings")
                 .get(new GenericType<List<ReadingModel>>() {
                 });
         assertEquals(patLength-1, listOfReadings.size());
@@ -1235,16 +1228,12 @@ public class GenericTest {
             is( ref( $st ), 'Text::Tradition', "Got a tradition from test file" );
             ok( $st->has_witness('Ba96'), "Tradition has the affected witness" );
          */
-        String tradName = "Tradition_08";
-        File testFile = new File("src/TestFiles/collatecorr.xml");
-        try {
-            importResource.parseGraphML(testFile.getPath(), "1", tradName);
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
-        String tradId = this.getTranscriptionId(tradName);
+        String fName = "src/TestFiles/collatecorr.xml";
+        String fType = "graphml";
+        String tName = "Tradition";
+        String tDir = "LR";
+        String userId = "1";
+        String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
         /**
         my $sc = $st->collation;

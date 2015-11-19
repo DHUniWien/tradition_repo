@@ -93,7 +93,7 @@ public class Tradition {
             DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS).forEach(r -> witnessList.add(new WitnessModel(r)));
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(witnessList).build();
     }
@@ -120,7 +120,7 @@ public class Tradition {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
 
         return Response.ok(stemmata).build();
@@ -659,7 +659,7 @@ public class Tradition {
                     currentNode.setProperty("rank", nominalRank);
 
                     // Look, if a RELATED node has a higher rank
-                    long currentNodeRank = (long) currentNode.getProperty("rank");
+                    long currentNodeRank = (long)currentNode.getProperty("rank");
 
                     // UPDATE nodes on RELATED vertices, if necessary
                     Iterable<Relationship> relationships = currentNode.getRelationships(ERelations.RELATED);
@@ -679,7 +679,7 @@ public class Tradition {
                     // OUTGOING includes SEQUENCE (outgoing) and RELATED
                     for (Relationship relationship : relationships) {
                         iterNode = relationship.getEndNode();
-                        if ((long) iterNode.getProperty("rank") <= currentNodeRank) {
+                        if (Long.valueOf(iterNode.getProperty("rank").toString()) <= currentNodeRank) {
                             iterNode.setProperty("rank", currentNodeRank + 1L);
                             nodesToProcess.add(iterNode);
                         }
@@ -705,7 +705,7 @@ public class Tradition {
 
         try (Transaction tx = db.beginTx()) {
             Node currentNode = db.getNodeById(nodeId);
-            nodeRank = (long)currentNode.getProperty("rank");
+            nodeRank = (long) currentNode.getProperty("rank");
 
             Iterable<Relationship> relationships = currentNode.getRelationships(Direction.BOTH);
             for (Relationship relationship : relationships) {

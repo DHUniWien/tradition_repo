@@ -51,14 +51,16 @@ public class Benchmark100kNodes extends BenchmarkTests {
 
         rgg.role(db, 10, 10, 10, 100);
 
-        importResource = new GraphMLParser();
-		testfile = new File("src/TestFiles/ReadingstestTradition.xml");
+        //importResource = new GraphMLParser();
+        testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         try {
-			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
-		} catch (FileNotFoundException f) {
-			// this error should not occur
-			assertTrue(false);
-		}
+            String fileName = testfile.getPath();
+            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+//			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
+        } catch (FileNotFoundException f) {
+            // this error should not occur
+            assertTrue(false);
+        }
 
         Result result = db.execute("match (w:READING {text:'showers'}) return w");
         Iterator<Node> nodes = result.columnAs("w");

@@ -1,6 +1,9 @@
 package net.stemmaweb.stemmaserver.acceptancetests;
 
+import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
@@ -16,8 +19,7 @@ import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,10 +28,12 @@ import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -105,16 +109,35 @@ public class TraditionParseTest {
 
                 // Parse it via importGraphML and get the tradition ID
                 try {
-                    Response response = importResource.parseGraphML(testfile.getPath(), "1", "", tradId);
+                    String fileName = testfile.getPath();
+                    FormDataMultiPart form = new FormDataMultiPart();
+                    form.field("filetype", "graphml")
+                            .field("name", "Tradition")
+                            .field("direction", "LR")
+                            .field("userId", "1");
+                    FormDataBodyPart fdp = new FormDataBodyPart("file",
+                            new FileInputStream(fileName),
+                            MediaType.APPLICATION_OCTET_STREAM_TYPE);
+                    form.bodyPart(fdp);
+
+                    ClientResponse jerseyResult = jerseyTest.resource()
+                            .path("/tradition")
+                            .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                            .put(ClientResponse.class, form);
+                    assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+                    tradId = Util.getValueFromJson(jerseyResult, "tradId");
+                    /*
+                    Response response = importResource.parseGraphML(testfile.getPath(), "1", tradId);
                     assertEquals(response.getStatus(), 200);
                     JSONObject result = new JSONObject(response.getEntity().toString());
                     assertTrue(result.has("tradId"));
                     tradId = result.getString("tradId");
+                    */
                 } catch (FileNotFoundException f) {
                     // this error should not occur
                     assertTrue("File not found", false);
-                } catch (JSONException f) {
-                    assertTrue("JSON parsing error", false);
+//                } catch (JSONException f) {
+//                    assertTrue("JSON parsing error", false);
                 }
 
                 // Now save its parse data by ID

@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-
-import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -10,13 +9,14 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -42,7 +42,6 @@ import static org.junit.Assert.*;
  */
 public class RelationTest {
     private String tradId;
-
     private GraphDatabaseService db;
 
     /*
@@ -50,16 +49,10 @@ public class RelationTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLParser importResource;
-
 
     @Before
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-
-        importResource = new GraphMLParser();
-		File testfile = new File("src/TestFiles/testTradition.xml");
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -75,23 +68,52 @@ public class RelationTest {
             tx.success();
         }
 
-        /**
-         * load a tradition to the test DB
-         */
-        try {
-            Response r = importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
-            tradId = Util.getValueFromJson(r, "tradId");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
                 .addResource(webResource)
                 .create();
         jerseyTest.setUp();
+
+        /**
+         * load a tradition to the test DB
+         * and gets the generated id of the inserted tradition
+         */
+        try {
+            String fileName = "src/TestFiles/testTradition.xml";
+            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+        } catch (FileNotFoundException e) {
+            assertTrue(false);
+        }
+    }
+
+    private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
+                                           String fType) throws FileNotFoundException {
+        String tradId = "";
+        try {
+            FormDataMultiPart form = new FormDataMultiPart();
+            if (fType != null) form.field("filetype", fType);
+            if (tName != null) form.field("name", tName);
+            if (tDir != null) form.field("direction", tDir);
+            if (userId != null) form.field("userId", userId);
+            if (fName != null) {
+                FormDataBodyPart fdp = new FormDataBodyPart("file",
+                        new FileInputStream(fName),
+                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
+                form.bodyPart(fdp);
+            }
+            ClientResponse jerseyResult = jerseyTest.resource()
+                    .path("/tradition")
+                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                    .put(ClientResponse.class, form);
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+            tradId = Util.getValueFromJson(jerseyResult, "tradId");
+        } catch (Exception e) {
+            e.printStackTrace();
+            assertFalse(true);
+        }
+        assert(tradId.length() != 0);
+        return  tradId;
     }
 
     /**
@@ -620,9 +642,11 @@ public class RelationTest {
                 .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         for (RelationshipModel rel : relationships) {
-            assertTrue(rel.getId().equals("35")
+            // TODO (SK 20151119): Discuss with TLA, if the tests against rel.getId() are usefull
+            assertTrue(rel.getId().equals("35")   // not necessary anymore (SK 20151119) -> TODO
                     || rel.getId().equals("36")
-                    || rel.getId().equals("37"));
+                    || rel.getId().equals("37")
+                    || rel.getId().equals("38")); // added (SK 20151119) -> TODO
             assertTrue(rel.getReading_b().equals("april")
                     || rel.getReading_b().equals("drought")
                     || rel.getReading_b().equals("march"));
@@ -660,15 +684,14 @@ public class RelationTest {
          /**
          * load a tradition with no Realtionships to the test DB
          */
-        File testFile = new File("src/TestFiles/testTraditionNoRealtions.xml");
         String newTradId = null;
         try {
-            Response r = importResource.parseGraphML(testFile.getPath(), "1", "Tradition");
-            newTradId = Util.getValueFromJson(r, "tradId");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
+            String fileName = "src/TestFiles/testTraditionNoRealtions.xml";
+            newTradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+        } catch (FileNotFoundException e) {
             assertTrue(false);
         }
+
         ClientResponse response = jerseyTest
                 .resource()
                 .path("/tradition/" + newTradId + "/relationships")
