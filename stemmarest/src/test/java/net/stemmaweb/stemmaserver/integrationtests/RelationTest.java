@@ -642,11 +642,6 @@ public class RelationTest {
                 .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         for (RelationshipModel rel : relationships) {
-            // TODO (SK 20151119): Discuss with TLA, if the tests against rel.getId() are usefull
-            assertTrue(rel.getId().equals("35")   // not necessary anymore (SK 20151119) -> TODO
-                    || rel.getId().equals("36")
-                    || rel.getId().equals("37")
-                    || rel.getId().equals("38")); // added (SK 20151119) -> TODO
             assertTrue(rel.getReading_b().equals("april")
                     || rel.getReading_b().equals("drought")
                     || rel.getReading_b().equals("march"));
