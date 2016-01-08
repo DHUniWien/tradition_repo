@@ -8,7 +8,6 @@ import java.util.Iterator;
 
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import org.junit.AfterClass;

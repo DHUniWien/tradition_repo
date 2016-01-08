@@ -1,10 +1,8 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.List;
@@ -21,7 +19,6 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;

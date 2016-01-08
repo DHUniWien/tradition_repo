@@ -3,7 +3,6 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.io.*;
 import java.util.*;
 
-import java.io.File;
 import java.io.FileInputStream;
 
 import javax.ws.rs.core.MediaType;
@@ -12,12 +11,10 @@ import javax.ws.rs.core.Response.Status;
 
 import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
-import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;

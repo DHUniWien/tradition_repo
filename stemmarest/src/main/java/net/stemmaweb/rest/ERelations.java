@@ -19,7 +19,10 @@ public enum ERelations implements RelationshipType {
     HAS_STEMMA,     // this type is used to make a stemma tree (directed/undirected)
     HAS_ARCHETYPE,  // used to point from the stemma node to its archetype
     TRANSMITTED,    // links witnesses in the stemma to each other
-    
+    PART,           // links a tradition with its (section) parts
+    NEXT,           // link between sections
+    PUB_ORDER,      // link between sections to preserve their publication order
+
     // Undirected types
     RELATED,        // this type is used to show relationships between readings (undirected)
 }

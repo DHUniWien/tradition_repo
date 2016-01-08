@@ -7,7 +7,6 @@ import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.*;
@@ -23,14 +22,9 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 /**
  * Test tabular parsing of various forms.

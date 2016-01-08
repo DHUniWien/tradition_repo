@@ -14,9 +14,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,9 +23,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map;
 

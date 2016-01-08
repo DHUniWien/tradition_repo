@@ -38,7 +38,7 @@ public class DatabaseService {
      * @return
      */
     public static Node getTraditionNode(String tradId, GraphDatabaseService db) {
-        Node tradition = null;
+        Node tradition;
         try (Transaction tx = db.beginTx()) {
             tradition = db.findNode(Nodes.TRADITION, "id", tradId);
             tx.success();

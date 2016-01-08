@@ -19,7 +19,6 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.UUID;
 
 /**
  * Parser for CollateX-collated traditions.

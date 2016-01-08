@@ -75,6 +75,31 @@ public class Tradition {
      */
 
     /**
+     * Gets a list of all sections of a tradition with the given id.
+     *
+     * @return Http Response 200 and a list of section models in JSON on success
+     * or an ERROR in JSON format
+     */
+/*    @GET
+    @Path("/sections")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllSections() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+
+        ArrayList<SectionModel> sectionList = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.getRelated(traditionNode, ERelations.PART)
+                    .forEach(r -> sectionList.add(new SectionModel(r)));
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(sectionList).build();
+    }*/
+
+    /**
      * Gets a list of all the witnesses of a tradition with the given id.
      *
      * @return Http Response 200 and a list of witness models in JSON on success
@@ -90,7 +115,8 @@ public class Tradition {
 
         ArrayList<WitnessModel> witnessList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS).forEach(r -> witnessList.add(new WitnessModel(r)));
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
+                    .forEach(r -> witnessList.add(new WitnessModel(r)));
             tx.success();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
@@ -167,7 +193,7 @@ public class Tradition {
         Node startNode = DatabaseService.getStartNode(traditionId, db);
         if (startNode == null) {
             return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id").build();
+                    .entity("There is no tradition with this id").build();
         }
 
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
@@ -304,7 +330,7 @@ public class Tradition {
         Node startNode = DatabaseService.getStartNode(traditionId, db);
         if (startNode == null) {
             return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id").build();
+                    .entity("There is no tradition with this id").build();
         }
 
         ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings;
@@ -320,7 +346,7 @@ public class Tradition {
         }
         if (couldBeIdenticalReadings.size() == 0)
             return Response.status(Status.NOT_FOUND)
-                    .entity("no identical readings were found")
+                    .entity("There are no identical readings")
                     .build();
 
         return Response.ok(couldBeIdenticalReadings).build();
@@ -449,7 +475,7 @@ public class Tradition {
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
             if( traditionNode == null ) {
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity("Tradition not found")
+                        .entity("There is no Tradition with this id")
                         .build();
             }
 
