@@ -21,7 +21,7 @@ public class SectionModel {
     private String name;
     private String language;
     private String baselabel;
-    private Character sep_char;
+    private String sep_char;
     private Boolean is_public;
 
     public SectionModel() {
@@ -41,7 +41,7 @@ public class SectionModel {
             if (node.hasProperty("baselabel"))
                 setBaselabel(node.getProperty("baselabel").toString());
             if (node.hasProperty("sep_char"))
-                setSepChar((Character) node.getProperty("sep_char"));
+                setSepChar(node.getProperty("sep_char").toString());
             if (node.hasProperty("public"))
                 setIsPublic((Boolean) node.getProperty("public"));
 
@@ -79,8 +79,8 @@ public class SectionModel {
     public void setBaselabel(String baselabel) {
         this.baselabel = baselabel;
     }
-    public Character getSepChar() { return sep_char; }
-    public void setSepChar(Character sep_char) { this.sep_char = sep_char; }
+    public String getSepChar() { return sep_char; }
+    public void setSepChar(String sep_char) { this.sep_char = sep_char; }
     public Boolean getIsPublic() { return is_public; }
     public void setIsPublic(Boolean is_public) {
         this.is_public = is_public;

@@ -80,7 +80,7 @@ public class Tradition {
      * @return Http Response 200 and a list of section models in JSON on success
      * or an ERROR in JSON format
      */
-/*    @GET
+    @GET
     @Path("/sections")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllSections() {
@@ -90,14 +90,38 @@ public class Tradition {
 
         ArrayList<SectionModel> sectionList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
+            /* use this, in case you want an arbitrary output
             DatabaseService.getRelated(traditionNode, ERelations.PART)
                     .forEach(r -> sectionList.add(new SectionModel(r)));
+            */
+            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+            int depth = sectionNodes.size();
+            if (depth > 0) {
+                for(Node n: sectionNodes) {
+                    if (false == n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                            .iterator()
+                            .hasNext()) {
+                        db.traversalDescription()
+                                .depthFirst()
+                                .relationships(ERelations.NEXT, Direction.OUTGOING)
+                                .evaluator(Evaluators.toDepth(depth))
+                                .uniqueness(Uniqueness.NODE_GLOBAL)
+                                .traverse(n)
+                                .nodes()
+                                .forEach(r -> sectionList.add(new SectionModel(r)));
+                        break;
+                    }
+                }
+            }
             tx.success();
+            if (sectionList.size() != depth) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            }
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(sectionList).build();
-    }*/
+    }
 
     /**
      * Gets a list of all the witnesses of a tradition with the given id.

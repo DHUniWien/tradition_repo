@@ -233,7 +233,9 @@ public abstract class BenchmarkTests {
     @Test
     public void getWitnessAsTextBetweenRanks(){
         ClientResponse actualResponse = jerseyTest.resource()
-                .path("/tradition/1001/witness/W0/text?start=2&end=5")
+                .path("/tradition/1001/witness/W0/text")
+                .queryParam("start", "2")
+                .queryParam("end", "5")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
