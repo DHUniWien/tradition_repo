@@ -98,7 +98,7 @@ public class Tradition {
             int depth = sectionNodes.size();
             if (depth > 0) {
                 for(Node n: sectionNodes) {
-                    if (false == n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                    if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
                             .iterator()
                             .hasNext()) {
                         db.traversalDescription()
@@ -370,7 +370,7 @@ public class Tradition {
         }
         if (couldBeIdenticalReadings.size() == 0)
             return Response.status(Status.NOT_FOUND)
-                    .entity("There are no identical readings")
+                    .entity("There are no mergeable readings")
                     .build();
 
         return Response.ok(couldBeIdenticalReadings).build();

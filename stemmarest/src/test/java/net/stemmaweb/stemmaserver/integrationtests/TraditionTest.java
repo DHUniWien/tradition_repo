@@ -527,7 +527,7 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-        assertEquals(removalResponse.getEntity(String.class), "Tradition not found");
+        assertEquals("There is no Tradition with this id", removalResponse.getEntity(String.class));
 
         /*
          * Post condition nothing has changed

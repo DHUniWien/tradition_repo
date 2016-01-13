@@ -1334,7 +1334,7 @@ public class ReadingTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
-        assertEquals("Could not find tradition with this id",
+        assertEquals("There is no tradition with this id",
                 response.getEntity(String.class));
     }
 
@@ -1417,7 +1417,7 @@ public class ReadingTest {
 
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
-        assertEquals("no identical readings were found",
+        assertEquals("There are no mergeable readings",
                 response.getEntity(String.class));
     }
 
