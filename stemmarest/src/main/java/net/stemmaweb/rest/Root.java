@@ -65,7 +65,7 @@ public class Root {
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response importGraphMl(@FormDataParam("name") String name,
+    public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
                                   @DefaultValue("LR") @FormDataParam("direction") String direction,

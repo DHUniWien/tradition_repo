@@ -112,8 +112,6 @@ public class TraditionParseTest {
                     String fileName = testfile.getPath();
                     FormDataMultiPart form = new FormDataMultiPart();
                     form.field("filetype", "graphml")
-                            .field("name", "Tradition")
-                            .field("direction", "LR")
                             .field("userId", "1");
                     FormDataBodyPart fdp = new FormDataBodyPart("file",
                             new FileInputStream(fileName),
