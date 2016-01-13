@@ -93,6 +93,8 @@ public class GenericTest {
                         new FileInputStream(fName),
                         MediaType.APPLICATION_OCTET_STREAM_TYPE);
                 form.bodyPart(fdp);
+            } else {
+                form.field("empty", "true");
             }
             ClientResponse jerseyResult = jerseyTest.resource()
                     .path("/tradition")

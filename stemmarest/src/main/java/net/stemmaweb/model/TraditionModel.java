@@ -5,9 +5,13 @@ import javax.xml.bind.annotation.XmlRootElement;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * 
@@ -25,13 +29,18 @@ public class TraditionModel {
         BI,  // bidirectional text
     }
 
+    // Properties
     private String id;
     private String name;
     private String language;
     private Direction direction;
-    private Boolean isPublic;
+    private Boolean is_public;
     private Integer stemweb_jobid;
-    private String ownerId;
+    private String owner;
+
+    // Derived from relationships
+    private ArrayList<String> witnesses;
+    private ArrayList<String> reltypes;
 
     public TraditionModel() {}
 
@@ -44,16 +53,23 @@ public class TraditionModel {
                 setLanguage(node.getProperty("language").toString());
             if (node.hasProperty("direction"))
                 setDirection(node.getProperty("direction").toString());
-            if (node.hasProperty("isPublic"))
-                setIsPublic((Boolean) node.getProperty("isPublic"));
+            if (node.hasProperty("is_public"))
+                setIs_public((Boolean) node.getProperty("is_public"));
             if (node.hasProperty("stemweb_jobid"))
                 setStemweb_jobid(Integer.valueOf(node.getProperty("stemweb_jobid").toString()));
 
             Relationship ownerRel = node.getSingleRelationship(ERelations.OWNS_TRADITION,
                     org.neo4j.graphdb.Direction.INCOMING);
             if( ownerRel != null ) {
-                setOwnerId(ownerRel.getStartNode().getProperty("id").toString());
+                setOwner(ownerRel.getStartNode().getProperty("id").toString());
             }
+
+            witnesses = new ArrayList<>();
+            DatabaseService.getRelated(node, ERelations.HAS_WITNESS).forEach(
+                    x -> witnesses.add(x.getProperty("sigil").toString()));
+            // For now this is hard-coded
+            reltypes = new ArrayList<>(Arrays.asList("grammatical", "spelling", "other", "punctuation",
+                    "lexical", "orthographic", "uncertain"));
 
             tx.success();
         }
@@ -82,15 +98,15 @@ public class TraditionModel {
         if (!direction.equals(""))
             this.direction = Direction.valueOf(direction);
     }
-    public Boolean getIsPublic() { return isPublic; }
-    public void setIsPublic(Boolean isPublic) {
-        this.isPublic = isPublic;
+    public Boolean getIs_public() { return is_public; }
+    public void setIs_public(Boolean is_public) {
+        this.is_public = is_public;
     }
-    public String getOwnerId() {
-        return ownerId;
+    public String getOwner() {
+        return owner;
     }
-    public void setOwnerId(String ownerId) {
-        this.ownerId = ownerId;
+    public void setOwner(String owner) {
+        this.owner = owner;
     }
     public Integer getStemweb_jobid () { return stemweb_jobid; }
     public void setStemweb_jobid (int stemweb_jobid ) { this.stemweb_jobid = stemweb_jobid; }

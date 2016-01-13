@@ -503,15 +503,15 @@ public class Tradition {
                         .build();
             }
 
-            if (tradition.getOwnerId() != null) {
-                Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwnerId());
+            if (tradition.getOwner() != null) {
+                Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwner());
                 if (newUser == null) {
                     return Response.status(Response.Status.NOT_FOUND)
                             .entity("Error: A user with this id does not exist")
                             .build();
                 }
                 Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
-                if (!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwnerId())) {
+                if (!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwner())) {
                     // Remove the old ownership
                     oldOwnership.delete();
 
@@ -522,8 +522,8 @@ public class Tradition {
             // Now set the other properties that were passed
             if (tradition.getName() != null )
                 traditionNode.setProperty("name", tradition.getName());
-            if (tradition.getIsPublic() != null )
-                traditionNode.setProperty("is_public", tradition.getIsPublic());
+            if (tradition.getIs_public() != null )
+                traditionNode.setProperty("is_public", tradition.getIs_public());
             if (tradition.getLanguage() != null )
                 traditionNode.setProperty("language", tradition.getLanguage());
             if (tradition.getDirection() != null )
@@ -595,24 +595,11 @@ public class Tradition {
      */
 
     /**
-     * Returns GraphML file from specified tradition owned by user
-     *
-     * @return XML data
-     */
-    @GET
-    @Produces(MediaType.APPLICATION_XML)
-    public Response getTradition() {
-        GraphMLExporter parser = new GraphMLExporter();
-        return parser.parseNeo4J(traditionId);
-    }
-
-    /**
      * Returns the tradition metadata
      *
      * @return TraditionModel
      */
     @GET
-    @Path("/info")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTraditionInfo() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
@@ -621,6 +608,19 @@ public class Tradition {
 
         TraditionModel metadata = new TraditionModel(traditionNode);
         return Response.ok(metadata).build();
+    }
+
+    /**
+     * Returns GraphML file from specified tradition owned by user
+     *
+     * @return XML data
+     */
+    @GET
+    @Path("/graphml")
+    @Produces(MediaType.APPLICATION_XML)
+    public Response getGraphML() {
+        GraphMLExporter parser = new GraphMLExporter();
+        return parser.parseNeo4J(traditionId);
     }
 
     /**

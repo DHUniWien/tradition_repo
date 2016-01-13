@@ -363,8 +363,8 @@ public class TraditionTest {
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
         textInfo.setDirection("RL");
-        textInfo.setIsPublic(false);
-        textInfo.setOwnerId("42");
+        textInfo.setIs_public(false);
+        textInfo.setOwner("42");
 
         ClientResponse ownerChangeResponse = jerseyTest
                 .resource()
@@ -380,7 +380,7 @@ public class TraditionTest {
             Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
             TraditionModel tradition = new TraditionModel(tradNode);
 
-            assertEquals("42", tradition.getOwnerId());
+            assertEquals("42", tradition.getOwner());
             assertEquals(tradId, tradition.getId());
             assertEquals("RenamedTraditionName", tradition.getName());
             assertEquals("RL", tradition.getDirection());
@@ -430,8 +430,8 @@ public class TraditionTest {
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic(false);
-        textInfo.setOwnerId("1337");
+        textInfo.setIs_public(false);
+        textInfo.setOwner("1337");
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId)
@@ -518,8 +518,8 @@ public class TraditionTest {
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
         textInfo.setLanguage("nital");
-        textInfo.setIsPublic(false);
-        textInfo.setOwnerId("42");
+        textInfo.setIs_public(false);
+        textInfo.setOwner("42");
 
         ClientResponse removalResponse = jerseyTest
                 .resource()

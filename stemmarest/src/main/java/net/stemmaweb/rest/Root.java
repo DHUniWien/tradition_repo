@@ -71,6 +71,7 @@ public class Root {
                                   @DefaultValue("LR") @FormDataParam("direction") String direction,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
+                                  @FormDataParam("empty") String empty,
                                   @FormDataParam("file") InputStream uploadedInputStream,
                                   @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException,
             XMLStreamException {
@@ -79,6 +80,12 @@ public class Root {
             return Response.status(Response.Status.CONFLICT)
                     .entity("Error: No user with this id exists")
                     .build();
+        }
+
+        if (fileDetail == null && uploadedInputStream == null && empty == null) {
+            // No file to parse
+            String response = "{\"error\":\"No file found\"}";
+            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
         }
 
         String tradId;
@@ -91,11 +98,11 @@ public class Root {
                     .build();
         }
 
-        if (fileDetail == null && uploadedInputStream == null) {
-            // No file to parse
-            String response = String.format("{\"tradId\":\"%s\"}", tradId);
-            return Response.status(Response.Status.CREATED).entity(response).build();
-        }
+        // Return now if we have no file to parse
+        if (empty != null)
+            return Response.status(Response.Status.CREATED).entity("{\"tradId\":" + tradId + "}").build();
+
+        // Otherwise, parse the file we have been given
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
             return new TabularParser().parseCSV(uploadedInputStream, tradId, ',');
@@ -221,7 +228,7 @@ public class Root {
                 traditionNode.setProperty("language", language);
             }
             if (isPublic != null) {
-                traditionNode.setProperty("isPublic", isPublic);
+                traditionNode.setProperty("isPublic", isPublic.equals("true"));
             }
             tx.success();
         } catch (Exception e) {
