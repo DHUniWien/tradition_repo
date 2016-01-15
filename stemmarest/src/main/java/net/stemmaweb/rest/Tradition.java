@@ -148,6 +148,48 @@ public class Tradition {
         return Response.ok(witnessList).build();
     }
 
+    @GET
+    @Path("/section/{section_id}/witnesses")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllWitnessInSection(@PathParam("section_id") String section_id) {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+
+        ArrayList<WitnessModel> witnessList = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+            if (sectionNodes.size() > 0) {
+                // Looking for the specific section
+                sectionNodes.stream().filter(n -> section_id.equals(n.getProperty("id"))).forEach(n -> {
+                    ArrayList<Node> readings = DatabaseService.getRelated(n, ERelations.COLLATION);
+                    if (readings.size() > 0) {
+                        for (Node m : readings) {
+                            for (Relationship relationship : m.getRelationships(ERelations.SEQUENCE)) {
+                                ArrayList<WitnessModel> existingWitnessList = new ArrayList<>();
+                                DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
+                                        .forEach(r -> existingWitnessList.add(new WitnessModel(r)));
+                                for (String sigil : (String[]) relationship.getProperty("witnesses")) {
+                                    for (WitnessModel ewn : existingWitnessList) {
+                                        if (sigil.equals(ewn.getSigil())) {
+                                            witnessList.add(ewn);
+                                            existingWitnessList.remove(ewn);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(witnessList).build();
+    }
+
     /**
      * Gets a list of all Stemmata available, as dot format
      *
