@@ -158,30 +158,27 @@ public class Tradition {
 
         ArrayList<WitnessModel> witnessList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
-            if (sectionNodes.size() > 0) {
-                // Looking for the specific section
-                sectionNodes.stream().filter(n -> section_id.equals(n.getProperty("id"))).forEach(n -> {
-                    ArrayList<Node> readings = DatabaseService.getRelated(n, ERelations.COLLATION);
-                    if (readings.size() > 0) {
-                        for (Node m : readings) {
-                            for (Relationship relationship : m.getRelationships(ERelations.SEQUENCE)) {
-                                ArrayList<WitnessModel> existingWitnessList = new ArrayList<>();
-                                DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
-                                        .forEach(r -> existingWitnessList.add(new WitnessModel(r)));
-                                for (String sigil : (String[]) relationship.getProperty("witnesses")) {
-                                    for (WitnessModel ewn : existingWitnessList) {
-                                        if (sigil.equals(ewn.getSigil())) {
-                                            witnessList.add(ewn);
-                                            existingWitnessList.remove(ewn);
-                                            break;
-                                        }
-                                    }
-                                }
+            Node sectionNode = db.findNode(Nodes.SECTION, "id", section_id);
+            if (sectionNode == null)
+                return Response.status(Status.NOT_FOUND).entity("section not found").build();
+            Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
+            if (rel == null || rel.getStartNode().getId() != traditionNode.getId()) {
+                return Response.status(Status.NOT_FOUND).entity("this section is not part of this tradition").build();
+            }
+
+            for (Node m : DatabaseService.getRelated(sectionNode, ERelations.COLLATION)) {
+                for (Relationship relationship : m.getRelationships(ERelations.SEQUENCE)) {
+                    ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
+                    for (String sigil : (String[]) relationship.getProperty("witnesses")) {
+                        for (Node curWitness : traditionWitnesses) {
+                            if (sigil.equals(curWitness.getProperty("sigil"))) {
+                                witnessList.add(new WitnessModel(curWitness));
+                                traditionWitnesses.remove(curWitness);
+                                break;
                             }
                         }
                     }
-                });
+                }
             }
             tx.success();
         } catch (Exception e) {
