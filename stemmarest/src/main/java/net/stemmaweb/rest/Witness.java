@@ -10,12 +10,14 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
@@ -29,14 +31,23 @@ public class Witness {
     private GraphDatabaseService db;
     private String tradId;
     private String sigil;
+    private String sectId;
 
     public Witness (String traditionId, String requestedSigil) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
         sigil = requestedSigil;
+        sectId = null;
     }
 
+    public Witness (String traditionId, String sectionId, String requestedSigil) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+        sigil = requestedSigil;
+        sectId = sectionId;
+    }
 
     /**
      * finds a witness in the database and returns it as a string; if start and end are
@@ -82,49 +93,103 @@ public class Witness {
 
         long startRank = Long.parseLong(start);
         long endRank;
-        if (end.equals("E")) {
-            // Find the rank of the graph's end.
-            Node tradNode = DatabaseService.getTraditionNode(tradId, db);
-            Node endNode = DatabaseService.getRelated(tradNode, ERelations.HAS_END).get(0);
+
+        Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+
+        ArrayList<Node> iterationList = new ArrayList<>();
+        // Lets see if a tradition has one or more sections
+        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+        if (sectionNodes.size() == 0) {
+            iterationList.add(traditionNode);
+        } else {
+            int depth = sectionNodes.size();
             try (Transaction tx = db.beginTx()) {
-                endRank = Long.valueOf(endNode.getProperty("rank").toString());
+                if (this.sectId == null) {
+                    // order the sections by their occurrence in the tradition
+                    for (Node n : sectionNodes) {
+                        if (false == n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                                .iterator()
+                                .hasNext()) {
+                            db.traversalDescription()
+                                    .depthFirst()
+                                    .relationships(ERelations.NEXT, Direction.OUTGOING)
+                                    .evaluator(Evaluators.toDepth(depth))
+                                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                                    .traverse(n)
+                                    .nodes()
+                                    .forEach(r -> iterationList.add(r));
+                            break;
+                        }
+                    }
+                } else {
+                    Node sectionNode = db.findNode(Nodes.SECTION, "id", this.sectId);
+                    if (sectionNode == null)
+                        return Response.status(Status.NOT_FOUND).entity("section not found").build();
+                    Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
+                    if (rel == null || rel.getStartNode().getId() != traditionNode.getId()) {
+                        return Response.status(Status.NOT_FOUND).entity("this section is not part of this tradition").build();
+                    }
+                    iterationList.add(sectionNode);
+                }
                 tx.success();
             } catch (Exception e) {
-                e.printStackTrace();
-                return Response.serverError().entity(e.getMessage()).build();
+                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
             }
-        } else
-            endRank = Long.parseLong(end);
-
-        if (endRank == startRank) {
-            return Response.status(Status.BAD_REQUEST)
-                    .entity("end-rank is equal to start-rank")
-                    .build();
         }
 
-        if (endRank < startRank) {
-            // Swap them around.
-            long tempRank = startRank;
-            startRank = endRank;
-            endRank = tempRank;
-        }
-
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        try (Transaction tx = db.beginTx()) {
-            Boolean joinPrior = false;
-            for (Node node : traverseReadings(startNode, layer)) {
-                long nodeRank = Long.parseLong( node.getProperty("rank").toString());
-                if (nodeRank >= startRank && nodeRank <= endRank
-                        && !booleanValue(node, "is_lacuna")) {
-                    if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
-                        witnessAsText += " ";
-                    witnessAsText += node.getProperty("text").toString();
-                    joinPrior = booleanValue(node, "join_prior");
+        for (Node currentSection: iterationList) {
+            if (iterationList.size() > 1) {
+                end = "E";
+                startRank = 0;
+            }
+            if (end.equals("E")) {
+                // Find the rank of the graph's end.
+                Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END).get(0);
+                try (Transaction tx = db.beginTx()) {
+                    endRank = Long.valueOf(endNode.getProperty("rank").toString());
+                    tx.success();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return Response.serverError().entity(e.getMessage()).build();
                 }
+            } else
+                endRank = Long.parseLong(end);
+
+            if (endRank == startRank) {
+                return Response.status(Status.BAD_REQUEST)
+                        .entity("end-rank is equal to start-rank")
+                        .build();
             }
-            tx.success();
-        } catch (Exception exception) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+
+            if (endRank < startRank) {
+                // Swap them around.
+                long tempRank = startRank;
+                startRank = endRank;
+                endRank = tempRank;
+            }
+
+            try (Transaction tx = db.beginTx()) {
+                Relationship rel = currentSection.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING);
+                if(rel != null) {
+                    Node startNode = rel.getEndNode();
+                    Boolean joinPrior = false;
+                    for (Node node : traverseReadings(startNode, layer)) {
+                        long nodeRank = Long.parseLong(node.getProperty("rank").toString());
+                        if (nodeRank >= startRank && nodeRank <= endRank
+                                && !booleanValue(node, "is_lacuna")) {
+                            if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
+                                witnessAsText += " ";
+                            witnessAsText += node.getProperty("text").toString();
+                            joinPrior = booleanValue(node, "join_prior");
+                        }
+                    }
+                }
+                tx.success();
+            } catch (Exception exception) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            }
         }
 
         if (witnessAsText.equals("")) {

@@ -49,6 +49,12 @@ public class Tradition {
         return new Witness(traditionId, sigil);
     }
 
+    @Path("section/{sectionId}/witness/{sigil}")
+    public Witness getWitnessFromSection(@PathParam("sectionId") String sectionId,
+                                         @PathParam("sigil") String sigil) {
+        return new Witness(traditionId, sectionId, sigil);
+    }
+
     @Path("/stemma/{name}")
     public Stemma getStemma(@PathParam("name") String name) {
         return new Stemma(traditionId, name);
@@ -70,6 +76,80 @@ public class Tradition {
         return parser.importStemmaFromDot(dot, traditionId);
     }
 
+    /**
+     * Initializes ranks in sessions where readings have no rank-property
+     *
+     * This does not belong to the official API!
+     * It is just a hack to initialize sections where their readings have
+     * no "rank" defined
+     */
+    @GET
+    @Path("/initRanks")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response initRanks() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+
+        ArrayList<SectionModel> updatedSections = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            ArrayList<Node> sectionList = DatabaseService.getRelated(traditionNode, ERelations.PART);
+            for(Node section: sectionList) {
+                Node startNode = DatabaseService.getRelated(section, ERelations.COLLATION).get(0);
+                if (false == startNode.hasProperty("rank")) {
+                    LinkedList<Node> queue = new LinkedList<>();
+                    queue.add(startNode);
+
+                    while (!queue.isEmpty()) {
+                        Node curNode = queue.poll();
+                        if (!curNode.hasProperty("rank")) {
+                            curNode.setProperty("rank", 0L);
+                        }
+                        Iterator<Relationship> inRels = curNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).iterator();
+                        if (!inRels.hasNext()) {
+                            inRels = curNode.getRelationships(Direction.INCOMING, ERelations.LEMMA_TEXT).iterator();
+                        }
+                        Long maxRank = -1L;
+                        while(inRels.hasNext()) {
+                            Relationship curRel = inRels.next();
+                            Node inNode = curRel.getStartNode();
+                            if (!inNode.hasProperty("rank")) {
+                                queue.add(curNode);
+                                curNode = null;
+                                break;
+                            }
+                            Long inRank = (Long)inNode.getProperty("rank");
+                            if (inRank > maxRank)
+                                maxRank = inRank;
+                        }
+                        if (curNode != null) {
+                            maxRank += 1L;
+                            if (maxRank > (Long)curNode.getProperty("rank")) {
+                                curNode.setProperty("rank", maxRank + 1L);
+                            }
+                            Iterator<Relationship> outRels = curNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).iterator();
+                            if (!inRels.hasNext()) {
+                                outRels = curNode.getRelationships(Direction.OUTGOING, ERelations.LEMMA_TEXT).iterator();
+                            }
+                            while(outRels.hasNext()) {
+                                Relationship curRel = outRels.next();
+                                Node curOutNode = curRel.getEndNode();
+                                if(!queue.contains(curOutNode)) {
+                                    queue.add(curOutNode);
+                                }
+                            }
+                        }
+                    }
+                    updatedSections.add(new SectionModel(section));
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(updatedSections).build();
+
+    }
     /*****************************
      * Collection retrieval calls
      */
