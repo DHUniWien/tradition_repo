@@ -24,5 +24,6 @@ public enum Nodes implements Label {
     DATE,           // is a concrete period of time
     DATEREF,        // is a reference to a date
     DATING,         // is a reference in the text to a period of time
-    USER            // is a user node
+    USER,           // is a user node
+    __SYSTEM__      // is a __SYSTEM__ node
 }
