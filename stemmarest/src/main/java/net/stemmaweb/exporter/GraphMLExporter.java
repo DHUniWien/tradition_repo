@@ -2,7 +2,10 @@ package net.stemmaweb.exporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -222,8 +225,9 @@ public class GraphMLExporter {
         }
 
         File file;
+        String result;
         try (Transaction tx = db.beginTx()) {
-            file = File.createTempFile("output", ".xml");
+            file = File.createTempFile("output", ".graphml");
             OutputStream out = new FileOutputStream(file);
 
             XMLOutputFactory output = XMLOutputFactory.newInstance();
@@ -349,22 +353,17 @@ public class GraphMLExporter {
             org.w3c.dom.Node nodesCount = attr.getNamedItem("parse.nodes");
             nodesCount.setTextContent(nodeCountGraph1+"");
 
-            // TODO What is the point of this transformer call?
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult resultFile = new StreamResult(file);
-            transformer.transform(source, resultFile);
-            tx.success();
-        } catch(Exception e) {
-            e.printStackTrace();
+            // Now pull the string back out of the output file.
+            byte[] encDot = Files.readAllBytes(file.toPath());
+            result = new String(encDot, Charset.forName("utf-8"));
 
-            return Response
-                    .status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error: Tradition could not be exported!")
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR)
+                    .entity("An internal error occured during GraphML-export")
                     .build();
         }
-
-        return Response.ok(file.toString(), MediaType.APPLICATION_XML).build();
+        return Response.ok().entity(result).build();
     }
 }

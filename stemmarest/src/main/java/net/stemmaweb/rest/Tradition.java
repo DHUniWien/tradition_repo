@@ -735,6 +735,8 @@ public class Tradition {
     @Path("/graphml")
     @Produces(MediaType.APPLICATION_XML)
     public Response getGraphML() {
+        if (DatabaseService.getTraditionNode(traditionId, db) == null)
+            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
         GraphMLExporter parser = new GraphMLExporter();
         return parser.parseNeo4J(traditionId);
     }
