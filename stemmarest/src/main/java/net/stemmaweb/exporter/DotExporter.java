@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.text.DecimalFormat;
 import java.util.*;
 
 import javax.ws.rs.core.Response;
@@ -20,9 +21,10 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+
 /**
  * This class provides methods for exporting Dot File from Neo4J
- * 
+ *
  * @author PSE FS 2015 Team2
  */
 public class DotExporter
@@ -31,63 +33,214 @@ public class DotExporter
 
     private OutputStream out = null;
 
+    private  Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
+    private static DecimalFormat df2 = new DecimalFormat(".##");
+
     public DotExporter(GraphDatabaseService db){
         this.db = db;
+    }
+
+    private String calcPenWidth(String lexString)
+    {
+        return df2.format(0.8 + 0.2 * (lexString.length() - lexString.replace(",", "").length()+1));
+    }
+
+    private String relshipText(Long sNodeId, Long eNodeId, String label, long edgeId, String pWidth, Long rankDiff)
+    {
+        String text;
+        try {
+            text = "n" + sNodeId + "->" + "n" + eNodeId + " [label=\"" + label
+                    + "\", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
+            if (rankDiff > 1)
+                text += ", minlen=\"" + rankDiff + "\"";
+            text += "];";
+        } catch (Exception e) {
+            text = null;
+        }
+        return text;
     }
 
     public Response parseNeo4J(String tradId)
     {
         Node startNode = DatabaseService.getStartNode(tradId, db);
-        if(startNode==null) {
+        Node endNode = DatabaseService.getEndNode(tradId, db);
+        if(startNode==null || endNode==null) {
             return Response.status(Status.NOT_FOUND).build();
+        }
+
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
+        if (sections == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+        if (sections.size() == 0) {
+            sections.add(traditionNode);
         }
 
         File output;
         String result;
+        boolean includeRelatedRelationships = true;
         try (Transaction tx = db.beginTx()) {
             output = File.createTempFile("graph_", "dot");
             out = new FileOutputStream(output);
 
             write("digraph { ");
-
+            write("graph [rankdir=\"LR\"] ");
             long edgeId = 0;
-            String subgraph = "";
-            for (Node node : db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode)
-                    .nodes()) {
+            long global_rank = 0;
+            Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
 
-                write("n" + node.getId() + " [label=\"" + node.getProperty("text").toString()
-                        + "\"];");
+            for (Node sectionNode: sections) {
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
+                for (Node node :  db.traversalDescription().breadthFirst()
+                        .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                        .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
+                        .uniqueness(Uniqueness.NODE_GLOBAL)
+                        .traverse(sectionStartNode)
+                        .nodes()) {
 
-                for(Relationship rel : node.getRelationships(Direction.OUTGOING,ERelations.SEQUENCE)) {
-                    if(rel != null && rel.hasProperty("witnesses")) {
-                        String[] witnesses = (String[]) rel.getProperty("witnesses");
-                        String lex_str = "";
-                        Iterator<String> it = Arrays.asList(witnesses).iterator();
-                        while(it.hasNext()) {
-                            lex_str += "" + it.next() + "";
-                            if(it.hasNext()) {
-                                lex_str += ",";
+                    if ((!node.equals(sectionStartNode) && !node.equals(sectionEndNode))
+                            || node.equals(startNode)
+                            || node.equals(endNode)) {
+                        write("n" + node.getId()
+                                + " [label=\"" + node.getProperty("text").toString() + "\"];");
+                    }
+
+                    if (node.equals(sectionStartNode) || node.equals(sectionEndNode))
+                        continue;
+//                    nodes_in_section += 1L;
+                    for (Relationship rel : node.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+                        if (rel == null)
+                            continue;
+                        Node relStartNode = rel.getStartNode();
+                        Long relStartNodeId = relStartNode.getId();
+                        Long node_rank;
+                        try {
+                            node_rank = (Long) node.getProperty("rank");
+                        } catch (Exception e) {
+                            node_rank = ((Integer)node.getProperty("rank")).longValue();
+                        }
+
+                        if (!relStartNode.equals(sectionStartNode)) {
+                            String[] witnesses = {""};
+                            String lex_str = "";
+                            if (rel.hasProperty("witnesses")) {
+                                witnesses = (String[]) rel.getProperty("witnesses");
+                                Arrays.sort(witnesses);
+                            }
+                            Iterator<String> it = Arrays.asList(witnesses).iterator();
+                            while (it.hasNext()) {
+                                lex_str += it.next();
+                                if (it.hasNext()) {
+                                    lex_str += ",";
+                                }
+                            }
+
+                            write(relshipText(relStartNodeId, node.getId(), lex_str, edgeId++, calcPenWidth(lex_str), 1L));
+                        } else {
+                            Hashtable<Long, String> sectionWitnesses = new Hashtable<>();
+                            Hashtable<Long, Long> sectionRanks = new Hashtable<>();
+                            String[] witnesses = {""};
+                            if (rel.hasProperty("witnesses")) {
+                                witnesses = (String[]) rel.getProperty("witnesses");
+                                Arrays.sort(witnesses);
+                            }
+                            Iterator<String> it = Arrays.asList(witnesses).iterator();
+                            while (it.hasNext()) {
+                                String sigil = it.next();
+                                if (!knownWitnesses.containsKey(sigil)) {
+                                    Long[] dummy = {startNode.getId(), 0L};
+                                    knownWitnesses.put(sigil, dummy);
+                                }
+                                Long[] predNodeInfo = knownWitnesses.get(sigil);
+                                Long predNodeId = predNodeInfo[0];
+                                Long predNodeRank = predNodeInfo[1];
+                                if (!sectionWitnesses.containsKey(predNodeId)) {
+                                    sectionWitnesses.put(predNodeId, sigil);
+                                    sectionRanks.put(predNodeId, predNodeRank);
+                                } else {
+                                    String existingWitnesses = sectionWitnesses.get(predNodeId);
+                                    sectionWitnesses.replace(predNodeId, existingWitnesses + "," + sigil);
+                                }
+                            }
+                            Enumeration e = sectionWitnesses.keys();
+
+                            while (e.hasMoreElements()) {
+                                relStartNodeId = (Long)e.nextElement();
+                                String relText = sectionWitnesses.get(relStartNodeId);
+                                Long rankDiff = (global_rank + node_rank) - sectionRanks.get(relStartNodeId);
+                                write(relshipText(relStartNodeId, rel.getEndNode().getId(), relText, edgeId++, calcPenWidth(relText), rankDiff));
                             }
                         }
-                        write("n" + rel.getStartNode().getId() + "->" + "n" +
-                                rel.getEndNode().getId() + " [label=\""+ lex_str +"\", id=\"e"+
-                                edgeId++ +"\"];");
+                    }
+                    // retrieve information for the subgraph (Related Relations)
+                    if (includeRelatedRelationships) {
+                        for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
+                            write("n" + relatedRel.getStartNode().getId() + "->" + "n" +
+                                    relatedRel.getEndNode().getId() + " [style=dotted, label=\"" +
+                                    relatedRel.getProperty("type").toString() + "\",id=\"e" +
+                                    edgeId++ + "\"];");
+                        }
                     }
                 }
-                for(Relationship rel : node.getRelationships(Direction.OUTGOING,
-                        ERelations.RELATED)) {
-                    subgraph += "n" + rel.getStartNode().getId() + "->" + "n" +
-                            rel.getEndNode().getId() + " [style=dotted, label=\""+
-                            rel.getProperty("type").toString() +"\", id=\"e"+ edgeId++ +"\"];";
+                // finalize the section:
+                // for each witness, calculate and store the global rank of the last node used
+                // this is necessary, since the rank start with 0 in each section
+                // we use this to connect the necessary nodes of the next session with the stored nodes.
+                long section_max_rank = 0;
+                for (Relationship rel : sectionEndNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+                    if (rel == null)
+                        continue;
+                    String[] witnesses = {""};
+                    Node relStartNode = rel.getStartNode();
+                    Long relStartNodeId = relStartNode.getId();
+
+                    // get section's highest rank for the current witness(es)
+                    Long witness_section_max_rank;
+                    try {
+                        witness_section_max_rank = (Long)relStartNode.getProperty("rank");
+                    } catch (Exception e) {
+                        witness_section_max_rank = ((Integer)relStartNode.getProperty("rank")).longValue();
+                    }
+                    section_max_rank = Math.max(witness_section_max_rank, section_max_rank);
+
+                    if (rel.hasProperty("witnesses")) {
+                        witnesses = (String[]) rel.getProperty("witnesses");
+                        Arrays.sort(witnesses);
+                    }
+                    for (String s : Arrays.asList(witnesses)) {
+                        Long[] dummy = {relStartNodeId, global_rank + witness_section_max_rank};
+                        knownWitnesses.replace(s, dummy);
+                    }
+                }
+                global_rank += section_max_rank;
+            }
+
+            // finalize the graph by connecting all used witnesses to the end-node
+            Hashtable<Long, String> usedWitnesses = new Hashtable<>();
+            Hashtable<Long, Long> usedWitnessesRanks = new Hashtable<>();
+            Enumeration e = knownWitnesses.keys();
+            while (e.hasMoreElements()) {
+                String sigil = (String)e.nextElement();
+                Long sNodeId = knownWitnesses.get(sigil)[0];
+                if (!usedWitnesses.containsKey(sNodeId)) {
+                    usedWitnesses.put(sNodeId, sigil);
+                    usedWitnessesRanks.put(sNodeId, knownWitnesses.get(sigil)[1]);
+                } else {
+                    String existingWitnesses = usedWitnesses.get(sNodeId);
+                    usedWitnesses.replace(sNodeId, existingWitnesses + "," + sigil);
                 }
             }
 
-            write("subgraph { edge [dir=none]");
-            write(subgraph);
-            write(" } }");
+            e = usedWitnesses.keys();
+            while (e.hasMoreElements()) {
+                Long sNodeId = (Long)e.nextElement();
+                String relText = usedWitnesses.get(sNodeId);
+                Long rankDiff = global_rank - usedWitnessesRanks.get(sNodeId);
+                write(relshipText(sNodeId, endNode.getId(), relText, edgeId++, calcPenWidth(relText), rankDiff));
+            }
+            write(" }");
 
             out.flush();
             out.close();
@@ -110,7 +263,9 @@ public class DotExporter
         return Response.ok().entity(result).build();
     }
 
+
     /**
+     *
      * Parses a Stemma of a tradition in a JSON string in DOT format
      * don't throw error far enough
      *
@@ -231,7 +386,7 @@ public class DotExporter
         // We need to traverse only those paths that belong to this stemma.
         PathExpander e = new PathExpander() {
             @Override
-            public Iterable<Relationship> expand(Path path, BranchState branchState) {
+            public java.lang.Iterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
                 for (Relationship link : path.endNode()
                         .getRelationships(ERelations.TRANSMITTED, Direction.BOTH)) {
