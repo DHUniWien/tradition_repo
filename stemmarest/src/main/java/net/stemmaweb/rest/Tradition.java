@@ -17,10 +17,7 @@ import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.traversal.*;
 
 
 /**
@@ -809,57 +806,134 @@ public class Tradition {
      */
     public boolean recalculateRank(Long nodeId) {
         Comparator<Node> rankComparator = (n1, n2) -> {
-            int compVal = ((Long) n1.getProperty("rank"))
-                    .compareTo((Long) n2.getProperty("rank"));
-            if (compVal == 0) {
-                compVal = Long.valueOf(n1.getId()).compareTo(n2.getId());
-            }
-            return compVal;
+            int compVal = ((Long) n1.getProperty("rank")).compareTo((Long) n2.getProperty("rank"));
+            return (compVal == 0) ? Long.valueOf(n1.getId()).compareTo(n2.getId()) : compVal;
         };
+
         SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
+        Hashtable<Node, Integer> unresolvedRelationsCounter = new Hashtable<>();
+        Set<Node> relatedNodeSet = new HashSet<>();
+        Set<Node> nonRelatedNodeSet = new HashSet<>();
+        Set<Set<Node>> relatedNodeSets = new HashSet<>();
 
         try (Transaction tx = db.beginTx()) {
             Node currentNode = db.getNodeById(nodeId);
-            Node iterNode;
+            unresolvedRelationsCounter.put(currentNode, noOfIncomingRelations(currentNode));
 
-            while (currentNode != null) {
-                long nominalRank = getRank(nodeId);
-                if (!currentNode.getProperty("rank").equals(nominalRank)) {
-                    currentNode.setProperty("rank", nominalRank);
+            while (!nodesToProcess.isEmpty() || !unresolvedRelationsCounter.isEmpty()) {
+                try {
+                    // process the nodes we can easily process, with all dependencies known
+                    currentNode = nodesToProcess.first();
+                    nodesToProcess.remove(currentNode);
+                    Long currentRank = (Long) currentNode.getProperty("rank");
 
-                    // Look, if a RELATED node has a higher rank
-                    long currentNodeRank = (long)currentNode.getProperty("rank");
-
-                    // UPDATE nodes on RELATED vertices, if necessary
-                    Iterable<Relationship> relationships = currentNode.getRelationships(ERelations.RELATED);
+                    Iterable<Relationship> relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
                     for (Relationship relationship : relationships) {
-                        if (!relationship.getProperty("type").equals("transposition") &&
-                                !relationship.getProperty("type").equals("repetition")) {
-                            iterNode = relationship.getOtherNode(currentNode);
-                            if ((Long) iterNode.getProperty("rank") < currentNodeRank) {
-                                iterNode.setProperty("rank", currentNodeRank);
-                                nodesToProcess.add(iterNode);
+                        Node nextNode = relationship.getEndNode();
+                        nextNode.setProperty("rank", currentRank + 1L);
+                        unresolvedRelationsCounter.putIfAbsent(nextNode, noOfIncomingRelations(nextNode));
+                        unresolvedRelationsCounter.replace(nextNode, unresolvedRelationsCounter.get(nextNode) - 1);
+                    }
+                } catch (NoSuchElementException nsee) {
+                    // no more nodes to process, so lets organize some ...
+                    // First, 'classify' unknown nodes, if necessary
+                    if (relatedNodeSet.size() + nonRelatedNodeSet.size() < unresolvedRelationsCounter.size()) {
+                        for (Node iterNode : unresolvedRelationsCounter.keySet()) {
+                            if (!nonRelatedNodeSet.contains(iterNode) && !relatedNodeSet.contains(iterNode)) {
+                                if (hasRelatedNodes(iterNode)) {
+                                    Set<Node> tmpRelNodes = getRelatedNodes(iterNode);
+                                    for (Node iterInnerNode: tmpRelNodes ) {
+                                        if (!unresolvedRelationsCounter.containsKey(iterInnerNode)) {
+                                            unresolvedRelationsCounter.put(iterInnerNode, noOfIncomingRelations(iterInnerNode));
+                                        }
+                                    }
+                                    relatedNodeSets.add(tmpRelNodes);
+                                    relatedNodeSet.addAll(tmpRelNodes);
+                                } else {
+                                    nonRelatedNodeSet.add(iterNode);
+                                }
                             }
                         }
                     }
 
-                    // Update nodes on OUTGOING & SEQUENCE vertices, if necessary
-                    relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-                    // OUTGOING includes SEQUENCE (outgoing) and RELATED
-                    for (Relationship relationship : relationships) {
-                        iterNode = relationship.getEndNode();
-                        if (Long.valueOf(iterNode.getProperty("rank").toString()) <= currentNodeRank) {
-                            iterNode.setProperty("rank", currentNodeRank + 1L);
-                            nodesToProcess.add(iterNode);
+                    Integer minIndegree = Integer.MAX_VALUE;
+                    Long minRank = Long.MAX_VALUE;
+                    Set<Node> minNodeSet = new HashSet<>();
+
+                    // find all Nodes that have no RELATED-relations and where we know all incoming relationships
+                    Set<Node> processNodes = new HashSet<>();
+                    for (Node iterNode : nonRelatedNodeSet) {
+                        // TODO: remove the following line:
+                        // this is just a hack, to convert int values in the test db into long ones
+                        iterNode.setProperty("rank", Long.valueOf(iterNode.getProperty("rank").toString()));
+                        if (unresolvedRelationsCounter.get(iterNode) == 0) {
+                            processNodes.add(iterNode);
+                        } else if (nodesToProcess.size() == 0) {
+                            long curRank = determineNodeRank(iterNode);
+                            Integer curIndegree = unresolvedRelationsCounter.get(iterNode);
+                            if (curRank < minRank || (curRank == minRank && curIndegree < minIndegree)) {
+                                minNodeSet.clear();
+                                minNodeSet.add(iterNode);
+                                minIndegree = curIndegree;
+                                minRank = curRank;
+                            }
                         }
                     }
-                }
+                    for (Node iterNode : processNodes) {
+                        nodesToProcess.add(iterNode);
+                        unresolvedRelationsCounter.remove(iterNode);
+                        nonRelatedNodeSet.remove(iterNode);
+                    }
+                    if (nodesToProcess.size() > 0)
+                        continue;
 
-                if (nodesToProcess.isEmpty()) {
-                    currentNode = null;
-                } else {
-                    currentNode = nodesToProcess.first();
-                    nodesToProcess.remove(currentNode);
+                    // There are no 'non-RELATED' nodes that we can use immediately, so let's try
+                    // to find some RELATED ones
+                    Set<Set<Node>> delNodeSets = new HashSet<>();
+                    for (Set<Node> iterSet : relatedNodeSets) {
+                        Integer setIndegree = 0;
+                        Long setMaxRank = Long.MIN_VALUE;
+                        for (Node iterNode : iterSet) {
+                            int nodeIndegree = unresolvedRelationsCounter.get(iterNode);
+                            if (nodeIndegree == 0) {
+                                setMaxRank = Math.max(setMaxRank, Long.valueOf(iterNode.getProperty("rank").toString()));
+                            } else {
+                                setIndegree += nodeIndegree;
+                                setMaxRank = Math.max(setMaxRank, determineNodeRank(iterNode));
+                            }
+                        }
+                        if (setIndegree == 0) {
+                            for (Node iterNode : iterSet) {
+                                iterNode.setProperty("rank", setMaxRank);
+                                unresolvedRelationsCounter.remove(iterNode);
+                                nodesToProcess.add(iterNode);
+                            }
+                            relatedNodeSet.removeAll(iterSet);
+                            delNodeSets.add(iterSet);
+                        } else if (nodesToProcess.size() == 0) {
+                            if (setMaxRank < minRank || (setMaxRank == minRank && setIndegree < minIndegree)) {
+                                minIndegree = setIndegree;
+                                minRank = setMaxRank;
+                                minNodeSet = iterSet;
+                            }
+                        }
+                    }
+                    for (Set<Node> iterSet : delNodeSets) {
+                        relatedNodeSets.remove(iterSet);
+                    }
+                    if (nodesToProcess.size() > 0)
+                        continue;
+
+                    assert (minNodeSet != null);
+                    // continue with the best (related) nodes found
+                    for (Iterator<Node> i = minNodeSet.iterator(); i.hasNext();) {
+                        Node iterNode = i.next();
+                        iterNode.setProperty("rank", minRank);
+                        unresolvedRelationsCounter.remove(iterNode);
+                        nodesToProcess.add(iterNode);
+                        nonRelatedNodeSet.remove(iterNode);
+                    }
+                    relatedNodeSet.remove(minNodeSet);
                 }
             }
             tx.success();
@@ -869,28 +943,61 @@ public class Tradition {
         return true; // Response.ok().build();
     }
 
-    private long getRank(Long nodeId) {
-        long nodeRank;
+    private int noOfIncomingRelations(Node node) {
+        return node.getDegree(ERelations.SEQUENCE, Direction.INCOMING) + node.getDegree(ERelations.LEMMA_TEXT, Direction.INCOMING);
+    }
 
+    private boolean hasRelatedNodes(Node startNode) {
+        boolean hasRelatedNodes = false;
         try (Transaction tx = db.beginTx()) {
-            Node currentNode = db.getNodeById(nodeId);
-            nodeRank = (long) currentNode.getProperty("rank");
-
-            Iterable<Relationship> relationships = currentNode.getRelationships(Direction.BOTH);
-            for (Relationship relationship : relationships) {
-                if (relationship.getType().name().equals(ERelations.SEQUENCE.name())
-                        && relationship.getEndNode().getId() == nodeId) {
-                    nodeRank = Math.max(nodeRank, (long) relationship.getStartNode().getProperty("rank") + 1L);
-                } else if (relationship.getType().name().equals(ERelations.RELATED.name())) {
-                    if (!relationship.getProperty("type").equals("transposition") &&
-                            !relationship.getProperty("type").equals("repetition")) {
-                        nodeRank = Math.max(nodeRank, (long) relationship.getOtherNode(currentNode).getProperty("rank"));
+            if (startNode.getDegree(ERelations.RELATED, Direction.BOTH) > 0) {
+                for (Relationship iterRel : startNode.getRelationships(Direction.BOTH, ERelations.RELATED)) {
+                    String propType = iterRel.getProperty("type").toString();
+                    if (!propType.equals("transposition") && !propType.equals("repetition")) {
+                        hasRelatedNodes = true;
+                        break;
                     }
                 }
             }
             tx.success();
-        } catch (Exception e) {
-            nodeRank = -1L;
+        }
+        return hasRelatedNodes;
+    }
+
+    private Set<Node> getRelatedNodes(Node startNode) {
+        Set<Node> nodeSet = new HashSet<>();
+        try (Transaction tx = db.beginTx()) {
+            Evaluator e = path -> {
+                if (path.lastRelationship() == null)
+                    return Evaluation.INCLUDE_AND_CONTINUE; // it's the start node
+                String propType = path.lastRelationship().getProperty("type").toString();
+                if (propType.equals("transposition") || propType.equals("repetition"))
+                    return Evaluation.EXCLUDE_AND_PRUNE;
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            };
+            TraversalDescription relatedTraversal = db.traversalDescription()
+                    .depthFirst()
+                    .evaluator(e)
+                    .relationships(ERelations.RELATED, Direction.BOTH)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
+            for ( Node currentNode : relatedTraversal.traverse(startNode).nodes()) {
+                nodeSet.add(currentNode);
+            }
+            tx.success();
+        }
+        return nodeSet;
+    }
+
+    private long determineNodeRank(Node currentNode) {
+        long nodeRank = 0;
+
+        try (Transaction tx = db.beginTx()) {
+            Iterable<Relationship> relationships = currentNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
+            for (Relationship relationship : relationships) {
+                Node prevNode = relationship.getStartNode();
+                nodeRank = Math.max(nodeRank, Long.valueOf(prevNode.getProperty("rank").toString()) + 1L);
+            }
+            tx.success();
         }
         return nodeRank;
     }
