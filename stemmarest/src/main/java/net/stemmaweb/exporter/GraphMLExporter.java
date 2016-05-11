@@ -3,7 +3,9 @@ package net.stemmaweb.exporter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -19,7 +21,6 @@ import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
 
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.Direction;
@@ -27,6 +28,7 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.w3c.dom.Document;
 
@@ -34,32 +36,189 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 /**
  * This class provides methods for exporting GraphMl (XML) File from Neo4J
- * 
+ *
  * @author PSE FS 2015 Team2
  */
 public class GraphMLExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    private HashMap<String,String[]> nodeMap = new HashMap<String, String[]>() {
+        {
+            put("grammar_invalid", new String[]{"dn0", "boolean"});
+            put("id", new String[]{"dn1", "string"});
+            put("is_common", new String[]{"dn2", "boolean"});
+            put("is_end", new String[]{"dn3", "boolean"});
+            put("is_lacuna", new String[]{"dn4", "boolean"});
+            put("is_lemma", new String[]{"dn5", "boolean"});
+            put("is_nonsense", new String[]{"dn6", "boolean"});
+            put("is_ph", new String[]{"dn7", "boolean"});
+            put("is_start", new String[]{"dn8", "boolean"});
+            put("join_next", new String[]{"dn9", "boolean"});
+            put("join_prior", new String[]{"dn10", "boolean"});
+            put("language", new String[]{"dn11", "string"});
+            put("witnesses", new String[]{"dn12", "string"});
+            put("normal_form", new String[]{"dn13", "string"});
+            put("rank", new String[]{"dn14", "int"});
+            put("text", new String[]{"dn15", "string"});
+            put("label", new String[]{"dn16", "string"});
+            put("name", new String[]{"dn17", "string"});         // Sequence
+            put("baselabel", new String[]{"dn18", "string"});    // Sequence
+            put("sep_char", new String[]{"dn19", "string"});     // Sequence
+        }
+    };
+    private HashMap<String,String[]> relationMap = new HashMap<String, String[]>() {
+        {
+            put("a_derivable_from_b", new String[]{"de0", "boolean"});
+            put("alters_meaning", new String[]{"de1", "int"});
+            put("annotation", new String[]{"de2", "string"});
+            put("b_derivable_from_a", new String[]{"de3", "boolean"});
+            put("displayform", new String[]{"de4", "string"});
+            put("extra", new String[]{"de5", "string"});
+            put("is_significant", new String[]{"de6", "string"});
+            put("non_independent", new String[]{"de7", "boolean"});
+            put("reading_a", new String[]{"de8", "string"});
+            put("reading_b", new String[]{"de9", "string"});
+            put("scope", new String[]{"de10", "string"});
+            put("witness", new String[]{"de11", "string"});
+            put("type", new String[]{"de12", "string"});
+            put("type_related", new String[]{"de13", "string"});
+        }
+    };
+    private HashMap<String,String[]> graphMap = new HashMap<String, String[]>() {
+        {
+            put("language", new String[]{"dg0", "string"});
+            put("name", new String[]{"dg1", "string"});
+            put("public", new String[]{"dg2", "boolean"});
+            put("stemmata", new String[]{"dg3", "string"});
+            put("stemweb_jobid", new String[]{"dg4", "string"});
+            put("user", new String[]{"dg5", "string"});
+            put("version", new String[]{"dg6", "string"});
+            put("direction", new String[]{"dg7", "string"});
+        }
+    };
+
+    private long globalRank;
+
+    private void writeKeys(XMLStreamWriter writer, HashMap<String, String[]> currentMap, String kind) {
+        try {
+            for (Map.Entry<String, String[]> entry : currentMap.entrySet()) {
+                String[] values = entry.getValue();
+                writer.writeEmptyElement("key");
+                writer.writeAttribute("attr.name", entry.getKey());
+                writer.writeAttribute("attr.type", values[1]);
+                writer.writeAttribute("for", kind);
+                writer.writeAttribute("id", values[0]);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void writeNode(XMLStreamWriter writer, Node node) {
+        try {
+            Iterable<String> props = node.getPropertyKeys();
+
+            writer.writeStartElement("node");
+            writer.writeAttribute("id", String.valueOf(node.getId()));
+
+            writer.writeStartElement("data");
+            writer.writeAttribute("key", nodeMap.get("label")[0]);
+            writer.writeCharacters(((ArrayList) node.getLabels()).get(0).toString());
+            writer.writeEndElement();
+
+            for (String prop : props) {
+                if (prop != null && nodeMap.get(prop) != null) {
+                    String value;
+                    if (prop.equals("rank")) {
+                        Long rank;
+                        try {
+                            rank = ((Long) node.getProperty(prop));
+                        } catch (Exception e) {
+                            rank = (((Integer) node.getProperty(prop)).longValue());
+                        }
+                        rank = rank + globalRank;
+                        value = rank.toString();
+                    } else {
+                        value = node.getProperty(prop).toString();
+                    }
+                    writer.writeStartElement("data");
+                    writer.writeAttribute("key", nodeMap.get(prop)[0]);
+                    writer.writeCharacters(value);
+                    writer.writeEndElement();
+                }
+            }
+            writer.writeEndElement(); // end node
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
+        try {
+            String[] witnesses = {""};
+            if (edge.hasProperty("witnesses"))
+                witnesses = (String[])edge.getProperty("witnesses");
+            //String[] witnesses = (String[]) rel.getProperty(property);
+            for (String witness : witnesses) {
+                writer.writeStartElement("edge");
+
+                writer.writeAttribute("source", edge.getStartNode().getId() + "");
+                writer.writeAttribute("target", edge.getEndNode().getId() + "");
+                writer.writeAttribute("id", "e" + edgeId + witness);
+
+                writer.writeStartElement("data");
+                writer.writeAttribute("key", relationMap.get("type")[0]);
+                writer.writeCharacters(edge.getType().name());
+                writer.writeEndElement(); // end data
+
+                if (edge.isType(ERelations.SEQUENCE)) {
+                    writer.writeStartElement("data");
+                    writer.writeAttribute("key", relationMap.get("witness")[0]);
+                    writer.writeCharacters(witness);
+                    writer.writeEndElement(); // end data key
+                } else if (edge.isType(ERelations.RELATED) && edge.hasProperty("type")) {
+                    writer.writeStartElement("data");
+                    writer.writeAttribute("key", relationMap.get("type_related")[0]);
+                    writer.writeCharacters(edge.getProperty("type").toString());
+                    writer.writeEndElement(); // end data key
+                }
+
+                for (String prop : edge.getPropertyKeys()) {
+                    if (!prop.equals("witnesses") && (!prop.equals("type"))) {
+                        writer.writeStartElement("data");
+                        writer.writeAttribute("key", relationMap.get(prop)[0]);
+                        writer.writeCharacters(prop);
+                        writer.writeEndElement(); // end data
+                    }
+                }
+                writer.writeEndElement(); // end edge
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public Response parseNeo4J(String tradId) {
 
         int edgeCountGraph1 = 0;
         int nodeCountGraph1 = 0;
-        int edgeCountGraph2 = 0;
-        int nodeCountGraph2 = 0;
+        boolean includeRelatedRelations = false;
 
-        Node traditionNode;
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
-        if(traditionStartNode == null) {
+        Node traditionEndNode = DatabaseService.getEndNode(tradId, db);
+        if(traditionStartNode==null || traditionEndNode==null) {
             return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
         }
 
-        try (Transaction tx = db.beginTx()) {
-            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            if(traditionNode == null) {
-                return Response.status(Status.NOT_FOUND).build();
-            }
-            tx.success();
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
+        if (sections == null) {
+            return Response.status(Status.NOT_FOUND).build();
+        }
+        if (sections.size() == 0) {
+            sections.add(traditionNode);
         }
 
         File file;
@@ -79,271 +238,9 @@ public class GraphMLExporter {
 
             // ####### KEYS START #######################################
 
-            HashMap<String, String> nodeMap = new HashMap<>();
-            HashMap<String, String> relationMap = new HashMap<>();
-            HashMap<String, String> graphMap = new HashMap<>();
-
-            nodeMap.put("grammar_invalid", "dn0");
-            nodeMap.put("id", "dn1");
-            nodeMap.put("is_common", "dn2");
-            nodeMap.put("is_end", "dn3");
-            nodeMap.put("is_lacuna", "dn4");
-            nodeMap.put("is_lemma", "dn5");
-            nodeMap.put("is_nonsense", "dn6");
-            nodeMap.put("is_ph", "dn7");
-            nodeMap.put("is_start", "dn8");
-            nodeMap.put("join_next", "dn9");
-            nodeMap.put("join_prior", "dn10");
-            nodeMap.put("language", "dn11");
-            nodeMap.put("witnesses", "dn12");
-            nodeMap.put("normal_form", "dn13");
-            nodeMap.put("rank", "dn14");
-            nodeMap.put("text", "dn15");
-
-            relationMap.put("a_derivable_from_b", "de0");
-            relationMap.put("alters_meaning", "de1");
-            relationMap.put("annotation", "de2");
-            relationMap.put("b_derivable_from_a", "de3");
-            relationMap.put("displayform", "de4");
-            relationMap.put("extra", "de5");
-            relationMap.put("is_significant", "de6");
-            relationMap.put("non_independent", "de7");
-            relationMap.put("reading_a", "de8");
-            relationMap.put("reading_b", "de9");
-            relationMap.put("scope", "de10");
-            relationMap.put("type", "de11");
-            relationMap.put("witness", "de12");
-
-            graphMap.put("language", "dg0");
-            graphMap.put("name", "dg1");
-            graphMap.put("public", "dg2");
-            graphMap.put("stemmata", "dg3");
-            graphMap.put("stemweb_jobid", "dg4");
-            graphMap.put("user", "dg5");
-            graphMap.put("version", "dg6");
-            graphMap.put("direction", "dg7");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "language");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg0");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "name");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg1");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "public");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg2");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "stemmata");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg3");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "stemweb_jobid");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg4");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "user");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg5");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "version");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg6");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "direction");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "graph");
-            writer.writeAttribute("id", "dg7");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "grammar_invalid");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn0");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "id");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn1");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_common");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn2");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_end");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn3");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_lacuna");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn4");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_lemma");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn5");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_nonsense");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn6");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_ph");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn7");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_start");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn8");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "join_next");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn9");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "join_prior");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn10");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "language");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn11");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "witnesses");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn12");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "normal_form");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn13");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "rank");
-            writer.writeAttribute("attr.type", "int");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn14");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "text");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "node");
-            writer.writeAttribute("id", "dn15");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "a_derivable_from_b");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de0");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "alters_meaning");
-            writer.writeAttribute("attr.type", "int");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de1");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "annotation");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de2");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "b_derivable_from_a");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de3");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "displayform");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de4");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "extra");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de5");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "is_significant");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de6");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "non_independent");
-            writer.writeAttribute("attr.type", "boolean");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de7");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "reading_a");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de8");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "reading_b");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de9");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "scope");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de10");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "type");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de11");
-
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", "witness");
-            writer.writeAttribute("attr.type", "string");
-            writer.writeAttribute("for", "edge");
-            writer.writeAttribute("id", "de12");
+            writeKeys(writer, graphMap, "graph");
+            writeKeys(writer, nodeMap, "node");
+            writeKeys(writer, relationMap, "edge");
 
             // ####### KEYS END #######################################
             // graph 1
@@ -357,7 +254,7 @@ public class GraphMLExporter {
             //writer.writeAttribute("id", traditionNode.getProperty("dg1").toString());
             writer.writeAttribute("parse.edgeids", "canonical");
             // THIS IS CHANGED AFTERWARDS
-             writer.writeAttribute("parse.edges", 0+"");
+            writer.writeAttribute("parse.edges", 0+"");
             writer.writeAttribute("parse.nodeids", "canonical");
             // THIS IS CHANGED AFTERWARDS
             writer.writeAttribute("parse.nodes", 0+"");
@@ -365,9 +262,9 @@ public class GraphMLExporter {
 
             props = traditionNode.getPropertyKeys();
             for(String prop : props) {
-                if(prop !=null && !prop.equals("id") && !prop.equals("tradition_id")) {
+                if(prop !=null && !prop.equals("id") && !prop.equals("tradition_id") && graphMap.containsKey(prop)) {
                     writer.writeStartElement("data");
-                    writer.writeAttribute("key", graphMap.get(prop));
+                    writer.writeAttribute("key", graphMap.get(prop)[0]);
                     writer.writeCharacters(traditionNode.getProperty(prop).toString());
                     writer.writeEndElement();
                 }
@@ -379,136 +276,60 @@ public class GraphMLExporter {
             DotExporter parser = new DotExporter(db);
 
             writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
-            writer.writeEndElement();
-  
-            long nodeId = 0;
-            long edgeId = 0;
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(traditionStartNode).nodes()) {
-                nodeCountGraph1++;
-                props = node.getPropertyKeys();
-                writer.writeStartElement("node");
-                writer.writeAttribute("id", String.valueOf(node.getId()));
-                writer.writeStartElement("data");
-                writer.writeAttribute("key","dn1");
-                writer.writeCharacters("n" + nodeId++);
-                writer.writeEndElement();
+            writer.writeEndElement(); // end data
 
-                for(String prop : props) {
-                    if(prop!=null && !prop.equals("tradition_id")) {
-                        writer.writeStartElement("data");
-                        writer.writeAttribute("key",nodeMap.get(prop));
-                        writer.writeCharacters(node.getProperty(prop).toString());
-                        writer.writeEndElement();
+            long edgeId = 0;
+
+            TraversalDescription nodeTraversal = db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                    .uniqueness(Uniqueness.NODE_GLOBAL);
+
+            TraversalDescription relTraversal = db.traversalDescription()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
+            if (includeRelatedRelations)
+                relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.BOTH);
+
+            for (Node sectionNode: sections) {
+                long max_rank_section = 0;
+
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                writeNode(writer, sectionNode);
+
+                for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {
+                    nodeCountGraph1++;
+                    writeNode(writer, node);
+                    if (node.hasProperty("rank")) {
+                        Long rank;
+                        try {
+                            rank = (Long)node.getProperty("rank");
+                        } catch (Exception e) {
+                            rank = ((Integer)node.getProperty("rank")).longValue();
+                        }
+                        max_rank_section = Math.max(max_rank_section, rank);
                     }
                 }
-                writer.writeEndElement(); // end node
+                globalRank += max_rank_section;
             }
 
-            String startNode;
-            String endNode;
-            for ( Relationship rel : db.traversalDescription()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(traditionStartNode)
-                    .relationships() ) {
-                if(rel!=null) {
-                    edgeCountGraph1++;
-                    for (String property : rel.getPropertyKeys()) {
-                        String[] witnesses = (String[]) rel.getProperty(property);
-                        for (String witness : witnesses) {
-                            writer.writeStartElement("edge");
 
-                            writer.writeAttribute("source", rel.getStartNode().getId() + "");
-                            writer.writeAttribute("target", rel.getEndNode().getId() + "");
-                            writer.writeAttribute("id", "e" + edgeId++);
+            for (Node sectionNode: sections) {
+                // write all outgoing nodes from the current section node
+                for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING)) {
+                    writeEdge(writer, rel, edgeId++);
+                }
 
-                            if (!property.equals("witnesses")) {
-                                writer.writeStartElement("data");
-                                writer.writeAttribute("key", "de5");
-                                writer.writeCharacters(property);
-                                writer.writeEndElement();
-                            }
-
-                            writer.writeStartElement("data");
-                            writer.writeAttribute("key", "de12");
-                            writer.writeCharacters(witness);
-                            writer.writeEndElement(); // end data key
-                            writer.writeEndElement(); // end edge
-                        }
-
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                for (Relationship rel : relTraversal.traverse(sectionStartNode).relationships()) {
+                    if (rel != null) {
+                        edgeCountGraph1++;
+                        writeEdge(writer, rel, edgeId++);
                     }
                 }
             }
             writer.writeEndElement(); // graph
-
-            // graph 2
-            // get the same nodes again, but this time we will later also search for other relationships
-
-            writer.writeStartElement("graph");
-            writer.writeAttribute("edgedefault", "directed");
-            writer.writeAttribute("id", "relationships");
-            writer.writeAttribute("parse.edgeids", "canonical");
-            // THIS IS CHANGED AFTERWARDS
-             writer.writeAttribute("parse.edges", 0 + "");
-            writer.writeAttribute("parse.nodeids", "canonical");
-            // THIS IS CHANGED AFTERWARDS
-            writer.writeAttribute("parse.nodes", 0 + "");
-            writer.writeAttribute("parse.order", "nodesfirst");
-
-            nodeId = 0;
-            edgeId = 0;
-            for (Node node : db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(traditionStartNode)
-                    .nodes()) {
-                nodeCountGraph2++;
-                writer.writeStartElement("node");
-                writer.writeAttribute("id", node.getId() + "");
-                writer.writeStartElement("data");
-                writer.writeAttribute("key", "dn1");
-                writer.writeCharacters("n" + nodeId++);
-                writer.writeEndElement();
-                writer.writeEndElement(); // end node
-            }
-
-            for (Node node : db.traversalDescription()
-                    .depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(traditionStartNode)
-                    .nodes()) {
-
-                Iterable<Relationship> rels;
-                rels = node.getRelationships(ERelations.RELATED, Direction.OUTGOING);
-                for(Relationship rel : rels) {
-                    edgeCountGraph2++;
-                    props = rel.getPropertyKeys();
-                    writer.writeStartElement("edge");
-                    startNode = rel.getStartNode().getId() + "";
-                    endNode = rel.getEndNode().getId() + "";
-                    writer.writeAttribute("source", startNode);
-                    writer.writeAttribute("target", endNode);
-                    writer.writeAttribute("id", "e" + edgeId++);
-                    for(String prop : props) {
-                            if (rel.hasProperty(prop)) {
-                                String value = rel.getProperty(prop).toString();
-                                if (!value.equals("")) {
-                                    writer.writeStartElement("data");
-                                    String keyId = relationMap.get(prop);
-                                    writer.writeAttribute("key", keyId);
-                                    writer.writeCharacters(value);
-                                    writer.writeEndElement();
-                                }
-                            }
-                    }
-                    writer.writeEndElement(); // end edge
-                }
-            }
-            writer.writeEndElement(); // end graph
             writer.writeEndElement(); // end graphml
             writer.flush();
             out.close();
@@ -518,23 +339,15 @@ public class GraphMLExporter {
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document doc = docBuilder.parse(file.getAbsolutePath());
-     
+
             // Get the staff element by tag name directly
             org.w3c.dom.Node graph0 = doc.getElementsByTagName("graph").item(0);
-
-            org.w3c.dom.Node graph1 = doc.getElementsByTagName("graph").item(1);
 
             org.w3c.dom.NamedNodeMap attr = graph0.getAttributes();
             org.w3c.dom.Node edgesCount = attr.getNamedItem("parse.edges");
             edgesCount.setTextContent(edgeCountGraph1 + "");
             org.w3c.dom.Node nodesCount = attr.getNamedItem("parse.nodes");
             nodesCount.setTextContent(nodeCountGraph1+"");
-
-            attr = graph1.getAttributes();
-            edgesCount = attr.getNamedItem("parse.edges");
-            edgesCount.setTextContent(edgeCountGraph2 + "");
-            nodesCount = attr.getNamedItem("parse.nodes");
-            nodesCount.setTextContent(nodeCountGraph2 + "");
 
             // TODO What is the point of this transformer call?
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
