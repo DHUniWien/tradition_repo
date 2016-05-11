@@ -357,6 +357,9 @@ public class GraphMLExporter {
             byte[] encDot = Files.readAllBytes(file.toPath());
             result = new String(encDot, Charset.forName("utf-8"));
 
+            // Remove the following line, if you want to keep the created file
+            Files.deleteIfExists(file.toPath());
+
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

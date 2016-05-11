@@ -81,7 +81,7 @@ public class DotExporter
         String result;
         boolean includeRelatedRelationships = true;
         try (Transaction tx = db.beginTx()) {
-            output = File.createTempFile("graph_", "dot");
+            output = File.createTempFile("graph_", ".dot");
             out = new FileOutputStream(output);
 
             write("digraph { ");
@@ -248,6 +248,9 @@ public class DotExporter
             // Now pull the string back out of the output file.
             byte[] encDot = Files.readAllBytes(output.toPath());
             result = new String(encDot, Charset.forName("utf-8"));
+
+            // Remove the following line, if you want to keep the created file
+            Files.deleteIfExists(output.toPath());
 
             tx.success();
         } catch (IOException e) {
