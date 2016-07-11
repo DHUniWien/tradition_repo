@@ -391,7 +391,7 @@ public abstract class BenchmarkTests {
     public void createAndDeleteAUser(){
         String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
         ClientResponse response = jerseyTest.resource()
-                .path("/user")
+                .path("/user/1337")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, jsonPayload);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());

@@ -160,7 +160,7 @@ public class TraditionTest {
     public void getAllRelationshipsTest() {
         String jsonPayload = "{\"role\":\"user\",\"id\":1}";
         jerseyTest.resource()
-                .path("/user")
+                .path("/user/1")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, jsonPayload);
 

@@ -57,6 +57,43 @@ public class User {
     }
 
     /**
+     * Creates a user based on the parameters submitted in JSON.
+     *
+     * @param userModel -  in JSON format
+     * @return A JSON UserModel or a JSON error message
+     */
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response create(UserModel userModel) {
+
+        if (DatabaseService.userExists(userId, db)) {
+            // TODO we want to update users with this call too
+            return Response.status(Response.Status.CONFLICT)
+                    .entity("Error: A user with this id already exists at " + db.toString())
+                    .build();
+        }
+
+        try (Transaction tx = db.beginTx()) {
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+
+            Node node = db.createNode(Nodes.USER);
+            node.setProperty("id", userId);
+            node.setProperty("passphrase", userModel.getPassphrase());
+            node.setProperty("role", userModel.getRole());
+            node.setProperty("email", userModel.getEmail());
+            node.setProperty("active", userModel.getActive());
+
+            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
+
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.status(Response.Status.CREATED).entity(userModel).build();
+    }
+
+
+    /**
      * Removes a user and all its traditions
      *
      * @return OK on success or an ERROR in JSON format

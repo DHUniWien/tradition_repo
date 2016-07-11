@@ -128,43 +128,6 @@ public class Root {
     }
 
     /**
-     * Creates a user based on the parameters submitted in JSON.
-     *
-     * @param userModel -  in JSON format
-     * @return A JSON UserModel or a JSON error message
-     */
-    @PUT
-    @Path("/user")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response create(UserModel userModel) {
-
-        if (DatabaseService.userExists(userModel.getId(), db)) {
-
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("Error: A user with this id already exists at " + db.toString())
-                    .build();
-        }
-
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", userModel.getId());
-            node.setProperty("role", userModel.getRole());
-            node.setProperty("email", userModel.getEmail());
-            node.setProperty("active", userModel.getActive());
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.status(Response.Status.CREATED).entity(userModel).build();
-    }
-
-
-    /**
      * Collection calls
      */
 

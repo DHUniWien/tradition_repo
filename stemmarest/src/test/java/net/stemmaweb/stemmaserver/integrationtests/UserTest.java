@@ -79,8 +79,8 @@ public class UserTest {
             tx.success();
         }
 
-        String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
-        ClientResponse returnJSON = jerseyTest.resource().path("/user")
+        String jsonPayload = "{\"role\":\"user\",\"id\":1337,\"passphrase\":\"ABCDSaltedHash\"}";
+        ClientResponse returnJSON = jerseyTest.resource().path("/user/1337")
                 .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 returnJSON.getStatus());
@@ -91,6 +91,7 @@ public class UserTest {
         assertEquals(1, allUsers.size());
         Optional<UserModel> newUser = allUsers.stream().filter(x -> x.getId().equals("1337")).findFirst();
         assertTrue(newUser.isPresent());
+        assertTrue(newUser.get().getPassphrase().equals("ABCDSaltedHash"));
     }
 
 
@@ -102,12 +103,12 @@ public class UserTest {
 
         String firstUser = "{\"role\":\"user\",\"id\":42}";
         String secondUser = "{\"role\":\"admin\",\"id\":42}";
-        ClientResponse dummyJSON = jerseyTest.resource().path("/user")
+        ClientResponse dummyJSON = jerseyTest.resource().path("/user/42")
                 .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, firstUser);
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 dummyJSON.getStatus());
 
-        ClientResponse returnJSON = jerseyTest.resource().path("/user")
+        ClientResponse returnJSON = jerseyTest.resource().path("/user/42")
                 .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, secondUser);
         assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),
                 returnJSON.getStatus());
@@ -123,7 +124,7 @@ public class UserTest {
         userModel.setId("43");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user")
+                .path("/user/43")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, userModel);
 
@@ -162,7 +163,7 @@ public class UserTest {
         userModel.setId("1");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user")
+                .path("/user/1")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, userModel);
 
@@ -171,9 +172,9 @@ public class UserTest {
          */
         userModel = new UserModel();
         userModel.setId("2");
-        userModel.setRole("user");
+        userModel.setRole("user/2");
         jerseyTest.resource()
-                .path("/user")
+                .path("/user/2")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, userModel);
 
@@ -284,7 +285,7 @@ public class UserTest {
         userModel.setId("1");
         userModel.setRole("user");
         jerseyTest.resource()
-                .path("/user")
+                .path("/user/1")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, userModel);
 
@@ -351,7 +352,7 @@ public class UserTest {
         String jsonPayload = "{\"role\":\"user\",\"id\":837462}";
         jerseyTest
                 .resource()
-                .path("/user")
+                .path("/user/837462")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, jsonPayload);
         
