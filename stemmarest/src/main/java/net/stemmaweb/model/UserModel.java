@@ -18,6 +18,7 @@ import org.neo4j.graphdb.Transaction;
 @JsonInclude(Include.NON_NULL)
 public class UserModel {
     private String id;
+    private String passphrase;
     private String role;
     private Boolean active = true;
     private String email = "NOT YET SET";
@@ -27,6 +28,8 @@ public class UserModel {
     public UserModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
             setId(node.getProperty("id").toString());
+            if (node.hasProperty("passphrase"))
+                setId(node.getProperty("passphrase").toString());
             if (node.hasProperty("role"))
                 setRole(node.getProperty("role").toString());
             if (node.hasProperty("active"))
@@ -37,6 +40,8 @@ public class UserModel {
         }
     }
 
+    public String getPassphrase () { return passphrase; }
+    public void setPassphrase(String passphrase) {this.passphrase = passphrase; }
     public String getRole() {
         return role;
     }

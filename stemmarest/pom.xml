@@ -183,6 +183,11 @@
             <artifactId>opencsv</artifactId>
             <version>3.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.clerezza.ext</groupId>
+            <artifactId>org.json.simple</artifactId>
+            <version>0.4</version>
+        </dependency>
     </dependencies>
     <properties>
         <powermock.version>1.6.1</powermock.version>
