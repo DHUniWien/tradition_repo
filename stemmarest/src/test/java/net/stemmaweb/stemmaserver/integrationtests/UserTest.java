@@ -99,7 +99,7 @@ public class UserTest {
      * Test the behavior when creating a second user with the same id
      */
     @Test
-    public void createConflictingUserTest(){
+    public void createAndUpdateUserTest(){
 
         String firstUser = "{\"role\":\"user\",\"id\":42}";
         String secondUser = "{\"role\":\"admin\",\"id\":42}";
@@ -110,7 +110,7 @@ public class UserTest {
 
         ClientResponse returnJSON = jerseyTest.resource().path("/user/42")
                 .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, secondUser);
-        assertEquals(Response.status(Response.Status.CONFLICT).build().getStatus(),
+        assertEquals(Response.status(Response.Status.OK).build().getStatus(),
                 returnJSON.getStatus());
     }
 

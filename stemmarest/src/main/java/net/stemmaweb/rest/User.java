@@ -64,40 +64,63 @@ public class User {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response create(UserModel userModel) {
-
-        if (DatabaseService.userExists(userId, db)) {
-            // TODO we want to update users with this call too
-            return Response.status(Response.Status.CONFLICT)
-                    .entity("Error: A user with this id already exists at " + db.toString())
-                    .build();
-        }
-
+        // Find any existing user
+        Node extantUser;
         try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", userId);
-            node.setProperty("passphrase", userModel.getPassphrase());
-            node.setProperty("role", userModel.getRole());
-            node.setProperty("email", userModel.getEmail());
-            node.setProperty("active", userModel.getActive());
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-
+            extantUser = db.findNode(Nodes.USER, "id", userId);
             tx.success();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        return Response.status(Response.Status.CREATED).entity(userModel).build();
+
+        Status returnedStatus;
+        if (extantUser != null) {
+            // Update the user if it exists
+            try (Transaction tx = db.beginTx()) {
+                if (extantUser.getProperty("passphrase") != userModel.getPassphrase())
+                    extantUser.setProperty("passphrase", userModel.getPassphrase());
+                if (extantUser.getProperty("role") != userModel.getRole())
+                    extantUser.setProperty("role", userModel.getRole());
+                if (extantUser.getProperty("email") != userModel.getEmail())
+                    extantUser.setProperty("email", userModel.getEmail());
+                if (extantUser.getProperty("active") != userModel.getActive())
+                    extantUser.setProperty("active", userModel.getActive());
+                tx.success();
+            } catch (Exception e) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            }
+            returnedStatus = Response.Status.OK;
+        } else {
+            // Create it if it doesn't exist
+            try (Transaction tx = db.beginTx()) {
+                Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+
+                extantUser = db.createNode(Nodes.USER);
+                extantUser.setProperty("id", userId);
+                extantUser.setProperty("passphrase", userModel.getPassphrase());
+                extantUser.setProperty("role", userModel.getRole());
+                extantUser.setProperty("email", userModel.getEmail());
+                extantUser.setProperty("active", userModel.getActive());
+
+                rootNode.createRelationshipTo(extantUser, ERelations.SYSTEMUSER);
+
+                tx.success();
+            } catch (Exception e) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            }
+            returnedStatus = Response.Status.CREATED;
+        }
+        UserModel returnedModel = new UserModel(extantUser);
+        return Response.status(returnedStatus).entity(returnedModel).build();
     }
 
 
-    /**
-     * Removes a user and all its traditions
-     *
-     * @return OK on success or an ERROR in JSON format
-     */
+
+        /**
+         * Removes a user and all its traditions
+         *
+         * @return OK on success or an ERROR in JSON format
+         */
     @DELETE
     public Response deleteUser() {
         Node foundUser;
