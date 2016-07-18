@@ -15,9 +15,6 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.*;
 
@@ -28,14 +25,7 @@ public class TEIParallelSegParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseTEIParallelSeg(String filename, String userId, String tradName)
-            throws FileNotFoundException {
-        File file = new File(filename);
-        InputStream in = new FileInputStream(file);
-        return parseTEIParallelSeg(in, userId, tradName);
-    }
-
-    public Response parseTEIParallelSeg(InputStream xmldata, String userId, String tradName) {
+    public Response parseTEIParallelSeg(InputStream xmldata, String tradId) {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
@@ -48,30 +38,15 @@ public class TEIParallelSegParser {
                     .build();
         }
 
-        Node graphRoot;
-        Node traditionNode;             // this will be the entry point of the graph
-        String tradId = UUID.randomUUID().toString();
-
         // Main XML parser loop
+        Node startNode;
         try (Transaction tx = db.beginTx()) {
 
-            // Set up the tradition and its user
-            graphRoot = db.findNode(Nodes.ROOT, "name", "Root node");
-            traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            traditionNode.setProperty("id", tradId);
-            traditionNode.setProperty("name", tradName);
-            // TODO direction?
-
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
-            if (userNode == null) {
-                userNode = db.createNode(Nodes.USER);
-                userNode.setProperty("id", userId);
-                graphRoot.createRelationshipTo(userNode, ERelations.SYSTEMUSER);
-            }
-            userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
+            // Look up the tradition node
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
 
             // Set up the start node
-            Node startNode = db.createNode(Nodes.READING);
+            startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
             startNode.setProperty("text", "#START#");
             startNode.setProperty("rank", 0);
@@ -166,7 +141,7 @@ public class TEIParallelSegParser {
                                 break;
 
                             case "title":
-                                if(inHeader && tradName.equals("")) {
+                                if(inHeader && !traditionNode.hasProperty("name")) {
                                     traditionNode.setProperty("name", reader.getElementText());
                                 }
                                 break;
@@ -250,17 +225,18 @@ public class TEIParallelSegParser {
             } // end parseloop
 
             // Now calculate the whole tradition.
-            Tradition newTrad = new Tradition(tradId);
-            if(!newTrad.recalculateRank(startNode.getId()))
-                return Response.serverError().entity("Unable to rank final graph").build();
             tx.success();
         } catch (Exception e) {
-            System.out.println(String.format("Error encountered in XML line %d column %d",
+            System.out.println(String.format("Error encountered in XML line %d column %d: ",
                     ((XMLStreamReaderImpl) reader).getLineNumber(),
                     ((XMLStreamReaderImpl) reader).getColumnNumber()));
             e.printStackTrace();
             return Response.serverError().build();
         }
+        // Now try re-ranking the nodes. TODO figure out why we can't run this inside a transaction
+        Boolean didCalc = new Tradition(tradId).recalculateRank(startNode.getId());
+        if (!didCalc)
+            return Response.serverError().entity("Could not calculate ranks on new graph").build();
 
         return Response.status(Response.Status.CREATED).entity("{\"tradId\":" + tradId + "}").build();
     }

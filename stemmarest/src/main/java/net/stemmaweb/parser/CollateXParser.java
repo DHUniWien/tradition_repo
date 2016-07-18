@@ -29,13 +29,6 @@ public class CollateXParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseCollateX(String filename, String tradId)
-            throws FileNotFoundException {
-        File file = new File(filename);
-        InputStream in = new FileInputStream(file);
-        return parseCollateX(in, tradId);
-    }
-
     public Response parseCollateX(InputStream filestream, String tradId)
     {
         // Try this the DOM parsing way
