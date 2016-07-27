@@ -262,11 +262,13 @@ public class GraphMLParser {
                     .build();
         }
 
-        String[] graphs = stemmata.split("\n");
+        if( !stemmata.isEmpty() ) {
+            String[] graphs = stemmata.split("\n");
 
-        for(String graph : graphs) {
-            DotParser parser = new DotParser(db);
-            parser.importStemmaFromDot(graph, tradId);
+            for (String graph : graphs) {
+                DotParser parser = new DotParser(db);
+                parser.importStemmaFromDot(graph, tradId);
+            }
         }
 
         return Response.status(Response.Status.CREATED)
