@@ -104,7 +104,7 @@ public class Root {
 
         // Return now if we have no file to parse
         if (empty != null)
-            return Response.status(Response.Status.CREATED).entity("{\"tradId\":" + tradId + "}").build();
+            return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
 
         // Otherwise, parse the file we have been given
         if (filetype.equals("csv"))
@@ -120,10 +120,10 @@ public class Root {
             return new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, tradId);
         // TODO we need to parse TEI double-endpoint attachment from CTE
         if (filetype.equals("collatex"))
+            // Pass it off to the CollateX parser
             return new CollateXParser().parseCollateX(uploadedInputStream, tradId);
-        // Otherwise assume GraphML, for backwards compatibility. Text direction will be taken
-        // from the GraphML file.
         if (filetype.equals("graphml"))
+            // Pass it off to the somewhat legacy GraphML parser
             return new GraphMLParser().parseGraphML(uploadedInputStream, userId, tradId);
 
         // If we got this far, it was an unrecognized filetype.

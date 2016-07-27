@@ -272,7 +272,7 @@ public class GraphMLParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity("{\"tradId\":" + tradId + "}")
+                .entity("{\"tradId\":\"" + tradId + "\"}")
                 .build();
     }
 
