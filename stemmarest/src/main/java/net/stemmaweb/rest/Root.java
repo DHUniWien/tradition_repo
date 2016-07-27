@@ -65,7 +65,7 @@ public class Root {
      *         an ERROR in JSON format
      * @throws XMLStreamException
      */
-    @PUT
+    @POST
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON)

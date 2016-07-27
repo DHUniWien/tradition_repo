@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -17,8 +16,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
@@ -28,7 +25,6 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -57,7 +53,6 @@ public class TraditionTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLParser importResource;
 
     @Before
     public void setUp() throws Exception {
@@ -65,21 +60,7 @@ public class TraditionTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
                 .newImpermanentDatabase())
                 .getDatabase();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -88,12 +69,11 @@ public class TraditionTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * create a tradition inside the test DB
          */
         try {
-            String fileName = "src/TestFiles/testTradition.xml";
-            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+            tradId = createTraditionFromFile("Tradition", "LR", "1", "src/TestFiles/testTradition.xml", "graphml");
         } catch (FileNotFoundException e) {
             assertTrue(false);
         }
@@ -102,25 +82,13 @@ public class TraditionTest {
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
                                            String fType) throws FileNotFoundException {
 
-        FormDataMultiPart form = new FormDataMultiPart();
-        if (fType != null) form.field("filetype", fType);
-        if (tName != null) form.field("name", tName);
-        if (tDir != null) form.field("direction", tDir);
-        if (userId != null) form.field("userId", userId);
-        if (fName != null) {
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream(fName),
-                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
-            form.bodyPart(fdp);
+        ClientResponse jerseyResult = null;
+        try {
+            jerseyResult = Util.createTraditionFromFile(jerseyTest, tName, tDir, userId, fName, fType);
+        } catch (Exception e) {
+            assertTrue(false);
         }
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        assert(tradId.length() != 0);
-        return  tradId;
+        return Util.getValueFromJson(jerseyResult, "tradId");
     }
 
     @Test
@@ -353,7 +321,7 @@ public class TraditionTest {
 
             tx.success();
         } catch (Exception e) {
-            int a = 0;
+            assertTrue(false);
         }
 
         /*
@@ -370,7 +338,7 @@ public class TraditionTest {
                 .resource()
                 .path("/tradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, textInfo);
+                .put(ClientResponse.class, textInfo);
         assertEquals(Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
         /*
@@ -436,7 +404,7 @@ public class TraditionTest {
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, textInfo);
+                .put(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
         assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
 
@@ -525,7 +493,7 @@ public class TraditionTest {
                 .resource()
                 .path("/tradition/1337")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, textInfo);
+                .put(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
         assertEquals("There is no Tradition with this id", removalResponse.getEntity(String.class));
 
@@ -615,7 +583,7 @@ public class TraditionTest {
                 .resource()
                 .path("/tradition/" + florId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, newStemma);
+                .post(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // re-root the stemma
@@ -721,7 +689,7 @@ public class TraditionTest {
         }
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception

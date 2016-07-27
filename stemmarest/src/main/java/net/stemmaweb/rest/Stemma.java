@@ -55,7 +55,7 @@ public class Stemma {
         return Response.ok().entity(result).build();
     }
 
-    @POST  // a replacement stemma
+    @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
     public Response replaceStemma(String dot) {
         DotParser parser = new DotParser(db);

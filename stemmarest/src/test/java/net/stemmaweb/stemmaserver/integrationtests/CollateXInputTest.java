@@ -7,18 +7,13 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
@@ -33,17 +28,7 @@ public class CollateXInputTest extends TestCase {
 
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        DatabaseService.createRootNode(db);
-        try(Transaction tx = db.beginTx())
-        {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();

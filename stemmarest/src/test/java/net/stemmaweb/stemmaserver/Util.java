@@ -8,9 +8,15 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -140,6 +146,20 @@ public class Util {
         return value;
     }
 
+    public static void setupTestDB(GraphDatabaseService db, String userId) {
+        // Populate the test database with the root node and a user with id 1
+        DatabaseService.createRootNode(db);
+        try(Transaction tx = db.beginTx()) {
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+            Node node = db.createNode(Nodes.USER);
+            node.setProperty("id", userId);
+            node.setProperty("role", "admin");
+
+            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
+            tx.success();
+        }
+    }
+
     public static ClientResponse createTraditionFromFile(JerseyTest jerseyTest, String tName, String tDir, String userId,
                                                          String fName, String fType) throws FileNotFoundException {
         FormDataMultiPart form = new FormDataMultiPart();
@@ -156,7 +176,7 @@ public class Util {
         return  jerseyTest.resource()
                 .path("/tradition")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
+                .post(ClientResponse.class, form);
     }
 
 }

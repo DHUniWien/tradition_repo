@@ -3,18 +3,14 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,7 +19,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -55,20 +51,7 @@ public class TranspositionTest {
     @Before
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -77,25 +60,18 @@ public class TranspositionTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * create a tradition inside the test DB
          */
-        FormDataMultiPart form = new FormDataMultiPart();
-        form.field("filetype", "graphml")
-                .field("name", "Tradition")
-                .field("direction", "LR")
-                .field("userId", "1");
-        FormDataBodyPart fdp = new FormDataBodyPart("file",
-                new FileInputStream("src/TestFiles/testTradition.xml"),
-                MediaType.APPLICATION_OCTET_STREAM_TYPE);
-        form.bodyPart(fdp);
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        try {
+            ClientResponse jerseyResult = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
+                    "src/TestFiles/testTradition.xml", "graphml");
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        } catch (FileNotFoundException e) {
+            assertTrue(false);
+        }
 
-        /**
+        /*
          * gets the generated ids that we need for our tests
          */
         try (Transaction tx = db.beginTx()) {
@@ -232,7 +208,7 @@ public class TranspositionTest {
         }
     }
 
-    /**
+    /*
      * Shut down the jersey server
      * @throws Exception
      */

@@ -33,17 +33,7 @@ public class TEIParallelSegInputTest extends TestCase {
     @Before
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        DatabaseService.createRootNode(db);
-        try(Transaction tx = db.beginTx())
-        {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();

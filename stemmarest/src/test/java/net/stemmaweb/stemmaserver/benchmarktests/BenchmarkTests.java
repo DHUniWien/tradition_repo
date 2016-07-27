@@ -81,7 +81,7 @@ public abstract class BenchmarkTests {
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path("/tradition")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
+                .post(ClientResponse.class, form);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
@@ -103,7 +103,7 @@ public abstract class BenchmarkTests {
         ClientResponse ownerChangeResponse = jerseyTest.resource()
                 .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class,textInfo);
+                .put(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
         textInfo = new TraditionModel();
@@ -115,7 +115,7 @@ public abstract class BenchmarkTests {
         ownerChangeResponse = jerseyTest.resource()
                 .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class,textInfo);
+                .put(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
     }
 
@@ -193,9 +193,6 @@ public abstract class BenchmarkTests {
         try {
             String fileName = testfile.getPath();
             createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
-//            tradId = Util.getValueFromJson(jerseyResult, "tradId");
-
-//            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);

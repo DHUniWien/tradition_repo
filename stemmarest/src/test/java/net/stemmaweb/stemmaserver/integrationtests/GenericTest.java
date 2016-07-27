@@ -3,14 +3,11 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.io.*;
 import java.util.*;
 
-import java.io.FileInputStream;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
@@ -44,7 +41,7 @@ public class GenericTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private String rootNodeId;
+    // private String rootNodeId;
 
     @Before
     public void setUp() throws Exception {
@@ -52,23 +49,8 @@ public class GenericTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
                 .newImpermanentDatabase())
                 .getDatabase();
-
+        Util.setupTestDB(db, "1");
         Root webResource = new Root();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            rootNodeId = ((Long)rootNode.getId()).toString();
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("isAdmin", "1");
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
-        }
 
         /*
          * Create a JersyTestServer serving the Resource under test
@@ -81,33 +63,15 @@ public class GenericTest {
     }
 
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
-        String tradId = "";
+        ClientResponse jerseyResult = null;
         try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            if (fType != null) form.field("filetype", fType);
-            if (tName != null) form.field("name", tName);
-            if (tDir != null) form.field("direction", tDir);
-            if (userId != null) form.field("userId", userId);
-            if (fName != null) {
-                FormDataBodyPart fdp = new FormDataBodyPart("file",
-                        new FileInputStream(fName),
-                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
-                form.bodyPart(fdp);
-            } else {
-                form.field("empty", "true");
-            }
-            ClientResponse jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
-            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-            tradId = Util.getValueFromJson(jerseyResult, "tradId");
+            jerseyResult = Util.createTraditionFromFile(jerseyTest, tName, tDir, userId, fName, fType);
         } catch (Exception e) {
-            e.printStackTrace();
-            assertFalse(true);
+            assertTrue(false);
         }
+        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
-        return  tradId;
+        return tradId;
     }
 
 
@@ -115,7 +79,7 @@ public class GenericTest {
 
     @Test
     public void test_01() throws FileNotFoundException {
-        /** Pearl-Specification:
+        /* Perl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
             is( $t->name, 'empty', "object has the right name" );

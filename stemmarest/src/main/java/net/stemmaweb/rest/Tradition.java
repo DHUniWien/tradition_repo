@@ -65,7 +65,7 @@ public class Tradition {
     /*************************
      * Resource creation calls
      */
-    @PUT  // a new stemma
+    @POST  // a new stemma
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response newStemma(String dot) {
@@ -93,7 +93,7 @@ public class Tradition {
             ArrayList<Node> sectionList = DatabaseService.getRelated(traditionNode, ERelations.PART);
             for(Node section: sectionList) {
                 Node startNode = DatabaseService.getRelated(section, ERelations.COLLATION).get(0);
-                if (false == startNode.hasProperty("rank")) {
+                if (!startNode.hasProperty("rank")) {
                     LinkedList<Node> queue = new LinkedList<>();
                     queue.add(startNode);
 
@@ -147,11 +147,11 @@ public class Tradition {
         return Response.ok(updatedSections).build();
 
     }
-    /*****************************
+    /*
      * Collection retrieval calls
      */
 
-    /**
+    /*
      * Gets a list of all sections of a tradition with the given id.
      *
      * @return Http Response 200 and a list of section models in JSON on success
@@ -595,18 +595,18 @@ public class Tradition {
         }
     }
 
-    /******************************
+    /*
      * Tradition-specific calls
      */
 
-    /**
+    /*
      * Changes the metadata of the tradition.
      *
      * @param tradition in JSON Format
      * @return OK and information about the tradition in JSON on success or an
      * ERROR in JSON format
      */
-    @POST
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response changeTraditionMetadata(TraditionModel tradition) {
@@ -705,12 +705,12 @@ public class Tradition {
         return Response.status(Response.Status.OK).build();
     }
 
-    /***************************
+    /*
      * Tradition export API
      *
      */
 
-    /**
+    /*
      * Returns the tradition metadata
      *
      * @return TraditionModel
@@ -913,7 +913,7 @@ public class Tradition {
                             relatedNodeSet.removeAll(iterSet);
                             delNodeSets.add(iterSet);
                         } else if (nodesToProcess.size() == 0) {
-                            if (setMaxRank < minRank || (setMaxRank == minRank && setIndegree < minIndegree)) {
+                            if (setMaxRank < minRank || (setMaxRank.equals(minRank) && setIndegree < minIndegree)) {
                                 minIndegree = setIndegree;
                                 minRank = setMaxRank;
                                 minNodeSet = iterSet;
@@ -926,10 +926,8 @@ public class Tradition {
                     if (nodesToProcess.size() > 0)
                         continue;
 
-                    assert (minNodeSet != null);
                     // continue with the best (related) nodes found
-                    for (Iterator<Node> i = minNodeSet.iterator(); i.hasNext();) {
-                        Node iterNode = i.next();
+                    for (Node iterNode : minNodeSet) {
                         iterNode.setProperty("rank", minRank);
                         unresolvedRelationsCounter.remove(iterNode);
                         nodesToProcess.add(iterNode);

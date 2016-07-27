@@ -1,13 +1,10 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.parser.TabularParser;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -15,13 +12,10 @@ import net.stemmaweb.stemmaserver.Util;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 
@@ -33,23 +27,11 @@ public class TabularInputOutputTest extends TestCase {
 
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
-    private TabularParser importResource;
 
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        DatabaseService.createRootNode(db);
-        try(Transaction tx = db.beginTx())
-        {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
+        Util.setupTestDB(db, "1");
 
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
-
-        importResource = new TabularParser();
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
@@ -58,31 +40,8 @@ public class TabularInputOutputTest extends TestCase {
         jerseyTest.setUp();
     }
 
-    private ClientResponse createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
-        FormDataMultiPart form = new FormDataMultiPart();
-        if (fType != null) form.field("filetype", fType);
-        if (tName != null) form.field("name", tName);
-        if (tDir != null) form.field("direction", tDir);
-        if (userId != null) form.field("userId", userId);
-        try {
-            if (fName != null) {
-                FormDataBodyPart fdp = new FormDataBodyPart("file",
-                        new FileInputStream(fName),
-                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
-                form.bodyPart(fdp);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            assertFalse(true);
-        }
-        return jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
-    }
-
     public void testParseCSV() throws Exception {
-        ClientResponse response = createTraditionFromFile("Florilegium", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium_simple.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -109,14 +68,14 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testParseExcel() throws Exception {
         // Test a bad file
-        ClientResponse response = createTraditionFromFile("Armenian XLS", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample_bad.xlsx", "xlsx");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertTrue(response.getEntity(String.class).contains("has too many columns!"));
 
 
         // Test a good XLS file
-        response = createTraditionFromFile("Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFile(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample.xls", "xls");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -138,7 +97,7 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(foundReading);
 
         // Test a good XLSX file
-        response = createTraditionFromFile("Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFile(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample.xlsx", "xlsx");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
@@ -168,7 +127,7 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() throws Exception {
         // Set up some data
-        ClientResponse response = createTraditionFromFile("Tradition", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -197,7 +156,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testConflatedJSONExport () throws Exception {
-        ClientResponse response = createTraditionFromFile("Tradition", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/globalrel_test.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");

@@ -1,14 +1,11 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
@@ -20,7 +17,6 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -79,16 +75,7 @@ public class ReadingTest {
          * Populate the test database with the root node and a user with id 1
          */
         DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -97,25 +84,14 @@ public class ReadingTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
         ClientResponse jerseyResult = null;
         try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            form.field("filetype", "graphml")
-                    .field("name", "Tradition")
-                    .field("direction", "LR")
-                    .field("userId", "1");
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream("src/TestFiles/ReadingstestTradition.xml"),
-                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
-            form.bodyPart(fdp);
-            jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
+            jerseyResult = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
+                    "src/TestFiles/ReadingstestTradition.xml", "graphml");
         } catch (FileNotFoundException e) {
             assertTrue(false);
         }
@@ -1950,7 +1926,7 @@ public class ReadingTest {
         }
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception
