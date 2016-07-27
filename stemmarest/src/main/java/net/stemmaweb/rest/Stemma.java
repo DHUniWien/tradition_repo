@@ -13,10 +13,8 @@ import javax.ws.rs.core.Response.Status;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.exporter.DotExporter;
 
 import org.codehaus.jettison.json.JSONObject;
-import org.neo4j.cypher.internal.compiler.v2_0.functions.Str;
 import org.neo4j.graphdb.*;
 
 /**
@@ -133,8 +131,6 @@ public class Stemma {
     /**
      * Reorients a stemma tree with a given new root node
      *
-     * @param tradId - tradition ID
-     * @param name   - stemma name
      * @param nodeId - archetype node
      * @return Http Response ok and DOT JSON string on success or an ERROR in
      *         JSON format
@@ -142,9 +138,7 @@ public class Stemma {
     @POST
     @Path("reorient/{nodeId}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response reorientStemma(@PathParam("tradId") String tradId,
-                                   @PathParam("name") String name,
-                                   @PathParam("nodeId") String nodeId) {
+    public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())
         {

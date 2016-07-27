@@ -744,17 +744,18 @@ public class Tradition {
     /**
      * Returns DOT file from specified tradition owned by user
      *
+     * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
      * @return Plaintext dot format
      */
     @GET
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getDot() {
+    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         DotExporter parser = new DotExporter(db);
-        return parser.parseNeo4J(traditionId);
+        return parser.parseNeo4J(traditionId, includeRelatedRelationships);
     }
 
     /**

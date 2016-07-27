@@ -52,14 +52,12 @@ import static org.junit.Assume.assumeTrue;
 public class TraditionParseTest {
 
     private GraphDatabaseService db;
-    private GraphMLParser importResource;
     private JerseyTest jerseyTest;
 
     @Before
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        importResource = new GraphMLParser();
 
         // Create a root node and test user
         DatabaseService.createRootNode(db);
@@ -183,10 +181,10 @@ public class TraditionParseTest {
     }
 
     @SuppressWarnings("unused")
-    private void toSVG(String traditionID, String outFile)
+    private void toSVG(String traditionID, Boolean includeRelatedRelationships, String outFile)
     {
         DotExporter parser = new DotExporter(db);
-        String dot = parser.parseNeo4J(traditionID).getEntity().toString();
+        String dot = parser.parseNeo4J(traditionID, includeRelatedRelationships).getEntity().toString();
 
         GraphViz gv = new GraphViz();
         String type = "svg";
