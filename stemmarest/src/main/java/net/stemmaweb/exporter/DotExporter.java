@@ -33,7 +33,6 @@ public class DotExporter
 
     private OutputStream out = null;
 
-    private  Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
     private static DecimalFormat df2 = new DecimalFormat(".##");
 
     public DotExporter(GraphDatabaseService db){
@@ -68,13 +67,16 @@ public class DotExporter
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        // Get the section node IDs, if there are any - otherwise get tradition ID string
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
         }
+        ArrayList<String> sectionIds = new ArrayList<>();
         if (sections.size() == 0) {
-            sections.add(traditionNode);
+            sectionIds.add(tradId);
+        } else {
+            sections.forEach(x -> sectionIds.add(String.valueOf(x.getId())));
         }
 
         File output;
@@ -90,9 +92,9 @@ public class DotExporter
             long global_rank = 0;
             Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
 
-            for (Node sectionNode: sections) {
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
-                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
+            for (String sectionId: sectionIds) {
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionId), db);
+                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionId), db);
                 for (Node node :  db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)

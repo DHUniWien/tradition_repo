@@ -137,6 +137,13 @@ public class GraphMLParser {
                                             else
                                                 witnessClass = val;
                                             break;
+                                        case "relationship":
+                                            // This is the relationship type, a.k.a. "type" in this system.
+                                            // Backwards compatibility for legacy XML
+                                            assert currentRel.isType(ERelations.RELATED);
+                                            attr = "type";
+                                            setTypedProperty(currentRel, attr, keytype, val);
+                                            break;
                                         default:
                                             assert currentRel.isType(ERelations.RELATED);
                                             setTypedProperty(currentRel, attr, keytype, val);
@@ -176,6 +183,10 @@ public class GraphMLParser {
                                         case "is_end":
                                             if (text.equals("1") || text.equals("true"))
                                                 traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
+                                            setTypedProperty(currentNode, attr, keytype, text);
+                                            break;
+                                        case "rank": // These are set as strings in some XML and shouldn't be
+                                            keytype = "int";
                                             setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         default:
