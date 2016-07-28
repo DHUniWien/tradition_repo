@@ -27,14 +27,23 @@ public class Stemma {
     private GraphDatabaseService db;
     private String tradId;
     private String name;
+    private Boolean newCreated;
 
     public Stemma (String traditionId, String requestedName) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
         name = requestedName;
+        newCreated = false;
     }
 
+    public Stemma (String traditionId, String requestedName, Boolean created) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+        name = requestedName;
+        newCreated = created;
+    }
     /**
      * Returns JSON string with a Stemma of a tradition in DOT format
      *
@@ -50,7 +59,8 @@ public class Stemma {
                     .entity(String.format("No stemma %s found for tradition %s", name, tradId)).build();
         }
         StemmaModel result = new StemmaModel(stemmaNode);
-        return Response.ok().entity(result).build();
+        Status returncode = newCreated ? Status.CREATED : Status.OK;
+        return Response.status(returncode).entity(result).build();
     }
 
     @PUT  // a replacement stemma
@@ -79,7 +89,7 @@ public class Stemma {
 
             // OK, we can commit it.
             tx.success();
-            return Response.ok().build();
+            return getStemma();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();

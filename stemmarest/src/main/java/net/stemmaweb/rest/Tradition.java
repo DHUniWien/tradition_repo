@@ -16,6 +16,7 @@ import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
@@ -70,7 +71,20 @@ public class Tradition {
     @Consumes(MediaType.APPLICATION_JSON)
     public Response newStemma(String dot) {
         DotParser parser = new DotParser(db);
-        return parser.importStemmaFromDot(dot, traditionId);
+        Response result = parser.importStemmaFromDot(dot, traditionId);
+        if(result.getStatus() == Status.CREATED.getStatusCode()) {
+            Stemma restStemma;
+            try {
+                // Read the stemma name and return the stemma that was created
+                JSONObject newStemma = new JSONObject(result.getEntity().toString());
+                restStemma = new Stemma(traditionId, newStemma.getString("name"), true);
+            } catch (org.codehaus.jettison.json.JSONException e) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Error reading JSON response on creation").build();
+            }
+            return restStemma.getStemma();
+        } else {
+            return result;
+        }
     }
 
     /**
