@@ -73,6 +73,7 @@ public class Root {
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
                                   @DefaultValue("LR") @FormDataParam("direction") String direction,
+                                  @DefaultValue("a.c.") @FormDataParam("layerlabel") String layerlabel,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("empty") String empty,
@@ -94,7 +95,7 @@ public class Root {
 
         String tradId;
         try {
-            tradId = this.createTradition(name, direction, language, is_public);
+            tradId = this.createTradition(name, direction, language, is_public, layerlabel);
             this.linkUserToTradition(userId, tradId);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -178,7 +179,8 @@ public class Root {
         return Response.ok(userList).build();
     }
 
-    private String createTradition(String name, String direction, String language, String isPublic) throws Exception {
+    private String createTradition(String name, String direction, String language, String isPublic, String layerlabel)
+            throws Exception {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node
@@ -193,6 +195,7 @@ public class Root {
             traditionNode.setProperty("id", tradId);
             traditionNode.setProperty("name", name);
             traditionNode.setProperty("direction", direction);
+            traditionNode.setProperty("layerlabel", layerlabel);
             if (language != null) {
                 traditionNode.setProperty("language", language);
             }

@@ -23,6 +23,7 @@ import java.util.HashSet;
 /**
  * Test tabular parsing of various forms.
  */
+@SuppressWarnings("unchecked")
 public class TabularInputOutputTest extends TestCase {
 
     private GraphDatabaseService db;
@@ -59,6 +60,35 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(310, allReadings.size());
+        Boolean foundReading = false;
+        for (ReadingModel r : allReadings)
+            if (r.getText().equals("Μαξίμου"))
+                foundReading = true;
+        assertTrue(foundReading);
+    }
+
+    public void testParseCsvLayers() throws Exception {
+        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Florilegium", "LR", "1",
+                "src/TestFiles/florilegium.csv", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        Tradition tradition = new Tradition(tradId);
+
+        Response result = tradition.getAllWitnesses();
+        ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
+        assertEquals(13, allWitnesses.size());
+
+        // Get a witness text
+        Witness witness = new Witness(tradId, "E");
+        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
+        String witnessLayerText = Util.getValueFromJson(witness.getWitnessAsTextWithLayer("a.c.", "0", "E"), "text");
+        System.out.println(witnessText);
+        System.out.println(witnessLayerText);
+        assertFalse(witnessLayerText.equals(witnessText));
+
+        result = tradition.getAllReadings();
+        ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
+        assertEquals(311, allReadings.size());
         Boolean foundReading = false;
         for (ReadingModel r : allReadings)
             if (r.getText().equals("Μαξίμου"))
