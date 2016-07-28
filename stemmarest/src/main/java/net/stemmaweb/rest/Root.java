@@ -108,27 +108,36 @@ public class Root {
             return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
 
         // Otherwise, parse the file we have been given
+        Response result = null;
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
-            return new TabularParser().parseCSV(uploadedInputStream, tradId, ',');
+            result = new TabularParser().parseCSV(uploadedInputStream, tradId, ',');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
-            return new TabularParser().parseCSV(uploadedInputStream, tradId, '\t');
+            result = new TabularParser().parseCSV(uploadedInputStream, tradId, '\t');
         if (filetype.startsWith("xls"))
             // Pass it off to the Excel reader
-            return new TabularParser().parseExcel(uploadedInputStream, tradId, filetype);
+            result = new TabularParser().parseExcel(uploadedInputStream, tradId, filetype);
         if (filetype.equals("teips"))
-            return new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, tradId);
+            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, tradId);
         // TODO we need to parse TEI double-endpoint attachment from CTE
         if (filetype.equals("collatex"))
             // Pass it off to the CollateX parser
-            return new CollateXParser().parseCollateX(uploadedInputStream, tradId);
+            result = new CollateXParser().parseCollateX(uploadedInputStream, tradId);
         if (filetype.equals("graphml"))
             // Pass it off to the somewhat legacy GraphML parser
-            return new GraphMLParser().parseGraphML(uploadedInputStream, userId, tradId);
-
+            result = new GraphMLParser().parseGraphML(uploadedInputStream, userId, tradId);
         // If we got this far, it was an unrecognized filetype.
-        return Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+        if (result == null)
+            result = Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+
+        // If the result wasn't a success, delete the tradition node before returning the result.
+        if (result.getStatus() > 201) {
+            Tradition failedTradition = new Tradition(tradId);
+            failedTradition.deleteTraditionById();
+        }
+
+        return result;
     }
 
     /*
