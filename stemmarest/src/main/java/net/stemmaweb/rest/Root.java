@@ -54,7 +54,7 @@ public class Root {
     public UserNode getUserNode() {
         return new UserNode();
     }
-    /**
+    /*
      * Resource creation calls
      */
 
@@ -63,7 +63,7 @@ public class Root {
      *
      * @return Http Response with the id of the imported tradition on success or
      *         an ERROR in JSON format
-     * @throws XMLStreamException
+     * @throws XMLStreamException for bad XML data
      */
     @POST
     @Path("/tradition")
@@ -130,7 +130,7 @@ public class Root {
         return Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
     }
 
-    /**
+    /*
      * Collection calls
      */
 
@@ -178,7 +178,7 @@ public class Root {
         return Response.ok(userList).build();
     }
 
-    public String createTradition(String name, String direction, String language, String isPublic) throws Exception {
+    private String createTradition(String name, String direction, String language, String isPublic) throws Exception {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node
@@ -197,7 +197,7 @@ public class Root {
                 traditionNode.setProperty("language", language);
             }
             if (isPublic != null) {
-                traditionNode.setProperty("isPublic", isPublic.equals("true"));
+                traditionNode.setProperty("is_public", isPublic.equals("true"));
             }
             tx.success();
         } catch (Exception e) {
@@ -205,28 +205,6 @@ public class Root {
             throw new Exception("Could not create a new tradition!");
         }
         return tradId;
-    }
-
-    private boolean createUser(String userId, String isAdmin) throws Exception {
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            if (rootNode == null) {
-                DatabaseService.createRootNode(db);
-                rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            }
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
-            if (userNode != null) {
-                tx.failure();
-                throw new Exception("A user with ID " + userId + " already exists!");
-            }
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", userId);
-            node.setProperty("isAdmin", isAdmin);
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
-        }
-        return true;
     }
 
     private void linkUserToTradition(String userId, String tradId) throws Exception {

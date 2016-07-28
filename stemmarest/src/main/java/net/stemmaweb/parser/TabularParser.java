@@ -130,6 +130,7 @@ public class TabularParser {
             // Keep a table of the last-spotted reading for each witness
             HashMap<String, Node> lastReading = new HashMap<>();
             // Add the witnesses to the graph
+            // TODO account for a.c. witnesses!!
             for (String sigil: witnessList) {
                 Node witnessNode = db.createNode(Nodes.WITNESS);
                 witnessNode.setProperty("sigil", sigil);
