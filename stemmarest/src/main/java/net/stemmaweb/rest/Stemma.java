@@ -65,6 +65,7 @@ public class Stemma {
 
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response replaceStemma(String dot) {
         DotParser parser = new DotParser(db);
         // Wrap this entire thing in a transaction so that we can roll back
@@ -89,11 +90,11 @@ public class Stemma {
 
             // OK, we can commit it.
             tx.success();
-            return getStemma();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
+        return this.getStemma();
     }
 
 

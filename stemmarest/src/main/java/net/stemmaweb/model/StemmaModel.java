@@ -38,7 +38,7 @@ public class StemmaModel {
             // Generate the dot as well.
             Node traditionNode = stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING).getStartNode();
             DotExporter writer = new DotExporter(db);
-            Response export = writer.parseNeo4JStemma(traditionNode.getProperty("id").toString(), identifier, true);
+            Response export = writer.parseNeo4JStemma(traditionNode.getProperty("id").toString(), identifier, false);
             dot = export.getEntity().toString();
             tx.success();
         }
