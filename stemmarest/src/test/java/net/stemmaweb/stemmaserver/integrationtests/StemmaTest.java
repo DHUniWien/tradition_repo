@@ -275,12 +275,13 @@ public class StemmaTest {
                     .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
             assertFalse(rel1.iterator().hasNext());
 
-            ClientResponse actualStemmaResponse = jerseyTest
+            String newStemmaDot = "digraph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; C -> B;  B -> A;  A -> 0;}";
+            StemmaModel newStemmaResponse = jerseyTest
                     .resource()
                     .path("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + newNodeId)
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class);
-            assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+                    .post(StemmaModel.class);
+            Util.assertStemmasEquivalent(newStemmaDot, newStemmaResponse.getDot());
 
             Iterable<Relationship> rel2 = startNodeStemma
                     .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);

@@ -406,7 +406,7 @@ public class DotExporter
             public java.lang.Iterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
                 for (Relationship link : path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, Direction.OUTGOING)) {
+                        .getRelationships(ERelations.TRANSMITTED, Direction.BOTH)) {
                     if (link.getProperty("hypothesis").equals(stemmaName)) {
                         goodPaths.add(link);
                     }
@@ -421,7 +421,7 @@ public class DotExporter
         };
         for (Path nodePath: db.traversalDescription().breadthFirst()
                 .expand(e)
-                .uniqueness(Uniqueness.NODE_PATH)
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                 .traverse(archetype)) {
             Iterator<Node> orderedNodes = nodePath.nodes().iterator();
             Node sourceNode = orderedNodes.next();
