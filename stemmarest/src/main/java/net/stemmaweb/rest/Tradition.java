@@ -69,6 +69,7 @@ public class Tradition {
     @POST  // a new stemma
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Response newStemma(String dot) {
         DotParser parser = new DotParser(db);
         Response result = parser.importStemmaFromDot(dot, traditionId);
