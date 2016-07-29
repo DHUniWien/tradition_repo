@@ -406,7 +406,7 @@ public class DotExporter
             public java.lang.Iterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
                 for (Relationship link : path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, Direction.BOTH)) {
+                        .getRelationships(ERelations.TRANSMITTED, Direction.OUTGOING)) {
                     if (link.getProperty("hypothesis").equals(stemmaName)) {
                         goodPaths.add(link);
                     }

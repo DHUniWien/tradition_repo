@@ -227,6 +227,25 @@ public class StemmaTest {
     }
 
     @Test
+    public void addContaminatedStemmaTest() {
+        String newStemmaDot = "digraph \"loop\" {\n 0 [ class=hypothetical ];"
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ];\n 0 -> A; A -> B;  A -> C; 0 -> C;\n}";
+        ClientResponse result = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemmaDot);
+        assertEquals(result.getStatus(), ClientResponse.Status.CREATED.getStatusCode());
+
+        StemmaModel stemma = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma/loop")
+                .type(MediaType.APPLICATION_JSON)
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(newStemmaDot, stemma.getDot());
+
+    }
+
+    @Test
     public void setStemmaNotFoundTest() {
         String emptyInput = "";
 
