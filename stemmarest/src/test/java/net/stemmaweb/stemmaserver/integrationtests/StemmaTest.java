@@ -209,6 +209,24 @@ public class StemmaTest {
     }
 
     @Test
+    public void setStemmaDifferentHypotheticalsTest() {
+        String newStemmaDot = "digraph \"stick\" {\n"
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ];\n A -> B;  A -> C; \n}";
+        ClientResponse result = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemmaDot);
+        assertEquals(result.getStatus(), ClientResponse.Status.CREATED.getStatusCode());
+
+        StemmaModel stemma = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma/stick")
+                .type(MediaType.APPLICATION_JSON)
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(newStemmaDot, stemma.getDot());
+    }
+
+    @Test
     public void setStemmaNotFoundTest() {
         String emptyInput = "";
 

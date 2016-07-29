@@ -16,6 +16,7 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.traversal.BranchState;
 
 /**
  * This class provides methods for exporting Dot File from Neo4J
@@ -147,6 +148,29 @@ public class DotParser {
 
             // If the graph is directed, we need to identify the archetype and
             // make sure that there is only one.
+            // Set up the path expander to be confined to this stemma
+            // We need to traverse only those paths that belong to this stemma.
+            final String pStemmaName = stemmaName;
+            PathExpander e = new PathExpander() {
+                @Override
+                public java.lang.Iterable expand(Path path, BranchState branchState) {
+                    ArrayList<Relationship> goodPaths = new ArrayList<>();
+                    for (Relationship link : path.endNode()
+                            .getRelationships(ERelations.TRANSMITTED, Direction.INCOMING)) {
+                        if (link.getProperty("hypothesis").equals(pStemmaName)) {
+                            goodPaths.add(link);
+                        }
+                    }
+                    return goodPaths;
+                }
+
+                @Override
+                public PathExpander reverse() {
+                    return null;
+                }
+            };
+
+
             if (isDirected) {
                 Node rootNode = null;
                 // For each node, check that it is connected
@@ -156,7 +180,7 @@ public class DotParser {
                     if (witnessesVisited.get(witness))
                         continue;
                     ResourceIterable<Node> pathNodes = db.traversalDescription().depthFirst()
-                            .relationships(ERelations.TRANSMITTED, Direction.INCOMING)
+                            .expand(e)
                             .traverse(witness).nodes();
                     Node pathEnd = null;
                     for (Node pNode : pathNodes) {
@@ -186,6 +210,7 @@ public class DotParser {
 
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             messageValue = e.toString();
             return Status.INTERNAL_SERVER_ERROR;
         }
