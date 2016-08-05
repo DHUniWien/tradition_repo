@@ -116,11 +116,13 @@ public class TabularParser {
             // Make the start node
             Node startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
+            startNode.setProperty("tradition_id", tradId);
             startNode.setProperty("rank", 0L);
             startNode.setProperty("text", "#START#");
             traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
             Node endNode = db.createNode(Nodes.READING);
             endNode.setProperty("is_end", true);
+            endNode.setProperty("tradition_id", tradId);
             endNode.setProperty("rank", (long) tableData.size());
             endNode.setProperty("text", "#END#");
             traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
@@ -168,6 +170,7 @@ public class TabularParser {
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
                         readingNode = db.createNode(Nodes.READING);
+                        readingNode.setProperty("tradition_id", tradId);
                         readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))

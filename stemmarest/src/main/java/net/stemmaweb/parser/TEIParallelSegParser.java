@@ -48,6 +48,7 @@ public class TEIParallelSegParser {
             // Set up the start node
             startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
+            startNode.setProperty("tradition_id", tradId);
             startNode.setProperty("text", "#START#");
             startNode.setProperty("rank", 0);
             traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
@@ -96,6 +97,7 @@ public class TEIParallelSegParser {
                                 // End of the text; add the end node.
                                 Node endNode = db.createNode(Nodes.READING);
                                 endNode.setProperty("text", "#END#");
+                                endNode.setProperty("tradition_id", tradId);
                                 endNode.setProperty("is_end", true);
                                 endNode.setProperty("rank", 0);
                                 traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
@@ -191,6 +193,7 @@ public class TEIParallelSegParser {
                             for (String word : words) {
                                 Node wordNode = db.createNode(Nodes.READING);
                                 wordNode.setProperty("text", word);
+                                wordNode.setProperty("tradition_id", tradId);
                                 wordNode.setProperty("rank", 0);
                                 if (!chain.isEmpty()) {
                                     Node lastNode = chain.get(chain.size() - 1);

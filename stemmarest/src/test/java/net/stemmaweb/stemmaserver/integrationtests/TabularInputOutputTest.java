@@ -1,9 +1,12 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
+import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.*;
@@ -94,6 +97,44 @@ public class TabularInputOutputTest extends TestCase {
             if (r.getText().equals("Μαξίμου"))
                 foundReading = true;
         assertTrue(foundReading);
+    }
+
+    public void testSetRelationship() throws Exception {
+        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Florilegium", "LR", "1",
+                "src/TestFiles/florilegium.csv", "csv");
+        String tradId = Util.getValueFromJson(response, "tradId");
+        Tradition tradition = new Tradition(tradId);
+        // Get the readings and look for our ἔχει(ν)
+        Response result = tradition.getAllReadings();
+        ArrayList<ReadingModel> readings = (ArrayList<ReadingModel>) result.getEntity();
+        String source = null;
+        String target = null;
+        for (ReadingModel r : readings)
+            if (r.getRank().equals(14L))
+                if (r.getText().equals("ἔχει"))
+                    source = r.getId();
+                else if (r.getText().equals("ἔχειν"))
+                    target = r.getId();
+        assertNotNull(source);
+        assertNotNull(target);
+
+        // Now set the relationship
+        RelationshipModel relationship = new RelationshipModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
+        relationship.setType("grammatical");
+        relationship.setAlters_meaning(0L);
+        relationship.setScope("document");
+        ClientResponse actualResponse = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, relationship);
+        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+
+        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
+        assertEquals(2, readingsAndRelationships.getReadings().size());
+        assertEquals(1, readingsAndRelationships.getRelationships().size());
     }
 
     public void testParseExcel() throws Exception {

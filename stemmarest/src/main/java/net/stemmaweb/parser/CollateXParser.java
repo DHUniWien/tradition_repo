@@ -12,9 +12,6 @@ import org.w3c.dom.NodeList;
 import javax.ws.rs.core.Response;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
@@ -53,12 +50,6 @@ public class CollateXParser {
         try (Transaction tx = db.beginTx()) {
             // Get the tradition node
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            // Create the tradition node
-/*            Node traditionNode = db.createNode(Nodes.TRADITION); // create the root node of tradition
-            traditionNode.setProperty("id", tradId);
-            traditionNode.setProperty("name", tradName);
-            traditionNode.setProperty("direction", direction);
-*/
 
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
@@ -68,6 +59,7 @@ public class CollateXParser {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
                 Node reading = db.createNode(Nodes.READING);
+                reading.setProperty("tradition_id", tradId);
 
                 NodeList dataNodes = ((Element) readingNodes.item(i)).getElementsByTagName("data");
                 for (int j = 0; j < dataNodes.getLength(); j++) {
