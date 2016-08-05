@@ -813,172 +813,111 @@ public class Tradition {
     }
 
 
-
     /**
      * Recalculate ranks starting from 'startNode'
      * Someone would typically use it after inserting a RELATION or a new Node into the graph,
      * where the startNode will be one of the RELATION-nodes or the new node itself.
      *
      * @param nodeId Where to start the recalculation
-     * @return XML data
+     * @return boolean (True in case of success, otherwise False)
      */
     public boolean recalculateRank(Long nodeId) {
-        Comparator<Node> rankComparator = (n1, n2) -> {
-            int compVal = ((Long) n1.getProperty("rank")).compareTo((Long) n2.getProperty("rank"));
-            return (compVal == 0) ? Long.valueOf(n1.getId()).compareTo(n2.getId()) : compVal;
-        };
-
-        SortedSet<Node> nodesToProcess = new TreeSet<>(rankComparator);
-        Hashtable<Node, Integer> unresolvedRelationsCounter = new Hashtable<>();
-        Set<Node> relatedNodeSet = new HashSet<>();
-        Set<Node> nonRelatedNodeSet = new HashSet<>();
-        Set<Set<Node>> relatedNodeSets = new HashSet<>();
+        Set<Node> nodesWaiting = new HashSet<>();
+        Set<Node> nodesToProcess = new HashSet<>();
+        Set<Long> idNodesProcessed = new HashSet<>();
 
         try (Transaction tx = db.beginTx()) {
             Node currentNode = db.getNodeById(nodeId);
-            unresolvedRelationsCounter.put(currentNode, noOfIncomingRelations(currentNode));
+            Iterable<Relationship> relationships = currentNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
+            for (Relationship relationship : relationships) {
+                idNodesProcessed.add(relationship.getStartNode().getId());
+            }
+            nodesWaiting.add(currentNode);
 
-            while (!nodesToProcess.isEmpty() || !unresolvedRelationsCounter.isEmpty()) {
-                try {
-                    // process the nodes we can easily process, with all dependencies known
-                    currentNode = nodesToProcess.first();
-                    nodesToProcess.remove(currentNode);
-                    Long currentRank = (Long) currentNode.getProperty("rank");
-
-                    Iterable<Relationship> relationships = currentNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
-                    for (Relationship relationship : relationships) {
-                        Node nextNode = relationship.getEndNode();
-                        nextNode.setProperty("rank", currentRank + 1L);
-                        unresolvedRelationsCounter.putIfAbsent(nextNode, noOfIncomingRelations(nextNode));
-                        unresolvedRelationsCounter.replace(nextNode, unresolvedRelationsCounter.get(nextNode) - 1);
-                    }
-                } catch (NoSuchElementException nsee) {
-                    // no more nodes to process, so lets organize some ...
-                    // First, 'classify' unknown nodes, if necessary
-                    if (relatedNodeSet.size() + nonRelatedNodeSet.size() < unresolvedRelationsCounter.size()) {
-                        for (Node iterNode : unresolvedRelationsCounter.keySet()) {
-                            if (!nonRelatedNodeSet.contains(iterNode) && !relatedNodeSet.contains(iterNode)) {
-                                if (hasRelatedNodes(iterNode)) {
-                                    Set<Node> tmpRelNodes = getRelatedNodes(iterNode);
-                                    for (Node iterInnerNode: tmpRelNodes ) {
-                                        if (!unresolvedRelationsCounter.containsKey(iterInnerNode)) {
-                                            unresolvedRelationsCounter.put(iterInnerNode, noOfIncomingRelations(iterInnerNode));
-                                        }
-                                    }
-                                    relatedNodeSets.add(tmpRelNodes);
-                                    relatedNodeSet.addAll(tmpRelNodes);
-                                } else {
-                                    nonRelatedNodeSet.add(iterNode);
-                                }
-                            }
-                        }
-                    }
-
-                    Integer minIndegree = Integer.MAX_VALUE;
-                    Long minRank = Long.MAX_VALUE;
-                    Set<Node> minNodeSet = new HashSet<>();
-
-                    // find all Nodes that have no RELATED-relations and where we know all incoming relationships
-                    Set<Node> processNodes = new HashSet<>();
-                    for (Node iterNode : nonRelatedNodeSet) {
-                        // TODO: remove the following line:
-                        // this is just a hack, to convert int values in the test db into long ones
-                        iterNode.setProperty("rank", Long.valueOf(iterNode.getProperty("rank").toString()));
-                        if (unresolvedRelationsCounter.get(iterNode) == 0) {
-                            processNodes.add(iterNode);
-                        } else if (nodesToProcess.size() == 0) {
-                            long curRank = determineNodeRank(iterNode);
-                            Integer curIndegree = unresolvedRelationsCounter.get(iterNode);
-                            if (curRank < minRank || (curRank == minRank && curIndegree < minIndegree)) {
-                                minNodeSet.clear();
-                                minNodeSet.add(iterNode);
-                                minIndegree = curIndegree;
-                                minRank = curRank;
-                            }
-                        }
-                    }
-                    for (Node iterNode : processNodes) {
-                        nodesToProcess.add(iterNode);
-                        unresolvedRelationsCounter.remove(iterNode);
-                        nonRelatedNodeSet.remove(iterNode);
-                    }
-                    if (nodesToProcess.size() > 0)
+            while (!nodesWaiting.isEmpty() || !nodesToProcess.isEmpty()) {
+                // handle all nodes that are ready to process first
+                for (Node curProcessNode : nodesToProcess) {
+                    if (idNodesProcessed.contains(curProcessNode.getId()))
                         continue;
 
-                    // There are no 'non-RELATED' nodes that we can use immediately, so let's try
-                    // to find some RELATED ones
-                    Set<Set<Node>> delNodeSets = new HashSet<>();
-                    for (Set<Node> iterSet : relatedNodeSets) {
-                        Integer setIndegree = 0;
-                        Long setMaxRank = Long.MIN_VALUE;
-                        for (Node iterNode : iterSet) {
-                            int nodeIndegree = unresolvedRelationsCounter.get(iterNode);
-                            if (nodeIndegree == 0) {
-                                setMaxRank = Math.max(setMaxRank, Long.valueOf(iterNode.getProperty("rank").toString()));
-                            } else {
-                                setIndegree += nodeIndegree;
-                                setMaxRank = Math.max(setMaxRank, determineNodeRank(iterNode));
-                            }
-                        }
-                        if (setIndegree == 0) {
-                            for (Node iterNode : iterSet) {
-                                iterNode.setProperty("rank", setMaxRank);
-                                unresolvedRelationsCounter.remove(iterNode);
-                                nodesToProcess.add(iterNode);
-                            }
-                            relatedNodeSet.removeAll(iterSet);
-                            delNodeSets.add(iterSet);
-                        } else if (nodesToProcess.size() == 0) {
-                            if (setMaxRank < minRank || (setMaxRank.equals(minRank) && setIndegree < minIndegree)) {
-                                minIndegree = setIndegree;
-                                minRank = setMaxRank;
-                                minNodeSet = iterSet;
-                            }
-                        }
-                    }
-                    for (Set<Node> iterSet : delNodeSets) {
-                        relatedNodeSets.remove(iterSet);
-                    }
-                    if (nodesToProcess.size() > 0)
-                        continue;
+                    Set<Node> curNodes = new HashSet<>();
+                    curNodes.add(curProcessNode);
+                    curNodes.addAll(getRelatedNodes(curProcessNode));
 
-                    // continue with the best (related) nodes found
-                    for (Node iterNode : minNodeSet) {
-                        iterNode.setProperty("rank", minRank);
-                        unresolvedRelationsCounter.remove(iterNode);
-                        nodesToProcess.add(iterNode);
-                        nonRelatedNodeSet.remove(iterNode);
+                    // determine rank
+                    Long currentRank = 0L;
+                    for (Node curNode : curNodes) {
+                        currentRank = Math.max(currentRank, determineNodeRank(curNode));
                     }
-                    relatedNodeSet.remove(minNodeSet);
+
+                    // update rank and add curNode to "nodesProcessed"
+                    for (Node curNode : curNodes) {
+                        curNode.setProperty("rank", currentRank);
+                        idNodesProcessed.add(curNode.getId());
+                    }
+
+                    // put direct successors into set "nodesKnown" for further processing
+                    for (Node curNode : curNodes) {
+                        relationships = curNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
+                        for (Relationship relationship : relationships) {
+                            Node newNode = relationship.getEndNode();
+                            Long newNodeId = newNode.getId();
+                            nodesWaiting.add(newNode);
+                            idNodesProcessed.remove(newNodeId);
+                        }
+                    }
                 }
+                nodesToProcess.clear();
+
+                // all possible nodes are being processed, so look at the set "nodesKnown" for nodes
+                // where we know all direct predecessor nodes (i.e. members of "nodesProcessed"
+                Set<Node> nodesExamined = new HashSet<>();
+                Set<Node> bestNodes = new HashSet<>();
+                Long bestNodeRank = Long.MAX_VALUE;
+                for (Node curKnownNode: nodesWaiting) {
+                    if (nodesExamined.contains(curKnownNode))
+                        continue;
+
+                    Set<Node> curNodes = new HashSet<>();
+                    curNodes.add(curKnownNode);
+                    curNodes.addAll(getRelatedNodes(curKnownNode));
+
+                    boolean predecessorsUnknown = false;
+                    Long estimatedRank = 0L;
+                    for (Node curNode : curNodes) {
+                        estimatedRank = Math.max(estimatedRank, determineNodeRank(curNode));
+
+                        relationships = curNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
+                        for (Relationship relationship : relationships) {
+                            if (!idNodesProcessed.contains(relationship.getStartNode().getId())) {
+                                predecessorsUnknown = true;
+                            }
+                        }
+                    }
+                    if (!predecessorsUnknown) {
+                        nodesToProcess.addAll(curNodes);
+                    } else if (estimatedRank <= bestNodeRank) {
+                        if (estimatedRank < bestNodeRank) {
+                            bestNodeRank = estimatedRank;
+                            bestNodes.clear();
+                        }
+                        bestNodes.addAll(curNodes);
+                    }
+                    nodesExamined.addAll(curNodes);
+                }
+                if (nodesToProcess.isEmpty()) {
+                    // there are no simple dependencies, so take the relationships into account, too
+                    nodesToProcess.addAll(bestNodes);
+                }
+                nodesWaiting.removeAll(nodesToProcess);
             }
             tx.success();
         } catch (Exception e) {
-            return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return false;
         }
-        return true; // Response.ok().build();
+        return true;
     }
 
-    private int noOfIncomingRelations(Node node) {
-        return node.getDegree(ERelations.SEQUENCE, Direction.INCOMING) + node.getDegree(ERelations.LEMMA_TEXT, Direction.INCOMING);
-    }
-
-    private boolean hasRelatedNodes(Node startNode) {
-        boolean hasRelatedNodes = false;
-        try (Transaction tx = db.beginTx()) {
-            if (startNode.getDegree(ERelations.RELATED, Direction.BOTH) > 0) {
-                for (Relationship iterRel : startNode.getRelationships(Direction.BOTH, ERelations.RELATED)) {
-                    String propType = iterRel.getProperty("type").toString();
-                    if (!propType.equals("transposition") && !propType.equals("repetition")) {
-                        hasRelatedNodes = true;
-                        break;
-                    }
-                }
-            }
-            tx.success();
-        }
-        return hasRelatedNodes;
-    }
 
     private Set<Node> getRelatedNodes(Node startNode) {
         Set<Node> nodeSet = new HashSet<>();
@@ -1011,8 +950,9 @@ public class Tradition {
             Iterable<Relationship> relationships = currentNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT);
             for (Relationship relationship : relationships) {
                 Node prevNode = relationship.getStartNode();
-                nodeRank = Math.max(nodeRank, Long.valueOf(prevNode.getProperty("rank").toString()) + 1L);
+                nodeRank = Math.max(nodeRank, Long.valueOf(prevNode.getProperty("rank").toString()));
             }
+            nodeRank += 1L;
             tx.success();
         }
         return nodeRank;
