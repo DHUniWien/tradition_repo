@@ -68,7 +68,7 @@ public class Root {
     @POST
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
@@ -152,7 +152,7 @@ public class Root {
      */
     @GET
     @Path("/traditions")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
 
@@ -173,7 +173,7 @@ public class Root {
 
     @GET
     @Path("/users")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
 

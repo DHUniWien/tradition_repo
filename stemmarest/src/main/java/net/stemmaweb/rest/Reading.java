@@ -49,7 +49,7 @@ public class Reading {
      * @return the reading fetched by the id
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getReading() {
         ReadingModel reading;
         Node readingNode;
@@ -78,7 +78,7 @@ public class Reading {
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
         ReadingModel modelToReturn;
         Node reading;
@@ -118,7 +118,7 @@ public class Reading {
     @PUT
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response duplicateReading(DuplicateModel duplicateModel) {
 
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
@@ -325,7 +325,7 @@ public class Reading {
      */
     @POST
     @Path("merge/{secondReadId}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
 
         Node stayingReading;
@@ -557,7 +557,7 @@ public class Reading {
     @POST
     @Path("split/{splitIndex}")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  CharacterModel model) {
         assert (model != null);
@@ -752,7 +752,7 @@ public class Reading {
      */
     @GET
     @Path("next/{witnessId}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId) {
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
@@ -792,7 +792,7 @@ public class Reading {
      */
     @GET
     @Path("prior/{witnessId}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId) {
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
@@ -857,7 +857,7 @@ public class Reading {
     @POST
     @Path("concatenate/{read2Id}/{con}")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response compressReadings(@PathParam("read2Id") long readId2,
                                      @PathParam("con") String con, CharacterModel character) {
 

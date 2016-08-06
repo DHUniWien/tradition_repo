@@ -16,7 +16,6 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
-import org.apache.commons.lang.ObjectUtils;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -51,7 +50,7 @@ public class Relation {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response create(RelationshipModel relationshipModel) {
 
         String scope = relationshipModel.getScope();
@@ -245,7 +244,7 @@ public class Relation {
      */
     @DELETE
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
 
     public Response delete(RelationshipModel relationshipModel) {
         long deleted_relations = 0L; // Number of deleted relationships

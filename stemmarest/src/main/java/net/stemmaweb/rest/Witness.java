@@ -62,7 +62,7 @@ public class Witness {
      */
     @GET
     @Path("/text")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getWitnessAsText(@QueryParam("start") @DefaultValue("0") String start,
                                      @QueryParam("end") @DefaultValue("E") String end) {
         return getWitnessAsTextWithLayer(null, start, end);
@@ -83,7 +83,7 @@ public class Witness {
      */
     @GET
     @Path("/text/{layer}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getWitnessAsTextWithLayer(
             @PathParam("layer") String layer,
             @QueryParam("start") @DefaultValue("0") String start,
@@ -210,14 +210,14 @@ public class Witness {
      */
     @GET
     @Path("/readings")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getWitnessAsReadings() {
         return getWitnessAsReadings(null);
     }
 
     @GET
     @Path("/readings/{layer}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getWitnessAsReadings(@PathParam("layer") String witnessClass) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 

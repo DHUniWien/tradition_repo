@@ -255,7 +255,7 @@ public class UserNode {
      */
     @GET
     @Path("/get/{label}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response get(@PathParam("label") String label) {
 
         if (label == null) {
@@ -298,7 +298,7 @@ public class UserNode {
      */
     @GET
     @Path("/get/{label}/where/{property}/is/{value}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response get(@PathParam("label") String label,
                         @PathParam("property") String property,
                         @PathParam("value") String value) {

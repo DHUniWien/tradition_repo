@@ -277,7 +277,7 @@ public class DotExporter
         // Here is where to generate pictures from the file for debugging.
         // writeFromDot(output, "svg");
 
-        return Response.ok().entity(result).header("Content-Type", "text/plain; charset=utf-8").build();
+        return Response.ok().entity(result).build();
     }
 
 

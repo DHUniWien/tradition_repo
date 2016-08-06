@@ -51,7 +51,7 @@ public class Stemma {
      *         JSON format
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null) {
@@ -65,7 +65,7 @@ public class Stemma {
 
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response replaceStemma(String dot) {
         DotParser parser = new DotParser(db);
         // Wrap this entire thing in a transaction so that we can roll back
@@ -99,7 +99,7 @@ public class Stemma {
 
 
     @DELETE
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         assert stemmaNode != null;
@@ -148,7 +148,7 @@ public class Stemma {
      */
     @POST
     @Path("reorient/{nodeId}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())

@@ -39,7 +39,7 @@ public class User {
      * @return A JSON UserModel or a JSON error message
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getUserById() {
         UserModel userModel;
         try (Transaction tx = db.beginTx()) {
@@ -64,7 +64,7 @@ public class User {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response create(UserModel userModel) {
         // Find any existing user
         Node extantUser;
@@ -155,7 +155,7 @@ public class User {
      */
     @GET
     @Path("/traditions")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getUserTraditions() {
         if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Status.NOT_FOUND).build();
