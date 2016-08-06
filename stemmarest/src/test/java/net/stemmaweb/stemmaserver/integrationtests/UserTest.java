@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -397,7 +396,7 @@ public class UserTest {
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), getNotFoundStemmaResponse.getStatus());
     }
 
-    /**
+    /*
      * Shut down the jersey server
      * @throws Exception
      */

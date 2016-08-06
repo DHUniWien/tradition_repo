@@ -20,9 +20,11 @@ import org.neo4j.graphdb.Transaction;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -160,16 +162,23 @@ public class Util {
         }
     }
 
-    public static ClientResponse createTraditionFromFile(JerseyTest jerseyTest, String tName, String tDir, String userId,
-                                                         String fName, String fType) throws FileNotFoundException {
+    public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir, String userId,
+                                                                 String fName, String fType) {
         FormDataMultiPart form = new FormDataMultiPart();
         if (fType != null) form.field("filetype", fType);
         if (tName != null) form.field("name", tName);
         if (tDir != null) form.field("direction", tDir);
         if (userId != null) form.field("userId", userId);
         if (fName != null) {
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream(fName),
+            // It could be a filename or it could be a content string. Try one and then
+            // the other.
+            InputStream input = null;
+            try {
+                input = new FileInputStream(fName);
+            } catch (FileNotFoundException e) {
+                input = new ByteArrayInputStream(fName.getBytes(StandardCharsets.UTF_8));
+            }
+            FormDataBodyPart fdp = new FormDataBodyPart("file", input,
                     MediaType.APPLICATION_OCTET_STREAM_TYPE);
             form.bodyPart(fdp);
         }

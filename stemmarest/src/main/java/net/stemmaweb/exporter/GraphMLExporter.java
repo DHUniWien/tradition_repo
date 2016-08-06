@@ -2,7 +2,6 @@ package net.stemmaweb.exporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -10,17 +9,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamWriter;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
 
@@ -209,19 +203,23 @@ public class GraphMLExporter {
         int nodeCountGraph1 = 0;
         boolean includeRelatedRelations = false;
 
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
         Node traditionEndNode = DatabaseService.getEndNode(tradId, db);
         if(traditionStartNode==null || traditionEndNode==null) {
             return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
         }
 
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        // Get the section node IDs, if there are any - otherwise get tradition ID string
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
         }
+        ArrayList<String> sectionIds = new ArrayList<>();
         if (sections.size() == 0) {
-            sections.add(traditionNode);
+            sectionIds.add(tradId);
+        } else {
+            sections.forEach(x -> sectionIds.add(String.valueOf(x.getId())));
         }
 
         File file;
@@ -296,10 +294,12 @@ public class GraphMLExporter {
             if (includeRelatedRelations)
                 relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.BOTH);
 
-            for (Node sectionNode: sections) {
+            for (String sectionId: sectionIds) {
                 long max_rank_section = 0;
 
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                // The section node is the tradition node if the sections list is size 0.
+                Node sectionNode = sections.size() == 0 ? traditionNode : db.getNodeById(Long.valueOf(sectionId));
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionId), db);
                 writeNode(writer, sectionNode);
 
                 for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {

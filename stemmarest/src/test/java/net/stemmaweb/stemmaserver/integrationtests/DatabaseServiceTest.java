@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -55,13 +54,8 @@ public class DatabaseServiceTest {
                 .create();
         jerseyTest.setUp();
 
-        ClientResponse jerseyResult = null;
-        try {
-            String fileName = "src/TestFiles/testTradition.xml";
-            jerseyResult = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", userId, fileName, "graphml");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", userId,
+                "src/TestFiles/testTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         /*
          * gets the generated id of the inserted tradition

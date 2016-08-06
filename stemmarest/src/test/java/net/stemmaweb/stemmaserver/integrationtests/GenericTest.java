@@ -8,9 +8,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
@@ -65,7 +65,7 @@ public class GenericTest {
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
         ClientResponse jerseyResult = null;
         try {
-            jerseyResult = Util.createTraditionFromFile(jerseyTest, tName, tDir, userId, fName, fType);
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
         } catch (Exception e) {
             assertTrue(false);
         }
@@ -86,11 +86,16 @@ public class GenericTest {
             is( scalar $t->witnesses, 0, "object has no witnesses" );
         */
 
-        // Status: Test not possible, since there is no API-method to create a 'Tradition'
-        // TODO: Implement API-method "CreateTradition()"
-
-        String TRADNAME = "empty";
-        String tradId = createTraditionFromFile(TRADNAME, null, "1", null, null);
+        String TRADNAME = "empty tradition";
+        FormDataMultiPart form = new FormDataMultiPart();
+        form.field("name", TRADNAME);
+        form.field("userId", "1");
+        form.field("empty", "true");
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .post(ClientResponse.class, form);
+        String tradId = Util.getValueFromJson(response, "tradId");
 
         try (Transaction tx = db.beginTx()) {
             Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
@@ -119,7 +124,7 @@ public class GenericTest {
             assertEquals(1, rel_count);
             tx.success();
         }
-        ClientResponse response = jerseyTest.resource()
+        response = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
                 .get(ClientResponse.class);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());

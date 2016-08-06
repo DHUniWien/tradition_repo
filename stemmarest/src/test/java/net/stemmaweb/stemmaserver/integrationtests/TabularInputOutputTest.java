@@ -45,7 +45,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testParseCSV() throws Exception {
-        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Florilegium", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium_simple.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -71,7 +71,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testParseCsvLayers() throws Exception {
-        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Florilegium", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -100,7 +100,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testSetRelationship() throws Exception {
-        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Florilegium", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");
         String tradId = Util.getValueFromJson(response, "tradId");
         Tradition tradition = new Tradition(tradId);
@@ -139,14 +139,14 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testParseExcel() throws Exception {
         // Test a bad file
-        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Armenian XLS", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample_bad.xlsx", "xlsx");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertTrue(response.getEntity(String.class).contains("has too many columns!"));
 
 
         // Test a good XLS file
-        response = Util.createTraditionFromFile(jerseyTest, "Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample.xls", "xls");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -168,7 +168,7 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(foundReading);
 
         // Test a good XLSX file
-        response = Util.createTraditionFromFile(jerseyTest, "Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample.xlsx", "xlsx");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
@@ -198,7 +198,7 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() throws Exception {
         // Set up some data
-        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -227,7 +227,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testConflatedJSONExport () throws Exception {
-        ClientResponse response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/globalrel_test.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");

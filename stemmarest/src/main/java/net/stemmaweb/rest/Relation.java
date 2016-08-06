@@ -147,24 +147,23 @@ public class Relation {
                         .build();
             }
 
-            if (ReadingService.wouldGetCyclic(db, readingA, readingB)) {
-                if (!relationshipModel.getType().equals("transposition") &&
-                        !relationshipModel.getType().equals("repetition")) {
+            Boolean isCyclic = ReadingService.wouldGetCyclic(db, readingA, readingB);
+            Boolean isLocationVariant = !relationshipModel.getType().equals("transposition") &&
+                    !relationshipModel.getType().equals("repetition");
+            if (isCyclic && isLocationVariant) {
                     return Response
                             .status(Status.CONFLICT)
                             .entity("This relationship creation is not allowed, it would result in a cyclic graph.")
                             .build();
-                }
-            } else if (relationshipModel.getType().equals("transposition")
-                    || relationshipModel.getType().equals("repetition")) {
+            } else if (!isCyclic && !isLocationVariant) {
                 return Response
                         .status(Status.CONFLICT)
-                        .entity("This relationship creation is not allowed. The two readings can be aligned.")
+                        .entity("This relationship creation is not allowed. The two readings can be co-located.")
                         .build();
             } // TODO add constraints about witness uniqueness or lack thereof
 
-            // Check, if relationship already exists
-            found_exisiting_relationship: {
+            // Check if relationship already exists
+            found_existing_relationship: {
                 Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship relationship : relationships) {
                     if (relationship.getOtherNode(readingA).equals(readingB)) {
@@ -177,7 +176,7 @@ public class Relation {
                         if (oldRelType.equals("collated")) {
                             // We use the existing relation, instead of delete it and create a new one
                             relationshipAtoB = relationship;
-                            break found_exisiting_relationship;
+                            break found_existing_relationship;
                         }
                     }
                 }
@@ -185,18 +184,17 @@ public class Relation {
             }
 
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
-            relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
-            relationshipAtoB.setProperty("alters_meaning", relationshipModel.getAlters_meaning());
-            relationshipAtoB.setProperty("b_derivable_from_a", relationshipModel.getB_derivable_from_a());
+            relationshipAtoB.setProperty("scope", nullToEmptyString(relationshipModel.getScope()));
+            relationshipAtoB.setProperty("annotation", nullToEmptyString(relationshipModel.getAnnotation()));
             relationshipAtoB.setProperty("displayform",
                     nullToEmptyString(relationshipModel.getDisplayform()));
+            relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
+            relationshipAtoB.setProperty("b_derivable_from_a", relationshipModel.getB_derivable_from_a());
+            relationshipAtoB.setProperty("alters_meaning", relationshipModel.getAlters_meaning());
             relationshipAtoB.setProperty("is_significant", relationshipModel.getIs_significant());
             relationshipAtoB.setProperty("non_independent", relationshipModel.getNon_independent());
-            relationshipAtoB.setProperty("reading_a",
-                    nullToEmptyString(relationshipModel.getReading_a()));
-            relationshipAtoB.setProperty("reading_b",
-                    nullToEmptyString(relationshipModel.getReading_b()));
-            relationshipAtoB.setProperty("scope", nullToEmptyString(relationshipModel.getScope()));
+            relationshipAtoB.setProperty("reading_a", readingA.getProperty("text"));
+            relationshipAtoB.setProperty("reading_b", readingB.getProperty("text"));
 
             changedReadings.add(new ReadingModel(readingA));
             changedReadings.add(new ReadingModel(readingB));
@@ -204,9 +202,12 @@ public class Relation {
             readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
 
             // Recalculate the ranks, if necessary
-            if (readingA.getProperty("rank") != readingB.getProperty("rank")) {
-                new Tradition(tradId).recalculateRank(readingA.getId());
-                new Tradition(tradId).recalculateRank(readingB.getId());
+            Long rankA = (Long) readingA.getProperty("rank");
+            Long rankB = (Long) readingB.getProperty("rank");
+            if (!rankA.equals(rankB)  && isLocationVariant) {
+                // Which one is the lower-ranked reading?
+                Long nodeId = rankA < rankB ? readingA.getId() : readingB.getId();
+                new Tradition(tradId).recalculateRank(nodeId);
             }
 
             tx.success();

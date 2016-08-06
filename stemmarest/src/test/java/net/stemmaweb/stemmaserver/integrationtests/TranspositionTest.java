@@ -19,7 +19,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -63,13 +62,9 @@ public class TranspositionTest {
         /*
          * create a tradition inside the test DB
          */
-        try {
-            ClientResponse jerseyResult = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
-                    "src/TestFiles/testTradition.xml", "graphml");
-            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         /*
          * gets the generated ids that we need for our tests

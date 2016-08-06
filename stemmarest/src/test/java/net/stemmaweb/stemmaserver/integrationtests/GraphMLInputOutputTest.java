@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,15 +64,10 @@ public class GraphMLInputOutputTest {
      * Try to import a non existent file
      */
     @Test
-    public void graphMLImportFileNotFoundExceptionTest() {
-        try {
-            Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
-                    "src/TestFiles/SapientiaFileNotExisting.xml", "graphml");
-            assertTrue(false); // This line of code should never execute
-        }
-        catch(FileNotFoundException f) {
-            assertTrue(true);
-        }
+    public void graphMLImportNonexistentFileTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/SapientiaFileNotExisting.xml", "graphml");
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
     }
 
     /**
@@ -81,14 +75,8 @@ public class GraphMLInputOutputTest {
      */
     @Test
     public void graphMLImportXMLStreamErrorTest() {
-        ClientResponse response = null;
-        try {
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
-                   "src/TestFiles/SapientiaWithError.xml", "graphml");
-        } catch(FileNotFoundException f) {
-            assertTrue(true);
-        }
-
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/SapientiaWithError.xml", "graphml");
         if (response != null) {
             assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
                     response.getStatus());
@@ -102,30 +90,25 @@ public class GraphMLInputOutputTest {
      */
     @Test
     public void graphMLImportSuccessTest() {
-        ClientResponse response = null;
-        try {
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                     "src/TestFiles/testTradition.xml", "graphml");
-        } catch(FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
 
-        traditionNodeExistsTest();
+        assertTrue(traditionNodeExists());
     }
 
     /**
      * test if the tradition node exists
      */
-    @Test
-    public void traditionNodeExistsTest(){
+    private Boolean traditionNodeExists(){
+        Boolean answer;
         try(Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
-            assertTrue(tradNodesIt.hasNext());
+            answer = tradNodesIt.hasNext();
             tx.success();
         }
+        return answer;
     }
 
     /**
@@ -143,34 +126,20 @@ public class GraphMLInputOutputTest {
      */
     @Test
     public void graphMLExportSuccessTest(){
-        ClientResponse response = null;
-        String traditionId = null;
-
-        try {
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/testTradition.xml", "graphml");
-            traditionId = Util.getValueFromJson(response, "tradId");
-        }
-        catch(FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+            "src/TestFiles/testTradition.xml", "graphml");
+        String traditionId = Util.getValueFromJson(response, "tradId");
 
         assertNotNull(traditionId);
         Response actualResponse = exportResource.parseNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 
         String xmlOutput = actualResponse.getEntity().toString();
-        try {
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1", xmlOutput, "graphml");
-        } catch(FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1", xmlOutput, "graphml");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
 
-        traditionNodeExistsTest();
+        assertTrue(traditionNodeExists());
     }
 
     /**
@@ -178,14 +147,8 @@ public class GraphMLInputOutputTest {
      */
     @Test
     public void unicodeSigilTest() {
-        ClientResponse response = null;
-        try {
-            String fileName = "src/TestFiles/john.xml";
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1", fileName, "graphml");
-        } catch(FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/john.xml", "graphml");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
 
@@ -208,14 +171,8 @@ public class GraphMLInputOutputTest {
 
     @Test
     public void importFlorilegiumTest () {
-        ClientResponse response = null;
-        try {
-            String fileName = "src/TestFiles/florilegium_graphml.xml";
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1", fileName, "graphml");
-        } catch(FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/florilegium_graphml.xml", "graphml");
 
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
@@ -280,19 +237,13 @@ public class GraphMLInputOutputTest {
 
     @Test
     public void exportFlorilegiumTest () {
-        ClientResponse response = null;
-        try {
-            String fileName = "src/TestFiles/florilegium_graphml.xml";
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1", fileName, "graphml");
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/florilegium_graphml.xml", "graphml");
 
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
-        String traditionId = "NONE";
+        String traditionId = null;
         try {
             JSONObject content = new JSONObject(response.getEntity(String.class));
             traditionId = String.valueOf(content.get("tradId"));
@@ -358,7 +309,7 @@ public class GraphMLInputOutputTest {
                 .resource()
                 .path("/tradition/" + traditionId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, newStemma);
+                .post(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // Merge a couple of nodes
@@ -413,14 +364,8 @@ public class GraphMLInputOutputTest {
         assertEquals(Response.ok().build().getStatus(), parseResponse.getStatus());
 
         // Re-import and test the result
-        try {
-            String fileName = parseResponse.getEntity().toString();
-            response = Util.createTraditionFromFile(jerseyTest, "Tradition 2", "LR", "1", fileName, "graphml");
-        } catch(FileNotFoundException f) {
-            // this error should not occur
-            assertTrue(false);
-        }
-
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition 2", "LR", "1",
+                parseResponse.getEntity().toString(), "graphml");
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());

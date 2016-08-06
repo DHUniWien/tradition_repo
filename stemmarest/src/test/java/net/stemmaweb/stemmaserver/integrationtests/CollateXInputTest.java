@@ -14,7 +14,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 /**
@@ -39,13 +38,8 @@ public class CollateXInputTest extends TestCase {
     }
 
     public void testParseCollateX() throws Exception {
-        ClientResponse cResult = null;
-        try {
-            String fileName = "src/TestFiles/plaetzchen_cx.xml";
-            cResult = Util.createTraditionFromFile(jerseyTest, "Auch hier", "LR", "1", fileName, "collatex");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
         String tradId = Util.getValueFromJson(cResult, "tradId");
@@ -72,13 +66,8 @@ public class CollateXInputTest extends TestCase {
 
     public void testAddRelationship() throws Exception {
         // Parse the file
-        ClientResponse cResult = null;
-        try {
-            String fileName = "src/TestFiles/plaetzchen_cx.xml";
-            cResult = Util.createTraditionFromFile(jerseyTest, "Auch hier", "LR", "1", fileName, "collatex");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
         String tradId = Util.getValueFromJson(cResult, "tradId");
@@ -118,13 +107,8 @@ public class CollateXInputTest extends TestCase {
     }
 
     public void testParseCollateXJersey() throws Exception {
-        ClientResponse cResult = null;
-        try {
-            String fileName = "src/TestFiles/plaetzchen_cx.xml";
-            cResult = Util.createTraditionFromFile(jerseyTest, "Auch hier", "LR", "1", fileName, "collatex");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
         String tradId = Util.getValueFromJson(cResult, "tradId");
         Tradition tradition = new Tradition(tradId);

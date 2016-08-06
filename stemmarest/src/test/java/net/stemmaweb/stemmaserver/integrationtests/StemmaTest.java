@@ -80,7 +80,7 @@ public class StemmaTest {
                                            String fType)  throws FileNotFoundException {
         String tradId = "";
         try {
-            ClientResponse jerseyResult = Util.createTraditionFromFile(jerseyTest, tName, tDir, userId, fName, fType);
+            ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
             tradId = Util.getValueFromJson(jerseyResult, "tradId");
         } catch (Exception e) {
             e.printStackTrace();

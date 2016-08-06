@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileNotFoundException;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
@@ -88,13 +87,8 @@ public class ReadingTest {
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
-        ClientResponse jerseyResult = null;
-        try {
-            jerseyResult = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1",
-                    "src/TestFiles/ReadingstestTradition.xml", "graphml");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/ReadingstestTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }

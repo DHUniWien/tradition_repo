@@ -71,7 +71,7 @@ public class WitnessTest {
 
         ClientResponse jerseyResult = null;
         try {
-            jerseyResult = Util.createTraditionFromFile(jerseyTest, tName, tDir, userId, fName, fType);
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
         } catch (Exception e) {
             assertTrue(false);
         }

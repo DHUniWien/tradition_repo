@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -62,14 +61,9 @@ public class RelationTest {
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
-        ClientResponse jerseyResponse;
-        try {
-            String fileName = "src/TestFiles/testTradition.xml";
-            jerseyResponse = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1", fileName, "graphml");
-            tradId = Util.getValueFromJson(jerseyResponse, "tradId");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "graphml");
+        tradId = Util.getValueFromJson(jerseyResponse, "tradId");
     }
 
     /**
@@ -635,14 +629,9 @@ public class RelationTest {
          /*
          * load a tradition with no Realtionships to the test DB
          */
-        String newTradId = null;
-        try {
-            String fileName = "src/TestFiles/testTraditionNoRealtions.xml";
-            ClientResponse jerseyResponse = Util.createTraditionFromFile(jerseyTest, "Tradition", "LR", "1", fileName, "graphml");
-            newTradId = Util.getValueFromJson(jerseyResponse, "tradId");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTraditionNoRealtions.xml", "graphml");
+        String newTradId = Util.getValueFromJson(jerseyResponse, "tradId");
 
         ClientResponse response = jerseyTest
                 .resource()
