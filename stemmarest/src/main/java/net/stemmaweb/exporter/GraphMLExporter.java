@@ -126,7 +126,7 @@ public class GraphMLExporter {
             writer.writeEndElement();
 
             for (String prop : props) {
-                if (prop != null && nodeMap.get(prop) != null) {
+                if (nodeMap.containsKey(prop)) {
                     String value;
                     if (prop.equals("rank")) {
                         Long rank;
@@ -157,7 +157,6 @@ public class GraphMLExporter {
             String[] witnesses = {""};
             if (edge.hasProperty("witnesses"))
                 witnesses = (String[])edge.getProperty("witnesses");
-            //String[] witnesses = (String[]) rel.getProperty(property);
             for (String witness : witnesses) {
                 writer.writeStartElement("edge");
 
@@ -183,10 +182,10 @@ public class GraphMLExporter {
                 }
 
                 for (String prop : edge.getPropertyKeys()) {
-                    if (!prop.equals("witnesses") && (!prop.equals("type"))) {
+                    if (relationMap.containsKey(prop) && !prop.equals("witnesses") && (!prop.equals("type"))) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key", relationMap.get(prop)[0]);
-                        writer.writeCharacters(prop);
+                        writer.writeCharacters(edge.getProperty(prop).toString());
                         writer.writeEndElement(); // end data
                     }
                 }
@@ -201,7 +200,6 @@ public class GraphMLExporter {
 
         int edgeCountGraph1 = 0;
         int nodeCountGraph1 = 0;
-        boolean includeRelatedRelations = false;
 
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
@@ -290,16 +288,15 @@ public class GraphMLExporter {
             TraversalDescription relTraversal = db.traversalDescription()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
-            if (includeRelatedRelations)
-                relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.BOTH);
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                    .relationships(ERelations.RELATED, Direction.BOTH);
 
             for (String sectionId: sectionIds) {
                 long max_rank_section = 0;
 
                 // The section node is the tradition node if the sections list is size 0.
                 Node sectionNode = sections.size() == 0 ? traditionNode : db.getNodeById(Long.valueOf(sectionId));
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionId), db);
+                Node sectionStartNode = DatabaseService.getStartNode(sectionId, db);
                 writeNode(writer, sectionNode);
 
                 for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {
@@ -319,13 +316,14 @@ public class GraphMLExporter {
             }
 
 
-            for (Node sectionNode: sections) {
+            for (String sectionId: sectionIds) {
                 // write all outgoing nodes from the current section node
-                for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING)) {
-                    writeEdge(writer, rel, edgeId++);
-                }
+                Node sectionNode = sections.size() == 0 ? traditionNode : db.getNodeById(Long.valueOf(sectionId));
+                if (!sectionId.equals(tradId))
+                    for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING))
+                        writeEdge(writer, rel, edgeId++);
 
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionStartNode = DatabaseService.getStartNode(sectionId, db);
                 for (Relationship rel : relTraversal.traverse(sectionStartNode).relationships()) {
                     if (rel != null) {
                         edgeCountGraph1++;

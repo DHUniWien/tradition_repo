@@ -41,10 +41,8 @@ public class GraphMLParser {
      * @param xmldata - the GraphML file stream
      * @param tradId - the tradition's ID
      * @return Http Response with the id of the imported tradition
-     * @throws FileNotFoundException
      */
-    public Response parseGraphML(InputStream xmldata, String userId, String tradId)
-            throws FileNotFoundException {
+    public Response parseGraphML(InputStream xmldata, String userId, String tradId) {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
@@ -191,6 +189,9 @@ public class GraphMLParser {
                                         case "rank": // These are set as strings in some XML and shouldn't be
                                             keytype = "int";
                                             setTypedProperty(currentNode, attr, keytype, text);
+                                            break;
+                                        case "ac_label": // Rename this key
+                                            setTypedProperty(currentNode, "layerlabel", keytype, text);
                                             break;
                                         default:
                                             setTypedProperty(currentNode, attr, keytype, text);

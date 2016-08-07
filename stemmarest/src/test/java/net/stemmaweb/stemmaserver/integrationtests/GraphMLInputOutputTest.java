@@ -243,13 +243,15 @@ public class GraphMLInputOutputTest {
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
-        String traditionId = null;
-        try {
-            JSONObject content = new JSONObject(response.getEntity(String.class));
-            traditionId = String.valueOf(content.get("tradId"));
-        } catch (JSONException e) {
-            assertTrue(false);
-        }
+        String traditionId = Util.getValueFromJson(response, "tradId");
+
+        // Check for the correct number of reading nodes
+        List<ReadingModel> origReadings = jerseyTest
+                .resource()
+                .path("/tradition/" + traditionId + "/readings")
+                .type(MediaType.APPLICATION_JSON)
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(319, origReadings.size());
 
         // Set the language
         String jsonPayload = "{\"language\":\"Greek\"}";
