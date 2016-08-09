@@ -34,7 +34,7 @@ public class DatabaseService {
                 if (snList.size() == 0 && currentNode.hasLabel(Nodes.TRADITION)) {
                     ArrayList<Node> sectionNodes = getSectionNodes(nodeId, db);
                     for (Node iterNode : sectionNodes) {
-                        startNode = getStartNode(String.valueOf(iterNode.getId()), db);
+                        startNode = getStartNode(String.valueOf(iterNode.getProperty("id")), db);
                         if (startNode != null) {
                             break;
                         }
@@ -68,7 +68,7 @@ public class DatabaseService {
                     ArrayList<Node> sectionNodes = getSectionNodes(nodeId, db);
                     Node tmpEndNode;
                     for (Node iterNode : sectionNodes) {
-                        tmpEndNode = getEndNode(String.valueOf(iterNode.getId()), db);
+                        tmpEndNode = getEndNode(String.valueOf(iterNode.getProperty("id")), db);
                         if (tmpEndNode != null) {
                             endNode = tmpEndNode;
                         }

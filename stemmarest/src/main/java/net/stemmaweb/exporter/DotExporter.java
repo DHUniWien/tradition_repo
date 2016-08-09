@@ -91,8 +91,8 @@ public class DotExporter
             Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
 
             for (Node sectionNode: sections) {
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
-                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
+                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getProperty("id")), db);
                 for (Node node :  db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
@@ -109,7 +109,7 @@ public class DotExporter
 
                     if (node.equals(sectionStartNode) || node.equals(sectionEndNode))
                         continue;
-//                    nodes_in_section += 1L;
+
                     for (Relationship rel : node.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
                         if (rel == null)
                             continue;
@@ -179,7 +179,7 @@ public class DotExporter
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
                             write("n" + relatedRel.getStartNode().getId() + "->" + "n" +
                                     relatedRel.getEndNode().getId() + " [style=dotted, label=\"" +
-                                    relatedRel.getProperty("type").toString() + "\",id=\"e" +
+                                    relatedRel.getProperty("type").toString() + "\", id=\"e" +
                                     edgeId++ + "\"];");
                         }
                     }
