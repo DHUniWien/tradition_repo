@@ -160,9 +160,17 @@ public class GraphMLExporter {
 
     private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
         try {
+            String witnessClass;
             String[] witnesses = {""};
-            if (edge.hasProperty("witnesses"))
-                witnesses = (String[])edge.getProperty("witnesses");
+            if (edge.hasProperty("witnesses")) {
+                witnessClass = "witnesses";
+                witnesses = (String[]) edge.getProperty("witnesses");
+            } else if (edge.hasProperty("a.c.")) {
+                witnesses = (String[]) edge.getProperty("a.c.");
+                witnessClass = "a.c.";
+            } else {
+                witnessClass = "";
+            }
             //String[] witnesses = (String[]) rel.getProperty(property);
             for (String witness : witnesses) {
                 writer.writeStartElement("edge");
@@ -188,8 +196,14 @@ public class GraphMLExporter {
                     writer.writeEndElement(); // end data key
                 }
 
+                if (witnessClass == "a.c.") {
+                    writer.writeStartElement("data");
+                    writer.writeAttribute("key", relationMap.get("extra")[0]);
+                    writer.writeCharacters("(a.c.)");
+                    writer.writeEndElement(); // end data
+                }
                 for (String prop : edge.getPropertyKeys()) {
-                    if (!prop.equals("witnesses") && (!prop.equals("type"))) {
+                    if (!prop.equals("witnesses")  && !prop.equals("a.c.") && !prop.equals("type")) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key", relationMap.get(prop)[0]);
                         writer.writeCharacters(prop);
@@ -299,7 +313,7 @@ public class GraphMLExporter {
             for (Node sectionNode: sections) {
                 long max_rank_section = 0;
 
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
                 writeNode(writer, sectionNode);
 
                 for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {
@@ -315,17 +329,18 @@ public class GraphMLExporter {
                         max_rank_section = Math.max(max_rank_section, rank);
                     }
                 }
+
                 globalRank += max_rank_section;
             }
 
 
             for (Node sectionNode: sections) {
                 // write all outgoing nodes from the current section node
-                for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING)) {
+                for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING, ERelations.COLLATION, ERelations.HAS_END)) {
                     writeEdge(writer, rel, edgeId++);
                 }
 
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
                 for (Relationship rel : relTraversal.traverse(sectionStartNode).relationships()) {
                     if (rel != null) {
                         edgeCountGraph1++;
