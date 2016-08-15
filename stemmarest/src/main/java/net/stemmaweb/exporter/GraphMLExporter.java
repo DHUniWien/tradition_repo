@@ -66,7 +66,7 @@ public class GraphMLExporter {
             put("text", new String[]{"dn15", "string"});
             put("label", new String[]{"dn16", "string"});
             put("name", new String[]{"dn17", "string"});         // Sequence
-            put("baselabel", new String[]{"dn18", "string"});    // Sequence
+            put("base_label", new String[]{"dn18", "string"});    // Sequence
             put("sep_char", new String[]{"dn19", "string"});     // Sequence
         }
     };
