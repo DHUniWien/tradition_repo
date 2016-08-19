@@ -60,7 +60,7 @@ public class GraphMLExporter {
             put("text", new String[]{"dn15", "string"});
             put("label", new String[]{"dn16", "string"});
             put("name", new String[]{"dn17", "string"});         // Sequence
-            put("baselabel", new String[]{"dn18", "string"});    // Sequence
+            put("base_label", new String[]{"dn18", "string"});    // Sequence
             put("sep_char", new String[]{"dn19", "string"});     // Sequence
         }
     };
@@ -154,9 +154,18 @@ public class GraphMLExporter {
 
     private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
         try {
+            String witnessClass;
             String[] witnesses = {""};
-            if (edge.hasProperty("witnesses"))
-                witnesses = (String[])edge.getProperty("witnesses");
+            if (edge.hasProperty("witnesses")) {
+                witnessClass = "witnesses";
+                witnesses = (String[]) edge.getProperty("witnesses");
+            } else if (edge.hasProperty("a.c.")) {
+                witnesses = (String[]) edge.getProperty("a.c.");
+                witnessClass = "a.c.";
+            } else {
+                witnessClass = "";
+            }
+            //String[] witnesses = (String[]) rel.getProperty(property);
             for (String witness : witnesses) {
                 writer.writeStartElement("edge");
 
@@ -181,8 +190,15 @@ public class GraphMLExporter {
                     writer.writeEndElement(); // end data key
                 }
 
+                if (witnessClass.equals("a.c.")) {
+                    writer.writeStartElement("data");
+                    writer.writeAttribute("key", relationMap.get("extra")[0]);
+                    writer.writeCharacters("(a.c.)");
+                    writer.writeEndElement(); // end data
+                }
                 for (String prop : edge.getPropertyKeys()) {
-                    if (relationMap.containsKey(prop) && !prop.equals("witnesses") && (!prop.equals("type"))) {
+                    if (relationMap.containsKey(prop) && !prop.equals("witnesses")
+                            && !prop.equals("a.c.") && !prop.equals("type")) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key", relationMap.get(prop)[0]);
                         writer.writeCharacters(edge.getProperty(prop).toString());
@@ -201,23 +217,19 @@ public class GraphMLExporter {
         int edgeCountGraph1 = 0;
         int nodeCountGraph1 = 0;
 
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
         Node traditionEndNode = DatabaseService.getEndNode(tradId, db);
         if(traditionStartNode==null || traditionEndNode==null) {
             return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
         }
 
-        // Get the section node IDs, if there are any - otherwise get tradition ID string
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
         }
-        ArrayList<String> sectionIds = new ArrayList<>();
         if (sections.size() == 0) {
-            sectionIds.add(tradId);
-        } else {
-            sections.forEach(x -> sectionIds.add(String.valueOf(x.getId())));
+            sections.add(traditionNode);
         }
 
         File file;
@@ -291,12 +303,10 @@ public class GraphMLExporter {
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .relationships(ERelations.RELATED, Direction.BOTH);
 
-            for (String sectionId: sectionIds) {
+            for (Node sectionNode : sections) {
                 long max_rank_section = 0;
 
-                // The section node is the tradition node if the sections list is size 0.
-                Node sectionNode = sections.size() == 0 ? traditionNode : db.getNodeById(Long.valueOf(sectionId));
-                Node sectionStartNode = DatabaseService.getStartNode(sectionId, db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
                 writeNode(writer, sectionNode);
 
                 for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {
@@ -312,18 +322,18 @@ public class GraphMLExporter {
                         max_rank_section = Math.max(max_rank_section, rank);
                     }
                 }
+
                 globalRank += max_rank_section;
             }
 
 
-            for (String sectionId: sectionIds) {
+            for (Node sectionNode : sections) {
                 // write all outgoing nodes from the current section node
-                Node sectionNode = sections.size() == 0 ? traditionNode : db.getNodeById(Long.valueOf(sectionId));
-                if (!sectionId.equals(tradId))
-                    for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING))
-                        writeEdge(writer, rel, edgeId++);
+                for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING, ERelations.COLLATION, ERelations.HAS_END)) {
+                    writeEdge(writer, rel, edgeId++);
+                }
 
-                Node sectionStartNode = DatabaseService.getStartNode(sectionId, db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
                 for (Relationship rel : relTraversal.traverse(sectionStartNode).relationships()) {
                     if (rel != null) {
                         edgeCountGraph1++;

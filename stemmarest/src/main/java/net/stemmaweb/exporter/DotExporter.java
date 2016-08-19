@@ -106,9 +106,9 @@ public class DotExporter
             long global_rank = 0;
             Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
 
-            for (String sectionId: sectionIds) {
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionId), db);
-                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionId), db);
+            for (Node sectionNode: sections) {
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
+                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getProperty("id")), db);
                 for (Node node :  db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
@@ -126,6 +126,7 @@ public class DotExporter
 
                     if (node.equals(sectionStartNode) || node.equals(sectionEndNode))
                         continue;
+
                     for (Relationship rel : node.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
                         if (rel == null)
                             continue;
