@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -89,8 +88,8 @@ public class RelationTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-            relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(16L, loadedRelationship.getStartNode().getId());
@@ -175,8 +174,8 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)
@@ -276,8 +275,8 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
+        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<GraphModel>(){});
+        relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
         relationship = new RelationshipModel();
         relationship.setSource("16");
@@ -294,8 +293,8 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
+        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<GraphModel>(){});
+        relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
         /*
          * Create the model to delete
@@ -341,8 +340,8 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
+        GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
         relationship.setSource("27");
         relationship.setTarget("17");
@@ -358,8 +357,8 @@ public class RelationTest {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
+        GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
         relationship.setScope("document");
 
@@ -405,8 +404,8 @@ public class RelationTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-        ArrayList<GraphModel> tmpGraphModel = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        assertEquals(tmpGraphModel.size(), 1L);
+        GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        assertEquals(tmpGraphModel.getRelationships().size(), 1L);
 
         Tradition tradition = new Tradition(tradId);
         assertEquals(tradition.recalculateRank(20L), true);
@@ -460,9 +459,9 @@ public class RelationTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
-        ArrayList<GraphModel> tmpGraphModel = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        assertEquals(tmpGraphModel.size(), 1L);
-        String relationshipId = tmpGraphModel.get(0).getRelationships().get(0).getId();
+        GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        assertEquals(tmpGraphModel.getRelationships().size(), 1L);
+        String relationshipId = ((RelationshipModel) tmpGraphModel.getRelationships().toArray()[0]).getId();
 
         ClientResponse response = jerseyTest
                 .resource()

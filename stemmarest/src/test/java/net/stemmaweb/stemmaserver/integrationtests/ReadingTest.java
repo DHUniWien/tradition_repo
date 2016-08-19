@@ -297,8 +297,10 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals("showers", readingsAndRelationshipsModel.getReadings().get(0).getText());
-            assertEquals("sweet", readingsAndRelationshipsModel.getReadings().get(1).getText());
+            HashSet<String> rdgWords = new HashSet<>();
+            readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
+            assertTrue(rdgWords.contains("showers"));
+            assertTrue(rdgWords.contains("sweet"));
             assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
 
             testNumberOfReadingsAndWitnesses(31);
@@ -357,7 +359,8 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
+            ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
+            assertEquals("of", firstWord.getText());
             assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
 
             testNumberOfReadingsAndWitnesses(30);
@@ -433,7 +436,8 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
+            ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
+            assertEquals("of", firstWord.getText());
             assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
 
             testNumberOfReadingsAndWitnesses(30);
@@ -859,10 +863,10 @@ public class ReadingTest {
 
         GraphModel readingsAndRelationshipsModel = response
                 .getEntity(GraphModel.class);
-        assertEquals("the", readingsAndRelationshipsModel.getReadings()
-                .get(0).getText());
-        assertEquals("root", readingsAndRelationshipsModel.getReadings()
-                .get(1).getText());
+        HashSet<String> rdgWords = new HashSet<>();
+        readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
+        assertTrue(rdgWords.contains("the"));
+        assertTrue(rdgWords.contains("root"));
         assertEquals(1, readingsAndRelationshipsModel.getRelationships()
                 .size());
 

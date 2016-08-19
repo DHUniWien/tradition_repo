@@ -19,7 +19,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -155,8 +154,8 @@ public class TranspositionTest {
 
         // Make sure it is there
         try (Transaction tx = db.beginTx()) {
-            ArrayList<GraphModel> readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-            relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(theId, (Long) loadedRelationship.getStartNode().getId());
@@ -188,8 +187,8 @@ public class TranspositionTest {
 
         // and make sure it is there.
         try (Transaction tx = db.beginTx()) {
-            ArrayList<GraphModel> readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-            relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(tehId, (Long) loadedRelationship.getStartNode().getId());

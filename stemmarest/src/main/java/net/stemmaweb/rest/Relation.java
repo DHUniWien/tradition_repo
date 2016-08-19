@@ -56,13 +56,15 @@ public class Relation {
         String scope = relationshipModel.getScope();
         if (scope == null) scope=SCOPE_LOCAL;
         if (scope.equals(SCOPE_GLOBAL) || scope.equals(SCOPE_LOCAL)) {
-            ArrayList<GraphModel> entities = new ArrayList<>();
+            GraphModel relationChanges = new GraphModel();
 
             Response response = this.create_local(relationshipModel);
             if (Status.CREATED.getStatusCode() != response.getStatus()) {
                 return response;
             }
-            entities.add((GraphModel)response.getEntity());
+            GraphModel createResult = (GraphModel)response.getEntity();
+            relationChanges.addReadings(createResult.getReadings());
+            relationChanges.addRelationships(createResult.getRelationships());
             if (scope.equals(SCOPE_GLOBAL)) {
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
@@ -100,7 +102,9 @@ public class Relation {
                                     if (Status.CREATED.getStatusCode() != response.getStatus()) {
                                         return response;
                                     } else {
-                                        entities.add((GraphModel) response.getEntity());
+                                        createResult = (GraphModel) response.getEntity();
+                                        relationChanges.addReadings(createResult.getReadings());
+                                        relationChanges.addRelationships(createResult.getRelationships());
                                     }
                                 }
                             }
@@ -113,7 +117,7 @@ public class Relation {
             }
             // List<String> list = new ArrayList<String>();
             // GenericEntity<List<String>> entity = new GenericEntity<List<String>>(list) {};
-            GenericEntity<ArrayList<GraphModel>> entity = new GenericEntity<ArrayList<GraphModel>>(entities) {};
+            GenericEntity<GraphModel> entity = new GenericEntity<GraphModel>(relationChanges) {};
             return Response.status(Status.CREATED).entity(entity).build();
         }
         return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();

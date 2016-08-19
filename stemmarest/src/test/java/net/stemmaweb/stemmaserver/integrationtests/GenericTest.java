@@ -285,17 +285,12 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        ArrayList<GraphModel> tmpGraphModel = response.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        assertEquals(tmpGraphModel.size(), 1L);
-        String node1_id = tmpGraphModel.get(0).getReadings().get(0).getId();
-        String node2_id = tmpGraphModel.get(0).getReadings().get(1).getId();
+        GraphModel tmpGraphModel = response.getEntity(new GenericType<GraphModel>(){});
+        Object[] readings = tmpGraphModel.getReadings().toArray();
+        String node1_id = ((ReadingModel) readings[0]).getId();
+        String node2_id = ((ReadingModel) readings[1]).getId();
         assertTrue((node1_id.equals(n21) && node2_id.equals(n22)) ||
                 (node1_id.equals(n22) && node2_id.equals(n21)));
-        /* just some example code ...
-        ArrayList<GraphModel> readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        GraphModel readingsAndRelationship1 = readingsAndRelationships1.get(0);
-        relationshipId1 = readingsAndRelationship1.getRelationships().get(0).getId();
-        */
 
         /**
         my @v2 = $c->add_relationship( 'n24', 'n23',  # 'the', 'teh' near the end
@@ -315,7 +310,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
+        assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
 
         /**
@@ -393,7 +388,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
+        assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
 
         /**
@@ -976,11 +971,12 @@ public class GenericTest {
 
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         GraphModel graphModel = response.getEntity(GraphModel.class);
+        Object[] rspReadings = graphModel.getReadings().toArray();
         String n21a;
-        if (graphModel.getReadings().get(0).getId().equals(n21)) {
-            n21a = graphModel.getReadings().get(1).getId();
+        if (((ReadingModel) rspReadings[0]).getId().equals(n21)) {
+            n21a = ((ReadingModel) rspReadings[1]).getId();
         } else {
-            n21a = graphModel.getReadings().get(0).getId();
+            n21a = ((ReadingModel) rspReadings[0]).getId();
         }
 
         /**

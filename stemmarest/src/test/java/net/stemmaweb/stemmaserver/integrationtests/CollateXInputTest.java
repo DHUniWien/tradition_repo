@@ -99,7 +99,7 @@ public class CollateXInputTest extends TestCase {
                 .put(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
-        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
+        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
         assertEquals(2, readingsAndRelationships.getReadings().size());
         assertEquals(1, readingsAndRelationships.getRelationships().size());
 

@@ -344,9 +344,10 @@ public abstract class BenchmarkTests {
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, relationship);
-        ArrayList<GraphModel> readingsAndRelationships =
-                actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>() {});
-        String relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
+        GraphModel readingsAndRelationships =
+                actualResponse.getEntity(new GenericType<GraphModel>() {});
+        String relationshipId = ((RelationshipModel) readingsAndRelationships
+                .getRelationships().toArray()[0]).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)
