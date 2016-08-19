@@ -10,7 +10,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
@@ -109,7 +108,7 @@ public class Witness {
                 if (this.sectId == null) {
                     // order the sections by their occurrence in the tradition
                     for (Node n : sectionNodes) {
-                        if (false == n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                        if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
                                 .iterator()
                                 .hasNext()) {
                             db.traversalDescription()
@@ -119,7 +118,7 @@ public class Witness {
                                     .uniqueness(Uniqueness.NODE_GLOBAL)
                                     .traverse(n)
                                     .nodes()
-                                    .forEach(r -> iterationList.add(r));
+                                    .forEach(iterationList::add);
                             break;
                         }
                     }
@@ -177,12 +176,12 @@ public class Witness {
                     Boolean joinPrior = false;
                     for (Node node : traverseReadings(startNode, layer)) {
                         long nodeRank = Long.parseLong(node.getProperty("rank").toString());
+                        joinPrior = booleanValue(node, "join_prior");
                         if (nodeRank >= startRank && nodeRank <= endRank
                                 && !booleanValue(node, "is_lacuna")) {
                             if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
                                 witnessAsText += " ";
                             witnessAsText += node.getProperty("text").toString();
-                            joinPrior = booleanValue(node, "join_prior");
                         }
                     }
                 }
