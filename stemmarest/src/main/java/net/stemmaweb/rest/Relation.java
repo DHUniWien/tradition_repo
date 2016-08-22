@@ -244,15 +244,15 @@ public class Relation {
      * Remove all instances of the relationship specified.
      *
      * @param relationshipModel - the JSON specification of the relationship(s) to delete
-     * @return HTTP Response 404 when no node was found, 200 When relationships
-     *         where removed
+     * @return HTTP Response 404 when no node was found, 200 and list of relationship edges
+     *    removed on success
      */
     @DELETE
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
 
     public Response delete(RelationshipModel relationshipModel) {
-        long deleted_relations = 0L; // Number of deleted relationships
+        ArrayList<RelationshipModel> deleted = new ArrayList<>();
 
         switch (relationshipModel.getScope()) {
             case "local":
@@ -277,8 +277,9 @@ public class Relation {
                     if (relationshipAtoB == null) {
                         return Response.status(Status.NOT_FOUND).entity(0L).build();
                     } else {
+                        RelationshipModel relInfo = new RelationshipModel(relationshipAtoB);
                         relationshipAtoB.delete();
-                        deleted_relations += 1L;
+                        deleted.add(relInfo);
                     }
                     tx.success();
                 } catch (Exception e) {
@@ -305,8 +306,9 @@ public class Relation {
                                     || rel.getEndNode().getProperty("text").equals(readingA.getProperty("text")))
                                     && (rel.getStartNode().getProperty("text").equals(readingB.getProperty("text"))
                                     || rel.getEndNode().getProperty("text").equals(readingB.getProperty("text")))) {
+                                RelationshipModel relInfo = new RelationshipModel(rel);
                                 rel.delete();
-                                deleted_relations += 1L;
+                                deleted.add(relInfo);
                             }
                         }
                     }
@@ -319,7 +321,7 @@ public class Relation {
             default:
                 return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
         }
-        return Response.status(Response.Status.OK).entity(deleted_relations).build();
+        return Response.status(Response.Status.OK).entity(deleted).build();
     }
     
     /**

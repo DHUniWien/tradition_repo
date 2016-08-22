@@ -35,7 +35,7 @@ import static org.junit.Assert.*;
  * @author PSE FS 2015 Team2
  *
  */
-public class GraphMLInputOutputTest {
+public class StemmawebInputOutputTest {
 
     private GraphDatabaseService db;
     // private GraphMLExporter exportResource;

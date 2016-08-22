@@ -329,7 +329,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(1));
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
 
 
         /**
@@ -348,7 +348,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(2L));
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 2);
 
 
         /**
@@ -367,7 +367,6 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(0L));
 
 
         /**
@@ -409,7 +408,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(1L));
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
 
         // we don't need this, because we are going to get all relationships
         /* MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
