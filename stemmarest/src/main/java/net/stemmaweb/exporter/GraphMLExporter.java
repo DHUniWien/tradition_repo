@@ -5,9 +5,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -20,11 +18,7 @@ import net.stemmaweb.rest.ERelations;
 
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.w3c.dom.Document;
@@ -40,6 +34,7 @@ public class GraphMLExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    // TODO these maps should be generated based on what is actually being exported!!
     private HashMap<String,String[]> nodeMap = new HashMap<String, String[]>() {
         {
             put("grammar_invalid", new String[]{"dn0", "boolean"});
@@ -92,6 +87,7 @@ public class GraphMLExporter {
             put("user", new String[]{"dg5", "string"});
             put("version", new String[]{"dg6", "string"});
             put("direction", new String[]{"dg7", "string"});
+            put("layerlabel", new String[]{"dg8", "string"});
         }
     };
 
@@ -154,18 +150,27 @@ public class GraphMLExporter {
 
     private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
         try {
-            String witnessClass;
-            String[] witnesses = {""};
-            if (edge.hasProperty("witnesses")) {
-                witnessClass = "witnesses";
-                witnesses = (String[]) edge.getProperty("witnesses");
-            } else if (edge.hasProperty("a.c.")) {
-                witnesses = (String[]) edge.getProperty("a.c.");
-                witnessClass = "a.c.";
-            } else {
-                witnessClass = "";
+            Set acWitnesses = new HashSet();
+            String[] witnesses = (edge.hasProperty("witnesses")) ? (String[])edge.getProperty("witnesses") : null;
+            if (edge.hasProperty("a.c.")) {
+                // append "a.c."-witnesses to witnesses and put them into the acWitnesses set to
+                // distinguish them later, when we are writing the properties (see below)
+                Collections.addAll(acWitnesses, (String[]) edge.getProperty("a.c."));
+                if (null == witnesses) {
+                    witnesses = (String[]) edge.getProperty("a.c.");
+                } else {
+                    String[] acWits = (String[]) edge.getProperty("a.c.");
+                    String[] combinedWits = new String[witnesses.length + acWits.length];
+                    System.arraycopy(witnesses, 0, combinedWits, 0, witnesses.length);
+                    System.arraycopy(acWits, 0, combinedWits, witnesses.length, acWits.length);
+                    witnesses = combinedWits;
+                }
+            } else if (null == witnesses) {
+                // continue with a none named witnesses
+                witnesses = new String[] {""};
             }
-            //String[] witnesses = (String[]) rel.getProperty(property);
+
+            String propKey;
             for (String witness : witnesses) {
                 writer.writeStartElement("edge");
 
@@ -190,18 +195,20 @@ public class GraphMLExporter {
                     writer.writeEndElement(); // end data key
                 }
 
-                if (witnessClass.equals("a.c.")) {
-                    writer.writeStartElement("data");
-                    writer.writeAttribute("key", relationMap.get("extra")[0]);
-                    writer.writeCharacters("(a.c.)");
-                    writer.writeEndElement(); // end data
-                }
                 for (String prop : edge.getPropertyKeys()) {
-                    if (relationMap.containsKey(prop) && !prop.equals("witnesses")
-                            && !prop.equals("a.c.") && !prop.equals("type")) {
+                    if (!prop.equals("witnesses")  && !prop.equals("type")) {
+                        if (prop.equals("a.c.")) {
+                            if (acWitnesses.contains(witness)) {
+                                propKey = relationMap.get("extra")[0];
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            propKey = relationMap.get(prop)[0];
+                        }
                         writer.writeStartElement("data");
-                        writer.writeAttribute("key", relationMap.get(prop)[0]);
-                        writer.writeCharacters(edge.getProperty(prop).toString());
+                        writer.writeAttribute("key", propKey);
+                        writer.writeCharacters(prop);
                         writer.writeEndElement(); // end data
                     }
                 }
