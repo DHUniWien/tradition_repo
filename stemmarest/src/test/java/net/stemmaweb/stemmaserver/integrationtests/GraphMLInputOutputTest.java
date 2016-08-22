@@ -16,13 +16,10 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.GraphMLExporterStemmaweb;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,8 +38,8 @@ import static org.junit.Assert.*;
 public class GraphMLInputOutputTest {
 
     private GraphDatabaseService db;
-    private GraphMLExporter exportResource;
-    // private GraphMLExporterStemmaweb exportResource;
+    // private GraphMLExporter exportResource;
+    private GraphMLExporterStemmaweb exportResource;
 
     private JerseyTest jerseyTest;
 
@@ -52,8 +49,8 @@ public class GraphMLInputOutputTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
 
-        exportResource = new GraphMLExporter();
-        // exportResource = new GraphMLExporterStemmaweb();
+        // exportResource = new GraphMLExporter();
+        exportResource = new GraphMLExporterStemmaweb();
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();

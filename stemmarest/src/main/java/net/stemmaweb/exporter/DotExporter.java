@@ -69,16 +69,13 @@ public class DotExporter
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        // Get the section node IDs, if there are any - otherwise get tradition ID string
+        // Get the section nodess, if there are any - otherwise get tradition node
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
         }
-        ArrayList<String> sectionIds = new ArrayList<>();
         if (sections.size() == 0) {
-            sectionIds.add(tradId);
-        } else {
-            sections.forEach(x -> sectionIds.add(String.valueOf(x.getId())));
+            sections.add(traditionNode);
         }
 
         File output;

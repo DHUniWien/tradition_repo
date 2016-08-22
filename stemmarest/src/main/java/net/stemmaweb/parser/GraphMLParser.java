@@ -149,7 +149,8 @@ public class GraphMLParser {
                                     }
                                 } else if (currentNode != null) {
                                     // Working on either the tradition itself, or a node.
-                                    String attr = keymap.get(reader.getAttributeValue("", "key"));
+                                    String attrValue = reader.getAttributeValue("", "key");
+                                    String attr = keymap.get(attrValue);
                                     String keytype = keytypes.get(attr);
                                     String text = reader.getElementText();
                                     switch (attr) {
