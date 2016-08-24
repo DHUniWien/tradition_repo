@@ -48,7 +48,7 @@ public class Relation {
      *         and the readings involved in JSON on success or an ERROR in JSON
      *         format
      */
-    @PUT
+    @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response create(RelationshipModel relationshipModel) {

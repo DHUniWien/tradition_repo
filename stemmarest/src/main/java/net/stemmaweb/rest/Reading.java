@@ -76,7 +76,7 @@ public class Reading {
      *            this:[{\"key\":\"language\",\"newProperty\":\"german\"}]
      * @return ok response with a model of the modified reading in json format
      */
-    @POST
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
@@ -115,7 +115,7 @@ public class Reading {
      *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
      *         with a detailed message else
      */
-    @PUT
+    @POST
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -358,7 +358,7 @@ public class Reading {
      * @return true if readings can be merged, false if not
      */
     private boolean canBeMerged(Node stayingReading, Node deletingReading) {
-        /**
+        /*
          if (!doContainSameText(stayingReading, deletingReading)) {
          errorMessage = "Readings to be merged do not contain the same text";
          return false;
