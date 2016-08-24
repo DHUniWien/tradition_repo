@@ -2,10 +2,7 @@ package net.stemmaweb.exporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
@@ -154,38 +151,36 @@ public class GraphMLExporter {
 
     private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
         try {
-            Set acWitnesses = new HashSet();
-            String[] witnesses = (edge.hasProperty("witnesses")) ? (String[])edge.getProperty("witnesses") : null;
-            if (edge.hasProperty("a.c.")) {
-                // append "a.c."-witnesses to witnesses and put them into the acWitnesses set to
-                // distinguish them later, when we are writing the properties (see below)
-                Collections.addAll(acWitnesses, (String[]) edge.getProperty("a.c."));
-                if (null == witnesses) {
-                    witnesses = (String[]) edge.getProperty("a.c.");
-                } else {
-                    String[] acWits = (String[]) edge.getProperty("a.c.");
-                    String[] combinedWits = new String[witnesses.length + acWits.length];
-                    System.arraycopy(witnesses, 0, combinedWits, 0, witnesses.length);
-                    System.arraycopy(acWits, 0, combinedWits, witnesses.length, acWits.length);
-                    witnesses = combinedWits;
-                }
-            } else if (null == witnesses) {
-                // continue with a none named witnesses
-                witnesses = new String[] {""};
+            if (((Collection<?>)edge.getPropertyKeys()).size() > 1) {
+                int a = 0;
             }
+            if (edge.isType(ERelations.SEQUENCE)) {
+                String[] witnesses = (edge.hasProperty("witnesses")) ? (String[]) edge.getProperty("witnesses") : null;
+                if (witnesses != null)
+                    writeEdgeToStream(writer, witnesses, edge, edgeId, false);
+                String[] specialWitnesses = (edge.hasProperty("a.c.")) ? (String[]) edge.getProperty("a.c.") : null;
+                if (specialWitnesses != null)
+                    writeEdgeToStream(writer, specialWitnesses, edge, edgeId, true);
+            } else if (edge.isType(ERelations.RELATED)){
+                writeEdgeToStream(writer, new String[] {""}, edge, edgeId, false);
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-            String propKey;
+
+    private void writeEdgeToStream(XMLStreamWriter writer, String[] witnesses, Relationship edge, long edgeId, boolean isExtra) {
+        try {
+            if (isExtra==true) {
+                int a = 0;
+            }
             for (String witness : witnesses) {
                 writer.writeStartElement("edge");
 
                 writer.writeAttribute("source", edge.getStartNode().getId() + "");
                 writer.writeAttribute("target", edge.getEndNode().getId() + "");
-                writer.writeAttribute("id", "e" + edgeId + witness);
-
-                writer.writeStartElement("data");
-                writer.writeAttribute("key", relationMap.get("type")[0]);
-                writer.writeCharacters(edge.getType().name());
-                writer.writeEndElement(); // end data
+                writer.writeAttribute("id", "e" + edgeId + witness + ((isExtra) ? "ac" : ""));
 
                 if (edge.isType(ERelations.SEQUENCE)) {
                     writer.writeStartElement("data");
@@ -194,6 +189,11 @@ public class GraphMLExporter {
                     writer.writeEndElement(); // end data key
                 } else if (edge.isType(ERelations.RELATED) && edge.hasProperty("type")) {
                     writer.writeStartElement("data");
+                    writer.writeAttribute("key", relationMap.get("type")[0]);
+                    writer.writeCharacters(edge.getType().name());
+                    writer.writeEndElement(); // end data
+
+                    writer.writeStartElement("data");
                     writer.writeAttribute("key", relationMap.get("type_related")[0]);
                     writer.writeCharacters(edge.getProperty("type").toString());
                     writer.writeEndElement(); // end data key
@@ -201,18 +201,11 @@ public class GraphMLExporter {
 
                 for (String prop : edge.getPropertyKeys()) {
                     if (!prop.equals("witnesses")  && !prop.equals("type")) {
-                        if (prop.equals("a.c.")) {
-                            if (acWitnesses.contains(witness)) {
-                                propKey = relationMap.get("extra")[0];
-                            } else {
-                                continue;
-                            }
-                        } else {
-                            propKey = relationMap.get(prop)[0];
-                        }
+                        if ("a.c."==prop && true!=isExtra)
+                            continue;
                         writer.writeStartElement("data");
-                        writer.writeAttribute("key", propKey);
-                        writer.writeCharacters(prop);
+                        writer.writeAttribute("key", (true==isExtra) ? relationMap.get("extra")[0] :relationMap.get(prop)[0]);
+                        writer.writeCharacters((true==isExtra) ? "(a.c.)" : edge.getProperty(prop).toString());
                         writer.writeEndElement(); // end data
                     }
                 }
@@ -223,11 +216,12 @@ public class GraphMLExporter {
         }
     }
 
+
     public Response parseNeo4J(String tradId) {
 
         int edgeCountGraph1 = 0;
         int nodeCountGraph1 = 0;
-        boolean includeRelatedRelations = false;
+        boolean includeRelatedRelations = true;
 
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
         Node traditionEndNode = DatabaseService.getEndNode(tradId, db);
@@ -245,7 +239,6 @@ public class GraphMLExporter {
         }
 
         File file;
-        String result;
         try (Transaction tx = db.beginTx()) {
             file = File.createTempFile("output", ".graphml");
             OutputStream out = new FileOutputStream(file);
@@ -314,7 +307,7 @@ public class GraphMLExporter {
                     .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
             if (includeRelatedRelations)
-                relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.BOTH);
+                    relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.OUTGOING);
 
             for (Node sectionNode: sections) {
                 long max_rank_section = 0;
@@ -374,20 +367,21 @@ public class GraphMLExporter {
             org.w3c.dom.Node nodesCount = attr.getNamedItem("parse.nodes");
             nodesCount.setTextContent(nodeCountGraph1+"");
 
-            // Now pull the string back out of the output file.
-            byte[] encDot = Files.readAllBytes(file.toPath());
-            result = new String(encDot, Charset.forName("utf-8"));
-
-            // Remove the following line, if you want to keep the created file
-            Files.deleteIfExists(file.toPath());
+            // TODO What is the point of this transformer call?
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+            StreamResult resultFile = new StreamResult(file);
+            transformer.transform(source, resultFile);
 
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR)
-                    .entity("An internal error occured during GraphML-export")
+            return Response
+                    .status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error: Tradition could not be exported!")
                     .build();
         }
-        return Response.ok().entity(result).build();
+        return Response.ok(file.toString(), MediaType.APPLICATION_XML).build();
     }
 }

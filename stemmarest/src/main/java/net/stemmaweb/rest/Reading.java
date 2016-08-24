@@ -52,10 +52,8 @@ public class Reading {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getReading() {
         ReadingModel reading;
-        Node readingNode;
         try (Transaction tx = db.beginTx()) {
-            readingNode = db.getNodeById(readId);
-            reading = new ReadingModel(readingNode);
+            reading = new ReadingModel(db.getNodeById(readId));
             tx.success();
         } catch (NotFoundException e) {
             return Response.status(Status.NO_CONTENT).build();

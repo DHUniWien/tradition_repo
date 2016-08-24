@@ -10,7 +10,7 @@ import javax.ws.rs.core.Response.Status;
 
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.exporter.GraphMLExporterStemmaweb;
+import net.stemmaweb.exporter.GraphMLStemmawebExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.DotParser;
@@ -753,7 +753,7 @@ public class Tradition {
     public Response getGraphMLStemmaweb() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-        GraphMLExporterStemmaweb parser = new GraphMLExporterStemmaweb();
+        GraphMLStemmawebExporter parser = new GraphMLStemmawebExporter();
         return parser.parseNeo4J(traditionId);
     }
 

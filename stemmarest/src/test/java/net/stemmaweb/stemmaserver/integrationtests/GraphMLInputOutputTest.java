@@ -21,7 +21,7 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.exporter.GraphMLExporterStemmaweb;
+import net.stemmaweb.exporter.GraphMLStemmawebExporter;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -46,7 +46,7 @@ public class GraphMLInputOutputTest {
 
     private GraphDatabaseService db;
     private GraphMLExporter exportResource;
-    // private GraphMLExporterStemmaweb exportResource;
+    private GraphMLStemmawebExporter exportStemmawebResource;
 
     private JerseyTest jerseyTest;
 
@@ -56,7 +56,7 @@ public class GraphMLInputOutputTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         exportResource = new GraphMLExporter();
-        // exportResource = new GraphMLExporterStemmaweb();
+        exportStemmawebResource = new GraphMLStemmawebExporter();
 
         // Populate the test database with the root node and a user with id 1
         DatabaseService.createRootNode(db);
@@ -192,7 +192,7 @@ public class GraphMLInputOutputTest {
         }
 
         assertNotNull(traditionId);
-        Response actualResponse = exportResource.parseNeo4J(traditionId);
+        Response actualResponse = exportStemmawebResource.parseNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 
         String xmlOutput = actualResponse.getEntity().toString();
