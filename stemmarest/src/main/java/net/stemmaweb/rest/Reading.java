@@ -10,13 +10,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.model.CharacterModel;
-import net.stemmaweb.model.DuplicateModel;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.KeyPropertyModel;
-import net.stemmaweb.model.ReadingChangePropertyModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
@@ -105,16 +99,113 @@ public class Reading {
     }
 
     /**
-     * Duplicates a reading in a specific tradition. Opposite of merge
+     * Gets all readings related to the given reading.
      *
-     * @param duplicateModel
-     *            a model in JSON containing the readings to be duplicated and
-     *            the witnesses of the old readings which the duplicated new
-     *            readings should now belong to
-     * @return a GraphModel in JSON containing all the created readings and the
-     *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
-     *         with a detailed message else
+     * @param filterTypes - a list of relationship types to filter by
+     * @return a list of ReadingModels in JSON containing all related readings
+     *
      */
+    @GET
+    @Path("related")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
+        ArrayList<ReadingModel> relatedReadings = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            Node reading = db.getNodeById(readId);
+            for (Relationship r : reading.getRelationships(ERelations.RELATED)) {
+                if (filterTypes.size() > 0) {
+                    String relType = r.getProperty("type").toString();
+                    if (!filterTypes.contains(relType))
+                        continue;
+                }
+                relatedReadings.add(new ReadingModel(r.getOtherNode(reading)));
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(relatedReadings).build();
+    }
+
+    /**
+     * Gets all readings related to the given reading.
+     *
+     * @return a list of ReadingModels in JSON containing all related readings
+     *
+     */
+    @DELETE
+    @Path("relations")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response deleteAllRelations() {
+        ArrayList<RelationshipModel> deleted = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            Node reading = db.getNodeById(readId);
+            for (Relationship rel : reading.getRelationships(ERelations.RELATED)) {
+                deleted.add(new RelationshipModel(rel));
+                rel.delete();
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(deleted).build();
+    }
+
+
+    /**
+     * Gets the list of witnesses that carry the given reading.
+     *
+     * @return a list of WitnessModels that are associated with the reading
+     *
+     */
+    @GET
+    @Path("witnesses")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response getReadingWitnesses() {
+        HashSet<String> normalWitnesses = new HashSet<>();
+
+        // Look at all incoming SEQUENCE relationships to the reading
+        try (Transaction tx = db.beginTx()) {
+            Node reading = db.getNodeById(readId);
+            // First get the "normal" witnesses
+            Iterable<Relationship> readingIncoming = reading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+            for (Relationship r : readingIncoming)
+                if (r.hasProperty("witnesses"))
+                    Collections.addAll(normalWitnesses, (String[]) r.getProperty("witnesses"));
+            // Now look for the specials, and add them if they are not in the normal witnesses
+            for (Relationship r : readingIncoming) {
+                for (String prop : r.getPropertyKeys()) {
+                    if (prop.equals("witnesses"))
+                        continue;
+                    String[] specialWits = (String[]) r.getProperty(prop);
+                    for (String w : specialWits) {
+                        if (normalWitnesses.contains(w))
+                            continue;
+                        normalWitnesses.add(w + " (" + prop + ")");
+                    }
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+
+        return Response.ok(normalWitnesses).build();
+    }
+        /**
+         * Duplicates a reading in a specific tradition. Opposite of merge
+         *
+         * @param duplicateModel
+         *            a model in JSON containing the readings to be duplicated and
+         *            the witnesses of the old readings which the duplicated new
+         *            readings should now belong to
+         * @return a GraphModel in JSON containing all the created readings and the
+         *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
+         *         with a detailed message else
+         */
     @POST
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
