@@ -955,7 +955,7 @@ public class GenericTest {
                     );
             my $c = $t->collation;
         **/
-        String fName = "src/TestFiles/COLLATEX-16.xml";
+        String fName = "src/TestFiles/Collatex-16.xml";
         String fType = "graphml";
         String tName = "Tradition";
         String tDir = "LR";
