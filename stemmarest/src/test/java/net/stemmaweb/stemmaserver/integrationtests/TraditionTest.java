@@ -616,7 +616,7 @@ public class TraditionTest {
                 jerseyResponse = jerseyTest.resource()
                         .path("/tradition/" + tradId + "/relation")
                         .type(MediaType.APPLICATION_JSON)
-                        .put(ClientResponse.class, rel);
+                        .post(ClientResponse.class, rel);
                 assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
             }
 
@@ -631,7 +631,7 @@ public class TraditionTest {
             jerseyResponse = jerseyTest.resource()
                     .path("/tradition/" + tradId + "/relation")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, txrel);
+                    .post(ClientResponse.class, txrel);
             assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
             tx.success();
         }

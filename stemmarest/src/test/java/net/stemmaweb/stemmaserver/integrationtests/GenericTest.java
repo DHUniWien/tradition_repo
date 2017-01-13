@@ -283,7 +283,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         GraphModel tmpGraphModel = response.getEntity(new GenericType<GraphModel>(){});
         Object[] readings = tmpGraphModel.getReadings().toArray();
@@ -308,7 +308,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
@@ -385,7 +385,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
@@ -498,7 +498,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
@@ -514,7 +514,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
     }
 
@@ -574,7 +574,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
 
@@ -630,7 +630,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
@@ -725,7 +725,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -746,7 +746,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship2);
+                .post(ClientResponse.class, relationship2);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -769,7 +769,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship3);
+                .post(ClientResponse.class, relationship3);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
         /**
@@ -791,7 +791,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship4);
+                .post(ClientResponse.class, relationship4);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -812,7 +812,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship5);
+                .post(ClientResponse.class, relationship5);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     }
 
@@ -879,7 +879,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /**

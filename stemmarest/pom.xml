@@ -191,7 +191,7 @@
     </dependencies>
     <properties>
         <powermock.version>1.6.1</powermock.version>
-        <neo4j-version>2.2.7</neo4j-version>
+        <neo4j-version>2.2.10</neo4j-version>
         <jersey-version>1.19</jersey-version>
     </properties>
    

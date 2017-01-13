@@ -84,7 +84,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -122,7 +122,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
     }
 
@@ -145,7 +145,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                 actualResponse.getStatus());
     }
@@ -173,7 +173,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
         relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
 
@@ -274,7 +274,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<GraphModel>(){});
         relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
@@ -292,7 +292,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<GraphModel>(){});
         relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
@@ -339,7 +339,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<GraphModel>(){});
         relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
@@ -356,7 +356,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<GraphModel>(){});
         relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
@@ -402,7 +402,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
         GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
         assertEquals(tmpGraphModel.getRelationships().size(), 1L);
@@ -423,7 +423,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
 
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
@@ -457,7 +457,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
         GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
         assertEquals(tmpGraphModel.getRelationships().size(), 1L);
@@ -511,7 +511,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
@@ -555,7 +555,7 @@ public class RelationTest {
         ClientResponse actualResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         // TODO (SK): ->TLA fix ErrorMessage (this one does not exist). Maybe we can define an enum?

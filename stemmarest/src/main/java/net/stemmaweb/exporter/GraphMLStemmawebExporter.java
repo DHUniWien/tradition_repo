@@ -35,12 +35,12 @@ import org.w3c.dom.Document;
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 /**
- * This class provides methods for exporting GraphMl (XML) File from Neo4J
+ * This class provides methods for exporting GraphMl (XML) File from Neo4J in the old Stemmaweb format
  *
  * @author PSE FS 2015 Team2
  */
 
-public class GraphMLExporterStemmaweb {
+public class GraphMLStemmawebExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -213,7 +213,7 @@ public class GraphMLExporterStemmaweb {
                     if(prop!=null && !prop.equals("tradition_id")) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key",nodeMap.get(prop)[0]);
-                        writer.writeCharacters(node.getProperty(prop).toString());
+                        writer.writeCharacters((prop.equals("a.c.")) ? "(a.c.)" :node.getProperty(prop).toString());
                         writer.writeEndElement();
                     }
                 }

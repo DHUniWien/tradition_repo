@@ -12,6 +12,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -63,9 +64,10 @@ public class GraphMLParser {
 
         // Some state variables
         Node traditionNode;             // this will be the entry point of the graph
-        Node currentNode = null;        // holds the current node
+        Node currentNode = null;        // holds the current
         String currentGraph = null;     // holds the ID of the current XML graph element
         Relationship currentRel = null; // holds the current relationship
+        RelationshipModel currentRelModel = null;
         String edgeWitness = null;
         String witnessClass = "witnesses";
         String userIdFile = null;
@@ -87,20 +89,69 @@ public class GraphMLParser {
                             // Finished working on currentNode
                             currentNode = null;
                         } else if (reader.getLocalName().equals("edge")) {
-                            // If this is an edge relationship, record the witness information
-                            // either in "witnesses" or in the field indicated by "extra"
-                            if (currentRel.isType(ERelations.SEQUENCE)) {
+                            Node from = db.getNodeById(idToNeo4jId.get(currentRelModel.getSource()));
+                            Node to = db.getNodeById(idToNeo4jId.get(currentRelModel.getTarget()));
+
+                            ERelations relKind = (currentRelModel.getType() != null) ?
+                                    ERelations.RELATED : ERelations.SEQUENCE;
+                            Relationship relship = null;
+                            // Sequence relationships are specified multiple times in the graph, once
+                            // per witness. Reading relationships should be specified only once.
+                            if (from.hasRelationship(relKind, Direction.BOTH)) {
+                                for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
+                                    if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
+                                        // If a RELATED link already exists, we have a problem.
+                                        if (relKind.equals(ERelations.RELATED))
+                                            return Response.status(Response.Status.BAD_REQUEST)
+                                                    .entity("Error: Tradition specifies the reading relationship " +
+                                                            currentRelModel.getScope() + " -- " + currentRelModel.getTarget() +
+                                                            "twice")
+                                                    .build();
+                                        // It's a SEQUENCE link, so we are good.
+                                        relship = qr;
+                                        break;
+                                    }
+                                }
+                            }
+                            // If not, create it.
+                            if (relship == null)
+                                relship = from.createRelationshipTo(to, relKind);
+
+                            if (relKind.equals(ERelations.RELATED)) {
+                                if (currentRelModel.getType() != null)
+                                    relship.setProperty("type", currentRelModel.getType());
+                                if (currentRelModel.getA_derivable_from_b() != null)
+                                    relship.setProperty("a_derivable_from_b", currentRelModel.getA_derivable_from_b());
+                                if (currentRelModel.getAlters_meaning() != null)
+                                    relship.setProperty("alters_meaning", currentRelModel.getAlters_meaning());
+                                if (currentRelModel.getB_derivable_from_a() != null)
+                                    relship.setProperty("b_derivable_from_a", currentRelModel.getB_derivable_from_a());
+                                if (currentRelModel.getDisplayform() != null)
+                                    relship.setProperty("displayform", currentRelModel.getDisplayform());
+                                if (currentRelModel.getIs_significant() != null)
+                                    relship.setProperty("is_significant", currentRelModel.getIs_significant());
+                                if (currentRelModel.getNon_independent() != null)
+                                    relship.setProperty("non_independent", currentRelModel.getNon_independent());
+                                if (currentRelModel.getReading_a() != null)
+                                    relship.setProperty("reading_a", currentRelModel.getReading_a());
+                                if (currentRelModel.getReading_b() != null)
+                                    relship.setProperty("reading_b", currentRelModel.getReading_b());
+                                if (currentRelModel.getScope() != null)
+                                    relship.setProperty("scope", currentRelModel.getScope());
+                            } else {
+                                // If this is an edge relationship, record the witness information
+                                // either in "witnesses" or in the field indicated by "extra"
+
                                 String[] witList = {};
-                                if (currentRel.hasProperty(witnessClass))
-                                    witList = (String []) currentRel.getProperty(witnessClass);
+                                if (relship.hasProperty(witnessClass))
+                                    witList = (String[]) relship.getProperty(witnessClass);
                                 ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
                                 currentWits.add(edgeWitness);
-                                currentRel.setProperty(witnessClass, currentWits.toArray(new String[currentWits.size()]));
+                                relship.setProperty(witnessClass, currentWits.toArray(new String[currentWits.size()]));
                             }
-
                             // Finished working on currentRel
                             witnessClass = "witnesses";
-                            currentRel = null;
+                            currentRelModel = null;
                         }
                         break;
                     case XMLStreamConstants.END_DOCUMENT:
@@ -110,24 +161,37 @@ public class GraphMLParser {
                         String local_name = reader.getLocalName();
                         switch (local_name) {
                             case "data":
-                                if (currentRel != null) {
+                                if (currentRelModel != null) {
                                     // We are working on a relationship node. Apply the data.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
                                     String keytype = keytypes.get(attr);
                                     String val = reader.getElementText();
-
                                     switch (attr) {
                                         case "id":
                                             break;
-                                        case "witness":
-                                            // Check that this is a sequence relationship
-                                            assert currentRel.isType(ERelations.SEQUENCE);
-                                            edgeWitness = val;
-                                            // Store the existence of this witness
-                                            witnesses.put(val, true);
+                                        case "a_derivable_from_b":
+                                            if (val.equals("1"))
+                                                currentRelModel.setA_derivable_from_b(true);
+                                            else
+                                                currentRelModel.setA_derivable_from_b(false);
+                                            break;
+                                        case "alters_meaning":
+                                            currentRelModel.setAlters_meaning(Long.parseLong(val));
+                                            break;
+                                        case "annotation":
+                                            currentRelModel.setAnnotation(val);
+                                            break;
+                                        case "b_derivable_from_a":
+                                            if (val.equals("1"))
+                                                currentRelModel.setB_derivable_from_a(true);
+                                            else
+                                                currentRelModel.setB_derivable_from_a(false);
+                                            break;
+                                        case "displayform":
+                                            currentRelModel.setDisplayform(val);
                                             break;
                                         case "extra":
-                                            assert currentRel.isType(ERelations.SEQUENCE);
+  //                                          assert currentRel.isType(ERelations.SEQUENCE);
                                             // If the key type is a Boolean, the witness class is always a.c.;
                                             // otherwise it is the value of val.
                                             if (keytype.equals("boolean"))
@@ -142,21 +206,48 @@ public class GraphMLParser {
                                             attr = "type";
                                             setTypedProperty(currentRel, attr, keytype, val);
                                             break;
+                                        case "is_significant":
+                                            currentRelModel.setIs_significant(val);
+                                            break;
+                                        case "non_independent":
+                                            if (val.equals("1"))
+                                                currentRelModel.setNon_independent(true);
+                                            else
+                                                currentRelModel.setNon_independent(false);
+                                            break;
+                                        case "reading_a":
+                                            currentRelModel.setReading_a(val);
+                                            break;
+                                        case "reading_b":
+                                            currentRelModel.setReading_b(val);
+                                            break;
+                                        case "scope":
+                                            currentRelModel.setScope(val);
+                                            break;
+                                        case "type":
+                                            currentRelModel.setType(val);
+                                            break;
+                                        case "witness":
+                                            // Check that this is a sequence relationship
+//                                            assert currentRel.isType(ERelations.SEQUENCE);
+                                            edgeWitness = val;
+                                            // Store the existence of this witness
+                                            witnesses.put(val, true);
+                                            break;
                                         default:
-                                            assert currentRel.isType(ERelations.RELATED);
-                                            setTypedProperty(currentRel, attr, keytype, val);
                                             break;
                                     }
                                 } else if (currentNode != null) {
                                     // Working on either the tradition itself, or a node.
-                                    String attrValue = reader.getAttributeValue("", "key");
-                                    String attr = keymap.get(attrValue);
+                                    String attr = keymap.get(reader.getAttributeValue("", "key"));
                                     String keytype = keytypes.get(attr);
                                     String text = reader.getElementText();
                                     switch (attr) {
                                         // Tradition node attributes
                                         case "name":
                                             // TODO is this redundant?
+                                            if (currentNode.hasProperty("label") && currentNode.getProperty("label").equals("TRADITION"))
+                                                break;
                                             if (currentNode.hasProperty("name")
                                                     && ((String)currentNode.getProperty("name")).length() == 0
                                                     && text.length() > 0) {
@@ -200,6 +291,14 @@ public class GraphMLParser {
                                 }
                                 break;
                             case "edge":
+                                currentRelModel = new RelationshipModel();
+                                currentRelModel.setSource(reader.getAttributeValue("", "source"));
+                                currentRelModel.setTarget(reader.getAttributeValue("", "target"));
+                                currentRelModel.setA_derivable_from_b(null);
+                                currentRelModel.setAlters_meaning(null);
+                                currentRelModel.setB_derivable_from_a(null);
+                                currentRelModel.setNon_independent(null);
+/*
                                 String sourceName = reader.getAttributeValue("", "source");
                                 String targetName = reader.getAttributeValue("", "target");
                                 Node from = db.getNodeById(idToNeo4jId.get(sourceName));
@@ -227,6 +326,7 @@ public class GraphMLParser {
                                 // If not, create it.
                                 if (currentRel == null)
                                     currentRel = from.createRelationshipTo(to, relKind);
+*/
                                 break;
                             case "node":
                                 if (!currentGraph.equals("relationships")) {

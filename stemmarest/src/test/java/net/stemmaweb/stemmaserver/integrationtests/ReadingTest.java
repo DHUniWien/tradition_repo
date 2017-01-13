@@ -139,7 +139,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, chgModel);
+                    .put(ClientResponse.class, chgModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
@@ -178,7 +178,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, chgModel);
+                    .put(ClientResponse.class, chgModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
@@ -211,7 +211,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, chgModel);
+                    .put(ClientResponse.class, chgModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -292,7 +292,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -354,7 +354,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -431,7 +431,7 @@ public class ReadingTest {
             // duplicate reading
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
             ClientResponse response = jerseyTest.resource().path("/reading/" + node.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
+                    .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -511,7 +511,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -551,7 +551,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -577,7 +577,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -602,7 +602,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());

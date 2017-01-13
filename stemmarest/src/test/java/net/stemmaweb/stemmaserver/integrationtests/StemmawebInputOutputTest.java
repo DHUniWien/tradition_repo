@@ -16,7 +16,8 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.exporter.GraphMLExporterStemmaweb;
+import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.GraphMLStemmawebExporter;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -38,8 +39,8 @@ import static org.junit.Assert.*;
 public class StemmawebInputOutputTest {
 
     private GraphDatabaseService db;
-    // private GraphMLExporter exportResource;
-    private GraphMLExporterStemmaweb exportResource;
+    private GraphMLExporter exportResource;
+    private GraphMLStemmawebExporter exportStemmawebResource;
 
     private JerseyTest jerseyTest;
 
@@ -49,8 +50,8 @@ public class StemmawebInputOutputTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
 
-        // exportResource = new GraphMLExporter();
-        exportResource = new GraphMLExporterStemmaweb();
+        exportResource = new GraphMLExporter();
+        exportStemmawebResource = new GraphMLStemmawebExporter();
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -131,7 +132,7 @@ public class StemmawebInputOutputTest {
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         assertNotNull(traditionId);
-        Response actualResponse = exportResource.parseNeo4J(traditionId);
+        Response actualResponse = exportStemmawebResource.parseNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 
         String xmlOutput = actualResponse.getEntity().toString();
@@ -358,7 +359,7 @@ public class StemmawebInputOutputTest {
                 .resource()
                 .path("/tradition/" + traditionId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
 
         // Export the GraphML

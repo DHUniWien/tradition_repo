@@ -129,7 +129,7 @@ public class TabularInputOutputTest extends TestCase {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});

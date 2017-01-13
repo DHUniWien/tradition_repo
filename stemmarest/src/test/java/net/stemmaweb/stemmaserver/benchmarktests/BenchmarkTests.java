@@ -343,7 +343,7 @@ public abstract class BenchmarkTests {
         ClientResponse actualResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships =
                 actualResponse.getEntity(new GenericType<GraphModel>() {});
         String relationshipId = ((RelationshipModel) readingsAndRelationships
