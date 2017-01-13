@@ -1,28 +1,19 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.parser.CollateXParser;
+import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 /**
@@ -33,23 +24,11 @@ public class CollateXInputTest extends TestCase {
 
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
-    private CollateXParser importResource;
 
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        DatabaseService.createRootNode(db);
-        try(Transaction tx = db.beginTx())
-        {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
+        Util.setupTestDB(db, "1");
 
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
-
-        importResource = new CollateXParser();
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
@@ -58,33 +37,9 @@ public class CollateXInputTest extends TestCase {
         jerseyTest.setUp();
     }
 
-    private ClientResponse createTraditionFromFile(String tName, String tDir, String userId,
-                                                   String fName, String fType) throws FileNotFoundException {
-        FormDataMultiPart form = new FormDataMultiPart();
-        if (fType != null) form.field("filetype", fType);
-        if (tName != null) form.field("name", tName);
-        if (tDir != null) form.field("direction", tDir);
-        if (userId != null) form.field("userId", userId);
-        if (fName != null) {
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream(fName),
-                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
-            form.bodyPart(fdp);
-        }
-        return  jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
-    }
-
     public void testParseCollateX() throws Exception {
-        ClientResponse cResult = null;
-        try {
-            String fileName = "src/TestFiles/plaetzchen_cx.xml";
-            cResult = createTraditionFromFile("Auch hier", "LR", "1", fileName, "collatex");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
         String tradId = Util.getValueFromJson(cResult, "tradId");
@@ -109,14 +64,51 @@ public class CollateXInputTest extends TestCase {
         assertTrue(foundReading);
     }
 
+    public void testAddRelationship() throws Exception {
+        // Parse the file
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
+        assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
+
+        String tradId = Util.getValueFromJson(cResult, "tradId");
+        Tradition tradition = new Tradition(tradId);
+
+        // Get the relevant reading IDs
+        Response result = tradition.getAllReadings();
+        ArrayList<ReadingModel> readings = (ArrayList<ReadingModel>) result.getEntity();
+        String source = null;
+        String target = null;
+        for (ReadingModel r : readings)
+            if (r.getText().equals("Plätzchen"))
+                source = r.getId();
+            else if (r.getText().equals("Pläzchen"))
+                target = r.getId();
+        assertNotNull(source);
+        assertNotNull(target);
+
+        // Make the relationship
+        RelationshipModel relationship = new RelationshipModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
+        relationship.setType("spelling");
+        relationship.setScope("local");
+        ClientResponse actualResponse = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, relationship);
+        assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
+
+        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        assertEquals(2, readingsAndRelationships.getReadings().size());
+        assertEquals(1, readingsAndRelationships.getRelationships().size());
+
+
+    }
+
     public void testParseCollateXJersey() throws Exception {
-        ClientResponse cResult = null;
-        try {
-            String fileName = "src/TestFiles/plaetzchen_cx.xml";
-            cResult = createTraditionFromFile("Auch hier", "LR", "1", fileName, "collatex");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
         String tradId = Util.getValueFromJson(cResult, "tradId");
         Tradition tradition = new Tradition(tradId);

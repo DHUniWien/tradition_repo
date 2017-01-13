@@ -33,7 +33,6 @@ public class DotExporter
 
     private OutputStream out = null;
 
-    private  Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
     private static DecimalFormat df2 = new DecimalFormat(".##");
 
     public DotExporter(GraphDatabaseService db){
@@ -49,26 +48,28 @@ public class DotExporter
     {
         String text;
         try {
-            text = "n" + sNodeId + "->" + "n" + eNodeId + " [label=\"" + label
+            text = "\tn" + sNodeId + "->" + "n" + eNodeId + " [label=\"" + label
                     + "\", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
-            text += "];";
+            text += "];\n";
         } catch (Exception e) {
             text = null;
         }
         return text;
     }
 
-    public Response parseNeo4J(String tradId)
+    public Response parseNeo4J(String tradId, Boolean includeRelatedRelationships)
     {
+        // Get the start and end node of the whole tradition
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         Node startNode = DatabaseService.getStartNode(tradId, db);
         Node endNode = DatabaseService.getEndNode(tradId, db);
         if(startNode==null || endNode==null) {
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        // Get the section nodess, if there are any - otherwise get tradition node
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
@@ -79,13 +80,25 @@ public class DotExporter
 
         File output;
         String result;
-        boolean includeRelatedRelationships = true;
         try (Transaction tx = db.beginTx()) {
             output = File.createTempFile("graph_", ".dot");
             out = new FileOutputStream(output);
 
-            write("digraph { ");
-            write("graph [rankdir=\"LR\"] ");
+            // Write the graph with the tradition name
+            write("digraph \"" + traditionNode.getProperty("name").toString() + "\" { \n");
+            String direction = traditionNode.getProperty("direction").toString();
+            // Set the direction of the graph
+            if(!direction.equals("BI")) {
+                write("\tgraph [bgcolor=\"none\", rankdir=\"" + direction + "\"];\n");
+            } else {
+                write("\tgraph [bgcolor=\"none\"]; \n");
+            }
+            // Set node and edge visual defaults
+            write("\tnode [fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"];\n");
+            write("\tedge [arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"];\n");
+            // HACK - set the subgraph and the silent node that keeps the graph straight
+            write("\tsubgraph { rank=same \"n" + startNode.getId() + "\" \"#SILENT#\" }\n");
+            write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
             long edgeId = 0;
             long global_rank = 0;
             Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
@@ -103,8 +116,9 @@ public class DotExporter
                     if ((!node.equals(sectionStartNode) && !node.equals(sectionEndNode))
                             || node.equals(startNode)
                             || node.equals(endNode)) {
-                        write("n" + node.getId()
-                                + " [label=\"" + node.getProperty("text").toString() + "\"];");
+                        String nodeDotId = "n" + node.getId();
+                        write("\t" + nodeDotId + " [id=\"" + nodeDotId + "\", label=\""
+                                + node.getProperty("text").toString() + "\"];\n");
                     }
 
                     if (node.equals(sectionStartNode) || node.equals(sectionEndNode))
@@ -146,9 +160,7 @@ public class DotExporter
                                 witnesses = (String[]) rel.getProperty("witnesses");
                                 Arrays.sort(witnesses);
                             }
-                            Iterator<String> it = Arrays.asList(witnesses).iterator();
-                            while (it.hasNext()) {
-                                String sigil = it.next();
+                            for (String sigil : Arrays.asList(witnesses)) {
                                 if (!knownWitnesses.containsKey(sigil)) {
                                     Long[] dummy = {startNode.getId(), 0L};
                                     knownWitnesses.put(sigil, dummy);
@@ -177,10 +189,10 @@ public class DotExporter
                     // retrieve information for the subgraph (Related Relations)
                     if (includeRelatedRelationships) {
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
-                            write("n" + relatedRel.getStartNode().getId() + "->" + "n" +
+                            write("\tn" + relatedRel.getStartNode().getId() + "->" + "n" +
                                     relatedRel.getEndNode().getId() + " [style=dotted, label=\"" +
                                     relatedRel.getProperty("type").toString() + "\", id=\"e" +
-                                    edgeId++ + "\"];");
+                                    edgeId++ + "\"];\n");
                         }
                     }
                 }
@@ -240,7 +252,7 @@ public class DotExporter
                 Long rankDiff = global_rank - usedWitnessesRanks.get(sNodeId);
                 write(relshipText(sNodeId, endNode.getId(), relText, edgeId++, calcPenWidth(relText), rankDiff));
             }
-            write(" }");
+            write("}\n");
 
             out.flush();
             out.close();
@@ -360,7 +372,7 @@ public class DotExporter
      * @param tradId - the ID of the tradition
      * @return a string full of stemma dotfiles, one per line
      */
-    public String getAllStemmataAsDot(String tradId) {
+    String getAllStemmataAsDot(String tradId) {
         ArrayList<String> stemmaList = new ArrayList<>();
 
         try(Transaction tx = db.beginTx()) {
@@ -407,7 +419,7 @@ public class DotExporter
         };
         for (Path nodePath: db.traversalDescription().breadthFirst()
                 .expand(e)
-                .uniqueness(Uniqueness.NODE_PATH)
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                 .traverse(archetype)) {
             Iterator<Node> orderedNodes = nodePath.nodes().iterator();
             Node sourceNode = orderedNodes.next();

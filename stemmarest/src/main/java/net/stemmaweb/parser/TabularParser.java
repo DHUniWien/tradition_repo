@@ -116,11 +116,13 @@ public class TabularParser {
             // Make the start node
             Node startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
+            startNode.setProperty("tradition_id", tradId);
             startNode.setProperty("rank", 0L);
             startNode.setProperty("text", "#START#");
             traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
             Node endNode = db.createNode(Nodes.READING);
             endNode.setProperty("is_end", true);
+            endNode.setProperty("tradition_id", tradId);
             endNode.setProperty("rank", (long) tableData.size());
             endNode.setProperty("text", "#END#");
             traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
@@ -129,13 +131,22 @@ public class TabularParser {
             String[] witnessList = tableData.get(0);
             // Keep a table of the last-spotted reading for each witness
             HashMap<String, Node> lastReading = new HashMap<>();
-            // Add the witnesses to the graph
+            // Add the non-layer witnesses to the graph
+            HashMap<String, String> layerWitnesses = new HashMap<>();
+            String layerlabel = null;
+            if (traditionNode.hasProperty("layerlabel"))
+                layerlabel = traditionNode.getProperty("layerlabel").toString();
             for (String sigil: witnessList) {
-                Node witnessNode = db.createNode(Nodes.WITNESS);
-                witnessNode.setProperty("sigil", sigil);
-                witnessNode.setProperty("hypothetical", false);
-                witnessNode.setProperty("quotesigil", !isDotId(sigil));
-                traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+                if (layerlabel == null || !sigil.endsWith(" (" + layerlabel + ")")) {
+                    Node witnessNode = db.createNode(Nodes.WITNESS);
+                    witnessNode.setProperty("sigil", sigil);
+                    witnessNode.setProperty("hypothetical", false);
+                    witnessNode.setProperty("quotesigil", !isDotId(sigil));
+                    traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+                } else {
+                    String basesigil = sigil.replace(" (" + layerlabel + ")", "");
+                    layerWitnesses.put(sigil, basesigil);
+                }
                 lastReading.put(sigil, startNode);
             }
 
@@ -159,6 +170,7 @@ public class TabularParser {
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
                         readingNode = db.createNode(Nodes.READING);
+                        readingNode.setProperty("tradition_id", tradId);
                         readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))
@@ -171,14 +183,31 @@ public class TabularParser {
                         existingSeq = lastNode.createRelationshipTo(readingNode, ERelations.SEQUENCE);
                     }
 
-                    // Add this witness to that relationship's witnesses list.
+                    // Add this witness to that relationship's witnesses list, accounting for layers.
+                    // First get the existing witness list
                     ArrayList<String> sequenceWitnesses = new ArrayList<>();
                     if (existingSeq.hasProperty("witnesses")) {
                         String[] priorWitnesses = (String[]) existingSeq.getProperty("witnesses");
                         sequenceWitnesses.addAll(Arrays.asList(priorWitnesses));
                     }
-                    sequenceWitnesses.add(sigil);
-                    existingSeq.setProperty("witnesses", sequenceWitnesses.toArray(new String[sequenceWitnesses.size()]));
+                    // If this is a layer witness, only add it if the base witness is not already in
+                    // the witnesses array of this sequence.
+                    if (layerWitnesses.containsKey(sigil)) {
+                        String baselayer = layerWitnesses.get(sigil);
+                        if (!sequenceWitnesses.contains(baselayer)) {
+                            ArrayList<String> priorLayerWits = new ArrayList<>();
+                            if (existingSeq.hasProperty(layerlabel)) {
+                                String[] priorLayer = (String[]) existingSeq.getProperty(layerlabel);
+                                priorLayerWits.addAll(Arrays.asList(priorLayer));
+                            }
+                            priorLayerWits.add(baselayer);
+                            existingSeq.setProperty(layerlabel, priorLayerWits.toArray(new String[priorLayerWits.size()]));
+                        }
+                    // Else this isn't a layer witness; just add it.
+                    } else {
+                        sequenceWitnesses.add(sigil);
+                        existingSeq.setProperty("witnesses", sequenceWitnesses.toArray(new String[sequenceWitnesses.size()]));
+                    }
                     lastReading.put(sigil, readingNode);
                 }
             }
@@ -189,7 +218,7 @@ public class TabularParser {
                 if (endRelation == null) {
                     endRelation = readingNode.createRelationshipTo(endNode, ERelations.SEQUENCE);
                     ArrayList<String> readingWits = new ArrayList<>();
-                    lastReading.keySet().stream().forEach(x -> {
+                    lastReading.keySet().forEach(x -> {
                         if (lastReading.get(x).equals(readingNode))
                             readingWits.add(x);
                     });

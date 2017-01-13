@@ -3,18 +3,14 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,8 +19,6 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.FileInputStream;
-import java.util.ArrayList;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -55,20 +49,7 @@ public class TranspositionTest {
     @Before
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -77,25 +58,14 @@ public class TranspositionTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * create a tradition inside the test DB
          */
-        FormDataMultiPart form = new FormDataMultiPart();
-        form.field("filetype", "graphml")
-                .field("name", "Tradition")
-                .field("direction", "LR")
-                .field("userId", "1");
-        FormDataBodyPart fdp = new FormDataBodyPart("file",
-                new FileInputStream("src/TestFiles/testTradition.xml"),
-                MediaType.APPLICATION_OCTET_STREAM_TYPE);
-        form.bodyPart(fdp);
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
-        /**
+        /*
          * gets the generated ids that we need for our tests
          */
         try (Transaction tx = db.beginTx()) {
@@ -152,7 +122,7 @@ public class TranspositionTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CONFLICT.getStatusCode(), actualResponse.getStatus());
     }
 
@@ -179,13 +149,13 @@ public class TranspositionTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         // Make sure it is there
         try (Transaction tx = db.beginTx()) {
-            ArrayList<GraphModel> readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-            relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(theId, (Long) loadedRelationship.getStartNode().getId());
@@ -212,13 +182,13 @@ public class TranspositionTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         // and make sure it is there.
         try (Transaction tx = db.beginTx()) {
-            ArrayList<GraphModel> readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-            relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(tehId, (Long) loadedRelationship.getStartNode().getId());
@@ -232,7 +202,7 @@ public class TranspositionTest {
         }
     }
 
-    /**
+    /*
      * Shut down the jersey server
      * @throws Exception
      */

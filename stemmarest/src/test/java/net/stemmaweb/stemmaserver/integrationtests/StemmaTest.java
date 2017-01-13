@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -11,11 +10,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.parser.DotParser;
@@ -57,20 +53,7 @@ public class StemmaTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
                 .newImpermanentDatabase())
                 .getDatabase();
-
-        /**
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         /*
          * Create a JersyTestServer serving the Resource under test
@@ -81,7 +64,7 @@ public class StemmaTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
@@ -97,29 +80,14 @@ public class StemmaTest {
                                            String fType)  throws FileNotFoundException {
         String tradId = "";
         try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            if (fType != null) form.field("filetype", fType);
-            if (tName != null) form.field("name", tName);
-            if (tDir != null) form.field("direction", tDir);
-            if (userId != null) form.field("userId", userId);
-            if (fName != null) {
-                FormDataBodyPart fdp = new FormDataBodyPart("file",
-                        new FileInputStream(fName),
-                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
-                form.bodyPart(fdp);
-            }
-            ClientResponse jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
-            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+            ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
             tradId = Util.getValueFromJson(jerseyResult, "tradId");
         } catch (Exception e) {
             e.printStackTrace();
             assertFalse(true);
         }
         assert(tradId.length() != 0);
-        return  tradId;
+        return tradId;
     }
 
     @Test
@@ -218,7 +186,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, input);
+                .post(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -241,6 +209,43 @@ public class StemmaTest {
     }
 
     @Test
+    public void setStemmaDifferentHypotheticalsTest() {
+        String newStemmaDot = "digraph \"stick\" {\n"
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ];\n A -> B;  A -> C; \n}";
+        ClientResponse result = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemmaDot);
+        assertEquals(result.getStatus(), ClientResponse.Status.CREATED.getStatusCode());
+
+        StemmaModel stemma = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma/stick")
+                .type(MediaType.APPLICATION_JSON)
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(newStemmaDot, stemma.getDot());
+    }
+
+    @Test
+    public void addContaminatedStemmaTest() {
+        String newStemmaDot = "digraph \"loop\" {\n 0 [ class=hypothetical ];"
+                + "A [ class=extant ];  B [ class=extant ];  "
+                + "C [ class=extant ];\n 0 -> A; A -> B;  A -> C; 0 -> C;\n}";
+        ClientResponse result = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newStemmaDot);
+        assertEquals(result.getStatus(), ClientResponse.Status.CREATED.getStatusCode());
+
+        StemmaModel stemma = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma/loop")
+                .type(MediaType.APPLICATION_JSON)
+                .get(StemmaModel.class);
+        Util.assertStemmasEquivalent(newStemmaDot, stemma.getDot());
+
+    }
+
+    @Test
     public void setStemmaNotFoundTest() {
         String emptyInput = "";
 
@@ -248,7 +253,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma" )
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, emptyInput);
+                .post(ClientResponse.class, emptyInput);
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), actualStemmaResponse.getStatus());
     }
 
@@ -270,12 +275,13 @@ public class StemmaTest {
                     .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
             assertFalse(rel1.iterator().hasNext());
 
-            ClientResponse actualStemmaResponse = jerseyTest
+            String newStemmaDot = "digraph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; C -> B;  B -> A;  A -> 0;}";
+            StemmaModel newStemmaResponse = jerseyTest
                     .resource()
                     .path("/tradition/" + tradId + "/stemma/" + stemmaTitle + "/reorient/" + newNodeId)
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class);
-            assertEquals(Response.ok().build().getStatus(), actualStemmaResponse.getStatus());
+                    .post(StemmaModel.class);
+            Util.assertStemmasEquivalent(newStemmaDot, newStemmaResponse.getDot());
 
             Iterable<Relationship> rel2 = startNodeStemma
                     .getRelationships(Direction.OUTGOING, ERelations.HAS_ARCHETYPE);
@@ -412,7 +418,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, input);
+                .post(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.BAD_REQUEST.getStatusCode(), actualStemmaResponse.getStatus());
         assertTrue(actualStemmaResponse.getEntity(String.class).contains("not marked as either hypothetical or extant"));
 
@@ -426,7 +432,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, input);
+                .post(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -511,7 +517,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, input);
+                .put(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
         assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
 
@@ -538,7 +544,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, input);
+                .put(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.BAD_REQUEST.getStatusCode(), actualStemmaResponse.getStatus());
 
         // Do we still have the old one?
@@ -566,7 +572,7 @@ public class StemmaTest {
                 .resource()
                 .path("/tradition/" + tradId + "/stemma/stemma"  )
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, input);
+                .put(ClientResponse.class, input);
         assertEquals(ClientResponse.Status.BAD_REQUEST.getStatusCode(), actualStemmaResponse.getStatus());
         assertTrue(actualStemmaResponse.getEntity(String.class).contains("Name mismatch"));
 
@@ -590,7 +596,7 @@ public class StemmaTest {
         return numNodes.get();
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception

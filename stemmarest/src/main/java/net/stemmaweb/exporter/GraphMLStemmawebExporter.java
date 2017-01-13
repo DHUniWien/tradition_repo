@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
+import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -43,68 +44,75 @@ public class GraphMLStemmawebExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    private HashMap<String, String> nodeMap = new HashMap<String, String>() {
+    private HashMap<String,String[]> nodeMap = new HashMap<String, String[]>() {
         {
-            put("grammar_invalid", "dn0");
-            put("id", "dn1");
-            put("is_common", "dn2");
-            put("is_end", "dn3");
-            put("is_lacuna", "dn4");
-            put("is_lemma", "dn5");
-            put("is_nonsense", "dn6");
-            put("is_ph", "dn7");
-            put("is_start", "dn8");
-            put("join_next", "dn9");
-            put("join_prior", "dn10");
-            put("language", "dn11");
-            put("witnesses", "dn12");
-            put("normal_form", "dn13");
-            put("rank", "dn14");
-            put("text", "dn15");
+            put("grammar_invalid", new String[]{"dn0", "boolean"});
+            put("id", new String[]{"dn1", "string"});
+            put("is_common", new String[]{"dn2", "boolean"});
+            put("is_end", new String[]{"dn3", "boolean"});
+            put("is_lacuna", new String[]{"dn4", "boolean"});
+            put("is_lemma", new String[]{"dn5", "boolean"});
+            put("is_nonsense", new String[]{"dn6", "boolean"});
+            put("is_ph", new String[]{"dn7", "boolean"});
+            put("is_start", new String[]{"dn8", "boolean"});
+            put("join_next", new String[]{"dn9", "boolean"});
+            put("join_prior", new String[]{"dn10", "boolean"});
+            put("language", new String[]{"dn11", "string"});
+            put("witnesses", new String[]{"dn12", "string"});
+            put("normal_form", new String[]{"dn13", "string"});
+            put("rank", new String[]{"dn14", "int"});
+            put("text", new String[]{"dn15", "string"});
+            put("label", new String[]{"dn16", "string"});
+            put("name", new String[]{"dn17", "string"});         // Sequence
+            put("base_label", new String[]{"dn18", "string"});    // Sequence
+            put("sep_char", new String[]{"dn19", "string"});     // Sequence
         }
     };
-    private HashMap<String, String> relationMap = new HashMap<String, String>() {
+    private HashMap<String,String[]> relationMap = new HashMap<String, String[]>() {
         {
-            put("a_derivable_from_b", "de0");
-            put("alters_meaning", "de1");
-            put("annotation", "de2");
-            put("b_derivable_from_a", "de3");
-            put("displayform", "de4");
-            put("extra", "de5");
-            put("is_significant", "de6");
-            put("non_independent", "de7");
-            put("reading_a", "de8");
-            put("reading_b", "de9");
-            put("scope", "de10");
-            put("type", "de11");
-            put("witness", "de12");
+            put("a_derivable_from_b", new String[]{"de0", "boolean"});
+            put("alters_meaning", new String[]{"de1", "int"});
+            put("annotation", new String[]{"de2", "string"});
+            put("b_derivable_from_a", new String[]{"de3", "boolean"});
+            put("displayform", new String[]{"de4", "string"});
+            put("extra", new String[]{"de5", "string"});
+            put("is_significant", new String[]{"de6", "string"});
+            put("non_independent", new String[]{"de7", "boolean"});
+            put("reading_a", new String[]{"de8", "string"});
+            put("reading_b", new String[]{"de9", "string"});
+            put("scope", new String[]{"de10", "string"});
+            put("witness", new String[]{"de11", "string"});
+            put("type", new String[]{"de12", "string"});
+            put("type_related", new String[]{"de13", "string"});
         }
     };
-    private HashMap<String, String> graphMap = new HashMap<String, String>() {
+    private HashMap<String,String[]> graphMap = new HashMap<String, String[]>() {
         {
-            put("language", "dg0");
-            put("name", "dg1");
-            put("public", "dg2");
-            put("stemmata", "dg3");
-            put("stemweb_jobid", "dg4");
-            put("user", "dg5");
-            put("version", "dg6");
-            put("direction", "dg7");
+            put("language", new String[]{"dg0", "string"});
+            put("name", new String[]{"dg1", "string"});
+            put("public", new String[]{"dg2", "boolean"});
+            put("stemmata", new String[]{"dg3", "string"});
+            put("stemweb_jobid", new String[]{"dg4", "string"});
+            put("user", new String[]{"dg5", "string"});
+            put("version", new String[]{"dg6", "string"});
+            put("direction", new String[]{"dg7", "string"});
+            put("layerlabel", new String[]{"dg8", "string"});
         }
     };
 
-    private boolean writeKey(XMLStreamWriter writer, String name_val, String type_val, String for_val, String id_val) {
+    private void writeKeys(XMLStreamWriter writer, HashMap<String, String[]> currentMap, String kind) {
         try {
-            writer.writeEmptyElement("key");
-            writer.writeAttribute("attr.name", name_val);
-            writer.writeAttribute("attr.type", type_val);
-            writer.writeAttribute("for", for_val);
-            writer.writeAttribute("id", id_val);
-        } catch (XMLStreamException e) {
+            for (Map.Entry<String, String[]> entry : currentMap.entrySet()) {
+                String[] values = entry.getValue();
+                writer.writeEmptyElement("key");
+                writer.writeAttribute("attr.name", entry.getKey());
+                writer.writeAttribute("attr.type", values[1]);
+                writer.writeAttribute("for", kind);
+                writer.writeAttribute("id", values[0]);
+            }
+        } catch(Exception e) {
             e.printStackTrace();
-            return false;
         }
-        return true;
     }
 
     public Response parseNeo4J(String tradId) {
@@ -146,45 +154,9 @@ public class GraphMLStemmawebExporter {
 
             // ####### KEYS START #######################################
 
-            writeKey(writer, "language", "string", "graph", "dg0");
-            writeKey(writer, "name", "string", "graph", "dg1");
-            writeKey(writer, "public", "boolean", "graph", "dg2");
-            writeKey(writer, "stemmata", "string", "graph", "dg3");
-            writeKey(writer, "stemweb_jobid", "string", "graph", "dg4");
-            writeKey(writer, "user", "string", "graph", "dg5");
-            writeKey(writer, "version", "string", "graph", "dg6");
-            writeKey(writer, "direction", "string", "graph", "dg7");
-
-            writeKey(writer, "grammar_invalid", "boolean", "node", "dn0");
-            writeKey(writer, "id", "string", "node", "dn1");
-            writeKey(writer, "is_common", "boolean", "node", "dn2");
-            writeKey(writer, "is_end", "boolean", "node", "dn3");
-            writeKey(writer, "is_lacuna", "boolean", "node", "dn4");
-            writeKey(writer, "is_lemma", "boolean", "node", "dn5");
-            writeKey(writer, "is_nonsense", "boolean", "node", "dn6");
-            writeKey(writer, "is_ph", "boolean", "node", "dn7");
-            writeKey(writer, "is_start", "boolean", "node", "dn8");
-            writeKey(writer, "join_next", "boolean", "node", "dn9");
-            writeKey(writer, "join_prior", "boolean", "node", "dn10");
-            writeKey(writer, "language", "string", "node", "dn11");
-            writeKey(writer, "witnesses", "string", "node", "dn12");
-            writeKey(writer, "normal_form", "string", "node", "dn13");
-            writeKey(writer, "rank", "int", "node", "dn14");
-            writeKey(writer, "text", "string", "node", "dn15");
-
-            writeKey(writer, "a_derivable_from_b", "boolean", "edge", "de0");
-            writeKey(writer, "alters_meaning", "int", "edge", "de1");
-            writeKey(writer, "annotation", "string", "edge", "de2");
-            writeKey(writer, "b_derivable_from_a", "boolean", "edge", "de3");
-            writeKey(writer, "displayform", "string", "edge", "de4");
-            writeKey(writer, "extra", "string", "edge", "de5");
-            writeKey(writer, "is_significant", "string", "edge", "de6");
-            writeKey(writer, "non_independent", "boolean", "edge", "de7");
-            writeKey(writer, "reading_a", "string", "edge", "de8");
-            writeKey(writer, "reading_b", "string", "edge", "de9");
-            writeKey(writer, "scope", "string", "edge", "de10");
-            writeKey(writer, "type", "string", "edge", "de11");
-            writeKey(writer, "witness", "string", "edge", "de12");
+            writeKeys(writer, graphMap, "graph");
+            writeKeys(writer, nodeMap, "node");
+            writeKeys(writer, relationMap, "edge");
 
             // ####### KEYS END #######################################
             // graph 1
@@ -208,14 +180,14 @@ public class GraphMLStemmawebExporter {
             for(String prop : props) {
                 if(prop !=null && !prop.equals("id") && !prop.equals("tradition_id")) {
                     writer.writeStartElement("data");
-                    writer.writeAttribute("key", graphMap.get(prop));
+                    writer.writeAttribute("key", graphMap.get(prop)[0]);
                     writer.writeCharacters(traditionNode.getProperty(prop).toString());
                     writer.writeEndElement();
                 }
             }
             // extract stemmata
             writer.writeStartElement("data");
-            writer.writeAttribute("key", "dg3");
+            writer.writeAttribute("key", graphMap.get("stemmata")[0]);
 
             DotExporter parser = new DotExporter(db);
 
@@ -233,14 +205,14 @@ public class GraphMLStemmawebExporter {
                 writer.writeStartElement("node");
                 writer.writeAttribute("id", String.valueOf(node.getId()));
                 writer.writeStartElement("data");
-                writer.writeAttribute("key","dn1");
+                writer.writeAttribute("key", nodeMap.get("id")[0]);
                 writer.writeCharacters("n" + nodeId++);
                 writer.writeEndElement();
 
                 for(String prop : props) {
                     if(prop!=null && !prop.equals("tradition_id")) {
                         writer.writeStartElement("data");
-                        writer.writeAttribute("key",nodeMap.get(prop));
+                        writer.writeAttribute("key",nodeMap.get(prop)[0]);
                         writer.writeCharacters((prop.equals("a.c.")) ? "(a.c.)" :node.getProperty(prop).toString());
                         writer.writeEndElement();
                     }
@@ -266,15 +238,15 @@ public class GraphMLStemmawebExporter {
                             writer.writeAttribute("target", rel.getEndNode().getId() + "");
                             writer.writeAttribute("id", "e" + edgeId++);
 
-                            if (!property.equals("witnesses")) {
+                            if (!property.equals("witnesses") && relationMap.containsKey(property)) {
                                 writer.writeStartElement("data");
-                                writer.writeAttribute("key", "de5");
+                                writer.writeAttribute("key", relationMap.get(property)[0]);
                                 writer.writeCharacters(property);
                                 writer.writeEndElement();
                             }
 
                             writer.writeStartElement("data");
-                            writer.writeAttribute("key", "de12");
+                            writer.writeAttribute("key", relationMap.get("witness")[0]);
                             writer.writeCharacters(witness);
                             writer.writeEndElement(); // end data key
                             writer.writeEndElement(); // end edge
@@ -310,7 +282,7 @@ public class GraphMLStemmawebExporter {
                 writer.writeStartElement("node");
                 writer.writeAttribute("id", node.getId() + "");
                 writer.writeStartElement("data");
-                writer.writeAttribute("key", "dn1");
+                writer.writeAttribute("key", nodeMap.get("id")[0]);
                 writer.writeCharacters("n" + nodeId++);
                 writer.writeEndElement();
                 writer.writeEndElement(); // end node
@@ -339,7 +311,7 @@ public class GraphMLStemmawebExporter {
                             String value = rel.getProperty(prop).toString();
                             if (!value.equals("")) {
                                 writer.writeStartElement("data");
-                                String keyId = relationMap.get(prop);
+                                String keyId = relationMap.get(prop)[0];
                                 writer.writeAttribute("key", keyId);
                                 writer.writeCharacters(value);
                                 writer.writeEndElement();

@@ -5,12 +5,26 @@ import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.multipart.FormDataBodyPart;
+import com.sun.jersey.multipart.FormDataMultiPart;
+import com.sun.jersey.test.framework.JerseyTest;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -133,4 +147,45 @@ public class Util {
         }
         return value;
     }
+
+    public static void setupTestDB(GraphDatabaseService db, String userId) {
+        // Populate the test database with the root node and a user with id 1
+        DatabaseService.createRootNode(db);
+        try(Transaction tx = db.beginTx()) {
+            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+            Node node = db.createNode(Nodes.USER);
+            node.setProperty("id", userId);
+            node.setProperty("role", "admin");
+
+            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
+            tx.success();
+        }
+    }
+
+    public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir, String userId,
+                                                                 String fName, String fType) {
+        FormDataMultiPart form = new FormDataMultiPart();
+        if (fType != null) form.field("filetype", fType);
+        if (tName != null) form.field("name", tName);
+        if (tDir != null) form.field("direction", tDir);
+        if (userId != null) form.field("userId", userId);
+        if (fName != null) {
+            // It could be a filename or it could be a content string. Try one and then
+            // the other.
+            InputStream input = null;
+            try {
+                input = new FileInputStream(fName);
+            } catch (FileNotFoundException e) {
+                input = new ByteArrayInputStream(fName.getBytes(StandardCharsets.UTF_8));
+            }
+            FormDataBodyPart fdp = new FormDataBodyPart("file", input,
+                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
+            form.bodyPart(fdp);
+        }
+        return  jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .post(ClientResponse.class, form);
+    }
+
 }

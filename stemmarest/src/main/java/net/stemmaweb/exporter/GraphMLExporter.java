@@ -37,6 +37,7 @@ public class GraphMLExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    // TODO these maps should be generated based on what is actually being exported!!
     private HashMap<String,String[]> nodeMap = new HashMap<String, String[]>() {
         {
             put("grammar_invalid", new String[]{"dn0", "boolean"});
@@ -89,6 +90,7 @@ public class GraphMLExporter {
             put("user", new String[]{"dg5", "string"});
             put("version", new String[]{"dg6", "string"});
             put("direction", new String[]{"dg7", "string"});
+            put("layerlabel", new String[]{"dg8", "string"});
         }
     };
 
@@ -123,7 +125,7 @@ public class GraphMLExporter {
             writer.writeEndElement();
 
             for (String prop : props) {
-                if (prop != null && nodeMap.get(prop) != null) {
+                if (nodeMap.containsKey(prop)) {
                     String value;
                     if (prop.equals("rank")) {
                         Long rank;
@@ -309,7 +311,7 @@ public class GraphMLExporter {
             if (includeRelatedRelations)
                     relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.OUTGOING);
 
-            for (Node sectionNode: sections) {
+            for (Node sectionNode : sections) {
                 long max_rank_section = 0;
 
                 Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
@@ -333,7 +335,7 @@ public class GraphMLExporter {
             }
 
 
-            for (Node sectionNode: sections) {
+            for (Node sectionNode : sections) {
                 // write all outgoing nodes from the current section node
                 for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING, ERelations.COLLATION, ERelations.HAS_END)) {
                     writeEdge(writer, rel, edgeId++);

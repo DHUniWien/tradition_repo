@@ -27,14 +27,23 @@ public class Stemma {
     private GraphDatabaseService db;
     private String tradId;
     private String name;
+    private Boolean newCreated;
 
     public Stemma (String traditionId, String requestedName) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
         name = requestedName;
+        newCreated = false;
     }
 
+    public Stemma (String traditionId, String requestedName, Boolean created) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        tradId = traditionId;
+        name = requestedName;
+        newCreated = created;
+    }
     /**
      * Returns JSON string with a Stemma of a tradition in DOT format
      *
@@ -42,7 +51,7 @@ public class Stemma {
      *         JSON format
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null) {
@@ -50,11 +59,13 @@ public class Stemma {
                     .entity(String.format("No stemma %s found for tradition %s", name, tradId)).build();
         }
         StemmaModel result = new StemmaModel(stemmaNode);
-        return Response.ok().entity(result).build();
+        Status returncode = newCreated ? Status.CREATED : Status.OK;
+        return Response.status(returncode).entity(result).build();
     }
 
-    @POST  // a replacement stemma
+    @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response replaceStemma(String dot) {
         DotParser parser = new DotParser(db);
         // Wrap this entire thing in a transaction so that we can roll back
@@ -79,16 +90,16 @@ public class Stemma {
 
             // OK, we can commit it.
             tx.success();
-            return Response.ok().build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
+        return this.getStemma();
     }
 
 
     @DELETE
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         assert stemmaNode != null;
@@ -131,16 +142,14 @@ public class Stemma {
     /**
      * Reorients a stemma tree with a given new root node
      *
-     * @param name   - stemma name
      * @param nodeId - archetype node
      * @return Http Response ok and DOT JSON string on success or an ERROR in
      *         JSON format
      */
     @POST
     @Path("reorient/{nodeId}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response reorientStemma(@PathParam("name") String name,
-                                   @PathParam("nodeId") String nodeId) {
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())
         {

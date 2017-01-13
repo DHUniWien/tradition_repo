@@ -17,6 +17,7 @@ import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
+import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
@@ -66,12 +67,26 @@ public class Tradition {
     /*************************
      * Resource creation calls
      */
-    @PUT  // a new stemma
+    @POST  // a new stemma
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response newStemma(String dot) {
         DotParser parser = new DotParser(db);
-        return parser.importStemmaFromDot(dot, traditionId);
+        Response result = parser.importStemmaFromDot(dot, traditionId);
+        if(result.getStatus() == Status.CREATED.getStatusCode()) {
+            Stemma restStemma;
+            try {
+                // Read the stemma name and return the stemma that was created
+                JSONObject newStemma = new JSONObject(result.getEntity().toString());
+                restStemma = new Stemma(traditionId, newStemma.getString("name"), true);
+            } catch (org.codehaus.jettison.json.JSONException e) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Error reading JSON response on creation").build();
+            }
+            return restStemma.getStemma();
+        } else {
+            return result;
+        }
     }
 
     /**
@@ -94,7 +109,7 @@ public class Tradition {
             ArrayList<Node> sectionList = DatabaseService.getRelated(traditionNode, ERelations.PART);
             for(Node section: sectionList) {
                 Node startNode = DatabaseService.getRelated(section, ERelations.COLLATION).get(0);
-                if (false == startNode.hasProperty("rank")) {
+                if (!startNode.hasProperty("rank")) {
                     LinkedList<Node> queue = new LinkedList<>();
                     queue.add(startNode);
 
@@ -148,11 +163,11 @@ public class Tradition {
         return Response.ok(updatedSections).build();
 
     }
-    /*****************************
+    /*
      * Collection retrieval calls
      */
 
-    /**
+    /*
      * Gets a list of all sections of a tradition with the given id.
      *
      * @return Http Response 200 and a list of section models in JSON on success
@@ -160,7 +175,7 @@ public class Tradition {
      */
     @GET
     @Path("/sections")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllSections() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -209,7 +224,7 @@ public class Tradition {
      */
     @GET
     @Path("/witnesses")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllWitnesses() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -228,7 +243,7 @@ public class Tradition {
 
     @GET
     @Path("/section/{section_id}/witnesses")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllWitnessInSection(@PathParam("section_id") String section_id) {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -273,7 +288,7 @@ public class Tradition {
      */
     @GET
     @Path("/stemmata")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllStemmata() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -300,7 +315,7 @@ public class Tradition {
      */
     @GET
     @Path("/relationships")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllRelationships() {
         ArrayList<RelationshipModel> relList = new ArrayList<>();
 
@@ -329,7 +344,7 @@ public class Tradition {
      */
     @GET
     @Path("/readings")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllReadings() {
         Node startNode = DatabaseService.getStartNode(traditionId, db);
         if (startNode == null) {
@@ -364,7 +379,7 @@ public class Tradition {
     // TODO refactor all these traversals somewhere!
     @GET
     @Path("/identicalreadings/{startRank}/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getIdenticalReadings(@PathParam("startRank") long startRank,
                                          @PathParam("endRank") long endRank) {
         Node startNode = DatabaseService.getStartNode(traditionId, db);
@@ -464,7 +479,7 @@ public class Tradition {
      */
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") long startRank,
             @PathParam("endRank") long endRank) {
@@ -596,20 +611,20 @@ public class Tradition {
         }
     }
 
-    /******************************
+    /*
      * Tradition-specific calls
      */
 
-    /**
+    /*
      * Changes the metadata of the tradition.
      *
      * @param tradition in JSON Format
      * @return OK and information about the tradition in JSON on success or an
      * ERROR in JSON format
      */
-    @POST
+    @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response changeTraditionMetadata(TraditionModel tradition) {
 
         try (Transaction tx = db.beginTx()) {
@@ -706,18 +721,18 @@ public class Tradition {
         return Response.status(Response.Status.OK).build();
     }
 
-    /***************************
+    /*
      * Tradition export API
      *
      */
 
-    /**
+    /*
      * Returns the tradition metadata
      *
      * @return TraditionModel
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getTraditionInfo() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -760,17 +775,18 @@ public class Tradition {
     /**
      * Returns DOT file from specified tradition owned by user
      *
+     * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
      * @return Plaintext dot format
      */
     @GET
     @Path("/dot")
-    @Produces(MediaType.TEXT_PLAIN)
-    public Response getDot() {
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         DotExporter parser = new DotExporter(db);
-        return parser.parseNeo4J(traditionId);
+        return parser.parseNeo4J(traditionId, includeRelatedRelationships);
     }
 
     /**
@@ -781,7 +797,7 @@ public class Tradition {
      */
     @GET
     @Path("/json")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getJson(@QueryParam("conflate") List<String> toConflate) {
         return new TabularExporter(db).exportAsJSON(traditionId, toConflate);
     }
@@ -794,7 +810,7 @@ public class Tradition {
      */
     @GET
     @Path("/csv")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     public Response getCsv(@QueryParam("conflate") List<String> toConflate) {
         return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate);
     }
@@ -807,7 +823,7 @@ public class Tradition {
      */
     @GET
     @Path("/tsv")
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     public Response getTsv(@QueryParam("conflate") List<String> toConflate) {
         return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate);
     }
@@ -894,7 +910,7 @@ public class Tradition {
                             }
                         }
                     }
-                    if (predecessorsUnknown == false) {
+                    if (!predecessorsUnknown) {
                         nodesToProcess.addAll(curNodes);
                     } else if (estimatedRank <= bestNodeRank) {
                         if (estimatedRank < bestNodeRank) {
@@ -913,7 +929,8 @@ public class Tradition {
             }
             tx.success();
         } catch (Exception e) {
-            return false;
+            e.printStackTrace();
+            return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return true;
     }

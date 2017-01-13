@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.benchmarktests;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -81,7 +80,7 @@ public abstract class BenchmarkTests {
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path("/tradition")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
+                .post(ClientResponse.class, form);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
@@ -103,7 +102,7 @@ public abstract class BenchmarkTests {
         ClientResponse ownerChangeResponse = jerseyTest.resource()
                 .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class,textInfo);
+                .put(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
         textInfo = new TraditionModel();
@@ -115,7 +114,7 @@ public abstract class BenchmarkTests {
         ownerChangeResponse = jerseyTest.resource()
                 .path("/tradition/1001")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class,textInfo);
+                .put(ClientResponse.class,textInfo);
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
     }
 
@@ -193,9 +192,6 @@ public abstract class BenchmarkTests {
         try {
             String fileName = testfile.getPath();
             createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
-//            tradId = Util.getValueFromJson(jerseyResult, "tradId");
-
-//            importResource.parseGraphML(testfile.getPath(), "1", "Tradition");
         } catch (FileNotFoundException f) {
             // this error should not occur
             assertTrue(false);
@@ -347,10 +343,11 @@ public abstract class BenchmarkTests {
         ClientResponse actualResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        ArrayList<GraphModel> readingsAndRelationships =
-                actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>() {});
-        String relationshipId = readingsAndRelationships.get(0).getRelationships().get(0).getId();
+                .post(ClientResponse.class, relationship);
+        GraphModel readingsAndRelationships =
+                actualResponse.getEntity(new GenericType<GraphModel>() {});
+        String relationshipId = ((RelationshipModel) readingsAndRelationships
+                .getRelationships().toArray()[0]).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)

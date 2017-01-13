@@ -1,21 +1,15 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
@@ -53,20 +47,7 @@ public class RelationTest {
     @Before
     public void setUp() throws Exception {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -75,45 +56,13 @@ public class RelationTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
-        try {
-            String fileName = "src/TestFiles/testTradition.xml";
-            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
-    }
-
-    private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
-                                           String fType) throws FileNotFoundException {
-        String tradId = "";
-        try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            if (fType != null) form.field("filetype", fType);
-            if (tName != null) form.field("name", tName);
-            if (tDir != null) form.field("direction", tDir);
-            if (userId != null) form.field("userId", userId);
-            if (fName != null) {
-                FormDataBodyPart fdp = new FormDataBodyPart("file",
-                        new FileInputStream(fName),
-                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
-                form.bodyPart(fdp);
-            }
-            ClientResponse jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
-            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-            tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        } catch (Exception e) {
-            e.printStackTrace();
-            assertFalse(true);
-        }
-        assert(tradId.length() != 0);
-        return  tradId;
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "graphml");
+        tradId = Util.getValueFromJson(jerseyResponse, "tradId");
     }
 
     /**
@@ -135,12 +84,12 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-            relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+            GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(16L, loadedRelationship.getStartNode().getId());
@@ -173,7 +122,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), actualResponse.getStatus());
     }
 
@@ -196,7 +145,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                 actualResponse.getStatus());
     }
@@ -224,9 +173,9 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId = readingsAndRelationships.getRelationships().get(0).getId();
+                .post(ClientResponse.class, relationship);
+        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)
@@ -325,9 +274,9 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
+                .post(ClientResponse.class, relationship);
+        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<GraphModel>(){});
+        relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
         relationship = new RelationshipModel();
         relationship.setSource("16");
@@ -343,9 +292,9 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
+                .post(ClientResponse.class, relationship);
+        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<GraphModel>(){});
+        relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
         /*
          * Create the model to delete
@@ -390,9 +339,9 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId1 = readingsAndRelationships1.getRelationships().get(0).getId();
+                .post(ClientResponse.class, relationship);
+        GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
         relationship.setSource("27");
         relationship.setTarget("17");
@@ -407,9 +356,9 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){}).get(0);
-        relationshipId2 = readingsAndRelationships2.getRelationships().get(0).getId();
+                .post(ClientResponse.class, relationship);
+        GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
         relationship.setScope("document");
 
@@ -453,10 +402,10 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
-        ArrayList<GraphModel> tmpGraphModel = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        assertEquals(tmpGraphModel.size(), 1L);
+        GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        assertEquals(tmpGraphModel.getRelationships().size(), 1L);
 
         Tradition tradition = new Tradition(tradId);
         assertEquals(tradition.recalculateRank(20L), true);
@@ -474,7 +423,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
 
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
@@ -508,11 +457,11 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
-        ArrayList<GraphModel> tmpGraphModel = actualResponse.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        assertEquals(tmpGraphModel.size(), 1L);
-        String relationshipId = tmpGraphModel.get(0).getRelationships().get(0).getId();
+        GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        assertEquals(tmpGraphModel.getRelationships().size(), 1L);
+        String relationshipId = ((RelationshipModel) tmpGraphModel.getRelationships().toArray()[0]).getId();
 
         ClientResponse response = jerseyTest
                 .resource()
@@ -562,7 +511,7 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
@@ -606,7 +555,7 @@ public class RelationTest {
         ClientResponse actualResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         // TODO (SK): ->TLA fix ErrorMessage (this one does not exist). Maybe we can define an enum?
@@ -676,16 +625,12 @@ public class RelationTest {
 
     @Test
     public void getNoRelationshipTest(){
-         /**
+         /*
          * load a tradition with no Realtionships to the test DB
          */
-        String newTradId = null;
-        try {
-            String fileName = "src/TestFiles/testTraditionNoRealtions.xml";
-            newTradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTraditionNoRealtions.xml", "graphml");
+        String newTradId = Util.getValueFromJson(jerseyResponse, "tradId");
 
         ClientResponse response = jerseyTest
                 .resource()
@@ -695,7 +640,7 @@ public class RelationTest {
         assertEquals("[]", response.getEntity(String.class));
     }
 
-    /**
+    /*
      * Shut down the jersey server
      * @throws Exception
      */

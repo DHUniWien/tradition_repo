@@ -35,8 +35,6 @@ public class RelationshipModel {
     private String reading_b;           // de9
     private String scope;               // de10
     private String type;                // de11
-    // TODO is witness ever used??
-    private String witness;             // de12
 
     public RelationshipModel(){
 
@@ -91,9 +89,6 @@ public class RelationshipModel {
                     break;
                 case "type":
                     type = rel.getProperty("type").toString();
-                    break;
-                case "witness":
-                    witness = rel.getProperty("witness").toString();
                     break;
                 default:
                     break;
@@ -222,11 +217,4 @@ public class RelationshipModel {
         this.type = type;
     }
 
-    public String getWitness() {
-        return witness;
-    }
-
-    public void setWitness(String witness) {
-        this.witness = witness;
-    }
 }

@@ -4,16 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -28,7 +23,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 /**
@@ -47,24 +41,11 @@ public class DatabaseServiceTest {
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+        userId = "simon";
+        Util.setupTestDB(db, userId);
         Root webResource = new Root();
 
-        /**
-         * Populate the test database with the root node and a user with id 1
-         */
-        userId = "simon";
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", userId);
-            node.setProperty("isAdmin", "1");
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER); //ERelations.SEQUENCE);
-            tx.success();
-        }
-
-        /**
+        /*
          * load a tradition to the test DB
          */
         jerseyTest = JerseyTestServerFactory
@@ -73,26 +54,10 @@ public class DatabaseServiceTest {
                 .create();
         jerseyTest.setUp();
 
-        ClientResponse jerseyResult = null;
-        try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            form.field("filetype", "graphml")
-                    .field("name", "Tradition")
-                    .field("direction", "LR")
-                    .field("userId", userId);
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream("src/TestFiles/testTradition.xml"),
-                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
-            form.bodyPart(fdp);
-            jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", userId,
+                "src/TestFiles/testTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        /**
+        /*
          * gets the generated id of the inserted tradition
          */
         traditionId = Util.getValueFromJson(jerseyResult, "tradId");
@@ -129,7 +94,7 @@ public class DatabaseServiceTest {
         assertTrue(DatabaseService.userExists(userId, db));
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception

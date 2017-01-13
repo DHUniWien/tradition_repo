@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -17,8 +16,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
@@ -28,7 +25,6 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -57,7 +53,6 @@ public class TraditionTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private GraphMLParser importResource;
 
     @Before
     public void setUp() throws Exception {
@@ -65,21 +60,7 @@ public class TraditionTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
                 .newImpermanentDatabase())
                 .getDatabase();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -88,12 +69,11 @@ public class TraditionTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * create a tradition inside the test DB
          */
         try {
-            String fileName = "src/TestFiles/testTradition.xml";
-            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+            tradId = createTraditionFromFile("Tradition", "LR", "1", "src/TestFiles/testTradition.xml", "graphml");
         } catch (FileNotFoundException e) {
             assertTrue(false);
         }
@@ -102,25 +82,13 @@ public class TraditionTest {
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
                                            String fType) throws FileNotFoundException {
 
-        FormDataMultiPart form = new FormDataMultiPart();
-        if (fType != null) form.field("filetype", fType);
-        if (tName != null) form.field("name", tName);
-        if (tDir != null) form.field("direction", tDir);
-        if (userId != null) form.field("userId", userId);
-        if (fName != null) {
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream(fName),
-                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
-            form.bodyPart(fdp);
+        ClientResponse jerseyResult = null;
+        try {
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
+        } catch (Exception e) {
+            assertTrue(false);
         }
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .put(ClientResponse.class, form);
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        assert(tradId.length() != 0);
-        return  tradId;
+        return Util.getValueFromJson(jerseyResult, "tradId");
     }
 
     @Test
@@ -241,69 +209,71 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .get(String.class);
 
-        String[] exp = new String[62];
-        exp[1] = "digraph {";
-        exp[2] = "n4 [label=\"#START#\"];";
-        exp[3] = "n5 [label=\"when\"];";
-        exp[4] = "n4->n5 [label=\"A,B,C\", id=";
-        exp[5] = "n5->n16 [label=\"A\", id=";
-        exp[6] = "n5->n24 [label=\"B,C\", id=";
-        exp[7] = "n16 [label=\"april\"];";
-        exp[8] = "n16->n22 [label=\"A\", id=";
-        exp[9] = "n24 [label=\"showers\"];";
-        exp[10] = "n24->n25 [label=\"A,B,C\", id=";
-        exp[11] = "n22 [label=\"with\"];";
-        exp[12] = "n22->n23 [label=\"A\", id=";
-        exp[13] = "n25 [label=\"sweet\"];";
-        exp[14] = "n25->n26 [label=\"A,B,C\", id=";
-        exp[15] = "n23 [label=\"his\"];";
-        exp[16] = "n23->n24 [label=\"A\", id=";
-        exp[17] = "n26 [label=\"with\"];";
-        exp[18] = "n26->n27 [label=\"B,C\", id=";
-        exp[19] = "n26->n7 [label=\"A\", id=";
-        exp[20] = "n27 [label=\"april\"];";
-        exp[21] = "n27->n7 [label=\"B,C\", id=";
-        exp[22] = "n7 [label=\"fruit\"];";
-        exp[23] = "n7->n9 [label=\"C\", id=";
-        exp[24] = "n7->n8 [label=\"A,B\", id=";
-        exp[25] = "n9 [label=\"teh\"];";
-        exp[26] = "n9->n11 [label=\"C\", id=";
-        exp[27] = "n8 [label=\"the\"];";
-        exp[28] = "n8->n10 [label=\"B\", id=";
-        exp[29] = "n8->n11 [label=\"A\", id=";
-        exp[30] = "n11 [label=\"drought\"];";
-        exp[31] = "n11->n12 [label=\"A,C\", id=";
-        exp[32] = "n10 [label=\"march\"];";
-        exp[33] = "n10->n12 [label=\"B\", id=";
-        exp[34] = "n12 [label=\"of\"];";
-        exp[35] = "n12->n14 [label=\"B\", id=";
-        exp[36] = "n12->n13 [label=\"A,C\", id=";
-        exp[37] = "n14 [label=\"drought\"];";
-        exp[38] = "n14->n15 [label=\"B\", id=";
-        exp[39] = "n13 [label=\"march\"];";
-        exp[40] = "n13->n15 [label=\"A,C\", id=";
-        exp[41] = "n15 [label=\"has\"];";
-        exp[42] = "n15->n17 [label=\"A,B,C\", id=";
-        exp[43] = "n17 [label=\"pierced\"];";
-        exp[44] = "n17->n18 [label=\"A\", id=";
-        exp[45] = "n17->n19 [label=\"B\", id=";
-        exp[46] = "n17->n20 [label=\"C\", id=";
-        exp[47] = "n18 [label=\"unto\"];";
-        exp[48] = "n18->n21 [label=\"A\", id=";
-        exp[49] = "n19 [label=\"to\"];";
-        exp[50] = "n19->n21 [label=\"B\", id=";
-        exp[51] = "n20 [label=\"teh\"];";
-        exp[52] = "n20->n28 [label=\"C\", id=";
-        exp[53] = "n21 [label=\"the\"];";
-        exp[54] = "n21->n6 [label=\"A,B\", id=";
-        exp[55] = "n28 [label=\"rood\"];";
-        exp[56] = "n28->n3 [label=\"C\", id=";
-        exp[57] = "n6 [label=\"root\"];";
-        exp[58] = "n6->n3 [label=\"A,B\", id=";
-        exp[59] = "n3 [label=\"#END#\"];";
-        exp[60] = "n16->n27 [style=dotted, label=\"transposition\", id=";
-        exp[61] = "n11->n14 [style=dotted, label=\"transposition\", id=";
-        exp[0] = "n10->n13 [style=dotted, label=\"transposition\", id=";
+        String[] exp = new String[64];
+        exp[0] = "digraph \"Tradition\" {";
+        exp[1] = "graph [bgcolor=\"none\", rankdir=\"LR\"];";
+        exp[2] = "node [fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"];";
+        exp[3] = "edge [arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"];";
+        exp[4] = "subgraph { rank=same \"n4\" \"#SILENT#\" }";
+        exp[5] = "\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];";
+        exp[6] = "n4 [id=\"n4\", label=\"#START#\"];";
+        exp[7] = "n5 [id=\"n5\", label=\"when\"];";
+        exp[8] = "n4->n5 [label=\"A,B,C\", id=\"e0\", penwidth=\"1.4\"];";
+        exp[9] = "n16 [id=\"n16\", label=\"april\"]";
+        exp[10] = "n5->n16 [label=\"A\", id=\"e1\", penwidth=\"1.0\"];";
+        exp[11] = "n24 [id=\"n24\", label=\"showers\"];";
+        exp[12] = "n23->n24 [label=\"A\", id=\"e2\", penwidth=\"1.0\"];";
+        exp[13] = "n5->n24 [label=\"B,C\", id=\"e3\", penwidth=\"1.2\"];";
+        exp[14] = "n22 [id=\"n22\", label=\"with\"];";
+        exp[15] = "n16->n22 [label=\"A\", id=\"e4\", penwidth=\"1.0\"];";
+        exp[16] = "n25 [id=\"n25\", label=\"sweet\"];";
+        exp[17] = "n24->n25 [label=\"A,B,C\", id=\"e5\", penwidth=\"1.4\"];";
+        exp[18] = "n23 [id=\"n23\", label=\"his\"];";
+        exp[19] = "n22->n23 [label=\"A\", id=\"e6\", penwidth=\"1.0\"];";
+        exp[20] = "n26 [id=\"n26\", label=\"with\"];";
+        exp[21] = "n25->n26 [label=\"A,B,C\", id=\"e7\", penwidth=\"1.4\"];";
+        exp[22] = "n27 [id=\"n27\", label=\"april\"];";
+        exp[23] = "n26->n27 [label=\"B,C\", id=\"e8\", penwidth=\"1.2\"];";
+        exp[24] = "n7 [id=\"n7\", label=\"fruit\"];";
+        exp[25] = "n26->n7 [label=\"A\", id=\"e9\", penwidth=\"1.0\"];";
+        exp[26] = "n27->n7 [label=\"B,C\", id=\"e10\", penwidth=\"1.2\"];";
+        exp[27] = "n9 [id=\"n9\", label=\"teh\"];";
+        exp[28] = "n7->n9 [label=\"C\", id=\"e11\", penwidth=\"1.0\"];";
+        exp[29] = "n8 [id=\"n8\", label=\"the\"];";
+        exp[30] = "n7->n8 [label=\"A,B\", id=\"e12\", penwidth=\"1.2\"];";
+        exp[31] = "n11 [id=\"n11\", label=\"drought\"];";
+        exp[32] = "n9->n11 [label=\"C\", id=\"e13\", penwidth=\"1.0\"];";
+        exp[33] = "n8->n11 [label=\"A\", id=\"e14\", penwidth=\"1.0\"];";
+        exp[34] = "n10 [id=\"n10\", label=\"march\"];";
+        exp[35] = "n8->n10 [label=\"B\", id=\"e15\", penwidth=\"1.0\"];";
+        exp[36] = "n12 [id=\"n12\", label=\"of\"];";
+        exp[37] = "n11->n12 [label=\"A,C\", id=\"e16\", penwidth=\"1.2\"];";
+        exp[38] = "n10->n12 [label=\"B\", id=\"e17\", penwidth=\"1.0\"];";
+        exp[39] = "n14 [id=\"n14\", label=\"drought\"];";
+        exp[40] = "n12->n14 [label=\"B\", id=\"e18\", penwidth=\"1.0\"];";
+        exp[41] = "n13 [id=\"n13\", label=\"march\"];";
+        exp[42] = "n12->n13 [label=\"A,C\", id=\"e19\", penwidth=\"1.2\"];";
+        exp[43] = "n15 [id=\"n15\", label=\"has\"];";
+        exp[44] = "n14->n15 [label=\"B\", id=\"e20\", penwidth=\"1.0\"];";
+        exp[45] = "n13->n15 [label=\"A,C\", id=\"e21\", penwidth=\"1.2\"];";
+        exp[46] = "n17 [id=\"n17\", label=\"pierced\"];";
+        exp[47] = "n15->n17 [label=\"A,B,C\", id=\"e22\", penwidth=\"1.4\"];";
+        exp[48] = "n19 [id=\"n19\", label=\"to\"];";
+        exp[49] = "n17->n19 [label=\"B\", id=\"e23\", penwidth=\"1.0\"];";
+        exp[50] = "n18 [id=\"n18\", label=\"unto\"];";
+        exp[51] = "n17->n18 [label=\"A\", id=\"e24\", penwidth=\"1.0\"];";
+        exp[52] = "n20 [id=\"n20\", label=\"teh\"];";
+        exp[53] = "n17->n20 [label=\"C\", id=\"e25\", penwidth=\"1.0\"];";
+        exp[54] = "n21 [id=\"n21\", label=\"the\"];";
+        exp[55] = "n18->n21 [label=\"A\", id=\"e26\", penwidth=\"1.0\"];";
+        exp[56] = "n19->n21 [label=\"B\", id=\"e27\", penwidth=\"1.0\"];";
+        exp[57] = "n28 [id=\"n28\", label=\"rood\"];";
+        exp[58] = "n20->n28 [label=\"C\", id=\"e28\", penwidth=\"1.0\"];";
+        exp[59] = "n6 [id=\"n6\", label=\"root\"];";
+        exp[60] = "n21->n6 [label=\"A,B\", id=\"e29\", penwidth=\"1.2\"];";
+        exp[61] = "n3 [id=\"n3\", label=\"#END#\"];";
+        exp[62] = "n28->n3 [label=\"C\", id=\"e30\", penwidth=\"1.0\"];";
+        exp[63] = "n6->n3 [label=\"A,B\", id=\"e31\", penwidth=\"1.2\"];";
 
         for (String anExp : exp) {
             assertTrue(str.contains(anExp));
@@ -355,7 +325,7 @@ public class TraditionTest {
 
             tx.success();
         } catch (Exception e) {
-            int a = 0;
+            assertTrue(false);
         }
 
         /*
@@ -372,7 +342,7 @@ public class TraditionTest {
                 .resource()
                 .path("/tradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, textInfo);
+                .put(ClientResponse.class, textInfo);
         assertEquals(Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
         /*
@@ -438,7 +408,7 @@ public class TraditionTest {
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, textInfo);
+                .put(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
         assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
 
@@ -527,7 +497,7 @@ public class TraditionTest {
                 .resource()
                 .path("/tradition/1337")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, textInfo);
+                .put(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
         assertEquals("There is no Tradition with this id", removalResponse.getEntity(String.class));
 
@@ -617,7 +587,7 @@ public class TraditionTest {
                 .resource()
                 .path("/tradition/" + florId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, newStemma);
+                .post(ClientResponse.class, newStemma);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // re-root the stemma
@@ -646,7 +616,7 @@ public class TraditionTest {
                 jerseyResponse = jerseyTest.resource()
                         .path("/tradition/" + tradId + "/relation")
                         .type(MediaType.APPLICATION_JSON)
-                        .put(ClientResponse.class, rel);
+                        .post(ClientResponse.class, rel);
                 assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
             }
 
@@ -661,7 +631,7 @@ public class TraditionTest {
             jerseyResponse = jerseyTest.resource()
                     .path("/tradition/" + tradId + "/relation")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, txrel);
+                    .post(ClientResponse.class, txrel);
             assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
             tx.success();
         }
@@ -723,7 +693,7 @@ public class TraditionTest {
         }
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception

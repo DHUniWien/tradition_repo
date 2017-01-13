@@ -3,17 +3,14 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.io.*;
 import java.util.*;
 
-import java.io.FileInputStream;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
@@ -44,7 +41,7 @@ public class GenericTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private String rootNodeId;
+    // private String rootNodeId;
 
     @Before
     public void setUp() throws Exception {
@@ -52,23 +49,8 @@ public class GenericTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
                 .newImpermanentDatabase())
                 .getDatabase();
-
+        Util.setupTestDB(db, "1");
         Root webResource = new Root();
-
-        /*
-         * Populate the test database with the root node and a user with id 1
-         */
-        DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            rootNodeId = ((Long)rootNode.getId()).toString();
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("isAdmin", "1");
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
-        }
 
         /*
          * Create a JersyTestServer serving the Resource under test
@@ -81,33 +63,15 @@ public class GenericTest {
     }
 
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
-        String tradId = "";
+        ClientResponse jerseyResult = null;
         try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            if (fType != null) form.field("filetype", fType);
-            if (tName != null) form.field("name", tName);
-            if (tDir != null) form.field("direction", tDir);
-            if (userId != null) form.field("userId", userId);
-            if (fName != null) {
-                FormDataBodyPart fdp = new FormDataBodyPart("file",
-                        new FileInputStream(fName),
-                        MediaType.APPLICATION_OCTET_STREAM_TYPE);
-                form.bodyPart(fdp);
-            } else {
-                form.field("empty", "true");
-            }
-            ClientResponse jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
-            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-            tradId = Util.getValueFromJson(jerseyResult, "tradId");
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
         } catch (Exception e) {
-            e.printStackTrace();
-            assertFalse(true);
+            assertTrue(false);
         }
+        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
-        return  tradId;
+        return tradId;
     }
 
 
@@ -115,18 +79,23 @@ public class GenericTest {
 
     @Test
     public void test_01() throws FileNotFoundException {
-        /** Pearl-Specification:
+        /* Perl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
             is( $t->name, 'empty', "object has the right name" );
             is( scalar $t->witnesses, 0, "object has no witnesses" );
         */
 
-        // Status: Test not possible, since there is no API-method to create a 'Tradition'
-        // TODO: Implement API-method "CreateTradition()"
-
-        String TRADNAME = "empty";
-        String tradId = createTraditionFromFile(TRADNAME, null, "1", null, null);
+        String TRADNAME = "empty tradition";
+        FormDataMultiPart form = new FormDataMultiPart();
+        form.field("name", TRADNAME);
+        form.field("userId", "1");
+        form.field("empty", "true");
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .post(ClientResponse.class, form);
+        String tradId = Util.getValueFromJson(response, "tradId");
 
         try (Transaction tx = db.beginTx()) {
             Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
@@ -155,7 +124,7 @@ public class GenericTest {
             assertEquals(1, rel_count);
             tx.success();
         }
-        ClientResponse response = jerseyTest.resource()
+        response = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
                 .get(ClientResponse.class);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
@@ -314,19 +283,14 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        ArrayList<GraphModel> tmpGraphModel = response.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        assertEquals(tmpGraphModel.size(), 1L);
-        String node1_id = tmpGraphModel.get(0).getReadings().get(0).getId();
-        String node2_id = tmpGraphModel.get(0).getReadings().get(1).getId();
+        GraphModel tmpGraphModel = response.getEntity(new GenericType<GraphModel>(){});
+        Object[] readings = tmpGraphModel.getReadings().toArray();
+        String node1_id = ((ReadingModel) readings[0]).getId();
+        String node2_id = ((ReadingModel) readings[1]).getId();
         assertTrue((node1_id.equals(n21) && node2_id.equals(n22)) ||
                 (node1_id.equals(n22) && node2_id.equals(n21)));
-        /* just some example code ...
-        ArrayList<GraphModel> readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<ArrayList<GraphModel>>(){});
-        GraphModel readingsAndRelationship1 = readingsAndRelationships1.get(0);
-        relationshipId1 = readingsAndRelationship1.getRelationships().get(0).getId();
-        */
 
         /**
         my @v2 = $c->add_relationship( 'n24', 'n23',  # 'the', 'teh' near the end
@@ -344,9 +308,9 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
+        assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
 
         /**
@@ -365,7 +329,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(1));
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
 
 
         /**
@@ -384,7 +348,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(2L));
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 2);
 
 
         /**
@@ -403,7 +367,6 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(0L));
 
 
         /**
@@ -422,9 +385,9 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<GraphModel>>(){}).size(), 2L);
+        assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
 
         /**
@@ -445,7 +408,7 @@ public class GenericTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(Long.class), Long.valueOf(1L));
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
 
         // we don't need this, because we are going to get all relationships
         /* MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
@@ -535,7 +498,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
@@ -551,7 +514,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
     }
 
@@ -611,7 +574,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
 
@@ -667,7 +630,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
@@ -762,7 +725,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -783,7 +746,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship2);
+                .post(ClientResponse.class, relationship2);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -806,7 +769,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship3);
+                .post(ClientResponse.class, relationship3);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
         /**
@@ -828,7 +791,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship4);
+                .post(ClientResponse.class, relationship4);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -849,7 +812,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship5);
+                .post(ClientResponse.class, relationship5);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
     }
 
@@ -916,7 +879,7 @@ public class GenericTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
         /**
@@ -1007,11 +970,12 @@ public class GenericTest {
 
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         GraphModel graphModel = response.getEntity(GraphModel.class);
+        Object[] rspReadings = graphModel.getReadings().toArray();
         String n21a;
-        if (graphModel.getReadings().get(0).getId().equals(n21)) {
-            n21a = graphModel.getReadings().get(1).getId();
+        if (((ReadingModel) rspReadings[0]).getId().equals(n21)) {
+            n21a = ((ReadingModel) rspReadings[1]).getId();
         } else {
-            n21a = graphModel.getReadings().get(0).getId();
+            n21a = ((ReadingModel) rspReadings[0]).getId();
         }
 
         /**

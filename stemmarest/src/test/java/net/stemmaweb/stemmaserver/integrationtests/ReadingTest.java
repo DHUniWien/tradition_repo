@@ -1,14 +1,10 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.CharacterModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
@@ -20,7 +16,6 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -79,16 +74,7 @@ public class ReadingTest {
          * Populate the test database with the root node and a user with id 1
          */
         DatabaseService.createRootNode(db);
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", "1");
-            node.setProperty("role", "admin");
-
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
-            tx.success();
-        }
+        Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -97,28 +83,12 @@ public class ReadingTest {
                 .create();
         jerseyTest.setUp();
 
-        /**
+        /*
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
-        ClientResponse jerseyResult = null;
-        try {
-            FormDataMultiPart form = new FormDataMultiPart();
-            form.field("filetype", "graphml")
-                    .field("name", "Tradition")
-                    .field("direction", "LR")
-                    .field("userId", "1");
-            FormDataBodyPart fdp = new FormDataBodyPart("file",
-                    new FileInputStream("src/TestFiles/ReadingstestTradition.xml"),
-                    MediaType.APPLICATION_OCTET_STREAM_TYPE);
-            form.bodyPart(fdp);
-            jerseyResult = jerseyTest.resource()
-                    .path("/tradition")
-                    .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                    .put(ClientResponse.class, form);
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/ReadingstestTradition.xml", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }
@@ -169,7 +139,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, chgModel);
+                    .put(ClientResponse.class, chgModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
@@ -208,7 +178,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, chgModel);
+                    .put(ClientResponse.class, chgModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
@@ -241,7 +211,7 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, chgModel);
+                    .put(ClientResponse.class, chgModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -322,13 +292,15 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals("showers", readingsAndRelationshipsModel.getReadings().get(0).getText());
-            assertEquals("sweet", readingsAndRelationshipsModel.getReadings().get(1).getText());
+            HashSet<String> rdgWords = new HashSet<>();
+            readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
+            assertTrue(rdgWords.contains("showers"));
+            assertTrue(rdgWords.contains("sweet"));
             assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
 
             testNumberOfReadingsAndWitnesses(31);
@@ -382,12 +354,13 @@ public class ReadingTest {
                     .resource()
                     .path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
+            ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
+            assertEquals("of", firstWord.getText());
             assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
 
             testNumberOfReadingsAndWitnesses(30);
@@ -458,12 +431,13 @@ public class ReadingTest {
             // duplicate reading
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
             ClientResponse response = jerseyTest.resource().path("/reading/" + node.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, jsonPayload);
+                    .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals("of", readingsAndRelationshipsModel.getReadings().get(0).getText());
+            ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
+            assertEquals("of", firstWord.getText());
             assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
 
             testNumberOfReadingsAndWitnesses(30);
@@ -537,7 +511,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -577,7 +551,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -603,7 +577,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -628,7 +602,7 @@ public class ReadingTest {
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, jsonPayload);
+                    .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -889,10 +863,10 @@ public class ReadingTest {
 
         GraphModel readingsAndRelationshipsModel = response
                 .getEntity(GraphModel.class);
-        assertEquals("the", readingsAndRelationshipsModel.getReadings()
-                .get(0).getText());
-        assertEquals("root", readingsAndRelationshipsModel.getReadings()
-                .get(1).getText());
+        HashSet<String> rdgWords = new HashSet<>();
+        readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
+        assertTrue(rdgWords.contains("the"));
+        assertTrue(rdgWords.contains("root"));
         assertEquals(1, readingsAndRelationshipsModel.getRelationships()
                 .size());
 
@@ -1950,7 +1924,7 @@ public class ReadingTest {
         }
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception

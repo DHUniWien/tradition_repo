@@ -42,10 +42,8 @@ public class GraphMLParser {
      * @param xmldata - the GraphML file stream
      * @param tradId - the tradition's ID
      * @return Http Response with the id of the imported tradition
-     * @throws FileNotFoundException
      */
-    public Response parseGraphML(InputStream xmldata, String userId, String tradId)
-            throws FileNotFoundException {
+    public Response parseGraphML(InputStream xmldata, String userId, String tradId) {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
@@ -201,6 +199,13 @@ public class GraphMLParser {
                                             else
                                                 witnessClass = val;
                                             break;
+                                        case "relationship":
+                                            // This is the relationship type, a.k.a. "type" in this system.
+                                            // Backwards compatibility for legacy XML
+                                            assert currentRel.isType(ERelations.RELATED);
+                                            attr = "type";
+                                            setTypedProperty(currentRel, attr, keytype, val);
+                                            break;
                                         case "is_significant":
                                             currentRelModel.setIs_significant(val);
                                             break;
@@ -243,7 +248,8 @@ public class GraphMLParser {
                                             // TODO is this redundant?
                                             if (currentNode.hasProperty("label") && currentNode.getProperty("label").equals("TRADITION"))
                                                 break;
-                                            if (((String)currentNode.getProperty("name")).length() == 0
+                                            if (currentNode.hasProperty("name")
+                                                    && ((String)currentNode.getProperty("name")).length() == 0
                                                     && text.length() > 0) {
                                                 currentNode.setProperty(attr, text);
                                             }
@@ -269,6 +275,15 @@ public class GraphMLParser {
                                             if (text.equals("1") || text.equals("true"))
                                                 traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
                                             setTypedProperty(currentNode, attr, keytype, text);
+                                            break;
+                                        case "public": // This is overridden in the upload API
+                                            break;
+                                        case "rank": // These are set as strings in some XML and shouldn't be
+                                            keytype = "int";
+                                            setTypedProperty(currentNode, attr, keytype, text);
+                                            break;
+                                        case "ac_label": // Rename this key
+                                            setTypedProperty(currentNode, "layerlabel", keytype, text);
                                             break;
                                         default:
                                             setTypedProperty(currentNode, attr, keytype, text);
@@ -363,15 +378,17 @@ public class GraphMLParser {
                     .build();
         }
 
-        String[] graphs = stemmata.split("\n");
+        if( !stemmata.isEmpty() ) {
+            String[] graphs = stemmata.split("\n");
 
-        for(String graph : graphs) {
-            DotParser parser = new DotParser(db);
-            parser.importStemmaFromDot(graph, tradId);
+            for (String graph : graphs) {
+                DotParser parser = new DotParser(db);
+                parser.importStemmaFromDot(graph, tradId);
+            }
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity("{\"tradId\":" + tradId + "}")
+                .entity("{\"tradId\":\"" + tradId + "\"}")
                 .build();
     }
 

@@ -52,14 +52,12 @@ import static org.junit.Assume.assumeTrue;
 public class TraditionParseTest {
 
     private GraphDatabaseService db;
-    private GraphMLParser importResource;
     private JerseyTest jerseyTest;
 
     @Before
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        importResource = new GraphMLParser();
 
         // Create a root node and test user
         DatabaseService.createRootNode(db);
@@ -121,16 +119,9 @@ public class TraditionParseTest {
                     ClientResponse jerseyResult = jerseyTest.resource()
                             .path("/tradition")
                             .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                            .put(ClientResponse.class, form);
+                            .post(ClientResponse.class, form);
                     assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
                     tradId = Util.getValueFromJson(jerseyResult, "tradId");
-                    /*
-                    Response response = importResource.parseGraphML(testfile.getPath(), "1", tradId);
-                    assertEquals(response.getStatus(), 200);
-                    JSONObject result = new JSONObject(response.getEntity().toString());
-                    assertTrue(result.has("tradId"));
-                    tradId = result.getString("tradId");
-                    */
                 } catch (FileNotFoundException f) {
                     // this error should not occur
                     assertTrue("File not found", false);
@@ -190,10 +181,10 @@ public class TraditionParseTest {
     }
 
     @SuppressWarnings("unused")
-    private void toSVG(String traditionID, String outFile)
+    private void toSVG(String traditionID, Boolean includeRelatedRelationships, String outFile)
     {
         DotExporter parser = new DotExporter(db);
-        String dot = parser.parseNeo4J(traditionID).getEntity().toString();
+        String dot = parser.parseNeo4J(traditionID, includeRelatedRelationships).getEntity().toString();
 
         GraphViz gv = new GraphViz();
         String type = "svg";

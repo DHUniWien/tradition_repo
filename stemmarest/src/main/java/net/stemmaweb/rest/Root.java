@@ -5,6 +5,7 @@ import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.parser.CollateXParser;
+import net.stemmaweb.parser.TEIParallelSegParser;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.parser.GraphMLParser;
@@ -53,7 +54,7 @@ public class Root {
     public UserNode getUserNode() {
         return new UserNode();
     }
-    /**
+    /*
      * Resource creation calls
      */
 
@@ -62,16 +63,17 @@ public class Root {
      *
      * @return Http Response with the id of the imported tradition on success or
      *         an ERROR in JSON format
-     * @throws XMLStreamException
+     * @throws XMLStreamException for bad XML data
      */
-    @PUT
+    @POST
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
                                   @DefaultValue("LR") @FormDataParam("direction") String direction,
+                                  @DefaultValue("a.c.") @FormDataParam("layerlabel") String layerlabel,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("empty") String empty,
@@ -93,7 +95,7 @@ public class Root {
 
         String tradId;
         try {
-            tradId = this.createTradition(name, direction, language, is_public);
+            tradId = this.createTradition(name, direction, language, is_public, layerlabel);
             this.linkUserToTradition(userId, tradId);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -103,31 +105,42 @@ public class Root {
 
         // Return now if we have no file to parse
         if (empty != null)
-            return Response.status(Response.Status.CREATED).entity("{\"tradId\":" + tradId + "}").build();
+            return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
 
         // Otherwise, parse the file we have been given
+        Response result = null;
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
-            return new TabularParser().parseCSV(uploadedInputStream, tradId, ',');
+            result = new TabularParser().parseCSV(uploadedInputStream, tradId, ',');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
-            return new TabularParser().parseCSV(uploadedInputStream, tradId, '\t');
+            result = new TabularParser().parseCSV(uploadedInputStream, tradId, '\t');
         if (filetype.startsWith("xls"))
             // Pass it off to the Excel reader
-            return new TabularParser().parseExcel(uploadedInputStream, tradId, filetype);
-        // TODO we need to parse TEI parallel seg, CTE, and CollateX XML
+            result = new TabularParser().parseExcel(uploadedInputStream, tradId, filetype);
+        if (filetype.equals("teips"))
+            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, tradId);
+        // TODO we need to parse TEI double-endpoint attachment from CTE
         if (filetype.equals("collatex"))
-            return new CollateXParser().parseCollateX(uploadedInputStream, tradId);
-        // Otherwise assume GraphML, for backwards compatibility. Text direction will be taken
-        // from the GraphML file.
+            // Pass it off to the CollateX parser
+            result = new CollateXParser().parseCollateX(uploadedInputStream, tradId);
         if (filetype.equals("graphml"))
-            return new GraphMLParser().parseGraphML(uploadedInputStream, userId, tradId);
-
+            // Pass it off to the somewhat legacy GraphML parser
+            result = new GraphMLParser().parseGraphML(uploadedInputStream, userId, tradId);
         // If we got this far, it was an unrecognized filetype.
-        return Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+        if (result == null)
+            result = Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+
+        // If the result wasn't a success, delete the tradition node before returning the result.
+        if (result.getStatus() > 201) {
+            Tradition failedTradition = new Tradition(tradId);
+            failedTradition.deleteTraditionById();
+        }
+
+        return result;
     }
 
-    /**
+    /*
      * Collection calls
      */
 
@@ -139,7 +152,7 @@ public class Root {
      */
     @GET
     @Path("/traditions")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
 
@@ -160,7 +173,7 @@ public class Root {
 
     @GET
     @Path("/users")
-    @Produces(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
 
@@ -175,7 +188,8 @@ public class Root {
         return Response.ok(userList).build();
     }
 
-    public String createTradition(String name, String direction, String language, String isPublic) throws Exception {
+    private String createTradition(String name, String direction, String language, String isPublic, String layerlabel)
+            throws Exception {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node
@@ -190,11 +204,12 @@ public class Root {
             traditionNode.setProperty("id", tradId);
             traditionNode.setProperty("name", name);
             traditionNode.setProperty("direction", direction);
+            traditionNode.setProperty("layerlabel", layerlabel);
             if (language != null) {
                 traditionNode.setProperty("language", language);
             }
             if (isPublic != null) {
-                traditionNode.setProperty("isPublic", isPublic.equals("true"));
+                traditionNode.setProperty("is_public", isPublic.equals("true"));
             }
             tx.success();
         } catch (Exception e) {
@@ -202,28 +217,6 @@ public class Root {
             throw new Exception("Could not create a new tradition!");
         }
         return tradId;
-    }
-
-    private boolean createUser(String userId, String isAdmin) throws Exception {
-        try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            if (rootNode == null) {
-                DatabaseService.createRootNode(db);
-                rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            }
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
-            if (userNode != null) {
-                tx.failure();
-                throw new Exception("A user with ID " + userId + " already exists!");
-            }
-            Node node = db.createNode(Nodes.USER);
-            node.setProperty("id", userId);
-            node.setProperty("isAdmin", isAdmin);
-
-            rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
-        }
-        return true;
     }
 
     private void linkUserToTradition(String userId, String tradId) throws Exception {
