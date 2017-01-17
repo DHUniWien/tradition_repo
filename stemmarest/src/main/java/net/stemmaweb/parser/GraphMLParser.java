@@ -66,7 +66,6 @@ public class GraphMLParser {
         Node traditionNode;             // this will be the entry point of the graph
         Node currentNode = null;        // holds the current
         String currentGraph = null;     // holds the ID of the current XML graph element
-        Relationship currentRel = null; // holds the current relationship
         RelationshipModel currentRelModel = null;
         String edgeWitness = null;
         String witnessClass = "witnesses";
@@ -202,9 +201,7 @@ public class GraphMLParser {
                                         case "relationship":
                                             // This is the relationship type, a.k.a. "type" in this system.
                                             // Backwards compatibility for legacy XML
-                                            assert currentRel.isType(ERelations.RELATED);
-                                            attr = "type";
-                                            setTypedProperty(currentRel, attr, keytype, val);
+                                            currentRelModel.setType(val);
                                             break;
                                         case "is_significant":
                                             currentRelModel.setIs_significant(val);
@@ -228,8 +225,6 @@ public class GraphMLParser {
                                             currentRelModel.setType(val);
                                             break;
                                         case "witness":
-                                            // Check that this is a sequence relationship
-//                                            assert currentRel.isType(ERelations.SEQUENCE);
                                             edgeWitness = val;
                                             // Store the existence of this witness
                                             witnesses.put(val, true);

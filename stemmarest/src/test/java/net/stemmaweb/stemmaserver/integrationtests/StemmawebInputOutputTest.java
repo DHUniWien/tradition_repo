@@ -78,12 +78,9 @@ public class StemmawebInputOutputTest {
     public void graphMLImportXMLStreamErrorTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaWithError.xml", "graphml");
-        if (response != null) {
-            assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
+        assertFalse(response == null);
+        assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
                     response.getStatus());
-        } else {
-            assertTrue(false);
-        }
     }
 
     /**
@@ -92,7 +89,7 @@ public class StemmawebInputOutputTest {
     @Test
     public void graphMLImportSuccessTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                    "src/TestFiles/testTradition.xml", "graphml");
+                    "src/TestFiles/besoin.xml", "graphml");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
 
