@@ -170,8 +170,6 @@
             <groupId>com.alexmerz</groupId>
             <artifactId>graphviz</artifactId>
             <version>0.8.6</version>
-            <scope>system</scope>
-            <systemPath>${basedir}/lib/com.alexmerz.graphviz.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>org.checkerframework</groupId>
@@ -197,8 +195,8 @@
    
     <repositories>
         <repository>
-            <id>codehaus</id>
-            <url>http://repository.codehaus.org/org/codehaus</url>
+            <id>repository</id>
+            <url>file://${basedir}/repository</url>
         </repository>
     </repositories>
    
