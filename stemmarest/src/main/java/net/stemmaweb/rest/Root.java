@@ -4,12 +4,8 @@ import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
-import net.stemmaweb.parser.CollateXParser;
-import net.stemmaweb.parser.TEIParallelSegParser;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
-import net.stemmaweb.parser.TabularParser;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.*;
@@ -173,13 +169,6 @@ public class Root {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node
-            /*
-            traditionNode = db.findNode(Nodes.TRADITION, "name", name);
-            if (traditionNode != null) {
-                tx.failure();
-                throw new Exception("A tradition named '" + name + "' already exists!");
-            }
-            */
             Node traditionNode = db.createNode(Nodes.TRADITION);
             traditionNode.setProperty("id", tradId);
             traditionNode.setProperty("name", name);

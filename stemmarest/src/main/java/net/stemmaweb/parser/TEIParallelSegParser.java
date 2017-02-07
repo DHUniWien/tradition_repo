@@ -3,6 +3,7 @@ package net.stemmaweb.parser;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 
@@ -31,7 +32,7 @@ public class TEIParallelSegParser {
     private Boolean appSiglorumPresent = false;
     private Boolean spaceSignificant = false;
 
-    public Response parseTEIParallelSeg(InputStream xmldata, String tradId) {
+    public Response parseTEIParallelSeg(InputStream xmldata, Node parentNode) {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
@@ -45,19 +46,18 @@ public class TEIParallelSegParser {
         }
 
         // Main XML parser loop
+        Node traditionNode = DatabaseService.getRelated(parentNode, ERelations.PART).get(0);
+        String tradId;
         Node startNode;
         try (Transaction tx = db.beginTx()) {
-
-            // Look up the tradition node
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-
+            tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
             startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
             startNode.setProperty("tradition_id", tradId);
             startNode.setProperty("text", "#START#");
             startNode.setProperty("rank", 0);
-            traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
+            parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
             // State variables
             Boolean inHeader = false;
@@ -91,7 +91,7 @@ public class TEIParallelSegParser {
                                 endNode.setProperty("tradition_id", tradId);
                                 endNode.setProperty("is_end", true);
                                 endNode.setProperty("rank", 0);
-                                traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
+                                parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
                                 Relationship endLink = globalPrior.createRelationshipTo(endNode, ERelations.SEQUENCE);
                                 setAllWitnesses(endLink);
                                 // Now go through and clean out all the placeholder nodes, linking the tradition.
@@ -116,7 +116,7 @@ public class TEIParallelSegParser {
                                     witnessNode.setProperty("sigil", sigil);
                                     witnessNode.setProperty("hypothetical", false);
                                     witnessNode.setProperty("quotesigil", isDotId(sigil));
-                                    traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+                                    parentNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
                                     // All witnesses start active by default; if we encounter a witStart
                                     // we will start to use an explicit app siglorum.
                                     activeWitnesses.put(sigil, true);

@@ -100,9 +100,10 @@ public class TabularParser {
         String response;
         Response.Status result = Response.Status.OK;
         Node traditionNode = DatabaseService.getRelated(parentNode, ERelations.PART).get(0);
-        String tradId = traditionNode.getProperty("id").toString();
+        String tradId;
 
         try (Transaction tx = db.beginTx()) {
+            tradId = traditionNode.getProperty("id").toString();
             // Make the start node
             Node startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);

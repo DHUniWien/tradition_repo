@@ -222,12 +222,14 @@ public class Tradition {
 
     @POST
     @Path("/section")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream,
                                @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
         // Make a new section node to connect to the tradition in question
-        Node sectionNode = null;
+        Node sectionNode;
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         try (Transaction tx = db.beginTx()) {
             sectionNode = db.createNode(Nodes.SECTION);
@@ -255,7 +257,7 @@ public class Tradition {
             result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
         if (filetype.equals("graphml"))
             // Pass it off to the somewhat legacy GraphML parser
-            result = new GraphMLParser().parseGraphML(uploadedInputStream, userId, sectionNode);
+            result = new GraphMLParser().parseGraphML(uploadedInputStream, sectionNode);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
@@ -802,6 +804,11 @@ public class Tradition {
                         .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
                         .relationships(ERelations.HAS_ARCHETYPE, Direction.OUTGOING)
                         .relationships(ERelations.TRANSMITTED, Direction.OUTGOING)
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .relationships(ERelations.COLLATION, Direction.OUTGOING)
+                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_END, Direction.OUTGOING)
+                        .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(foundTradition)
                         .nodes().forEach(x -> {

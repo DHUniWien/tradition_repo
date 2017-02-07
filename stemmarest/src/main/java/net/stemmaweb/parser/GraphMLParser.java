@@ -16,6 +16,7 @@ import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 
@@ -28,11 +29,11 @@ public class GraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseGraphML(String filename, String userId, String tradId)
+    public Response parseGraphML(String filename, Node parentNode)
         throws FileNotFoundException {
         File file = new File(filename);
         InputStream in = new FileInputStream(file);
-        return parseGraphML(in, userId, tradId);
+        return parseGraphML(in, parentNode);
     }
 
     /**
@@ -40,10 +41,10 @@ public class GraphMLParser {
      * that the GraphML describes a valid graph as exported from the legacy Stemmaweb.
      *
      * @param xmldata - the GraphML file stream
-     * @param tradId - the tradition's ID
+     * @param parentNode - the node to which the collation should be attached
      * @return Http Response with the id of the imported tradition
      */
-    public Response parseGraphML(InputStream xmldata, String userId, String tradId) {
+    public Response parseGraphML(InputStream xmldata, Node parentNode) {
         XMLInputFactory factory;
         XMLStreamReader reader;
         factory = XMLInputFactory.newInstance();
@@ -55,6 +56,10 @@ public class GraphMLParser {
                     .entity("Error: Parsing of tradition file failed!")
                     .build();
         }
+        // The information on the relevant tradition
+        Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
+        String tradId;
+
         // Some variables to collect information
         HashMap<String, Long> idToNeo4jId = new HashMap<>();
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
@@ -63,17 +68,14 @@ public class GraphMLParser {
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
-        Node traditionNode;             // this will be the entry point of the graph
         Node currentNode = null;        // holds the current
         String currentGraph = null;     // holds the ID of the current XML graph element
         RelationshipModel currentRelModel = null;
         String edgeWitness = null;
         String witnessClass = "witnesses";
-        String userIdFile = null;
 
         try (Transaction tx = db.beginTx()) {
-            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-
+            tradId = traditionNode.getProperty("id").toString();
             outer:
             while (true) {
                 // START READING THE GRAPHML FILE
@@ -252,10 +254,7 @@ public class GraphMLParser {
                                         case "stemmata":
                                             stemmata = text;
                                             break;
-                                        case "user":
-                                            // Use the user ID from the file if we are asked to
-                                            if (userId.equals("FILE"))
-                                                userIdFile = text;
+                                        case "user": // We ignore the old GraphML user IDs
                                             break;
 
                                         // Reading node attributes
@@ -263,12 +262,12 @@ public class GraphMLParser {
                                             break;
                                         case "is_start":
                                             if(text.equals("1") || text.equals("true"))
-                                                traditionNode.createRelationshipTo(currentNode, ERelations.COLLATION);
+                                                parentNode.createRelationshipTo(currentNode, ERelations.COLLATION);
                                             setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         case "is_end":
                                             if (text.equals("1") || text.equals("true"))
-                                                traditionNode.createRelationshipTo(currentNode, ERelations.HAS_END);
+                                                parentNode.createRelationshipTo(currentNode, ERelations.HAS_END);
                                             setTypedProperty(currentNode, attr, keytype, text);
                                             break;
                                         case "public": // This is overridden in the upload API
@@ -355,14 +354,6 @@ public class GraphMLParser {
                 witnessNode.setProperty("hypothetical", false);
                 witnessNode.setProperty("quotesigil", !isDotId(sigil));
                 traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
-            }
-
-            // Change the userID, in case we should use the file's userID
-            if (userIdFile != null) {
-                Node userNode = db.findNode(Nodes.USER, "id", userId);
-                if (userNode != null) {
-                    userNode.setProperty("id", userIdFile);
-                }
             }
             tx.success();
         } catch(Exception e) {

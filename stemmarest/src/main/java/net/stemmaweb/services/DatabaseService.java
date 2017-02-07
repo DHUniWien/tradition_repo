@@ -23,29 +23,7 @@ public class DatabaseService {
      * @return
      */
     public static Node getStartNode(String nodeId, GraphDatabaseService db) {
-        Node startNode = null;
-        Node currentNode = getTraditionNode(nodeId, db);
-        if (currentNode == null) {
-            currentNode = getSectionNode(nodeId, db);
-        }
-        if (currentNode != null) {
-            ArrayList<Node> snList = getRelated(currentNode, ERelations.COLLATION);
-            try (Transaction tx = db.beginTx()) {
-                if (snList.size() == 0 && currentNode.hasLabel(Nodes.TRADITION)) {
-                    ArrayList<Node> sectionNodes = getSectionNodes(nodeId, db);
-                    for (Node iterNode : sectionNodes) {
-                        startNode = getStartNode(String.valueOf(iterNode.getProperty("id")), db);
-                        if (startNode != null) {
-                            break;
-                        }
-                    }
-                } else if (snList.size() == 1) {
-                    startNode = snList.get(0);
-                }
-                tx.success();
-            }
-        }
-        return startNode;
+        return getBoundaryNode(nodeId, db, ERelations.COLLATION);
     }
 
     /**
@@ -56,30 +34,26 @@ public class DatabaseService {
      * @return
      */
     public static Node getEndNode(String nodeId, GraphDatabaseService db) {
-        Node endNode = null;
+        return getBoundaryNode(nodeId, db, ERelations.HAS_END);
+    }
+
+    private static Node getBoundaryNode(String nodeId, GraphDatabaseService db, ERelations direction) {
+        Node boundNode = null;
+        // If we have been asked for a tradition node, use the first of its section nodes instead.
         Node currentNode = getTraditionNode(nodeId, db);
-        if (currentNode == null) {
-            currentNode = getSectionNode(nodeId, db);
-        }
         if (currentNode != null) {
-            ArrayList<Node> snList = getRelated(currentNode, ERelations.HAS_END);
-            try (Transaction tx = db.beginTx()) {
-                if (snList.size() == 0 && currentNode.hasLabel(Nodes.TRADITION)) {
-                    ArrayList<Node> sectionNodes = getSectionNodes(nodeId, db);
-                    Node tmpEndNode;
-                    for (Node iterNode : sectionNodes) {
-                        tmpEndNode = getEndNode(String.valueOf(iterNode.getProperty("id")), db);
-                        if (tmpEndNode != null) {
-                            endNode = tmpEndNode;
-                        }
-                    }
-                } else if (snList.size() == 1) {
-                    endNode = snList.get(0);
-                }
-                tx.success();
-            }
+            ArrayList<Node> sections = getSectionNodes(nodeId, db);
+            if (sections != null)
+                return getBoundaryNode(String.valueOf(sections.get(0).getId()), db, direction);
         }
-        return endNode;
+        // If we are here, we were asked for a section node.
+        try (Transaction tx = db.beginTx()) {
+            currentNode = db.getNodeById(Long.valueOf(nodeId));
+            if (currentNode != null)
+                boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
+            tx.success();
+        }
+        return boundNode;
     }
 
     /**
@@ -150,22 +124,6 @@ public class DatabaseService {
             tx.success();
         }
         return tradition;
-    }
-
-    /**
-     *
-     * @param sectId
-     * @param db
-     *            the GraphDatabaseService where the tradition is stored
-     * @return
-     */
-    public static Node getSectionNode(String sectId, GraphDatabaseService db) {
-        Node section;
-        try (Transaction tx = db.beginTx()) {
-            section = db.findNode(Nodes.SECTION, "id", sectId);
-            tx.success();
-        }
-        return section;
     }
 
     /**

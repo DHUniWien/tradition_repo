@@ -48,8 +48,9 @@ public class CollateXParser {
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
         Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
-        String tradId = traditionNode.getProperty("id").toString();
+        String tradId;
         try (Transaction tx = db.beginTx()) {
+            tradId = traditionNode.getProperty("id").toString();
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
@@ -71,7 +72,7 @@ public class CollateXParser {
                         highestRank = rankVal > highestRank ? rankVal : highestRank;
                         // Detect start node
                         if (rankVal == 0) {
-                            traditionNode.createRelationshipTo(reading, ERelations.COLLATION);
+                            parentNode.createRelationshipTo(reading, ERelations.COLLATION);
                             reading.setProperty("is_start", true);
                         }
                     } else if (dataKeys.get(keyId).equals("tokens"))
@@ -85,7 +86,7 @@ public class CollateXParser {
                     .filter(x -> Long.valueOf(x.getProperty("rank").toString()).equals(hr))
                     .findFirst().get();
             endNode.setProperty("is_end", true);
-            traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
+            parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
 
             // Create all the sequences and keep track of the witnesses we see
             HashSet<String> seenWitnesses = new HashSet<>();
