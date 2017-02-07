@@ -1,5 +1,7 @@
 package net.stemmaweb.rest;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
 import javax.ws.rs.*;
@@ -8,12 +10,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.sun.jersey.core.header.FormDataContentDisposition;
+import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.GraphMLStemmawebExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
-import net.stemmaweb.parser.DotParser;
+import net.stemmaweb.parser.*;
 import net.stemmaweb.services.*;
 import net.stemmaweb.services.DatabaseService;
 
@@ -48,7 +52,7 @@ public class Tradition {
         return new Witness(traditionId, sigil);
     }
 
-    @Path("section/{sectionId}/witness/{sigil}")
+    @Path("/section/{sectionId}/witness/{sigil}")
     public Witness getWitnessFromSection(@PathParam("sectionId") String sectionId,
                                          @PathParam("sigil") String sigil) {
         return new Witness(traditionId, sectionId, sigil);
@@ -214,6 +218,112 @@ public class Tradition {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(sectionList).build();
+    }
+
+    @POST
+    @Path("/section")
+    public Response addSection(@FormDataParam("name") String sectionName,
+                               @FormDataParam("filetype") String filetype,
+                               @FormDataParam("file") InputStream uploadedInputStream,
+                               @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
+        // Make a new section node to connect to the tradition in question
+        Node sectionNode = null;
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        try (Transaction tx = db.beginTx()) {
+            sectionNode = db.createNode(Nodes.SECTION);
+            sectionNode.setProperty("name", sectionName);
+            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
+            tx.success();
+        }
+
+        // Parse the contents of the given file into that section
+        Response result = null;
+        if (filetype.equals("csv"))
+            // Pass it off to the CSV reader
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ',');
+        if (filetype.equals("tsv"))
+            // Pass it off to the CSV reader with tab separators
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, '\t');
+        if (filetype.startsWith("xls"))
+            // Pass it off to the Excel reader
+            result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
+        if (filetype.equals("teips"))
+            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
+        // TODO we need to parse TEI double-endpoint attachment from CTE
+        if (filetype.equals("collatex"))
+            // Pass it off to the CollateX parser
+            result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
+        if (filetype.equals("graphml"))
+            // Pass it off to the somewhat legacy GraphML parser
+            result = new GraphMLParser().parseGraphML(uploadedInputStream, userId, sectionNode);
+        // If we got this far, it was an unrecognized filetype.
+        if (result == null)
+            result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+
+        // If the result wasn't a success, delete the section node before returning the result.
+        if (result.getStatus() > 201) {
+            this.deleteSection(String.valueOf(sectionNode.getId()));
+        }
+
+        return result;
+    }
+
+    @DELETE
+    @Path("/section/{id}")
+    public Response deleteSection(@PathParam("id") String sectionId) {
+        Node foundSection;
+        Node traditionNode = null;
+
+        // Get the section node in question and check that it belongs to the tradition
+        try (Transaction tx = db.beginTx()) {
+            // Find the section by ID and check that it belongs to this tradition.
+            foundSection = db.getNodeById(Long.getLong(sectionId));
+            if (foundSection != null) {
+                traditionNode = foundSection.getSingleRelationship(ERelations.PART, Direction.INCOMING)
+                        .getStartNode();
+            }
+            tx.success();
+        }
+
+        // Delete everything to do with the section
+        if (traditionNode != null &&
+                traditionNode.getProperty("id").toString().equals(traditionId)) {
+            try (Transaction tx = db.beginTx()) {
+                /*
+                 * Find all the nodes and relations to remove
+                 */
+                Set<Relationship> removableRelations = new HashSet<>();
+                Set<Node> removableNodes = new HashSet<>();
+                db.traversalDescription()
+                        .depthFirst()
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .relationships(ERelations.COLLATION, Direction.OUTGOING)
+                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                        .relationships(ERelations.HAS_END, Direction.OUTGOING)
+                        .relationships(ERelations.RELATED, Direction.OUTGOING)
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                        .traverse(foundSection)
+                        .nodes().forEach(x -> {
+                    x.getRelationships().forEach(removableRelations::add);
+                    removableNodes.add(x);
+                });
+
+                /*
+                 * Remove the nodes and relations
+                 */
+                removableRelations.forEach(Relationship::delete);
+                removableNodes.forEach(Node::delete);
+                tx.success();
+            } catch (Exception e) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getStackTrace()).build();
+            }
+        } else {
+            return Response.status(Status.NOT_FOUND)
+                    .entity("The requested tradition has no section with this ID!")
+                    .build();
+        }
+
+        return Response.status(Response.Status.OK).build();
     }
 
     /**
@@ -687,15 +797,11 @@ public class Tradition {
                 Set<Node> removableNodes = new HashSet<>();
                 db.traversalDescription()
                         .depthFirst()
-                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                        .relationships(ERelations.COLLATION, Direction.OUTGOING)
-                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_END, Direction.OUTGOING)
+                        .relationships(ERelations.PART, Direction.OUTGOING)
                         .relationships(ERelations.HAS_WITNESS, Direction.OUTGOING)
                         .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
                         .relationships(ERelations.HAS_ARCHETYPE, Direction.OUTGOING)
                         .relationships(ERelations.TRANSMITTED, Direction.OUTGOING)
-                        .relationships(ERelations.RELATED, Direction.OUTGOING)
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                         .traverse(foundTradition)
                         .nodes().forEach(x -> {

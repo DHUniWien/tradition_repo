@@ -3,6 +3,7 @@ package net.stemmaweb.parser;
 import com.opencsv.CSVReader;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -27,12 +28,12 @@ public class TabularParser {
      * Parse a comma- or tab-separated file stream into a graph.
      *
      * @param fileData - an InputStream containing the CSV/TSV data
-     * @param tradId - the tradition's ID
+     * @param sectionNode - the section of the tradition to which this collation belongs
      * @param sepChar - the record separator to use (either comma or tab)
      *
      * @return Response
      */
-    public Response parseCSV(InputStream fileData, String tradId, char sepChar) {
+    public Response parseCSV(InputStream fileData, Node sectionNode, char sepChar) {
         // Parse the CSV file
         ArrayList<String[]> csvRows = new ArrayList<>();
         try {
@@ -44,19 +45,19 @@ public class TabularParser {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                 .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
-        return parseTableToTradition(csvRows, tradId);
+        return parseTableToCollation(csvRows, sectionNode);
     }
 
     /**
      * Parse an Excel file stream into a graph.
      *
      * @param fileData - an InputStream containing the CSV/TSV data
-     * @param tradId - the tradition's ID
+     * @param sectionNode - the section of the tradition to which this collation belongs
      * @param excelType - either 'xls' or 'xlsx'
      *
      * @return Response
      */
-    public Response parseExcel(InputStream fileData, String tradId, String excelType) {
+    public Response parseExcel(InputStream fileData, Node sectionNode, String excelType) {
         ArrayList<String[]> excelRows;
         try {
             Object workbook;
@@ -70,7 +71,7 @@ public class TabularParser {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
         }
-        return parseTableToTradition(excelRows, tradId);
+        return parseTableToCollation(excelRows, sectionNode);
     }
 
     // Extract a table from the first sheet of an Excel workbook.
@@ -95,37 +96,26 @@ public class TabularParser {
         return excelRows;
     }
 
-    private Response parseTableToTradition(ArrayList<String[]> tableData, String tradId) {
+    private Response parseTableToCollation(ArrayList<String[]> tableData, Node parentNode) {
         String response;
         Response.Status result = Response.Status.OK;
-        Node traditionNode;
-//        String tradId = UUID.randomUUID().toString();
+        Node traditionNode = DatabaseService.getRelated(parentNode, ERelations.PART).get(0);
+        String tradId = traditionNode.getProperty("id").toString();
+
         try (Transaction tx = db.beginTx()) {
-            // Make the tradition node and tie it to the user
-            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-/*            traditionNode.setProperty("id", tradId);
-            traditionNode.setProperty("name", tradName);
-            traditionNode.setProperty("direction", direction);
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
-            if (userNode == null) {
-                result = Response.Status.PRECONDITION_FAILED;
-                throw new Exception("No user with ID " + userId + " found!");
-            }
-            userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-*/
             // Make the start node
             Node startNode = db.createNode(Nodes.READING);
             startNode.setProperty("is_start", true);
             startNode.setProperty("tradition_id", tradId);
             startNode.setProperty("rank", 0L);
             startNode.setProperty("text", "#START#");
-            traditionNode.createRelationshipTo(startNode, ERelations.COLLATION);
+            parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
             Node endNode = db.createNode(Nodes.READING);
             endNode.setProperty("is_end", true);
             endNode.setProperty("tradition_id", tradId);
             endNode.setProperty("rank", (long) tableData.size());
             endNode.setProperty("text", "#END#");
-            traditionNode.createRelationshipTo(endNode, ERelations.HAS_END);
+            parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
 
             // Get the witnesses from the first row of the table
             String[] witnessList = tableData.get(0);
@@ -228,7 +218,7 @@ public class TabularParser {
 
             // We are done!
             result = Response.Status.CREATED;
-            response = String.format("{\"tradId\":\"%s\"}", tradId);
+            response = String.format("{\"sectionId\":\"%d\"}", parentNode.getId());
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

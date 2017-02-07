@@ -59,7 +59,8 @@ public class Root {
      */
 
     /**
-     * Imports a tradition by given GraphML file and meta data
+     * Imports a new tradition from file data of various forms, and creates at least one section
+     * in doing so.
      *
      * @return Http Response with the id of the imported tradition on success or
      *         an ERROR in JSON format
@@ -96,6 +97,7 @@ public class Root {
         String tradId;
         try {
             tradId = this.createTradition(name, direction, language, is_public, layerlabel);
+            // TODO Failure after this point could leave a dangling tradition node.
             this.linkUserToTradition(userId, tradId);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -103,41 +105,19 @@ public class Root {
                     .build();
         }
 
-        // Return now if we have no file to parse
-        if (empty != null)
-            return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
-
-        // Otherwise, parse the file we have been given
-        Response result = null;
-        if (filetype.equals("csv"))
-            // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, tradId, ',');
-        if (filetype.equals("tsv"))
-            // Pass it off to the CSV reader with tab separators
-            result = new TabularParser().parseCSV(uploadedInputStream, tradId, '\t');
-        if (filetype.startsWith("xls"))
-            // Pass it off to the Excel reader
-            result = new TabularParser().parseExcel(uploadedInputStream, tradId, filetype);
-        if (filetype.equals("teips"))
-            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, tradId);
-        // TODO we need to parse TEI double-endpoint attachment from CTE
-        if (filetype.equals("collatex"))
-            // Pass it off to the CollateX parser
-            result = new CollateXParser().parseCollateX(uploadedInputStream, tradId);
-        if (filetype.equals("graphml"))
-            // Pass it off to the somewhat legacy GraphML parser
-            result = new GraphMLParser().parseGraphML(uploadedInputStream, userId, tradId);
-        // If we got this far, it was an unrecognized filetype.
-        if (result == null)
-            result = Response.status(Response.Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
-
-        // If the result wasn't a success, delete the tradition node before returning the result.
-        if (result.getStatus() > 201) {
-            Tradition failedTradition = new Tradition(tradId);
-            failedTradition.deleteTraditionById();
+        // Parse file contents into a section, if we aren't trying to create an empty tradition
+        if (empty == null) {
+            Tradition traditionService = new Tradition(tradId);
+            Response dataResult = traditionService.addSection("DEFAULT",
+                    filetype, uploadedInputStream, fileDetail);
+            if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                // If something went wrong, delete the new tradition immediately and return the error.
+                traditionService.deleteTraditionById();
+                return dataResult;
+            }
         }
 
-        return result;
+        return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
     }
 
     /*

@@ -2,6 +2,7 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.w3c.dom.Document;
@@ -26,7 +27,7 @@ public class CollateXParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseCollateX(InputStream filestream, String tradId)
+    public Response parseCollateX(InputStream filestream, Node parentNode)
     {
         // Try this the DOM parsing way
         Document doc;
@@ -46,11 +47,9 @@ public class CollateXParser {
             NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
-//        String tradId = UUID.randomUUID().toString();
+        Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
+        String tradId = traditionNode.getProperty("id").toString();
         try (Transaction tx = db.beginTx()) {
-            // Get the tradition node
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();

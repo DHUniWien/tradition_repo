@@ -119,14 +119,34 @@ public class DatabaseService {
     /**
      *
      * @param tradId
+     *            the string ID of the tradition we're hunting
      * @param db
      *            the GraphDatabaseService where the tradition is stored
      * @return
+     *            the relevant tradition node
      */
     public static Node getTraditionNode(String tradId, GraphDatabaseService db) {
         Node tradition;
         try (Transaction tx = db.beginTx()) {
             tradition = db.findNode(Nodes.TRADITION, "id", tradId);
+            tx.success();
+        }
+        return tradition;
+    }
+
+    /**
+     *
+     * @param section
+     *            the section node whose tradition we're hunting
+     * @param db
+     *            the GraphDatabaseService where the tradition is stored
+     * @return
+     *            the relevant tradition node
+     */
+    public static Node getTraditionNode(Node section, GraphDatabaseService db) {
+        Node tradition;
+        try (Transaction tx = db.beginTx()) {
+            tradition = section.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
             tx.success();
         }
         return tradition;
