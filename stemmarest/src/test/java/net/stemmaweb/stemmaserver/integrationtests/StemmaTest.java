@@ -72,7 +72,7 @@ public class StemmaTest {
             String fileName = "src/TestFiles/testTradition.xml";
             tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
         } catch (FileNotFoundException e) {
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -84,7 +84,7 @@ public class StemmaTest {
             tradId = Util.getValueFromJson(jerseyResult, "tradId");
         } catch (Exception e) {
             e.printStackTrace();
-            assertFalse(true);
+            fail();
         }
         assert(tradId.length() != 0);
         return tradId;
@@ -241,7 +241,14 @@ public class StemmaTest {
                 .path("/tradition/" + tradId + "/stemma/loop")
                 .type(MediaType.APPLICATION_JSON)
                 .get(StemmaModel.class);
+        assertTrue(stemma.getIs_contaminated());
         Util.assertStemmasEquivalent(newStemmaDot, stemma.getDot());
+
+        // Attempts to reorient this stemma should fail.
+        result = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/stemma/loop/reorient/A")
+                .post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.PRECONDITION_FAILED.getStatusCode(), result.getStatus());
 
     }
 
@@ -457,7 +464,7 @@ public class StemmaTest {
             String fileName = "src/TestFiles/florilegium_graphml.xml";
             tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
         } catch (FileNotFoundException e) {
-            assertTrue(false);
+            fail();
         }
 
         // Count the nodes to start with
@@ -474,7 +481,7 @@ public class StemmaTest {
             encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium_tf.dot"));
             stemmaTF = new String(encoded, Charset.forName("utf-8"));
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
         Response parseResponse = parser.importStemmaFromDot(stemmaCM, tradId);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), parseResponse.getStatus());

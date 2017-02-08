@@ -20,6 +20,7 @@ public class StemmaModel {
 
     private String identifier;
     private Boolean is_undirected;
+    private Boolean is_contaminated;
     private Long from_jobid;
     private String dot;
 
@@ -32,6 +33,7 @@ public class StemmaModel {
         try (Transaction tx = db.beginTx()) {
             identifier = stemmaNode.getProperty("name").toString();
             is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);
+            is_contaminated = stemmaNode.hasProperty("is_contaminated");
             if (stemmaNode.hasProperty("from_jobid"))
                 from_jobid = (Long) stemmaNode.getProperty("from_jobid");
 
@@ -49,5 +51,6 @@ public class StemmaModel {
     public String getDot () { return this.dot; }
     public Long getFrom_jobid () { return this.from_jobid; }
     public Boolean getIs_undirected () { return this.is_undirected; }
+    public Boolean getIs_contaminated () { return this.is_contaminated; }
 
 }

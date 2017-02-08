@@ -17,6 +17,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.BranchState;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  * This class provides methods for exporting Dot File from Neo4J
@@ -146,31 +148,33 @@ public class DotParser {
                 txEdge.setProperty("hypothesis", stemmaName);
             }
 
-            // If the graph is directed, we need to identify the archetype and
-            // make sure that there is only one.
-            // Set up the path expander to be confined to this stemma
+            // Set up a path expander for the stemma
             // We need to traverse only those paths that belong to this stemma.
-            final String pStemmaName = stemmaName;
-            PathExpander e = new PathExpander() {
-                @Override
-                public java.lang.Iterable expand(Path path, BranchState branchState) {
-                    ArrayList<Relationship> goodPaths = new ArrayList<>();
-                    for (Relationship link : path.endNode()
-                            .getRelationships(ERelations.TRANSMITTED, Direction.INCOMING)) {
-                        if (link.getProperty("hypothesis").equals(pStemmaName)) {
-                            goodPaths.add(link);
-                        }
+
+            // Traverse the stemma looking for a cycle.
+            Boolean contaminated = false;
+            for (Node witness : witnessesVisited.keySet()) {
+                ResourceIterator<Node> pathNodes = db.traversalDescription()
+                        .depthFirst()
+                        .expand(getExpander(Direction.BOTH, stemmaName))
+                        .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                        .evaluator(Evaluators.all())
+                        .traverse(witness).nodes().iterator();
+                Node chainpoint = pathNodes.next();
+                while(pathNodes.hasNext()) {
+                    chainpoint = pathNodes.next();
+                    if (chainpoint.equals(witness)) {
+                        contaminated = true;
+                        break;
                     }
-                    return goodPaths;
                 }
+            }
 
-                @Override
-                public PathExpander reverse() {
-                    return null;
-                }
-            };
+            if (contaminated)
+                stemmaNode.setProperty("is_contaminated", contaminated);
 
-
+            // If the graph is directed, we also need to identify the archetype and
+            // make sure that there is only one.
             if (isDirected) {
                 Node rootNode = null;
                 // For each node, check that it is connected
@@ -180,7 +184,7 @@ public class DotParser {
                     if (witnessesVisited.get(witness))
                         continue;
                     ResourceIterable<Node> pathNodes = db.traversalDescription().depthFirst()
-                            .expand(e)
+                            .expand(getExpander(Direction.INCOMING, stemmaName))
                             .traverse(witness).nodes();
                     Node pathEnd = null;
                     for (Node pNode : pathNodes) {
@@ -216,6 +220,29 @@ public class DotParser {
         }
         messageValue = stemmaName;
         return Status.CREATED;
+    }
+
+    private static PathExpander getExpander (Direction d, String stemmaName) {
+        final String pStemmaName = stemmaName;
+        PathExpander e = new PathExpander() {
+            @Override
+            public java.lang.Iterable expand(Path path, BranchState branchState) {
+                ArrayList<Relationship> goodPaths = new ArrayList<>();
+                for (Relationship link : path.endNode()
+                        .getRelationships(ERelations.TRANSMITTED, d)) {
+                    if (link.getProperty("hypothesis").equals(pStemmaName)) {
+                        goodPaths.add(link);
+                    }
+                }
+                return goodPaths;
+            }
+
+            @Override
+            public PathExpander reverse() {
+                return null;
+            }
+        };
+        return e;
     }
 
     private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {

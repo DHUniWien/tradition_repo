@@ -104,8 +104,8 @@ public class DotExporter
             Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
 
             for (Node sectionNode: sections) {
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
-                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getProperty("id")), db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
                 for (Node node :  db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
@@ -398,13 +398,17 @@ public class DotExporter
         String stemmaName = (String) stemma.getProperty("name");
         Set<String> allPaths = new HashSet<>();
 
+        // If the stemma is contaminated then we must pay attention to direction of link;
+        // it isn't deterministic from archetype identification.
+        Direction useDir = stemma.hasProperty("is_contaminated") ? Direction.OUTGOING : Direction.BOTH;
+
         // We need to traverse only those paths that belong to this stemma.
         PathExpander e = new PathExpander() {
             @Override
             public java.lang.Iterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
                 for (Relationship link : path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, Direction.BOTH)) {
+                        .getRelationships(ERelations.TRANSMITTED, useDir)) {
                     if (link.getProperty("hypothesis").equals(stemmaName)) {
                         goodPaths.add(link);
                     }

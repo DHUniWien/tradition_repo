@@ -157,12 +157,18 @@ public class Stemma {
             Result foundStemma = db.execute("match (:TRADITION {id:'" + tradId
                     + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
                     + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
-            if(!foundStemma.hasNext()) {
+            if(!foundStemma.hasNext())
                 return Response.status(Status.NOT_FOUND).build();
-            }
+
+            // Fish the stemma and requested archetype out of the query
             Map<String, Object> queryRow = foundStemma.next();
             Node stemma    = (Node) queryRow.get("s");
             Node archetype = (Node) queryRow.get("w");
+
+            // Check if the stemma has contamination. If so it can't be reoriented!
+            if (stemma.hasProperty("is_contaminated"))
+                return Response.status(Status.PRECONDITION_FAILED)
+                        .entity("Contaminated stemma cannot be reoriented").build();
 
             // Delete its current HAS_ARCHETYPE, if any
             Relationship currentArchetype = stemma.getSingleRelationship(ERelations.HAS_ARCHETYPE, Direction.OUTGOING);
