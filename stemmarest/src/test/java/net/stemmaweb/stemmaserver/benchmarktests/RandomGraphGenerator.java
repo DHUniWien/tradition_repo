@@ -79,24 +79,26 @@ class RandomGraphGenerator {
                 }
                 System.out.println("]");
                 ArrayList<WitnessBranch> witnessUnconnectedBranches = new ArrayList<>();
-                Node traditionRootNode;
+                Node sectionNode;
                 try (Transaction tx = db.beginTx()) {
                     String tradId = String.valueOf(currId++);
-                    traditionRootNode = db.createNode(Nodes.TRADITION);
+                    Node traditionRootNode = db.createNode(Nodes.TRADITION);
                     traditionRootNode.setProperty("name", "TestTradition_" + tradId);
                     traditionRootNode.setProperty("id", tradId);
                     currentUser.createRelationshipTo(traditionRootNode, ERelations.OWNS_TRADITION);
 
-                    /**
-                     * Create start node
-                     */
+                    // Create section node and start node
+                    sectionNode = db.createNode(Nodes.SECTION);
+                    sectionNode.setProperty("name", "DEFAULT");
+                    traditionRootNode.createRelationshipTo(sectionNode, ERelations.PART);
+
                     Node startNode = db.createNode(Nodes.READING);
                     startNode.setProperty("text", "#START#");
                     startNode.setProperty("is_start", true);
                     startNode.setProperty("rank", 0L);
                     startNode.setProperty("is_common", false);
 
-                    traditionRootNode.createRelationshipTo(startNode, ERelations.COLLATION);
+                    sectionNode.createRelationshipTo(startNode, ERelations.COLLATION);
 
                     for(int l = 0; l < cardOfWitnesses; l++){
                         WitnessBranch witnessBranch = new WitnessBranch();
@@ -191,7 +193,7 @@ class RandomGraphGenerator {
                     endNode.setProperty("is_start", false);
                     endNode.setProperty("is_end", true);
                     endNode.setProperty("is_common", true);
-                    traditionRootNode.createRelationshipTo(endNode, ERelations.HAS_END);
+                    sectionNode.createRelationshipTo(endNode, ERelations.HAS_END);
                     tx.success();
                 }
 

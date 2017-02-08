@@ -41,8 +41,9 @@ public class AlignmentModel {
 
         try (Transaction tx = db.beginTx()) {
             // First get the length, that's the easy part.
-            Node startNode = DatabaseService.getRelated(traditionNode, ERelations.COLLATION).get(0);
-            Node endNode = DatabaseService.getRelated(traditionNode, ERelations.HAS_END).get(0);
+            String tradId = traditionNode.getProperty("id").toString();
+            Node startNode = DatabaseService.getStartNode(tradId, db);
+            Node endNode = DatabaseService.getEndNode(tradId, db);
             length = (long) endNode.getProperty("rank") - 1;
 
             // Make a reference list of readings, and their conflation partners.

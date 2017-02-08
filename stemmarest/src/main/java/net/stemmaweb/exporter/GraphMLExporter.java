@@ -153,9 +153,6 @@ public class GraphMLExporter {
 
     private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
         try {
-            if (((Collection<?>)edge.getPropertyKeys()).size() > 1) {
-                int a = 0;
-            }
             if (edge.isType(ERelations.SEQUENCE)) {
                 String[] witnesses = (edge.hasProperty("witnesses")) ? (String[]) edge.getProperty("witnesses") : null;
                 if (witnesses != null)
@@ -174,9 +171,6 @@ public class GraphMLExporter {
 
     private void writeEdgeToStream(XMLStreamWriter writer, String[] witnesses, Relationship edge, long edgeId, boolean isExtra) {
         try {
-            if (isExtra==true) {
-                int a = 0;
-            }
             for (String witness : witnesses) {
                 writer.writeStartElement("edge");
 
@@ -203,11 +197,11 @@ public class GraphMLExporter {
 
                 for (String prop : edge.getPropertyKeys()) {
                     if (!prop.equals("witnesses")  && !prop.equals("type")) {
-                        if ("a.c."==prop && true!=isExtra)
+                        if (prop.equals("a.c.") && !isExtra)
                             continue;
                         writer.writeStartElement("data");
-                        writer.writeAttribute("key", (true==isExtra) ? relationMap.get("extra")[0] :relationMap.get(prop)[0]);
-                        writer.writeCharacters((true==isExtra) ? "(a.c.)" : edge.getProperty(prop).toString());
+                        writer.writeAttribute("key", (isExtra) ? relationMap.get("extra")[0] :relationMap.get(prop)[0]);
+                        writer.writeCharacters((isExtra) ? "(a.c.)" : edge.getProperty(prop).toString());
                         writer.writeEndElement(); // end data
                     }
                 }
@@ -224,12 +218,6 @@ public class GraphMLExporter {
         int edgeCountGraph1 = 0;
         int nodeCountGraph1 = 0;
         boolean includeRelatedRelations = true;
-
-        Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
-        Node traditionEndNode = DatabaseService.getEndNode(tradId, db);
-        if(traditionStartNode==null || traditionEndNode==null) {
-            return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
-        }
 
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
@@ -314,7 +302,7 @@ public class GraphMLExporter {
             for (Node sectionNode : sections) {
                 long max_rank_section = 0;
 
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
                 writeNode(writer, sectionNode);
 
                 for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {
@@ -341,7 +329,7 @@ public class GraphMLExporter {
                     writeEdge(writer, rel, edgeId++);
                 }
 
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getProperty("id")), db);
+                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
                 for (Relationship rel : relTraversal.traverse(sectionStartNode).relationships()) {
                     if (rel != null) {
                         edgeCountGraph1++;

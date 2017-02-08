@@ -17,10 +17,10 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 public class DatabaseService {
     /**
      *
-     * @param nodeId
-     * @param db
-     *            the GraphDatabaseService where the tradition is stored
-     * @return
+     * @param nodeId the ID of the tradition or section whose start node should be returned
+     * @param db  the GraphDatabaseService where the tradition is stored
+     * @return  the start node, or null if there is none.
+     *      NOTE if there are multiple unordered sections, an arbitrary start node may be returned!
      */
     public static Node getStartNode(String nodeId, GraphDatabaseService db) {
         return getBoundaryNode(nodeId, db, ERelations.COLLATION);
@@ -28,10 +28,10 @@ public class DatabaseService {
 
     /**
      *
-     * @param nodeId
-     * @param db
-     *            the GraphDatabaseService where the tradition is stored
-     * @return
+     * @param nodeId the ID of the tradition or section whose end node should be returned
+     * @param db  the GraphDatabaseService where the tradition is stored
+     * @return  the end node, or null if there is none
+     *      NOTE if there are multiple unordered sections, an arbitrary end node may be returned!
      */
     public static Node getEndNode(String nodeId, GraphDatabaseService db) {
         return getBoundaryNode(nodeId, db, ERelations.HAS_END);
@@ -43,12 +43,21 @@ public class DatabaseService {
         Node currentNode = getTraditionNode(nodeId, db);
         if (currentNode != null) {
             ArrayList<Node> sections = getSectionNodes(nodeId, db);
-            if (sections != null)
+            if (sections != null && sections.size() > 0)
                 return getBoundaryNode(String.valueOf(sections.get(0).getId()), db, direction);
+            else
+                return null;
+        }
+        // Were we asked for a nonexistent tradition node (i.e. a non-Long that corresponds to no tradition)?
+        Long nodeIndex;
+        try {
+            nodeIndex = Long.valueOf(nodeId);
+        } catch (NumberFormatException e) {
+            return null;
         }
         // If we are here, we were asked for a section node.
         try (Transaction tx = db.beginTx()) {
-            currentNode = db.getNodeById(Long.valueOf(nodeId));
+            currentNode = db.getNodeById(nodeIndex);
             if (currentNode != null)
                 boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
             tx.success();
@@ -58,9 +67,9 @@ public class DatabaseService {
 
     /**
      *
-     * @param tradId
+     * @param tradId    the tradition whose sections to return
      * @param db        the GraphDatabaseService where the tradition is stored
-     * @return
+     * @return          a list of sections, or null if the tradition doesn't exist
      */
     public static ArrayList<Node> getSectionNodes(String tradId, GraphDatabaseService db) {
         Node tradition = getTraditionNode(tradId, db);
@@ -81,7 +90,7 @@ public class DatabaseService {
                             .uniqueness(Uniqueness.NODE_GLOBAL)
                             .traverse(n)
                             .nodes()
-                            .forEach(r -> sectionNodes.add(r));
+                            .forEach(sectionNodes::add);
                     break;
                 }
             }
@@ -146,18 +155,16 @@ public class DatabaseService {
      * This method can be used to get the list of nodes connected to a given
      * node via a given relation.
      *
-     * @param startNode
-     * @param relType
-     * @return ArrayList<Node> result
+     * @param startNode - the node at one end of the relationship
+     * @param relType - the relationship type to follow
+     * @return ArrayList<Node> all nodes related to startNode by the given relationship
      */
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
         ArrayList<Node> result = new ArrayList<>();
         GraphDatabaseService db = startNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
-            while (allRels.hasNext()) {
-                result.add(allRels.next().getEndNode());
-            }
+            allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
             tx.success();
         }
         return result;
@@ -168,9 +175,9 @@ public class DatabaseService {
      * This method can be used to determine whether a user with given Id exists
      * in the DB
      *
-     * @param userId
-     * @param db
-     * @return
+     * @param userId  the user whose existence to check
+     * @param db      the DB in which to check
+     * @return        boolean
      */
     public static boolean userExists(String userId, GraphDatabaseService db) {
         Node extantUser;

@@ -72,8 +72,8 @@ public class RelationTest {
     public void createRelationshipTest() {
         RelationshipModel relationship = new RelationshipModel();
         String relationshipId;
-        relationship.setSource("16");
-        relationship.setTarget("24");
+        relationship.setSource("17");
+        relationship.setTarget("25");
         relationship.setType("repetition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -92,8 +92,8 @@ public class RelationTest {
             relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
-            assertEquals(16L, loadedRelationship.getStartNode().getId());
-            assertEquals(24L, loadedRelationship.getEndNode().getId());
+            assertEquals(17L, loadedRelationship.getStartNode().getId());
+            assertEquals(25L, loadedRelationship.getEndNode().getId());
             assertEquals("repetition", loadedRelationship.getProperty("type"));
             assertEquals(0L,loadedRelationship.getProperty("alters_meaning"));
             assertEquals("yes",loadedRelationship.getProperty("is_significant"));
@@ -388,8 +388,8 @@ public class RelationTest {
     @Test
     public void createRelationshipTestWithCrossRelationConstraint() {
         RelationshipModel relationship = new RelationshipModel();
-        relationship.setSource("6");
-        relationship.setTarget("20");
+        relationship.setSource("7");
+        relationship.setTarget("21");
 
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
@@ -408,10 +408,10 @@ public class RelationTest {
         assertEquals(tmpGraphModel.getRelationships().size(), 1L);
 
         Tradition tradition = new Tradition(tradId);
-        assertEquals(tradition.recalculateRank(20L), true);
+        assertEquals(tradition.recalculateRank(21L), true);
 
-        relationship.setSource("21");
-        relationship.setTarget("28");
+        relationship.setSource("22");
+        relationship.setTarget("29");
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -431,8 +431,8 @@ public class RelationTest {
                 actualResponse.getEntity(String.class));
 
         try (Transaction tx = db.beginTx()) {
-            Node node28 = db.getNodeById(28L);
-            Iterator<Relationship> rels = node28
+            Node node29 = db.getNodeById(29L);
+            Iterator<Relationship> rels = node29
                     .getRelationships(ERelations.RELATED)
                     .iterator();
 
@@ -444,8 +444,8 @@ public class RelationTest {
     @Test
     public void createRelationshipTestWithCrossRelationConstraintNotDirectlyCloseToEachOther() {
         RelationshipModel relationship = new RelationshipModel();
-        relationship.setSource("6");
-        relationship.setTarget("20");
+        relationship.setSource("7");
+        relationship.setTarget("21");
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -465,14 +465,14 @@ public class RelationTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/6")
+                .path("/reading/7")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long) 18L);
 
         response = jerseyTest
                 .resource()
-                .path("/reading/20")
+                .path("/reading/21")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long)18L);
@@ -520,8 +520,8 @@ public class RelationTest {
         //        actualResponse.getEntity(String.class));
 
         try (Transaction tx = db.beginTx()) {
-            Node node21 = db.getNodeById(21L);
-            Iterator<Relationship> rels = node21.getRelationships(ERelations.RELATED).iterator();
+            Node node22 = db.getNodeById(22L);
+            Iterator<Relationship> rels = node22.getRelationships(ERelations.RELATED).iterator();
 
             assertTrue(!rels.hasNext()); // make sure node 21 does not have a relationship now!
             tx.success();

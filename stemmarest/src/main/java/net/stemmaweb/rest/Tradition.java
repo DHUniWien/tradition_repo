@@ -273,59 +273,49 @@ public class Tradition {
     @DELETE
     @Path("/section/{id}")
     public Response deleteSection(@PathParam("id") String sectionId) {
-        Node foundSection;
-        Node traditionNode = null;
-
-        // Get the section node in question and check that it belongs to the tradition
+        String result = "No section with the given ID found";
         try (Transaction tx = db.beginTx()) {
             // Find the section by ID and check that it belongs to this tradition.
-            foundSection = db.getNodeById(Long.getLong(sectionId));
+            Node foundSection = db.getNodeById(Long.valueOf(sectionId));
             if (foundSection != null) {
-                traditionNode = foundSection.getSingleRelationship(ERelations.PART, Direction.INCOMING)
+                Node traditionNode = foundSection.getSingleRelationship(ERelations.PART, Direction.INCOMING)
                         .getStartNode();
-            }
-            tx.success();
-        }
-
-        // Delete everything to do with the section
-        if (traditionNode != null &&
-                traditionNode.getProperty("id").toString().equals(traditionId)) {
-            try (Transaction tx = db.beginTx()) {
-                /*
-                 * Find all the nodes and relations to remove
-                 */
-                Set<Relationship> removableRelations = new HashSet<>();
-                Set<Node> removableNodes = new HashSet<>();
-                db.traversalDescription()
-                        .depthFirst()
-                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                        .relationships(ERelations.COLLATION, Direction.OUTGOING)
-                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_END, Direction.OUTGOING)
-                        .relationships(ERelations.RELATED, Direction.OUTGOING)
-                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                        .traverse(foundSection)
-                        .nodes().forEach(x -> {
-                    x.getRelationships().forEach(removableRelations::add);
-                    removableNodes.add(x);
-                });
+                if (traditionNode != null &&
+                        traditionNode.getProperty("id").toString().equals(traditionId)) {
+                    // Remove everything to do with this section.
+                    Set<Relationship> removableRelations = new HashSet<>();
+                    Set<Node> removableNodes = new HashSet<>();
+                    db.traversalDescription()
+                            .depthFirst()
+                            .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                            .relationships(ERelations.COLLATION, Direction.OUTGOING)
+                            .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                            .relationships(ERelations.HAS_END, Direction.OUTGOING)
+                            .relationships(ERelations.RELATED, Direction.OUTGOING)
+                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                            .traverse(foundSection)
+                            .nodes().forEach(x -> {
+                        x.getRelationships().forEach(removableRelations::add);
+                        removableNodes.add(x);
+                    });
 
                 /*
                  * Remove the nodes and relations
                  */
-                removableRelations.forEach(Relationship::delete);
-                removableNodes.forEach(Node::delete);
-                tx.success();
-            } catch (Exception e) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getStackTrace()).build();
+                    removableRelations.forEach(Relationship::delete);
+                    removableNodes.forEach(Node::delete);
+                    result = "OK";
+                }
             }
-        } else {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("The requested tradition has no section with this ID!")
-                    .build();
+            tx.success();
+        } catch (Exception e) {
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getStackTrace()).build();
         }
 
-        return Response.status(Response.Status.OK).build();
+        if (result.equals("OK"))
+            return Response.ok().build();
+        else
+            return Response.status(Status.NOT_FOUND).entity(result).build();
     }
 
     /**
