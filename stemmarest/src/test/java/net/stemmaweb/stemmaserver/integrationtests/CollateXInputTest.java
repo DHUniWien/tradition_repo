@@ -26,6 +26,7 @@ public class CollateXInputTest extends TestCase {
     private JerseyTest jerseyTest;
 
     public void setUp() throws Exception {
+        super.setUp();
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
 
@@ -142,5 +143,6 @@ public class CollateXInputTest extends TestCase {
     public void tearDown() throws Exception {
         db.shutdown();
         jerseyTest.tearDown();
+        super.tearDown();
     }
 }

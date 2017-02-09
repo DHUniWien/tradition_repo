@@ -78,7 +78,7 @@ public class GenericTest {
     // Tradition test
 
     @Test
-    public void test_01() throws FileNotFoundException {
+    public void testEmptyTraditionCreation() throws FileNotFoundException {
         /* Perl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
@@ -127,11 +127,20 @@ public class GenericTest {
         response = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/readings")
                 .get(ClientResponse.class);
-        assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        ArrayList<ReadingModel> readings = response.getEntity(new GenericType<ArrayList<ReadingModel>>() {});
+        assertEquals(0, readings.size());
+
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witnesses")
+                .get(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        ArrayList<WitnessModel> witnesses = response.getEntity(new GenericType<ArrayList<WitnessModel>>() {});
+        assertEquals(0, witnesses.size());
     }
 
     @Test
-    public void test_02() {
+    public void testTraditionFromFile() {
         /** Pearl-Specification (Part a):
             my $simple = 't/data/simple.txt';
             my $s = Text::Tradition->new(

@@ -219,7 +219,7 @@ public class TabularParser {
 
             // We are done!
             result = Response.Status.CREATED;
-            response = String.format("{\"sectionId\":\"%d\"}", parentNode.getId());
+            response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

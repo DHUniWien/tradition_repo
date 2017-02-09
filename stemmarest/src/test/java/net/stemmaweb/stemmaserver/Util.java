@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * A collection of testing utility functions that are useful in multiple tests.
@@ -51,7 +52,7 @@ public class Util {
         try {
             p.parse(expectedStream);
         } catch (ParseException e) {
-            assertTrue(false);
+            fail();
         }
         ArrayList<Graph> expectedGraphs = p.getGraphs();
 
@@ -59,7 +60,7 @@ public class Util {
         try {
             q.parse(actualStream);
         } catch (ParseException e) {
-            assertTrue(false);
+            fail();
         }
         ArrayList<Graph> actualGraphs = q.getGraphs();
 
@@ -172,7 +173,7 @@ public class Util {
         if (fName != null) {
             // It could be a filename or it could be a content string. Try one and then
             // the other.
-            InputStream input = null;
+            InputStream input;
             try {
                 input = new FileInputStream(fName);
             } catch (FileNotFoundException e) {

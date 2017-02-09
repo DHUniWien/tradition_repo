@@ -152,7 +152,7 @@ public class CollateXParser {
             return Response.serverError().build();
         }
 
-        String response = String.format("{\"tradId\":\"%s\"}", tradId);
+        String response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
         return Response.status(Response.Status.CREATED).entity(response).build();
     }
 

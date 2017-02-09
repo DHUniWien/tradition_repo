@@ -374,7 +374,7 @@ public class GraphMLParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity("{\"tradId\":\"" + tradId + "\"}")
+                .entity(String.format("{\"parentId\":\"%d\"}", parentNode.getId()))
                 .build();
     }
 

@@ -20,37 +20,22 @@ public class SectionModel {
     private String id;
     private String name;
     private String language;
-    private String baselabel;
-    private String sep_char;
-    private Boolean is_public;
 
     public SectionModel() {
-        /**
-         * Generates a model from a Neo4j Node
-         * @param node - the section node to initialize from
-         */
     }
 
+    /**
+     * Generates a model from a Neo4j Node
+     * @param node - the section node to initialize from
+     */
     public SectionModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
-            setId(node.getProperty("id").toString());
+            setId(String.valueOf(node.getId()));
             if (node.hasProperty("name"))
                 setName(node.getProperty("name").toString());
             if (node.hasProperty("language"))
                 setLanguage(node.getProperty("language").toString());
-            if (node.hasProperty("baselabel"))
-                setBaselabel(node.getProperty("baselabel").toString());
-            if (node.hasProperty("sep_char"))
-                setSepChar(node.getProperty("sep_char").toString());
-            if (node.hasProperty("public"))
-                setIsPublic((Boolean) node.getProperty("public"));
 
-/*            Relationship ownerRel = node.getSingleRelationship(ERelations.OWNS_TRADITION,
-                    org.neo4j.graphdb.Direction.INCOMING);
-            if( ownerRel != null ) {
-                setOwnerId(ownerRel.getStartNode().getProperty("id").toString());
-            }
-*/
             tx.success();
         }
     }
@@ -72,17 +57,5 @@ public class SectionModel {
     }
     public void setLanguage(String language) {
         this.language = language;
-    }
-    public String getBaselabel() {
-        return baselabel;
-    }
-    public void setBaselabel(String baselabel) {
-        this.baselabel = baselabel;
-    }
-    public String getSepChar() { return sep_char; }
-    public void setSepChar(String sep_char) { this.sep_char = sep_char; }
-    public Boolean getIsPublic() { return is_public; }
-    public void setIsPublic(Boolean is_public) {
-        this.is_public = is_public;
     }
 }

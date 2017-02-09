@@ -183,7 +183,8 @@ public class TEIParallelSegParser {
         if (!didCalc)
             return Response.serverError().entity("Could not calculate ranks on new graph").build();
 
-        return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
+        return Response.status(Response.Status.CREATED)
+                .entity(String.format("{\"parentId\":\"%d\"}", parentNode.getId())).build();
     }
 
     // Parse an app, its readings, and its sub-apps if necessary. Return the node that

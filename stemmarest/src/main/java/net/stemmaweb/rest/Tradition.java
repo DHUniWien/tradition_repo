@@ -185,12 +185,16 @@ public class Tradition {
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 
+        ArrayList<SectionModel> sectionList = produceSectionList(traditionNode);
+        if (sectionList == null)
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+
+        return Response.ok(sectionList).build();
+    }
+
+    private ArrayList<SectionModel> produceSectionList (Node traditionNode) {
         ArrayList<SectionModel> sectionList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            /* use this, in case you want an arbitrary output
-            DatabaseService.getRelated(traditionNode, ERelations.PART)
-                    .forEach(r -> sectionList.add(new SectionModel(r)));
-            */
             ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
             int depth = sectionNodes.size();
             if (depth > 0) {
@@ -212,12 +216,13 @@ public class Tradition {
             }
             tx.success();
             if (sectionList.size() != depth) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+                return null;
             }
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            return null;
         }
-        return Response.ok(sectionList).build();
+        return sectionList;
     }
 
     @POST
@@ -231,6 +236,7 @@ public class Tradition {
         // Make a new section node to connect to the tradition in question
         Node sectionNode;
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
         try (Transaction tx = db.beginTx()) {
             sectionNode = db.createNode(Nodes.SECTION);
             sectionNode.setProperty("name", sectionName);
@@ -262,9 +268,21 @@ public class Tradition {
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
 
-        // If the result wasn't a success, delete the section node before returning the result.
         if (result.getStatus() > 201) {
+            // If the result wasn't a success, delete the section node before returning the result.
             this.deleteSection(String.valueOf(sectionNode.getId()));
+        } else {
+            // Otherwise, link this section behind the last of the prior sections.
+            if (existingSections != null && existingSections.size() > 0) {
+                SectionModel ls = existingSections.get(existingSections.size() - 1);
+                try (Transaction tx = db.beginTx()) {
+                    Node lastSection = db.getNodeById(Long.valueOf(ls.getId()));
+                    lastSection.createRelationshipTo(sectionNode, ERelations.NEXT);
+                    tx.success();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
         return result;
@@ -309,7 +327,8 @@ public class Tradition {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity(e.getStackTrace()).build();
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
 
         if (result.equals("OK"))
@@ -448,23 +467,35 @@ public class Tradition {
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllReadings() {
-        Node startNode = DatabaseService.getStartNode(traditionId, db);
-        if (startNode == null) {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
             return Response.status(Status.NOT_FOUND)
                     .entity("There is no tradition with this id").build();
-        }
+
+        ArrayList<SectionModel> allSections = produceSectionList(traditionNode);
+        if (allSections == null)
+            return Response.status(Status.INTERNAL_SERVER_ERROR)
+                    .entity("Tradition has no sections").build();
 
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-                    .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        for (SectionModel sm : allSections) {
+            Node startNode = DatabaseService.getStartNode(sm.getId(), db);
+            if (startNode == null) {
+                return Response.status(Status.INTERNAL_SERVER_ERROR)
+                        .entity("Section " + sm.getId() + " has no start node").build();
+            }
+
+            try (Transaction tx = db.beginTx()) {
+                db.traversalDescription().depthFirst()
+                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                        .evaluator(Evaluators.all())
+                        .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                        .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            }
         }
         return Response.ok(readingModels).build();
     }

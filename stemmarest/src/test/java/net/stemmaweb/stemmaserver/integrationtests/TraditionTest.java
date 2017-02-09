@@ -1,9 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -37,6 +33,8 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * Contains all tests for the api calls related to the tradition.
@@ -75,7 +73,7 @@ public class TraditionTest {
         try {
             tradId = createTraditionFromFile("Tradition", "LR", "1", "src/TestFiles/testTradition.xml", "graphml");
         } catch (FileNotFoundException e) {
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -86,7 +84,7 @@ public class TraditionTest {
         try {
             jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
         return Util.getValueFromJson(jerseyResult, "tradId");
     }
@@ -102,7 +100,7 @@ public class TraditionTest {
             expectedIds.add(createTraditionFromFile("Tradition", "LR", "1", testfile, "graphml"));
         } catch (FileNotFoundException f) {
             // this error should not occur
-            assertTrue(false);
+            fail();
         }
 
         List<TraditionModel> traditions = jerseyTest.resource().path("/traditions")
@@ -325,7 +323,7 @@ public class TraditionTest {
 
             tx.success();
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
 
         /*
@@ -572,7 +570,7 @@ public class TraditionTest {
             String testfile = "src/TestFiles/florilegium_graphml.xml";
             florId = createTraditionFromFile("Tradition", "LR", "1", testfile, "graphml");
         } catch (FileNotFoundException e) {
-            assertTrue(false);
+            fail();
         }
 
         // give it a stemma
@@ -581,7 +579,7 @@ public class TraditionTest {
             byte[] encStemma = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
             newStemma = new String(encStemma, Charset.forName("utf-8"));
         } catch (IOException e) {
-            assertTrue(false);
+            fail();
         }
         ClientResponse jerseyResponse = jerseyTest
                 .resource()
