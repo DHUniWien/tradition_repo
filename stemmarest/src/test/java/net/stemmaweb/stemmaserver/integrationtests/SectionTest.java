@@ -21,6 +21,8 @@ import javax.ws.rs.core.MediaType;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -56,13 +58,13 @@ public class SectionTest extends TestCase {
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }
 
-    private String addSecondSection() {
+    private String addNewSection(String traditionId, String fileName, String fileType, String sectionName) {
         FormDataMultiPart form = new FormDataMultiPart();
-        form.field("filetype", "graphml");
-        form.field("name", "part 2");
+        form.field("filetype", fileType);
+        form.field("name", sectionName);
         InputStream input = null;
         try {
-            input = new FileInputStream("src/TestFiles/lf2.xml");
+            input = new FileInputStream(fileName);
         } catch (FileNotFoundException f) {
             fail();
         }
@@ -70,7 +72,7 @@ public class SectionTest extends TestCase {
                 MediaType.APPLICATION_OCTET_STREAM_TYPE);
         form.bodyPart(fdp);
         ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section")
+                .path("/tradition/" + traditionId + "/section")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
                 .post(ClientResponse.class, form);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
@@ -86,12 +88,12 @@ public class SectionTest extends TestCase {
     }
 
     public void testAddSection() throws Exception {
-        addSecondSection();
+        addNewSection(tradId,"src/TestFiles/lf2.xml", "graphml", "section 2");
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
         assertEquals(2, tSections.size());
-        assertEquals("part 2", tSections.get(1).getName());
+        assertEquals("section 2", tSections.get(1).getName());
 
     }
 
@@ -100,7 +102,7 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(30, tReadings.size());
 
-        addSecondSection();
+        addNewSection(tradId, "src/TestFiles/lf2.xml", "graphml", "section 2");
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(78, tReadings.size());
@@ -120,7 +122,82 @@ public class SectionTest extends TestCase {
         assertEquals(48, tReadings.size());
     }
 
+    private String importFlorilegium () {
+        ClientResponse jerseyResult = null;
+        try {
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
+                    "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
+        } catch (Exception e) {
+            fail();
+        }
+        String florId = Util.getValueFromJson(jerseyResult, "tradId");
+        // Get the existing single section ID
+        SectionModel firstSection = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {}).get(0);
+        assertNotNull(firstSection);
+
+        // Add the other three sections
+        int i = 0;
+        while (i < 3) {
+            String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
+            addNewSection(florId, fileName, "csv", String.format("part %d", i));
+        }
+        return florId;
+    }
+
     // test ordering of sections
+    public void testSectionOrdering() throws Exception {
+        String florId = importFlorilegium();
+        // Test that we get the sections back in the correct order
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(4, returnedSections.size());
+        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("DEFAULT", "part 1", "part 2", "part 3"));
+        ArrayList<String> returnedIds = new ArrayList<>();
+        returnedSections.forEach(x -> returnedIds.add(x.getName()));
+        assertEquals(expectedSections, returnedIds);
+
+        // Test that we get the text we expect for a witness across sections
+        String bText = "τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος " +
+                "ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν. Ὄψις " +
+                "γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον χρονίζει, " +
+                "πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ διὰ τοῦ " +
+                "τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ " +
+                "δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. θάλπει ἑστῶσα βοτάνη παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν " +
+                "συντυχίαις γυναικῶν. τοῦ Χρυσοστόμου Τοὺς ἐν τῇ πόλει βλασφημοῦντας, σωφρόνιζε. Κἂν ἀκούσῃς τινὸς " +
+                "ἐν ἀμφόδῳ ἢ ἐν ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν πληγὰς ἐπιθεῖναι " +
+                "δέῃ, μὴ παραιτήσῃ ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου τὴν χεῖρα διὰ τῆς " +
+                "πληγῆς, κἂν ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον.";
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
+        String wit = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(bText, wit);
+    }
+
+    public void testDeleteSectionMiddle() {
+        String florId = importFlorilegium();
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + returnedSections.get(1).getId())
+                .type(MediaType.APPLICATION_JSON)
+                .delete(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        String bText = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
+                "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ " +
+                "διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, " +
+                "καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. θάλπει ἑστῶσα βοτάνη παρ᾽ ὕδατι, καὶ πάθος " +
+                "ἀκολασίας, ἐν συντυχίαις γυναικῶν. τοῦ Χρυσοστόμου Τοὺς ἐν τῇ πόλει βλασφημοῦντας, σωφρόνιζε. Κἂν " +
+                "ἀκούσῃς τινὸς ἐν ἀμφόδῳ ἢ ἐν ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν " +
+                "πληγὰς ἐπιθεῖναι δέῃ, μὴ παραιτήσῃ ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου " +
+                "τὴν χεῖρα διὰ τῆς πληγῆς, κἂν ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον.";
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
+        String wit = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(bText, wit);
+    }
 
     // test reordering of sections
 
