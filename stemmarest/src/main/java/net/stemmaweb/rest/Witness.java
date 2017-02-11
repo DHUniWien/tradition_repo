@@ -123,7 +123,7 @@ public class Witness {
                         }
                     }
                 } else {
-                    Node sectionNode = db.findNode(Nodes.SECTION, "id", this.sectId);
+                    Node sectionNode = db.getNodeById(Long.valueOf(sectId));
                     if (sectionNode == null)
                         return Response.status(Status.NOT_FOUND).entity("section not found").build();
                     Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);

@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Tests for text section functionality.
@@ -88,13 +89,22 @@ public class SectionTest extends TestCase {
     }
 
     public void testAddSection() throws Exception {
-        addNewSection(tradId,"src/TestFiles/lf2.xml", "graphml", "section 2");
+        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "graphml",
+                "section 2");
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
         assertEquals(2, tSections.size());
         assertEquals("section 2", tSections.get(1).getName());
 
+        String aText = "quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magis " +
+                "magisque illustrabatur iugiter ac informabatur Sanctus autem";
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + newSectId + "/witness/A/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(aText, witFragment);
     }
 
     public void testDeleteSection() throws Exception {
@@ -234,6 +244,59 @@ public class SectionTest extends TestCase {
     // test merging two sections
 
     // test splitting a section
+    public void testSplitSection() {
+        String florId = importFlorilegium();
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+
+        String targetSection = returnedSections.get(2).getId();
+
+        // Get the reading to split at
+        Optional<ReadingModel> targetReadings = jerseyTest.resource()
+                .path("/tradition/" + florId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {})
+                .stream().filter(x -> x.getText().equals("βέλτιον")).findFirst();
+        assertTrue(targetReadings.isPresent());
+        if (!targetReadings.isPresent()) // Just to avoid stupid warning on .get() below
+            return;
+
+        // Do the split
+        String splitPath = "/tradition/" + florId + "/section/" + targetSection
+                + "/splitAtRank/" + targetReadings.get().getRank();
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path(splitPath)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+
+        // Check that section 2 text is now shorter
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSection + "/witness/B/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals("Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
+                "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται.", witFragment);
+
+        // Check that the whole B text is still valid
+        String bText = "τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος " +
+                "ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν. Ὄψις " +
+                "γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον χρονίζει, " +
+                "πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ διὰ τοῦ " +
+                "τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ " +
+                "δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. θάλπει ἑστῶσα βοτάνη παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν " +
+                "συντυχίαις γυναικῶν. τοῦ Χρυσοστόμου Τοὺς ἐν τῇ πόλει βλασφημοῦντας, σωφρόνιζε. Κἂν ἀκούσῃς τινὸς " +
+                "ἐν ἀμφόδῳ ἢ ἐν ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν πληγὰς ἐπιθεῖναι " +
+                "δέῃ, μὴ παραιτήσῃ ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου τὴν χεῖρα διὰ τῆς " +
+                "πληγῆς, κἂν ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον.";
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String wit = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(bText, wit);
+    }
+
 
     @After
     public void tearDown() throws Exception {

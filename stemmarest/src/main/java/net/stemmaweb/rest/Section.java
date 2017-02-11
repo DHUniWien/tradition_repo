@@ -4,6 +4,7 @@ import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import javax.ws.rs.*;
@@ -125,8 +126,6 @@ public class Section {
         return Response.ok(witnessList).build();
     }
 
-    // POST section/ID/merge/ID
-
     // PUT section/ID/orderAfter/ID
     @PUT
     @Path("/orderAfter/{priorSectID}")
@@ -190,4 +189,104 @@ public class Section {
     }
 
     // POST section/ID/splitAtRank/RK
+    @POST
+    @Path("/splitAtRank/{rankstr}")
+    public Response splitAtRank (@PathParam("rankstr") String rankstr) {
+        Long rank = Long.valueOf(rankstr);
+        // Get the reading(s) at the given rank, and at the prior rank
+        Node startNode = DatabaseService.getStartNode(sectId, db);
+        Long newSectionId;
+
+        try (Transaction tx = db.beginTx()) {
+            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+
+            // Make a list of readings that belong to the requested rank as well
+            // as the prior rank
+            ArrayList<Node> thisRank = new ArrayList<>();
+            ArrayList<Node> priorRank = new ArrayList<>();
+            ResourceIterable<Node> sectionReadings = db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                    .nodes();
+            for (Node n : sectionReadings) {
+                Long nrank = (Long) n.getProperty("rank");
+                if (rank.equals(nrank)) {
+                    thisRank.add(n);
+                } else if (rank.equals(nrank + 1)) {
+                    priorRank.add(n);
+                }
+            }
+
+            // Make sure we have readings at the requested rank in this section
+            if (thisRank.size() == 0)
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Rank not found within section").build();
+
+            // Make a new section node and insert it into the sequence
+            Node newSection = db.createNode(Nodes.SECTION);
+            DatabaseService.getTraditionNode(thisSection, db).createRelationshipTo(newSection, ERelations.PART);
+            newSection.setProperty("name", thisSection.getProperty("name") + " split");
+            newSectionId = newSection.getId();
+            Section newSectionRest = new Section(tradId, String.valueOf(newSection.getId()));
+            Response reorder = newSectionRest.reorderSectionAfter(sectId);
+            if (reorder.getStatus() != Response.Status.OK.getStatusCode())
+                return reorder;
+
+            // Attach the old END node to the new section
+            Node sectionEnd = DatabaseService.getEndNode(sectId, db);
+            sectionEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
+            newSection.createRelationshipTo(sectionEnd, ERelations.HAS_END);
+
+            // Close off the prior rank with a new END node, and the requested rank with a new
+            // START node
+            Node newEnd = db.createNode(Nodes.READING);
+            newEnd.setProperty("is_end", true);
+            newEnd.setProperty("rank", sectionEnd.getProperty("rank"));
+            thisSection.createRelationshipTo(newEnd, ERelations.HAS_END);
+            Node newStart = db.createNode(Nodes.READING);
+            newStart.setProperty("is_start", true);
+            newStart.setProperty("rank", 0L);
+            newSection.createRelationshipTo(newStart, ERelations.COLLATION);
+            for (Node reading : priorRank)
+                for (Relationship rel : reading.getRelationships(Direction.OUTGOING))
+                    if (rel.isType(ERelations.SEQUENCE) || rel.isType(ERelations.LEMMA_TEXT)) {
+                        Relationship outRel = reading.createRelationshipTo(newEnd, rel.getType());
+                        Relationship inRel = newStart.createRelationshipTo(rel.getEndNode(), rel.getType());
+                        rel.getPropertyKeys().forEach(x -> outRel.setProperty(x, rel.getProperty(x)));
+                        rel.getPropertyKeys().forEach(x -> inRel.setProperty(x, rel.getProperty(x)));
+                        rel.delete();
+                    }
+            for (Node reading : thisRank) {
+                for (Relationship rel : reading.getRelationships(Direction.INCOMING)) {
+                    if (rel.getStartNode().equals(newStart))
+                        continue;
+                    if (rel.isType(ERelations.SEQUENCE) || rel.isType(ERelations.LEMMA_TEXT)) {
+                        Relationship inRel = rel.getStartNode().createRelationshipTo(newEnd, rel.getType());
+                        Relationship outRel = newStart.createRelationshipTo(reading, rel.getType());
+                        rel.getPropertyKeys().forEach(x -> inRel.setProperty(x, rel.getProperty(x)));
+                        rel.getPropertyKeys().forEach(x -> outRel.setProperty(x, rel.getProperty(x)));
+                        rel.delete();
+                    }
+                }
+            }
+
+            // Re-initialize the ranks on the new section
+            Tradition t = new Tradition(tradId);
+            if (!t.recalculateRank(newStart.getId())) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity("Rank recalculation of new section failed!").build();
+            }
+
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok().entity(String.format("{sectionId: %d}", newSectionId)).build();
+    }
+
+    // POST section/ID/merge/ID
+
+
 }
