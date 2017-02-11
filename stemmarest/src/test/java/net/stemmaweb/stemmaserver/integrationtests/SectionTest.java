@@ -239,7 +239,15 @@ public class SectionTest extends TestCase {
         assertEquals(bText, wit);
     }
 
-    // test access of a section from the wrong tradition
+    public void testSectionWrongTradition () {
+        String florId = importFlorilegium();
+        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "graphml",
+                "section 2");
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + newSectId + "/witness/A")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.NOT_FOUND.getStatusCode(), jerseyResult.getStatus());
+    }
 
     // test merging two sections
 
