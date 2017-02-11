@@ -27,12 +27,12 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import static org.junit.Assert.*;
 
-/**
+/*
  * Contains all tests for the api calls related to the tradition.
  *
  * @author PSE FS 2015 Team2
  */
-public class GenericTest {
+public class StemmawebLegacyTest {
 
     private GraphDatabaseService db;
 
@@ -67,7 +67,7 @@ public class GenericTest {
         try {
             jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
         String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
@@ -141,7 +141,7 @@ public class GenericTest {
 
     @Test
     public void testTraditionFromFile() {
-        /** Pearl-Specification (Part a):
+        /* Pearl-Specification (Part a):
             my $simple = 't/data/simple.txt';
             my $s = Text::Tradition->new(
             'name'  => 'inline',
@@ -153,7 +153,7 @@ public class GenericTest {
             is( scalar $s->witnesses, 3, "object has three witnesses" );
         */
 
-        /**
+        /*
          * load a tradition to the test DB
          */
 
@@ -164,7 +164,7 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
          * gets the generated id of the inserted tradition
          */
 
@@ -175,7 +175,7 @@ public class GenericTest {
         assert (witnesses.size() == 3) : "Unexpected number of witnesses.";
 
 
-    /** Pearl-Specification (Part b):
+    /* Pearl-Specification (Part b):
         ## NOW
         my $wit_a = $s->witness('A');
         is( ref( $wit_a ), 'Text::Tradition::Witness', "Found a witness A" );
@@ -206,8 +206,8 @@ public class GenericTest {
     // ######## Relationship tests
 
     @Test
-    public void test_03() {
-        /**
+    public void testRelationshipAddRemove() {
+        /*
         ## NOW - test that local and non-local relationship addition and deletion works
         my $cxfile = 't/data/Collatex-16.xml';
         my $t = Text::Tradition->new(
@@ -219,7 +219,7 @@ public class GenericTest {
 
         */
 
-        /**
+        /*
          * load a tradition to the test DB
          */
         String fName = "src/TestFiles/Collatex-16.xml";
@@ -229,7 +229,7 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
          * gets the generated id of the inserted tradition
          */
 //        String tradId = this.getTraditionId(tradName);
@@ -238,7 +238,7 @@ public class GenericTest {
                 .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
-        /**
+        /*
         determine ids of nodes that we are going to use in the following
          */
         String n1="", n2="", n12="", n13="", n21="", n22="", n23="", n24="";
@@ -275,7 +275,7 @@ public class GenericTest {
             }
         }
 
-        /**
+        /*
         my @v1 = $c->add_relationship( 'n21', 'n22', { 'type' => 'lexical' } ); # 'unto', 'to'
         is( scalar @v1, 1, "Added a single relationship" );
         is( $v1[0]->[0], 'n21', "Got correct node 1" );
@@ -301,7 +301,7 @@ public class GenericTest {
         assertTrue((node1_id.equals(n21) && node2_id.equals(n22)) ||
                 (node1_id.equals(n22) && node2_id.equals(n21)));
 
-        /**
+        /*
         my @v2 = $c->add_relationship( 'n24', 'n23',  # 'the', 'teh' near the end
         { 'type' => 'spelling', 'scope' => 'global' } );
         is( scalar @v2, 2, "Added a global relationship with two instances" );
@@ -322,7 +322,7 @@ public class GenericTest {
         assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
 
-        /**
+        /*
         @v1 = $c->del_relationship( 'n22', 'n21' );
         is( scalar @v1, 1, "Deleted first relationship" );
          */
@@ -341,7 +341,7 @@ public class GenericTest {
         assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
 
 
-        /**
+        /*
         @v2 = $c->del_relationship( 'n12', 'n13', 'everywhere' ); 'the', 'the' before drought/march
         is( scalar @v2, 2, "Deleted second global relationship" );
          */
@@ -360,7 +360,7 @@ public class GenericTest {
         assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 2);
 
 
-        /**
+        /*
         my @v3 = $c->del_relationship( 'n1', 'n2' );  # 'when', 'april'
         is( scalar @v3, 0, "Nothing deleted on non-existent relationship" );
         removeModel = new RelationshipModel();
@@ -378,7 +378,7 @@ public class GenericTest {
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
 
 
-        /**
+        /*
         my @v4 = $c->add_relationship( 'n24', 'n23',
                 { 'type' => 'spelling', 'scope' => 'global' } );
         is( @v4, 2, "Re-added global relationship" );
@@ -399,7 +399,7 @@ public class GenericTest {
         assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
 
 
-        /**
+        /*
         @v4 = $c->del_relationship( 'n12', 'n13' );  # not everywhere
         is( @v4, 1, "Only specified relationship deleted this time" );
         ok( $c->get_relationship( 'n24', 'n23' ), "Other globally-added relationship exists" );
@@ -410,7 +410,6 @@ public class GenericTest {
         relationship.setTarget(n13);
         relationship.setScope("local");
 
-        // TODO redo this test with a call to /relationships (done)
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
@@ -441,7 +440,7 @@ public class GenericTest {
         assertTrue(foundTraditon);
 
 
-        /**
+        /*
         # Test 1.3: attempt relationship with a meta reading (should fail)
         $t1 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/legendfrag.xml' );
         ok( $t1, "Parsed test fragment file" );
@@ -455,7 +454,7 @@ public class GenericTest {
         userId = "1";
         String tradId2 = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
          * gets the generated id of the inserted 2nd tradition
          */
 /*
@@ -487,7 +486,7 @@ public class GenericTest {
         }
 
 
-        /**
+        /*
         try {
             $c1->add_relationship( 'r8.1', 'r9.2', { 'type' => 'collated' } );  # 8.1 is lacuna, 9.2 is "henricus"
             ok( 0, "Allowed a meta-reading to be used in a relationship" );
@@ -511,7 +510,7 @@ public class GenericTest {
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
-        /** SK: Tests if we are able to create a relationship from the 1st to the 2nd tradition */
+        /* SK: Tests if we are able to create a relationship from the 1st to the 2nd tradition */
 
         relationship = new RelationshipModel();
         relationship.setSource(r9_2);
@@ -529,8 +528,8 @@ public class GenericTest {
 
 
     @Test
-    public void test_04() {
-        /**
+    public void testCollationBlockingRelationship() {
+        /*
         # Test 2.1: try to equate nodes that are prevented with a real intermediate equivalence
         my $t2;
         warnings_exist {
@@ -540,7 +539,7 @@ public class GenericTest {
          my $c2 = $t2->collation;
          */
 
-        /**
+        /*
          * load a tradition to the test DB
          */
         String fName = "src/TestFiles/legendfrag.xml";
@@ -550,7 +549,7 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
         $c2->add_relationship( 'r9.2', 'r9.3', { 'type' => 'lexical' } );
         */
 
@@ -587,7 +586,7 @@ public class GenericTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
 
-        /**
+        /*
         my $trel2 = $c2->get_relationship( 'r9.2', 'r9.3' );
         is( ref( $trel2 ), 'Text::Tradition::Collation::Relationship',
                 "Created blocking relationship" );
@@ -616,10 +615,10 @@ public class GenericTest {
                     break found_expected_tradition;
                 }
             }
-            assertTrue(false);
+            fail();
         }
 
-        /**
+        /*
         # This time the link ought to fail
         try {
             $c2->add_relationship( 'r8.6', 'r10.3', { 'type' => 'orthographic' } );
@@ -643,7 +642,7 @@ public class GenericTest {
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
 
-        /**
+        /*
         try {
             $c2->calculate_ranks();
             ok( 1, "Successfully calculated ranks" );
@@ -658,8 +657,8 @@ public class GenericTest {
 
 
     @Test
-    public void test_05() {
-        /**
+    public void testCrossTranspositions() {
+        /*
         # Test 3.1: make a straightforward pair of transpositions.
         my $t3 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/lf2.xml' );
         */
@@ -670,7 +669,7 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
          * determine node ids
          */
 
@@ -714,7 +713,7 @@ public class GenericTest {
             }
         }
 
-        /**
+        /*
         # Test 1: try to equate nodes that are prevented with an intermediate collation
         my $c3 = $t3->collation;
         try {
@@ -737,7 +736,7 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
 
-        /**
+        /*
         try {
             $c3->add_relationship( 'r36.3', 'r38.2', { 'type' => 'transposition' } );
             ok( 1, "Added straightforward transposition complement" );
@@ -758,7 +757,7 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship2);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-        /**
+        /*
         # Test 3.2: try to make a transposition that could be a parallel.
         try {
             $c3->add_relationship( 'r28.2', 'r29.2', { 'type' => 'transposition' } );
@@ -781,7 +780,7 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship3);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
 
-        /**
+        /*
         # Test 3.3: make the parallel, and then make the transposition again.
         try {
             $c3->add_relationship( 'r28.3', 'r29.3', { 'type' => 'orthographic' } );
@@ -803,7 +802,7 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship4);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-        /**
+        /*
         try {
             $c3->add_relationship( 'r28.2', 'r29.2', { 'type' => 'transposition' } );
             ok( 1, "Added straightforward transposition complement" );
@@ -827,8 +826,8 @@ public class GenericTest {
 
 
     @Test
-    public void test_06() {
-        /**
+    public void testGlobalRelReranking() {
+        /*
             # Test 4: make a global relationship that involves re-ranking a node first, when
             # the prior rank has a potential match too
             my $t4 = Text::Tradition->new('input' => 'Self', 'file' => 't/data/globalrel_test.xml');
@@ -842,7 +841,7 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
          * determine node ids
          */
 
@@ -866,7 +865,7 @@ public class GenericTest {
             }
         }
 
-        /**
+        /*
             try {
                 $c4->add_relationship( 'r463.2', 'r463.4', { type => 'orthographic',
                                                              scope => 'global' } );
@@ -891,7 +890,7 @@ public class GenericTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-        /**
+        /*
             $c4->calculate_ranks();
             # Do our readings now share a rank?
             is( $c4->reading('r463.2')->rank, $c4->reading('r463.4')->rank,
@@ -917,8 +916,8 @@ public class GenericTest {
     // ######## Collation tests
 
     @Test
-    public void test_07() {
-        /**
+    public void testReadingSplitJoin() {
+        /*
             my $cxfile = 't/data/Collatex-16.xml';
             my $t = Text::Tradition->new(
                     'name'  => 'inline',
@@ -934,12 +933,12 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
         my $rno = scalar $c->readings;
         # Split n21 ('unto') for testing purposes into n21p0 ('un', 'join_next' => 1 ) and n21 ('to')...
         */
 
-        /**
+        /*
          *  determine node ids
          */
 
@@ -987,7 +986,7 @@ public class GenericTest {
             n21a = ((ReadingModel) rspReadings[0]).getId();
         }
 
-        /**
+        /*
          *  # Combine n3 and n4 ( with his )
          *  $c->merge_readings( 'n3', 'n4', 1 );
          */
@@ -1002,7 +1001,7 @@ public class GenericTest {
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-        /**
+        /*
          *  ok( !$c->reading('n4'), "Reading n4 is gone" );
          */
         response = jerseyTest
@@ -1012,7 +1011,7 @@ public class GenericTest {
 
         assertEquals(ClientResponse.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-        /**
+        /*
          *  is( $c->reading('n3')->text, 'with his', "Reading n3 has both words" );
          */
         response = jerseyTest
@@ -1025,7 +1024,7 @@ public class GenericTest {
         assertEquals("with his", reading.getText());
 
 
-        /**
+        /*
          *  # Collapse n9 and n10 ( rood / root )
          *  $c->merge_readings( 'n9', 'n10' );
          */
@@ -1038,7 +1037,7 @@ public class GenericTest {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
 
-        /**
+        /*
          *  ok( !$c->reading('n10'), "Reading n10 is gone" );
          */
         response = jerseyTest
@@ -1049,7 +1048,7 @@ public class GenericTest {
         assertEquals(ClientResponse.Status.NO_CONTENT.getStatusCode(), response.getStatusInfo().getStatusCode());
 
 
-        /**
+        /*
          *  is( $c->reading('n9')->text, 'rood', "Reading n9 has an unchanged word" );
          */
         response = jerseyTest
@@ -1062,7 +1061,7 @@ public class GenericTest {
         assertEquals("rood", reading.getText());
 
 
-        /**
+        /*
          * merge n22 with n21a
          *
          * # Try to combine n21 and n21p0. This should break.
@@ -1096,10 +1095,10 @@ public class GenericTest {
                 .post(ClientResponse.class, characterModel);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-        /**
+        /*
          ## and then make sure that the graph is not broken.
         **/
-        /**
+        /*
         ## TODO again with the tabular / CSV input.
                 # Test right-to-left reading merge.
                 my $rtl = Text::Tradition->new(
@@ -1118,7 +1117,7 @@ public class GenericTest {
         userId = "1";
         String tradId2 = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
          my $rtlc = $rtl->collation;
          is( $rtlc->reading('r8.1')->text, 'سبب', "Got target first reading in RTL text" );
          my $pt = $rtlc->path_text('A');
@@ -1194,8 +1193,8 @@ public class GenericTest {
     // ## Collation correction tests
 
     @Test
-    public void test_08() {
-        /**
+    public void testCollationCorrection() {
+        /*
             my $st = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/collatecorr.xml' );
             is( ref( $st ), 'Text::Tradition', "Got a tradition from test file" );
             ok( $st->has_witness('Ba96'), "Tradition has the affected witness" );
@@ -1207,7 +1206,7 @@ public class GenericTest {
         String userId = "1";
         String tradId = createTraditionFromFile(tName, tDir, userId, fName, fType);
 
-        /**
+        /*
         my $sc = $st->collation;
         my $numr = 17;
         ok( $sc->reading('n131'), "Tradition has the affected reading" );
@@ -1274,7 +1273,7 @@ public class GenericTest {
 */
     }
 
-    /**
+    /*
      * Shut down the jersey server
      *
      * @throws Exception
