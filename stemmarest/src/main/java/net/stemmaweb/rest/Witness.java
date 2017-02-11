@@ -173,7 +173,7 @@ public class Witness {
                 Relationship rel = currentSection.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING);
                 if(rel != null) {
                     Node startNode = rel.getEndNode();
-                    Boolean joinPrior = false;
+                    Boolean joinPrior;
                     for (Node node : traverseReadings(startNode, layer)) {
                         long nodeRank = Long.parseLong(node.getProperty("rank").toString());
                         joinPrior = booleanValue(node, "join_prior");

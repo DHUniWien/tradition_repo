@@ -195,6 +195,7 @@ public class SectionTest extends TestCase {
                 "τὴν χεῖρα διὰ τῆς πληγῆς, κἂν ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον.";
         ClientResponse jerseyResponse = jerseyTest.resource()
                 .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         String wit = Util.getValueFromJson(jerseyResponse, "text");
         assertEquals(bText, wit);
     }

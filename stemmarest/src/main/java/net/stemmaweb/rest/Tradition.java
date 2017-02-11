@@ -58,6 +58,11 @@ public class Tradition {
         return new Witness(traditionId, sectionId, sigil);
     }
 
+    @Path("/section/{sectionId}")
+    public Section getSection(@PathParam("sectionId") String sectionId) {
+        return new Section(traditionId, sectionId);
+    }
+
     @Path("/stemma/{name}")
     public Stemma getStemma(@PathParam("name") String name) {
         return new Stemma(traditionId, name);
@@ -91,6 +96,103 @@ public class Tradition {
         } else {
             return result;
         }
+    }
+
+    private ArrayList<SectionModel> produceSectionList (Node traditionNode) {
+        ArrayList<SectionModel> sectionList = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+            int depth = sectionNodes.size();
+            if (depth > 0) {
+                for(Node n: sectionNodes) {
+                    if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                            .iterator()
+                            .hasNext()) {
+                        db.traversalDescription()
+                                .depthFirst()
+                                .relationships(ERelations.NEXT, Direction.OUTGOING)
+                                .evaluator(Evaluators.toDepth(depth))
+                                .uniqueness(Uniqueness.NODE_GLOBAL)
+                                .traverse(n)
+                                .nodes()
+                                .forEach(r -> sectionList.add(new SectionModel(r)));
+                        break;
+                    }
+                }
+            }
+            tx.success();
+            if (sectionList.size() != depth) {
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return sectionList;
+    }
+
+    @POST
+    @Path("/section")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response addSection(@FormDataParam("name") String sectionName,
+                               @FormDataParam("filetype") String filetype,
+                               @FormDataParam("file") InputStream uploadedInputStream,
+                               @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
+        // Make a new section node to connect to the tradition in question
+        Node sectionNode;
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
+        try (Transaction tx = db.beginTx()) {
+            sectionNode = db.createNode(Nodes.SECTION);
+            sectionNode.setProperty("name", sectionName);
+            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
+            tx.success();
+        }
+
+        // Parse the contents of the given file into that section
+        Response result = null;
+        if (filetype.equals("csv"))
+            // Pass it off to the CSV reader
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ',');
+        if (filetype.equals("tsv"))
+            // Pass it off to the CSV reader with tab separators
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, '\t');
+        if (filetype.startsWith("xls"))
+            // Pass it off to the Excel reader
+            result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
+        if (filetype.equals("teips"))
+            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
+        // TODO we need to parse TEI double-endpoint attachment from CTE
+        if (filetype.equals("collatex"))
+            // Pass it off to the CollateX parser
+            result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
+        if (filetype.equals("graphml"))
+            // Pass it off to the somewhat legacy GraphML parser
+            result = new GraphMLParser().parseGraphML(uploadedInputStream, sectionNode);
+        // If we got this far, it was an unrecognized filetype.
+        if (result == null)
+            result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+
+        if (result.getStatus() > 201) {
+            // If the result wasn't a success, delete the section node before returning the result.
+            Section restSect = new Section(traditionId, String.valueOf(sectionNode.getId()));
+            restSect.deleteSection();
+        } else {
+            // Otherwise, link this section behind the last of the prior sections.
+            if (existingSections != null && existingSections.size() > 0) {
+                SectionModel ls = existingSections.get(existingSections.size() - 1);
+                try (Transaction tx = db.beginTx()) {
+                    Node lastSection = db.getNodeById(Long.valueOf(ls.getId()));
+                    lastSection.createRelationshipTo(sectionNode, ERelations.NEXT);
+                    tx.success();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -192,151 +294,6 @@ public class Tradition {
         return Response.ok(sectionList).build();
     }
 
-    private ArrayList<SectionModel> produceSectionList (Node traditionNode) {
-        ArrayList<SectionModel> sectionList = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
-            int depth = sectionNodes.size();
-            if (depth > 0) {
-                for(Node n: sectionNodes) {
-                    if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
-                            .iterator()
-                            .hasNext()) {
-                        db.traversalDescription()
-                                .depthFirst()
-                                .relationships(ERelations.NEXT, Direction.OUTGOING)
-                                .evaluator(Evaluators.toDepth(depth))
-                                .uniqueness(Uniqueness.NODE_GLOBAL)
-                                .traverse(n)
-                                .nodes()
-                                .forEach(r -> sectionList.add(new SectionModel(r)));
-                        break;
-                    }
-                }
-            }
-            tx.success();
-            if (sectionList.size() != depth) {
-                return null;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-        return sectionList;
-    }
-
-    @POST
-    @Path("/section")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    public Response addSection(@FormDataParam("name") String sectionName,
-                               @FormDataParam("filetype") String filetype,
-                               @FormDataParam("file") InputStream uploadedInputStream,
-                               @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
-        // Make a new section node to connect to the tradition in question
-        Node sectionNode;
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
-        ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-        try (Transaction tx = db.beginTx()) {
-            sectionNode = db.createNode(Nodes.SECTION);
-            sectionNode.setProperty("name", sectionName);
-            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-            tx.success();
-        }
-
-        // Parse the contents of the given file into that section
-        Response result = null;
-        if (filetype.equals("csv"))
-            // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ',');
-        if (filetype.equals("tsv"))
-            // Pass it off to the CSV reader with tab separators
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, '\t');
-        if (filetype.startsWith("xls"))
-            // Pass it off to the Excel reader
-            result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
-        if (filetype.equals("teips"))
-            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
-        // TODO we need to parse TEI double-endpoint attachment from CTE
-        if (filetype.equals("collatex"))
-            // Pass it off to the CollateX parser
-            result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
-        if (filetype.equals("graphml"))
-            // Pass it off to the somewhat legacy GraphML parser
-            result = new GraphMLParser().parseGraphML(uploadedInputStream, sectionNode);
-        // If we got this far, it was an unrecognized filetype.
-        if (result == null)
-            result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
-
-        if (result.getStatus() > 201) {
-            // If the result wasn't a success, delete the section node before returning the result.
-            this.deleteSection(String.valueOf(sectionNode.getId()));
-        } else {
-            // Otherwise, link this section behind the last of the prior sections.
-            if (existingSections != null && existingSections.size() > 0) {
-                SectionModel ls = existingSections.get(existingSections.size() - 1);
-                try (Transaction tx = db.beginTx()) {
-                    Node lastSection = db.getNodeById(Long.valueOf(ls.getId()));
-                    lastSection.createRelationshipTo(sectionNode, ERelations.NEXT);
-                    tx.success();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return result;
-    }
-
-    @DELETE
-    @Path("/section/{id}")
-    public Response deleteSection(@PathParam("id") String sectionId) {
-        String result = "No section with the given ID found";
-        try (Transaction tx = db.beginTx()) {
-            // Find the section by ID and check that it belongs to this tradition.
-            Node foundSection = db.getNodeById(Long.valueOf(sectionId));
-            if (foundSection != null) {
-                Node traditionNode = foundSection.getSingleRelationship(ERelations.PART, Direction.INCOMING)
-                        .getStartNode();
-                if (traditionNode != null &&
-                        traditionNode.getProperty("id").toString().equals(traditionId)) {
-                    // Remove everything to do with this section.
-                    Set<Relationship> removableRelations = new HashSet<>();
-                    Set<Node> removableNodes = new HashSet<>();
-                    db.traversalDescription()
-                            .depthFirst()
-                            .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                            .relationships(ERelations.COLLATION, Direction.OUTGOING)
-                            .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                            .relationships(ERelations.HAS_END, Direction.OUTGOING)
-                            .relationships(ERelations.RELATED, Direction.OUTGOING)
-                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                            .traverse(foundSection)
-                            .nodes().forEach(x -> {
-                        x.getRelationships().forEach(removableRelations::add);
-                        removableNodes.add(x);
-                    });
-
-                /*
-                 * Remove the nodes and relations
-                 */
-                    removableRelations.forEach(Relationship::delete);
-                    removableNodes.forEach(Node::delete);
-                    result = "OK";
-                }
-            }
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-
-        if (result.equals("OK"))
-            return Response.ok().build();
-        else
-            return Response.status(Status.NOT_FOUND).entity(result).build();
-    }
-
     /**
      * Gets a list of all the witnesses of a tradition with the given id.
      *
@@ -355,45 +312,6 @@ public class Tradition {
         try (Transaction tx = db.beginTx()) {
             DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                     .forEach(r -> witnessList.add(new WitnessModel(r)));
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-        }
-        return Response.ok(witnessList).build();
-    }
-
-    @GET
-    @Path("/section/{section_id}/witnesses")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    public Response getAllWitnessInSection(@PathParam("section_id") String section_id) {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
-
-        ArrayList<WitnessModel> witnessList = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            Node sectionNode = db.findNode(Nodes.SECTION, "id", section_id);
-            if (sectionNode == null)
-                return Response.status(Status.NOT_FOUND).entity("section not found").build();
-            Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
-            if (rel == null || rel.getStartNode().getId() != traditionNode.getId()) {
-                return Response.status(Status.NOT_FOUND).entity("this section is not part of this tradition").build();
-            }
-
-            for (Node m : DatabaseService.getRelated(sectionNode, ERelations.COLLATION)) {
-                for (Relationship relationship : m.getRelationships(ERelations.SEQUENCE)) {
-                    ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
-                    for (String sigil : (String[]) relationship.getProperty("witnesses")) {
-                        for (Node curWitness : traditionWitnesses) {
-                            if (sigil.equals(curWitness.getProperty("sigil"))) {
-                                witnessList.add(new WitnessModel(curWitness));
-                                traditionWitnesses.remove(curWitness);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
             tx.success();
         } catch (Exception e) {
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
