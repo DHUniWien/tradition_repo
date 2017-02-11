@@ -47,20 +47,19 @@ public class Tradition {
      * Delegated API calls
      */
 
+    @Path("/section/{sectionId}")
+    public Section getSection(@PathParam("sectionId") String sectionId) throws Exception {
+        ArrayList<SectionModel> tradSections = produceSectionList(DatabaseService.getTraditionNode(traditionId, db));
+        if (tradSections != null)
+            for (SectionModel s : tradSections)
+                if (s.getId().equals(sectionId))
+                    return new Section(traditionId, sectionId);
+        return null;
+    }
+
     @Path("/witness/{sigil}")
     public Witness getWitness(@PathParam("sigil") String sigil) {
         return new Witness(traditionId, sigil);
-    }
-
-    @Path("/section/{sectionId}/witness/{sigil}")
-    public Witness getWitnessFromSection(@PathParam("sectionId") String sectionId,
-                                         @PathParam("sigil") String sigil) {
-        return new Witness(traditionId, sectionId, sigil);
-    }
-
-    @Path("/section/{sectionId}")
-    public Section getSection(@PathParam("sectionId") String sectionId) {
-        return new Section(traditionId, sectionId);
     }
 
     @Path("/stemma/{name}")

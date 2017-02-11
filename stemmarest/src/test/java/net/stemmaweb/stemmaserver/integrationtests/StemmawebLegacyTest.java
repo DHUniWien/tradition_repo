@@ -599,7 +599,6 @@ public class StemmawebLegacyTest {
          * queryParams.add("node2", r9_3);
          */
 
-        // TODO use call to /relationships
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relationships")
@@ -1099,7 +1098,6 @@ public class StemmawebLegacyTest {
          ## and then make sure that the graph is not broken.
         **/
         /*
-        ## TODO again with the tabular / CSV input.
                 # Test right-to-left reading merge.
                 my $rtl = Text::Tradition->new(
                 'name'  => 'inline',
@@ -1268,8 +1266,6 @@ public class StemmawebLegacyTest {
         }
 
         ## TODO add output as adjacency list, as tabular, as TEI, etc. etc.
-
-        ## TODO we need an alignment table output! And for it to be tested.
 */
     }
 

@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-/**
+/*
  * Created by tla on 11/02/2017.
  */
 public class Section {
@@ -22,11 +22,16 @@ public class Section {
     private String tradId;
     private String sectId;
 
-    public Section (String traditionId, String sectionId) {
+    Section(String traditionId, String sectionId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
         sectId = sectionId;
+    }
+
+    @Path("/witness/{sigil}")
+    public Witness getWitnessFromSection(@PathParam("sigil") String sigil) {
+        return new Witness(tradId, sectId, sigil);
     }
 
 
@@ -42,21 +47,7 @@ public class Section {
                 if (traditionNode != null &&
                         traditionNode.getProperty("id").toString().equals(tradId)) {
                     // Find the section either side of this one and connect them if necessary.
-                    Node priorSection = null;
-                    Node nextSection = null;
-                    if (foundSection.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
-                        Relationship incomingRel = foundSection.getSingleRelationship(ERelations.NEXT, Direction.INCOMING);
-                        priorSection = incomingRel.getStartNode();
-                        incomingRel.delete();
-                    }
-                    if (foundSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
-                        Relationship outgoingRel = foundSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
-                        nextSection = outgoingRel.getEndNode();
-                        outgoingRel.delete();
-                    }
-                    if (priorSection != null && nextSection != null) {
-                        priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
-                    }
+                    removeFromSequence(foundSection);
                     // Remove everything to do with this section.
                     Set<Relationship> removableRelations = new HashSet<>();
                     Set<Node> removableNodes = new HashSet<>();
@@ -128,6 +119,7 @@ public class Section {
             }
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok(witnessList).build();
@@ -136,6 +128,66 @@ public class Section {
     // POST section/ID/merge/ID
 
     // PUT section/ID/orderAfter/ID
+    @PUT
+    @Path("/orderAfter/{priorSectID}")
+    public Response reorderSectionAfter(@PathParam("priorSectID") String priorSectID) {
+        try (Transaction tx = db.beginTx()) {
+            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+
+            // Check that the requested section exists and is part of the tradition
+            Node priorSection = db.getNodeById(Long.valueOf(priorSectID));
+            if (priorSection == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+            Node pnTradition = DatabaseService.getTraditionNode(priorSection, db);
+            if (!pnTradition.getProperty("id").toString().equals(tradId))
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
+
+            // Check for and remove the old "next" link from the given prior
+            Node latterSection = null;
+            if (priorSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
+                Relationship oldSeq = priorSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
+                latterSection = oldSeq.getEndNode();
+                oldSeq.delete();
+            }
+
+            // Remove our node from its existing sequence
+            removeFromSequence(thisSection);
+
+            // Link it up to the prior
+            priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
+            // ...and to the old "next" if it exists
+            if (latterSection != null) {
+                thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
+            }
+
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok().build();
+    }
+
+    // For use in a transaction!
+    private void removeFromSequence (Node thisSection) {
+        Node priorSection = null;
+        Node nextSection = null;
+        if (thisSection.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
+            Relationship incomingRel = thisSection.getSingleRelationship(ERelations.NEXT, Direction.INCOMING);
+            priorSection = incomingRel.getStartNode();
+            incomingRel.delete();
+        }
+        if (thisSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
+            Relationship outgoingRel = thisSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
+            nextSection = outgoingRel.getEndNode();
+            outgoingRel.delete();
+        }
+        if (priorSection != null && nextSection != null) {
+            priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
+        }
+    }
 
     // POST section/ID/splitAtRank/RK
 }
