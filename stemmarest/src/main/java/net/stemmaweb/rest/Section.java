@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -28,11 +29,45 @@ public class Section {
         sectId = sectionId;
     }
 
+    // Delegation
     @Path("/witness/{sigil}")
     public Witness getWitnessFromSection(@PathParam("sigil") String sigil) {
         return new Witness(tradId, sectId, sigil);
     }
 
+
+    // Base paths
+    @GET
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response getSectionInfo() {
+        SectionModel result;
+        try (Transaction tx = db.beginTx()) {
+            result = new SectionModel(db.getNodeById(Long.valueOf(sectId)));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok().entity(result).build();
+    }
+
+    @PUT
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response updateSectionInfo(SectionModel newInfo) {
+        try (Transaction tx = db.beginTx()) {
+            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            if (newInfo.getName() != null)
+                thisSection.setProperty("name", newInfo.getName());
+            if (newInfo.getLanguage() != null)
+                thisSection.setProperty("language", newInfo.getLanguage());
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return getSectionInfo();
+    }
 
     @DELETE
     public Response deleteSection() {

@@ -86,6 +86,15 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<List<SectionModel>>() {});
         assertEquals(1, tSections.size());
         assertEquals("DEFAULT", tSections.get(0).getName());
+
+        SectionModel defaultSection = tSections.get(0);
+        defaultSection.setName("My new name");
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + defaultSection.getId())
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, defaultSection);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        assertEquals("My new name", Util.getValueFromJson(jerseyResult, "name"));
     }
 
     public void testAddSection() throws Exception {
