@@ -249,9 +249,98 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.NOT_FOUND.getStatusCode(), jerseyResult.getStatus());
     }
 
-    // test merging two sections
+    public void testMergeSections() {
+        String florId = importFlorilegium();
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
 
-    // test splitting a section
+        // Try merge of 3 into 4
+        String targetSection = returnedSections.get(2).getId();
+        String requestPath = "/tradition/" + florId + "/section/" + targetSection
+                + "/merge/" + returnedSections.get(3).getId();
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path(requestPath).post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+
+        String pText = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
+                "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ " +
+                "διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, " +
+                "καὶ μὴ δῷς αὐτῆς παρρησίαν θαρρῆσαι σοί ποτε. θάλπει ἑστῶσα βοτάνη παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, " +
+                "ἐν συντυχίαις γυναικῶν. τοῦ Χρυσοστόμου Τοὺς ἐν τῇ πόλει βλασφημοῦντας, σωφρόνιζε. Κἂν ἀκούσῃς " +
+                "τινὸς ἐν ἀμφόδῳ ἢ ἐν ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν πληγὰς " +
+                "ἐπιθεῖναι δέῃ, μὴ παραιτήσῃ ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου τὴν χεῖρα " +
+                "διὰ τῆς πληγῆς, κἂν ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον.";
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSection + "/witness/P/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(pText, witFragment);
+
+        // Also test a witness that didn't exist in section 3
+        String dText = "Ὄψις γυναικὸς βέλος ἐστὶ πεφαρμακευμένον ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
+                "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ " +
+                "διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, " +
+                "καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. Θάλλει βοτάνη ἑστῶσα παρ᾽ ὕδατι, καὶ πάθος " +
+                "ἀκολασίας, ἐν συντυχίαις γυναικῶν.";
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSection + "/witness/D/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(dText, witFragment);
+
+        // Now try merge of 1 into 3, which should fail
+        requestPath = "/tradition/" + florId + "/section/" + returnedSections.get(0).getId()
+                + "/merge/" + targetSection;
+        jerseyResponse = jerseyTest.resource()
+                .path(requestPath).post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.BAD_REQUEST.getStatusCode(), jerseyResponse.getStatus());
+
+        // Now try merge of 2 into 1
+        targetSection = returnedSections.get(0).getId();
+        requestPath = "/tradition/" + florId + "/section/" + returnedSections.get(1).getId() + "/merge/" + targetSection;
+        jerseyResponse = jerseyTest.resource().path(requestPath).post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        assertEquals(2, jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {}).size());
+
+        pText = "Μαξίμου περὶ τῆς τοῦ ἁγίου πνεύματος βλασφημίας ἀπορία αὐτόθι ἔχειν τὴν λύσιν· ὁ δὲ δεύτερος ἐστὶν " +
+                "οὗτος· ὅτάν τις ἐν ἁμαρτίαις ἐνεχόμενος, ἀκούων δὲ τοῦ κυρίου λέγοντος μὴ κρίνετε φοβούμενος οὐδένα " +
+                "κρίνῃ ἐν τῇ ἐξετάσει τῶν βεβιωμένων ὡς φύλαξ τῆς ἐντολῆς οὐ κρίνεται· εἰ μὴ τὸ γενέσθαι πιστόν, " +
+                "εἰκότως ὅταν ἐν ἁμαρτίαις τίς ὢν οἰκονομῆται ἐκ τῆς προνοίας ἐν συμφοραῖς, ἐν ἀνάγκαις, ἐν νόσοις " +
+                "ὡς οὐκ οἶδε γὰρ διὰ τῶν τοιούτων καθαίρει αὐτὸν ὁ θεός οὖν τῷ ἐν ἀπιστεία τὸν βίον κατακλείσαντι " +
+                "οὔτε ἐνταῦθα οὔτε ἐν τῷ μέλλοντι ἀφεθήσεται τῆς ἀπιστίας καὶ ἀθεΐας ἡ ἁμαρτία. Ἰσιδώρου " +
+                "πηλουσιώτ(ου) Γρηγορίου Νύσης Ἤκουσά που τῆς ἁγίας γραφῆς κατακρινούσης ἐκείνους, οἳ κατὰ τῆς τοῦ " +
+                "θεοῦ βλασφημίας αἴτιοι γίνονται. Οὐαὶ γὰρ φησὶν δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. " +
+                "Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς " +
+                "τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν.";
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSection + "/witness/P/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(pText, witFragment);
+
+        // Also test a witness that didn't exist in section 2
+        String kText = "Μαξίμου Ἡ περὶ τῆς τοῦ πνεύματος τοῦ ἁγίου βλασφημίας ἀπορία αὐτόθεν ἔχει τὴν λύσιν· ὁ δὲ " +
+                "δεύτερος ἐστὶν οὗτος· ὅτάν τις ἐν ἁμαρτίαις ἐνεχόμενος, ἀκούων δὲ τοῦ κυρίου λέγοντος μὴ κρίνετε " +
+                "φοβούμενος οὐδένα κρίνει ἐν τῇ ἐξετάσει τῶν βεβιωμένων ὡς φύλαξ τῆς ἐντολῆς οὐ κρίνεται· εἰ μὴ τὸ " +
+                "γενέσθαι πιστόν, εἰκότως ὅταν ἐν ἁμαρτίαις τίς ὢν οἰκονομῆται ἐκ τῆς προνοίας ἐν συμφοραῖς, ἐν " +
+                "ἀνάγκαις, ἐν νόσοις ὡς οὐκ οἶδε γὰρ διὰ τῶν τοιούτων καθαίρει αὐτὸν ὁ θεός τῶν ἐν ἀπιστίᾳ τὸν βίον " +
+                "κατακλείσαντι οὔτε ἐνταῦθα οὔτε ἐν τῷ μέλλοντι ἀφεθήσεται τῆς ἀπιστίας καὶ ἀθεΐας ἡ ἁμαρτία.";
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSection + "/witness/K/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(kText, witFragment);
+    }
+
+    // Test merge of tradition sections with layered readings
+
     public void testSplitSection() {
         String florId = importFlorilegium();
         List<SectionModel> returnedSections = jerseyTest.resource()
