@@ -171,15 +171,16 @@ public class Root {
             // Make the tradition node
             Node traditionNode = db.createNode(Nodes.TRADITION);
             traditionNode.setProperty("id", tradId);
-            traditionNode.setProperty("name", name);
+            // These two have default values
             traditionNode.setProperty("direction", direction);
             traditionNode.setProperty("layerlabel", layerlabel);
-            if (language != null) {
+            // The rest of them don't have defaults
+            if (name != null)
+                traditionNode.setProperty("name", name);
+            if (language != null)
                 traditionNode.setProperty("language", language);
-            }
-            if (isPublic != null) {
+            if (isPublic != null)
                 traditionNode.setProperty("is_public", isPublic.equals("true"));
-            }
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

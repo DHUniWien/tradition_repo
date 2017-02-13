@@ -33,6 +33,7 @@ public class TabularInputOutputTest extends TestCase {
     private JerseyTest jerseyTest;
 
     public void setUp() throws Exception {
+        super.setUp();
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
 
@@ -266,12 +267,15 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(1, readingsAt9.size());
     }
 
-    // testOutputCSV
+    // TODO testOutputCSV
 
-    // testOutputExcel
+    // TODO testOutputExcel
+
+    // TODO testOutputWithLayers
 
     public void tearDown() throws Exception {
         db.shutdown();
         jerseyTest.tearDown();
+        super.tearDown();
     }
 }
