@@ -14,6 +14,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.*;
 
+import static net.stemmaweb.services.ReadingService.addWitnessLink;
+import static net.stemmaweb.services.ReadingService.removePlaceholder;
+
 /*
  * Created by tla on 11/02/2017.
  */
@@ -284,6 +287,16 @@ public class Section {
                 }
             }
 
+            // TODO Remove any superfluous witnesses in each split section
+            Node sectionStart = DatabaseService.getStartNode(sectId, db);
+            for (Relationship r : sectionStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
+                if (r.getEndNode().hasProperty("is_end"))
+                    r.delete();
+            for (Relationship r : newStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
+                if (r.getEndNode().hasProperty("is_end"))
+                    r.delete();
+
+
             // Re-initialize the ranks on the new section
             Tradition t = new Tradition(tradId);
             if (!t.recalculateRank(newStart.getId())) {
@@ -328,99 +341,39 @@ public class Section {
             Node trueStart = DatabaseService.getStartNode(String.valueOf(firstSection.getId()), db);
             Node trueEnd = DatabaseService.getEndNode(String.valueOf(secondSection.getId()), db);
 
-            // ...First we move the lemma.
-            if (oldEnd.hasRelationship(ERelations.LEMMA_TEXT) && oldStart.hasRelationship(ERelations.LEMMA_TEXT)) {
-                Relationship plr = oldEnd.getSingleRelationship(ERelations.LEMMA_TEXT, Direction.INCOMING);
-                Relationship nlr = oldStart.getSingleRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING);
-                plr.getStartNode().createRelationshipTo(nlr.getEndNode(), ERelations.LEMMA_TEXT);
-                plr.delete();
-                nlr.delete();
-            }
-
-            // ...Then we map readings to witnesses
-            HashMap<String, Node> readingWitnessToMap = new HashMap<>();
-            HashMap<String, HashMap<String, Node>> readingWitnessExtraMap = new HashMap<>();
-            for (Relationship r : oldStart.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
-                for (String prop : r.getPropertyKeys()) {
-                    String[] relWits = (String[]) r.getProperty(prop);
-                    for (String w : relWits)
-                        if (prop.equals("witnesses"))
-                            readingWitnessToMap.put(w, r.getEndNode());
-                        else if (readingWitnessExtraMap.containsKey(w))
-                            readingWitnessExtraMap.get(w).put(prop, r.getEndNode());
-                        else {
-                            HashMap<String, Node> thisMapping = new HashMap<>();
-                            thisMapping.put(prop, r.getEndNode());
-                            readingWitnessExtraMap.put(w, thisMapping);
-                        }
-                }
-                r.delete();
-            }
-            HashMap<String, Node> deferredLinks = new HashMap<>();
-            for (Relationship r : oldEnd.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
-                Node priorReading = r.getStartNode();
-                for (String prop : r.getPropertyKeys()) {
-                    String[] relWits = (String[]) r.getProperty(prop);
-                    for (String w : relWits) {
-                        if (prop.equals("witnesses")) {
-                            // Look for a matching normal reading on the TO side
-                            if (readingWitnessToMap.containsKey(w))
-                                addWitnessLink(priorReading, readingWitnessToMap.get(w), prop, w);
-                            else // The TO side doesn't have this witness; make a link to the real end.
-                                    addWitnessLink(priorReading, trueEnd, prop, w);
-
-                            // If there are special (extra, layered) readings for this witness on the
-                            // TO side, we will have to deal with it after we have matched corresponding
-                            // special sequence links on the FROM side, which will occur in other
-                            // Relationship objects.
-                            if (readingWitnessExtraMap.containsKey(w))
-                                deferredLinks.put(w, priorReading);
-                        } else {
-                            // Look for a matching layer-witness reading for our layer-witness
-                            if (readingWitnessExtraMap.containsKey(w)
-                                    && readingWitnessExtraMap.get(w).containsKey(prop)) {
-                                addWitnessLink(priorReading, readingWitnessExtraMap.get(w).get(prop), prop, w);
-                                // This witness layer has been matched; remove it from later accounting.
-                                readingWitnessExtraMap.get(w).remove(prop);
-                            }
-                            // If there isn't a match, use the "normal" witness reading on the TO side
-                            else
-                                addWitnessLink(priorReading, readingWitnessToMap.get(w), prop, w);
-                        }
-                    }
-                }
-                r.delete();
-            }
-            // Deal with whatever remains in the readingWitnessExtraMap, that hasn't been linked.
-            for (String w : readingWitnessExtraMap.keySet()) {
-                HashMap<String, Node> thisToExtra = readingWitnessExtraMap.get(w);
-                for (String extra : thisToExtra.keySet()) {
-                    Node priorNode = deferredLinks.get(w);
-                    addWitnessLink(priorNode, thisToExtra.get(extra), extra, w);
-                }
-            }
-            // Look for any "normal" readings that weren't linked to the prior section yet.
-            // This is disgustingly inefficient but I can't think of a better way.
-            for (String w : readingWitnessToMap.keySet()) {
-                Node toReading = readingWitnessToMap.get(w);
-                Boolean found = false;
-                for (Relationship r : toReading.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
-                    String[] existingWits = (String[]) r.getProperty("witnesses");
-                    if (Arrays.asList(existingWits).contains(w)) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    addWitnessLink(trueStart, toReading, "witnesses", w);
-                }
-            }
-
-            // Delete the old start and end nodes
+            // First we turn oldEnd and oldStart into placeholder readings, linked to each other
             oldStart.getSingleRelationship(ERelations.COLLATION, Direction.INCOMING).delete();
-            oldStart.delete();
             oldEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
-            oldEnd.delete();
+            oldEnd.setProperty("is_placeholder", true);
+            oldStart.setProperty("is_placeholder", true);
+            HashSet<String> oldWitnesses = new HashSet<>();
+            HashSet<String> newWitnesses = new HashSet<>();
+            for (Relationship r : oldEnd.getRelationships(ERelations.SEQUENCE))
+                for (String key : r.getPropertyKeys())
+                    oldWitnesses.addAll(Arrays.asList((String[]) r.getProperty(key)));
+            for (Relationship r : oldStart.getRelationships(ERelations.SEQUENCE))
+                for (String key : r.getPropertyKeys())
+                    newWitnesses.addAll(Arrays.asList((String[]) r.getProperty(key)));
+            newWitnesses.stream().filter(x -> !oldWitnesses.contains(x))
+                    .forEach(x -> addWitnessLink(trueStart, oldEnd, x, "witnesses"));
+            oldWitnesses.stream().filter(x -> !newWitnesses.contains(x))
+                    .forEach(x -> addWitnessLink(oldStart, trueEnd, x, "witnesses"));
+            oldWitnesses.addAll(newWitnesses);
+            Relationship link = oldEnd.createRelationshipTo(oldStart, ERelations.SEQUENCE);
+            link.setProperty("witnesses", oldWitnesses.toArray(new String[oldWitnesses.size()]));
+
+            // Reconfigure the lemma text link, if there is one
+            Relationship plr = oldEnd.getSingleRelationship(ERelations.LEMMA_TEXT, Direction.INCOMING);
+            Relationship nlr = oldStart.getSingleRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING);
+            if (plr != null && nlr != null)
+                plr.getStartNode().createRelationshipTo(nlr.getEndNode(), ERelations.LEMMA_TEXT);
+            if (plr != null) plr.delete();
+            if (nlr != null) nlr.delete();
+
+
+            // Remove each placeholder in turn
+            removePlaceholder(oldEnd);
+            removePlaceholder(oldStart);
 
             // Move the second end node to the first section
             trueEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
@@ -444,24 +397,6 @@ public class Section {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok().build();
-    }
-
-    // For use in a transaction!
-    private void addWitnessLink (Node priorReading, Node nextReading, String key, String value) {
-        for (Relationship r : priorReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
-            if (r.getEndNode().equals(nextReading)) {
-                String[] currVal = {};
-                if (r.hasProperty(key))
-                    currVal = (String[]) r.getProperty(key);
-                ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(currVal));
-                currentWits.add(value);
-                r.setProperty(key, currentWits.toArray(new String[currentWits.size()]));
-                return;
-            }
-        }
-        Relationship newRel = priorReading.createRelationshipTo(nextReading, ERelations.SEQUENCE);
-        String[] currVal = {value};
-        newRel.setProperty(key, currVal);
     }
 
     // For use in a transaction!

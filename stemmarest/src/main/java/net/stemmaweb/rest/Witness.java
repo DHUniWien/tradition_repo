@@ -97,52 +97,16 @@ public class Witness {
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
 
-        ArrayList<Node> iterationList = new ArrayList<>();
-        // Lets see if a tradition has one or more sections
-        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
-        if (sectionNodes.size() == 0) {
-            iterationList.add(traditionNode);
-        } else {
-            int depth = sectionNodes.size();
-            try (Transaction tx = db.beginTx()) {
-                if (this.sectId == null) {
-                    // order the sections by their occurrence in the tradition
-                    for (Node n : sectionNodes) {
-                        if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
-                                .iterator()
-                                .hasNext()) {
-                            db.traversalDescription()
-                                    .depthFirst()
-                                    .relationships(ERelations.NEXT, Direction.OUTGOING)
-                                    .evaluator(Evaluators.toDepth(depth))
-                                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                                    .traverse(n)
-                                    .nodes()
-                                    .forEach(iterationList::add);
-                            break;
-                        }
-                    }
-                } else {
-                    Node sectionNode = db.getNodeById(Long.valueOf(sectId));
-                    if (sectionNode == null)
-                        return Response.status(Status.NOT_FOUND).entity("section not found").build();
-                    Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
-                    if (rel == null || rel.getStartNode().getId() != traditionNode.getId()) {
-                        return Response.status(Status.NOT_FOUND).entity("this section is not part of this tradition").build();
-                    }
-                    iterationList.add(sectionNode);
-                }
-                tx.success();
-            } catch (Exception e) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-            }
-        }
+        ArrayList<Node> iterationList = sectionsRequested(traditionNode);
+        if (iterationList.size() == 0)
+            return Response.status(Status.NOT_FOUND).entity("Section not found in this tradition").build();
 
+        ArrayList<Node> witnessReadings = new ArrayList<>();
         for (Node currentSection: iterationList) {
-            if (iterationList.size() > 1) {
-                end = "E";
-                startRank = 0;
-            }
+            if (iterationList.size() > 1 && (!end.equals("E") || startRank != 0))
+                return Response.status(Status.BAD_REQUEST)
+                        .entity("Cannot request specific start/end across sections").build();
+
             if (end.equals("E")) {
                 // Find the rank of the graph's end.
                 Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END).get(0);
@@ -169,33 +133,38 @@ public class Witness {
                 endRank = tempRank;
             }
 
+            Node startNode = DatabaseService.getStartNode(String.valueOf(currentSection.getId()), db);
             try (Transaction tx = db.beginTx()) {
-                Relationship rel = currentSection.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING);
-                if(rel != null) {
-                    Node startNode = rel.getEndNode();
-                    Boolean joinPrior;
-                    for (Node node : traverseReadings(startNode, layer)) {
-                        long nodeRank = Long.parseLong(node.getProperty("rank").toString());
-                        joinPrior = booleanValue(node, "join_prior");
-                        if (nodeRank >= startRank && nodeRank <= endRank
-                                && !booleanValue(node, "is_lacuna")) {
-                            if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
-                                witnessAsText += " ";
-                            witnessAsText += node.getProperty("text").toString();
-                        }
-                    }
-                }
+                final Long sr = startRank;
+                final Long er = endRank;
+                witnessReadings.addAll(traverseReadings(startNode, layer).stream()
+                        .filter(x -> Long.valueOf(x.getProperty("rank").toString()) >= sr
+                                && Long.valueOf(x.getProperty("rank").toString()) <= er)
+                        .collect(Collectors.toList()));
                 tx.success();
-            } catch (Exception exception) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().build();
             }
         }
-
-        if (witnessAsText.equals("")) {
+        // If the path is size 0 then we didn't even get to the end node; the witness path doesn't exist.
+        if (witnessReadings.size() == 0)
             return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find single witness with this sigil")
-                    .build();
+                    .entity("No witness path found for this sigil").build();
+        // Remove the meta node from the list
+        Boolean joinPrior;
+        try (Transaction tx = db.beginTx()) {
+            for (Node node : witnessReadings) {
+                if (booleanValue(node, "is_end")) continue;
+                if (booleanValue(node, "is_lacuna")) continue;
+                joinPrior = booleanValue(node, "join_prior");
+                if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
+                    witnessAsText += " ";
+                witnessAsText += node.getProperty("text").toString();
+            }
+            tx.success();
         }
+
         return Response.status(Response.Status.OK)
                 .entity("{\"text\":\"" + witnessAsText.trim() + "\"}")
                 .build();
@@ -220,32 +189,37 @@ public class Witness {
     public Response getWitnessAsReadings(@PathParam("layer") String witnessClass) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
 
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        if (startNode == null) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id")
-                    .build();
+        Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+
+        ArrayList<Node> iterationList = sectionsRequested(traditionNode);
+        if (iterationList.size() == 0)
+            return Response.status(Status.NOT_FOUND).entity("Section not found in this tradition").build();
+
+        for (Node currentSection: iterationList) {
+            try (Transaction tx = db.beginTx()) {
+                Node startNode = DatabaseService.getStartNode(String.valueOf(currentSection.getId()), db);
+                readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().entity(e.getMessage()).build();
+            }
         }
 
-        try (Transaction tx = db.beginTx()) {
-            readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
-        }
-
-        if (readingModels.size() == 0) {
+        // If the path is size 0 then we didn't even get to the end node; the witness path doesn't exist.
+        if (readingModels.size() == 0)
             return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find single witness with this sigil")
-                    .build();
-        }
-        if (readingModels.get(readingModels.size() - 1).getText().equals("#END#")) {
+                    .entity("No witness path found for this sigil").build();
+        // Remove the meta node from the list
+        if (readingModels.get(readingModels.size() - 1).getText().equals("#END#"))
             readingModels.remove(readingModels.size() - 1);
-        }
+        // ...and return.
         return Response.status(Status.OK).entity(readingModels).build();
     }
 
+    // For use within a transaction
     private ArrayList<Node> traverseReadings(Node startNode, String witnessClass) throws Exception {
         Evaluator e;
         if (witnessClass == null)
@@ -254,20 +228,49 @@ public class Witness {
             e = new WitnessPath(sigil, witnessClass).getEvalForWitness();
 
         ArrayList<Node> result = new ArrayList<>();
+        db.traversalDescription().depthFirst()
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                .evaluator(e)
+                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                .traverse(startNode)
+                .nodes()
+                .forEach(result::add);
+        return result;
+    }
+
+    private ArrayList<Node> sectionsRequested(Node traditionNode) {
+        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+        ArrayList<Node> iterationList = new ArrayList<>();
+        int depth = sectionNodes.size();
         try (Transaction tx = db.beginTx()) {
-            db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(e)
-                    .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                    .traverse(startNode)
-                    .nodes()
-            .forEach(x -> {
-                if (!booleanValue(x, "is_end"))
-                    result.add(x);
-            });
+            if (this.sectId == null) {
+                // order the sections by their occurrence in the tradition
+                for (Node n : sectionNodes) {
+                    if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                            .iterator()
+                            .hasNext()) {
+                        db.traversalDescription()
+                                .depthFirst()
+                                .relationships(ERelations.NEXT, Direction.OUTGOING)
+                                .evaluator(Evaluators.toDepth(depth))
+                                .uniqueness(Uniqueness.NODE_GLOBAL)
+                                .traverse(n)
+                                .nodes()
+                                .forEach(iterationList::add);
+                        break;
+                    }
+                }
+            } else {
+                Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+                if (sectionNode != null) {
+                    Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
+                    if (rel != null && rel.getStartNode().getId() == traditionNode.getId())
+                        iterationList.add(sectionNode);
+                }
+            }
             tx.success();
         }
-        return result;
+        return iterationList;
     }
 
     // NOTE needs to be in transaction

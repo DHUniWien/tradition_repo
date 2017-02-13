@@ -2,8 +2,8 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.io.FileNotFoundException;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
@@ -56,24 +56,17 @@ public class WitnessTest {
                 .create();
         jerseyTest.setUp();
 
-        /*
-         * load a tradition to the test DB
-         */
-        try {
-            tradId = createTraditionFromFile("Tradition", "LR", "1", "src/TestFiles/testTradition.xml", "graphml");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
+         // load a tradition to the test DB
+        tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml");
     }
 
-    private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
-                                           String fType) throws FileNotFoundException {
+    private String createTraditionFromFile(String tName, String fName) {
 
         ClientResponse jerseyResult = null;
         try {
-            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "graphml");
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
         String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
@@ -102,7 +95,7 @@ public class WitnessTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
-        assertEquals("Could not find single witness with this sigil",
+        assertEquals("No witness path found for this sigil",
                 response.getEntity(String.class));
     }
 
@@ -143,7 +136,7 @@ public class WitnessTest {
                 .path("/tradition/" + tradId + "/witness/D/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertEquals("Could not find single witness with this sigil", response.getEntity(String.class));
+        assertEquals("No witness path found for this sigil", response.getEntity(String.class));
     }
 
     @Test
@@ -238,14 +231,7 @@ public class WitnessTest {
         String tacText = "Ἡ περὶ τῆς τοῦ πνεύματος τοῦ ἁγίου βλασφημίας ἀπορία αὐτόθι ἔχει τὴν λύσιν· ὁ δὲ δεύτερος ἐστὶν οὗτος· ὅτάν τις ἐν ἁμαρτίαις ἐνεχόμενος, ἀκούων δὲ τοῦ κυρίου λέγοντος μὴ κρίνεται φοβούμενος οὐδένα κρίνει ἐν τῇ ἐξετάσει τῶν βεβιωμένων ὡς φύλαξ τῆς ἐντολῆς οὐ κρίνεται· εἰ μὴ τὸ γενέσθαι πιστόν, εἰκότως ὅταν ἐν ἁμαρτίαις τίς ὢν οἰκονομεῖται ἐκ τῆς προνοίας ἐν συμφοραῖς, ἐν ἀνάγκαις, ἐν νόσοις ὡς οὐκ οἶδε γὰρ διὰ τῶν τοιούτων καθαίρει αὐτὸν ὁ θεός οὖν τῷ ἐν ἀπιστίᾳ τὸν βίον κατακλείσαντι οὔτε ἐνταῦθα οὔτε ἐν τῷ μέλλοντι ἀφεθήσεται τῆς ἀπιστίας καὶ ἀθεΐας ἡ ἁμαρτία. Γρηγορίου Νύσης Ἤκουσά που τῆς ἁγίας γραφῆς κατακρινούσης ἐκείνους, οἳ κατὰ τῆς τοῦ θεοῦ βλασφημίας αἴτιοι γίνονται. Οὐαὶ γὰρ φησὶν δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν. Νείλου μοναχοῦ Ὄψις γυναικὸς μέλος ἐστὶ πεφαρμακευμένον ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τὸν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. Θάλλει βοτάνη ἐστῶσα παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν συντυχίαις γυναικῶν.";
 
         // Create the tradition in question
-        String newId = null;
-        try {
-            String fileName = "src/TestFiles/florilegium_graphml.xml";
-            newId = createTraditionFromFile("Florilegium", "LR", "1", fileName, "graphml");
-        } catch (FileNotFoundException e) {
-            assertTrue(false);
-        }
-
+        String newId = createTraditionFromFile("Florilegium", "src/TestFiles/florilegium_graphml.xml");
         // Now get the witness text for each of our complex sigla.
         String response = jerseyTest
                 .resource()

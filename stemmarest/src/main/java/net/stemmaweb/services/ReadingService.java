@@ -7,6 +7,9 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * 
@@ -32,6 +35,112 @@ public class ReadingService {
         }
         newReading.addLabel(Nodes.READING);
         return newReading;
+    }
+
+    /**
+     * Add a witness of the given class (either "witnesses" or some layer) connecting the
+     * two nodes given.
+     * NOTE: for use in a transaction!
+     *
+     * @param start - the start node
+     * @param end   - the end node
+     * @param sigil - the witness sigil
+     * @param witClass - the witness layer class to use
+     */
+    public static void addWitnessLink (Node start, Node end, String sigil, String witClass) {
+        Relationship link = null;
+        for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
+            if (r.getEndNode().equals(end))
+                link = r;
+        if (link == null)
+            link = start.createRelationshipTo(end, ERelations.SEQUENCE);
+        if (link.hasProperty(witClass)) {
+            String[] witList = (String[]) link.getProperty(witClass);
+            HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
+            currentWits.add(sigil);
+            link.setProperty(witClass, currentWits.toArray(new String[currentWits.size()]));
+        } else {
+            String[] witList = {sigil};
+            link.setProperty(witClass, witList);
+        }
+    }
+
+
+
+    /**
+     * Removes a reading from the sequence, matching up links on either side of it.
+     * Meant for merging sections and removing placeholder nodes.
+     * NOTE: To be used inside a transaction!
+     *
+     * @param placeholderNode - the node to be removed
+     */
+    public static void removePlaceholder(Node placeholderNode) throws Exception {
+        // Check that the node is indeed a placeholder
+        if (!placeholderNode.hasProperty("is_placeholder")
+                || !(Boolean) placeholderNode.getProperty("is_placeholder"))
+            throw new Exception("Cannot remove a non-placeholder node!");
+
+        // Make a map of class -> witness -> node on the outgoing side
+        HashMap<String, Node> readingWitnessToMap = new HashMap<>();
+        HashMap<String, HashMap<String, Node>> readingWitnessExtraMap = new HashMap<>();
+        for (Relationship r : placeholderNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+            for (String prop : r.getPropertyKeys()) {
+                String[] relWits = (String[]) r.getProperty(prop);
+                for (String w : relWits)
+                    if (prop.equals("witnesses"))
+                        readingWitnessToMap.put(w, r.getEndNode());
+                    else if (readingWitnessExtraMap.containsKey(w))
+                        readingWitnessExtraMap.get(w).put(prop, r.getEndNode());
+                    else {
+                        HashMap<String, Node> thisMapping = new HashMap<>();
+                        thisMapping.put(prop, r.getEndNode());
+                        readingWitnessExtraMap.put(w, thisMapping);
+                    }
+            }
+            r.delete();
+        }
+
+        // Go through relationships on the incoming side, re-routing them according to the map above.
+        // Keep a list of layer readings on the incoming side for matching after the fact.
+        HashMap<String, Node> deferredLinks = new HashMap<>();
+        for (Relationship r : placeholderNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+            Node priorReading = r.getStartNode();
+            for (String prop : r.getPropertyKeys()) {
+                String[] relWits = (String[]) r.getProperty(prop);
+                for (String w : relWits) {
+                    if (prop.equals("witnesses")) {
+                        addWitnessLink(priorReading, readingWitnessToMap.get(w), w, prop);
+
+                        // If there are special (extra, layered) readings for this witness on the
+                        // TO side, we will have to deal with it after we have matched corresponding
+                        // special sequence links on the FROM side, which will occur in other
+                        // Relationship objects.
+                        if (readingWitnessExtraMap.containsKey(w))
+                            deferredLinks.put(w, priorReading);
+                    } else {
+                        // Look for a matching layer-witness reading for our layer-witness
+                        if (readingWitnessExtraMap.containsKey(w)
+                                && readingWitnessExtraMap.get(w).containsKey(prop)) {
+                            addWitnessLink(priorReading, readingWitnessExtraMap.get(w).get(prop), w, prop);
+                            // This witness layer has been matched; remove it from later accounting.
+                            readingWitnessExtraMap.get(w).remove(prop);
+                        }
+                        // If there isn't a match, use the "normal" witness reading on the TO side
+                        else
+                            addWitnessLink(priorReading, readingWitnessToMap.get(w), w, prop);
+                    }
+                }
+            }
+            r.delete();
+        }
+        // Deal with whatever remains in the readingWitnessExtraMap, that hasn't been linked.
+        for (String w : readingWitnessExtraMap.keySet()) {
+            HashMap<String, Node> thisToExtra = readingWitnessExtraMap.get(w);
+            for (String extra : thisToExtra.keySet()) {
+                Node priorNode = deferredLinks.get(w);
+                addWitnessLink(priorNode, thisToExtra.get(extra), w, extra);
+            }
+        }
     }
 
 

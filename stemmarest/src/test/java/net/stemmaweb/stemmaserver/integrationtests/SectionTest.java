@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Tests for text section functionality.
@@ -356,34 +355,38 @@ public class SectionTest extends TestCase {
                 .path("/tradition/" + florId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
 
-        String targetSection = returnedSections.get(2).getId();
+        String targetSection = returnedSections.get(1).getId();
 
         // Get the reading to split at
-        Optional<ReadingModel> targetReadings = jerseyTest.resource()
-                .path("/tradition/" + florId + "/readings")
-                .get(new GenericType<List<ReadingModel>>() {})
-                .stream().filter(x -> x.getText().equals("βέλτιον")).findFirst();
-        assertTrue(targetReadings.isPresent());
-        if (!targetReadings.isPresent()) // Just to avoid stupid warning on .get() below
-            return;
+        ReadingModel targetReading = jerseyTest.resource()
+                .path("/tradition/" + florId + "/witness/B/readings")
+                .get(new GenericType<List<ReadingModel>>() {}).get(0);
+        assertEquals("τὸ", targetReading.getText());
 
         // Do the split
         String splitPath = "/tradition/" + florId + "/section/" + targetSection
-                + "/splitAtRank/" + targetReadings.get().getRank();
+                + "/splitAtRank/" + targetReading.getRank();
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path(splitPath)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        String newSection = Util.getValueFromJson(jerseyResult, "sectionId");
 
-        // Check that section 2 text is now shorter
+        // Check that superfluous witness B has been removed from the first half
         ClientResponse jerseyResponse = jerseyTest.resource()
                 .path("/tradition/" + florId + "/section/" + targetSection + "/witness/B/text")
                 .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.NOT_FOUND.getStatusCode(), jerseyResponse.getStatus());
+
+        // Check that the second half contains witness B
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + newSection + "/witness/B/text")
+                .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
-        String witFragment = Util.getValueFromJson(jerseyResponse, "text");
-        assertEquals("Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
-                "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται.", witFragment);
+        assertEquals("τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ " +
+                "λόγος ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν.",
+                Util.getValueFromJson(jerseyResponse, "text"));
 
         // Check that the whole B text is still valid
         String bText = "τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος " +
@@ -399,8 +402,7 @@ public class SectionTest extends TestCase {
         jerseyResponse = jerseyTest.resource()
                 .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
-        String wit = Util.getValueFromJson(jerseyResponse, "text");
-        assertEquals(bText, wit);
+        assertEquals(bText, Util.getValueFromJson(jerseyResponse, "text"));
     }
 
 
