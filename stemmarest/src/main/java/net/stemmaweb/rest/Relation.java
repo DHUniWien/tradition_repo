@@ -34,7 +34,7 @@ public class Relation {
     private static final String SCOPE_GLOBAL = "document";
 
 
-    public Relation (String traditionId) {
+    Relation(String traditionId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
@@ -151,7 +151,7 @@ public class Relation {
                         .build();
             }
 
-            Boolean isCyclic = ReadingService.wouldGetCyclic(db, readingA, readingB);
+            Boolean isCyclic = ReadingService.wouldGetCyclic(readingA, readingB);
             Boolean isLocationVariant = !relationshipModel.getType().equals("transposition") &&
                     !relationshipModel.getType().equals("repetition");
             if (isCyclic && isLocationVariant) {

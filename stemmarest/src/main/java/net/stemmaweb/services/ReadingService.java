@@ -3,14 +3,10 @@ package net.stemmaweb.services;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
-import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.*;
+
+import java.util.ArrayList;
 
 /**
  * 
@@ -24,9 +20,9 @@ public class ReadingService {
     /**
      * Copies all the properties of a reading to another if the property exists.
      *
-     * @param oldReading
-     * @param newReading
-     * @return
+     * @param oldReading - the reading to copy from
+     * @param newReading - the reading to copy to
+     * @return the modified new reading
      */
     public static Node copyReadingProperties(Node oldReading, Node newReading) {
         for (String key : oldReading.getPropertyKeys()) {
@@ -45,7 +41,7 @@ public class ReadingService {
 
         private Long rank;
 
-        public RankEvaluate(Long stoprank) {
+        RankEvaluate(Long stoprank) {
             rank = stoprank;
         }
 
@@ -61,20 +57,57 @@ public class ReadingService {
         }
     }
 
-    // TODO move AlignmentTraverse here
+    private static class AlignmentTraverse implements PathExpander {
+
+        @Override
+        public Iterable<Relationship> expand(Path path, BranchState state) {
+            return expansion(path, Direction.OUTGOING);
+        }
+
+        @Override
+        public PathExpander reverse() {
+            return new PathExpander() {
+                @Override
+                public Iterable<Relationship> expand(Path path, BranchState branchState) {
+                    return expansion(path, Direction.INCOMING);
+                }
+
+                @Override
+                public PathExpander reverse() {
+                    return new AlignmentTraverse();
+                }
+            };
+        }
+
+        private Iterable<Relationship> expansion(Path path, Direction dir) {
+            ArrayList<Relationship> relevantRelations = new ArrayList<>();
+            // Get the sequence relationships
+            for (Relationship relationship : path.endNode().getRelationships(dir, ERelations.SEQUENCE))
+                relevantRelations.add(relationship);
+            // Get the alignment relationships and filter them
+            for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
+                if (r.hasProperty("type") &&
+                        !r.getProperty("type").equals("transposition") &&
+                        !r.getProperty("type").equals("repetition")) {
+                    relevantRelations.add(r);
+                }
+            }
+            return relevantRelations;
+        }
+    }
 
     /**
      * Checks if both readings can be found in the same path through the
      * tradition. If yes when merging these nodes the graph would get cyclic.
+     * NOTE: For use within a transaction@
      *
-     * @param db
-     * @param firstReading
-     * @param secondReading
-     * @return
+     * @param firstReading - a node to merge
+     * @param secondReading - the node with which to merge it
+     * @return - true or false
      */
-    public static boolean  wouldGetCyclic(GraphDatabaseService db,
-                                         Node firstReading,
+    public static boolean wouldGetCyclic(Node firstReading,
                                          Node secondReading) {
+        GraphDatabaseService db = firstReading.getGraphDatabase();
         Node lowerRankReading, higherRankReading;
         if ((Long) firstReading.getProperty("rank") < (Long) secondReading.getProperty("rank")) {
             lowerRankReading = firstReading;

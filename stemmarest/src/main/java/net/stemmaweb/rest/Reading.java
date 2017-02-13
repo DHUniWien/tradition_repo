@@ -32,7 +32,7 @@ public class Reading {
     private GraphDatabaseService db;
     private Long readId;
 
-    public Reading (String requestedId) {
+    Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         readId = Long.valueOf(requestedId);
@@ -467,7 +467,7 @@ public class Reading {
             }
         }
         if (!aligned) {
-            if (ReadingService.wouldGetCyclic(db, stayingReading, deletingReading)) {
+            if (ReadingService.wouldGetCyclic(stayingReading, deletingReading)) {
                 errorMessage = "Readings to be merged would make the graph cyclic";
                 return false;
             }
