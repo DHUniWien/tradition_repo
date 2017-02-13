@@ -1,7 +1,10 @@
 package net.stemmaweb.parser;
 
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -53,6 +56,7 @@ public class TEIParallelSegParser {
         String tradId;
         String parentId;
         Node startNode;
+        Node endNode = null;
         try (Transaction tx = db.beginTx()) {
             parentId = String.valueOf(parentNode.getId());
             tradId = traditionNode.getProperty("id").toString();
@@ -91,7 +95,7 @@ public class TEIParallelSegParser {
 
                             case "text":
                                 // End of the text; add the end node.
-                                Node endNode = db.createNode(Nodes.READING);
+                                endNode = db.createNode(Nodes.READING);
                                 endNode.setProperty("text", "#END#");
                                 endNode.setProperty("tradition_id", tradId);
                                 endNode.setProperty("is_end", true);
@@ -197,11 +201,29 @@ public class TEIParallelSegParser {
             e.printStackTrace();
             return Response.serverError().build();
         }
-        // TODO Merge all mergeable readings, to get rid of duplicates across apparatus entries.
         // Now try re-ranking the nodes.
         Boolean didCalc = new Tradition(tradId).recalculateRank(startNode.getId());
         if (!didCalc)
             return Response.serverError().entity("Could not calculate ranks on new graph").build();
+
+        // Merge all mergeable readings, to get rid of duplicates across apparatus entries.
+        Long endRank;
+        try (Transaction tx = db.beginTx()) {
+            endRank = Long.valueOf(endNode.getProperty("rank").toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        Tradition t = new Tradition(tradId);
+        for (List<ReadingModel> identSet : t.collectIdenticalReadings(0, endRank)) {
+            ReadingModel first = identSet.remove(0);
+            Reading rd = new Reading(first.getId());
+            for (ReadingModel identical : identSet) {
+                Response done = rd.mergeReadings(Long.valueOf(identical.getId()));
+                if (done.getStatus() != Response.Status.OK.getStatusCode())
+                    return Response.serverError().entity(done.getEntity()).build();
+            }
+        }
 
         return Response.status(Response.Status.CREATED)
                 .entity(String.format("{\"parentId\":\"%s\"}", parentId)).build();

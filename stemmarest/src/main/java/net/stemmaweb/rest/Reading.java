@@ -32,7 +32,7 @@ public class Reading {
     private GraphDatabaseService db;
     private Long readId;
 
-    Reading(String requestedId) {
+    public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         readId = Long.valueOf(requestedId);
@@ -431,6 +431,7 @@ public class Reading {
 
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
         return Response.ok().build();
@@ -477,20 +478,6 @@ public class Reading {
     }
 
     /**
-     * Checks if the two readings contain the same text or not.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     * @return true if they contain the same text
-     */
-    private boolean doContainSameText(Node stayingReading, Node deletingReading) {
-        return stayingReading.getProperty("text").toString()
-                .equals(deletingReading.getProperty("text").toString());
-    }
-
-    /**
      * Checks if the two readings have a relationship between them which is of
      * class two (transposition / repetition).
      *
@@ -520,7 +507,7 @@ public class Reading {
      * @param deletingReading
      *            the reading which will be deleted from the database
      */
-    private void merge(Node stayingReading, Node deletingReading) {
+    private void merge(Node stayingReading, Node deletingReading) throws Exception {
         deleteRelationshipBetweenReadings(stayingReading, deletingReading);
         copyWitnesses(stayingReading, deletingReading, Direction.INCOMING);
         copyWitnesses(stayingReading, deletingReading, Direction.OUTGOING);
@@ -556,43 +543,35 @@ public class Reading {
      *            the reading which will be deleted from the database
      */
     private void copyWitnesses(Node stayingReading, Node deletingReading,
-            Direction direction) {
-        for (Relationship stayingRel : stayingReading.getRelationships(
-                ERelations.SEQUENCE, direction)) {
-            for (Relationship deletingRel : deletingReading.getRelationships(
-                    ERelations.SEQUENCE, direction)) {
-                if (stayingRel.getOtherNode(stayingReading).getId() == (deletingRel
-                        .getOtherNode(deletingReading).getId())) {
-                    // get Witnesses
-                    String[] stayingReadingWitnesses = (String[]) stayingRel.getProperty("witnesses");
-                    String[] deletingReadingWitnesses = (String[]) deletingRel.getProperty("witnesses");
-
-                    // combine witness lists into one list
-                    int sRWl = stayingReadingWitnesses.length;
-                    int dRWl = deletingReadingWitnesses.length;
-                    String[] combinedWitnesses = new String[sRWl + dRWl];
-                    System.arraycopy(stayingReadingWitnesses, 0, combinedWitnesses, 0, sRWl);
-                    System.arraycopy(deletingReadingWitnesses, 0, combinedWitnesses, sRWl, dRWl);
-                    Arrays.sort(combinedWitnesses);
-                    stayingRel.setProperty("witnesses", combinedWitnesses);
-                    deletingRel.delete();
-                }
+            Direction direction) throws Exception {
+        for (Relationship rel : deletingReading.getRelationships(ERelations.SEQUENCE, direction)) {
+            Node targetNode = rel.getOtherNode(deletingReading);
+            for (String witClass : rel.getPropertyKeys()) {
+                for (String w : (String[]) rel.getProperty(witClass))
+                    if (direction.equals(Direction.OUTGOING))
+                        ReadingService.addWitnessLink(stayingReading, targetNode, w, witClass);
+                    else
+                        ReadingService.addWitnessLink(targetNode, stayingReading, w, witClass);
             }
+            rel.delete();
         }
-        for (Relationship deletingRel : deletingReading.getRelationships(
-                ERelations.SEQUENCE, direction)) {
-            Relationship newRel;
-            if (direction.equals(Direction.OUTGOING)) {
-                newRel = stayingReading
-                        .createRelationshipTo(deletingRel.getOtherNode(deletingReading),
-                                ERelations.SEQUENCE);
-            } else {
-                newRel = deletingRel
-                        .getOtherNode(deletingReading)
-                        .createRelationshipTo(stayingReading, ERelations.SEQUENCE);
-            }
-            newRel.setProperty("witnesses", deletingRel.getProperty("witnesses"));
-            deletingRel.delete();
+        // Consistency check, that no double witness paths were created.
+        // witness -> class -> seen?
+        HashMap<String, HashMap<String, Boolean>> seenWitness = new HashMap<>();
+        for (Relationship rel : stayingReading.getRelationships(ERelations.SEQUENCE, direction)) {
+            for (String witClass : rel.getPropertyKeys())
+                for (String w : (String[]) rel.getProperty(witClass)) {
+                    if (seenWitness.containsKey(w)) {
+                        if (seenWitness.get(w).containsKey(witClass))
+                            throw new Exception("Double witness specification in reading merge");
+                        else
+                            seenWitness.get(w).put(witClass, true);
+                    } else {
+                        HashMap<String, Boolean> classmap = new HashMap<>();
+                        classmap.put(witClass, true);
+                        seenWitness.put(w, classmap);
+                    }
+                }
         }
     }
 
@@ -1073,7 +1052,7 @@ public class Reading {
             return false;
         }
 
-        if (1 != numberOfPredecessors(read2)) {
+        if (1 != read2.getDegree(ERelations.SEQUENCE, Direction.INCOMING)) {
             errorMessage = "reading has more then one predecessor. could not compress";
             return false;
         }
@@ -1120,18 +1099,4 @@ public class Reading {
         return from1to2;
     }
 
-    /**
-     * checks if a reading has relationships which are not SEQUENCE
-     *
-     * @param read
-     *            the reading
-     * @return true if it has, false otherwise
-     */
-    private int numberOfPredecessors(Node read) {
-        int numberOfPredecessors = 0;
-        for (Relationship rel : read.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
-            numberOfPredecessors++;
-        }
-        return numberOfPredecessors;
-    }
 }

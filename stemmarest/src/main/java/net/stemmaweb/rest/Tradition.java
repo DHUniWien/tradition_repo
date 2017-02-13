@@ -3,6 +3,7 @@ package net.stemmaweb.rest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
@@ -432,34 +433,32 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getIdenticalReadings(@PathParam("startRank") long startRank,
                                          @PathParam("endRank") long endRank) {
+        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(startRank, endRank);
+        if (identicalReadings == null)
+            return Response.status(Status.NOT_FOUND).entity("no identical readings were found").build();
+
+        return Response.ok(identicalReadings).build();
+    }
+
+    // We want access within net.stemmaweb as well
+    public ArrayList<List<ReadingModel>> collectIdenticalReadings(long startRank, long endRank) {
         Node startNode = DatabaseService.getStartNode(traditionId, db);
-        if (startNode == null) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity("Could not find tradition with this id").build();
-        }
+        if (startNode == null) return null;
 
         ArrayList<List<ReadingModel>> identicalReadings;
         try {
             ArrayList<ReadingModel> readingModels =
-                    getAllReadingsFromTraditionBetweenRanks(startNode, startRank, endRank);
+                    getAllReadingsFromSectionBetweenRanks(startNode, startRank, endRank);
             identicalReadings = identifyIdenticalReadings(readingModels, startRank, endRank);
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            return null;
         }
 
-        Boolean isEmpty = true;
-        for (List<ReadingModel> list : identicalReadings) {
-            if (list.size() > 0) {
-                isEmpty = false;
-                break;
-            }
-        }
-        if (isEmpty)
-            return Response.status(Status.NOT_FOUND)
-                    .entity("no identical readings were found")
-                    .build();
-
-        return Response.ok(identicalReadings).build();
+        ArrayList<List<ReadingModel>> result = identicalReadings.stream().filter(x -> x.size() > 0)
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (result.size() == 0) return null;
+        return result;
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
@@ -485,35 +484,37 @@ public class Tradition {
     }
 
     // Retrieve all readings of a tradition between two ranks as ReadingModels
-    private ArrayList<ReadingModel> getAllReadingsFromTraditionBetweenRanks(
+    private ArrayList<ReadingModel> getAllReadingsFromSectionBetweenRanks(
             Node startNode, long startRank, long endRank) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         getReadingsBetweenRanks(startRank, endRank, startNode)
                 .forEach(x -> readingModels.add(new ReadingModel(x)));
-        Collections.sort(readingModels);
+        readingModels.sort(Comparator.comparing(ReadingModel::getRank));
         return readingModels;
     }
 
-    // Gets identical readings in a tradition between the given ranks
+    // Gets identical readings in a list of ReadingModels sorted by rank.
     private ArrayList<List<ReadingModel>> identifyIdenticalReadings(
             ArrayList<ReadingModel> readingModels, long startRank, long endRank) {
         ArrayList<List<ReadingModel>> identicalReadingsList = new ArrayList<>();
 
-        for (int i = 0; i <= readingModels.size() - 2; i++)
-            while (Objects.equals(readingModels.get(i).getRank(), readingModels.get(i + 1)
-                    .getRank()) && i + 1 < readingModels.size()) {
-                ArrayList<ReadingModel> identicalReadings = new ArrayList<>();
-
-                if (readingModels.get(i).getText()
-                        .equals(readingModels.get(i + 1).getText())
-                        && readingModels.get(i).getRank() < endRank
-                        && readingModels.get(i).getRank() > startRank) {
-                    identicalReadings.add(readingModels.get(i));
-                    identicalReadings.add(readingModels.get(i + 1));
-                }
-                identicalReadingsList.add(identicalReadings);
-                i++;
+        HashMap<String, List<ReadingModel>> rankSet = new HashMap<>();
+        for (ReadingModel rm : readingModels) {
+            if (rm.getRank() > endRank)
+                break;
+            if (rm.getRank() > startRank) {
+                for (String k : rankSet.keySet())
+                    if (rankSet.get(k).size() > 1)
+                        identicalReadingsList.add(rankSet.get(k));
+                rankSet.clear();
+                rankSet.put(rm.getText(), new ArrayList<>(Collections.singletonList(rm)));
+                startRank = rm.getRank();
             }
+            else if (rankSet.containsKey(rm.getText()))
+                rankSet.get(rm.getText()).add(rm);
+            else
+                rankSet.put(rm.getText(), new ArrayList<>(Collections.singletonList(rm)));
+        }
         return identicalReadingsList;
     }
 
