@@ -11,7 +11,31 @@ import org.neo4j.graphdb.Node;
  */
 public class Util {
 
-     static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical) {
+    // Start and end node creation
+    static Node createStartNode(Node parentNode, String tradId) {
+        GraphDatabaseService db = parentNode.getGraphDatabase();
+        Node startNode = db.createNode(Nodes.READING);
+        startNode.setProperty("is_start", true);
+        startNode.setProperty("tradition_id", tradId);
+        startNode.setProperty("rank", 0L);
+        startNode.setProperty("text", "#START#");
+        parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
+        return startNode;
+    }
+
+    // Start and end node creation
+    static Node createEndtNode(Node parentNode, String tradId) {
+        GraphDatabaseService db = parentNode.getGraphDatabase();
+        Node endNode = db.createNode(Nodes.READING);
+        endNode.setProperty("is_end", true);
+        endNode.setProperty("tradition_id", tradId);
+        endNode.setProperty("text", "#END#");
+        parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
+        return endNode;
+    }
+
+    // Witness node cration
+    static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical) {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         Node witnessNode = db.createNode(Nodes.WITNESS);
         witnessNode.setProperty("sigil", sigil);

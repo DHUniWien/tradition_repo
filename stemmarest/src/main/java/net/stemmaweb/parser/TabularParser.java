@@ -105,18 +105,9 @@ public class TabularParser {
         try (Transaction tx = db.beginTx()) {
             tradId = traditionNode.getProperty("id").toString();
             // Make the start node
-            Node startNode = db.createNode(Nodes.READING);
-            startNode.setProperty("is_start", true);
-            startNode.setProperty("tradition_id", tradId);
-            startNode.setProperty("rank", 0L);
-            startNode.setProperty("text", "#START#");
-            parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
-            Node endNode = db.createNode(Nodes.READING);
-            endNode.setProperty("is_end", true);
-            endNode.setProperty("tradition_id", tradId);
+            Node startNode = Util.createStartNode(parentNode, tradId);
+            Node endNode = Util.createEndtNode(parentNode, tradId);
             endNode.setProperty("rank", (long) tableData.size());
-            endNode.setProperty("text", "#END#");
-            parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
 
             // Get the witnesses from the first row of the table
             String[] witnessList = tableData.get(0);

@@ -60,12 +60,7 @@ public class TEIParallelSegParser {
             parentId = String.valueOf(parentNode.getId());
             tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
-            startNode = db.createNode(Nodes.READING);
-            startNode.setProperty("is_start", true);
-            startNode.setProperty("tradition_id", tradId);
-            startNode.setProperty("text", "#START#");
-            startNode.setProperty("rank", 0);
-            parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
+            startNode = Util.createStartNode(parentNode, tradId);
 
             // State variables
             Boolean inHeader = false;
@@ -94,12 +89,8 @@ public class TEIParallelSegParser {
 
                             case "text":
                                 // End of the text; add the end node.
-                                endNode = db.createNode(Nodes.READING);
-                                endNode.setProperty("text", "#END#");
-                                endNode.setProperty("tradition_id", tradId);
-                                endNode.setProperty("is_end", true);
-                                endNode.setProperty("rank", 0);
-                                parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
+                                endNode = Util.createEndtNode(parentNode, tradId);
+                                endNode.setProperty("rank", 0L);
                                 Relationship endLink = documentPrior.createRelationshipTo(endNode, ERelations.SEQUENCE);
                                 setAllWitnesses(endLink);
                                 // Now go through and clean out all the placeholder nodes, linking the tradition.
