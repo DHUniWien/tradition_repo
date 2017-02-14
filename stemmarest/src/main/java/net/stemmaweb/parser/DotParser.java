@@ -13,7 +13,6 @@ import net.stemmaweb.rest.Nodes;
 import com.alexmerz.graphviz.Parser;
 
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.BranchState;
@@ -25,8 +24,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * @author PSE FS 2015 Team2
  */
 public class DotParser {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseService db;
     private String messageValue = null;
 
     public DotParser(GraphDatabaseService db) {
@@ -40,7 +38,7 @@ public class DotParser {
         if (dot.indexOf('\n') == -1) {
             dot = dot.replaceAll("; ", ";\n");
             dot = dot.replaceAll("\\{ ", "{\n");
-            dot = dot.replaceAll(" \\}", "\n}");
+            dot = dot.replaceAll(" }", "\n}");
         }
         StringBuffer dotstream = new StringBuffer(dot);
         Parser p = new Parser();
@@ -106,9 +104,6 @@ public class DotParser {
             HashMap<Node, Boolean> witnessesVisited = new HashMap<>();
             for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
                 String sigil = getNodeSigil(witness);
-                // If the witness ID is empty then the sigil was the label, probably
-                // Unicode, and needs to be quoted on output.
-                boolean quoteSigil = witness.getId().getId().equals("");
                 if (witness.getAttribute("class") == null) {
                     messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
                     return Status.BAD_REQUEST;
@@ -125,10 +120,7 @@ public class DotParser {
                         return Status.CONFLICT;
                     }
                 } else {
-                    existingWitness = db.createNode(Nodes.WITNESS);
-                    existingWitness.setProperty("sigil", sigil);
-                    existingWitness.setProperty("hypothetical", hypothetical);
-                    existingWitness.setProperty("quotesigil", quoteSigil);
+                    existingWitness = Util.createWitness(traditionNode, sigil, hypothetical);
                     // Does it have a label separate from its ID?
                     String displayLabel = witness.getAttribute("label");
                     if (displayLabel != null) {
@@ -160,6 +152,7 @@ public class DotParser {
                         .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                         .evaluator(Evaluators.all())
                         .traverse(witness).nodes().iterator();
+                @SuppressWarnings("UnusedAssignment")
                 Node chainpoint = pathNodes.next();
                 while(pathNodes.hasNext()) {
                     chainpoint = pathNodes.next();
@@ -171,7 +164,7 @@ public class DotParser {
             }
 
             if (contaminated)
-                stemmaNode.setProperty("is_contaminated", contaminated);
+                stemmaNode.setProperty("is_contaminated", true);
 
             // If the graph is directed, we also need to identify the archetype and
             // make sure that there is only one.
@@ -224,7 +217,7 @@ public class DotParser {
 
     private static PathExpander getExpander (Direction d, String stemmaName) {
         final String pStemmaName = stemmaName;
-        PathExpander e = new PathExpander() {
+        return new PathExpander() {
             @Override
             public java.lang.Iterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
@@ -242,7 +235,6 @@ public class DotParser {
                 return null;
             }
         };
-        return e;
     }
 
     private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {
