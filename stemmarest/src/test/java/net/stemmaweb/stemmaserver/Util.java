@@ -77,9 +77,9 @@ public class Util {
 
             // Now check for the expected nodes
             HashSet<String> expectedNodes = new HashSet<>();
-            expectedStemma.getNodes(false).forEach(e -> expectedNodes.add(e.getId().getId()));
+            expectedStemma.getNodes(false).forEach(e -> expectedNodes.add(getSigil(e)));
             HashSet<String> actualNodes = new HashSet<>();
-            actualStemma.getNodes(false).forEach(e -> actualNodes.add(e.getId().getId()));
+            actualStemma.getNodes(false).forEach(e -> actualNodes.add(getSigil(e)));
             assertEquals(expectedNodes.size(), actualNodes.size());
             for (String graphNode : actualNodes) {
                 assertTrue(expectedNodes.contains(graphNode));
@@ -97,6 +97,13 @@ public class Util {
         }
     }
 
+    private static String getSigil (com.alexmerz.graphviz.objects.Node n) {
+        String id = n.getId().getId();
+        if (id.equals(""))
+            id = n.getId().getLabel();
+        return id;
+    }
+
     private static String newline_dot (String dot) {
         if (!dot.contains("\n"))
             dot = dot.replace("  ", "\n");
@@ -107,15 +114,14 @@ public class Util {
         HashSet<String> collected = new HashSet<>();
         // The collector for directed graphs
         Consumer<Edge> edgeCollector = e -> collected.add(
-                e.getSource().getNode().getId().getId() + " - " +
-                        e.getTarget().getNode().getId().getId());
+                getSigil(e.getSource().getNode()) + " - " + getSigil(e.getTarget().getNode()));
 
         // The collector for undirected graphs
         if (stemma.getType() == 1)
             edgeCollector = e -> {
                 ArrayList<String> vector = new ArrayList<>();
-                vector.add(e.getSource().getNode().getId().getId());
-                vector.add(e.getTarget().getNode().getId().getId());
+                vector.add(getSigil(e.getSource().getNode()));
+                vector.add(getSigil(e.getTarget().getNode()));
                 Collections.sort(vector);
                 collected.add(vector.get(0) + " - " + vector.get(1));
                 };
