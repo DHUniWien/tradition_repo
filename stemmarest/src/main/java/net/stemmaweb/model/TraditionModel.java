@@ -37,7 +37,6 @@ public class TraditionModel {
     private Boolean is_public;
     private Integer stemweb_jobid;
     private String owner;
-    private String layerlabel;
 
     // Derived from relationships
     private ArrayList<String> witnesses;
@@ -58,8 +57,6 @@ public class TraditionModel {
                 setIs_public((Boolean) node.getProperty("is_public"));
             if (node.hasProperty("stemweb_jobid"))
                 setStemweb_jobid(Integer.valueOf(node.getProperty("stemweb_jobid").toString()));
-            if (node.hasProperty("layerlabel"))
-                setLayerlabel(node.getProperty("layerlabel").toString());
 
             Relationship ownerRel = node.getSingleRelationship(ERelations.OWNS_TRADITION,
                     org.neo4j.graphdb.Direction.INCOMING);
@@ -96,8 +93,6 @@ public class TraditionModel {
     public void setLanguage(String language) {
         this.language = language;
     }
-    public String getLayerlabel() { return layerlabel; }
-    public void setLayerlabel(String layerlabel) { this.layerlabel = layerlabel; }
     public String getDirection() { return direction == null ? "" : direction.toString(); }
     public void setDirection(String direction) {
         if (!direction.equals(""))
@@ -115,4 +110,9 @@ public class TraditionModel {
     }
     public Integer getStemweb_jobid () { return stemweb_jobid; }
     public void setStemweb_jobid (int stemweb_jobid ) { this.stemweb_jobid = stemweb_jobid; }
+    @SuppressWarnings("unused")
+    public ArrayList<String> getReltypes() { return reltypes; }
+    @SuppressWarnings("unused")
+    public void setReltypes(ArrayList<String> reltypes) { this.reltypes = reltypes; }
+
 }

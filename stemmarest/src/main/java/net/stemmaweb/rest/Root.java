@@ -70,7 +70,6 @@ public class Root {
                                   @FormDataParam("filetype") String filetype,
                                   @FormDataParam("language") String language,
                                   @DefaultValue("LR") @FormDataParam("direction") String direction,
-                                  @DefaultValue("a.c.") @FormDataParam("layerlabel") String layerlabel,
                                   @FormDataParam("public") String is_public,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("empty") String empty,
@@ -92,7 +91,7 @@ public class Root {
 
         String tradId;
         try {
-            tradId = this.createTradition(name, direction, language, is_public, layerlabel);
+            tradId = this.createTradition(name, direction, language, is_public);
             // TODO Failure after this point could leave a dangling tradition node.
             this.linkUserToTradition(userId, tradId);
         } catch (Exception e) {
@@ -164,16 +163,15 @@ public class Root {
         return Response.ok(userList).build();
     }
 
-    private String createTradition(String name, String direction, String language, String isPublic, String layerlabel)
+    private String createTradition(String name, String direction, String language, String isPublic)
             throws Exception {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node
             Node traditionNode = db.createNode(Nodes.TRADITION);
             traditionNode.setProperty("id", tradId);
-            // These two have default values
+            // This has a default value
             traditionNode.setProperty("direction", direction);
-            traditionNode.setProperty("layerlabel", layerlabel);
             // The rest of them don't have defaults
             if (name != null)
                 traditionNode.setProperty("name", name);

@@ -12,7 +12,6 @@ import javax.ws.rs.core.Response.Status;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
@@ -185,6 +184,12 @@ public class GraphMLStemmawebExporter {
                     writer.writeEndElement();
                 }
             }
+            // backwards compatibility: write layer label "a.c."
+            writer.writeStartElement("data");
+            writer.writeAttribute("key", "dg8");
+            writer.writeCharacters("a.c.");
+            writer.writeEndElement();
+
             // extract stemmata
             writer.writeStartElement("data");
             writer.writeAttribute("key", graphMap.get("stemmata")[0]);

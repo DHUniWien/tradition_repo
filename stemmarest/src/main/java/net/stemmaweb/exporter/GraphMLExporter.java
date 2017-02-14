@@ -90,7 +90,6 @@ public class GraphMLExporter {
             put("user", new String[]{"dg5", "string"});
             put("version", new String[]{"dg6", "string"});
             put("direction", new String[]{"dg7", "string"});
-            put("layerlabel", new String[]{"dg8", "string"});
         }
     };
 

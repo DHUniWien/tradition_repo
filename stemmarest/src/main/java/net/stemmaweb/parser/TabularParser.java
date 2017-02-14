@@ -114,24 +114,26 @@ public class TabularParser {
             // Keep a table of the last-spotted reading for each witness
             HashMap<String, Node> lastReading = new HashMap<>();
             // Add the non-layer witnesses to the graph
-            HashMap<String, String> layerWitnesses = new HashMap<>();
-            String layerlabel = null;
-            if (traditionNode.hasProperty("layerlabel"))
-                layerlabel = traditionNode.getProperty("layerlabel").toString();
+            HashMap<String, String[]> layerWitnesses = new HashMap<>();
             for (String sigil: witnessList) {
-                if (layerlabel == null || !sigil.endsWith(" (" + layerlabel + ")")) {
+                // See if it is a layered witness, of the form XX (YY)
+                String[] sigilParts = sigil.split("\\s+\\(");  // now we have ["XX", "YY)"]
+                if (sigilParts.length == 1) // it is not a layered witness
                     Util.createExtant(traditionNode, sigil);
-                } else {
-                    String basesigil = sigil.replace(" (" + layerlabel + ")", "");
-                    layerWitnesses.put(sigil, basesigil);
-                }
+                else if (sigilParts.length == 2) // it is a layered witness; store a ref to its base
+                    layerWitnesses.put(sigil, sigilParts);
+                else   // what is this i don't even
+                    return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Malformed sigil " + sigil).build();
+
                 lastReading.put(sigil, startNode);
             }
 
             // Go through the remaining rows and create the readings
-            for (int idx = 1; idx < tableData.size(); idx++) {
+            for (int idx = 1; idx < tableData.size(); idx++) { // for each row
                 String[] collationRow = tableData.get(idx);
                 HashMap<String, Node> createdReadings = new HashMap<>();
+                HashMap<Relationship, ArrayList<String>> linkWitnesses = new HashMap<>();
                 for (int j = 0; j < collationRow.length; j++) {
                     String reading = collationRow[j];
                     String sigil = witnessList[j];
@@ -157,36 +159,41 @@ public class TabularParser {
                     }
                     // Does the reading have a relationship with lastNode? If not, create it.
                     Relationship existingSeq = getSequenceIfExists(lastNode, readingNode);
-                    if (existingSeq == null) {
+                    if (existingSeq == null)
                         existingSeq = lastNode.createRelationshipTo(readingNode, ERelations.SEQUENCE);
-                    }
 
-                    // Add this witness to that relationship's witnesses list, accounting for layers.
-                    // First get the existing witness list
-                    ArrayList<String> sequenceWitnesses = new ArrayList<>();
-                    if (existingSeq.hasProperty("witnesses")) {
-                        String[] priorWitnesses = (String[]) existingSeq.getProperty("witnesses");
-                        sequenceWitnesses.addAll(Arrays.asList(priorWitnesses));
+                    // Get that relationship's witnesses list, or create it if it doesn't exist.
+                    ArrayList<String> seqWitnesses = linkWitnesses.getOrDefault(existingSeq, null);
+                    if (seqWitnesses == null) {
+                        seqWitnesses = new ArrayList<>();
+                        linkWitnesses.put(existingSeq, seqWitnesses);
                     }
-                    // If this is a layer witness, only add it if the base witness is not already in
-                    // the witnesses array of this sequence.
-                    if (layerWitnesses.containsKey(sigil)) {
-                        String baselayer = layerWitnesses.get(sigil);
-                        if (!sequenceWitnesses.contains(baselayer)) {
-                            ArrayList<String> priorLayerWits = new ArrayList<>();
-                            if (existingSeq.hasProperty(layerlabel)) {
-                                String[] priorLayer = (String[]) existingSeq.getProperty(layerlabel);
-                                priorLayerWits.addAll(Arrays.asList(priorLayer));
-                            }
-                            priorLayerWits.add(baselayer);
-                            existingSeq.setProperty(layerlabel, priorLayerWits.toArray(new String[priorLayerWits.size()]));
-                        }
-                    // Else this isn't a layer witness; just add it.
-                    } else {
-                        sequenceWitnesses.add(sigil);
-                        existingSeq.setProperty("witnesses", sequenceWitnesses.toArray(new String[sequenceWitnesses.size()]));
-                    }
+                    // Add this sigil to the list and store the reading as its last
+                    seqWitnesses.add(sigil);
                     lastReading.put(sigil, readingNode);
+                }
+                // Now that we have been through the row, create the witness / layer attributes
+                // for the created relationships.
+                for (Relationship r : linkWitnesses.keySet()) {
+                    ArrayList<String> witList = linkWitnesses.get(r);
+                    HashMap<String, ArrayList<String>> layerMap = new HashMap<>();
+                    layerMap.put("witnesses", new ArrayList<>());
+                    for (String w : witList)
+                        if (layerWitnesses.containsKey(w)) {
+                            // It's a layer witness. Get the layer label and the base witness
+                            String baseWit = layerWitnesses.get(w)[0];
+                            String ll = layerWitnesses.get(w)[1];
+                            String layerLabel = ll.substring(0, ll.indexOf(')'));
+                            // See if the base witness is already in the list
+                            if (witList.contains(baseWit))
+                                continue;
+                            // Add the layer label key and the witness.
+                            if (!layerMap.containsKey(layerLabel))
+                                layerMap.put(layerLabel, new ArrayList<>());
+                            layerMap.get(layerLabel).add(baseWit);
+                        } else layerMap.get("witnesses").add(w);
+                    // Finally, set the properties for each layer label
+                    layerMap.forEach((x, y) -> r.setProperty(x, y.toArray(new String[y.size()])));
                 }
             }
 
@@ -219,17 +226,16 @@ public class TabularParser {
 
     }
 
+    // Helper to get any existing SEQUENCE link between two readings.
+    // NOTE: For use inside a transaction
     private Relationship getSequenceIfExists (Node source, Node target) {
         Relationship found = null;
-        try (Transaction tx = db.beginTx()) {
-            Iterable<Relationship> allseq = source.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-            for (Relationship r : allseq) {
-                if (r.getEndNode().equals(target)) {
-                    found = r;
-                    break;
-                }
+        Iterable<Relationship> allseq = source.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+        for (Relationship r : allseq) {
+            if (r.getEndNode().equals(target)) {
+                found = r;
+                break;
             }
-            tx.success();
         }
         return found;
     }

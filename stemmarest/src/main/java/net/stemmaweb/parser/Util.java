@@ -34,19 +34,20 @@ public class Util {
         return endNode;
     }
 
-    // Witness node cration
+    // Witness node creation
     static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical) {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         Node witnessNode = db.createNode(Nodes.WITNESS);
         witnessNode.setProperty("sigil", sigil);
         witnessNode.setProperty("hypothetical", hypothetical);
         witnessNode.setProperty("quotesigil", !isDotId(sigil));
-        traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
         return witnessNode;
     }
 
     static Node createExtant(Node traditionNode, String sigil) {
-         return createWitness(traditionNode, sigil, true);
+        Node witnessNode = createWitness(traditionNode, sigil, false);
+        traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+        return witnessNode;
     }
 
     private static Boolean isDotId (String nodeid) {

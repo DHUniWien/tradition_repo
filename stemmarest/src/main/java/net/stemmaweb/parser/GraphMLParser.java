@@ -273,9 +273,6 @@ public class GraphMLParser {
                                             keytype = "int";
                                             setTypedProperty(currentNode, attr, keytype, text);
                                             break;
-                                        case "ac_label": // Rename this key
-                                            setTypedProperty(currentNode, "layerlabel", keytype, text);
-                                            break;
                                         default:
                                             setTypedProperty(currentNode, attr, keytype, text);
                                     }
