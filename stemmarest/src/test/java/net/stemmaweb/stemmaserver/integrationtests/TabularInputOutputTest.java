@@ -21,6 +21,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 
 /**
@@ -85,7 +86,10 @@ public class TabularInputOutputTest extends TestCase {
         // Get a witness text
         Witness witness = new Witness(tradId, "E");
         String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
-        String witnessLayerText = Util.getValueFromJson(witness.getWitnessAsTextWithLayer("a.c.", "0", "E"), "text");
+        List<String> layers = new ArrayList<>();
+        layers.add("a.c.");
+        String witnessLayerText = Util.getValueFromJson(witness.getWitnessAsTextWithLayer(
+                layers, "0", "E"), "text");
         System.out.println(witnessText);
         System.out.println(witnessLayerText);
         assertFalse(witnessLayerText.equals(witnessText));

@@ -252,17 +252,20 @@ public class WitnessTest {
         // Now try to get the uncorrected text.
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + newId + "/witness/Q/text/a.c.")
+                .path("/tradition/" + newId + "/witness/Q/text")
+                .queryParam("layer", "a.c.")
                 .get(String.class);
         assertEquals(constructResult(qacText), response);
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + newId + "/witness/E/text/a.c.")
+                .path("/tradition/" + newId + "/witness/E/text")
+                .queryParam("layer", "a.c.")
                 .get(String.class);
         assertEquals(constructResult(eacText), response);
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + newId + "/witness/T/text/a.c.")
+                .path("/tradition/" + newId + "/witness/T/text")
+                .queryParam("layer", "a.c.")
                 .get(String.class);
         assertEquals(constructResult(tacText), response);
 

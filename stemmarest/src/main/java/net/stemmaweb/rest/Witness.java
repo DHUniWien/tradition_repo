@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
@@ -48,32 +49,17 @@ public class Witness {
         sectId = sectionId;
     }
 
+    // Backwards compatibility for API
+    public Response getWitnessAsText() {
+        return getWitnessAsTextWithLayer(new ArrayList<>(), "0", "E");
+    }
+
     /**
      * finds a witness in the database and returns it as a string; if start and end are
      * specified, a substring of the full witness text between those ranks inclusive is
      * returned. if end-rank is too high or start-rank too low will return up to the end
-     * / from the start of the witness
-     *
-     * @param start - the starting rank
-     * @param end   - the end rank
-     * @return a witness as a string
-     *
-     */
-    @GET
-    @Path("/text")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    public Response getWitnessAsText(@QueryParam("start") @DefaultValue("0") String start,
-                                     @QueryParam("end") @DefaultValue("E") String end) {
-        return getWitnessAsTextWithLayer(null, start, end);
-    }
-
-    // Backwards compatibility for API
-    public Response getWitnessAsText() {
-        return getWitnessAsTextWithLayer(null, "0", "E");
-    }
-
-    /**
-     * Returns the text of a particular witness layer, as above.
+     * / from the start of the witness. If layers are specified, return the text composed
+     * of those layers.
      *
      * @param layer - the text layer to return, e.g. "a.c."
      * @param start - the starting rank
@@ -81,10 +67,10 @@ public class Witness {
      * @return a witness as a string
      */
     @GET
-    @Path("/text/{layer}")
+    @Path("/text")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getWitnessAsTextWithLayer(
-            @PathParam("layer") String layer,
+            @QueryParam("layer") @DefaultValue("") List<String> layer,
             @QueryParam("start") @DefaultValue("0") String start,
             @QueryParam("end") @DefaultValue("E") String end) {
 
@@ -100,6 +86,10 @@ public class Witness {
         ArrayList<Node> iterationList = sectionsRequested(traditionNode);
         if (iterationList.size() == 0)
             return Response.status(Status.NOT_FOUND).entity("Section not found in this tradition").build();
+
+        // Empty out the layer list if it is the default.
+        if (layer.size() == 1 && layer.get(0).equals(""))
+            layer.remove(0);
 
         ArrayList<Node> witnessReadings = new ArrayList<>();
         for (Node currentSection: iterationList) {
@@ -143,6 +133,8 @@ public class Witness {
                         .collect(Collectors.toList()));
                 tx.success();
             } catch (Exception e) {
+                if (e.getMessage().equals("CONFLICT"))
+                    return Response.status(Status.CONFLICT).entity("Traversal end node not reached").build();
                 e.printStackTrace();
                 return Response.serverError().build();
             }
@@ -179,15 +171,10 @@ public class Witness {
     @GET
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    public Response getWitnessAsReadings() {
-        return getWitnessAsReadings(null);
-    }
-
-    @GET
-    @Path("/readings/{layer}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    public Response getWitnessAsReadings(@PathParam("layer") String witnessClass) {
+    public Response getWitnessAsReadings(@QueryParam("layer") @DefaultValue("") List<String> witnessClass) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        if (witnessClass.size() == 1 && witnessClass.get(0).equals(""))
+            witnessClass.remove(0);
 
         Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
         if (traditionNode == null)
@@ -203,12 +190,14 @@ public class Witness {
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 tx.success();
             } catch (Exception e) {
+                if (e.getMessage().equals("CONFLICT"))
+                    return Response.status(Status.CONFLICT).entity("Traversal end node not reached").build();
                 e.printStackTrace();
                 return Response.serverError().entity(e.getMessage()).build();
             }
         }
 
-        // If the path is size 0 then we didn't even get to the end node; the witness path doesn't exist.
+        // If the path is size 0 then the witness path doesn't exist.
         if (readingModels.size() == 0)
             return Response.status(Status.NOT_FOUND)
                     .entity("No witness path found for this sigil").build();
@@ -220,7 +209,7 @@ public class Witness {
     }
 
     // For use within a transaction
-    private ArrayList<Node> traverseReadings(Node startNode, String witnessClass) throws Exception {
+    private ArrayList<Node> traverseReadings(Node startNode, List<String> witnessClass) throws Exception {
         Evaluator e;
         if (witnessClass == null)
             e = new WitnessPath(sigil).getEvalForWitness();
@@ -235,6 +224,9 @@ public class Witness {
                 .traverse(startNode)
                 .nodes()
                 .forEach(result::add);
+        // If the path is nonzero but the end node wasn't reached, we had a conflict.
+        if (result.size() > 0 && !result.get(result.size()-1).hasProperty("is_end"))
+            throw new Exception("CONFLICT");
         return result;
     }
 

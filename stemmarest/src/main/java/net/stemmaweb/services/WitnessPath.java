@@ -7,21 +7,24 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Generalized path evaluator for traversing a witness.
  */
 
 public class WitnessPath {
     private final String sigil;
-    private final String alternative;
+    private final List<String> alternative;
 
-    public WitnessPath (String sigil, String alternative) {
+    public WitnessPath (String sigil, List<String> alternative) {
         this.sigil = sigil;
         this.alternative = alternative;
     }
     public WitnessPath (String sigil) {
         this.sigil = sigil;
-        this.alternative = null;
+        this.alternative = new ArrayList<>();
     }
 
     public Evaluator getEvalForWitness () {
@@ -30,22 +33,21 @@ public class WitnessPath {
             if (path.length() == 0) {
                 return Evaluation.EXCLUDE_AND_CONTINUE;
             }
-
-            if (alternative != null) {
-                // Follow the alternative path if it includes the witness
-                if (path.lastRelationship().hasProperty(alternative)
-                        && witnessIn(path.lastRelationship().getProperty(alternative))) {
-                    return Evaluation.INCLUDE_AND_CONTINUE;
-
-                // Don't follow the main path if the alternative path exists
-                } else if (path.lastRelationship().hasProperty("witnesses")) {
-                    Node priorNode = path.lastRelationship().getStartNode();
-                    for (Relationship r : priorNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
-                        if (r.hasProperty(alternative) && witnessIn(r.getProperty(alternative)))
+            // Find all relevant alternative paths out from last node; there should be zero or one.
+            Relationship correct = null;
+            for (String layer : alternative) {
+                Node priorNode = path.lastRelationship().getStartNode();
+                for (Relationship r : priorNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
+                    if (r.hasProperty(layer) && witnessIn(r.getProperty(layer)))
+                        if (correct != null) // There is more than one relevant path; cut the tree off.
                             return Evaluation.EXCLUDE_AND_PRUNE;
-                    }
-                }
+                        else
+                            correct = r;
             }
+            // There is one relevant path; return depending on whether that path is us.
+            if (correct != null)
+                return correct.equals(path.lastRelationship())
+                        ? Evaluation.INCLUDE_AND_CONTINUE : Evaluation.EXCLUDE_AND_PRUNE;
 
             // Follow the main path in the absence of an alternative
             if (path.lastRelationship().hasProperty("witnesses")
