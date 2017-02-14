@@ -1,8 +1,5 @@
 package net.stemmaweb.parser;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.*;
 
@@ -29,12 +26,12 @@ public class GraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    public Response parseGraphML(String filename, Node parentNode)
+    /* public Response parseGraphML(String filename, Node parentNode)
         throws FileNotFoundException {
         File file = new File(filename);
         InputStream in = new FileInputStream(file);
         return parseGraphML(in, parentNode);
-    }
+    }*/
 
     /**
      * Reads xml file input stream and imports it into Neo4J Database. This method assumes
@@ -348,13 +345,7 @@ public class GraphMLParser {
             }
 
             // Create the witness nodes
-            for (String sigil: witnesses.keySet()) {
-                Node witnessNode = db.createNode(Nodes.WITNESS);
-                witnessNode.setProperty("sigil", sigil);
-                witnessNode.setProperty("hypothetical", false);
-                witnessNode.setProperty("quotesigil", !isDotId(sigil));
-                traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
-            }
+            witnesses.keySet().forEach(x -> Util.createExtant(traditionNode, x));
             tx.success();
         } catch(Exception e) {
             e.printStackTrace();
@@ -391,10 +382,5 @@ public class GraphMLParser {
                 realval = val;
         }
         ent.setProperty(attr, realval);
-    }
-
-    private Boolean isDotId (String nodeid) {
-        return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
-                || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
 }

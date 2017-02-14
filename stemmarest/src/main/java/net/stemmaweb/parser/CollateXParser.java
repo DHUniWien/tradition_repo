@@ -17,6 +17,7 @@ import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Optional;
 
 /**
  * Parser for CollateX-collated traditions.
@@ -82,9 +83,12 @@ public class CollateXParser {
             }
             // Identify the end node. Assuming that there is only one.
             final Long hr = highestRank;
-            Node endNode = createdReadings.values().stream()
+            Optional<Node> endNodeOpt = createdReadings.values().stream()
                     .filter(x -> Long.valueOf(x.getProperty("rank").toString()).equals(hr))
-                    .findFirst().get();
+                    .findFirst();
+            if (!endNodeOpt.isPresent())
+                return Response.serverError().entity("No end node found").build();
+            Node endNode = endNodeOpt.get();
             endNode.setProperty("is_end", true);
             parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
 
@@ -128,13 +132,7 @@ public class CollateXParser {
 
             }
             // Create all the witnesses
-            seenWitnesses.forEach(x -> {
-                Node witness = db.createNode(Nodes.WITNESS);
-                witness.setProperty("sigil", x);
-                witness.setProperty("hypothetical", false);
-                witness.setProperty("quotesigil", isDotId(x));
-                traditionNode.createRelationshipTo(witness, ERelations.HAS_WITNESS);
-            });
+            seenWitnesses.forEach(x -> Util.createExtant(traditionNode, x));
 
 /*
             // Set the user if it exists in the system; auto-create the user if it doesn't exist
@@ -154,11 +152,6 @@ public class CollateXParser {
 
         String response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
         return Response.status(Response.Status.CREATED).entity(response).build();
-    }
-
-    private Boolean isDotId (String nodeid) {
-        return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
-                || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
 
 }

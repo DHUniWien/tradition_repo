@@ -129,11 +129,7 @@ public class TabularParser {
                 layerlabel = traditionNode.getProperty("layerlabel").toString();
             for (String sigil: witnessList) {
                 if (layerlabel == null || !sigil.endsWith(" (" + layerlabel + ")")) {
-                    Node witnessNode = db.createNode(Nodes.WITNESS);
-                    witnessNode.setProperty("sigil", sigil);
-                    witnessNode.setProperty("hypothetical", false);
-                    witnessNode.setProperty("quotesigil", !isDotId(sigil));
-                    traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+                    Util.createExtant(traditionNode, sigil);
                 } else {
                     String basesigil = sigil.replace(" (" + layerlabel + ")", "");
                     layerWitnesses.put(sigil, basesigil);
@@ -245,11 +241,5 @@ public class TabularParser {
             tx.success();
         }
         return found;
-    }
-
-    // TODO refactor this to a general parser helper class
-    private Boolean isDotId (String nodeid) {
-        return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
-                || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
 }

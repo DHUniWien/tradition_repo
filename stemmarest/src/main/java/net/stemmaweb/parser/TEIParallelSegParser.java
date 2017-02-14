@@ -1,7 +1,6 @@
 package net.stemmaweb.parser;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
@@ -121,11 +120,7 @@ public class TEIParallelSegParser {
                             case "witness":
                                 if(inHeader) {
                                     String sigil = reader.getAttributeValue(reader.getNamespaceURI("xml"), "id");
-                                    Node witnessNode = db.createNode(Nodes.WITNESS);
-                                    witnessNode.setProperty("sigil", sigil);
-                                    witnessNode.setProperty("hypothetical", false);
-                                    witnessNode.setProperty("quotesigil", isDotId(sigil));
-                                    traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+                                    Util.createExtant(traditionNode, sigil);
                                     // All witnesses start active by default; if we encounter a witStart
                                     // we will start to use an explicit app siglorum.
                                     activeWitnesses.put(sigil, true);
@@ -210,6 +205,7 @@ public class TEIParallelSegParser {
         Long endRank;
         try (Transaction tx = db.beginTx()) {
             endRank = Long.valueOf(endNode.getProperty("rank").toString());
+            tx.success();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -441,11 +437,6 @@ public class TEIParallelSegParser {
     private void setAllWitnesses(Relationship r) {
         String[] activewits = activeWitnesses.keySet().toArray(new String[activeWitnesses.size()]);
         r.setProperty("witnesses", activewits);
-    }
-
-    private Boolean isDotId (String nodeid) {
-        return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
-                || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
     }
 
 }
