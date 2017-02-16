@@ -21,6 +21,11 @@ public enum ERelations implements RelationshipType {
     TRANSMITTED,    // links witnesses in the stemma to each other
     PART,           // links a tradition with its (section) parts
     NEXT,           // link between sections
+    BEGIN_ANNOTATION,
+    END_ANNOTATION,
+    USER_ENTITY,
+    USER_RELATIONSHIP,
+    INSTANCE_OF,
     PUB_ORDER,      // link between sections to preserve their publication order
 
     // Undirected types

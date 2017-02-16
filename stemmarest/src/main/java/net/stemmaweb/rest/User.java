@@ -33,6 +33,10 @@ public class User {
         userId = requestedId;
     }
 
+    // Delegated method calls
+    @Path("/annotation")
+    public UserAnnotation getUserAnnotation() { return new UserAnnotation(getUserNode()); }
+
     /**
      * Gets a user by the id.
      *

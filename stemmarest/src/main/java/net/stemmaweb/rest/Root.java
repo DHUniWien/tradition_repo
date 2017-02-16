@@ -46,10 +46,6 @@ public class Root {
     public Reading getReading(@PathParam("readingId") String readingId) {
         return new Reading(readingId);
     }
-    @Path("/usernode")
-    public UserNode getUserNode() {
-        return new UserNode();
-    }
     /*
      * Resource creation calls
      */

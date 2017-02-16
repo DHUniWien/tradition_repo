@@ -10,20 +10,12 @@ import org.neo4j.graphdb.Label;
 public enum Nodes implements Label {
     ROOT,           // is a the root node of the db
     READING,        // is a reading in the db
-    EMENDATION,     // is a reading that appears in no witness
-    TRANSLATION,    // is an editor's translation of one or more readings
     WITNESS,        // is a witness in a stemma tree
     TRADITION,      // is a tradition root node
     SECTION,        // is a part of a tradition
     STEMMA,         // is a stemma root node
-    REFERENCE,      // is an entity reference
-    PERSON,
-    PERSONREF,      // ...to a person
-    PLACE,
-    PLACEREF,       // ...to a place
-    DATE,           // is a concrete period of time
-    DATEREF,        // is a reference to a date
-    DATING,         // is a reference in the text to a period of time
     USER,           // is a user node
-    __SYSTEM__      // is a __SYSTEM__ node
+    ANNOTATION,     // is a user-defined annotation on the graph
+    USERENTITY,     // is a user-defined entity for annotations
+    USERREL,        // is a user-defined relationship for annotations
 }
