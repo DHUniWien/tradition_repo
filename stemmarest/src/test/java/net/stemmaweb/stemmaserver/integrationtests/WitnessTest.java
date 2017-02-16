@@ -64,7 +64,7 @@ public class WitnessTest {
 
         ClientResponse jerseyResult = null;
         try {
-            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "graphml");
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
         } catch (Exception e) {
             fail();
         }

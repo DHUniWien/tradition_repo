@@ -88,7 +88,7 @@ public class ReadingTest {
          * and gets the generated id of the inserted tradition
          */
         ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/ReadingstestTradition.xml", "graphml");
+                "src/TestFiles/ReadingstestTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }

@@ -1,12 +1,11 @@
 package net.stemmaweb.stemmaserver.benchmarktests;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -18,7 +17,6 @@ import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Root;
-//import net.stemmaweb.parser.GraphMLParser;
 
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.Rule;
@@ -53,8 +51,6 @@ public abstract class BenchmarkTests {
      * so all jerseyTest related objects need to be static.
      */
     static Root webResource;
-//    static GraphMLParser importResource;
-
     static File testfile;
 
     static String tradId;
@@ -188,13 +184,13 @@ public abstract class BenchmarkTests {
      */
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
-    public void importGraphMl(){
+    public void importStemmaweb(){
         try {
             String fileName = testfile.getPath();
-            createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+            createTraditionFromFile("Tradition", "LR", "1", fileName, "stemmaweb");
         } catch (FileNotFoundException f) {
             // this error should not occur
-            assertTrue(false);
+            fail();
         }
     }
 

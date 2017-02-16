@@ -22,7 +22,7 @@ import org.neo4j.graphdb.*;
  * 
  * @author PSE FS 2015 Team2
  */
-public class GraphMLParser {
+public class StemmawebParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 

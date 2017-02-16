@@ -204,7 +204,7 @@ public class TabularInputOutputTest extends TestCase {
     public void testJSONExport() throws Exception {
         // Set up some data
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/testTradition.xml", "graphml");
+                "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
 
@@ -233,7 +233,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testConflatedJSONExport () throws Exception {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/globalrel_test.xml", "graphml");
+                "src/TestFiles/globalrel_test.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
         assertNotNull(traditionId);

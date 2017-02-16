@@ -2,6 +2,7 @@ package net.stemmaweb.rest;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -15,7 +16,7 @@ import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.exporter.GraphMLStemmawebExporter;
+import net.stemmaweb.exporter.StemmawebExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
@@ -167,9 +168,9 @@ public class Tradition {
         if (filetype.equals("collatex"))
             // Pass it off to the CollateX parser
             result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
-        if (filetype.equals("graphml"))
+        if (filetype.equals("stemmaweb"))
             // Pass it off to the somewhat legacy GraphML parser
-            result = new GraphMLParser().parseGraphML(uploadedInputStream, sectionNode);
+            result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
@@ -500,6 +501,7 @@ public class Tradition {
 
         HashMap<String, List<ReadingModel>> rankSet = new HashMap<>();
         for (ReadingModel rm : readingModels) {
+            String normReading = Normalizer.normalize(rm.getText(), Normalizer.Form.NFC);
             if (rm.getRank() > endRank)
                 break;
             if (rm.getRank() > startRank) {
@@ -507,13 +509,13 @@ public class Tradition {
                     if (rankSet.get(k).size() > 1)
                         identicalReadingsList.add(rankSet.get(k));
                 rankSet.clear();
-                rankSet.put(rm.getText(), new ArrayList<>(Collections.singletonList(rm)));
+                rankSet.put(normReading, new ArrayList<>(Collections.singletonList(rm)));
                 startRank = rm.getRank();
             }
-            else if (rankSet.containsKey(rm.getText()))
-                rankSet.get(rm.getText()).add(rm);
+            else if (rankSet.containsKey(normReading))
+                rankSet.get(normReading).add(rm);
             else
-                rankSet.put(rm.getText(), new ArrayList<>(Collections.singletonList(rm)));
+                rankSet.put(normReading, new ArrayList<>(Collections.singletonList(rm)));
         }
         return identicalReadingsList;
     }
@@ -815,12 +817,12 @@ public class Tradition {
      * @return XML data
      */
     @GET
-    @Path("/graphmlStemmaweb")
+    @Path("/stemmaweb")
     @Produces(MediaType.APPLICATION_XML)
     public Response getGraphMLStemmaweb() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-        GraphMLStemmawebExporter parser = new GraphMLStemmawebExporter();
+        StemmawebExporter parser = new StemmawebExporter();
         return parser.parseNeo4J(traditionId);
     }
 

@@ -15,7 +15,6 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
@@ -40,9 +39,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.junit.Assume.assumeTrue;
 
 /**
@@ -89,6 +86,7 @@ public class TraditionParseTest {
         HashMap<String, TraditionXMLParser> traditionNames = new HashMap<>();
         File[] fileList = testdir.listFiles(x -> x.getName().endsWith("xml"));
         int i = 1;
+        if (fileList == null) fail("No production files present!");
         for (File testfile : fileList) {
             if (testfile.getName().endsWith("xml")) {
                 // Get its name via direct XML parsing
@@ -100,16 +98,16 @@ public class TraditionParseTest {
                     SAXParser parser = sfax.newSAXParser();
                     parser.parse(testfile, handler);
                 } catch (FileNotFoundException f) {
-                    assertTrue("File unreadable", false);
+                    fail("File unreadable");
                 } catch (Throwable f) {
-                    assertTrue("SAX parser problem", false);
+                    fail("SAX parser problem");
                 }
 
-                // Parse it via importGraphML and get the tradition ID
+                // Parse it via importStemmaweb and get the tradition ID
                 try {
                     String fileName = testfile.getPath();
                     FormDataMultiPart form = new FormDataMultiPart();
-                    form.field("filetype", "graphml")
+                    form.field("filetype", "stemmaweb")
                             .field("userId", "1");
                     FormDataBodyPart fdp = new FormDataBodyPart("file",
                             new FileInputStream(fileName),
@@ -124,7 +122,7 @@ public class TraditionParseTest {
                     tradId = Util.getValueFromJson(jerseyResult, "tradId");
                 } catch (FileNotFoundException f) {
                     // this error should not occur
-                    assertTrue("File not found", false);
+                    fail("File not found");
 //                } catch (JSONException f) {
 //                    assertTrue("JSON parsing error", false);
                 }

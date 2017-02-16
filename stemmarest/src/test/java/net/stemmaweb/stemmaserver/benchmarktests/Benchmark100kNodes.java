@@ -1,6 +1,6 @@
 package net.stemmaweb.stemmaserver.benchmarktests;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -50,15 +50,13 @@ public class Benchmark100kNodes extends BenchmarkTests {
 
         rgg.role(db, 10, 10, 10, 100);
 
-        //importResource = new GraphMLParser();
         testfile = new File("src/TestFiles/ReadingstestTradition.xml");
         try {
             String fileName = testfile.getPath();
-            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
-//			tradId = importResource.parseGraphML(testfile.getPath(), "1","Tradition").getEntity().toString().replace("{\"tradId\":", "").replace("}", "");
+            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "stemmaweb");
         } catch (FileNotFoundException f) {
             // this error should not occur
-            assertTrue(false);
+            fail();
         }
 
         Result result = db.execute("match (w:READING {text:'showers'}) return w");

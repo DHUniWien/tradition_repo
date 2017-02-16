@@ -71,18 +71,17 @@ public class TraditionTest {
          * create a tradition inside the test DB
          */
         try {
-            tradId = createTraditionFromFile("Tradition", "LR", "1", "src/TestFiles/testTradition.xml", "graphml");
+            tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml");
         } catch (FileNotFoundException e) {
             fail();
         }
     }
 
-    private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
-                                           String fType) throws FileNotFoundException {
+    private String createTraditionFromFile(String tName, String fName) throws FileNotFoundException {
 
         ClientResponse jerseyResult = null;
         try {
-            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
         } catch (Exception e) {
             fail();
         }
@@ -97,7 +96,7 @@ public class TraditionTest {
         // import a second tradition into the db
         try {
             String testfile = "src/TestFiles/testTradition.xml";
-            expectedIds.add(createTraditionFromFile("Tradition", "LR", "1", testfile, "graphml"));
+            expectedIds.add(createTraditionFromFile("Tradition", testfile));
         } catch (FileNotFoundException f) {
             // this error should not occur
             fail();
@@ -568,7 +567,7 @@ public class TraditionTest {
         String florId = null;
         try {
             String testfile = "src/TestFiles/florilegium_graphml.xml";
-            florId = createTraditionFromFile("Tradition", "LR", "1", testfile, "graphml");
+            florId = createTraditionFromFile("Florilegium", testfile);
         } catch (FileNotFoundException e) {
             fail();
         }

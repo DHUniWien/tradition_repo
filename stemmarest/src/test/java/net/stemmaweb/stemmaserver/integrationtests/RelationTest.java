@@ -61,7 +61,7 @@ public class RelationTest {
          * and gets the generated id of the inserted tradition
          */
         ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/testTradition.xml", "graphml");
+                "src/TestFiles/testTradition.xml", "stemmaweb");
         tradId = Util.getValueFromJson(jerseyResponse, "tradId");
     }
 
@@ -629,7 +629,7 @@ public class RelationTest {
          * load a tradition with no Realtionships to the test DB
          */
         ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/testTraditionNoRealtions.xml", "graphml");
+                "src/TestFiles/testTraditionNoRealtions.xml", "stemmaweb");
         String newTradId = Util.getValueFromJson(jerseyResponse, "tradId");
 
         ClientResponse response = jerseyTest

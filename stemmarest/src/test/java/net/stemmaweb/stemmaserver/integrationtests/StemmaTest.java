@@ -70,17 +70,16 @@ public class StemmaTest {
          */
         try {
             String fileName = "src/TestFiles/testTradition.xml";
-            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+            tradId = createTraditionFromFile("Tradition", fileName);
         } catch (FileNotFoundException e) {
             fail();
         }
     }
 
-    private String createTraditionFromFile(String tName, String tDir, String userId, String fName,
-                                           String fType)  throws FileNotFoundException {
+    private String createTraditionFromFile(String tName, String fName)  throws FileNotFoundException {
         String tradId = "";
         try {
-            ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, tDir, userId, fName, fType);
+            ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
             tradId = Util.getValueFromJson(jerseyResult, "tradId");
         } catch (Exception e) {
             e.printStackTrace();
@@ -462,7 +461,7 @@ public class StemmaTest {
         String tradId = null;
         try {
             String fileName = "src/TestFiles/florilegium_graphml.xml";
-            tradId = createTraditionFromFile("Tradition", "LR", "1", fileName, "graphml");
+            tradId = createTraditionFromFile("Florilegium", fileName);
         } catch (FileNotFoundException e) {
             fail();
         }

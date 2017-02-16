@@ -62,7 +62,7 @@ public class TranspositionTest {
          * create a tradition inside the test DB
          */
         ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/testTradition.xml", "graphml");
+                "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         /*

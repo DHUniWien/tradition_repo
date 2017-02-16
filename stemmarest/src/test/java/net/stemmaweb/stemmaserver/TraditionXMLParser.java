@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
- * Class for quick and dirty parsing of tradition GraphML files, to
+ * Class for quick and dirty parsing of Stemmaweb GraphML files, to
  * get enough information for a sanity check.
  *
  * @author tla

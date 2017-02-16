@@ -1,9 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 
 import com.sun.jersey.api.client.ClientResponse;
@@ -24,6 +20,8 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.Response;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -55,7 +53,7 @@ public class DatabaseServiceTest {
         jerseyTest.setUp();
 
         ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", userId,
-                "src/TestFiles/testTradition.xml", "graphml");
+                "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         /*
          * gets the generated id of the inserted tradition
@@ -72,7 +70,7 @@ public class DatabaseServiceTest {
                     .toString());
             tx.success();
         } catch (NullPointerException e) {
-            assertTrue(false);
+           fail();
         }
     }
 

@@ -39,7 +39,7 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  * @author PSE FS 2015 Team2
  */
 
-public class GraphMLStemmawebExporter {
+public class StemmawebExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
@@ -121,19 +121,12 @@ public class GraphMLStemmawebExporter {
         int edgeCountGraph2 = 0;
         int nodeCountGraph2 = 0;
 
-        Node traditionNode;
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        if(traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("No tradition found for this ID").build();
         Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
-        if(traditionStartNode == null) {
-            return Response.status(Status.NOT_FOUND).entity("No graph found.").build();
-        }
-
-        try (Transaction tx = db.beginTx()) {
-            traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            if(traditionNode == null) {
-                return Response.status(Status.NOT_FOUND).build();
-            }
-            tx.success();
-        }
+        if(traditionStartNode == null)
+            return Response.status(Status.NOT_FOUND).entity("No graph found for this tradition.").build();
 
         File file;
         try (Transaction tx = db.beginTx()) {

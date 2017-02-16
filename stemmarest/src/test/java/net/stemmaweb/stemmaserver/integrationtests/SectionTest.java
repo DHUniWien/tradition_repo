@@ -51,7 +51,7 @@ public class SectionTest extends TestCase {
         ClientResponse jerseyResult = null;
         try {
             jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR",
-                    "user@example.com", "src/TestFiles/legendfrag.xml", "graphml");
+                    "user@example.com", "src/TestFiles/legendfrag.xml", "stemmaweb");
         } catch (Exception e) {
             fail();
         }
@@ -97,7 +97,7 @@ public class SectionTest extends TestCase {
     }
 
     public void testAddSection() throws Exception {
-        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "graphml",
+        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "stemmaweb",
                 "section 2");
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
@@ -120,7 +120,7 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(30, tReadings.size());
 
-        addNewSection(tradId, "src/TestFiles/lf2.xml", "graphml", "section 2");
+        addNewSection(tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(78, tReadings.size());
@@ -249,7 +249,7 @@ public class SectionTest extends TestCase {
 
     public void testSectionWrongTradition () {
         String florId = importFlorilegium();
-        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "graphml",
+        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "stemmaweb",
                 "section 2");
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + florId + "/section/" + newSectId + "/witness/A")

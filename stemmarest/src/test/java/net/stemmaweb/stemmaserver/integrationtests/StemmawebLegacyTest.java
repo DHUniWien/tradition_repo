@@ -223,7 +223,7 @@ public class StemmawebLegacyTest {
          * load a tradition to the test DB
          */
         String fName = "src/TestFiles/Collatex-16.xml";
-        String fType = "graphml";
+        String fType = "stemmaweb";
         String tName = "Tradition";
         String tDir = "LR";
         String userId = "1";
@@ -448,7 +448,7 @@ public class StemmawebLegacyTest {
         */
 
         fName = "src/TestFiles/legendfrag.xml";
-        fType = "graphml";
+        fType = "stemmaweb";
         tName = "TraditionB";
         tDir = "LR";
         userId = "1";
@@ -543,7 +543,7 @@ public class StemmawebLegacyTest {
          * load a tradition to the test DB
          */
         String fName = "src/TestFiles/legendfrag.xml";
-        String fType = "graphml";
+        String fType = "stemmaweb";
         String tName = "Tradition";
         String tDir = "LR";
         String userId = "1";
@@ -662,7 +662,7 @@ public class StemmawebLegacyTest {
         my $t3 = Text::Tradition->new( 'input' => 'Self', 'file' => 't/data/lf2.xml' );
         */
         String fName = "src/TestFiles/lf2.xml";
-        String fType = "graphml";
+        String fType = "stemmaweb";
         String tName = "Tradition";
         String tDir = "LR";
         String userId = "1";
@@ -834,7 +834,7 @@ public class StemmawebLegacyTest {
         **/
 
         String fName = "src/TestFiles/globalrel_test.xml";
-        String fType = "graphml";
+        String fType = "stemmaweb";
         String tName = "Tradition";
         String tDir = "LR";
         String userId = "1";
@@ -926,7 +926,7 @@ public class StemmawebLegacyTest {
             my $c = $t->collation;
         **/
         String fName = "src/TestFiles/Collatex-16.xml";
-        String fType = "graphml";
+        String fType = "stemmaweb";
         String tName = "Tradition";
         String tDir = "LR";
         String userId = "1";
@@ -1198,7 +1198,7 @@ public class StemmawebLegacyTest {
             ok( $st->has_witness('Ba96'), "Tradition has the affected witness" );
          */
         String fName = "src/TestFiles/collatecorr.xml";
-        String fType = "graphml";
+        String fType = "stemmaweb";
         String tName = "Tradition";
         String tDir = "LR";
         String userId = "1";

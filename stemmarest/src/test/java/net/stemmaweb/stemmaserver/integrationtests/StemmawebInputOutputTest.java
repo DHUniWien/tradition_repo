@@ -16,8 +16,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.exporter.GraphMLStemmawebExporter;
+import net.stemmaweb.exporter.StemmawebExporter;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -39,8 +38,7 @@ import static org.junit.Assert.*;
 public class StemmawebInputOutputTest {
 
     private GraphDatabaseService db;
-    private GraphMLExporter exportResource;
-    private GraphMLStemmawebExporter exportStemmawebResource;
+    private StemmawebExporter exportStemmawebResource;
 
     private JerseyTest jerseyTest;
 
@@ -50,8 +48,7 @@ public class StemmawebInputOutputTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
 
-        exportResource = new GraphMLExporter();
-        exportStemmawebResource = new GraphMLStemmawebExporter();
+        exportStemmawebResource = new StemmawebExporter();
 
         // Create a JerseyTestServer for the necessary REST API calls
         Root webResource = new Root();
@@ -67,8 +64,9 @@ public class StemmawebInputOutputTest {
     @Test
     public void graphMLImportNonexistentFileTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/SapientiaFileNotExisting.xml", "graphml");
+                "src/TestFiles/SapientiaFileNotExisting.xml", "stemmaweb");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        assertFalse(traditionNodeExists());
     }
 
     /**
@@ -77,10 +75,11 @@ public class StemmawebInputOutputTest {
     @Test
     public void graphMLImportXMLStreamErrorTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/SapientiaWithError.xml", "graphml");
+                "src/TestFiles/SapientiaWithError.xml", "stemmaweb");
         assertFalse(response == null);
         assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
                     response.getStatus());
+        assertFalse(traditionNodeExists());
     }
 
     /**
@@ -89,7 +88,7 @@ public class StemmawebInputOutputTest {
     @Test
     public void graphMLImportSuccessTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                    "src/TestFiles/besoin.xml", "graphml");
+                    "src/TestFiles/besoin.xml", "stemmaweb");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
 
@@ -114,7 +113,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLExportTraditionNotFoundTest(){
-        Response actualResponse = exportResource.parseNeo4J("1002");
+        Response actualResponse = exportStemmawebResource.parseNeo4J("1002");
         assertEquals(Response.status(Response.Status.NOT_FOUND).build().getStatus(),
                 actualResponse.getStatus());
     }
@@ -125,7 +124,7 @@ public class StemmawebInputOutputTest {
     @Test
     public void graphMLExportSuccessTest(){
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-            "src/TestFiles/testTradition.xml", "graphml");
+            "src/TestFiles/testTradition.xml", "stemmaweb");
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         assertNotNull(traditionId);
@@ -133,11 +132,9 @@ public class StemmawebInputOutputTest {
         assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 
         String xmlOutput = actualResponse.getEntity().toString();
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1", xmlOutput, "graphml");
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition 2", "BI", "1", xmlOutput, "stemmaweb");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
-
-        assertTrue(traditionNodeExists());
     }
 
     /**
@@ -146,7 +143,7 @@ public class StemmawebInputOutputTest {
     @Test
     public void unicodeSigilTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/john.xml", "graphml");
+                "src/TestFiles/john.xml", "stemmaweb");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
 
@@ -170,7 +167,7 @@ public class StemmawebInputOutputTest {
     @Test
     public void importFlorilegiumTest () {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/florilegium_graphml.xml", "graphml");
+                "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
 
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
@@ -236,7 +233,7 @@ public class StemmawebInputOutputTest {
     @Test
     public void exportFlorilegiumTest () {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
-                "src/TestFiles/florilegium_graphml.xml", "graphml");
+                "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
 
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
@@ -359,13 +356,13 @@ public class StemmawebInputOutputTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
 
-        // Export the GraphML
-        Response parseResponse = exportResource.parseNeo4J(traditionId);
+        // Export the GraphML in Stemmaweb form
+        Response parseResponse = exportStemmawebResource.parseNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), parseResponse.getStatus());
 
         // Re-import and test the result
         response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition 2", "LR", "1",
-                parseResponse.getEntity().toString(), "graphml");
+                parseResponse.getEntity().toString(), "stemmaweb");
         // Check for success and get the tradition id
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
