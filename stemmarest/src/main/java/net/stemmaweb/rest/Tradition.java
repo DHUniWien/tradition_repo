@@ -738,20 +738,7 @@ public class Tradition {
                  */
                 Set<Relationship> removableRelations = new HashSet<>();
                 Set<Node> removableNodes = new HashSet<>();
-                db.traversalDescription()
-                        .depthFirst()
-                        .relationships(ERelations.PART, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_WITNESS, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_ARCHETYPE, Direction.OUTGOING)
-                        .relationships(ERelations.TRANSMITTED, Direction.OUTGOING)
-                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                        .relationships(ERelations.COLLATION, Direction.OUTGOING)
-                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                        .relationships(ERelations.HAS_END, Direction.OUTGOING)
-                        .relationships(ERelations.RELATED, Direction.OUTGOING)
-                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                        .traverse(foundTradition)
+                DatabaseService.returnEntireTradition(foundTradition)
                         .nodes().forEach(x -> {
                     x.getRelationships().forEach(removableRelations::add);
                     removableNodes.add(x);

@@ -6,8 +6,8 @@ import java.util.Iterator;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.traversal.*;
+import org.neo4j.graphdb.traversal.Traverser;
 
 /**
  * Helper methods for the database
@@ -186,5 +186,32 @@ public class DatabaseService {
             tx.success();
         }
         return extantUser != null;
+    }
+
+    public static Traverser returnEntireTradition(String tradId, GraphDatabaseService db) {
+        return returnEntireTradition(getTraditionNode(tradId, db));
+    }
+
+    public static Traverser returnEntireTradition(Node traditionNode) {
+        Traverser tv;
+        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            tv = db.traversalDescription()
+                    .depthFirst()
+                    .relationships(ERelations.PART, Direction.OUTGOING)
+                    .relationships(ERelations.HAS_WITNESS, Direction.OUTGOING)
+                    .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
+                    .relationships(ERelations.HAS_ARCHETYPE, Direction.OUTGOING)
+                    .relationships(ERelations.TRANSMITTED, Direction.OUTGOING)
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(ERelations.COLLATION, Direction.OUTGOING)
+                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                    .relationships(ERelations.HAS_END, Direction.OUTGOING)
+                    .relationships(ERelations.RELATED, Direction.OUTGOING)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                    .traverse(traditionNode);
+            tx.success();
+        }
+        return tv;
     }
 }

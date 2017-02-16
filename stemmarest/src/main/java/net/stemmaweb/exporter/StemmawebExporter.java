@@ -20,7 +20,6 @@ import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
 
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.Direction;

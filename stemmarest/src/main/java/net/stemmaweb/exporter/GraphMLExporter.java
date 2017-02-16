@@ -1,30 +1,18 @@
 package net.stemmaweb.exporter;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
+import java.io.StringWriter;
 import java.util.*;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
-import net.stemmaweb.rest.ERelations;
 
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.Uniqueness;
-import org.w3c.dom.Document;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
@@ -37,331 +25,165 @@ public class GraphMLExporter {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    // TODO these maps should be generated based on what is actually being exported!!
-    private HashMap<String,String[]> nodeMap = new HashMap<String, String[]>() {
-        {
-            put("grammar_invalid", new String[]{"dn0", "boolean"});
-            put("id", new String[]{"dn1", "string"});
-            put("is_common", new String[]{"dn2", "boolean"});
-            put("is_end", new String[]{"dn3", "boolean"});
-            put("is_lacuna", new String[]{"dn4", "boolean"});
-            put("is_lemma", new String[]{"dn5", "boolean"});
-            put("is_nonsense", new String[]{"dn6", "boolean"});
-            put("is_ph", new String[]{"dn7", "boolean"});
-            put("is_start", new String[]{"dn8", "boolean"});
-            put("join_next", new String[]{"dn9", "boolean"});
-            put("join_prior", new String[]{"dn10", "boolean"});
-            put("language", new String[]{"dn11", "string"});
-            put("witnesses", new String[]{"dn12", "string"});
-            put("normal_form", new String[]{"dn13", "string"});
-            put("rank", new String[]{"dn14", "int"});
-            put("text", new String[]{"dn15", "string"});
-            put("label", new String[]{"dn16", "string"});
-            put("name", new String[]{"dn17", "string"});         // Sequence
-            put("base_label", new String[]{"dn18", "string"});    // Sequence
-            put("sep_char", new String[]{"dn19", "string"});     // Sequence
-        }
-    };
-    private HashMap<String,String[]> relationMap = new HashMap<String, String[]>() {
-        {
-            put("a_derivable_from_b", new String[]{"de0", "boolean"});
-            put("alters_meaning", new String[]{"de1", "int"});
-            put("annotation", new String[]{"de2", "string"});
-            put("b_derivable_from_a", new String[]{"de3", "boolean"});
-            put("displayform", new String[]{"de4", "string"});
-            put("extra", new String[]{"de5", "string"});
-            put("is_significant", new String[]{"de6", "string"});
-            put("non_independent", new String[]{"de7", "boolean"});
-            put("reading_a", new String[]{"de8", "string"});
-            put("reading_b", new String[]{"de9", "string"});
-            put("scope", new String[]{"de10", "string"});
-            put("witness", new String[]{"de11", "string"});
-            put("type", new String[]{"de12", "string"});
-            put("type_related", new String[]{"de13", "string"});
-        }
-    };
-    private HashMap<String,String[]> graphMap = new HashMap<String, String[]>() {
-        {
-            put("language", new String[]{"dg0", "string"});
-            put("name", new String[]{"dg1", "string"});
-            put("public", new String[]{"dg2", "boolean"});
-            put("stemmata", new String[]{"dg3", "string"});
-            put("stemweb_jobid", new String[]{"dg4", "string"});
-            put("user", new String[]{"dg5", "string"});
-            put("version", new String[]{"dg6", "string"});
-            put("direction", new String[]{"dg7", "string"});
-        }
-    };
+    private HashMap<String,String[]> nodeMap;
+    private HashMap<String,String[]> edgeMap;
 
-    private long globalRank;
-
-    private void writeKeys(XMLStreamWriter writer, HashMap<String, String[]> currentMap, String kind) {
-        try {
+    private void writeKeys(XMLStreamWriter writer, HashMap<String, String[]> currentMap, String kind)
+            throws XMLStreamException{
             for (Map.Entry<String, String[]> entry : currentMap.entrySet()) {
                 String[] values = entry.getValue();
+                String key = String.format("d%s%s", kind.substring(0, 1), values[0]);
                 writer.writeEmptyElement("key");
                 writer.writeAttribute("attr.name", entry.getKey());
                 writer.writeAttribute("attr.type", values[1]);
                 writer.writeAttribute("for", kind);
-                writer.writeAttribute("id", values[0]);
+                writer.writeAttribute("id", key);
             }
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-
     }
 
     private void writeNode(XMLStreamWriter writer, Node node) {
         try {
-            Iterable<String> props = node.getPropertyKeys();
-
             writer.writeStartElement("node");
             writer.writeAttribute("id", String.valueOf(node.getId()));
 
+            // Write out the labels
+            for (Label l : node.getLabels()) {
+                writer.writeStartElement("data");
+                writer.writeAttribute("key", nodeMap.get("neolabel")[0]);
+                writer.writeCharacters(l.name());
+                writer.writeEndElement();
+            }
+
+            // Write out the properties
+            writeProperties(writer, node, nodeMap);
+            // End the node
+            writer.writeEndElement();
+        } catch (XMLStreamException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeEdge(XMLStreamWriter writer, Relationship edge) {
+        try {
+            writer.writeStartElement("edge");
+            writer.writeAttribute("id", String.valueOf(edge.getId()));
+
+            // Write out the type
             writer.writeStartElement("data");
-            writer.writeAttribute("key", nodeMap.get("label")[0]);
-            writer.writeCharacters(((ArrayList) node.getLabels()).get(0).toString());
+            writer.writeAttribute("key", edgeMap.get("neolabel")[0]);
+            writer.writeCharacters(edge.getType().name());
             writer.writeEndElement();
 
-            for (String prop : props) {
-                if (nodeMap.containsKey(prop)) {
-                    String value;
-                    if (prop.equals("rank")) {
-                        Long rank;
-                        try {
-                            rank = ((Long) node.getProperty(prop));
-                        } catch (Exception e) {
-                            rank = (((Integer) node.getProperty(prop)).longValue());
-                        }
-                        rank = rank + globalRank;
-                        value = rank.toString();
-                    } else {
-                        value = node.getProperty(prop).toString();
-                    }
-                    writer.writeStartElement("data");
-                    writer.writeAttribute("key", nodeMap.get(prop)[0]);
-                    writer.writeCharacters(value);
-                    writer.writeEndElement();
-                }
-            }
-            writer.writeEndElement(); // end node
-        } catch(Exception e) {
+            // Write out the properties
+            writeProperties(writer, edge, edgeMap);
+            // End the node
+            writer.writeEndElement();
+        } catch (XMLStreamException e) {
             e.printStackTrace();
         }
     }
 
-    private void writeEdge(XMLStreamWriter writer, Relationship edge, long edgeId) {
-        try {
-            if (edge.isType(ERelations.SEQUENCE)) {
-                String[] witnesses = (edge.hasProperty("witnesses")) ? (String[]) edge.getProperty("witnesses") : null;
-                if (witnesses != null)
-                    writeEdgeToStream(writer, witnesses, edge, edgeId, false);
-                String[] specialWitnesses = (edge.hasProperty("a.c.")) ? (String[]) edge.getProperty("a.c.") : null;
-                if (specialWitnesses != null)
-                    writeEdgeToStream(writer, specialWitnesses, edge, edgeId, true);
-            } else if (edge.isType(ERelations.RELATED)){
-                writeEdgeToStream(writer, new String[] {""}, edge, edgeId, false);
+    // TODO check for cases where the same property name has different types in different containers
+    private void writeProperties(XMLStreamWriter writer, PropertyContainer ent, HashMap<String, String[]> collection)
+            throws XMLStreamException {
+        for (String prop : ent.getPropertyKeys()) {
+            if (collection.containsKey(prop)) {
+                writer.writeStartElement("data");
+                writer.writeAttribute("key", collection.get(prop)[0]);
+                writer.writeCharacters(ent.getProperty(prop).toString());
+                writer.writeEndElement();
             }
-        } catch(Exception e) {
-            e.printStackTrace();
         }
     }
 
 
-    private void writeEdgeToStream(XMLStreamWriter writer, String[] witnesses, Relationship edge, long edgeId, boolean isExtra) {
-        try {
-            for (String witness : witnesses) {
-                writer.writeStartElement("edge");
-
-                writer.writeAttribute("source", edge.getStartNode().getId() + "");
-                writer.writeAttribute("target", edge.getEndNode().getId() + "");
-                writer.writeAttribute("id", "e" + edgeId + witness + ((isExtra) ? "ac" : ""));
-
-                if (edge.isType(ERelations.SEQUENCE)) {
-                    writer.writeStartElement("data");
-                    writer.writeAttribute("key", relationMap.get("witness")[0]);
-                    writer.writeCharacters(witness);
-                    writer.writeEndElement(); // end data key
-                } else if (edge.isType(ERelations.RELATED) && edge.hasProperty("type")) {
-                    writer.writeStartElement("data");
-                    writer.writeAttribute("key", relationMap.get("type")[0]);
-                    writer.writeCharacters(edge.getType().name());
-                    writer.writeEndElement(); // end data
-
-                    writer.writeStartElement("data");
-                    writer.writeAttribute("key", relationMap.get("type_related")[0]);
-                    writer.writeCharacters(edge.getProperty("type").toString());
-                    writer.writeEndElement(); // end data key
-                }
-
-                for (String prop : edge.getPropertyKeys()) {
-                    if (!prop.equals("witnesses")  && !prop.equals("type")) {
-                        if (prop.equals("a.c.") && !isExtra)
-                            continue;
-                        writer.writeStartElement("data");
-                        writer.writeAttribute("key", (isExtra) ? relationMap.get("extra")[0] :relationMap.get(prop)[0]);
-                        writer.writeCharacters((isExtra) ? "(a.c.)" : edge.getProperty(prop).toString());
-                        writer.writeEndElement(); // end data
-                    }
-                }
-                writer.writeEndElement(); // end edge
+    // To be used inside a transaction
+    private void collectProperties (PropertyContainer ent, HashMap<String, String[]> collection) {
+        int ctr = collection.size();
+        for (String p : ent.getPropertyKeys()) {
+            String type = "string";
+            Object prop = ent.getProperty(p);
+            if (prop instanceof Long) type = "long";
+            else if (prop instanceof Boolean) type = "boolean";
+            else if (prop instanceof Integer) type = "int";
+            if (!collection.containsKey(p) || !collection.get(p)[1].equals(type)) {
+                collection.put(p, new String[]{String.valueOf(ctr++), type});
             }
-        } catch(Exception e) {
-            e.printStackTrace();
         }
     }
 
 
     public Response parseNeo4J(String tradId) {
-
-        int edgeCountGraph1 = 0;
-        int nodeCountGraph1 = 0;
-        boolean includeRelatedRelations = true;
-
+        // Get the tradition node
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
-        if (sections == null) {
+        if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).build();
-        }
-        if (sections.size() == 0) {
-            sections.add(traditionNode);
-        }
 
-        File file;
+        StringWriter result = new StringWriter();
+        XMLOutputFactory output = XMLOutputFactory.newInstance();
+        XMLStreamWriter writer;
+        try {
+            writer = new IndentingXMLStreamWriter(output.createXMLStreamWriter(result));
+        } catch (XMLStreamException e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        ResourceIterable<Node> traditionNodes = DatabaseService.returnEntireTradition(traditionNode).nodes();
+        ResourceIterable<Relationship> traditionEdges = DatabaseService.returnEntireTradition(traditionNode).relationships();
+
         try (Transaction tx = db.beginTx()) {
-            file = File.createTempFile("output", ".graphml");
-            OutputStream out = new FileOutputStream(file);
+            // First we have to go through all nodes and edges in the tradition, compiling a list of
+            // node and edge attributes.
+            nodeMap = new HashMap<>();
+            nodeMap.put("neolabel", new String[]{"0", "string"});
+            edgeMap = new HashMap<>();
+            edgeMap.put("neolabel", new String[]{"0", "string"});
+            int nodeCount = 0;
+            int edgeCount = 0;
+            for (Node n : traditionNodes) {
+                collectProperties(n, nodeMap);
+                nodeCount++;
+            }
 
-            XMLOutputFactory output = XMLOutputFactory.newInstance();
-            XMLStreamWriter writer = new IndentingXMLStreamWriter(output.createXMLStreamWriter(out));
+            for (Relationship e : traditionEdges) {
+                collectProperties(e, edgeMap);
+                edgeCount++;
+            }
 
             writer.writeStartDocument();
 
             writer.writeStartElement("graphml");
-            writer.writeAttribute("xmlns","http://graphml.graphdrawing.org/xmlns");
-            writer.writeAttribute("xmlns:xsi","http://www.w3.org/2001/XMLSchema-instance");
-            writer.writeAttribute("xsi:schemaLocation","http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd");
+            writer.writeAttribute("xmlns", "http://graphml.graphdrawing.org/xmlns");
+            writer.writeAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
+            writer.writeAttribute("xsi:schemaLocation", "http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd");
 
             // ####### KEYS START #######################################
 
-            writeKeys(writer, graphMap, "graph");
             writeKeys(writer, nodeMap, "node");
-            writeKeys(writer, relationMap, "edge");
+            writeKeys(writer, edgeMap, "edge");
 
             // ####### KEYS END #######################################
-            // graph 1
 
-            Iterable<String> props;
-
+            // Write out the <graph> opening tag
             writer.writeStartElement("graph");
-            // TODO convert tradition name safely into XML Name
-            writer.writeAttribute("id", "Tradition");
+            writer.writeAttribute("id", traditionNode.getProperty("name").toString());
             writer.writeAttribute("edgedefault", "directed");
-            //writer.writeAttribute("id", traditionNode.getProperty("dg1").toString());
             writer.writeAttribute("parse.edgeids", "canonical");
-            // THIS IS CHANGED AFTERWARDS
-            writer.writeAttribute("parse.edges", 0+"");
+            writer.writeAttribute("parse.edges", String.valueOf(edgeCount));
             writer.writeAttribute("parse.nodeids", "canonical");
-            // THIS IS CHANGED AFTERWARDS
-            writer.writeAttribute("parse.nodes", 0+"");
+            writer.writeAttribute("parse.nodes", String.valueOf(nodeCount));
             writer.writeAttribute("parse.order", "nodesfirst");
 
-            props = traditionNode.getPropertyKeys();
-            for(String prop : props) {
-                if(prop !=null && !prop.equals("id") && !prop.equals("tradition_id") && graphMap.containsKey(prop)) {
-                    writer.writeStartElement("data");
-                    writer.writeAttribute("key", graphMap.get(prop)[0]);
-                    writer.writeCharacters(traditionNode.getProperty(prop).toString());
-                    writer.writeEndElement();
-                }
-            }
-            // extract stemmata
-            writer.writeStartElement("data");
-            writer.writeAttribute("key", "dg3");
+            // Now list out all the nodes
+            traditionNodes.forEach(x -> writeNode(writer, x));
 
-            DotExporter parser = new DotExporter(db);
-
-            writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
-            writer.writeEndElement(); // end data
-
-            long edgeId = 0;
-
-            TraversalDescription nodeTraversal = db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL);
-
-            TraversalDescription relTraversal = db.traversalDescription()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL);
-            if (includeRelatedRelations)
-                    relTraversal = relTraversal.relationships(ERelations.RELATED, Direction.OUTGOING);
-
-            for (Node sectionNode : sections) {
-                long max_rank_section = 0;
-
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
-                writeNode(writer, sectionNode);
-
-                for (Node node : nodeTraversal.traverse(sectionStartNode).nodes()) {
-                    nodeCountGraph1++;
-                    writeNode(writer, node);
-                    if (node.hasProperty("rank")) {
-                        Long rank;
-                        try {
-                            rank = (Long)node.getProperty("rank");
-                        } catch (Exception e) {
-                            rank = ((Integer)node.getProperty("rank")).longValue();
-                        }
-                        max_rank_section = Math.max(max_rank_section, rank);
-                    }
-                }
-
-                globalRank += max_rank_section;
-            }
+            // And list out all the edges
+            traditionEdges.forEach(x -> writeEdge(writer, x));
 
 
-            for (Node sectionNode : sections) {
-                // write all outgoing nodes from the current section node
-                for (Relationship rel : sectionNode.getRelationships(Direction.OUTGOING, ERelations.COLLATION, ERelations.HAS_END)) {
-                    writeEdge(writer, rel, edgeId++);
-                }
-
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
-                for (Relationship rel : relTraversal.traverse(sectionStartNode).relationships()) {
-                    if (rel != null) {
-                        edgeCountGraph1++;
-                        writeEdge(writer, rel, edgeId++);
-                    }
-                }
-            }
             writer.writeEndElement(); // graph
             writer.writeEndElement(); // end graphml
             writer.flush();
-            out.close();
-
-            // Add edge and node count to graphs:
-
-            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-            Document doc = docBuilder.parse(file.getAbsolutePath());
-
-            // Get the staff element by tag name directly
-            org.w3c.dom.Node graph0 = doc.getElementsByTagName("graph").item(0);
-
-            org.w3c.dom.NamedNodeMap attr = graph0.getAttributes();
-            org.w3c.dom.Node edgesCount = attr.getNamedItem("parse.edges");
-            edgesCount.setTextContent(edgeCountGraph1 + "");
-            org.w3c.dom.Node nodesCount = attr.getNamedItem("parse.nodes");
-            nodesCount.setTextContent(nodeCountGraph1+"");
-
-            // TODO What is the point of this transformer call?
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult resultFile = new StreamResult(file);
-            transformer.transform(source, resultFile);
 
             tx.success();
         } catch (Exception e) {
@@ -371,6 +193,6 @@ public class GraphMLExporter {
                     .entity("Error: Tradition could not be exported!")
                     .build();
         }
-        return Response.ok(file.toString(), MediaType.APPLICATION_XML).build();
+        return Response.ok(result.toString(), MediaType.APPLICATION_XML).build();
     }
 }
