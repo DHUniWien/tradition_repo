@@ -751,6 +751,7 @@ public class Tradition {
                 removableNodes.forEach(Node::delete);
                 tx.success();
             } catch (Exception e) {
+                e.printStackTrace();
                 return Response.status(Status.INTERNAL_SERVER_ERROR).build();
             }
         } else {

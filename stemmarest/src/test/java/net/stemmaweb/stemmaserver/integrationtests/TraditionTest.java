@@ -12,10 +12,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
@@ -71,17 +68,17 @@ public class TraditionTest {
          * create a tradition inside the test DB
          */
         try {
-            tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml");
+            tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml", "1");
         } catch (FileNotFoundException e) {
             fail();
         }
     }
 
-    private String createTraditionFromFile(String tName, String fName) throws FileNotFoundException {
+    private String createTraditionFromFile(String tName, String fName, String userId) throws FileNotFoundException {
 
         ClientResponse jerseyResult = null;
         try {
-            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
+            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", userId, fName, "stemmaweb");
         } catch (Exception e) {
             fail();
         }
@@ -96,7 +93,7 @@ public class TraditionTest {
         // import a second tradition into the db
         try {
             String testfile = "src/TestFiles/testTradition.xml";
-            expectedIds.add(createTraditionFromFile("Tradition", testfile));
+            expectedIds.add(createTraditionFromFile("Tradition", testfile, "1"));
         } catch (FileNotFoundException f) {
             // this error should not occur
             fail();
@@ -563,11 +560,21 @@ public class TraditionTest {
         }
         int originalNodeCount = numNodes.get();
 
+        // create a new user
+        UserModel userModel = new UserModel();
+        userModel.setId("user@example.org");
+        userModel.setRole("user");
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/user/user@example.org")
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, userModel);
+        assertEquals(Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
+
         // upload the florilegium
         String florId = null;
         try {
             String testfile = "src/TestFiles/florilegium_graphml.xml";
-            florId = createTraditionFromFile("Florilegium", testfile);
+            florId = createTraditionFromFile("Florilegium", testfile, userModel.getId());
         } catch (FileNotFoundException e) {
             fail();
         }
@@ -580,7 +587,7 @@ public class TraditionTest {
         } catch (IOException e) {
             fail();
         }
-        ClientResponse jerseyResponse = jerseyTest
+        jerseyResponse = jerseyTest
                 .resource()
                 .path("/tradition/" + florId + "/stemma")
                 .type(MediaType.APPLICATION_JSON)
@@ -639,7 +646,7 @@ public class TraditionTest {
             db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
             tx.success();
         }
-        assertTrue(numNodes.get() > originalNodeCount);
+        assertTrue(numNodes.get() > originalNodeCount + 200);
 
         // delete the florilegium
         jerseyResponse = jerseyTest
@@ -655,7 +662,7 @@ public class TraditionTest {
             db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
             tx.success();
         }
-        assertEquals(originalNodeCount, numNodes.get());
+        assertEquals(originalNodeCount + 1, numNodes.get());
     }
 
     /**

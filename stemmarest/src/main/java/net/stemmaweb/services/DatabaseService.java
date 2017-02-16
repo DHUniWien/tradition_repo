@@ -188,9 +188,18 @@ public class DatabaseService {
         return extantUser != null;
     }
 
+    @SuppressWarnings("unused")
     public static Traverser returnEntireTradition(String tradId, GraphDatabaseService db) {
         return returnEntireTradition(getTraditionNode(tradId, db));
     }
+
+    private static Evaluator traditionCrawler = path -> {
+        if (path.length() == 0)
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        return Evaluation.INCLUDE_AND_CONTINUE;
+    };
 
     public static Traverser returnEntireTradition(Node traditionNode) {
         Traverser tv;
@@ -198,16 +207,7 @@ public class DatabaseService {
         try (Transaction tx = db.beginTx()) {
             tv = db.traversalDescription()
                     .depthFirst()
-                    .relationships(ERelations.PART, Direction.OUTGOING)
-                    .relationships(ERelations.HAS_WITNESS, Direction.OUTGOING)
-                    .relationships(ERelations.HAS_STEMMA, Direction.OUTGOING)
-                    .relationships(ERelations.HAS_ARCHETYPE, Direction.OUTGOING)
-                    .relationships(ERelations.TRANSMITTED, Direction.OUTGOING)
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .relationships(ERelations.COLLATION, Direction.OUTGOING)
-                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                    .relationships(ERelations.HAS_END, Direction.OUTGOING)
-                    .relationships(ERelations.RELATED, Direction.OUTGOING)
+                    .evaluator(traditionCrawler)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(traditionNode);
             tx.success();
