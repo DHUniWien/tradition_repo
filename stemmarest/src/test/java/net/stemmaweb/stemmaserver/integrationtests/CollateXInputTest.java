@@ -31,11 +31,7 @@ public class CollateXInputTest extends TestCase {
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
-        Root webResource = new Root();
-        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
-                .create();
-        jerseyTest.setUp();
+        jerseyTest = Util.setupJersey();
     }
 
     public void testParseCollateX() throws Exception {
@@ -47,6 +43,7 @@ public class CollateXInputTest extends TestCase {
         Tradition tradition = new Tradition(tradId);
 
         Response result = tradition.getAllWitnesses();
+        @SuppressWarnings("unchecked")
         ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(3, allWitnesses.size());
 
@@ -56,6 +53,7 @@ public class CollateXInputTest extends TestCase {
         assertEquals("Ich hab auch hier wieder ein Pläzchen", witnessText);
 
         result = tradition.getAllReadings();
+        @SuppressWarnings("unchecked")
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(10, allReadings.size());
         Boolean foundReading = false;
@@ -76,6 +74,7 @@ public class CollateXInputTest extends TestCase {
 
         // Get the relevant reading IDs
         Response result = tradition.getAllReadings();
+        @SuppressWarnings("unchecked")
         ArrayList<ReadingModel> readings = (ArrayList<ReadingModel>) result.getEntity();
         String source = null;
         String target = null;
@@ -120,6 +119,7 @@ public class CollateXInputTest extends TestCase {
         assertEquals("Auch hier", tradInfo.getName());
 
         result = tradition.getAllWitnesses();
+        @SuppressWarnings("unchecked")
         ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(3, allWitnesses.size());
 
@@ -129,6 +129,7 @@ public class CollateXInputTest extends TestCase {
         assertEquals("Ich hab auch hier wieder ein Pläzchen", witnessText);
 
         result = tradition.getAllReadings();
+        @SuppressWarnings("unchecked")
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(10, allReadings.size());
         Boolean foundReading = false;

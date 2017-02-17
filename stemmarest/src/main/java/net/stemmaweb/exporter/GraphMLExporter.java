@@ -47,12 +47,10 @@ public class GraphMLExporter {
             writer.writeAttribute("id", String.valueOf(node.getId()));
 
             // Write out the labels
-            for (Label l : node.getLabels()) {
-                writer.writeStartElement("data");
-                writer.writeAttribute("key", nodeMap.get("neolabel")[0]);
-                writer.writeCharacters(l.name());
-                writer.writeEndElement();
-            }
+            writer.writeStartElement("data");
+            writer.writeAttribute("key", "dn" + nodeMap.get("neolabel")[0]);
+            writer.writeCharacters(node.getLabels().toString());
+            writer.writeEndElement();
 
             // Write out the properties
             writeProperties(writer, node, nodeMap);
@@ -67,10 +65,12 @@ public class GraphMLExporter {
         try {
             writer.writeStartElement("edge");
             writer.writeAttribute("id", String.valueOf(edge.getId()));
+            writer.writeAttribute("source", String.valueOf(edge.getStartNode().getId()));
+            writer.writeAttribute("target", String.valueOf(edge.getEndNode().getId()));
 
             // Write out the type
             writer.writeStartElement("data");
-            writer.writeAttribute("key", edgeMap.get("neolabel")[0]);
+            writer.writeAttribute("key", "de" + edgeMap.get("neolabel")[0]);
             writer.writeCharacters(edge.getType().name());
             writer.writeEndElement();
 
@@ -86,11 +86,17 @@ public class GraphMLExporter {
     // TODO check for cases where the same property name has different types in different containers
     private void writeProperties(XMLStreamWriter writer, PropertyContainer ent, HashMap<String, String[]> collection)
             throws XMLStreamException {
+        String prefix = collection.equals(nodeMap) ? "dn" : "de";
         for (String prop : ent.getPropertyKeys()) {
             if (collection.containsKey(prop)) {
                 writer.writeStartElement("data");
-                writer.writeAttribute("key", collection.get(prop)[0]);
-                writer.writeCharacters(ent.getProperty(prop).toString());
+                writer.writeAttribute("key", prefix + collection.get(prop)[0]);
+                String propValue;
+                if (collection.get(prop)[1].equals("stringarray"))
+                    propValue = new ArrayList<>(Arrays.asList((String[]) ent.getProperty(prop))).toString();
+                else
+                    propValue = ent.getProperty(prop).toString();
+                writer.writeCharacters(propValue);
                 writer.writeEndElement();
             }
         }
@@ -98,6 +104,7 @@ public class GraphMLExporter {
 
 
     // To be used inside a transaction
+    // These datatypes need to be kept in sync with parser.GraphMLParser
     private void collectProperties (PropertyContainer ent, HashMap<String, String[]> collection) {
         int ctr = collection.size();
         for (String p : ent.getPropertyKeys()) {
@@ -105,7 +112,7 @@ public class GraphMLExporter {
             Object prop = ent.getProperty(p);
             if (prop instanceof Long) type = "long";
             else if (prop instanceof Boolean) type = "boolean";
-            else if (prop instanceof Integer) type = "int";
+            else if (prop instanceof String[]) type = "stringarray";
             if (!collection.containsKey(p) || !collection.get(p)[1].equals(type)) {
                 collection.put(p, new String[]{String.valueOf(ctr++), type});
             }

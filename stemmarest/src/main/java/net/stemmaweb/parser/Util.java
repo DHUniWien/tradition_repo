@@ -4,6 +4,10 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.w3c.dom.Document;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.InputStream;
 
 /**
  * Utility functions for the parsers
@@ -53,6 +57,16 @@ public class Util {
     private static Boolean isDotId (String nodeid) {
         return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
                 || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
+    }
+
+    // XML parsing utilities
+    static Document openFileStream(InputStream filestream) {
+        try {
+            return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(filestream);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 }

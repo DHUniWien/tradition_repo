@@ -12,7 +12,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
@@ -138,8 +137,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
-                               @FormDataParam("file") InputStream uploadedInputStream,
-                               @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException {
+                               @FormDataParam("file") InputStream uploadedInputStream) throws IOException {
         // Make a new section node to connect to the tradition in question
         Node sectionNode;
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
