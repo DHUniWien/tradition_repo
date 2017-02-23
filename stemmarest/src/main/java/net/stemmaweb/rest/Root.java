@@ -94,7 +94,7 @@ public class Root {
         String tradId;
         Response result = null;
         try {
-            if (filetype.equals("graphml")) {
+            if (filetype != null && filetype.equals("graphml")) {
                 // Our own GraphML files describe an entire tradition, so the tradition node itself should
                 // be parsed from there rather than created here.
                 GraphMLParser p = new GraphMLParser(db);
