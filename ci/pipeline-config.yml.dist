@@ -1,0 +1,12 @@
+stemmarest-sources-uri:
+stemmarest-sources-branch:
+
+insecure-registries:
+stemmarest-test-image:
+stemmarest-final-image:
+
+maven-opts: --batch-mode --quiet
+
+version-uri:
+version-branch:
+version-file: ci/version

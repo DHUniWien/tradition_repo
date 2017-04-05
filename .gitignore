@@ -10,3 +10,5 @@ stemmarest/stemmarest.iml
 !stemmarest/upload/notempty
 Tests/*
 **/.DS_Store
+ci/pipeline-config.yml
+ci/git-ssh/

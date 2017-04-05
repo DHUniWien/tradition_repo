@@ -1,0 +1,122 @@
+groups: []
+resources:
+- name: stemmarest-sources
+  type: git
+  source:
+    branch: master
+    paths:
+    - stemmarest
+    - ci/resources
+    uri: https://github.com/DHUniWien/tradition_repo
+- name: stemmarest-image
+  type: docker-image
+  source:
+    insecure_registries:
+    - 172.27.0.2:5000
+    repository: 172.27.0.2:5000/stemmarest-final
+- name: version
+  type: semver
+  source:
+    branch: master
+    driver: git
+    file: ci/version
+    initial_version: 0.0.0
+    private_key: |-
+      -----BEGIN RSA PRIVATE KEY-----
+      MIIEowIBAAKCAQEAwY3ffkQkD3/0XNwZ9gphd0Emx/PMIB6QEgIj47tsdr0XepB7
+      05FFgmdM9dHm/RxNP2ubOwB7BxP9/90AZGtdduCLQW+THmXIsg1+HOoR58htTpEH
+      EOZV/3cXZu1n+JtGIXx5kxMA3o9dgIuK+dt7fhhEkg7x/je/tBbDnw/4kNhesbL/
+      3Cf3Pxun+UuTghHv//w9euZDvmUdR65Xq3MvV+Jp8Nhegd5V7UeeOQZJBbOWMlOg
+      qADzP2CzXB55WZhT8ZgSV+QPrQNWKdnpSN/kvJDdazaWZBbn+WeLzspOc8zCzhzB
+      5RESGJxWDVg9d8oP8rBKnMNDvQTBOUnFDceyoQIDAQABAoIBAGrSrEh5vxU231zo
+      tQNP018H/Cla6ovHkmf9+mTTqhcWYYDpgQ3RHXXNIXKCOGP1XMTl1LSJnVzYsdSm
+      2nKRtvHHF9QzihS6xDtQqwu2O8+alIlKDYZMOaZWyfmqiTlyKRCOLGL5l/89TLOH
+      UFp5wfxj1GRwDyrpBcqUzb5aCCuX58eWvw7dzoYOfF6lD/OYJOunfKPF8qJllwma
+      qnxaL3h1pGxaP6IWHVg5qUhuThZor0McYVUQAWAxTkuw4XMgDhcP5olNTowpBdzr
+      SCLRL1SrdrjKdkI+2b4NDVACyml4CqZ17p5GyEzLoBLveBsKk66aep2Ifc80DFSg
+      Te1s+MkCgYEA+air/v+vYkRpRBNEA5pU3NeaNQIIWCBxkUSoDKX0F7EGo7CLTGtM
+      OR4kc5XSOHDs2OTrYLov0W0KIBs67IhfvV9FZLEPSeWasJ9mfyrEtPQnVgXiXNj7
+      2FkOX2LvGaGXdkioFdBZfHooweVY/gNVHBODqN8AyWmjyQmjMxyohvsCgYEAxnhl
+      7LwpjoogSiC1JTKFUCs5rI1m9KjrkToI04O6t1Hj2dP+VqspWkT1qRY7nr0SO3+/
+      DB/N4y7EmfwAHyfQIIWgKu6y+HkeUQw7v4Qr2LMzrAczltYisN0nen6upGf4CJmq
+      XrwGFgoeKLaEQjKLaX6ej0+UnnsOrGS6lPV5qhMCgYB/8oyrM/h7QRo9tC3wNsD1
+      KV2zeuYx2/a3/1qsmMRe+++uJkVNldPLlgISZp8FJAKOKcvjl6f4CYzd5XauUDnY
+      wKG8t+1g7tX3XMnXtGB5aINcV8mp0d5IA2QVSIvHNAR+rz/NZijmXWjT7ilMjQKq
+      T+nyus8ZahVxa4oDINXRzwKBgQCnqaZRK1Pf+of0l1TwK5G7fAio4HuNS/ZVJTW3
+      mZzuqNtXdWNzS/0PKRpu0T1kiE0SvoRidau0tBmaC+z+ZN/J2ZjJLAU9KvSVe0Qu
+      MjXoRtrsBNlsH1IHH4zuSn62nK5Idagbh7OMgtefhTCNy61CXZkNcCkZCNQIhr+o
+      fwdcyQKBgCD5EzzmbsanXwtlOasqSpgnm341WaG0Ae5qgEOHcr5oooX1DybWsM2g
+      nMTJUROY9qDJj/qSjn4NYByRRSzTjFZOfOWpAWw8vkI6zzNwl1+sgcNHzVmNaFrr
+      tSe2z2A+sZhvxdnoyaZzhlTz7Y+ipHqLllGqjjai0yKi+uRxQL2Y
+      -----END RSA PRIVATE KEY-----
+    uri: git@github.com:DHUniWien/tradition_repo.git
+resource_types: []
+jobs:
+- name: test
+  plan:
+  - aggregate:
+    - get: stemmarest-sources
+      trigger: true
+  - task: task-test
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          insecure_registries:
+          - 172.27.0.2:5000
+          repository: 172.27.0.2:5000/stemmarest-ci-test
+      run:
+        path: mvn
+        args:
+        - --batch-mode
+        - --quiet
+        - test
+        dir: stemmarest-sources/stemmarest
+      inputs:
+      - name: stemmarest-sources
+        path: ""
+- name: package
+  plan:
+  - aggregate:
+    - get: stemmarest-sources
+      passed:
+      - test
+      trigger: true
+  - put: version
+    params:
+      bump: patch
+  - task: task-package
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          insecure_registries:
+          - 172.27.0.2:5000
+          repository: 172.27.0.2:5000/stemmarest-ci-test
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          /usr/bin/mvn --batch-mode --quiet package
+          # copy results to output
+          /bin/cp target/stemmarest.war ../../artifacts/
+          /bin/cp build/server.xml ../../artifacts/
+          /bin/cp build/tomcat-users.xml ../../artifacts/
+          # set initial random password
+          /bin/sed -i s/CHANGE_THIS/`/usr/bin/pwgen 16`/ ../../artifacts/tomcat-users.xml
+          # also get Dockerfile for put: below
+          /bin/cp ../ci/resources/Dockerfile-stemmarest-final ../../artifacts/Dockerfile
+        dir: stemmarest-sources/stemmarest
+      inputs:
+      - name: stemmarest-sources
+        path: ""
+      outputs:
+      - name: artifacts
+        path: ""
+  - put: stemmarest-image
+    params:
+      build: artifacts/
+      tag: version/version
