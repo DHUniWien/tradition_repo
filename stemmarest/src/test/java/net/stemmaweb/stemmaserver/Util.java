@@ -10,6 +10,7 @@ import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jettison.json.JSONException;
@@ -167,6 +168,15 @@ public class Util {
             rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
         }
+    }
+
+    public static JerseyTest setupJersey() throws Exception {
+        Root webResource = new Root();
+        JerseyTest jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(webResource)
+                .create();
+        jerseyTest.setUp();
+        return jerseyTest;
     }
 
     public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir, String userId,

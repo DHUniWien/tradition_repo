@@ -1,0 +1,101 @@
+---
+resources:
+    - name: stemmarest-sources
+      type: git
+      source:
+        uri: {{stemmarest-sources-uri}}
+        branch: {{stemmarest-sources-branch}}
+        paths: [stemmarest, ci/resources]
+
+    - name: stemmarest-image
+      type: docker-image
+      source:
+        repository: {{stemmarest-final-image}}
+        insecure_registries: [ {{insecure-registries}} ]
+
+    - name: version
+      type: semver
+      source:
+        driver: git
+        uri: {{version-uri}}
+        branch: {{version-branch}}
+        file: {{version-file}}
+        initial_version: "0.0.0"
+        private_key: {{github-private-key}}
+
+jobs:
+
+  - name: test
+    plan:
+      - get: stemmarest-sources
+        trigger: true
+
+      - task: task-test
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: stemmarest-sources
+
+          run:
+            path: mvn
+            args: ["--batch-mode", "--quiet", "test"]
+            dir: stemmarest-sources/stemmarest
+            params:
+              MAVEN_OPTS: {{maven-opts}}
+
+  - name: package
+    plan:
+      - get: stemmarest-sources
+        trigger: true
+        passed: [test]
+
+      - put: version
+        params:
+          bump: patch
+
+      - task: task-package
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: stemmarest-sources
+          outputs:
+            - name: artifacts
+
+          run:
+            dir: stemmarest-sources/stemmarest
+            params:
+              MAVEN_OPTS: {{maven-opts}}
+            path: sh
+            args:
+            - -exc
+            - |
+              /usr/bin/mvn --batch-mode --quiet package
+              # copy results to output
+              /bin/cp target/stemmarest.war ../../artifacts/
+              /bin/cp build/server.xml ../../artifacts/
+              /bin/cp build/tomcat-users.xml ../../artifacts/
+              # set initial random password
+              /bin/sed -i s/CHANGE_THIS/`/usr/bin/pwgen 16`/ ../../artifacts/tomcat-users.xml
+              # also get Dockerfile for put: below
+              /bin/cp ../ci/resources/Dockerfile-stemmarest-final ../../artifacts/Dockerfile
+
+      # build docker image
+      - put: stemmarest-image
+        params:
+          # The path of a directory containing a Dockerfile to build.
+          build: artifacts/
+          tag: version/version

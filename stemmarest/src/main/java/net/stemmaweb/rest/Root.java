@@ -4,8 +4,10 @@ import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
+import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.*;
@@ -90,21 +92,42 @@ public class Root {
         }
 
         String tradId;
+        Response result = null;
         try {
-            tradId = this.createTradition(name, direction, language, is_public);
-            // TODO Failure after this point could leave a dangling tradition node.
-            this.linkUserToTradition(userId, tradId);
+            if (filetype != null && filetype.equals("graphml")) {
+                // Our own GraphML files describe an entire tradition, so the tradition node itself should
+                // be parsed from there rather than created here.
+                GraphMLParser p = new GraphMLParser(db);
+                result = p.parseGraphML(uploadedInputStream);
+                if (result.getStatus() != Response.Status.CREATED.getStatusCode())
+                    return result;
+                JSONObject response = new JSONObject(result.getEntity().toString());
+                tradId = String.valueOf(response.get("tradId"));
+            } else {
+                // Make the tradition node now, and save the ID.
+                tradId = this.createTradition(name, direction, language, is_public);
+            }
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(String.format("{\"error\":\"%s\"}", e.getMessage()))
-                    .build();
+            return Response.serverError().entity(String.format("{\"error\":\"%s\"}", e.getMessage())).build();
         }
 
-        // Parse file contents into a section, if we aren't trying to create an empty tradition
+        // Link the given user to the created tradition.
+        try {
+            this.linkUserToTradition(userId, tradId);
+        } catch (Exception e) {
+            new Tradition(tradId).deleteTraditionById();
+            return Response.serverError().entity(String.format("{\"error\":\"%s\"}", e.getMessage())).build();
+        }
+
+        // If we did the GraphML parsing already return.
+        if (result != null) return result;
+
+        // Otherwise we should treat the file contents as a single section of that tradition, and send it off
+        // for parsing.
         if (empty == null) {
             Tradition traditionService = new Tradition(tradId);
             Response dataResult = traditionService.addSection("DEFAULT",
-                    filetype, uploadedInputStream, fileDetail);
+                    filetype, uploadedInputStream);
             if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
                 // If something went wrong, delete the new tradition immediately and return the error.
                 traditionService.deleteTraditionById();
@@ -182,7 +205,7 @@ public class Root {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("Could not create a new tradition!");
+            return null;
         }
         return tradId;
     }
