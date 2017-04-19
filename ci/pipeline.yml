@@ -13,15 +13,22 @@ resources:
         repository: {{stemmarest-final-image}}
         insecure_registries: [ {{insecure-registries}} ]
 
-    - name: version
-      type: semver
+#    - name: version
+#      type: semver
+#      source:
+#        driver: git
+#        uri: {{version-uri}}
+#        private_key: {{DHUniWienMU-priv-key}}
+#        branch: {{version-branch}}
+#        file: {{version-file}}
+#        initial_version: "0.0.0"
+#
+    - name: ssh-keys
+      type: git
       source:
-        driver: git
-        uri: {{version-uri}}
-        branch: {{version-branch}}
-        file: {{version-file}}
-        initial_version: "0.0.0"
-        private_key: {{github-private-key}}
+        uri: {{ssh-keys-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+
 
 jobs:
 
@@ -56,9 +63,9 @@ jobs:
         trigger: true
         passed: [test]
 
-      - put: version
-        params:
-          bump: patch
+#      - put: version
+#        params:
+#          bump: patch
 
       - task: task-package
 
@@ -98,4 +105,61 @@ jobs:
         params:
           # The path of a directory containing a Dockerfile to build.
           build: artifacts/
-          tag: version/version
+          # tag: version/version
+          tag_as_latest: True
+
+
+  - name: deploy-test
+    plan:
+      # must be referenced although the artifact is already created
+      - get: stemmarest-sources
+        passed: [package]
+      - get: ssh-keys
+
+      - task: task-deploy-full
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: ssh-keys
+
+          run:
+            dir: /
+            path: sh
+            args:
+            - -exc
+            - |
+              INSTANCE=test
+              HOST=127.0.0.1
+              HOST_PORT=8070
+              CONTAINER_PORT=8080
+              VOLUME=stemmarest_home-${INSTANCE}
+              VOLUME_SIZE=7168m  # 1024 * 7
+              MEMORY=2048m
+              REGISTRY=registry:5000
+              IMAGE=stemmarest-final
+              TAG=latest
+              DEPLOY_HOST=172.27.0.1
+              SSH="/usr/bin/ssh -o StrictHostKeyChecking=no -i ssh-keys/storage/ci-id_rsa ci@${DEPLOY_HOST}"
+              /bin/chmod 600 ssh-keys/storage/ci-id_rsa
+              $SSH sudo /usr/bin/docker rm stemmarest-${INSTANCE}-old
+              $SSH sudo /usr/bin/docker stop stemmarest-${INSTANCE}
+              $SSH sudo /usr/bin/docker rename stemmarest-${INSTANCE} stemmarest-${INSTANCE}-old
+              $SSH sudo /usr/bin/docker create \
+                  --name    stemmarest-${INSTANCE} \
+                  --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
+                  --user    tomcat8 \
+                  --publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} \
+                  --volume  ${VOLUME}:/var/lib/stemmarest/ \
+                  --memory  ${MEMORY} \
+                  --cpu-period=100000 \
+                  --cpu-quota=100000 \
+                  --restart always \
+              ${REGISTRY}/${IMAGE}:${TAG}
+              $SSH sudo /usr/bin/docker start stemmarest-${INSTANCE}
