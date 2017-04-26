@@ -13,6 +13,12 @@ resources:
         repository: {{stemmarest-final-image}}
         insecure_registries: [ {{insecure-registries}} ]
 
+    - name: maven-config
+      type: git
+      source:
+        uri: {{maven-config-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+
 #    - name: version
 #      type: semver
 #      source:
@@ -34,8 +40,11 @@ jobs:
 
   - name: test
     plan:
-      - get: stemmarest-sources
-        trigger: true
+      - aggregate:
+        - get: stemmarest-sources
+          trigger: true
+        - get: maven-config
+          trigger: true
 
       - task: task-test
 
@@ -49,19 +58,28 @@ jobs:
 
           inputs:
             - name: stemmarest-sources
+            - name: maven-config
 
           run:
-            path: mvn
-            args: ["--batch-mode", "--quiet", "test"]
-            dir: stemmarest-sources/stemmarest
+            path: sh
+            args:
+              - -exc
+              - |
+                mkdir -p /root/.m2/
+                cp maven-config/settings.xml /root/.m2/
+                cd stemmarest-sources/stemmarest/
+                mvn --batch-mode --quiet test
             params:
               MAVEN_OPTS: {{maven-opts}}
 
   - name: package
     plan:
-      - get: stemmarest-sources
-        trigger: true
-        passed: [test]
+      - aggregate:
+        - get: stemmarest-sources
+          trigger: true
+          passed: [test]
+        - get: maven-config
+          trigger: true
 
 #      - put: version
 #        params:
@@ -79,19 +97,27 @@ jobs:
 
           inputs:
             - name: stemmarest-sources
+            - name: maven-config
           outputs:
             - name: artifacts
 
           run:
-            dir: stemmarest-sources/stemmarest
             params:
               MAVEN_OPTS: {{maven-opts}}
             path: sh
             args:
             - -exc
             - |
-              /usr/bin/mvn --batch-mode --quiet package
+              # fetch settings.xml
+              #
+              mkdir -p /root/.m2/
+              cp maven-config/settings.xml /root/.m2/
+              cd stemmarest-sources/stemmarest/
+              # run maven
+              #
+              /usr/bin/mvn package
               # copy results to output
+              #
               /bin/cp target/stemmarest.war ../../artifacts/
               /bin/cp build/server.xml ../../artifacts/
               /bin/cp build/tomcat-users.xml ../../artifacts/
@@ -111,12 +137,14 @@ jobs:
 
   - name: deploy-test
     plan:
-      # must be referenced although the artifact is already created
       - get: stemmarest-sources
+        # only trigger a -test instance!
+        trigger: true
         passed: [package]
+
       - get: ssh-keys
 
-      - task: task-deploy-full
+      - task: task-deploy-test
 
         config:
           platform: linux
