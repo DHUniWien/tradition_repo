@@ -173,3 +173,37 @@ jobs:
             args:
               - "stemmarest-sources/ci/resources/deploy.sh"
               - "stemmarest-config/deploy-test.sh"
+
+
+  - name: deploy-prod
+    plan:
+      - aggregate:
+        - get: stemmarest-image
+          passed: [package]
+        - get: stemmarest-sources
+        - get: stemmarest-config
+          trigger: true
+        - get: ssh-keys
+        - get: version
+
+      - task: task-deploy-prod
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: ssh-keys
+            - name: version
+            - name: stemmarest-config
+            - name: stemmarest-sources
+
+          run:
+            path: sh
+            args:
+              - "stemmarest-sources/ci/resources/deploy.sh"
+              - "stemmarest-config/deploy-prod.sh"
