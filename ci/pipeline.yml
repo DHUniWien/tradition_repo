@@ -19,16 +19,22 @@ resources:
         uri: {{maven-config-uri}}
         private_key: {{DHUniWienMU-priv-key}}
 
-#    - name: version
-#      type: semver
-#      source:
-#        driver: git
-#        uri: {{version-uri}}
-#        private_key: {{DHUniWienMU-priv-key}}
-#        branch: {{version-branch}}
-#        file: {{version-file}}
-#        initial_version: "0.0.0"
-#
+    - name: stemmarest-config
+      type: git
+      source:
+        uri: {{stemmarest-config-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+
+    - name: version
+      type: semver
+      source:
+        driver: git
+        uri: {{version-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+        branch: {{version-branch}}
+        file: {{version-file}}
+        initial_version: "0.0.0"
+
     - name: ssh-keys
       type: git
       source:
@@ -81,9 +87,9 @@ jobs:
         - get: maven-config
           trigger: true
 
-#      - put: version
-#        params:
-#          bump: patch
+      - put: version
+        params:
+          bump: patch
 
       - task: task-package
 
@@ -131,18 +137,19 @@ jobs:
         params:
           # The path of a directory containing a Dockerfile to build.
           build: artifacts/
-          # tag: version/version
+          tag: version/version
           tag_as_latest: True
 
 
   - name: deploy-test
     plan:
-      - get: stemmarest-sources
-        # only trigger a -test instance!
-        trigger: true
-        passed: [package]
-
-      - get: ssh-keys
+      - aggregate:
+        - get: stemmarest-image
+          passed: [package]
+          trigger: true
+        - get: stemmarest-sources
+        - get: ssh-keys
+        - get: version
 
       - task: task-deploy-test
 
@@ -156,38 +163,10 @@ jobs:
 
           inputs:
             - name: ssh-keys
+            - name: version
+            - name: stemmarest-config
+            - name: stemmarest-sources
 
           run:
-            dir: /
-            path: sh
-            args:
-            - -exc
-            - |
-              INSTANCE=test
-              HOST=127.0.0.1
-              HOST_PORT=8070
-              CONTAINER_PORT=8080
-              VOLUME=stemmarest_home-${INSTANCE}
-              VOLUME_SIZE=7168m  # 1024 * 7
-              MEMORY=2048m
-              REGISTRY=registry:5000
-              IMAGE=stemmarest-final
-              TAG=latest
-              DEPLOY_HOST=172.27.0.1
-              SSH="/usr/bin/ssh -o StrictHostKeyChecking=no -i ssh-keys/storage/ci-id_rsa ci@${DEPLOY_HOST}"
-              /bin/chmod 600 ssh-keys/storage/ci-id_rsa
-              $SSH sudo /usr/bin/docker rm stemmarest-${INSTANCE}-old
-              $SSH sudo /usr/bin/docker stop stemmarest-${INSTANCE}
-              $SSH sudo /usr/bin/docker rename stemmarest-${INSTANCE} stemmarest-${INSTANCE}-old
-              $SSH sudo /usr/bin/docker create \
-                  --name    stemmarest-${INSTANCE} \
-                  --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
-                  --user    tomcat8 \
-                  --publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} \
-                  --volume  ${VOLUME}:/var/lib/stemmarest/ \
-                  --memory  ${MEMORY} \
-                  --cpu-period=100000 \
-                  --cpu-quota=100000 \
-                  --restart always \
-              ${REGISTRY}/${IMAGE}:${TAG}
-              $SSH sudo /usr/bin/docker start stemmarest-${INSTANCE}
+            path: stemmarest-sources/ci/deploy.sh
+            args: ["stemmarest-config/deploy-test.sh"]
