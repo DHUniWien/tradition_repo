@@ -5,7 +5,7 @@ SSH_KEYS_DIR=ssh-keys
 
 . ${CONFIG_FILE}
 
-/bin/chmod 600 ${SSH_KEYS}/storage/ci-id_rsa
+/bin/chmod 600 ${SSH_KEYS_DIR}/storage/ci-id_rsa
 
 SSH="/usr/bin/ssh \
     -o StrictHostKeyChecking=no \
