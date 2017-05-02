@@ -148,6 +148,7 @@ jobs:
           passed: [package]
           trigger: true
         - get: stemmarest-sources
+        - get: stemmarest-config
         - get: ssh-keys
         - get: version
 
@@ -168,5 +169,7 @@ jobs:
             - name: stemmarest-sources
 
           run:
-            path: stemmarest-sources/ci/deploy.sh
-            args: ["stemmarest-config/deploy-test.sh"]
+            path: sh
+            args:
+              - "stemmarest-sources/ci/resources/deploy.sh"
+              - "stemmarest-config/deploy-test.sh"

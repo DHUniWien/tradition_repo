@@ -3,7 +3,7 @@
 CONFIG_FILE=$1
 SSH_KEYS_DIR=ssh-keys
 
-source ${CONFIG_FILE}
+. ${CONFIG_FILE}
 
 /bin/chmod 600 ${SSH_KEYS}/storage/ci-id_rsa
 
