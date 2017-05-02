@@ -12,3 +12,4 @@ Tests/*
 **/.DS_Store
 ci/pipeline-config.yml
 ci/git-ssh/
+*swp
