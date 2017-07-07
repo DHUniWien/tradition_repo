@@ -12,9 +12,20 @@ SSH="/usr/bin/ssh \
     -i ${SSH_KEYS_DIR}/storage/ci-id_rsa \
     ci@${DEPLOY_HOST}"
 
-$SSH sudo /usr/bin/docker stop stemmarest-${INSTANCE}
-$SSH sudo /usr/bin/docker rm stemmarest-${INSTANCE}
+# stop and delete running instance
+if [[ `$SSH sudo /usr/bin/docker ps --format "{{.Names}}" | grep ${NAME}` ]] ; then
+    echo "stop and remove running instance <${NAME}> ..."
+    $SSH sudo /usr/bin/docker stop stemmarest-${INSTANCE}
+    $SSH sudo /usr/bin/docker rm stemmarest-${INSTANCE}
+fi
 
+# create volume if it doesn't exist yet
+if [[ `$SSH sudo /usr/bin/docker volume ls | grep ${VOLUME}` ]] ; then
+    echo "create missing volume <${VOLUME}> ..."
+    $SSH sudo /usr/bin/docker volume create --name ${VOLUME}
+fi
+
+echo "create new container ..."
 $SSH sudo /usr/bin/docker create \
   --name    stemmarest-${INSTANCE} \
   --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
