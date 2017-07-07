@@ -12,15 +12,20 @@ SSH="/usr/bin/ssh \
     -i ${SSH_KEYS_DIR}/storage/ci-id_rsa \
     ci@${DEPLOY_HOST}"
 
-# stop and delete running instance
-if [[ `$SSH sudo /usr/bin/docker ps --format "{{.Names}}" | grep ${NAME}` ]] ; then
-    echo "stop and remove running instance <${NAME}> ..."
+INSTANCE_RUNNING=`$SSH sudo /usr/bin/docker ps --format "{{.Names}}" | grep -e "stemmarest-${INSTANCE}"`
+if [[ "${INSTANCE_RUNNING}" ]] ; then
+    echo "stop running instance <${NAME}> ..."
     $SSH sudo /usr/bin/docker stop stemmarest-${INSTANCE}
+fi
+
+INSTANCE_EXISTS=`$SSH sudo /usr/bin/docker ps -a --format "{{.Names}}" | grep -e "stemmarest-${INSTANCE}"`
+if [[ "${INSTANCE_EXISTS}" ]] ; then
+    echo "remove instance <${NAME}> ..."
     $SSH sudo /usr/bin/docker rm stemmarest-${INSTANCE}
 fi
 
-# create volume if it doesn't exist yet
-if [[ `$SSH sudo /usr/bin/docker volume ls | grep ${VOLUME}` ]] ; then
+VOLUME_EXISTS=`$SSH sudo /usr/bin/docker volume ls | awk "{print $2}" | grep -e "${VOLUME}"`
+if [[ ! "${VOLUME_EXISTS}" ]] ; then
     echo "create missing volume <${VOLUME}> ..."
     $SSH sudo /usr/bin/docker volume create --name ${VOLUME}
 fi
