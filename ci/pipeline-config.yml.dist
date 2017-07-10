@@ -13,3 +13,5 @@ version-branch:
 version-file: ci/version
 
 ssh-keys-uri:
+
+stemmarest-config-uri:

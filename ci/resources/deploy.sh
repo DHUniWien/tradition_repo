@@ -24,11 +24,19 @@ if [[ "${INSTANCE_EXISTS}" ]] ; then
     $SSH sudo /usr/bin/docker rm stemmarest-${INSTANCE}
 fi
 
+if [[ ! "${VOLUME}" ]] ; then
+    echo "prepare to use temporary volume"
+    VOLUME="temp_volume"
+fi
+
 VOLUME_EXISTS=`$SSH sudo /usr/bin/docker volume ls | awk "{print $2}" | grep -e "${VOLUME}"`
 if [[ ! "${VOLUME_EXISTS}" ]] ; then
     echo "create missing volume <${VOLUME}> ..."
     $SSH sudo /usr/bin/docker volume create --name ${VOLUME}
 fi
+
+echo "pull latest of <${REGISTRY}/${IMAGE}:${TAG}>"
+$SSH sudo /usr/bin/docker pull ${REGISTRY}/${IMAGE}:${TAG}
 
 echo "create new container ..."
 $SSH sudo /usr/bin/docker create \
