@@ -43,11 +43,17 @@ if [ -n "${HOST_PORT}" ] && [ -n "${CONTAINER_PORT}" ]; then
     EXTRA_OPTIONS+="--publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} "
 fi
 
+if [ -n "${CONTAINER_USER}" ]; then
+    EXTRA_OPTIONS+="--user ${CONTAINER_USER} "
+fi
+
+if [ -n "${CONTAINER_ENV}" ]; then
+    EXTRA_OPTIONS+="--env ${CONTAINER_ENV} "
+fi
+
 echo "create new container"
 $SSH sudo /usr/bin/docker create \
   --name    ${INSTANCE_NAME} \
-  --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
-  --user    tomcat8 \
   --memory  ${MEMORY} \
   --cpu-period=100000 \
   --cpu-quota=100000 \
