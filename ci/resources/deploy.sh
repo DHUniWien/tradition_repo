@@ -9,8 +9,8 @@ SSH="/usr/bin/ssh \
     -i ${SSH_KEYS_DIR}/storage/ci-id_rsa \
     ci@${DEPLOY_HOST}"
 
-INSTANCE_RUNNING=`$SSH sudo /usr/bin/docker ps --format "{{.Names}}" | grep -e "${INSTANCE_NAME}"`
-INSTANCE_RUNNING=`$SSH sudo /usr/bin/docker ps --format "{{.Names}}" | grep -e "${INSTANCE_NAME}"`
+EXTRA_OPTIONS=''
+
 INSTANCE_RUNNING=`$SSH sudo /usr/bin/docker ps --format "{{.Names}}" | grep -e "${INSTANCE_NAME}"`
 if [ "${INSTANCE_RUNNING}" ] ; then
     echo "stop running instance <${INSTANCE_NAME}> ..."
@@ -36,30 +36,23 @@ if [ -n "${VOLUME}" ] ; then
         $SSH sudo /usr/bin/docker volume create --name ${VOLUME}
     fi
 
-    echo "create new container with volume <${VOLUME}>..."
-    $SSH sudo /usr/bin/docker create \
-      --name    ${INSTANCE_NAME} \
-      --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
-      --user    tomcat8 \
-      --publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} \
-      --volume  ${VOLUME}:/var/lib/stemmarest/ \
-      --memory  ${MEMORY} \
-      --cpu-period=100000 \
-      --cpu-quota=100000 \
-      --restart always \
-    ${REGISTRY}/${IMAGE}:${TAG}
-else
-    echo "create new container with inline volume ..."
-    $SSH sudo /usr/bin/docker create \
-      --name    ${INSTANCE_NAME} \
-      --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
-      --user    tomcat8 \
-      --publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} \
-      --memory  ${MEMORY} \
-      --cpu-period=100000 \
-      --cpu-quota=100000 \
-      --restart always \
-    ${REGISTRY}/${IMAGE}:${TAG}
+    EXTRA_OPTIONS+="--volume ${VOLUME}:/var/lib/stemmarest/ "
 fi
+
+if [ -n "${HOST_PORT}" ] && [ -n "${CONTAINER_PORT}" ]; then
+    EXTRA_OPTIONS+="--publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} "
+fi
+
+echo "create new container"
+$SSH sudo /usr/bin/docker create \
+  --name    ${INSTANCE_NAME} \
+  --env     STEMMAREST_HOME=/var/lib/stemmarest/ \
+  --user    tomcat8 \
+  --memory  ${MEMORY} \
+  --cpu-period=100000 \
+  --cpu-quota=100000 \
+  --restart always \
+  $EXTRA_OPTIONS \
+${REGISTRY}/${IMAGE}:${TAG}
 
 $SSH sudo /usr/bin/docker start ${INSTANCE_NAME}
