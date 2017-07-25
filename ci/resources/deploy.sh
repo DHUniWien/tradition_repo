@@ -36,19 +36,19 @@ if [ -n "${VOLUME}" ] ; then
         $SSH sudo /usr/bin/docker volume create --name ${VOLUME}
     fi
 
-    EXTRA_OPTIONS+="--volume ${VOLUME}:/var/lib/stemmarest/ "
+    EXTRA_OPTIONS=${EXTRA_OPTIONS}" --volume ${VOLUME}:/var/lib/stemmarest/"
 fi
 
 if [ -n "${HOST_PORT}" ] && [ -n "${CONTAINER_PORT}" ]; then
-    EXTRA_OPTIONS+="--publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT} "
+    EXTRA_OPTIONS=${EXTRA_OPTIONS}" --publish ${HOST}:${HOST_PORT}:${CONTAINER_PORT}"
 fi
 
 if [ -n "${CONTAINER_USER}" ]; then
-    EXTRA_OPTIONS+="--user ${CONTAINER_USER} "
+    EXTRA_OPTIONS=${EXTRA_OPTIONS}" --user ${CONTAINER_USER}"
 fi
 
 if [ -n "${CONTAINER_ENV}" ]; then
-    EXTRA_OPTIONS+="--env ${CONTAINER_ENV} "
+    EXTRA_OPTIONS=${EXTRA_OPTIONS}" --env ${CONTAINER_ENV}"
 fi
 
 echo "create new container"
