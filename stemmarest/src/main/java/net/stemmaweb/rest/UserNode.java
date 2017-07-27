@@ -171,7 +171,7 @@ public class UserNode {
             }
 
             Iterable<String> objProperties = systemNode.getPropertyKeys();
-            Node node = db.createNode(DynamicLabel.label(label));
+            Node node = db.createNode(Label.label(label));
 
             for (String property : objProperties) {
                 if(!isSystemProperty(property)) {
@@ -223,7 +223,7 @@ public class UserNode {
 
             Set<String> objDataKeys = data.keySet();
             Object propValue = str2obj(propertyValue, (String)systemNode.getProperty(property));
-            Iterator objNodes = db.findNodes(DynamicLabel.label(label), property, propValue);
+            Iterator objNodes = db.findNodes(Label.label(label), property, propValue);
             while (objNodes.hasNext()) {
                 Node curNode = (Node)objNodes.next();
                 Iterable<String> sysProperties = systemNode.getPropertyKeys();
@@ -267,7 +267,7 @@ public class UserNode {
             if(systemNode == null) {
                 return Response.status(Status.NOT_FOUND).build();
             }
-            Iterator objNodes = db.findNodes(DynamicLabel.label(label));
+            Iterator objNodes = db.findNodes(Label.label(label));
             while (objNodes.hasNext()) {
                 JSONObject jsonObj = new JSONObject();
                 Node curNode = (Node)objNodes.next();
@@ -313,7 +313,7 @@ public class UserNode {
                 return Response.status(Status.NOT_FOUND).build();
             }
             Object propValue = str2obj(value, (String)systemNode.getProperty(property));
-            Iterator objNodes = db.findNodes(DynamicLabel.label(label), property, propValue);
+            Iterator objNodes = db.findNodes(Label.label(label), property, propValue);
             while (objNodes.hasNext()) {
                 Node curNode = (Node)objNodes.next();
                 Iterable<String> sysProperties = systemNode.getPropertyKeys();

@@ -25,6 +25,8 @@ import net.stemmaweb.services.DatabaseService;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
+//import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
+import org.neo4j.helpers.collection.Iterators; // Neo4j 3.x
 
 
 /**
