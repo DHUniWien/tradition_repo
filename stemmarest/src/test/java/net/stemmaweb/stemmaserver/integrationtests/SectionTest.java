@@ -439,15 +439,15 @@ public class SectionTest extends TestCase {
         Boolean spottedZ = false;
         Boolean sectionStartLabeled = false;
         Boolean sectionEndLabeled = false;
-        for (int i=0; i < dotLines.length; i++) {
-            assertFalse(dotLines[i].contains(wWord));
-            assertFalse(dotLines[i].contains(xWord));
-            assertFalse(dotLines[i].contains(yWord));
-            if (dotLines[i].contains(zWord))
+        for (String dotLine : dotLines) {
+            assertFalse(dotLine.contains(wWord));
+            assertFalse(dotLine.contains(xWord));
+            assertFalse(dotLine.contains(yWord));
+            if (dotLine.contains(zWord))
                 spottedZ = true;
-            if (dotLines[i].contains("#START#"))
+            if (dotLine.contains("#START#"))
                 sectionStartLabeled = true;
-            if (dotLines[i].contains("#START#"))
+            if (dotLine.contains("#START#"))
                 sectionEndLabeled = true;
         }
         assertTrue(spottedZ);

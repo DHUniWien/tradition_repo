@@ -369,7 +369,7 @@ public class DotExporter
 
         String joinString = singleLine ? "  " : "\n";
         String output = String.join(joinString, outputLines);
-        writeFromDot(output, "svg");
+        writeFromDot(output);
 
         return Response.ok(output).build();
     }
@@ -462,19 +462,18 @@ public class DotExporter
     }
 
 
-    private File writeFromDot(String dot, String format)
+    private void writeFromDot(String dot)
     {
         GraphViz gv = new GraphViz();
         gv.add(dot);
         File result;
         try {
-            result = File.createTempFile("graph_", "." + format);
+            result = File.createTempFile("graph_", ".svg");
         } catch (Exception e) {
-            System.out.println("Could not write " + format + " to temporary file");
-            return null;
+            System.out.println("Could not write " + "svg" + " to temporary file");
+            return;
         }
-        gv.writeGraphToFile(gv.getGraph(gv.getDotSource(), format), result);
-        return result;
+        gv.writeGraphToFile(gv.getGraph(gv.getDotSource(), "svg"), result);
     }
 
 }
