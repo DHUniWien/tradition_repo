@@ -59,7 +59,11 @@ public class DotExporter
         return text;
     }
 
-    public Response parseNeo4J(String tradId, Boolean includeRelatedRelationships)
+    public Response parseNeo4J(String tradId, Boolean includeRelatedRelationships) {
+        return parseNeo4J(tradId, null, includeRelatedRelationships);
+    }
+
+    public Response parseNeo4J(String tradId, String sectionId, Boolean includeRelatedRelationships)
     {
         // Get the start and end node of the whole tradition
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
@@ -69,13 +73,10 @@ public class DotExporter
             return Response.status(Status.NOT_FOUND).build();
         }
 
-        // Get the section nodess, if there are any - otherwise get tradition node
+        // Get the list of section nodes
         ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
-        }
-        if (sections.size() == 0) {
-            sections.add(traditionNode);
         }
 
         File output;
@@ -96,16 +97,32 @@ public class DotExporter
             // Set node and edge visual defaults
             write("\tnode [fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"];\n");
             write("\tedge [arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"];\n");
-            // HACK - set the subgraph and the silent node that keeps the graph straight
-            write("\tsubgraph { rank=same \"n" + startNode.getId() + "\" \"#SILENT#\" }\n");
-            write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
             long edgeId = 0;
             long global_rank = 0;
+            Boolean subgraphWritten = false;
             Hashtable<String, Long[]> knownWitnesses = new Hashtable<>();
 
             for (Node sectionNode: sections) {
+                // Did we request a specific section? If so, put out only that section.
+                if (sectionId != null && !String.valueOf(sectionNode.getId()).equals(sectionId))
+                    continue;
+
                 Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
                 Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
+                // If we have requested a section, then that section's start and end are "the" start and end
+                // for the whole graph.z
+                if (sectionId != null) {
+                    startNode = sectionStartNode;
+                    endNode = sectionEndNode;
+                }
+                // HACK - now that we know which node is functioning as the start node, set the subgraph and
+                // the silent node that keeps the graph straight. Make sure we only do this once.
+                if (!subgraphWritten) {
+                    write("\tsubgraph { rank=same \"n" + startNode.getId() + "\" \"#SILENT#\" }\n");
+                    write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
+                    subgraphWritten = true;
+                }
+
                 for (Node node :  db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
@@ -138,20 +155,20 @@ public class DotExporter
 
                         if (!relStartNode.equals(sectionStartNode)) {
                             String[] witnesses = {""};
-                            String lex_str = "";
+                            StringBuilder lex_str = new StringBuilder();
                             if (rel.hasProperty("witnesses")) {
                                 witnesses = (String[]) rel.getProperty("witnesses");
                                 Arrays.sort(witnesses);
                             }
                             Iterator<String> it = Arrays.asList(witnesses).iterator();
                             while (it.hasNext()) {
-                                lex_str += it.next();
+                                lex_str.append(it.next());
                                 if (it.hasNext()) {
-                                    lex_str += ",";
+                                    lex_str.append(",");
                                 }
                             }
 
-                            write(relshipText(relStartNodeId, node.getId(), lex_str, edgeId++, calcPenWidth(lex_str), 1L));
+                            write(relshipText(relStartNodeId, node.getId(), lex_str.toString(), edgeId++, calcPenWidth(lex_str.toString()), 1L));
                         } else {
                             Hashtable<Long, String> sectionWitnesses = new Hashtable<>();
                             Hashtable<Long, Long> sectionRanks = new Hashtable<>();
