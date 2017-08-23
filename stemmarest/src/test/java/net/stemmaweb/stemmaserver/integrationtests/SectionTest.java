@@ -405,6 +405,55 @@ public class SectionTest extends TestCase {
         assertEquals(bText, Util.getValueFromJson(jerseyResponse, "text"));
     }
 
+    public void testSectionDotOutput() {
+        String florId = importFlorilegium();
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+
+        String targetSection = returnedSections.get(3).getId();
+
+        String getDot = "/tradition/" + florId + "/dot";
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path(getDot)
+                .type(MediaType.TEXT_PLAIN)
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        // Do a basic sanity check of the dot file - does it have the right number of lines?
+        String[] dotLines = jerseyResult.getEntity(String.class).split("\n");
+        assertEquals(646, dotLines.length);
+
+        String wWord = "Μαξίμου";
+        String xWord = "βλασφημεῖται";
+        String yWord = "συντυχίας";
+        String zWord = "βλασφημοῦντος";
+
+        String getSectionDot = "/tradition/" + florId + "/section/" + targetSection + "/dot";
+        jerseyResult = jerseyTest.resource()
+                .path(getSectionDot)
+                .type(MediaType.TEXT_PLAIN)
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        dotLines = jerseyResult.getEntity(String.class).split("\n");
+        assertEquals(120, dotLines.length);
+        Boolean spottedZ = false;
+        Boolean sectionStartLabeled = false;
+        Boolean sectionEndLabeled = false;
+        for (String dotLine : dotLines) {
+            assertFalse(dotLine.contains(wWord));
+            assertFalse(dotLine.contains(xWord));
+            assertFalse(dotLine.contains(yWord));
+            if (dotLine.contains(zWord))
+                spottedZ = true;
+            if (dotLine.contains("#START#"))
+                sectionStartLabeled = true;
+            if (dotLine.contains("#START#"))
+                sectionEndLabeled = true;
+        }
+        assertTrue(spottedZ);
+        assertTrue(sectionStartLabeled);
+        assertTrue(sectionEndLabeled);
+    }
 
     @After
     public void tearDown() throws Exception {

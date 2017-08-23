@@ -98,10 +98,17 @@ public class StemmaTest {
                 });
         assertEquals(2, stemmata.size());
 
+        StemmaModel firstStemma = stemmata.get(0);
+        StemmaModel secondStemma = stemmata.get(1);
+        if (!firstStemma.getIdentifier().equals("stemma")) {
+            firstStemma = stemmata.get(1);
+            secondStemma = stemmata.get(0);
+        }
+
         String expected = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
                 + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; \n}";
-        StemmaModel firstStemma = stemmata.get(0);
+
         Util.assertStemmasEquivalent(expected, firstStemma.getDot());
         assertEquals("stemma", firstStemma.getIdentifier());
         assertFalse(firstStemma.getIs_undirected());
@@ -109,7 +116,6 @@ public class StemmaTest {
         String expected2 = "graph \"Semstem 1402333041_0\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
                 + "C [ class=extant ]; 0 -- A;  A -- B;  B -- C; \n}";
-        StemmaModel secondStemma = stemmata.get(1);
         Util.assertStemmasEquivalent(expected2, secondStemma.getDot());
         assertEquals("Semstem 1402333041_0", secondStemma.getIdentifier());
         assertTrue(secondStemma.getIs_undirected());

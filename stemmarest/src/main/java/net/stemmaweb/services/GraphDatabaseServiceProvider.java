@@ -5,6 +5,8 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.shell.ShellSettings;
 
+import java.io.File;
+
 /**
  * Creates a global DatabaseService provider, which holds a reference to the
  * database in use.
@@ -23,7 +25,7 @@ public class GraphDatabaseServiceProvider {
     public GraphDatabaseServiceProvider(String db_location) {
 
         GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-        db = dbFactory.newEmbeddedDatabaseBuilder(db_location)
+        db = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location))
                     .setConfig(ShellSettings.remote_shell_enabled, "true")
                     .setConfig(ShellSettings.remote_shell_port, "1337")
                     .newGraphDatabase();

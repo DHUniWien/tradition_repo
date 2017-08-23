@@ -13,22 +13,44 @@ resources:
         repository: {{stemmarest-final-image}}
         insecure_registries: [ {{insecure-registries}} ]
 
+    - name: maven-config
+      type: git
+      source:
+        uri: {{maven-config-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+
+    - name: stemmarest-config
+      type: git
+      source:
+        uri: {{stemmarest-config-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+
     - name: version
       type: semver
       source:
         driver: git
         uri: {{version-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
         branch: {{version-branch}}
         file: {{version-file}}
         initial_version: "0.0.0"
-        private_key: {{github-private-key}}
+
+    - name: ssh-keys
+      type: git
+      source:
+        uri: {{ssh-keys-uri}}
+        private_key: {{DHUniWienMU-priv-key}}
+
 
 jobs:
 
   - name: test
     plan:
-      - get: stemmarest-sources
-        trigger: true
+      - aggregate:
+        - get: stemmarest-sources
+          trigger: true
+        - get: maven-config
+          trigger: true
 
       - task: task-test
 
@@ -42,19 +64,28 @@ jobs:
 
           inputs:
             - name: stemmarest-sources
+            - name: maven-config
 
           run:
-            path: mvn
-            args: ["--batch-mode", "--quiet", "test"]
-            dir: stemmarest-sources/stemmarest
+            path: sh
+            args:
+              - -exc
+              - |
+                mkdir -p /root/.m2/
+                cp maven-config/settings.xml /root/.m2/
+                cd stemmarest-sources/stemmarest/
+                mvn --batch-mode --quiet test
             params:
               MAVEN_OPTS: {{maven-opts}}
 
   - name: package
     plan:
-      - get: stemmarest-sources
-        trigger: true
-        passed: [test]
+      - aggregate:
+        - get: stemmarest-sources
+          trigger: true
+          passed: [test]
+        - get: maven-config
+          trigger: true
 
       - put: version
         params:
@@ -72,19 +103,27 @@ jobs:
 
           inputs:
             - name: stemmarest-sources
+            - name: maven-config
           outputs:
             - name: artifacts
 
           run:
-            dir: stemmarest-sources/stemmarest
             params:
               MAVEN_OPTS: {{maven-opts}}
             path: sh
             args:
             - -exc
             - |
-              /usr/bin/mvn --batch-mode --quiet package
+              # fetch settings.xml
+              #
+              mkdir -p /root/.m2/
+              cp maven-config/settings.xml /root/.m2/
+              cd stemmarest-sources/stemmarest/
+              # run maven
+              #
+              /usr/bin/mvn package
               # copy results to output
+              #
               /bin/cp target/stemmarest.war ../../artifacts/
               /bin/cp build/server.xml ../../artifacts/
               /bin/cp build/tomcat-users.xml ../../artifacts/
@@ -99,3 +138,71 @@ jobs:
           # The path of a directory containing a Dockerfile to build.
           build: artifacts/
           tag: version/version
+          tag_as_latest: True
+
+
+  - name: deploy-test
+    plan:
+      - aggregate:
+        - get: stemmarest-image
+          passed: [package]
+          trigger: true
+        - get: stemmarest-sources
+        - get: stemmarest-config
+        - get: ssh-keys
+        - get: version
+
+      - task: task-deploy-test
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: ssh-keys
+            - name: version
+            - name: stemmarest-config
+            - name: stemmarest-sources
+
+          run:
+            path: sh
+            args:
+              - "stemmarest-sources/ci/resources/deploy.sh"
+              - "stemmarest-config/deploy-test.sh"
+
+
+  - name: deploy-prod
+    plan:
+      - aggregate:
+        - get: stemmarest-image
+          passed: [package]
+        - get: stemmarest-sources
+        - get: stemmarest-config
+        - get: ssh-keys
+        - get: version
+
+      - task: task-deploy-prod
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: ssh-keys
+            - name: version
+            - name: stemmarest-config
+            - name: stemmarest-sources
+
+          run:
+            path: sh
+            args:
+              - "stemmarest-sources/ci/resources/deploy.sh"
+              - "stemmarest-config/deploy-prod.sh"

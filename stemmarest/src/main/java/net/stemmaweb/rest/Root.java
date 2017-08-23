@@ -1,5 +1,9 @@
 package net.stemmaweb.rest;
 
+// When we want to switch to Jersey 2.x
+//import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+//import org.glassfish.jersey.media.multipart.FormDataParam;
+
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
@@ -31,7 +35,7 @@ import java.util.UUID;
 public class Root {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
-
+    
     /**
      * Delegated API calls
      */

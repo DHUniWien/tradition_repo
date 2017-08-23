@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
@@ -398,6 +399,26 @@ public class Section {
         }
         return Response.ok().build();
     }
+
+    // Export the dot / SVG for a particular section
+    /**
+     * Returns DOT file from specified tradition owned by user
+     *
+     * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
+     * @return Plaintext dot format
+     */
+    @GET
+    @Path("/dot")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
+        if (DatabaseService.getTraditionNode(tradId, db) == null)
+            return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
+
+        DotExporter parser = new DotExporter(db);
+        return parser.parseNeo4J(tradId, sectId, includeRelatedRelationships);
+    }
+
+    // Export a list of variants for a section
 
     // For use in a transaction!
     private void removeFromSequence (Node thisSection) {

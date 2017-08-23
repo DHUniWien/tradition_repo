@@ -1,6 +1,5 @@
 FROM tomcat:8.0-jre8
-LABEL maintainer=ops@dh.univie.ac.at \
-      vendor=DHUniWien \
+LABEL vendor=DHUniWien
 
 RUN apt-get update && apt-get install --yes \
     graphviz \

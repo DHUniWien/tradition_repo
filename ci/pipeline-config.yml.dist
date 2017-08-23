@@ -5,8 +5,13 @@ insecure-registries:
 stemmarest-test-image:
 stemmarest-final-image:
 
+maven-config-uri:
 maven-opts: --batch-mode --quiet
 
 version-uri:
 version-branch:
 version-file: ci/version
+
+ssh-keys-uri:
+
+stemmarest-config-uri:

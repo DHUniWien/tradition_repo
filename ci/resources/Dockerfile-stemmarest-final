@@ -1,4 +1,4 @@
-FROM 172.27.0.2:5000/stemmarest-final-base
+FROM registry:5000/stemmarest-final-base
 
 COPY stemmarest.war /usr/local/tomcat/webapps/
 COPY server.xml /usr/local/tomcat/conf/
