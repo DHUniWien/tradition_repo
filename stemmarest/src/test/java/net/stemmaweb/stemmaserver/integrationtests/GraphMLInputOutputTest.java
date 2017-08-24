@@ -62,7 +62,8 @@ public class GraphMLInputOutputTest extends TestCase {
                 .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
         String graphML = r.getEntity(String.class);
 
-        jerseyTest.resource().path("/tradition/" + tradId).delete(ClientResponse.class);
+        r = jerseyTest.resource().path("/tradition/" + tradId).delete(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), r.getStatus());
         r = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
                 "me@example.org", graphML, "graphml");
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), r.getStatus());

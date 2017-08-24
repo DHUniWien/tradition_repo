@@ -552,14 +552,6 @@ public class TraditionTest {
      */
     @Test
     public void deleteTraditionCompletelyTest() {
-        // count the total number of nodes
-        AtomicInteger numNodes = new AtomicInteger(0);
-        try (Transaction tx = db.beginTx()) {
-            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.success();
-        }
-        int originalNodeCount = numNodes.get();
-
         // create a new user
         UserModel userModel = new UserModel();
         userModel.setId("user@example.org");
@@ -569,6 +561,14 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, userModel);
         assertEquals(Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
+
+        // count the total number of nodes
+        AtomicInteger numNodes = new AtomicInteger(0);
+        try (Transaction tx = db.beginTx()) {
+            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.success();
+        }
+        int originalNodeCount = numNodes.get();
 
         // upload the florilegium
         String florId = null;
@@ -662,7 +662,7 @@ public class TraditionTest {
             db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
             tx.success();
         }
-        assertEquals(originalNodeCount + 1, numNodes.get());
+        assertEquals(originalNodeCount, numNodes.get());
     }
 
     /**

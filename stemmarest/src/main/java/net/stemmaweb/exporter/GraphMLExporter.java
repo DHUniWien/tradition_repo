@@ -181,10 +181,15 @@ public class GraphMLExporter {
             writer.writeAttribute("parse.nodes", String.valueOf(nodeCount));
             writer.writeAttribute("parse.order", "nodesfirst");
 
-            // Now list out all the nodes
-            traditionNodes.forEach(x -> writeNode(writer, x));
+            // Now list out all the nodes, checking against duplicates in the traversal
+            HashSet<Long> addedNodes = new HashSet<>();
+            for (Node n : traditionNodes)
+                if (!addedNodes.contains(n.getId())) {
+                    writeNode(writer, n);
+                    addedNodes.add(n.getId());
+                }
 
-            // And list out all the edges
+            // And list out all the edges, which were unique in the traversal
             traditionEdges.forEach(x -> writeEdge(writer, x));
 
 

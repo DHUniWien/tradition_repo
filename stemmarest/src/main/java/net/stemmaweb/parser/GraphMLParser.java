@@ -71,7 +71,7 @@ public class GraphMLParser {
                         entityMap.values().forEach(Node::delete);
                         // ...and get out of here.
                         return Response.status(Response.Status.CONFLICT).entity("A tradition with ID " + tradId
-                                + "already exists").build();
+                                + " already exists").build();
                     }
                 }
 
