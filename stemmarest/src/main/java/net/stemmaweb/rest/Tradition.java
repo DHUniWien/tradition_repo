@@ -139,15 +139,19 @@ public class Tradition {
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream) throws IOException {
-        // Make a new section node to connect to the tradition in question
-        Node sectionNode;
+        // Make a new section node to connect to the tradition in question. But if we are
+        // parsing our own GraphML, the section node(s) should be created according to the
+        // XML data therein, and not here.
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-        try (Transaction tx = db.beginTx()) {
-            sectionNode = db.createNode(Nodes.SECTION);
-            sectionNode.setProperty("name", sectionName);
-            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-            tx.success();
+        Node sectionNode = traditionNode;
+        if (!filetype.equals("graphml")) {
+            try (Transaction tx = db.beginTx()) {
+                sectionNode = db.createNode(Nodes.SECTION);
+                sectionNode.setProperty("name", sectionName);
+                traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
+                tx.success();
+            }
         }
 
         // Parse the contents of the given file into that section
@@ -170,6 +174,8 @@ public class Tradition {
         if (filetype.equals("stemmaweb"))
             // Pass it off to the somewhat legacy GraphML parser
             result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode);
+        if (filetype.equals("graphml"))
+            result = new GraphMLParser().parseGraphML(uploadedInputStream, traditionNode);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
@@ -178,8 +184,8 @@ public class Tradition {
             // If the result wasn't a success, delete the section node before returning the result.
             Section restSect = new Section(traditionId, String.valueOf(sectionNode.getId()));
             restSect.deleteSection();
-        } else {
-            // Otherwise, link this section behind the last of the prior sections.
+        } else if (!filetype.equals("graphml")){
+            // Otherwise, if we haven't already, link this section behind the last of the prior sections.
             if (existingSections != null && existingSections.size() > 0) {
                 SectionModel ls = existingSections.get(existingSections.size() - 1);
                 try (Transaction tx = db.beginTx()) {

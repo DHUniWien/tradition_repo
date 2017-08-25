@@ -2,6 +2,8 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.w3c.dom.*;
@@ -16,14 +18,10 @@ import java.util.*;
  * Created by tla on 17/02/2017.
  */
 public class GraphMLParser {
+    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    private GraphDatabaseService db;
-
-    public GraphMLParser(GraphDatabaseService db) {
-        this.db = db;
-    }
-
-    public Response parseGraphML(InputStream filestream)
+    public Response parseGraphML(InputStream filestream, Node traditionNode)
     {
         // We will use a DOM parser for this
         Document doc = Util.openFileStream(filestream);
@@ -44,12 +42,15 @@ public class GraphMLParser {
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), dataInfo);
         }
 
-        String tradId = null;
+        String parentId = null;
+        ArrayList<Node> sectionNodes = new ArrayList<>();
         // Keep track of XML ID to Neo4J ID mapping for all nodes
         HashMap<String, Node> entityMap = new HashMap<>();
 
         // Now get to work with node and relationship creation.
         try (Transaction tx = db.beginTx()) {
+            // The UUID of the tradition that was passed in for parsing
+            String tradId = traditionNode.getProperty("id").toString();
             NodeList entityNodes = rootEl.getElementsByTagName("node");
             for (int i = 0; i < entityNodes.getLength(); i++) {
                 org.w3c.dom.Node entityXML = entityNodes.item(i);
@@ -62,27 +63,45 @@ public class GraphMLParser {
                 String neolabel = nodeProperties.remove("neolabel").toString();
                 String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
 
-                // Check for a duplicate tradition ID
+                // If there is already a different tradition with this tradition ID, we are making a
+                // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
+                // node to match the one in the GraphML.
                 if (neolabel.contains("TRADITION")) {
-                    tradId = nodeProperties.get("id").toString();
-                    Node existingTradition = db.findNode(Nodes.TRADITION, "id", tradId);
-                    if (existingTradition != null) {
-                        // Delete any nodes we already created
+                    if (parentId != null) {
+                        // We apparently have two TRADITION nodes. Abort.
                         entityMap.values().forEach(Node::delete);
-                        // ...and get out of here.
-                        return Response.status(Response.Status.CONFLICT).entity("A tradition with ID " + tradId
-                                + " already exists").build();
+                        tx.success();
+                        return Response.status(Response.Status.BAD_REQUEST)
+                                .entity("Multiple TRADITION nodes in input").build();
                     }
-                }
 
-                // Now we have the information of the XML, we can create the node.
-                Node entity = db.createNode();
-                for (String l : entityLabel)
-                    entity.addLabel(Nodes.valueOf(l));
-                nodeProperties.forEach(entity::setProperty);
-                entityMap.put(xmlId, entity);
-                // Was it the tradition node?
-            }
+                    String fileTraditionId = nodeProperties.get("id").toString();
+                    Node existingTradition = db.findNode(Nodes.TRADITION, "id", fileTraditionId);
+                    if (existingTradition == null) {
+                        traditionNode.setProperty("id", fileTraditionId);
+                        tradId = fileTraditionId;
+                    } // else there is another tradition with the original ID, so this is a duplicate
+                      // and needs its new ID.
+
+                    // This node is already created, but we need to reset its properties according to
+                    // what is in the GraphML file. We also save this ID as the parent ID that was created.
+                    for (String p : nodeProperties.keySet())
+                        if (!p.equals("id"))
+                            traditionNode.setProperty(p, nodeProperties.get(p));
+                    parentId = tradId;
+                    entityMap.put(xmlId, traditionNode);
+                } else {
+                    // Now we have the information of the XML, we can create the node.
+                    Node entity = db.createNode();
+                    for (String l : entityLabel)
+                        entity.addLabel(Nodes.valueOf(l));
+                    nodeProperties.forEach(entity::setProperty);
+                    entityMap.put(xmlId, entity);
+                    // Save section node(s), in case we are uploading individual sections and need to connect
+                    // them to our tradition node
+                    if (neolabel.contains("SECTION")) sectionNodes.add(entity);
+                }
+             }
 
             // Next go through all the edges and create them between the nodes.
             NodeList edgeNodes = rootEl.getElementsByTagName("edge");
@@ -100,13 +119,32 @@ public class GraphMLParser {
                 Relationship newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
                 edgeProperties.forEach(newRel::setProperty);
             }
+
+            // Connect any sections to an existing tradition node, and to each other, if we didn't encounter
+            // a tradition node.
+            if (parentId == null) {
+                ArrayList<Node> existingSections = DatabaseService.getSectionNodes(tradId, db);
+                Node lastExisting = null;
+                if (existingSections != null) lastExisting = existingSections.get(existingSections.size() - 1);
+                for (Node s : sectionNodes) {
+                    parentId = String.valueOf(s.getId());
+                    traditionNode.createRelationshipTo(s, ERelations.PART);
+                    if (lastExisting != null)
+                        lastExisting.createRelationshipTo(s, ERelations.NEXT);
+                    lastExisting = s;
+                }
+            }
+
+            // Sanity check: if we created any relationship-less nodes, delete them again.
+            entityMap.values().stream().filter(n -> !n.hasRelationship()).forEach(Node::delete);
+
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
         }
 
-        String response = String.format("{\"tradId\":\"%s\"}", tradId);
+        String response = String.format("{\"parentId\":\"%s\"}", parentId);
         return Response.status(Response.Status.CREATED).entity(response).build();
     }
 

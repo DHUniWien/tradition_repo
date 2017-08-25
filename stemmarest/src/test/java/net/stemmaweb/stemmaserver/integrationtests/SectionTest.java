@@ -147,13 +147,9 @@ public class SectionTest extends TestCase {
     }
 
     private String importFlorilegium () {
-        ClientResponse jerseyResult = null;
-        try {
-            jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
                     "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
-        } catch (Exception e) {
-            fail();
-        }
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         String florId = Util.getValueFromJson(jerseyResult, "tradId");
         // Get the existing single section ID
         SectionModel firstSection = jerseyTest.resource().path("/tradition/" + tradId + "/sections")

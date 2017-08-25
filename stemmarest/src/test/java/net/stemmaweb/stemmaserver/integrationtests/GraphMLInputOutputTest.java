@@ -66,7 +66,8 @@ public class GraphMLInputOutputTest extends TestCase {
 
         r = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
                 "me@example.org", graphML, "graphml");
-        assertEquals(ClientResponse.Status.CONFLICT.getStatusCode(), r.getStatus());
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), r.getStatus());
+        assertFalse(tradId.equals(Util.getValueFromJson(r, "tradId")));
     }
 
     public void testXMLInput() throws Exception {
@@ -174,6 +175,8 @@ public class GraphMLInputOutputTest extends TestCase {
     }
 
     // testXMLInputMultiSection
+
+    // testXMLInputMultiSectionWithWitnesses
 
     // testXMLUserNodes
 
