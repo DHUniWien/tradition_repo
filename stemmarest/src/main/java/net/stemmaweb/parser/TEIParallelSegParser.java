@@ -1,10 +1,7 @@
 package net.stemmaweb.parser;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
-import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -201,8 +198,8 @@ public class TEIParallelSegParser {
             e.printStackTrace();
             return Response.serverError().build();
         }
-        Tradition t = new Tradition(tradId);
-        for (List<ReadingModel> identSet : t.collectIdenticalReadings(0, endRank)) {
+        Section s = new Section(tradId, parentId);
+        for (List<ReadingModel> identSet : s.collectIdenticalReadings(0, endRank)) {
             ReadingModel first = identSet.remove(0);
             Reading rd = new Reading(first.getId());
             for (ReadingModel identical : identSet) {

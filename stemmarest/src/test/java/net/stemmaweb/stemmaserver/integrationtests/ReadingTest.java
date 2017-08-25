@@ -1,15 +1,12 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.CharacterModel;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.KeyPropertyModel;
-import net.stemmaweb.model.ReadingChangePropertyModel;
-import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
@@ -52,6 +49,7 @@ import static org.junit.Assert.*;
 public class ReadingTest {
 
     private String tradId;
+    private String sectId;
 
     private String expectedWitnessA = "{\"text\":\"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
     private String expectedWitnessB = "{\"text\":\"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
@@ -91,6 +89,9 @@ public class ReadingTest {
                 "src/TestFiles/ReadingstestTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
+        List<SectionModel> testSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        sectId = testSections.get(0).getId();
     }
 
     /**
@@ -1287,11 +1288,9 @@ public class ReadingTest {
         assertEquals(29, listOfReadings.size());
 
         String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-        String text = "";
-        for (ReadingModel listOfReading : listOfReadings) {
-            text += listOfReading.getText() + " ";
-        }
-        assertEquals(expectedTest, text.trim());
+        List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
+        String text = String.join(" ", words);
+        assertEquals(expectedTest, text);
 
         int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10, 10, 11,
                 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 21 };
@@ -1318,7 +1317,7 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/identicalreadings/3/8")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/3/8")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(1, listOfIdenticalReadings.size());
         identicalReadings = listOfIdenticalReadings.get(0);
@@ -1335,7 +1334,7 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/identicalreadings/1/8")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/1/8")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(2, listOfIdenticalReadings.size());
 
@@ -1355,7 +1354,7 @@ public class ReadingTest {
     public void identicalReadingsNoResultTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/identicalreadings/10/15")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/10/15")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
@@ -1367,7 +1366,7 @@ public class ReadingTest {
     public void couldBeIdenticalReadingsTest() {
         List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/mergeablereadings/1/15")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/mergeablereadings/1/15")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(2, couldBeIdenticalReadings.size());
 
@@ -1386,7 +1385,7 @@ public class ReadingTest {
     public void couldBeIdenticalReadingsNoResultTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/mergeablereadings/2/8")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/mergeablereadings/2/8")
                 .get(ClientResponse.class);
 
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
@@ -1443,11 +1442,9 @@ public class ReadingTest {
 
             // tradition still has all the texts
             String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-            String text = "";
-            for (ReadingModel listOfReading : listOfReadings) {
-                text += listOfReading.getText() + " ";
-            }
-            assertEquals(expectedTest, text.trim());
+            List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
+            String text = String.join(" ", words);
+            assertEquals(expectedTest, text);
 
             // no more reading with rank 6
             int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
@@ -1509,11 +1506,9 @@ public class ReadingTest {
 
             // tradition still has all the texts
             String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-            String text = "";
-            for (ReadingModel listOfReading : listOfReadings) {
-                text += listOfReading.getText() + " ";
-            }
-            assertEquals(expectedTest, text.trim());
+            List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
+            String text = String.join(" ", words);
+            assertEquals(expectedTest, text);
 
             // no more reading with rank 6
             int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
@@ -1762,10 +1757,7 @@ public class ReadingTest {
     public void nextReadingTest() {
         long withReadId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'with'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            withReadId = nodes.next().getId();
+            withReadId = db.findNodes(Nodes.READING, "text", "with").next().getId();
             tx.success();
         }
 
@@ -1807,10 +1799,7 @@ public class ReadingTest {
     public void nextReadingLastNodeTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'the root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            readId = nodes.next().getId();
+            readId = db.findNode(Nodes.READING, "text", "the root").getId();
             tx.success();
         }
 
