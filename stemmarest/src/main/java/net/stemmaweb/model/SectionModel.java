@@ -5,6 +5,8 @@ import javax.xml.bind.annotation.XmlRootElement;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -20,6 +22,7 @@ public class SectionModel {
     private String id;
     private String name;
     private String language;
+    private Long endRank;
 
     public SectionModel() {
     }
@@ -35,6 +38,8 @@ public class SectionModel {
                 setName(node.getProperty("name").toString());
             if (node.hasProperty("language"))
                 setLanguage(node.getProperty("language").toString());
+            Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
+            setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
             tx.success();
         }
@@ -57,5 +62,11 @@ public class SectionModel {
     }
     public void setLanguage(String language) {
         this.language = language;
+    }
+    public Long getEndRank() {
+        return endRank;
+    }
+    private void setEndRank(Long rank) {
+        this.endRank = rank;
     }
 }

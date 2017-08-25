@@ -82,6 +82,8 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<List<SectionModel>>() {});
         assertEquals(2, tSections.size());
         assertEquals("section 2", tSections.get(1).getName());
+        Long expectedRank = 22L;
+        assertEquals(expectedRank, tSections.get(1).getEndRank());
 
         String aText = "quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magis " +
                 "magisque illustrabatur iugiter ac informabatur Sanctus autem";
