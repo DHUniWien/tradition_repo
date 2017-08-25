@@ -85,35 +85,20 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             Node foundSection = db.getNodeById(Long.valueOf(sectId));
             if (foundSection != null) {
-                Node traditionNode = foundSection.getSingleRelationship(ERelations.PART, Direction.INCOMING)
-                        .getStartNode();
-                if (traditionNode != null &&
-                        traditionNode.getProperty("id").toString().equals(tradId)) {
-                    // Find the section either side of this one and connect them if necessary.
-                    removeFromSequence(foundSection);
-                    // Remove everything to do with this section.
-                    Set<Relationship> removableRelations = new HashSet<>();
-                    Set<Node> removableNodes = new HashSet<>();
-                    db.traversalDescription()
-                            .depthFirst()
-                            .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                            .relationships(ERelations.COLLATION, Direction.OUTGOING)
-                            .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                            .relationships(ERelations.HAS_END, Direction.OUTGOING)
-                            .relationships(ERelations.RELATED, Direction.OUTGOING)
-                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                            .traverse(foundSection)
-                            .nodes().forEach(x -> {
-                        x.getRelationships().forEach(removableRelations::add);
-                        removableNodes.add(x);
-                    });
+                // Find the section either side of this one and connect them if necessary.
+                removeFromSequence(foundSection);
+                // Collect all nodes and relationships that belong to this section.
+                Set<Relationship> removableRelations = new HashSet<>();
+                Set<Node> removableNodes = new HashSet<>();
+                DatabaseService.returnTraditionSection(foundSection).nodes()
+                        .forEach(x -> {
+                            removableNodes.add(x);
+                            x.getRelationships(Direction.BOTH).forEach(removableRelations::add);
+                        });
 
-                /*
-                 * Remove the nodes and relations
-                 */
-                    removableRelations.forEach(Relationship::delete);
-                    removableNodes.forEach(Node::delete);
-                }
+                // Remove said nodes and relationships.
+                removableRelations.forEach(Relationship::delete);
+                removableNodes.forEach(Node::delete);
             }
             tx.success();
         } catch (Exception e) {
