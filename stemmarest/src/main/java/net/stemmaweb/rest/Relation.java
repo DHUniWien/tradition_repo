@@ -238,9 +238,6 @@ public class Relation {
     }
 
     /**
-     * Checks if a relationship between the two nodes specified would produce a
-     * cross-relationship. A cross relationship is a relationship that
-     * crosses another one created before which is not allowed.
      * Remove all instances of the relationship specified.
      *
      * @param relationshipModel - the JSON specification of the relationship(s) to delete

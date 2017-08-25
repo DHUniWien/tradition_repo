@@ -61,7 +61,7 @@ public class Reading {
      * Changes properties of a reading according to its keys
      *
      * @param changeModels
-     *            an array of changeReadingModel objects. Will be converted from
+     *            an array of ReadingChangePropertyModel objects. Will be converted from
      *            a json string. Example: a json string for an array size 1
      *            which should change the value of 'language' to 'german' will
      *            look like
