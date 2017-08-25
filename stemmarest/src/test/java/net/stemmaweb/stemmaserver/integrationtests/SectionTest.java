@@ -6,6 +6,7 @@ import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -13,6 +14,9 @@ import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.MultipleFoundException;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
@@ -87,6 +91,34 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         String witFragment = Util.getValueFromJson(jerseyResponse, "text");
         assertEquals(aText, witFragment);
+    }
+
+    public void testAddGraphmlSectionWithWitnesses() throws Exception {
+        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2_graphml.xml",
+                "graphml", "section 2"), "parentId");
+
+        List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(2, tSections.size());
+        assertEquals("section 2", tSections.get(1).getName());
+
+        String aText = "quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magis " +
+                "magisque illustrabatur iugiter ac informabatur Sanctus autem";
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + newSectId + "/witness/A/text")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        assertEquals(aText, witFragment);
+
+        // Check that our witnesses were not duplicated
+        try (Transaction tx = db.beginTx()) {
+            Node witV = db.findNode(Nodes.WITNESS, "sigil", "V");
+            tx.success();
+            assertNotNull(witV);
+        } catch (MultipleFoundException e) {
+            fail();
+        }
     }
 
     public void testDeleteSection() throws Exception {
