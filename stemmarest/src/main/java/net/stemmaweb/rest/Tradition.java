@@ -26,7 +26,6 @@ import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
-import org.neo4j.helpers.collection.Iterators; // Neo4j 3.x
 
 
 /**
@@ -795,8 +794,8 @@ public class Tradition {
     public Response getGraphML() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-        GraphMLExporter parser = new GraphMLExporter();
-        return parser.parseNeo4J(traditionId);
+        GraphMLExporter exporter = new GraphMLExporter();
+        return exporter.writeNeo4J(traditionId);
     }
 
     /**
@@ -811,7 +810,7 @@ public class Tradition {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
         StemmawebExporter parser = new StemmawebExporter();
-        return parser.parseNeo4J(traditionId);
+        return parser.writeNeo4J(traditionId);
     }
 
     /**
@@ -828,7 +827,7 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         DotExporter parser = new DotExporter(db);
-        return parser.parseNeo4J(traditionId, includeRelatedRelationships);
+        return parser.writeNeo4J(traditionId, includeRelatedRelationships);
     }
 
     /**

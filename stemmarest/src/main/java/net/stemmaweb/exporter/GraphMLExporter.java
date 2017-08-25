@@ -120,7 +120,7 @@ public class GraphMLExporter {
     }
 
 
-    public Response parseNeo4J(String tradId) {
+    public Response writeNeo4J(String tradId) {
         // Get the tradition node
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if (traditionNode == null)

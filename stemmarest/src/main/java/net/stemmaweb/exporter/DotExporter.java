@@ -59,11 +59,11 @@ public class DotExporter
         return text;
     }
 
-    public Response parseNeo4J(String tradId, Boolean includeRelatedRelationships) {
-        return parseNeo4J(tradId, null, includeRelatedRelationships);
+    public Response writeNeo4J(String tradId, Boolean includeRelatedRelationships) {
+        return writeNeo4J(tradId, null, includeRelatedRelationships);
     }
 
-    public Response parseNeo4J(String tradId, String sectionId, Boolean includeRelatedRelationships)
+    public Response writeNeo4J(String tradId, String sectionId, Boolean includeRelatedRelationships)
     {
         // Get the start and end node of the whole tradition
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
@@ -307,7 +307,7 @@ public class DotExporter
      * @return a Response with the result
      */
 
-    public Response parseNeo4JStemma(String tradId, String stemmaTitle, Boolean singleLine)
+    public Response writeNeo4JStemma(String tradId, String stemmaTitle, Boolean singleLine)
     {
         ArrayList<String> outputLines = new ArrayList<>();
 
@@ -401,7 +401,7 @@ public class DotExporter
             Iterator<Node> stemmata = result.columnAs("s");
             while(stemmata.hasNext()) {
                 String stemma = stemmata.next().getProperty("name").toString();
-                Response resp = parseNeo4JStemma(tradId, stemma, true);
+                Response resp = writeNeo4JStemma(tradId, stemma, true);
 
                 stemmaList.add(resp.getEntity().toString());
             }

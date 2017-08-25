@@ -113,7 +113,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLExportTraditionNotFoundTest(){
-        Response actualResponse = exportStemmawebResource.parseNeo4J("1002");
+        Response actualResponse = exportStemmawebResource.writeNeo4J("1002");
         assertEquals(Response.status(Response.Status.NOT_FOUND).build().getStatus(),
                 actualResponse.getStatus());
     }
@@ -128,7 +128,7 @@ public class StemmawebInputOutputTest {
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         assertNotNull(traditionId);
-        Response actualResponse = exportStemmawebResource.parseNeo4J(traditionId);
+        Response actualResponse = exportStemmawebResource.writeNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), actualResponse.getStatus());
 
         String xmlOutput = actualResponse.getEntity().toString();
@@ -357,7 +357,7 @@ public class StemmawebInputOutputTest {
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
 
         // Export the GraphML in Stemmaweb form
-        Response parseResponse = exportStemmawebResource.parseNeo4J(traditionId);
+        Response parseResponse = exportStemmawebResource.writeNeo4J(traditionId);
         assertEquals(Response.ok().build().getStatus(), parseResponse.getStatus());
 
         // Re-import and test the result

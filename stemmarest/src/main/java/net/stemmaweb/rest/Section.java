@@ -415,7 +415,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
 
         DotExporter parser = new DotExporter(db);
-        return parser.parseNeo4J(tradId, sectId, includeRelatedRelationships);
+        return parser.writeNeo4J(tradId, sectId, includeRelatedRelationships);
     }
 
     // Export a list of variants for a section

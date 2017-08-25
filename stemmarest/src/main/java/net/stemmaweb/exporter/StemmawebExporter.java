@@ -113,7 +113,7 @@ public class StemmawebExporter {
         }
     }
 
-    public Response parseNeo4J(String tradId) {
+    public Response writeNeo4J(String tradId) {
 
         int edgeCountGraph1 = 0;
         int nodeCountGraph1 = 0;

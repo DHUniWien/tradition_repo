@@ -182,7 +182,7 @@ public class TraditionParseTest {
     private void toSVG(String traditionID, Boolean includeRelatedRelationships, String outFile)
     {
         DotExporter parser = new DotExporter(db);
-        String dot = parser.parseNeo4J(traditionID, includeRelatedRelationships).getEntity().toString();
+        String dot = parser.writeNeo4J(traditionID, includeRelatedRelationships).getEntity().toString();
 
         GraphViz gv = new GraphViz();
         String type = "svg";
