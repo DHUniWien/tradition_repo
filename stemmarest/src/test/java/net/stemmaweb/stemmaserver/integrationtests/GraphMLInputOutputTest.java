@@ -9,9 +9,15 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.ws.rs.core.MediaType;
+import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Tests for our own input/output formats.
@@ -22,6 +28,7 @@ public class GraphMLInputOutputTest extends TestCase {
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
     private String tradId;
+    private String multiTradId;
 
     public void setUp() throws Exception {
         super.setUp();
@@ -34,6 +41,12 @@ public class GraphMLInputOutputTest extends TestCase {
         ClientResponse r = Util.createTraditionFromFileOrString(jerseyTest, "Tradition",
                     "BI", "me@example.org", "src/TestFiles/testTradition.xml", "stemmaweb");
         tradId = Util.getValueFromJson(r, "tradId");
+
+        r = Util.createTraditionFromFileOrString(jerseyTest, "Multi-section tradition",
+                "LR", "me@example.org", "src/TestFiles/legendfrag.xml", "stemmaweb");
+        multiTradId = Util.getValueFromJson(r, "tradId");
+        Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2");
 
     }
 
@@ -116,6 +129,51 @@ public class GraphMLInputOutputTest extends TestCase {
             Util.assertStemmasEquivalent(undirectedStemma, stemmata.get(1).getDot());
         }
     }
+
+    public void testXMLOutputSingleSection() {
+        // Start with a multi-section tradition and get the section IDs
+        List<SectionModel> sections = jerseyTest.resource().path("/tradition/" + multiTradId + "/sections")
+                .type(MediaType.APPLICATION_JSON_TYPE).get(new GenericType<List<SectionModel>>() {});
+        // Get the GraphML output, make sure it has correct # of nodes & edges
+        ClientResponse r = jerseyTest.resource().path("/tradition/" + multiTradId + "/section/"
+                + sections.get(0).getId() + "/graphml")
+                .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), r.getStatus());
+        String xmlresp = r.getEntity(String.class);
+        assertTrue(xmlresp.contains("<key attr.name=\"neolabel\" attr.type=\"string\" for=\"node\" id=\"dn0\"/>"));
+
+        InputSource is = new InputSource();
+        is.setCharacterStream(new StringReader(xmlresp));
+        Document graphdoc = null;
+        try {
+            graphdoc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
+        } catch (Exception e) {
+            fail();
+        }
+        assertNotNull(graphdoc);
+        NodeList nodes = graphdoc.getElementsByTagName("node");
+        assertEquals(31, nodes.getLength());
+
+        // Get the GraphML output with witnesses included, make sure it is correct
+        xmlresp = jerseyTest.resource().path("/tradition/" + multiTradId + "/section/"
+                + sections.get(1).getId() + "/graphml")
+                .queryParam("include_witnesses", "true")
+                .type(MediaType.APPLICATION_XML_TYPE).get(String.class);
+
+        is = new InputSource();
+        is.setCharacterStream(new StringReader(xmlresp));
+        graphdoc = null;
+        try {
+            graphdoc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
+        } catch (Exception e) {
+            fail();
+        }
+        assertNotNull(graphdoc);
+        nodes = graphdoc.getElementsByTagName("node");
+        assertEquals(82, nodes.getLength());
+    }
+
+    // testXMLInputMultiSection
 
     // testXMLUserNodes
 

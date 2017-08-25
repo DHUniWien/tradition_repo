@@ -179,8 +179,8 @@ public class Util {
         return jerseyTest;
     }
 
-    public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir, String userId,
-                                                                 String fName, String fType) {
+    public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,
+                                                                 String userId, String fName, String fType) {
         FormDataMultiPart form = new FormDataMultiPart();
         if (fType != null) form.field("filetype", fType);
         if (tName != null) form.field("name", tName);
@@ -201,6 +201,26 @@ public class Util {
         }
         return  jerseyTest.resource()
                 .path("/tradition")
+                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .post(ClientResponse.class, form);
+    }
+
+    public static ClientResponse addSectionToTradition(JerseyTest jerseyTest, String traditionId, String fileName,
+                                                        String fileType, String sectionName) {
+        FormDataMultiPart form = new FormDataMultiPart();
+        form.field("filetype", fileType);
+        form.field("name", sectionName);
+        InputStream input = null;
+        try {
+            input = new FileInputStream(fileName);
+        } catch (FileNotFoundException f) {
+            fail();
+        }
+        FormDataBodyPart fdp = new FormDataBodyPart("file", input,
+                MediaType.APPLICATION_OCTET_STREAM_TYPE);
+        form.bodyPart(fdp);
+        return jerseyTest.resource()
+                .path("/tradition/" + traditionId + "/section")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
                 .post(ClientResponse.class, form);
     }

@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import net.stemmaweb.exporter.DotExporter;
+import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
@@ -26,7 +27,7 @@ public class Section {
     private String tradId;
     private String sectId;
 
-    Section(String traditionId, String sectionId) {
+    public Section(String traditionId, String sectionId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
@@ -45,6 +46,8 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getSectionInfo() {
         SectionModel result;
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
             result = new SectionModel(db.getNodeById(Long.valueOf(sectId)));
             tx.success();
@@ -59,6 +62,8 @@ public class Section {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response updateSectionInfo(SectionModel newInfo) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
             if (newInfo.getName() != null)
@@ -75,9 +80,9 @@ public class Section {
 
     @DELETE
     public Response deleteSection() {
-        String result = "No section with the given ID found";
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
-            // Find the section by ID and check that it belongs to this tradition.
             Node foundSection = db.getNodeById(Long.valueOf(sectId));
             if (foundSection != null) {
                 Node traditionNode = foundSection.getSingleRelationship(ERelations.PART, Direction.INCOMING)
@@ -108,7 +113,6 @@ public class Section {
                  */
                     removableRelations.forEach(Relationship::delete);
                     removableNodes.forEach(Node::delete);
-                    result = "OK";
                 }
             }
             tx.success();
@@ -117,40 +121,39 @@ public class Section {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
 
-        if (result.equals("OK"))
-            return Response.ok().build();
-        else
-            return Response.status(Response.Status.NOT_FOUND).entity(result).build();
+        return Response.ok().build();
     }
 
     @GET
     @Path("/witnesses")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllWitnessInSection() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+
+        ArrayList<Node> sectionWitnessNodes = collectSectionWitnesses();
+        if (sectionWitnessNodes == null)
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("No witnesses found in section").build();
+
+        ArrayList<WitnessModel> sectionWits = new ArrayList<>();
+        sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
+        return Response.ok().entity(sectionWits).build();
+    }
+
+    // Also used by the GraphML exporter
+    public ArrayList<Node> collectSectionWitnesses() {
+        ArrayList<Node> witnessList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        if (traditionNode == null)
-            return Response.status(Response.Status.NOT_FOUND).entity("tradition not found").build();
-
-        ArrayList<WitnessModel> witnessList = new ArrayList<>();
+        Node sectionStart = DatabaseService.getStartNode(sectId, db);
+        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
         try (Transaction tx = db.beginTx()) {
-            Node sectionNode = db.findNode(Nodes.SECTION, "id", sectId);
-            if (sectionNode == null)
-                return Response.status(Response.Status.NOT_FOUND).entity("section not found").build();
-            Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
-            if (rel == null || rel.getStartNode().getId() != traditionNode.getId()) {
-                return Response.status(Response.Status.NOT_FOUND).entity("this section is not part of this tradition").build();
-            }
-
-            for (Node m : DatabaseService.getRelated(sectionNode, ERelations.COLLATION)) {
-                for (Relationship relationship : m.getRelationships(ERelations.SEQUENCE)) {
-                    ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
-                    for (String sigil : (String[]) relationship.getProperty("witnesses")) {
-                        for (Node curWitness : traditionWitnesses) {
-                            if (sigil.equals(curWitness.getProperty("sigil"))) {
-                                witnessList.add(new WitnessModel(curWitness));
-                                traditionWitnesses.remove(curWitness);
-                                break;
-                            }
+            for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE)) {
+                for (String sigil : (String[]) relationship.getProperty("witnesses")) {
+                    for (Node curWitness : traditionWitnesses) {
+                        if (sigil.equals(curWitness.getProperty("sigil"))) {
+                            witnessList.add(curWitness);
+                            traditionWitnesses.remove(curWitness);
+                            break;
                         }
                     }
                 }
@@ -158,9 +161,9 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return null;
         }
-        return Response.ok(witnessList).build();
+        return witnessList;
     }
 
     // PUT section/ID/orderAfter/ID
@@ -168,12 +171,17 @@ public class Section {
     @Path("/orderAfter/{priorSectID}")
     public Response reorderSectionAfter(@PathParam("priorSectID") String priorSectID) {
         try (Transaction tx = db.beginTx()) {
+            if (!sectionInTradition())
+                return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            if (!sectionInTradition(priorSectID))
+                return Response.status(Response.Status.NOT_FOUND).entity("Requested prior section not found").build();
+
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
 
-            // Check that the requested section exists and is part of the tradition
+            // Check that the requested prior section also exists and is part of the tradition
             Node priorSection = db.getNodeById(Long.valueOf(priorSectID));
             if (priorSection == null) {
-                return Response.status(Response.Status.NOT_FOUND).build();
+                return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
             }
             Node pnTradition = DatabaseService.getTraditionNode(priorSection, db);
             if (!pnTradition.getProperty("id").toString().equals(tradId))
@@ -209,6 +217,9 @@ public class Section {
     @POST
     @Path("/splitAtRank/{rankstr}")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+
         Long rank = Long.valueOf(rankstr);
         // Get the reading(s) at the given rank, and at the prior rank
         Node startNode = DatabaseService.getStartNode(sectId, db);
@@ -316,6 +327,11 @@ public class Section {
     @POST
     @Path("/merge/{otherId}")
     public Response mergeSections (@PathParam("otherId") String otherId) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        if (!sectionInTradition(otherId))
+            return Response.status(Response.Status.NOT_FOUND).entity("Requested other section not found").build();
+
         try (Transaction tx = db.beginTx()) {
             // Get this node, and see which direction we're merging
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
@@ -404,6 +420,24 @@ public class Section {
     /**
      * Returns DOT file from specified tradition owned by user
      *
+     * @param includeWitnesses - Whether or not to include RELATED edges in the dot
+     * @return GraphML description of the section subgraph
+     */
+    @GET
+    @Path("/graphml")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
+        if (DatabaseService.getTraditionNode(tradId, db) == null)
+            return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
+
+        GraphMLExporter exporter = new GraphMLExporter();
+        return exporter.writeNeo4J(tradId, sectId, includeWitnesses);
+    }
+
+    // Export the dot / SVG for a particular section
+    /**
+     * Returns DOT file from specified tradition owned by user
+     *
      * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
      * @return Plaintext dot format
      */
@@ -437,5 +471,26 @@ public class Section {
         if (priorSection != null && nextSection != null) {
             priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
         }
+    }
+
+    private Boolean sectionInTradition() {
+        return sectionInTradition(sectId);
+    }
+
+    private Boolean sectionInTradition(String aSectionId) {
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return false;
+
+        Boolean found = false;
+        try (Transaction tx = db.beginTx()) {
+            for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
+                if (s.getId() == Long.valueOf(aSectionId)) {
+                    found = true;
+                }
+            }
+            tx.success();
+        }
+        return found;
     }
 }

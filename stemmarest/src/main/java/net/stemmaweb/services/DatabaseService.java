@@ -188,10 +188,10 @@ public class DatabaseService {
         return extantUser != null;
     }
 
-    @SuppressWarnings("unused")
-    public static Traverser returnEntireTradition(String tradId, GraphDatabaseService db) {
-        return returnEntireTradition(getTraditionNode(tradId, db));
-    }
+
+    /**
+     * Tradition and section crawlers, respectively
+     */
 
     private static Evaluator traditionCrawler = path -> {
         if (path.length() == 0)
@@ -201,17 +201,51 @@ public class DatabaseService {
         return Evaluation.INCLUDE_AND_CONTINUE;
     };
 
-    public static Traverser returnEntireTradition(Node traditionNode) {
+    private static Evaluator sectionCrawler = path -> {
+        if (path.length() == 0)
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        String type = path.lastRelationship().getType().name();
+        if (type.equals(ERelations.PART.toString()) || type.equals(ERelations.NEXT.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        return Evaluation.INCLUDE_AND_CONTINUE;
+    };
+
+    private static Traverser returnTraverser (Node startNode, String type) {
         Traverser tv;
-        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        Evaluator e = type.equals("tradition") ? traditionCrawler : sectionCrawler;
+        GraphDatabaseService db = startNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             tv = db.traversalDescription()
                     .depthFirst()
-                    .evaluator(traditionCrawler)
+                    .evaluator(e)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(traditionNode);
+                    .traverse(startNode);
             tx.success();
         }
         return tv;
+    }
+
+    @SuppressWarnings("unused")
+    public static Traverser returnEntireTradition(String tradId, GraphDatabaseService db) {
+        return returnEntireTradition(getTraditionNode(tradId, db));
+    }
+
+    public static Traverser returnEntireTradition(Node traditionNode) {
+        return returnTraverser(traditionNode, "tradition");
+    }
+
+    public static Traverser returnTraditionSection(String sectionId, GraphDatabaseService db) {
+        Traverser tv;
+        try (Transaction tx = db.beginTx()) {
+            Node sectionNode = db.getNodeById(Long.valueOf(sectionId));
+            tv = returnTraditionSection(sectionNode);
+            tx.success();
+        }
+        return tv;
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public static Traverser returnTraditionSection(Node sectionNode) {
+        return returnTraverser(sectionNode, "section");
     }
 }

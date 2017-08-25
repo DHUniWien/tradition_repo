@@ -10,6 +10,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -119,8 +120,12 @@ public class GraphMLExporter {
         }
     }
 
-
     public Response writeNeo4J(String tradId) {
+        return writeNeo4J(tradId, null, false);
+    }
+
+
+    public Response writeNeo4J(String tradId, String sectionId, Boolean includeWitnesses) {
         // Get the tradition node
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         if (traditionNode == null)
@@ -135,12 +140,25 @@ public class GraphMLExporter {
             e.printStackTrace();
             return Response.serverError().build();
         }
-        ResourceIterable<Node> traditionNodes = DatabaseService.returnEntireTradition(traditionNode).nodes();
-        ResourceIterable<Relationship> traditionEdges = DatabaseService.returnEntireTradition(traditionNode).relationships();
+        ResourceIterable<Node> traditionNodes = sectionId == null ?
+                DatabaseService.returnEntireTradition(traditionNode).nodes() :
+                DatabaseService.returnTraditionSection(sectionId, db).nodes();
+        ResourceIterable<Relationship> traditionEdges = sectionId == null ?
+                DatabaseService.returnEntireTradition(traditionNode).relationships() :
+                DatabaseService.returnTraditionSection(sectionId, db).relationships();
+
+        // Collect any extra nodes that should go into the list for whatever reason.
+        ArrayList<Node> extraNodes = new ArrayList<>();
+        if (sectionId != null && includeWitnesses) {
+            // We also want to include the witness nodes that appear in this section.
+            Section sectionService = new Section(tradId, sectionId);
+            extraNodes = sectionService.collectSectionWitnesses();
+        }
+
 
         try (Transaction tx = db.beginTx()) {
-            // First we have to go through all nodes and edges in the tradition, compiling a list of
-            // node and edge attributes.
+            // First we have to go through all nodes and edges in the tradition or section we want,
+            // compiling a list of node and edge attributes.
             nodeMap = new HashMap<>();
             nodeMap.put("neolabel", new String[]{"0", "string"});
             edgeMap = new HashMap<>();
@@ -157,12 +175,18 @@ public class GraphMLExporter {
                 edgeCount++;
             }
 
+            for (Node n : extraNodes) {
+                collectProperties(n, nodeMap);
+                nodeCount++;
+            }
+
             writer.writeStartDocument();
 
             writer.writeStartElement("graphml");
             writer.writeAttribute("xmlns", "http://graphml.graphdrawing.org/xmlns");
             writer.writeAttribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-            writer.writeAttribute("xsi:schemaLocation", "http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd");
+            writer.writeAttribute("xsi:schemaLocation", "http://graphml.graphdrawing.org/xmlns " +
+                    "http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd");
 
             // ####### KEYS START #######################################
 
@@ -189,7 +213,13 @@ public class GraphMLExporter {
                     addedNodes.add(n.getId());
                 }
 
-            // And list out all the edges, which were unique in the traversal
+            for (Node n : extraNodes)
+                if (!addedNodes.contains(n.getId())) {
+                    writeNode(writer, n);
+                    addedNodes.add(n.getId());
+                }
+
+            // And list out all the edges, which should already be unique in the traversal
             traditionEdges.forEach(x -> writeEdge(writer, x));
 
 

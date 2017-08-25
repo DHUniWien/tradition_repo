@@ -2,8 +2,6 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
@@ -18,9 +16,6 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -58,27 +53,6 @@ public class SectionTest extends TestCase {
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }
 
-    private String addNewSection(String traditionId, String fileName, String fileType, String sectionName) {
-        FormDataMultiPart form = new FormDataMultiPart();
-        form.field("filetype", fileType);
-        form.field("name", sectionName);
-        InputStream input = null;
-        try {
-            input = new FileInputStream(fileName);
-        } catch (FileNotFoundException f) {
-            fail();
-        }
-        FormDataBodyPart fdp = new FormDataBodyPart("file", input,
-                MediaType.APPLICATION_OCTET_STREAM_TYPE);
-        form.bodyPart(fdp);
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition/" + traditionId + "/section")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .post(ClientResponse.class, form);
-        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        return Util.getValueFromJson(jerseyResult, "parentId");
-    }
-
     // test creation of a tradition, that it has a single section
     public void testTraditionCreated() throws Exception {
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
@@ -97,8 +71,8 @@ public class SectionTest extends TestCase {
     }
 
     public void testAddSection() throws Exception {
-        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "stemmaweb",
-                "section 2");
+        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2"), "parentId");
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
@@ -120,10 +94,10 @@ public class SectionTest extends TestCase {
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(30, tReadings.size());
 
-        addNewSection(tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
+        Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(78, tReadings.size());
+        assertEquals(77, tReadings.size());
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
@@ -137,7 +111,7 @@ public class SectionTest extends TestCase {
 
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(48, tReadings.size());
+        assertEquals(47, tReadings.size());
     }
 
     private String importFlorilegium () {
@@ -158,7 +132,7 @@ public class SectionTest extends TestCase {
         int i = 0;
         while (i < 3) {
             String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
-            addNewSection(florId, fileName, "csv", String.format("part %d", i));
+            Util.addSectionToTradition(jerseyTest, florId, fileName, "csv", String.format("part %d", i));
         }
         return florId;
     }
@@ -249,8 +223,8 @@ public class SectionTest extends TestCase {
 
     public void testSectionWrongTradition () {
         String florId = importFlorilegium();
-        String newSectId = addNewSection(tradId,"src/TestFiles/lf2.xml", "stemmaweb",
-                "section 2");
+        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
+                "src/TestFiles/lf2.xml", "stemmaweb", "section 2"), "parentId");
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + florId + "/section/" + newSectId + "/witness/A")
                 .get(ClientResponse.class);
