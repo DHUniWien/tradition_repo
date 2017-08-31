@@ -620,7 +620,7 @@ public class RelationTest {
                 .path("/tradition/6999/relationships")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
-        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
     }
 
     @Test

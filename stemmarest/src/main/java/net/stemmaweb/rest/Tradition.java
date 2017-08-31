@@ -119,7 +119,9 @@ public class Tradition {
             }
             tx.success();
             if (sectionList.size() != depth) {
-                return null;
+                throw new Exception(
+                        String.format("Section list and section node mismatch: %d nodes, %d sections found",
+                                depth, sectionList.size()));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -359,22 +361,21 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllRelationships() {
         ArrayList<RelationshipModel> relList = new ArrayList<>();
-
-        Node startNode = DatabaseService.getStartNode(traditionId, db);
-        try (Transaction tx = db.beginTx()) {
-            db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode).nodes().forEach(
-                    n -> n.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(
-                            r -> relList.add(new RelationshipModel(r)))
-            );
-
-            tx.success();
-        } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+        ArrayList<SectionModel> ourSections = produceSectionList(traditionNode);
+        if (ourSections == null)
+            return Response.status(Status.INTERNAL_SERVER_ERROR).entity("section lookup failed").build();
+        for (SectionModel s : ourSections) {
+            Section sectRest = new Section(traditionId, s.getId());
+            ArrayList<RelationshipModel> sectRels = sectRest.sectionRelationships();
+            if (sectRels == null)
+                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            relList.addAll(sectRels);
         }
-        return Response.ok(relList).build();
+
+       return Response.ok(relList).build();
     }
 
     /**

@@ -3,6 +3,7 @@ package net.stemmaweb.rest;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
@@ -162,6 +163,45 @@ public class Section {
         }
         return witnessList;
     }
+
+    /**
+     * Gets a list of all relationships of a tradition with the given id.
+     *
+     * @return Http Response 200 and a list of relationship model in JSON
+     */
+    @GET
+    @Path("/relationships")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response getAllRelationships() {
+        ArrayList<RelationshipModel> relList = sectionRelationships();
+
+        if (relList == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        }
+        return Response.ok(relList).build();
+    }
+
+    ArrayList<RelationshipModel> sectionRelationships() {
+        ArrayList<RelationshipModel> relList = new ArrayList<>();
+
+        Node startNode = DatabaseService.getStartNode(sectId, db);
+        try (Transaction tx = db.beginTx()) {
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(startNode).nodes().forEach(
+                    n -> n.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(
+                            r -> relList.add(new RelationshipModel(r)))
+            );
+
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return relList;
+    }
+
 
     /*
      * Manipulation
