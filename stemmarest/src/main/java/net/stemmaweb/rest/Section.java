@@ -165,6 +165,43 @@ public class Section {
     }
 
     /**
+     * Returns a list of all readings in a tradition
+     *
+     * @return the list of readings in json format on success or an ERROR in
+     * JSON format
+     */
+    @GET
+    @Path("/readings")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    public Response getAllReadings() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+
+        ArrayList<ReadingModel> readingModels = sectionReadings();
+        if (readingModels == null)
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+        return Response.ok(readingModels).build();
+    }
+
+    ArrayList<ReadingModel> sectionReadings() {
+        ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            Node startNode = DatabaseService.getStartNode(sectId, db);
+            if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                    .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return readingModels;
+    }
+
+    /**
      * Gets a list of all relationships of a tradition with the given id.
      *
      * @return Http Response 200 and a list of relationship model in JSON

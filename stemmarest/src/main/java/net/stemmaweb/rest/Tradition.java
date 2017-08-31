@@ -400,23 +400,12 @@ public class Tradition {
 
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         for (SectionModel sm : allSections) {
-            Node startNode = DatabaseService.getStartNode(sm.getId(), db);
-            if (startNode == null) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("Section " + sm.getId() + " has no start node").build();
-            }
+            Section sectRest = new Section(traditionId, sm.getId());
+            ArrayList<ReadingModel> sectionReadings = sectRest.sectionReadings();
+            if (sectionReadings == null)
+                return Response.status(Status.INTERNAL_SERVER_ERROR).entity("section lookup failed").build();
+            readingModels.addAll(sectionReadings);
 
-            try (Transaction tx = db.beginTx()) {
-                db.traversalDescription().depthFirst()
-                        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                        .evaluator(Evaluators.all())
-                        .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-                        .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
-                tx.success();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
-            }
         }
         return Response.ok(readingModels).build();
     }

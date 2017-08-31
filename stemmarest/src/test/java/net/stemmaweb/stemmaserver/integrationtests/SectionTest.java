@@ -107,6 +107,17 @@ public class SectionTest extends TestCase {
         assertEquals(22, allRels.size());
     }
 
+    public void testSectionReadings() throws Exception {
+        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2"), "parentId");
+        List<ReadingModel> sectRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(47, sectRdgs.size());
+        List<ReadingModel> allRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(77, allRdgs.size());
+    }
+
     public void testAddGraphmlSectionWithWitnesses() throws Exception {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2_graphml.xml",
                 "graphml", "section 2"), "parentId");
