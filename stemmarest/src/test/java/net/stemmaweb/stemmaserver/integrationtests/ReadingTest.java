@@ -1861,10 +1861,8 @@ public class ReadingTest {
     public void previousReadingFirstNodeTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'when'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            readId = nodes.next().getId();
+            Node rdg = db.findNode(Nodes.READING, "text", "when");
+            readId = rdg.getId();
             tx.success();
         }
         ClientResponse actualResponse = jerseyTest
@@ -1875,6 +1873,35 @@ public class ReadingTest {
                 actualResponse.getStatus());
         assertEquals("this was the first reading of this witness",
                 actualResponse.getEntity(String.class));
+    }
+
+    @Test
+    public void relatedReadingsTest() {
+        long readId;
+        try (Transaction tx = db.beginTx()) {
+            Result result = db.execute("match (w:READING {text:'fruit', rank:8}) return w");
+            Iterator<Node> nodes = result.columnAs("w");
+            assertTrue(nodes.hasNext());
+            readId = nodes.next().getId();
+            tx.success();
+        }
+        ClientResponse jerseyResponse = jerseyTest.resource().path("/reading/" + readId + "/related")
+                .queryParam("types", "transposition")
+                .queryParam("types", "repetition")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        List<ReadingModel> relatedReadings = jerseyResponse.getEntity(new GenericType<List<ReadingModel>>() {});
+        assertEquals(1, relatedReadings.size());
+        assertEquals("the root", relatedReadings.get(0).getText());
+        List<ReadingModel> allRels = jerseyTest.resource().path("/reading/" + readId + "/related")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(3, allRels.size());
+    }
+
+    @Test
+    public void readingWitnessTest() {
+        long readId;
+
     }
 
     @Test
