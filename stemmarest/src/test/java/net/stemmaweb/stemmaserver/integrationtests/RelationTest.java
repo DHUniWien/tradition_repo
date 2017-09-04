@@ -1,7 +1,9 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -316,6 +318,61 @@ public class RelationTest {
             db.getRelationshipById(Long.parseLong(relationshipId2));
             tx.success();
         }
+    }
+
+    @Test
+    public void createRelationshipDocumentWideTest() {
+        // Find the relevant readings
+        final Comparator<Node> highestRank = (o1, o2) -> Long.valueOf(o2.getProperty("rank").toString())
+                .compareTo(Long.valueOf(o1.getProperty("rank").toString()));
+
+        Long idThe = getReading("the", highestRank).getId();
+        Long idTeh = getReading("teh", highestRank).getId();
+        assertTrue(idTeh > 0L);
+        assertTrue(idThe > 0L);
+        // Create the test relationship
+        RelationshipModel r = new RelationshipModel();
+        r.setSource(idTeh.toString());
+        r.setTarget(idThe.toString());
+        r.setType("spelling");
+        r.setReading_a("teh");
+        r.setReading_b("the");
+        r.setAlters_meaning(1L);
+        r.setIs_significant("maybe");
+        r.setScope("document");
+
+        // Add the tradition a second time
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Other tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "stemmaweb");
+        String secondId = Util.getValueFromJson(jerseyResponse, "tradId");
+        assertNotNull(secondId);
+
+        // Get the baseline number of relationships
+        List<RelationshipModel> currentRels = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        int existingRels = currentRels.size();
+
+        // Set the test relationship
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, r);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
+        GraphModel newRels = jerseyResponse.getEntity(new GenericType<GraphModel>() {});
+        // Test that two new relationships were created
+        assertEquals(2, newRels.getRelationships().size());
+
+        // Test that there are now n+2 relationships in our tradition
+        currentRels = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(existingRels + 2, currentRels.size());
+
+        List<RelationshipModel> secondRels = jerseyTest.resource()
+                .path("/tradition/" + secondId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(existingRels, secondRels.size());
     }
 
     @Test(expected=NotFoundException.class)
@@ -638,6 +695,18 @@ public class RelationTest {
                 .get(ClientResponse.class);
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         assertEquals("[]", response.getEntity(String.class));
+    }
+
+    private Node getReading(String text, Comparator<Node> c) {
+        Node result;
+        try (Transaction tx = db.beginTx()) {
+            List<Node> available = db.findNodes(Nodes.READING, "text", text).stream().collect(Collectors.toList());
+            if (c != null)
+                available.sort(c);
+            tx.success();
+            result = available.get(0);
+        }
+        return result;
     }
 
     /*

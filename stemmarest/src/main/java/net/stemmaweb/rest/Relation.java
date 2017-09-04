@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
@@ -48,6 +49,7 @@ public class Relation {
      *         and the readings involved in JSON on success or an ERROR in JSON
      *         format
      */
+    // TODO make this an idempotent PUT call
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -69,12 +71,17 @@ public class Relation {
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
+                    Node thisTradition = DatabaseService.getTraditionNode(tradId, db);
 
+                    // Get all the readings that belong to our tradition
+                    ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
+                    // Pick out the ones that share the readingA text
+                    List<Node> ourA = tradReadings.stream().filter(x -> x.hasProperty("text")
+                                    && x.getProperty("text").toString().equals(
+                                            readingA.getProperty("text").toString()))
+                            .collect(Collectors.toList());
                     HashMap<Long, HashSet<Long>> ranks = new HashMap<>();
-                    Result resultA = db.execute("match (n {text: '" + readingA.getProperty("text") + "'}) return n");
-                    Iterator<Node> nodesA = resultA.columnAs("n");
-                    while (nodesA.hasNext()) {
-                        Node cur_node = nodesA.next();
+                    for (Node cur_node : ourA) {
                         long node_id = cur_node.getId();
                         long node_rank = (Long) cur_node.getProperty("rank");
                         HashSet<Long> cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
@@ -82,11 +89,13 @@ public class Relation {
                         ranks.putIfAbsent(node_rank, cur_set);
                     }
 
-                    Result resultB = db.execute("match (n {text: '" + readingB.getProperty("text") + "'}) return n");
-                    Iterator<Node> nodesB = resultB.columnAs("n");
+                    // Pick out the ones that share the readingB text
+                    List<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
+                            && x.getProperty("text").toString().equals(
+                            readingB.getProperty("text").toString()))
+                            .collect(Collectors.toList());
                     RelationshipModel relship;
-                    while (nodesB.hasNext()) {
-                        Node cur_node = nodesB.next();
+                    for (Node cur_node : ourB) {
                         long node_id = cur_node.getId();
                         long node_rank = (Long) cur_node.getProperty("rank");
 
@@ -200,11 +209,6 @@ public class Relation {
             relationshipAtoB.setProperty("reading_a", readingA.getProperty("text"));
             relationshipAtoB.setProperty("reading_b", readingB.getProperty("text"));
 
-            changedReadings.add(new ReadingModel(readingA));
-            changedReadings.add(new ReadingModel(readingB));
-            createdRelationships.add(new RelationshipModel(relationshipAtoB));
-            readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
-
             // Recalculate the ranks, if necessary
             Long rankA = (Long) readingA.getProperty("rank");
             Long rankB = (Long) readingB.getProperty("rank");
@@ -213,6 +217,11 @@ public class Relation {
                 Long nodeId = rankA < rankB ? readingA.getId() : readingB.getId();
                 new Tradition(tradId).recalculateRank(nodeId);
             }
+
+            changedReadings.add(new ReadingModel(readingA));
+            changedReadings.add(new ReadingModel(readingB));
+            createdRelationships.add(new RelationshipModel(relationshipAtoB));
+            readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
 
             tx.success();
         } catch (Exception e) {
