@@ -389,7 +389,7 @@ public class Section {
 
             // Re-initialize the ranks on the new section
             Tradition t = new Tradition(tradId);
-            if (!t.recalculateRank(newStart.getId())) {
+            if (t.recalculateRank(newStart.getId()) == null) {
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity("Rank recalculation of new section failed!").build();
             }
@@ -481,7 +481,7 @@ public class Section {
 
             // Re-initialize the ranks on the new section
             Tradition t = new Tradition(tradId);
-            if (!t.recalculateRank(trueStart.getId())) {
+            if (t.recalculateRank(trueStart.getId()) == null) {
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity("Rank recalculation of new section failed!").build();
             }

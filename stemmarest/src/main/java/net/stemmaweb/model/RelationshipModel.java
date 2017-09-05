@@ -45,8 +45,8 @@ public class RelationshipModel {
      * @param rel - The relationship node to initialize from
      */
     public RelationshipModel(Relationship rel){
-        target = rel.getStartNode().getId() + "";
-        source = rel.getEndNode().getId() + "";
+        source = rel.getStartNode().getId() + "";
+        target = rel.getEndNode().getId() + "";
 
         Iterable<String> properties = rel.getPropertyKeys();
         id = Long.toString(rel.getId());

@@ -99,8 +99,8 @@ public class StemmawebLegacyTest {
 
         try (Transaction tx = db.beginTx()) {
             Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            assertNotNull(tradNode);
             assertEquals(TRADNAME, tradNode.getProperty("name"));
-            assertNotNull(tradNode.getId());
             assertEquals(true, tradNode.hasRelationship());
             Iterable<Relationship> relationships = tradNode.getRelationships();
             // There should be only one relationship between the USER and TRADITION nodes
@@ -295,11 +295,10 @@ public class StemmawebLegacyTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         GraphModel tmpGraphModel = response.getEntity(new GenericType<GraphModel>(){});
-        Object[] readings = tmpGraphModel.getReadings().toArray();
-        String node1_id = ((ReadingModel) readings[0]).getId();
-        String node2_id = ((ReadingModel) readings[1]).getId();
-        assertTrue((node1_id.equals(n21) && node2_id.equals(n22)) ||
-                (node1_id.equals(n22) && node2_id.equals(n21)));
+        assertEquals(1, tmpGraphModel.getRelationships().size());
+        RelationshipModel rm = tmpGraphModel.getRelationships().stream().findAny().get();
+        assertEquals(n21, rm.getSource());
+        assertEquals(n22, rm.getTarget());
 
         /*
         my @v2 = $c->add_relationship( 'n24', 'n23',  # 'the', 'teh' near the end

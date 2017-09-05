@@ -67,11 +67,15 @@ public class Relation {
             GraphModel createResult = (GraphModel)response.getEntity();
             relationChanges.addReadings(createResult.getReadings());
             relationChanges.addRelationships(createResult.getRelationships());
+            Long thisRelId = 0L;
+            if (relationChanges.getRelationships().stream().findFirst().isPresent()) // this will always be true
+                thisRelId = Long.valueOf(relationChanges.getRelationships().stream().findFirst().get().getId());
             if (scope.equals(SCOPE_GLOBAL)) {
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
                     Node thisTradition = DatabaseService.getTraditionNode(tradId, db);
+                    Relationship thisRelation = db.getRelationshipById(thisRelId);
 
                     // Get all the readings that belong to our tradition
                     ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
@@ -102,10 +106,10 @@ public class Relation {
                         HashSet cur_set = ranks.get(node_rank);
                         if (cur_set != null) {
                             for (Object id : cur_set) {
-                                relship = new RelationshipModel();
+                                relship = new RelationshipModel(thisRelation);
                                 relship.setSource(Long.toString((Long) id));
                                 relship.setTarget(Long.toString(node_id));
-                                relship.setType(relationshipModel.getType());
+                                // relship.setType(relationshipModel.getType());
                                 response = this.create_local(relship);
                                 if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
                                     if (Status.CREATED.getStatusCode() != response.getStatus()) {
@@ -132,6 +136,8 @@ public class Relation {
         return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
     }
 
+    // Create a relationship; return the relationship created as well as any reading nodes whose
+    // properties (e.g. rank) have changed.
     private Response create_local(RelationshipModel relationshipModel) {
         GraphModel readingsAndRelationshipModel;
         ArrayList<ReadingModel> changedReadings = new ArrayList<>();
@@ -184,7 +190,6 @@ public class Relation {
                             tx.success();
                             return Response.status(Status.NOT_MODIFIED).build();
                         }
-                        // TODO SK->TLA ask about additional rules!
                         String oldRelType = (String) relationship.getProperty("type");
                         if (oldRelType.equals("collated")) {
                             // We use the existing relation, instead of delete it and create a new one
@@ -215,11 +220,10 @@ public class Relation {
             if (!rankA.equals(rankB)  && isLocationVariant) {
                 // Which one is the lower-ranked reading?
                 Long nodeId = rankA < rankB ? readingA.getId() : readingB.getId();
-                new Tradition(tradId).recalculateRank(nodeId);
+                Set<Node> changedRank = new Tradition(tradId).recalculateRank(nodeId);
+                for (Node cr : changedRank) changedReadings.add(new ReadingModel(cr));
             }
 
-            changedReadings.add(new ReadingModel(readingA));
-            changedReadings.add(new ReadingModel(readingB));
             createdRelationships.add(new RelationshipModel(relationshipAtoB));
             readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
 

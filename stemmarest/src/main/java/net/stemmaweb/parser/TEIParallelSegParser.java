@@ -185,8 +185,7 @@ public class TEIParallelSegParser {
             return Response.serverError().build();
         }
         // Now try re-ranking the nodes.
-        Boolean didCalc = new Tradition(tradId).recalculateRank(startNode.getId());
-        if (!didCalc)
+        if (new Tradition(tradId).recalculateRank(startNode.getId()) == null)
             return Response.serverError().entity("Could not calculate ranks on new graph").build();
 
         // Merge all mergeable readings, to get rid of duplicates across apparatus entries.

@@ -626,10 +626,11 @@ public class Tradition {
      * @param nodeId Where to start the recalculation
      * @return boolean (True in case of success, otherwise False)
      */
-    public boolean recalculateRank(Long nodeId) {
+    public Set<Node> recalculateRank(Long nodeId) {
         Set<Node> nodesWaiting = new HashSet<>();
         Set<Node> nodesToProcess = new HashSet<>();
         Set<Long> idNodesProcessed = new HashSet<>();
+        Set<Node> nodesChanged = new HashSet<>();
 
         try (Transaction tx = db.beginTx()) {
             Node currentNode = db.getNodeById(nodeId);
@@ -657,7 +658,11 @@ public class Tradition {
 
                     // update rank and add curNode to "nodesProcessed"
                     for (Node curNode : curNodes) {
-                        curNode.setProperty("rank", currentRank);
+                        if (!currentRank.equals(Long.valueOf(curNode.getProperty("rank").toString()))) {
+                            curNode.setProperty("rank", currentRank);
+                            nodesChanged.add(curNode);
+                        }
+
                         idNodesProcessed.add(curNode.getId());
                     }
 
@@ -719,9 +724,9 @@ public class Tradition {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return false; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return null; //Response.status(Status.INTERNAL_SERVER_ERROR).build();
         }
-        return true;
+        return nodesChanged;
     }
 
 

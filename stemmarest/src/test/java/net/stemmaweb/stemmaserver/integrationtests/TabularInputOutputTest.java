@@ -138,7 +138,7 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        assertEquals(2, readingsAndRelationships.getReadings().size());
+        assertEquals(0, readingsAndRelationships.getReadings().size());
         assertEquals(1, readingsAndRelationships.getRelationships().size());
     }
 

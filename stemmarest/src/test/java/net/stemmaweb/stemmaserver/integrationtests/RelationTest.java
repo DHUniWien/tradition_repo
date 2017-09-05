@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -362,6 +363,12 @@ public class RelationTest {
         GraphModel newRels = jerseyResponse.getEntity(new GenericType<GraphModel>() {});
         // Test that two new relationships were created
         assertEquals(2, newRels.getRelationships().size());
+        // Test that they have the same is_significant property
+        for (RelationshipModel rm : newRels.getRelationships()) {
+            assertEquals(r.getIs_significant(), rm.getIs_significant());
+            assertEquals(r.getAlters_meaning(), rm.getAlters_meaning());
+            assertEquals(r.getScope(), rm.getScope());
+        }
 
         // Test that there are now n+2 relationships in our tradition
         currentRels = jerseyTest.resource()
@@ -369,6 +376,7 @@ public class RelationTest {
                 .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(existingRels + 2, currentRels.size());
 
+        // ...and that there are still only n relationships in our identical tradition.
         List<RelationshipModel> secondRels = jerseyTest.resource()
                 .path("/tradition/" + secondId + "/relationships")
                 .get(new GenericType<List<RelationshipModel>>() {});
@@ -454,7 +462,8 @@ public class RelationTest {
         relationship.setReading_a("root");
         relationship.setReading_b("teh");
 
-        // This relationship should be makeable
+        // This relationship should be makeable, and three readings including the end node
+        // will change rank
         ClientResponse actualResponse = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
@@ -462,10 +471,17 @@ public class RelationTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
         GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        assertEquals(tmpGraphModel.getRelationships().size(), 1L);
-
-        Tradition tradition = new Tradition(tradId);
-        assertEquals(tradition.recalculateRank(21L), true);
+        assertEquals(1, tmpGraphModel.getRelationships().size());
+        assertEquals(3, tmpGraphModel.getReadings().size());
+        assertEquals(true, tmpGraphModel.getReadings().stream().findFirst().isPresent());
+        HashMap<String, Long> rankChange = new HashMap<>();
+        rankChange.put("teh", 18L);
+        rankChange.put("rood", 19L);
+        rankChange.put("#END#", 20L);
+        for (ReadingModel r : tmpGraphModel.getReadings()) {
+            assertTrue(rankChange.containsKey(r.getText()));
+            assertEquals(rankChange.get(r.getText()), r.getRank());
+        }
 
         relationship.setSource("22");
         relationship.setTarget("29");
@@ -572,9 +588,8 @@ public class RelationTest {
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
-        // TODO (SK): ->TLA fix ErrorMessage (this one does not exist). Maybe we can define an enum?
-        //assertEquals("This relationship creation is not allowed. Would produce cross-relationship.",
-        //        actualResponse.getEntity(String.class));
+        assertEquals("This relationship creation is not allowed, it would result in a cyclic graph.",
+                actualResponse.getEntity(String.class));
 
         try (Transaction tx = db.beginTx()) {
             Node node22 = db.getNodeById(22L);
