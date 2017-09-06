@@ -72,26 +72,37 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
-        ReadingModel modelToReturn;
+        ReadingModel modelToReturn = new ReadingModel();
         Node reading;
+        String currentKey = "";
         try (Transaction tx = db.beginTx()) {
             reading = db.getNodeById(readId);
             for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
-                if (!reading.hasProperty(keyPropertyModel.getKey()))
+                currentKey = keyPropertyModel.getKey();
+                if (currentKey.equals("id"))
                     return Response
                             .status(Status.INTERNAL_SERVER_ERROR)
-                            .entity("the reading does not have such property: '"
-                                    + keyPropertyModel.getKey()
-                                    + "'. no changes to the reading have been done")
+                            .entity("Reading ID cannot be changed!")
                             .build();
-            }
-            for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
-                reading.setProperty(keyPropertyModel.getKey(), keyPropertyModel.getProperty());
+                // Check that this field actually exists in our model
+                modelToReturn.getClass().getDeclaredField(currentKey);
+                // Then set the property.
+                reading.setProperty(currentKey, keyPropertyModel.getProperty());
             }
             modelToReturn = new ReadingModel(reading);
             tx.success();
+        } catch (NoSuchFieldException f) {
+            return Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("Reading has no such property '" + f.getMessage() + "'")
+                    .build();
+        } catch (ClassCastException e) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("Property " + currentKey + " of the wrong type: " + e.getMessage())
+                    .build();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
         }
         return Response.status(Response.Status.OK).entity(modelToReturn).build();
     }

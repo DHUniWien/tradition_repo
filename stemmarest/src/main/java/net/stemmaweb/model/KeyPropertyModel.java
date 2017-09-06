@@ -9,7 +9,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement
 public class KeyPropertyModel {
     private String key;
-    private String property;
+    private Object property;
 
     public String getKey() {
         return key;
@@ -17,10 +17,8 @@ public class KeyPropertyModel {
     public void setKey(String key) {
         this.key = key;
     }
-    public String getProperty() {
+    public Object getProperty() {
         return property;
     }
-    public void setProperty(String property) {
-        this.property = property;
-    }
+    public void setProperty(Object property) { this.property = property; }
 }

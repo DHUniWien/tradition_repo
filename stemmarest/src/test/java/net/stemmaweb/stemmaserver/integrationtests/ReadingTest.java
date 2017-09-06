@@ -153,15 +153,43 @@ public class ReadingTest {
     }
 
     @Test
-    public void changeReadingPropertiesTwoPropertiesTest() {
-
-        Node node;
+    public void changeReadingPropertiesWrongDatatypeTest() {
+        Long nodeid;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            node = nodes.next();
-            assertFalse(nodes.hasNext());
+            nodeid = db.findNode(Nodes.READING, "text", "showers").getId();
+            tx.success();
+        }
+
+        KeyPropertyModel keyModel = new KeyPropertyModel();
+        keyModel.setKey("text");
+        keyModel.setProperty("rainshowers");
+        KeyPropertyModel keyModel2 = new KeyPropertyModel();
+        keyModel2.setKey("join_next");
+        keyModel2.setProperty("true");
+        List<KeyPropertyModel> models = new ArrayList<>();
+        models.add(keyModel);
+        models.add(keyModel2);
+        ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+        chgModel.setProperties(models);
+        ClientResponse response = jerseyTest
+                .resource().path("/reading/" + nodeid)
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, chgModel);
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+
+        // Check that the node text didn't change
+        try (Transaction tx = db.beginTx()) {
+            Node node = db.getNodeById(nodeid);
+            assertEquals("showers", node.getProperty("text").toString());
+            tx.success();
+        }
+    }
+
+    @Test
+    public void changeReadingPropertiesMultiplePropertiesTest() {
+
+        try (Transaction tx = db.beginTx()) {
+            Node node = db.findNode(Nodes.READING, "text", "showers");
 
             KeyPropertyModel keyModel = new KeyPropertyModel();
             keyModel.setKey("text");
@@ -173,6 +201,10 @@ public class ReadingTest {
             keyModel2.setKey("language");
             keyModel2.setProperty("hebrew");
             models.add(keyModel2);
+            KeyPropertyModel keyModel3 = new KeyPropertyModel();
+            keyModel3.setKey("is_lemma");
+            keyModel3.setProperty(true);
+            models.add(keyModel3);
             chgModel.setProperties(models);
 
             ClientResponse response = jerseyTest
@@ -184,6 +216,7 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
             assertEquals("hebrew", node.getProperty("language"));
+            assertTrue(Boolean.valueOf(node.getProperty("is_lemma").toString()));
             String expectedWitnessA = "{\"text\":\"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
@@ -214,10 +247,9 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .put(ClientResponse.class, chgModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+            assertEquals(Status.BAD_REQUEST.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
-            assertEquals("the reading does not have such property: 'test'."
-                    + " no changes to the reading have been done",
+            assertEquals("Reading has no such property 'test'",
                     response.getEntity(String.class));
             tx.success();
         }
