@@ -936,7 +936,7 @@ public class Reading {
     @POST
     @Path("concatenate/{read2Id}/{con}")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    // @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response compressReadings(@PathParam("read2Id") long readId2,
                                      @PathParam("con") String con, CharacterModel character) {
 
