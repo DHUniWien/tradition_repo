@@ -545,8 +545,11 @@ public class Section {
             ArrayList<Node> questionedReadings) {
 
         ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
+        HashSet<Long> processed = new HashSet<>();
 
         for (Node nodeA : questionedReadings) {
+            if (processed.contains(nodeA.getId()))
+                continue;
             ArrayList<Node> sameText = new ArrayList<>();
             questionedReadings.stream().filter(nodeB -> !nodeA.equals(nodeB)
                     && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
@@ -555,7 +558,12 @@ public class Section {
                 sameText.add(nodeA);
             });
             if (sameText.size() > 0) {
-                couldBeIdenticalCheck(sameText, couldBeIdenticalReadings);
+                ArrayList<ReadingModel> pairs = couldBeIdenticalCheck(sameText);
+                if (pairs != null) {
+                    for (ReadingModel r : pairs)
+                        processed.add(Long.valueOf(r.getId()));
+                    couldBeIdenticalReadings.add(pairs);
+                }
             }
         }
         return couldBeIdenticalReadings;
@@ -565,10 +573,8 @@ public class Section {
      * Adds all the words that could be on the same rank to the result list
      *
      * @param sameText                 -
-     * @param couldBeIdenticalReadings -
      */
-    private void couldBeIdenticalCheck(ArrayList<Node> sameText,
-                                       ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings) {
+    private ArrayList<ReadingModel> couldBeIdenticalCheck(ArrayList<Node> sameText) {
 
         Node biggerRankNode;
         Node smallerRankNode;
@@ -622,19 +628,18 @@ public class Section {
                 }
             }
             if (!gotOne) {
-                if (!couldBeIdentical
-                        .contains(new ReadingModel(smallerRankNode))) {
+                if (!couldBeIdentical.contains(new ReadingModel(smallerRankNode))) {
                     couldBeIdentical.add(new ReadingModel(smallerRankNode));
                 }
-                if (!couldBeIdentical
-                        .contains(new ReadingModel(biggerRankNode))) {
+                if (!couldBeIdentical.contains(new ReadingModel(biggerRankNode))) {
                     couldBeIdentical.add(new ReadingModel(biggerRankNode));
                 }
             }
             if (couldBeIdentical.size() > 0) {
-                couldBeIdenticalReadings.add(couldBeIdentical);
+                return couldBeIdentical;
             }
         }
+        return null;
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes

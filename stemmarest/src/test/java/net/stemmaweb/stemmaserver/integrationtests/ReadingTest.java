@@ -1400,7 +1400,7 @@ public class ReadingTest {
                 .resource()
                 .path("/tradition/" + tradId + "/section/" + sectId + "/mergeablereadings/1/15")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
-        assertEquals(2, couldBeIdenticalReadings.size());
+        assertEquals(1, couldBeIdenticalReadings.size());
 
         assertEquals(couldBeIdenticalReadings.get(0).get(0).getText(),
                 couldBeIdenticalReadings.get(0).get(1).getText());
@@ -1408,6 +1408,49 @@ public class ReadingTest {
 
         assertFalse(Objects.equals(couldBeIdenticalReadings.get(0).get(0).getRank(),
                 couldBeIdenticalReadings.get(0).get(1).getRank()));
+    }
+
+    // same as above, but on a different text
+    @Test
+    public void mergeableReadingsTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/legendfrag.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, sects.size());
+        String newSectId = sects.get(0).getId();
+        String firstId = "";
+        String secondId = "";
+        try (Transaction tx = db.beginTx()) {
+            // Find the venerabili
+            ResourceIterator<Node> ri = db.findNodes(Nodes.READING, "text", "venerabilis");
+            while (ri.hasNext()) {
+                Node n = ri.next();
+                if (n.getProperty("rank").toString().equals("3"))
+                    firstId = String.valueOf(n.getId());
+                if (n.getProperty("rank").toString().equals("5"))
+                    secondId = String.valueOf(n.getId());
+            }
+            // Get rid of all the "collated" relationships
+            db.getAllRelationships().stream()
+                    .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").toString().equals("collated"))
+                    .forEach(Relationship::delete);
+            tx.success();
+        }
+
+        // Merge the venerabili
+        response = jerseyTest.resource().path("/reading/" + firstId + "/merge/" + secondId).post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Check that the pontifices are mergeable
+        response = jerseyTest.resource()
+                .path("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/3/10")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<List<ReadingModel>> r = response.getEntity(new GenericType<List<List<ReadingModel>>>() {});
+        assertEquals(1, r.size());
+        assertEquals("pontifex", r.get(0).get(0).getText());
     }
 
     /**
