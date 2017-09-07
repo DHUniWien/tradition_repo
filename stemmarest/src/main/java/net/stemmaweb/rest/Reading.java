@@ -425,7 +425,7 @@ public class Reading {
      */
     @POST
     @Path("merge/{secondReadId}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    // @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
 
         Node stayingReading;
