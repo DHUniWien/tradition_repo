@@ -1420,10 +1420,10 @@ public class ReadingTest {
                 .path("/tradition/" + tradId + "/section/" + sectId + "/mergeablereadings/2/8")
                 .get(ClientResponse.class);
 
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
-                response.getStatus());
-        assertEquals("There are no mergeable readings",
-                response.getEntity(String.class));
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<List<ReadingModel>> result =
+                response.getEntity(new GenericType<List<List<ReadingModel>>>() {});
+        assertEquals(0, result.size());
     }
 
     // compress with concatenate set to 0: one space between words

@@ -531,11 +531,6 @@ public class Section {
             e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
         }
-        if (couldBeIdenticalReadings.size() == 0)
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity("There are no mergeable readings")
-                    .build();
-
         return Response.ok(couldBeIdenticalReadings).build();
     }
 
