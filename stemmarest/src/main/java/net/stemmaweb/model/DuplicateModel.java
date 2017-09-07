@@ -17,14 +17,14 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class DuplicateModel {
-    private List<Long> readings;
+    private List<String> readings;
     private List<String> witnesses;
 
-    public List<Long> getReadings() {
+    public List<String> getReadings() {
         return readings;
     }
 
-    public void setReadings(List<Long> readings) {
+    public void setReadings(List<String> readings) {
         this.readings = readings;
     }
 

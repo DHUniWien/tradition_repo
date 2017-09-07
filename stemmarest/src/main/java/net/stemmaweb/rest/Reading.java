@@ -227,7 +227,7 @@ public class Reading {
         Node originalReading;
 
         try (Transaction tx = db.beginTx()) {
-            List<Long> readings = duplicateModel.getReadings();
+            List<Long> readings = duplicateModel.getReadings().stream().map(Long::valueOf).collect(Collectors.toList());
             for (Long readId : readings) {
                 originalReading = db.getNodeById(readId);
                 List<String> newWitnesses = duplicateModel.getWitnesses();

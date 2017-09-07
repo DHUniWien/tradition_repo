@@ -307,21 +307,17 @@ public class ReadingTest {
     @Test
     public void duplicateTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node secondNode = nodes.next();
-            assertFalse(nodes.hasNext());
+            Node firstNode = db.findNode(Nodes.READING, "text", "showers");
+            Node secondNode = db.findNode(Nodes.READING, "text", "sweet");
 
             // duplicate reading
-            String jsonPayload = "{\"readings\":[" + firstNode.getId() + ", "
-                    + secondNode.getId() + "], \"witnesses\":[\"A\",\"B\" ]}";
+            List<String> rdgs = new ArrayList<>();
+            rdgs.add(String.valueOf(firstNode.getId()));
+            rdgs.add(String.valueOf(secondNode.getId()));
+            DuplicateModel jsonPayload = new DuplicateModel();
+            jsonPayload.setReadings(rdgs);
+            jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
+
             ClientResponse response = jerseyTest.resource()
                     .path("/reading/" + firstNode.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
@@ -338,38 +334,39 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(31);
 
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node originalShowers = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node duplicatedShowers = nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node originalSweet = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node duplicatedSweet = nodes.next();
-            assertFalse(nodes.hasNext());
+            ResourceIterator<Node> showers = db.findNodes(Nodes.READING, "text", "showers");
+            Node duplicatedShowers = null;
+            while (showers.hasNext()) {
+                Node n = showers.next();
+                if (!n.equals(firstNode))
+                    duplicatedShowers = n;
+            }
+            assertNotNull(duplicatedShowers);
+            ResourceIterator<Node> sweet = db.findNodes(Nodes.READING, "text", "sweet");
+            Node duplicatedSweet = null;
+            while (sweet.hasNext()) {
+                Node n = sweet.next();
+                if (!n.equals(secondNode))
+                    duplicatedSweet = n;
+            }
+            assertNotNull(duplicatedSweet);
 
             // compare original and duplicated
-            Iterable<String> keys = originalShowers.getPropertyKeys();
+            Iterable<String> keys = firstNode.getPropertyKeys();
             for (String key : keys) {
-                String val1 = originalShowers.getProperty(key).toString();
+                String val1 = firstNode.getProperty(key).toString();
                 String val2 = duplicatedShowers.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
 
-            keys = originalSweet.getPropertyKeys();
+            keys = secondNode.getPropertyKeys();
             for (String key : keys) {
-                String val1 = originalSweet.getProperty(key).toString();
+                String val1 = secondNode.getProperty(key).toString();
                 String val2 = duplicatedSweet.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
             tx.success();
-         }
+        }
     }
 
     @Test
