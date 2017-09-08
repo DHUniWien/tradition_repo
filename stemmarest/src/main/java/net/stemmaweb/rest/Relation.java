@@ -81,8 +81,7 @@ public class Relation {
                     ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
                     // Pick out the ones that share the readingA text
                     List<Node> ourA = tradReadings.stream().filter(x -> x.hasProperty("text")
-                                    && x.getProperty("text").toString().equals(
-                                            readingA.getProperty("text").toString()))
+                                    && x.getProperty("text").equals(readingA.getProperty("text")))
                             .collect(Collectors.toList());
                     HashMap<Long, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
@@ -95,8 +94,7 @@ public class Relation {
 
                     // Pick out the ones that share the readingB text
                     List<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
-                            && x.getProperty("text").toString().equals(
-                            readingB.getProperty("text").toString()))
+                            && x.getProperty("text").equals(readingB.getProperty("text")))
                             .collect(Collectors.toList());
                     RelationshipModel relship;
                     for (Node cur_node : ourB) {
@@ -143,7 +141,7 @@ public class Relation {
         ArrayList<ReadingModel> changedReadings = new ArrayList<>();
         ArrayList<RelationshipModel> createdRelationships = new ArrayList<>();
 
-        Relationship relationshipAtoB;
+        Relationship relationshipAtoB = null;
 
         try (Transaction tx = db.beginTx()) {
             /*
@@ -166,15 +164,30 @@ public class Relation {
                         .build();
             }
 
+            // Remove any weak relationships that might conflict
+            Boolean colocation = relationshipModel.implies_colocation();
+            if (colocation) {
+                Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
+                for (Relationship r : relsA) {
+                    RelationshipModel rm = new RelationshipModel(r);
+                    if (rm.weak_relation())
+                        r.delete();
+                }
+                Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
+                for (Relationship r : relsB) {
+                    RelationshipModel rm = new RelationshipModel(r);
+                    if (rm.weak_relation())
+                        r.delete();
+                }
+            }
+
             Boolean isCyclic = ReadingService.wouldGetCyclic(readingA, readingB);
-            Boolean isLocationVariant = !relationshipModel.getType().equals("transposition") &&
-                    !relationshipModel.getType().equals("repetition");
-            if (isCyclic && isLocationVariant) {
+            if (isCyclic && colocation) {
                     return Response
                             .status(Status.CONFLICT)
                             .entity("This relationship creation is not allowed, it would result in a cyclic graph.")
                             .build();
-            } else if (!isCyclic && !isLocationVariant) {
+            } else if (!isCyclic && !colocation) {
                 return Response
                         .status(Status.CONFLICT)
                         .entity("This relationship creation is not allowed. The two readings can be co-located.")
@@ -182,24 +195,27 @@ public class Relation {
             } // TODO add constraints about witness uniqueness or lack thereof
 
             // Check if relationship already exists
-            found_existing_relationship: {
-                Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
-                for (Relationship relationship : relationships) {
-                    if (relationship.getOtherNode(readingA).equals(readingB)) {
-                        if (relationship.getProperty("type").equals(relationshipModel.getType())) {
-                            tx.success();
-                            return Response.status(Status.NOT_MODIFIED).build();
-                        }
-                        String oldRelType = (String) relationship.getProperty("type");
-                        if (oldRelType.equals("collated")) {
-                            // We use the existing relation, instead of delete it and create a new one
-                            relationshipAtoB = relationship;
-                            break found_existing_relationship;
-                        }
+            Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
+            for (Relationship relationship : relationships) {
+                if (relationship.getOtherNode(readingA).equals(readingB)) {
+                    RelationshipModel thisRel = new RelationshipModel(relationship);
+                    if (thisRel.getType().equals(relationshipModel.getType())) {
+                        // TODO allow for update of existing relationship
+                        tx.success();
+                        return Response.status(Status.NOT_MODIFIED).build();
+                    } else if (thisRel.weak_relation()) {
+                        // Rewrite the link that's already there
+                        relationshipAtoB = relationship;
+                    } else {
+                        tx.success();
+                        String msg = String.format("Relationship of type %s already exists between readings %s and %s",
+                                relationshipModel.getType(), relationshipModel.getSource(), relationshipModel.getTarget());
+                        return Response.status(Status.CONFLICT).entity(msg).build();
                     }
                 }
-                relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
             }
+            if (relationshipAtoB == null)
+                relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
 
             relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
             relationshipAtoB.setProperty("scope", nullToEmptyString(relationshipModel.getScope()));
@@ -217,7 +233,7 @@ public class Relation {
             // Recalculate the ranks, if necessary
             Long rankA = (Long) readingA.getProperty("rank");
             Long rankB = (Long) readingB.getProperty("rank");
-            if (!rankA.equals(rankB)  && isLocationVariant) {
+            if (!rankA.equals(rankB) && relationshipModel.implies_colocation()) {
                 // Which one is the lower-ranked reading?
                 Long nodeId = rankA < rankB ? readingA.getId() : readingB.getId();
                 Set<Node> changedRank = new Tradition(tradId).recalculateRank(nodeId);
@@ -243,15 +259,15 @@ public class Relation {
      */
     private boolean isMetaReading(Node reading) {
         return reading != null &&
-                ((reading.hasProperty("is_lacuna") && reading.getProperty("is_lacuna").equals("1")) ||
-                        (reading.hasProperty("is_start") && reading.getProperty("is_start").equals("1")) ||
-                        (reading.hasProperty("is_ph") && reading.getProperty("is_ph").equals("1")) ||
-                        (reading.hasProperty("is_end") && reading.getProperty("is_end").equals("1"))
+                ((reading.hasProperty("is_lacuna") && reading.getProperty("is_lacuna").equals(true)) ||
+                        (reading.hasProperty("is_start") && reading.getProperty("is_start").equals(true)) ||
+                        (reading.hasProperty("is_ph") && reading.getProperty("is_ph").equals(true)) ||
+                        (reading.hasProperty("is_end") && reading.getProperty("is_end").equals(true))
                 );
     }
 
     /**
-     * Remove all instances of the relationship specified.
+     * Remove the relationship specified. There should be only one.
      *
      * @param relationshipModel - the JSON specification of the relationship(s) to delete
      * @return HTTP Response 404 when no node was found, 200 and list of relationship edges

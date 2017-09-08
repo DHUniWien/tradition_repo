@@ -124,7 +124,7 @@ public class Stemma {
             removableNodes
                     .forEach(n -> n.getRelationships(ERelations.TRANSMITTED, Direction.BOTH)
                             .forEach(r -> {
-                                        if (r.getProperty("hypothesis").toString().equals(name))
+                                        if (r.getProperty("hypothesis").equals(name))
                                             removableRelations.add(r);
                                     }
                             ));

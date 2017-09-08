@@ -443,7 +443,7 @@ public class Tradition {
                             .build();
                 }
                 Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
-                if (!oldOwnership.getStartNode().getProperty("id").toString().equals(tradition.getOwner())) {
+                if (!oldOwnership.getStartNode().getProperty("id").equals(tradition.getOwner())) {
                     // Remove the old ownership
                     oldOwnership.delete();
 

@@ -466,8 +466,7 @@ public class Reading {
          }
          */
         if (containClassTwoRelationships(stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged cannot contain class 2 relationships " +
-                    "(transposition / repetition)";
+            errorMessage = "Readings to be merged cannot contain cross-location relationships";
             return false;
         }
         // If the two readings are aligned, there is no need to test for cycles.

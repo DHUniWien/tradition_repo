@@ -15,6 +15,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
+import org.apache.commons.compress.archivers.sevenz.CLI;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -275,6 +276,11 @@ public class StemmawebLegacyTest {
             }
         }
 
+        // Get the existing number of relationships
+        List<RelationshipModel> existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        int er = existingRels.size();
+
         /*
         my @v1 = $c->add_relationship( 'n21', 'n22', { 'type' => 'lexical' } ); # 'unto', 'to'
         is( scalar @v1, 1, "Added a single relationship" );
@@ -299,6 +305,9 @@ public class StemmawebLegacyTest {
         RelationshipModel rm = tmpGraphModel.getRelationships().stream().findAny().get();
         assertEquals(n21, rm.getSource());
         assertEquals(n22, rm.getTarget());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er + 1, existingRels.size());
 
         /*
         my @v2 = $c->add_relationship( 'n24', 'n23',  # 'the', 'teh' near the end
@@ -318,7 +327,10 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
+        assertEquals(2, response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er + 3, existingRels.size());
 
 
         /*
@@ -337,7 +349,10 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
+        assertEquals(1, response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er + 2, existingRels.size());
 
 
         /*
@@ -356,7 +371,10 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 2);
+        assertEquals(2, response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er, existingRels.size());
 
 
         /*
@@ -375,6 +393,9 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er, existingRels.size());
 
 
         /*
@@ -395,7 +416,10 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size(), 2L);
+        assertEquals(2, response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er + 2, existingRels.size());
 
 
         /*
@@ -416,6 +440,9 @@ public class StemmawebLegacyTest {
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(er + 1, existingRels.size());
 
         // we don't need this, because we are going to get all relationships
         /* MultivaluedMap<String, String> queryParams = new MultivaluedMapImpl();
@@ -428,15 +455,15 @@ public class StemmawebLegacyTest {
                 .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        boolean foundTraditon = false;
+        boolean foundRelation = false;
         ArrayList<RelationshipModel> relList = response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){});
         for (RelationshipModel relItem : relList) {
             if ((relItem.getSource().equals(n23) && relItem.getTarget().equals(n24)) ||
                     (relItem.getSource().equals(n24) && relItem.getTarget().equals(n23))) {
-                foundTraditon = true;
+                foundRelation = true;
             }
         }
-        assertTrue(foundTraditon);
+        assertTrue(foundRelation);
 
 
         /*

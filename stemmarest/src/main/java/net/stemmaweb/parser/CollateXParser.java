@@ -84,7 +84,7 @@ public class CollateXParser {
             // Identify the end node. Assuming that there is only one.
             final Long hr = highestRank;
             Optional<Node> endNodeOpt = createdReadings.values().stream()
-                    .filter(x -> Long.valueOf(x.getProperty("rank").toString()).equals(hr))
+                    .filter(x -> x.getProperty("rank").equals(hr))
                     .findFirst();
             if (!endNodeOpt.isPresent())
                 return Response.serverError().entity("No end node found").build();

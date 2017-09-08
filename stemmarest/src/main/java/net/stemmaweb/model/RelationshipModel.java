@@ -217,4 +217,13 @@ public class RelationshipModel {
         this.type = type;
     }
 
+    // Attribute methods; these will eventually go into RelationshipTypeModel.
+    public Boolean implies_colocation() {
+        return !(this.type.equals("transposition") || this.type.equals("repetition"));
+    }
+
+    public Boolean weak_relation() {
+        return this.type.equals("collated");
+    }
+
 }

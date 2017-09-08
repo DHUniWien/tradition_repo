@@ -262,7 +262,7 @@ public class Section {
                 return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
             }
             Node pnTradition = DatabaseService.getTraditionNode(priorSection, db);
-            if (!pnTradition.getProperty("id").toString().equals(tradId))
+            if (!pnTradition.getProperty("id").equals(tradId))
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
 
@@ -552,8 +552,8 @@ public class Section {
                 continue;
             ArrayList<Node> sameText = new ArrayList<>();
             questionedReadings.stream().filter(nodeB -> !nodeA.equals(nodeB)
-                    && nodeA.getProperty("text").toString().equals(nodeB.getProperty("text").toString())
-                    && !nodeA.getProperty("rank").toString().equals(nodeB.getProperty("rank").toString())).forEach(nodeB -> {
+                    && nodeA.getProperty("text").equals(nodeB.getProperty("text"))
+                    && !nodeA.getProperty("rank").equals(nodeB.getProperty("rank"))).forEach(nodeB -> {
                 sameText.add(nodeB);
                 sameText.add(nodeA);
             });

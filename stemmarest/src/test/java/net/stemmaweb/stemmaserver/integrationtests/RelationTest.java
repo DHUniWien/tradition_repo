@@ -1,9 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.core.MediaType;
@@ -251,74 +248,6 @@ public class RelationTest {
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                 removalResponse.getStatus());
-    }
-
-    /**
-     * Test the removal method by posting two nodes to /relation/{witnessId}/relationships/delete
-     */
-    @Test(expected=NotFoundException.class)
-    public void deleteRelationshipTestdeleteAll() {
-        /*
-         * Create two relationships between two nodes
-         */
-        RelationshipModel relationship = new RelationshipModel();
-        String relationshipId1;
-        String relationshipId2;
-        relationship.setSource("16");
-        relationship.setTarget("24");
-        relationship.setType("transposition");
-        relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
-        relationship.setScope("local");
-
-        ClientResponse actualResponse1 = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships1 = actualResponse1.getEntity(new GenericType<GraphModel>(){});
-        relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
-
-        relationship = new RelationshipModel();
-        relationship.setSource("16");
-        relationship.setTarget("24");
-        relationship.setType("repetition");
-        relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
-        relationship.setScope("local");
-
-        ClientResponse actualResponse2 = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
-        GraphModel readingsAndRelationships2 = actualResponse2.getEntity(new GenericType<GraphModel>(){});
-        relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
-
-        /*
-         * Create the model to delete
-         */
-        RelationshipModel removeModel = new RelationshipModel();
-        removeModel.setSource("16");
-        removeModel.setTarget("24");
-        removeModel.setScope("local");
-
-        ClientResponse removalResponse = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .delete(ClientResponse.class, removeModel);
-        assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
-
-        try (Transaction tx = db.beginTx()) {
-            db.getRelationshipById(Long.parseLong(relationshipId1));
-            db.getRelationshipById(Long.parseLong(relationshipId2));
-            tx.success();
-        }
     }
 
     @Test
@@ -647,6 +576,132 @@ public class RelationTest {
             assertTrue(!rels.hasNext()); // make sure node does not have a relationship now!
             tx.success();
         }
+    }
+
+    @Test
+    public void createRelationshipOverCollatedTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/legendfrag.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+
+        List<RelationshipModel> allrels = jerseyTest.resource().path("/tradition/" + newTradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+
+        // Try to overwrite a strong relationship
+        List<RelationshipModel> orthorels = allrels.stream().filter(
+                x -> x.getType().equals("orthographic") && x.getReading_a().equals("suecia") && x.getReading_b().equals("Swecia"))
+                .collect(Collectors.toList());
+        assertEquals(1, orthorels.size());
+        RelationshipModel rel = orthorels.get(0);
+        rel.setType("spelling");
+        rel.setScope("document");
+        response = jerseyTest.resource().path("/tradition/" + newTradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, rel);
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
+
+        List<RelationshipModel> collaterels = allrels.stream()
+                .filter(x -> x.weak_relation() && x.getReading_b().equals("henricus"))
+                .collect(Collectors.toList());
+        assertEquals(1, collaterels.size());
+        rel = collaterels.get(0);
+        // Change this to a stronger relationship type
+        rel.setType("other");
+        rel.setScope("local");
+        rel.setIs_significant("yes");
+
+        // Now try making the "new" relationship
+        response = jerseyTest.resource().path("/tradition/" + newTradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, rel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    }
+
+    @Test
+    public void createRelationshipBreakCollatedTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/legendfrag.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+
+        String myId;
+        String otherId;
+        try (Transaction tx = db.beginTx()) {
+            List<Node> henries = db.findNodes(Nodes.READING, "text", "henricus").stream()
+                    .filter(x -> x.getProperty("rank").equals(4L)).collect(Collectors.toList());
+            Node other = db.findNode(Nodes.READING, "text", "heinricus");
+            assertEquals(1, henries.size());
+            assertNotNull(other);
+            myId = String.valueOf(henries.get(0).getId());
+            otherId = String.valueOf(other.getId());
+            tx.success();
+        }
+        RelationshipModel r = new RelationshipModel();
+        r.setSource(otherId);
+        r.setTarget(myId);
+        r.setType("spelling");
+        r.setScope("local");
+        r.setIs_significant("no");
+        response = jerseyTest.resource().path("/tradition/" + newTradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, r);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+    }
+
+    @Test
+    public void createBadRelationshipRestoreCollatedTest () {
+        // Create a collation between rood and root
+        Long roodId;
+        Long the1Id = 0L;
+        Long the2Id = 0L;
+        try (Transaction tx = db.beginTx()) {
+            roodId = db.findNode(Nodes.READING, "text", "rood").getId();
+            List<Node> thes = db.findNodes(Nodes.READING, "text", "the").stream()
+                    .collect(Collectors.toList());
+            for (Node the : thes) {
+                if (the.getProperty("rank").equals(17L))
+                    the1Id = the.getId();
+                else
+                    the2Id = the.getId();
+            }
+            tx.success();
+        }
+        assertTrue(the1Id > 0);
+        assertTrue(the2Id > 0);
+
+        // Make a collated relationship between rood and the
+        RelationshipModel model = new RelationshipModel();
+        model.setSource(roodId.toString());
+        model.setTarget(the1Id.toString());
+        model.setType("collated");
+        model.setReading_a("rood");
+        model.setReading_b("the");
+
+        ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, model);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+
+        // Try to make a transposition relationship between rood and root
+
+        model.setTarget(the2Id.toString());
+        model.setType("orthographic");
+        model.setReading_b("root");
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, model);
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
+
+        // Check that the collated link is still there
+        List<RelationshipModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(4, allRels.size());
+        Boolean foundCollated = false;
+        for (RelationshipModel r : allRels) {
+            if (r.getType().equals("collated") && r.getSource().equals(roodId.toString())
+                    && r.getTarget().equals(the1Id.toString()))
+                foundCollated = true;
+        }
+        assertTrue(foundCollated);
     }
 
     /*

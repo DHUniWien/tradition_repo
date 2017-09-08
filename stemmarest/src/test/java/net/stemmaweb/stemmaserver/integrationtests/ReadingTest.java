@@ -813,7 +813,7 @@ public class ReadingTest {
             assertEquals(Status.CONFLICT.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals(
-                    "Readings to be merged cannot contain class 2 relationships (transposition / repetition)",
+                    "Readings to be merged cannot contain cross-location relationships",
                     response.getEntity(String.class));
 
             testNumberOfReadingsAndWitnesses(29);
@@ -1424,14 +1424,14 @@ public class ReadingTest {
             ResourceIterator<Node> ri = db.findNodes(Nodes.READING, "text", "venerabilis");
             while (ri.hasNext()) {
                 Node n = ri.next();
-                if (n.getProperty("rank").toString().equals("3"))
+                if (n.getProperty("rank").equals(3L))
                     firstId = String.valueOf(n.getId());
-                if (n.getProperty("rank").toString().equals("5"))
+                if (n.getProperty("rank").equals(5L))
                     secondId = String.valueOf(n.getId());
             }
             // Get rid of all the "collated" relationships
             db.getAllRelationships().stream()
-                    .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").toString().equals("collated"))
+                    .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").equals("collated"))
                     .forEach(Relationship::delete);
             tx.success();
         }
