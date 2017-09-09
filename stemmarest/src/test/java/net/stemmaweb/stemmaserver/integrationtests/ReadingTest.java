@@ -310,6 +310,17 @@ public class ReadingTest {
             Node firstNode = db.findNode(Nodes.READING, "text", "showers");
             Node secondNode = db.findNode(Nodes.READING, "text", "sweet");
 
+            String witnessA = jerseyTest.resource().path("/tradition/" + tradId + "/witness/A/text")
+                    .get(String.class);
+            String witnessB = jerseyTest.resource().path("/tradition/" + tradId + "/witness/B/text")
+                    .get(String.class);
+            String witnessC = jerseyTest.resource().path("/tradition/" + tradId + "/witness/C/text")
+                    .get(String.class);
+
+            // get existing relationships
+            List<RelationshipModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                    .get(new GenericType<List<RelationshipModel>>() {});
+
             // duplicate reading
             List<String> rdgs = new ArrayList<>();
             rdgs.add(String.valueOf(firstNode.getId()));
@@ -324,13 +335,28 @@ public class ReadingTest {
                     .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            List<RelationshipModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                    .get(new GenericType<List<RelationshipModel>>() {});
+            assertEquals(allRels.size(), ourRels.size());
+            for (RelationshipModel rm : allRels) {
+                long found = ourRels.stream()
+                        .filter(x -> x.getSource().equals(rm.getSource()) && x.getTarget().equals(rm.getTarget())
+                                && x.getType().equals(rm.getType())).count();
+                assertEquals(1L, found);
+            }
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
             HashSet<String> rdgWords = new HashSet<>();
             readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
             assertTrue(rdgWords.contains("showers"));
             assertTrue(rdgWords.contains("sweet"));
-            assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
+            assertEquals(0, readingsAndRelationshipsModel.getRelationships().size());
+            assertEquals(witnessA, jerseyTest.resource().path("/tradition/" + tradId + "/witness/A/text")
+                    .get(String.class));
+            assertEquals(witnessB, jerseyTest.resource().path("/tradition/" + tradId + "/witness/B/text")
+                    .get(String.class));
+            assertEquals(witnessC, jerseyTest.resource().path("/tradition/" + tradId + "/witness/C/text")
+                    .get(String.class));
 
             testNumberOfReadingsAndWitnesses(31);
 
@@ -372,40 +398,60 @@ public class ReadingTest {
     @Test
     public void duplicateWithDuplicateForTwoWitnessesTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'of'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+            // get all relationships
+            List<RelationshipModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                    .get(new GenericType<List<RelationshipModel>>() {});
+            // add a relationship between droughts
+            List<Node> droughts = db.findNodes(Nodes.READING, "text", "drought")
+                    .stream().collect(Collectors.toList());
+            assertEquals(2, droughts.size());
+            RelationshipModel drel = new RelationshipModel();
+            drel.setSource(String.valueOf(droughts.get(1).getId()));
+            drel.setTarget(String.valueOf(droughts.get(0).getId()));
+            drel.setType("transposition");
+            drel.setScope("local");
+            ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, drel);
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
             // duplicate reading
+            Node node = db.findNode(Nodes.READING, "text", "of");
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"C\" ]}";
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId() + "/duplicate")
+            response = jerseyTest.resource().path("/reading/" + node.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
+            // check that now-invalid relationships are gone
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
             ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
             assertEquals("of", firstWord.getText());
             assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
+            List<RelationshipModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
+                    .get(new GenericType<List<RelationshipModel>>() {});
+            assertEquals(allRels.size() - 1, ourRels.size());
+            for (RelationshipModel del : readingsAndRelationshipsModel.getRelationships()) {
+                for (RelationshipModel kept : ourRels) {
+                    assertNotEquals(kept.getSource(), del.getSource());
+                    assertNotEquals(kept.getTarget(), del.getTarget());
+                }
+            }
 
             testNumberOfReadingsAndWitnesses(30);
-
-            result = db.execute("match (w:READING {text:'of'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node originalOf = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node duplicatedOf = nodes.next();
-            assertFalse(nodes.hasNext());
+            List<Node> ofNodes = db.findNodes(Nodes.READING, "text", "of")
+                    .stream().collect(Collectors.toList());
+            assertEquals(2, ofNodes.size());
+            Node duplicatedOf = null;
+            for (Node n : ofNodes)
+                if (!node.equals(n))
+                    duplicatedOf = n;
+            assertNotNull(duplicatedOf);
 
             // test witnesses and number of paths
             int numberOfPaths = 0;
-            for (Relationship incoming : originalOf.getRelationships(ERelations.SEQUENCE,
+            for (Relationship incoming : node.getRelationships(ERelations.SEQUENCE,
                     Direction.INCOMING)) {
                 assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
                 numberOfPaths++;
@@ -422,7 +468,7 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : originalOf.getRelationships(ERelations.SEQUENCE,
+            for (Relationship outgoing : node.getRelationships(ERelations.SEQUENCE,
                     Direction.OUTGOING)) {
                 assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 numberOfPaths++;
@@ -439,9 +485,9 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             // compare original and duplicated
-            Iterable<String> keys = originalOf.getPropertyKeys();
+            Iterable<String> keys = node.getPropertyKeys();
             for (String key : keys) {
-                String val1 = originalOf.getProperty(key).toString();
+                String val1 = node.getProperty(key).toString();
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
@@ -452,15 +498,15 @@ public class ReadingTest {
     @Test
     public void duplicateWithDuplicateForOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'of'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+            Node originalOf = db.findNode(Nodes.READING, "text", "of");
+            // get all relationships as baseline
+            List<RelationshipModel> origRelations = jerseyTest.resource()
+                    .path("/tradition/" + tradId + "/relationships")
+                    .get(new GenericType<List<RelationshipModel>>() {});
 
             // duplicate reading
-            String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"B\"]}";
-            ClientResponse response = jerseyTest.resource().path("/reading/" + node.getId() + "/duplicate")
+            String jsonPayload = "{\"readings\":[" + originalOf.getId() + "], \"witnesses\":[\"B\"]}";
+            ClientResponse response = jerseyTest.resource().path("/reading/" + originalOf.getId() + "/duplicate")
                     .type(MediaType.APPLICATION_JSON).post(ClientResponse.class, jsonPayload);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
@@ -468,18 +514,16 @@ public class ReadingTest {
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
             ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
             assertEquals("of", firstWord.getText());
-            assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
+            assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
+            List<RelationshipModel> nowRelations = jerseyTest.resource()
+                    .path("/tradition/" + tradId + "/relationships")
+                    .get(new GenericType<List<RelationshipModel>>() {});
+            assertEquals(origRelations.size() - 1, nowRelations.size());
+            for (RelationshipModel nr : nowRelations) assertNotEquals("march", nr.getReading_a());
 
             testNumberOfReadingsAndWitnesses(30);
 
-            result = db.execute("match (w:READING {text:'of'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node originalOf = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node duplicatedOf = nodes.next();
-            assertFalse(nodes.hasNext());
-
+            Node duplicatedOf = db.getNodeById(Long.valueOf(firstWord.getId()));
             // test witnesses and number of paths
             int numberOfPaths = 0;
             for (Relationship incoming : originalOf.getRelationships(ERelations.SEQUENCE,

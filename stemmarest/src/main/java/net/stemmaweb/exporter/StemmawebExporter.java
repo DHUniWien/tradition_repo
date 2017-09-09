@@ -169,7 +169,7 @@ public class StemmawebExporter {
 
             props = traditionNode.getPropertyKeys();
             for(String prop : props) {
-                if(prop !=null && !prop.equals("id") && !prop.equals("tradition_id")) {
+                if(prop !=null && !prop.equals("id") && !prop.equals("section_id")) {
                     writer.writeStartElement("data");
                     writer.writeAttribute("key", graphMap.get(prop)[0]);
                     writer.writeCharacters(traditionNode.getProperty(prop).toString());
@@ -207,7 +207,7 @@ public class StemmawebExporter {
                 writer.writeEndElement();
 
                 for(String prop : props) {
-                    if(prop!=null && !prop.equals("tradition_id")) {
+                    if(prop!=null && !prop.equals("section_id")) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key",nodeMap.get(prop)[0]);
                         writer.writeCharacters((prop.equals("a.c.")) ? "(a.c.)" :node.getProperty(prop).toString());

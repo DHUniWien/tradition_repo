@@ -49,9 +49,7 @@ public class CollateXParser {
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
         Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
-        String tradId;
         try (Transaction tx = db.beginTx()) {
-            tradId = traditionNode.getProperty("id").toString();
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
@@ -60,7 +58,7 @@ public class CollateXParser {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
                 Node reading = db.createNode(Nodes.READING);
-                reading.setProperty("tradition_id", tradId);
+                reading.setProperty("section_id", parentNode.getId());
 
                 NodeList dataNodes = ((Element) readingNodes.item(i)).getElementsByTagName("data");
                 for (int j = 0; j < dataNodes.getLength(); j++) {

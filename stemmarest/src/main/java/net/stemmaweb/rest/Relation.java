@@ -152,9 +152,9 @@ public class Relation {
             Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
             Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
-            if (!readingA.getProperty("tradition_id").equals(readingB.getProperty("tradition_id"))) {
+            if (!readingA.getProperty("section_id").equals(readingB.getProperty("section_id"))) {
                 return Response.status(Status.CONFLICT)
-                        .entity("Cannot create relationship across traditions")
+                        .entity("Cannot create relationship across tradition sections")
                         .build();
             }
 

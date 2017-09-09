@@ -100,13 +100,11 @@ public class TabularParser {
         String response;
         Response.Status result = Response.Status.OK;
         Node traditionNode = DatabaseService.getRelated(parentNode, ERelations.PART).get(0);
-        String tradId;
 
         try (Transaction tx = db.beginTx()) {
-            tradId = traditionNode.getProperty("id").toString();
             // Make the start node
-            Node startNode = Util.createStartNode(parentNode, tradId);
-            Node endNode = Util.createEndtNode(parentNode, tradId);
+            Node startNode = Util.createStartNode(parentNode);
+            Node endNode = Util.createEndNode(parentNode);
             endNode.setProperty("rank", (long) tableData.size());
 
             // Get the witnesses from the first row of the table
@@ -150,7 +148,7 @@ public class TabularParser {
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
                         readingNode = db.createNode(Nodes.READING);
-                        readingNode.setProperty("tradition_id", tradId);
+                        readingNode.setProperty("section_id", parentNode.getId());
                         readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))

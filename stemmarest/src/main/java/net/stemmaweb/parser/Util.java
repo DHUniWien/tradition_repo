@@ -16,11 +16,11 @@ import java.io.InputStream;
 public class Util {
 
     // Start and end node creation
-    static Node createStartNode(Node parentNode, String tradId) {
+    static Node createStartNode(Node parentNode) {
         GraphDatabaseService db = parentNode.getGraphDatabase();
         Node startNode = db.createNode(Nodes.READING);
         startNode.setProperty("is_start", true);
-        startNode.setProperty("tradition_id", tradId);
+        startNode.setProperty("section_id", parentNode.getId());
         startNode.setProperty("rank", 0L);
         startNode.setProperty("text", "#START#");
         parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
@@ -28,11 +28,11 @@ public class Util {
     }
 
     // Start and end node creation
-    static Node createEndtNode(Node parentNode, String tradId) {
+    static Node createEndNode(Node parentNode) {
         GraphDatabaseService db = parentNode.getGraphDatabase();
         Node endNode = db.createNode(Nodes.READING);
         endNode.setProperty("is_end", true);
-        endNode.setProperty("tradition_id", tradId);
+        endNode.setProperty("section_id", parentNode.getId());
         endNode.setProperty("text", "#END#");
         parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
         return endNode;

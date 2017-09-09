@@ -222,7 +222,7 @@ public class Reading {
     public Response duplicateReading(DuplicateModel duplicateModel) {
 
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
-        ArrayList<RelationshipModel> deletedRelationships = null;
+        ArrayList<RelationshipModel> tempDeleted = new ArrayList<>();
 
         Node originalReading;
 
@@ -238,13 +238,23 @@ public class Reading {
                 }
 
                 Node newNode = db.createNode();
-                deletedRelationships = duplicate(newWitnesses, originalReading, newNode);
+                tempDeleted.addAll(duplicate(newWitnesses, originalReading, newNode));
                 createdReadings.add(new ReadingModel(newNode));
             }
 
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+        }
+
+        // Now outside our main transaction block, try to put back the deleted relationships.
+        ArrayList<RelationshipModel> deletedRelationships = new ArrayList<>();
+        Relation relationRest = new Relation(getTraditionId());
+        for (RelationshipModel rm : tempDeleted) {
+            Response result = relationRest.create(rm);
+            if (Status.CREATED.getStatusCode() != result.getStatus())
+                deletedRelationships.add(rm);
         }
         GraphModel readingsAndRelationships = new GraphModel(createdReadings, deletedRelationships);
         return Response.ok(readingsAndRelationships).build();
@@ -306,6 +316,7 @@ public class Reading {
 
     /**
      * Performs all necessary steps in the database to duplicate the reading.
+     * NOTE: to be used inside a transaction!
      *
      * @param newWitnesses
      *            : the new witnesses to be split from the original path
@@ -317,38 +328,66 @@ public class Reading {
      */
     private ArrayList<RelationshipModel> duplicate(List<String> newWitnesses,
             Node originalReading, Node addedReading) {
-        ArrayList<RelationshipModel> deletedRelationships = new ArrayList<>();
         // copy reading properties to newly added reading
         addedReading = ReadingService.copyReadingProperties(originalReading, addedReading);
 
-        // copy relationships
-        for (Relationship originalRel : originalReading.getRelationships(ERelations.RELATED)) {
-            Relationship newRel = addedReading.createRelationshipTo(
-                    originalRel.getOtherNode(originalReading),
-                    ERelations.RELATED);
-            for (String key : originalRel.getPropertyKeys()) {
-                newRel.setProperty(key, originalRel.getProperty(key));
-            }
-        }
-
-        // add witnesses to normal relationships
+        // add witnesses to the correct sequence links
         // Incoming
         for (Relationship originalRelationship : originalReading
                 .getRelationships(ERelations.SEQUENCE, Direction.INCOMING))
-            deletedRelationships
-                    .addAll(transferNewWitnessesFromOriginalReadingToAddedReading(
+            transferNewWitnessesFromOriginalReadingToAddedReading(
                             newWitnesses, originalRelationship,
-                            originalRelationship.getStartNode(), addedReading));
+                            originalRelationship.getStartNode(), addedReading);
         // Outgoing
         for (Relationship originalRelationship : originalReading
                 .getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
-            deletedRelationships
-                    .addAll(transferNewWitnessesFromOriginalReadingToAddedReading(
+            transferNewWitnessesFromOriginalReadingToAddedReading(
                             newWitnesses, originalRelationship, addedReading,
-                            originalRelationship.getEndNode()));
+                            originalRelationship.getEndNode());
         }
 
-        return deletedRelationships;
+        // replicated all colocated relationships of the original reading;
+        // delete all non-colocated relationships that cross our rank
+        ArrayList<RelationshipModel> tempDeleted = new ArrayList<>();
+        String sectId = originalReading.getProperty("section_id").toString();
+        String tradId = getTraditionId();
+        Section sectionRest = new Section(tradId, sectId);
+        Long ourRank = (Long) originalReading.getProperty("rank");
+        for (RelationshipModel rm : sectionRest.sectionRelationships()) {
+            Relationship originalRel = db.getRelationshipById(Long.valueOf(rm.getId()));
+            if (rm.implies_colocation() &&
+                    (rm.getSource().equals(String.valueOf(originalReading.getId())) ||
+                     rm.getTarget().equals(String.valueOf(originalReading.getId())))) {
+                Relationship newRel = addedReading.createRelationshipTo(
+                        originalRel.getOtherNode(originalReading),
+                        ERelations.RELATED);
+                for (String key : originalRel.getPropertyKeys()) {
+                    newRel.setProperty(key, originalRel.getProperty(key));
+                }
+            } else if (!rm.implies_colocation()){
+                // Get the related readings
+                ReadingModel relSource = new ReadingModel(db.getNodeById(Long.valueOf(rm.getSource())));
+                ReadingModel relTarget = new ReadingModel(db.getNodeById(Long.valueOf(rm.getTarget())));
+                if ((relSource.getRank() < ourRank && relTarget.getRank() > ourRank)
+                    || (relSource.getRank() > ourRank && relTarget.getRank() < ourRank)) {
+                    originalRel.delete();
+                    tempDeleted.add(rm);
+                }
+            }
+        }
+/*
+        // see if any of the deleted non-colocations can be safely put back
+        Relation relationRest = new Relation(tradId);
+        ArrayList<RelationshipModel> removedRelationships = new ArrayList<>();
+        for (RelationshipModel rm : tempDeleted) {
+            Response result = relationRest.create(rm);
+            if (Status.CREATED.getStatusCode() != result.getStatus())
+                removedRelationships.add(rm);
+        }
+*/
+
+        //return removedRelationships;
+        return tempDeleted;
     }
 
     /**
@@ -360,12 +399,10 @@ public class Reading {
      * @param originalRel -
      * @param originNode -
      * @param targetNode -
-     * @return a list of the deleted edges
      */
-    private ArrayList<RelationshipModel> transferNewWitnessesFromOriginalReadingToAddedReading(
+    private void transferNewWitnessesFromOriginalReadingToAddedReading(
             List<String> newWitnesses, Relationship originalRel,
             Node originNode, Node targetNode) {
-        ArrayList<RelationshipModel> deletedRelationships = new ArrayList<>();
         String[] oldWitnesses = (String[]) originalRel.getProperty("witnesses");
         // if oldWitnesses only contains one witness and this one should be
         // duplicated, create new relationship for addedReading and delete
@@ -374,7 +411,6 @@ public class Reading {
             if (newWitnesses.contains(oldWitnesses[0])) {
                 Relationship newRel = originNode.createRelationshipTo(targetNode, ERelations.SEQUENCE);
                 newRel.setProperty("witnesses", oldWitnesses);
-                deletedRelationships.add(new RelationshipModel(originalRel));
                 originalRel.delete();
             }
             // if oldWitnesses contains more than one witnesses, create new
@@ -401,7 +437,6 @@ public class Reading {
                         .toArray(new String[remainingWitnesses.size()]));
 
                 if (stayingWitnesses.isEmpty()) {
-                    deletedRelationships.add(new RelationshipModel(originalRel));
                     originalRel.delete();
                 } else {
                     Collections.sort(stayingWitnesses);
@@ -410,8 +445,6 @@ public class Reading {
                 }
             }
         }
-
-        return deletedRelationships;
     }
 
     /**
@@ -677,7 +710,7 @@ public class Reading {
             if (!hasRankGap(originalReading, splitWords.length)) {
                 // TODO (sk): ask TLA, if modification of the rank will be ok
                 Long rankGap = (Long) originalReading.getProperty("rank") + splitWords.length;
-                String tradId = originalReading.getProperty("tradition_id").toString();
+                String tradId = getTraditionId();
                 for (Relationship rel : originalReading.getRelationships(
                         Direction.OUTGOING, ERelations.SEQUENCE)) {
                     Node nextNode = rel.getEndNode();
@@ -1057,7 +1090,7 @@ public class Reading {
             return false;
         }
 
-        if (hasNotNormalRelationships(read1) || hasNotNormalRelationships(read2)) {
+        if (hasNonSequenceRelationships(read1) || hasNonSequenceRelationships(read2)) {
             errorMessage = "reading has other relations. could not compress";
             return false;
         }
@@ -1076,7 +1109,7 @@ public class Reading {
      *            the reading
      * @return true if it has, false otherwise
      */
-    private boolean hasNotNormalRelationships(Node read) {
+    private boolean hasNonSequenceRelationships(Node read) {
         String type;
         String normal = ERelations.SEQUENCE.toString();
 
@@ -1109,4 +1142,15 @@ public class Reading {
         return from1to2;
     }
 
+    private String getTraditionId () {
+        String tradId;
+        try (Transaction tx = db.beginTx()) {
+            Node rdg = db.getNodeById(readId);
+            tradId = db.getNodeById(Long.valueOf(rdg.getProperty("section_id").toString()))
+                    .getSingleRelationship(ERelations.PART, Direction.INCOMING)
+                    .getStartNode().getProperty("id").toString();
+            tx.success();
+        }
+        return tradId;
+    }
 }

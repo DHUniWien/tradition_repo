@@ -57,7 +57,7 @@ public class TEIParallelSegParser {
             parentId = String.valueOf(parentNode.getId());
             tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
-            startNode = Util.createStartNode(parentNode, tradId);
+            startNode = Util.createStartNode(parentNode);
 
             // State variables
             Boolean inHeader = false;
@@ -86,7 +86,7 @@ public class TEIParallelSegParser {
 
                             case "text":
                                 // End of the text; add the end node.
-                                endNode = Util.createEndtNode(parentNode, tradId);
+                                endNode = Util.createEndNode(parentNode);
                                 endNode.setProperty("rank", 0L);
                                 Relationship endLink = documentPrior.createRelationshipTo(endNode, ERelations.SEQUENCE);
                                 setAllWitnesses(endLink);
@@ -132,7 +132,7 @@ public class TEIParallelSegParser {
                                 break;
 
                             case "app":
-                                documentPrior = parseApp(reader, tradId, documentPrior, false);
+                                documentPrior = parseApp(reader, parentNode.getId(), documentPrior, false);
                                 break;
 
                             case "note":
@@ -150,7 +150,7 @@ public class TEIParallelSegParser {
                                     .filter(activeWitnesses::get)
                                     .collect(Collectors.toCollection(ArrayList::new));
                             // Make a reading chain of the text
-                            chain = makeReadingChain(reader, tradId, readingWitnesses, "witnesses");
+                            chain = makeReadingChain(reader, parentNode.getId(), readingWitnesses, "witnesses");
                             if (chain.size() != 0) {
                                 // Add a placeholder to the end of the chain
                                 Node chainEnd = createPlaceholderNode("chainEnd");
@@ -214,7 +214,7 @@ public class TEIParallelSegParser {
 
     // Parse an app, its readings, and its sub-apps if necessary. Return the node that
     // is now the last reading in its chain.
-    private Node parseApp(XMLStreamReader reader, String tradId, Node contextPrior, Boolean recursed) {
+    private Node parseApp(XMLStreamReader reader, Long sectId, Node contextPrior, Boolean recursed) {
 
         // We are at the START_ELEMENT event for the <app> tag.
         // Create a bracket of placeholder nodes, which all readings in this app
@@ -304,7 +304,7 @@ public class TEIParallelSegParser {
                                 activeWitnesses.keySet().forEach(x -> activeWitnesses.put(x, false));
                                 readingWitnesses.forEach(x -> activeWitnesses.put(x, true));
                                 // Send the app for recursive parsing and attach its endpoint to ours
-                                readingEnd = parseApp(reader, tradId, readingEnd, true);
+                                readingEnd = parseApp(reader, sectId, readingEnd, true);
                                 // Now restore the active witnesses
                                 savedActive.forEach(x -> activeWitnesses.put(x, true));
                                 break;
@@ -347,7 +347,7 @@ public class TEIParallelSegParser {
 
                     case XMLStreamConstants.CHARACTERS:
                         if(!skip && !reader.isWhiteSpace()) {
-                            chain = makeReadingChain(reader, tradId, readingWitnesses, witClass);
+                            chain = makeReadingChain(reader, sectId, readingWitnesses, witClass);
                             if (chain.size() > 0) {
                                 // Attach the chain to the reading start; error if there is no reading start
                                 Relationship link = readingEnd.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
@@ -367,7 +367,7 @@ public class TEIParallelSegParser {
         return contextPrior;
     }
 
-    private ArrayList<Node> makeReadingChain(XMLStreamReader reader, String tradId,
+    private ArrayList<Node> makeReadingChain(XMLStreamReader reader, Long sectId,
                                              ArrayList<String> readingWitnesses, String witClass) {
         // Split the character stream into whitespace-separate words
         String[] words = reader.getText().split("\\s");
@@ -382,7 +382,7 @@ public class TEIParallelSegParser {
                 continue;
             Node wordNode = db.createNode(Nodes.READING);
             wordNode.setProperty("text", word);
-            wordNode.setProperty("tradition_id", tradId);
+            wordNode.setProperty("section_id", sectId);
             wordNode.setProperty("rank", 0);
             if (join_prior) {
                 wordNode.setProperty("join_prior", true);

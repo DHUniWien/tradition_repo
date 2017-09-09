@@ -320,7 +320,7 @@ public class StemmawebParser {
                                 if (!currentGraph.equals("relationships")) {
                                     // only store nodes for the sequence graph
                                     currentNode = db.createNode(Nodes.READING);
-                                    currentNode.setProperty("tradition_id", tradId);
+                                    currentNode.setProperty("section_id", parentNode.getId());
                                     String nodeId = reader.getAttributeValue("", "id");
                                     idToNeo4jId.put(nodeId, currentNode.getId());
                                 }
