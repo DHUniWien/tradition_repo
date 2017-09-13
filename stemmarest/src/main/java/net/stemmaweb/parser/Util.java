@@ -2,8 +2,10 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -68,5 +70,20 @@ public class Util {
             return null;
         }
     }
+
+    // Helper to get any existing SEQUENCE link between two readings.
+    // NOTE: For use inside a transaction
+    static Relationship getSequenceIfExists (Node source, Node target) {
+        Relationship found = null;
+        Iterable<Relationship> allseq = source.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+        for (Relationship r : allseq) {
+            if (r.getEndNode().equals(target)) {
+                found = r;
+                break;
+            }
+        }
+        return found;
+    }
+
 
 }

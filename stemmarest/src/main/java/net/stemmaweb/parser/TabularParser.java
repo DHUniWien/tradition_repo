@@ -156,7 +156,7 @@ public class TabularParser {
                         createdReadings.put(reading, readingNode);
                     }
                     // Does the reading have a relationship with lastNode? If not, create it.
-                    Relationship existingSeq = getSequenceIfExists(lastNode, readingNode);
+                    Relationship existingSeq = Util.getSequenceIfExists(lastNode, readingNode);
                     if (existingSeq == null)
                         existingSeq = lastNode.createRelationshipTo(readingNode, ERelations.SEQUENCE);
 
@@ -197,7 +197,7 @@ public class TabularParser {
 
             // Tie all the last readings to the end node.
             for (Node readingNode : lastReading.values()) {
-                Relationship endRelation = getSequenceIfExists(readingNode, endNode);
+                Relationship endRelation = Util.getSequenceIfExists(readingNode, endNode);
                 if (endRelation == null) {
                     endRelation = readingNode.createRelationshipTo(endNode, ERelations.SEQUENCE);
                     ArrayList<String> readingWits = new ArrayList<>();
@@ -222,19 +222,5 @@ public class TabularParser {
 
         return Response.status(result).entity(response).build();
 
-    }
-
-    // Helper to get any existing SEQUENCE link between two readings.
-    // NOTE: For use inside a transaction
-    private Relationship getSequenceIfExists (Node source, Node target) {
-        Relationship found = null;
-        Iterable<Relationship> allseq = source.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-        for (Relationship r : allseq) {
-            if (r.getEndNode().equals(target)) {
-                found = r;
-                break;
-            }
-        }
-        return found;
     }
 }
