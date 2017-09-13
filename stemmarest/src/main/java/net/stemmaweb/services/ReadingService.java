@@ -156,9 +156,11 @@ public class ReadingService {
 
         @Override
         public Evaluation evaluate(Path path) {
-            Node testNode = path.startNode();
+            if (path.endNode().equals(path.startNode()))
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            Node testNode = path.lastRelationship().getStartNode();
             if (testNode.hasProperty("rank")
-                    && testNode.getProperty("rank").equals(rank)) {
+                    && (Long) testNode.getProperty("rank") >= rank) {
                 return Evaluation.INCLUDE_AND_PRUNE;
             } else {
                 return Evaluation.INCLUDE_AND_CONTINUE;
@@ -235,7 +237,7 @@ public class ReadingService {
                 .evaluator(rankEvaluator)
                 .expand(alignmentEvaluator)
                 .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                .evaluator(Evaluators.all())
+                // .evaluator(Evaluators.all())
                 .traverse(lowerRankReading).nodes()) {
             if (node.equals(higherRankReading)) {
                 return true;
