@@ -52,7 +52,8 @@ public class Reading {
         } catch (NotFoundException e) {
             return Response.status(Status.NO_CONTENT).build();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.ok(reading).build();
     }
@@ -79,11 +80,10 @@ public class Reading {
             reading = db.getNodeById(readId);
             for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
                 currentKey = keyPropertyModel.getKey();
-                if (currentKey.equals("id"))
-                    return Response
-                            .status(Status.INTERNAL_SERVER_ERROR)
-                            .entity("Reading ID cannot be changed!")
-                            .build();
+                if (currentKey.equals("id")) {
+                    errorMessage = "Reading ID cannot be changed!";
+                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                }
                 // Check that this field actually exists in our model
                 modelToReturn.getClass().getDeclaredField(currentKey);
                 // Then set the property.
@@ -92,17 +92,15 @@ public class Reading {
             modelToReturn = new ReadingModel(reading);
             tx.success();
         } catch (NoSuchFieldException f) {
-            return Response
-                    .status(Status.BAD_REQUEST)
-                    .entity("Reading has no such property '" + f.getMessage() + "'")
-                    .build();
+            errorMessage = "Reading has no such property '" + f.getMessage() + "'";
+            return errorResponse(Status.BAD_REQUEST);
         } catch (ClassCastException e) {
-            return Response.status(Status.BAD_REQUEST)
-                    .entity("Property " + currentKey + " of the wrong type: " + e.getMessage())
-                    .build();
+            errorMessage = "Property " + currentKey + " of the wrong type: " + e.getMessage();
+            return errorResponse(Status.BAD_REQUEST);
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.status(Response.Status.OK).entity(modelToReturn).build();
     }
@@ -132,7 +130,8 @@ public class Reading {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.ok(relatedReadings).build();
     }
@@ -157,7 +156,8 @@ public class Reading {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.ok(deleted).build();
     }
@@ -199,7 +199,8 @@ public class Reading {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
 
         return Response.ok(normalWitnesses).build();
@@ -233,8 +234,7 @@ public class Reading {
                 List<String> newWitnesses = duplicateModel.getWitnesses();
 
                 if (!canBeDuplicated(originalReading, newWitnesses)) {
-                    return Response.status(Status.INTERNAL_SERVER_ERROR)
-                            .entity(errorMessage).build();
+                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
                 }
 
                 Node newNode = db.createNode();
@@ -247,7 +247,8 @@ public class Reading {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
 
         // Now outside our main transaction block, try to put back the deleted relationships.
@@ -471,14 +472,33 @@ public class Reading {
             deletingReading = db.getNodeById(secondReadId);
 
             if (!canBeMerged(stayingReading, deletingReading)) {
-                return Response.status(Status.CONFLICT).entity(errorMessage).build();
+                return errorResponse(Status.CONFLICT);
             }
+            // See if they are on the same rank; if not, we will have to re-rank the graph
+            // from the node before the one removed.
+            Boolean samerank = stayingReading.getProperty("rank").equals(deletingReading.getProperty("rank"));
+            Iterable<Relationship> priorRels = deletingReading.getRelationships(
+                    Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE);
+            Node aPriorNode = null;
+            if (priorRels.iterator().hasNext())
+                aPriorNode = priorRels.iterator().next().getStartNode();
+            if (aPriorNode == null) {
+                errorMessage = "Node to be merged has no prior node!";
+                return errorResponse(Status.INTERNAL_SERVER_ERROR);
+            }
+
+            // Do the deed
             merge(stayingReading, deletingReading);
+            // Re-rank nodes if necessary
+            if (!samerank) {
+                ReadingService.recalculateRank(aPriorNode);
+            }
 
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.ok().build();
     }
@@ -679,38 +699,28 @@ public class Reading {
         try (Transaction tx = db.beginTx()) {
             originalReading = db.getNodeById(readId);
             String originalText = originalReading.getProperty("text").toString();
-            if (splitIndex >= originalText.length()) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("The index must be smaller than the text length")
-                        .build();
-            }
+            if (splitIndex >= originalText.length())
+                errorMessage = "The index must be smaller than the text length";
 
-            if (!originalText.contains(model.getCharacter())) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("no such separator exists")
-                        .build();
-            }
+            else if (!originalText.contains(model.getCharacter()))
+                errorMessage = "no such separator exists";
 
-            if (splitIndex != 0 && !model.getCharacter().equals("")) {
+            else if (splitIndex != 0 && !model.getCharacter().equals("")) {
                 String textToRemove = originalText.substring(splitIndex,
                         splitIndex + model.getCharacter().length());
-                if (!textToRemove.equals(model.getCharacter())) {
-                    return Response.status(Status.INTERNAL_SERVER_ERROR)
-                            .entity("The separator does not appear in the index location in the text")
-                            .build();
-                }
+                if (!textToRemove.equals(model.getCharacter()))
+                    errorMessage = "The separator does not appear in the index location in the text";
             }
 
-            if (originalReading.hasRelationship(ERelations.RELATED)) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("A reading to be split cannot be part of any relationship")
-                        .build();
-            }
+            else if (originalReading.hasRelationship(ERelations.RELATED))
+                errorMessage = "A reading to be split cannot be part of any relationship";
+
+            if (errorMessage != null)
+                return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
             String[] splitWords = splitUpText(splitIndex, model.getCharacter(), originalText);
 
             if (!hasRankGap(originalReading, splitWords.length)) {
-                // TODO (sk): ask TLA, if modification of the rank will be ok
                 Long rankGap = (Long) originalReading.getProperty("rank") + splitWords.length;
                 String tradId = getTraditionId();
                 for (Relationship rel : originalReading.getRelationships(
@@ -722,20 +732,15 @@ public class Reading {
                         new Tradition(tradId).recalculateRank(nextNode.getId());
                     }
                 }
-                /*
-                if (!hasRankGap(originalReading, splitWords.length)) {
-                    return Response.status(Status.INTERNAL_SERVER_ERROR)
-                            .entity("There has to be a rank-gap after a reading to be split")
-                            .build();
-                }
-                */
             }
 
             readingsAndRelationships = split(originalReading, splitWords);
 
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.ok(readingsAndRelationships).build();
     }
@@ -875,22 +880,23 @@ public class Reading {
                     .filter(x -> isPathFor(x, witnessId))
                     .collect(Collectors.toList());
             if (matching.size() != 1) {
-                String message = matching.isEmpty()
+                errorMessage = matching.isEmpty()
                         ? "There is no next reading!"
                         : "There is more than one next reading!";
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity(message)
-                        .build();
+                return errorResponse(Status.INTERNAL_SERVER_ERROR);
             }
             next = matching.iterator().next().getEndNode();
             ReadingModel result = new ReadingModel(next);
-            if (result.getIs_end())
-                return Response.status(Status.NOT_FOUND)
-                        .entity("this was the last reading of this witness").build();
+            if (result.getIs_end()) {
+                errorMessage = "this was the last reading of this witness";
+                return errorResponse(Status.NOT_FOUND);
+            }
             tx.success();
             return Response.ok(result).build();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -915,22 +921,23 @@ public class Reading {
                     .filter(x -> isPathFor(x, witnessId))
                     .collect(Collectors.toList());
             if (matching.size() != 1) {
-                String message = matching.isEmpty()
-                        ? "There is no prior reading!"
-                        : "There is more than one prior reading!";
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity(message)
-                        .build();
+                errorMessage = matching.isEmpty()
+                        ? "There is no next reading!"
+                        : "There is more than one next reading!";
+                return errorResponse(Status.INTERNAL_SERVER_ERROR);
             }
             prior = matching.iterator().next().getStartNode();
             ReadingModel result = new ReadingModel(prior);
-            if (result.getIs_start())
-                return Response.status(Status.NOT_FOUND)
-                        .entity("this was the first reading of this witness").build();
+            if (result.getIs_start()) {
+                errorMessage = "this was the first reading of this witness";
+                return errorResponse(Status.NOT_FOUND);
+            }
             tx.success();
             return Response.ok(result).build();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -985,9 +992,8 @@ public class Reading {
                 toConcatenate = true;
                 break;
             default:
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("argument concatenate has an invalid value")
-                        .build();
+                errorMessage = "argument concatenate has an invalid value";
+                return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
 
         try (Transaction tx = db.beginTx()) {
@@ -995,9 +1001,8 @@ public class Reading {
             read2 = db.getNodeById(readId2);
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
                 tx.success();
-                return Response.status(Status.INTERNAL_SERVER_ERROR)
-                        .entity("the first reading has a higher rank then the second reading")
-                        .build();
+                errorMessage = "the first reading has a higher rank then the second reading";
+                return errorResponse(Status.INTERNAL_SERVER_ERROR);
             }
             if (canBeCompressed(read1, read2)) {
                 compress(read1, read2, toConcatenate, character.getCharacter());
@@ -1006,9 +1011,11 @@ public class Reading {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
-        return Response.status(Status.CONFLICT).entity(errorMessage).build();
+        return errorResponse(Status.CONFLICT);
     }
 
     /**
@@ -1123,6 +1130,11 @@ public class Reading {
             }
         }
         return false;
+    }
+
+    private Response errorResponse (Status status) {
+        String errorJson = String.format("{\"error\": \"%s\"}", errorMessage);
+        return Response.status(status).entity(errorJson).build();
     }
 
     /**

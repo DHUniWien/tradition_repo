@@ -1,15 +1,14 @@
 package net.stemmaweb.services;
 
+import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 
@@ -144,6 +143,79 @@ public class ReadingService {
     }
 
 
+    /* Custom evaluator for recalculating rank */
+    private static HashSet<Node> colocatedReadings (Node reading) {
+        HashSet<Node> colocated = new HashSet<>();
+        HashSet<Node> checked = new HashSet<>();
+        GraphDatabaseService db = reading.getGraphDatabase();
+        colocated.add(reading);
+        try (Transaction tx = db.beginTx()) {
+            List<Node> tocheck = colocated.stream().filter(x -> !checked.contains(x)).collect(Collectors.toList());
+            while (tocheck.size() > 0) {
+                Node thisNode = tocheck.get(0);
+                checked.add(thisNode);
+                for (Relationship rel : thisNode.getRelationships(ERelations.RELATED, Direction.BOTH)) {
+                    RelationshipModel rmod = new RelationshipModel(rel);
+                    if (!rmod.implies_colocation()) continue;
+
+                    Node relNode = rel.getOtherNode(thisNode);
+                    colocated.add(relNode);
+                }
+                tocheck = colocated.stream().filter(x -> !checked.contains(x)).collect(Collectors.toList());
+            }
+            tx.success();
+        }
+        colocated.remove(reading);
+        return colocated;
+    }
+
+    /* Custom evaluator and traverser that modifies reading rank as it goes */
+
+    private static class RankCalcEvaluate implements Evaluator {
+
+        @Override
+        public Evaluation evaluate(Path path) {
+            // Get the last node on the path and see if its rank needs to be changed
+            Node thisNode = path.endNode();
+            Long thisRank = (Long) thisNode.getProperty("rank");
+            Long minRank;
+
+            // If we are here from a sequence relationship, note what our minimum rank must be
+            if (path.lastRelationship() == null)
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            else if (path.lastRelationship().getType().toString().equals("RELATED"))
+                minRank = thisRank;
+            else
+                minRank = (Long) path.lastRelationship().getStartNode().getProperty("rank") + 1;
+
+            // The rank must also be max of colocated readings
+            HashSet<Node> colocated = colocatedReadings(thisNode);
+            if (colocated.size() > 0) {
+                Long maxRank = Collections.max(colocated.stream().map(x -> (Long) x.getProperty("rank"))
+                        .collect(Collectors.toList()));
+                if (maxRank > minRank) minRank = maxRank;
+            }
+            if (thisRank.equals(minRank))
+                return Evaluation.EXCLUDE_AND_PRUNE;
+            else {
+                thisNode.setProperty("rank", minRank);
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            }
+        }
+    }
+
+    public static List<Node> recalculateRank (Node startNode) {
+        RankCalcEvaluate e = new RankCalcEvaluate();
+        AlignmentTraverse a = new AlignmentTraverse();
+        GraphDatabaseService db = startNode.getGraphDatabase();
+        ResourceIterable<Node> changed = db.traversalDescription().breadthFirst()
+                .expand(a)
+                .evaluator(e)
+                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                .traverse(startNode).nodes();
+        return changed.stream().collect(Collectors.toList());
+    }
+
     /* Custom evaluation and expander for checking alignment traversals */
 
     private static class RankEvaluate implements Evaluator {
@@ -168,7 +240,12 @@ public class ReadingService {
         }
     }
 
-    private static class AlignmentTraverse implements PathExpander {
+    public static class AlignmentTraverse implements PathExpander {
+
+        private Relationship excludeRel = null;
+
+        public AlignmentTraverse() {}
+        AlignmentTraverse(Relationship excludeRel) { this.excludeRel = excludeRel; }
 
         @Override
         public Iterable<Relationship> expand(Path path, BranchState state) {
@@ -193,11 +270,12 @@ public class ReadingService {
         private Iterable<Relationship> expansion(Path path, Direction dir) {
             ArrayList<Relationship> relevantRelations = new ArrayList<>();
             // Get the sequence relationships
-            for (Relationship relationship : path.endNode().getRelationships(dir, ERelations.SEQUENCE))
+            for (Relationship relationship : path.endNode()
+                    .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT))
                 relevantRelations.add(relationship);
             // Get the alignment relationships and filter them
             for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
-                if (r.hasProperty("type") &&
+                if (!r.equals(excludeRel) && r.hasProperty("type") &&
                         !r.getProperty("type").equals("transposition") &&
                         !r.getProperty("type").equals("repetition")) {
                     relevantRelations.add(r);
@@ -229,8 +307,13 @@ public class ReadingService {
         }
 
         // check if higherRankReading is found in one of the paths, but don't crawl the graph beyond
-        // that reading's rank.
-        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse();
+        // that reading's rank. Also disregard any relationship already existing between the two nodes.
+        Relationship existingRel = null;
+        for (Relationship r : firstReading.getRelationships(ERelations.RELATED)) {
+            if (r.getOtherNode(firstReading).equals(secondReading))
+                existingRel = r;
+        }
+        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(existingRel);
         RankEvaluate rankEvaluator = new RankEvaluate((Long) higherRankReading.getProperty("rank"));
         for (Node node : db.traversalDescription()
                 .depthFirst()

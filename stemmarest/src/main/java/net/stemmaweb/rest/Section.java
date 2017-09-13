@@ -8,9 +8,8 @@ import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -24,6 +23,7 @@ import java.util.stream.Collectors;
 
 import static net.stemmaweb.services.ReadingService.addWitnessLink;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
+import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
 
 /*
  * Created by tla on 11/02/2017.
@@ -501,7 +501,6 @@ public class Section {
     /**
      * Returns a list of a list of readingModels with could be one the same rank
      * without problems
-     * TODO use AlignmentTraverse for this...?
      *
      * @param startRank - where to start
      * @param endRank   - where to end
@@ -517,12 +516,12 @@ public class Section {
         Node startNode = DatabaseService.getStartNode(sectId, db);
         if (startNode == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("There is no tradition with this id").build();
+                    .entity("There is no section with this id").build();
         }
 
-        ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings;
+        List<List<ReadingModel>> couldBeIdenticalReadings;
         try (Transaction tx = db.beginTx()) {
-            ArrayList<Node> questionedReadings = getReadingsBetweenRanks(
+            List<Node> questionedReadings = getReadingsBetweenRanks(
                     startRank, endRank, startNode);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings);
@@ -541,30 +540,29 @@ public class Section {
      * @param questionedReadings -
      * @return list of lists of identical readings
      */
-    private ArrayList<ArrayList<ReadingModel>> getCouldBeIdenticalAsList(
-            ArrayList<Node> questionedReadings) {
+    private List<List<ReadingModel>> getCouldBeIdenticalAsList(
+            List<Node> questionedReadings) {
 
-        ArrayList<ArrayList<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
+        List<List<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
         HashSet<Long> processed = new HashSet<>();
 
         for (Node nodeA : questionedReadings) {
             if (processed.contains(nodeA.getId()))
                 continue;
-            ArrayList<Node> sameText = new ArrayList<>();
-            questionedReadings.stream().filter(nodeB -> !nodeA.equals(nodeB)
-                    && nodeA.getProperty("text").equals(nodeB.getProperty("text"))
-                    && !nodeA.getProperty("rank").equals(nodeB.getProperty("rank"))).forEach(nodeB -> {
-                sameText.add(nodeB);
-                sameText.add(nodeA);
-            });
-            if (sameText.size() > 0) {
-                ArrayList<ReadingModel> pairs = couldBeIdenticalCheck(sameText);
-                if (pairs != null) {
-                    for (ReadingModel r : pairs)
-                        processed.add(Long.valueOf(r.getId()));
-                    couldBeIdenticalReadings.add(pairs);
+            List<Node> sameText = questionedReadings.stream().filter(x -> !x.equals(nodeA)
+                && x.getProperty("text").equals(nodeA.getProperty("text")))
+                    .collect(Collectors.toList());
+            for (Node n : sameText) {
+                if (processed.contains(n.getId()))
+                    continue;
+                if (!wouldGetCyclic(nodeA, n)) {
+                    ArrayList<ReadingModel> pair = new ArrayList<>();
+                    pair.add(new ReadingModel(nodeA));
+                    pair.add(new ReadingModel(n));
+                    couldBeIdenticalReadings.add(pair);
                 }
             }
+            processed.add(nodeA.getId());
         }
         return couldBeIdenticalReadings;
     }
@@ -574,7 +572,7 @@ public class Section {
      *
      * @param sameText                 -
      */
-    private ArrayList<ReadingModel> couldBeIdenticalCheck(ArrayList<Node> sameText) {
+    private List<ReadingModel> couldBeIdenticalCheck(List<Node> sameText) {
 
         Node biggerRankNode;
         Node smallerRankNode;
@@ -583,13 +581,18 @@ public class Section {
         long rank;
         boolean gotOne;
 
-        ArrayList<ReadingModel> couldBeIdentical = new ArrayList<>();
+        HashSet<Node> couldBeIdentical = new HashSet<>();
 
         for (int i = 0; i < sameText.size() - 1; i++) {
             long rankA = (long) sameText.get(i).getProperty("rank");
             long rankB = (long) sameText.get(i + 1).getProperty("rank");
 
-            if (rankA < rankB) {
+            if (rankA == rankB) {
+                // Definitely
+                couldBeIdentical.add(sameText.get(i));
+                couldBeIdentical.add(sameText.get(i+1));
+                continue;
+            } else if (rankA < rankB) {
                 biggerRankNode = sameText.get(i + 1);
                 smallerRankNode = sameText.get(i);
                 smallerRank = rankA;
@@ -628,37 +631,27 @@ public class Section {
                 }
             }
             if (!gotOne) {
-                if (!couldBeIdentical.contains(new ReadingModel(smallerRankNode))) {
-                    couldBeIdentical.add(new ReadingModel(smallerRankNode));
-                }
-                if (!couldBeIdentical.contains(new ReadingModel(biggerRankNode))) {
-                    couldBeIdentical.add(new ReadingModel(biggerRankNode));
-                }
+                couldBeIdentical.add(smallerRankNode);
+                couldBeIdentical.add(biggerRankNode);
             }
             if (couldBeIdentical.size() > 0) {
-                return couldBeIdentical;
+                return couldBeIdentical.stream().map(ReadingModel::new).collect(Collectors.toList());
             }
         }
         return null;
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
-    private ArrayList<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
-        ArrayList<Node> readings = new ArrayList<>();
-
-        Evaluator e = path -> {
-            Integer rank = Integer.parseInt(path.endNode().getProperty("rank").toString());
-            if (rank > endRank)
-                return Evaluation.EXCLUDE_AND_PRUNE;
-            if (rank < startRank)
-                return Evaluation.EXCLUDE_AND_CONTINUE;
-            return Evaluation.INCLUDE_AND_CONTINUE;
-        };
+    private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
+        List<Node> readings;
+        PathExpander e = new ReadingService.AlignmentTraverse();
         try (Transaction tx = db.beginTx()) {
-            db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(e).uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode).nodes().forEach(readings::add);
+            readings = db.traversalDescription().depthFirst()
+                    .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(startNode).nodes().stream()
+                    .filter(x -> startRank <= Long.valueOf(x.getProperty("rank").toString()) &&
+                                 endRank >= Long.valueOf(x.getProperty("rank").toString()))
+                    .collect(Collectors.toList());
             tx.success();
         }
         return readings;

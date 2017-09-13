@@ -7,10 +7,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.*;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -250,7 +247,7 @@ public class ReadingTest {
             assertEquals(Status.BAD_REQUEST.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("Reading has no such property 'test'",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -646,7 +643,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals(
                     "The witness list has to contain at least one witness",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -671,7 +668,7 @@ public class ReadingTest {
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("The reading has to be in at least two witnesses",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -697,7 +694,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals(
                     "The reading has to be in the witnesses to be duplicated",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -798,7 +795,7 @@ public class ReadingTest {
             assertEquals(Status.CONFLICT.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("Readings to be merged would make the graph cyclic",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
 
             testNumberOfReadingsAndWitnesses(29);
 
@@ -835,7 +832,7 @@ public class ReadingTest {
             assertEquals(Status.CONFLICT.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("Readings to be merged would make the graph cyclic",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
 
             testNumberOfReadingsAndWitnesses(29);
 
@@ -873,7 +870,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals(
                     "Readings to be merged cannot contain cross-location relationships",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
 
             testNumberOfReadingsAndWitnesses(29);
 
@@ -916,7 +913,7 @@ public class ReadingTest {
             //TODO (SK 20151001: decide if this test is still necessary;
             //                   if so, modify it, otherwise we can remove it.
             assertEquals("Readings to be merged would make the graph cyclic",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -1137,7 +1134,7 @@ public class ReadingTest {
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("no such separator exists",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -1165,7 +1162,7 @@ public class ReadingTest {
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("The separator does not appear in the index location in the text",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
             tx.success();
         }
     }
@@ -1289,7 +1286,7 @@ public class ReadingTest {
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("The index must be smaller than the text length",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
 
             testNumberOfReadingsAndWitnesses(29);
             tx.success();
@@ -1319,7 +1316,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals(
                     "A reading to be split cannot be part of any relationship",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
 
             testNumberOfReadingsAndWitnesses(29);
             tx.success();
@@ -1452,18 +1449,32 @@ public class ReadingTest {
 
     @Test
     public void couldBeIdenticalReadingsTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/legendfrag.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, sects.size());
+        String newSectId = sects.get(0).getId();
+
+        // Remove the 'collated' relationship that prevents merging
+        try (Transaction tx = db.beginTx()) {
+            db.getAllRelationships().stream()
+                    .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").equals("collated"))
+                    .forEach(Relationship::delete);
+            tx.success();
+        }
+
+        // Now we should have mergeable readings
         List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/section/" + sectId + "/mergeablereadings/1/15")
+                .path("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/2/9")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
-        assertEquals(1, couldBeIdenticalReadings.size());
-
-        assertEquals(couldBeIdenticalReadings.get(0).get(0).getText(),
-                couldBeIdenticalReadings.get(0).get(1).getText());
-        assertEquals("fruit", couldBeIdenticalReadings.get(0).get(0).getText());
-
-        assertFalse(Objects.equals(couldBeIdenticalReadings.get(0).get(0).getRank(),
-                couldBeIdenticalReadings.get(0).get(1).getRank()));
+        assertEquals(4, couldBeIdenticalReadings.size());
+        HashSet<String> expectedIdentical = new HashSet<>(Arrays.asList("beatus", "pontifex", "venerabilis", "henricus"));
+        for (List<ReadingModel> cbi : couldBeIdenticalReadings) {
+            assertTrue(expectedIdentical.contains(cbi.get(0).getText()));
+        }
     }
 
     // same as above, but on a different text
@@ -1499,6 +1510,17 @@ public class ReadingTest {
         response = jerseyTest.resource().path("/reading/" + firstId + "/merge/" + secondId).post(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
+        // Check that the ranks are correct
+        try (Transaction tx = db.beginTx()) {
+            Node remain = db.getNodeById(Long.valueOf(firstId));
+            assertEquals(5L, remain.getProperty("rank"));
+            Node capv = db.findNode(Nodes.READING, "text", "Venerabilis");
+            assertEquals(5L, capv.getProperty("rank"));
+            Node uene = db.findNode(Nodes.READING, "text", "uenerabilis");
+            assertEquals(5L, uene.getProperty("rank"));
+            tx.success();
+        }
+
         // Check that the pontifices are mergeable
         response = jerseyTest.resource()
                 .path("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/3/10")
@@ -1514,9 +1536,17 @@ public class ReadingTest {
      */
     @Test
     public void couldBeIdenticalReadingsNoResultTest() {
-        ClientResponse response = jerseyTest
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/legendfrag.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, sects.size());
+        String newSectId = sects.get(0).getId();
+
+        response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/section/" + sectId + "/mergeablereadings/2/8")
+                .path("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/2/9")
                 .get(ClientResponse.class);
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -1872,7 +1902,7 @@ public class ReadingTest {
             assertEquals(Response.Status.CONFLICT.getStatusCode(),
                     response.getStatus());
             assertEquals("reading are not neighbors. could not compress",
-                    response.getEntity(String.class));
+                    Util.getValueFromJson(response, "error"));
 
             result = db.execute("match (w:READING {text:'showers sweet'}) return w");
             nodes = result.columnAs("w");
@@ -1941,7 +1971,7 @@ public class ReadingTest {
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
         assertEquals("this was the last reading of this witness",
-                response.getEntity(String.class));
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -2003,7 +2033,7 @@ public class ReadingTest {
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 actualResponse.getStatus());
         assertEquals("this was the first reading of this witness",
-                actualResponse.getEntity(String.class));
+                Util.getValueFromJson(actualResponse, "error"));
     }
 
     @Test
