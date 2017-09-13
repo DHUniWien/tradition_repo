@@ -41,6 +41,11 @@ resources:
         uri: {{ssh-keys-uri}}
         private_key: {{DHUniWienMU-priv-key}}
 
+    - name: ci
+      type: git
+      source:
+        uri: {{ci-uri}}
+
 
 jobs:
 
@@ -146,7 +151,7 @@ jobs:
       - aggregate:
         - get: stemmarest-image
           passed: [package]
-          trigger: true
+          # trigger: true
         - get: stemmarest-sources
         - get: stemmarest-config
         - get: ssh-keys
@@ -206,3 +211,34 @@ jobs:
             args:
               - "stemmarest-sources/ci/resources/deploy.sh"
               - "stemmarest-config/deploy-prod.sh"
+
+  - name: deploy-work-moe
+    plan:
+      - aggregate:
+        - get: stemmarest-image
+          passed: [package]
+          trigger: true
+        - get: stemmarest-config
+        - get: ssh-keys
+        - get: ci
+
+      - task: task-deploy-work-moe
+
+        config:
+          platform: linux
+          image_resource:
+            type: docker-image
+            source:
+              repository: {{stemmarest-test-image}}
+              insecure_registries: [ {{insecure-registries}} ]
+
+          inputs:
+            - name: ci
+            - name: stemmarest-config
+            - name: ssh-keys
+
+          run:
+            path: sh
+            args:
+              - "ci/bin/deploy.sh"
+              - "stemmarest-config/deploy-work-moe-stemmarest.conf"
