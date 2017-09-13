@@ -36,6 +36,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
     private String normal_form;     // dn13
     private Long rank;              // dn14
     private String text;            // dn15
+    private String orig_reading;    // meant for use with duplicated readings, not saved
 
     /**
      * Generates a model from a Neo4j Node
@@ -208,6 +209,12 @@ public class ReadingModel implements Comparable<ReadingModel> {
     public void setText(String text) {
         this.text = text;
     }
+
+    public String getOrig_reading() {
+        return orig_reading;
+    }
+
+    public void setOrig_reading(String orig_reading) {  this.orig_reading = orig_reading; }
 
     @Override
     public int compareTo(@NonNull ReadingModel readingModel) {

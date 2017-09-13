@@ -334,6 +334,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, jsonPayload);
 
+            // Check that no relationships were harmed by this duplication
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             List<RelationshipModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
                     .get(new GenericType<List<RelationshipModel>>() {});
@@ -346,10 +347,6 @@ public class ReadingTest {
             }
 
             GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            HashSet<String> rdgWords = new HashSet<>();
-            readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
-            assertTrue(rdgWords.contains("showers"));
-            assertTrue(rdgWords.contains("sweet"));
             assertEquals(0, readingsAndRelationshipsModel.getRelationships().size());
             assertEquals(witnessA, jerseyTest.resource().path("/tradition/" + tradId + "/witness/A/text")
                     .get(String.class));
@@ -360,6 +357,21 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(31);
 
+            // check that orig_reading was set in the model
+            List<ReadingModel> readingModels = new ArrayList<>(readingsAndRelationshipsModel.getReadings());
+            ReadingModel showersModel;
+            ReadingModel sweetModel;
+            if (readingModels.get(0).getText().equals("showers")) {
+                showersModel = readingModels.get(0);
+                sweetModel = readingModels.get(1);
+            } else {
+                showersModel = readingModels.get(1);
+                sweetModel = readingModels.get(0);
+            }
+            assertEquals(String.valueOf(firstNode.getId()), showersModel.getOrig_reading());
+            assertEquals(String.valueOf(secondNode.getId()), sweetModel.getOrig_reading());
+
+            // check that the nodes exist, and that orig_reading was not set on the node
             ResourceIterator<Node> showers = db.findNodes(Nodes.READING, "text", "showers");
             Node duplicatedShowers = null;
             while (showers.hasNext()) {
@@ -368,6 +380,8 @@ public class ReadingTest {
                     duplicatedShowers = n;
             }
             assertNotNull(duplicatedShowers);
+            assertFalse(duplicatedShowers.hasProperty("orig_reading"));
+
             ResourceIterator<Node> sweet = db.findNodes(Nodes.READING, "text", "sweet");
             Node duplicatedSweet = null;
             while (sweet.hasNext()) {
@@ -376,6 +390,7 @@ public class ReadingTest {
                     duplicatedSweet = n;
             }
             assertNotNull(duplicatedSweet);
+            assertFalse(duplicatedSweet.hasProperty("orig_reading"));
 
             // compare original and duplicated
             Iterable<String> keys = firstNode.getPropertyKeys();
@@ -2014,11 +2029,13 @@ public class ReadingTest {
         assertEquals(3, allRels.size());
     }
 
+/*  Write this test when we are sure what we need to test!
     @Test
     public void readingWitnessTest() {
         long readId;
 
     }
+*/
 
     @Test
     public void randomNodeExistsTest() {

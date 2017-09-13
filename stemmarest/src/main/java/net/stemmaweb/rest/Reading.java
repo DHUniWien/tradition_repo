@@ -239,7 +239,9 @@ public class Reading {
 
                 Node newNode = db.createNode();
                 tempDeleted.addAll(duplicate(newWitnesses, originalReading, newNode));
-                createdReadings.add(new ReadingModel(newNode));
+                ReadingModel newModel = new ReadingModel(newNode);
+                newModel.setOrig_reading(String.valueOf(readId));
+                createdReadings.add(newModel);
             }
 
             tx.success();
