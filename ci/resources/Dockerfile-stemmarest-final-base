@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install --yes \
 RUN mkdir /var/lib/stemmarest \
  && chown -R tomcat8. /var/lib/stemmarest \
  && chmod -R g+w /var/lib/stemmarest \
- && chmod -R +2000 /var/lib/stemmarest
+ && chmod -R +2000 /var/lib/stemmarest \
+ && chown -R tomcat8. /usr/local/tomcat
 
 ENV STEMMAREST_HOME /var/lib/stemmarest/
