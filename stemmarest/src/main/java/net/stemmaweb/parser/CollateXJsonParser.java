@@ -126,6 +126,7 @@ public class CollateXJsonParser {
             }
 
             Node endNode = Util.createEndNode(parentNode);
+            endNode.setProperty("rank", rank);
             for (String witString : collationWitnesses) {
                 List<String> witParts = parseWitnessSigil(witString);
                 Node lastReading = lastWitnessReading.get(witString);
@@ -152,7 +153,7 @@ public class CollateXJsonParser {
             ArrayList<String> existingWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty("witnesses")));
             if (!existingWits.contains(sigil)) {
                 existingWits.add(sigil);
-                seq.setProperty(propertyName, existingWits.toArray());
+                seq.setProperty(propertyName, existingWits.toArray(new String[0]));
             }
         } else {
             String[] existingWits = new String[]{ sigil };
