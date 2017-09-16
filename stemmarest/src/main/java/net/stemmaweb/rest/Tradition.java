@@ -169,6 +169,8 @@ public class Tradition {
         if (filetype.equals("collatex"))
             // Pass it off to the CollateX parser
             result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
+        if (filetype.equals("cxjson"))
+            result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, sectionNode);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the somewhat legacy GraphML parser
             result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode);
