@@ -50,5 +50,10 @@ public class CollateXJsonInputTest extends TestCase {
 
         //
     }
-
+    
+    public void tearDown() throws Exception {
+        db.shutdown();
+        jerseyTest.tearDown();
+        super.tearDown();
+    }
 }
