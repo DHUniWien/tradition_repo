@@ -241,4 +241,4 @@ jobs:
             path: sh
             args:
               - "ci/bin/deploy.sh"
-              - "stemmarest-config/deploy-work-moe-stemmarest.conf"
+              - "stemmarest-config/deploy-editions-moe.conf"
