@@ -204,9 +204,9 @@
         <neo4j-version>3.2.2</neo4j-version>
         <jersey-version>1.19</jersey-version>
         <jersey-group>com.sun.jersey</jersey-group>
-        
+
     </properties>
-   
+
     <repositories>
         <repository>
             <id>repository</id>
@@ -214,7 +214,7 @@
         </repository>
 
     </repositories>
-    
-    
-   
+
+
+
 </project>
