@@ -37,6 +37,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
     private Long rank;              // dn14
     private String text;            // dn15
     private String orig_reading;    // meant for use with duplicated readings, not saved
+    private String annotation;      // general purpose saving of information
 
     /**
      * Generates a model from a Neo4j Node
@@ -75,6 +76,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
                 this.setRank(Long.parseLong(node.getProperty("rank").toString()));
             if (node.hasProperty("text"))
                 this.setText(node.getProperty("text").toString());
+            if (node.hasProperty("annotation"))
+                this.setAnnotation(node.getProperty("annotation").toString());
             tx.success();
         }
     }
@@ -178,13 +181,9 @@ public class ReadingModel implements Comparable<ReadingModel> {
         this.language = language;
     }
 
-    public String getLexemes() {
-        return lexemes;
-    }
+    public String getLexemes() { return lexemes; }
 
-    public void setLexemes(String lexemes) {
-        this.lexemes = lexemes;
-    }
+    public void setLexemes(String lexemes) { this.lexemes = lexemes; }
 
     public String getNormal_form() {
         return normal_form;
@@ -208,6 +207,14 @@ public class ReadingModel implements Comparable<ReadingModel> {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public String getAnnotation() {
+        return annotation;
+    }
+
+    public void setAnnotation(String annotation) {
+        this.annotation = annotation;
     }
 
     public String getOrig_reading() {
