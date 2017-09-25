@@ -212,7 +212,7 @@ jobs:
               - "stemmarest-sources/ci/resources/deploy.sh"
               - "stemmarest-config/deploy-prod.sh"
 
-  - name: deploy-work-moe
+  - name: deploy-editions-moe
     plan:
       - aggregate:
         - get: stemmarest-image
@@ -221,8 +221,9 @@ jobs:
         - get: stemmarest-config
         - get: ssh-keys
         - get: ci
+        - get: version
 
-      - task: task-deploy-work-moe
+      - task: deploy-editions-moe
 
         config:
           platform: linux
@@ -234,6 +235,7 @@ jobs:
 
           inputs:
             - name: ci
+            - name: version
             - name: stemmarest-config
             - name: ssh-keys
 
