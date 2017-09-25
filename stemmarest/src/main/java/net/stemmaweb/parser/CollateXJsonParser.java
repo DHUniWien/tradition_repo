@@ -165,13 +165,31 @@ public class CollateXJsonParser {
     private static void addWitnessToRelationship (Relationship seq, List<String> witParts) {
         String propertyName = witParts.size() == 1 ? "witnesses" : witParts.get(1);
         String sigil = witParts.get(0);
-        if (seq.hasProperty(propertyName)) {
+        Boolean setWitness;
+        // First remove any redundant witness designations - i.e. we shouldn't have a sequence path
+        // marked both for witness A and witness A (a.c.)
+        if (propertyName.equals("witnesses")) {
+            // Remove any "extra" designations that may have accumulated
+            setWitness = true;
+            for (String e : seq.getPropertyKeys()) {
+                ArrayList<String> extraWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(e)));
+                extraWits.remove(sigil);
+            }
+        } else if (seq.hasProperty("witnesses")) {
+            // See if setting the "extra" layer would be redundant
             ArrayList<String> existingWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty("witnesses")));
+            setWitness = !existingWits.contains(sigil);
+        } else
+            setWitness = true;
+
+        // Now set the witness on the relationship if we still need to
+        if (setWitness && seq.hasProperty(propertyName)) {
+            ArrayList<String> existingWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(propertyName)));
             if (!existingWits.contains(sigil)) {
                 existingWits.add(sigil);
                 seq.setProperty(propertyName, existingWits.toArray(new String[0]));
             }
-        } else {
+        } else if (setWitness){
             String[] existingWits = new String[]{ sigil };
             seq.setProperty(propertyName, existingWits);
         }

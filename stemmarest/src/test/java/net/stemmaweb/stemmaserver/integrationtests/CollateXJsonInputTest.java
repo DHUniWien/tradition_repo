@@ -8,14 +8,21 @@ import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class CollateXJsonInputTest extends TestCase {
@@ -91,6 +98,23 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals(firstContext, token.getString("context"));
     }
 
+    public void testNoRedundantWitnesses() throws Exception {
+        Traverser sTrav = DatabaseService.returnTraditionSection(sectId, db);
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship r : sTrav.relationships())
+                if (r.getType().equals(ERelations.SEQUENCE) && r.hasProperty("witnesses")) {
+                    Iterable<String> layers = r.getPropertyKeys();
+                    for (String w : (String[]) r.getProperty("witnesses"))
+                        for (String l : layers)
+                            if (!l.equals("witnesses")) {
+                                ArrayList<String> ew = new ArrayList<>(Arrays.asList((String[]) r.getProperty(l)));
+                                assertFalse(ew.contains(w));
+                            }
+                }
+            tx.success();
+        }
+    }
+
     public void testAddSection() throws Exception {
         // Add another section
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
@@ -147,6 +171,16 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals("AM 401", ourSections.get(0).getName());
         assertEquals("AM 407", ourSections.get(1).getName());
     }
+
+    /** For diagnostic use when parsing a section fails
+    public void testSomething() throws Exception {
+        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
+                "src/TestFiles/Matthew-418.json", "cxjson", "AM 401"), "parentId");
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/orderAfter/" + newSectId)
+                .put(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    } **/
 
     public void tearDown() throws Exception {
         db.shutdown();
