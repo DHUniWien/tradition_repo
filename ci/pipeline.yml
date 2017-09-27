@@ -146,18 +146,18 @@ jobs:
           tag_as_latest: True
 
 
-  - name: deploy-test
+  - name: deploy-editions-moe-test
     plan:
       - aggregate:
         - get: stemmarest-image
           passed: [package]
-          # trigger: true
-        - get: stemmarest-sources
+          trigger: true
         - get: stemmarest-config
         - get: ssh-keys
+        - get: ci
         - get: version
 
-      - task: task-deploy-test
+      - task: deploy-editions-moe-test
 
         config:
           platform: linux
@@ -168,56 +168,23 @@ jobs:
               insecure_registries: [ {{insecure-registries}} ]
 
           inputs:
-            - name: ssh-keys
+            - name: ci
             - name: version
             - name: stemmarest-config
-            - name: stemmarest-sources
+            - name: ssh-keys
 
           run:
             path: sh
             args:
-              - "stemmarest-sources/ci/resources/deploy.sh"
-              - "stemmarest-config/deploy-test.sh"
+              - "ci/bin/deploy.sh"
+              - "stemmarest-config/deploy-editions-moe-test.conf"
 
-
-  - name: deploy-prod
-    plan:
-      - aggregate:
-        - get: stemmarest-image
-          passed: [package]
-        - get: stemmarest-sources
-        - get: stemmarest-config
-        - get: ssh-keys
-        - get: version
-
-      - task: task-deploy-prod
-
-        config:
-          platform: linux
-          image_resource:
-            type: docker-image
-            source:
-              repository: {{stemmarest-test-image}}
-              insecure_registries: [ {{insecure-registries}} ]
-
-          inputs:
-            - name: ssh-keys
-            - name: version
-            - name: stemmarest-config
-            - name: stemmarest-sources
-
-          run:
-            path: sh
-            args:
-              - "stemmarest-sources/ci/resources/deploy.sh"
-              - "stemmarest-config/deploy-prod.sh"
 
   - name: deploy-editions-moe
     plan:
       - aggregate:
         - get: stemmarest-image
           passed: [package]
-          trigger: true
         - get: stemmarest-config
         - get: ssh-keys
         - get: ci
