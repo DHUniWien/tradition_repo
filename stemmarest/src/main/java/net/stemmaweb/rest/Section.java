@@ -133,9 +133,15 @@ public class Section {
         if (sectionWitnessNodes == null)
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("No witnesses found in section").build();
 
-        ArrayList<WitnessModel> sectionWits = new ArrayList<>();
-        sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
-        return Response.ok().entity(sectionWits).build();
+        try (Transaction tx = db.beginTx()) {
+            ArrayList<WitnessModel> sectionWits = new ArrayList<>();
+            sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
+            tx.success();
+            return Response.ok().entity(sectionWits).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Section witnesses could not be queried").build();
+        }
     }
 
     // Also used by the GraphML exporter

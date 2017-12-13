@@ -7,6 +7,7 @@ import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -116,6 +117,16 @@ public class SectionTest extends TestCase {
         List<ReadingModel> allRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(77, allRdgs.size());
+    }
+
+    public void testSectionWitnesses() throws Exception {
+        List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String sectId = tSections.get(0).getId();
+
+        List<WitnessModel> sectWits = jerseyTest.resource().path("/tradition/"  + tradId + "/section/" + sectId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(37, sectWits.size());
     }
 
     public void testAddGraphmlSectionWithWitnesses() throws Exception {
