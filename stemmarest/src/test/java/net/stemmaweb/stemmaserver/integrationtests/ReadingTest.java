@@ -1698,7 +1698,7 @@ public class ReadingTest {
             readingBoundaryModel.setCharacter("test");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId() + "/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, readingBoundaryModel);
 
