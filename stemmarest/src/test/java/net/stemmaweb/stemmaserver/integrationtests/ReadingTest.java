@@ -936,14 +936,14 @@ public class ReadingTest {
         }
 
         // split reading
-        CharacterModel characterModel = new CharacterModel();
-        characterModel.setCharacter(" ");
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter(" ");
         ClientResponse response = jerseyTest
                 .resource()
                 .path("/reading/" + node.getId()
                         + "/split/0")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
 
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -998,14 +998,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("-");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("-");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1034,14 +1034,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("/");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("/");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1063,14 +1063,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("-");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("-");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/4")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1092,14 +1092,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("-of-");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("-of-");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/4")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1122,14 +1122,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("/");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("/");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/2")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -1150,14 +1150,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("t");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("t");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/2")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -1178,14 +1178,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("oo");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("oo");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/1")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
 
             assertEquals(Status.OK.getStatusCode(),
@@ -1208,14 +1208,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("o");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("o");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/1")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
 
             assertEquals(Status.OK.getStatusCode(),
@@ -1245,14 +1245,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("\"");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("\"");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1274,14 +1274,14 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId()
                             + "/split/7")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -1304,13 +1304,13 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter(" ");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter(" ");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + node.getId() + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -1341,13 +1341,13 @@ public class ReadingTest {
             assertFalse(nodes.hasNext());
 
             // split reading
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("");
             ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + untoMe.getId() + "/split/0")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
@@ -1555,7 +1555,7 @@ public class ReadingTest {
         assertEquals(0, result.size());
     }
 
-    // compress with concatenate set to 0: one space between words
+    // compress with separate set to 1, but the empty string between words
     @Test(expected = org.junit.ComparisonFailure.class)
     public void compressReadingsNoConcatenatingNoTextTest() {
         Node showers, sweet;
@@ -1570,19 +1570,18 @@ public class ReadingTest {
             assert (nodes.hasNext());
             sweet = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/"
-                            + showers.getId() + "/concatenate/" + sweet.getId() + "/0")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showers sweet", showers.getProperty("text"));
+            assertEquals("showerssweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:READING {text:'showers sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showerssweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
@@ -1618,7 +1617,7 @@ public class ReadingTest {
         }
     }
 
-    // compress with concatenate set to 0: one space between words
+    // compress with separate set to 0: no space between words
     @Test(expected = org.junit.ComparisonFailure.class)
     public void compressReadingsNoConcatenatingWithTextTest() {
         Node showers, sweet;
@@ -1633,20 +1632,19 @@ public class ReadingTest {
             assert (nodes.hasNext());
             sweet = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("shouldNotBeDesplayd");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setSeparate(false);
+            readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/"
-                            + showers.getId() + "/concatenate/" + sweet.getId()
-                            + "/0")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showers sweet", showers.getProperty("text"));
+            assertEquals("showerssweet", showers.getProperty("text"));
 
-            result = db.execute("match (w:READING {text:'showers sweet'}) return w");
+            result = db.execute("match (w:READING {text:'showerssweet'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             nodes.next();
@@ -1696,14 +1694,13 @@ public class ReadingTest {
             assert (nodes.hasNext());
             sweet = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("test");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("test");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" +
-                            sweet.getId() + "/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId() + "/1")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showerstestsweet", showers.getProperty("text"));
@@ -1744,14 +1741,13 @@ public class ReadingTest {
             assert (nodes.hasNext());
             sweet = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("\"");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("\"");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/"
-                            + sweet.getId() + "/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showers\"sweet", showers.getProperty("text"));
@@ -1792,14 +1788,13 @@ public class ReadingTest {
             assert (nodes.hasNext());
             sweet = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("/");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("/");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/"
-                            + sweet.getId() + "/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showers/sweet", showers.getProperty("text"));
@@ -1840,14 +1835,13 @@ public class ReadingTest {
             assert (nodes.hasNext());
             sweet = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("");
             ClientResponse res = jerseyTest
                     .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/"
-                            + sweet.getId() + "/1")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
             assertEquals("showerssweet", showers.getProperty("text"));
@@ -1890,18 +1884,17 @@ public class ReadingTest {
             assert (nodes.hasNext());
             Node fruit = nodes.next();
 
-            CharacterModel characterModel = new CharacterModel();
-            characterModel.setCharacter("shouldNotBeDesplayd");
+            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+            readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
             ClientResponse response = jerseyTest
                     .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/"
-                            + fruit.getId() + "/0/")
+                    .path("/reading/" + showers.getId() + "/concatenate/" + fruit.getId())
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel);
+                    .post(ClientResponse.class, readingBoundaryModel);
 
             assertEquals(Response.Status.CONFLICT.getStatusCode(),
                     response.getStatus());
-            assertEquals("reading are not neighbors. could not compress",
+            assertEquals("reading are not contiguous. could not compress",
                     Util.getValueFromJson(response, "error"));
 
             result = db.execute("match (w:READING {text:'showers sweet'}) return w");

@@ -13,16 +13,18 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
-public class CharacterModel {
-    private String character;
+public class ReadingBoundaryModel {
+    private String character = " ";
+    private Boolean separate = true;
 
     public String getCharacter() {
         return character;
     }
+    public Boolean getSeparate() { return separate; }
 
     public void setCharacter(String character) {
         this.character = character;
     }
-
+    public void setSeparate(Boolean separate) { this.separate = separate; }
 
 }

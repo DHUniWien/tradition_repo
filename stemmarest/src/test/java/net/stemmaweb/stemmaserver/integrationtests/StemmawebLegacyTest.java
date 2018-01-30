@@ -15,7 +15,6 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
-import org.apache.commons.compress.archivers.sevenz.CLI;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -993,13 +992,13 @@ public class StemmawebLegacyTest {
         }
 
         // split reading
-        CharacterModel characterModel_ = new CharacterModel();
-        characterModel_.setCharacter("");
+        ReadingBoundaryModel readingBoundaryModel_ = new ReadingBoundaryModel();
+        readingBoundaryModel_.setCharacter("");
         ClientResponse response = jerseyTest
                     .resource()
                     .path("/reading/" + n21 + "/split/2")
                     .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, characterModel_);
+                    .post(ClientResponse.class, readingBoundaryModel_);
 
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         GraphModel graphModel = response.getEntity(GraphModel.class);
@@ -1016,13 +1015,12 @@ public class StemmawebLegacyTest {
          *  $c->merge_readings( 'n3', 'n4', 1 );
          */
 
-        CharacterModel characterModel = new CharacterModel();
-        characterModel.setCharacter(" ");
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         response = jerseyTest
                 .resource()
-                .path("/reading/" + n3 + "/concatenate/" + n4 + "/1")
+                .path("/reading/" + n3 + "/concatenate/" + n4)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1057,7 +1055,7 @@ public class StemmawebLegacyTest {
         response = jerseyTest
                 .resource()
                 .path("/reading/" + n9 + "/merge/" + n10)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
@@ -1102,22 +1100,21 @@ public class StemmawebLegacyTest {
          * }
          */
 
-        characterModel = new CharacterModel();
-        characterModel.setCharacter("");
+        readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("");
         response = jerseyTest
                 .resource()
                 .path("/reading/" + n22 + "/merge/" + n21a)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-        characterModel = new CharacterModel();
-        characterModel.setCharacter(" ");
+        readingBoundaryModel = new ReadingBoundaryModel();
         response = jerseyTest
                 .resource()
-                .path("/reading/" + n21 + "/concatenate/" + n22 + "/1")
+                .path("/reading/" + n21 + "/concatenate/" + n22)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatusInfo().getStatusCode());
 
         /*
@@ -1181,13 +1178,12 @@ public class StemmawebLegacyTest {
                 });
         int patLength = listOfReadings.size();
 
-        characterModel = new CharacterModel();
-        characterModel.setCharacter(" ");
+        readingBoundaryModel = new ReadingBoundaryModel();
         response = jerseyTest
                 .resource()
-                .path("/reading/" + r8_1 + "/concatenate/" + r9_1 + "/1")
+                .path("/reading/" + r8_1 + "/concatenate/" + r9_1)
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
 
         assertEquals(ClientResponse.Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 

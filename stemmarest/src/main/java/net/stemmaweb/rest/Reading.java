@@ -692,7 +692,7 @@ public class Reading {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
-                                 CharacterModel model) {
+                                 ReadingBoundaryModel model) {
         assert (model != null);
         GraphModel readingsAndRelationships;
         Node originalReading;
@@ -960,41 +960,24 @@ public class Reading {
      *
      * @param readId2
      *            the id of the second reading
-     * @param con
-     *            concatenate must be 0 (for 'no') or 1 (for 'yes'). if
-     *            concatenate is set to 1, the compressing will be done with
-     *            with_str between the texts of the readings. If it is 0, texts
-     *            will be concatenate with a single space.
-     * @param character
-     *            the string which will come between the texts of the readings
-     *            if con is set to 1 could also be an empty string. Is given as
-     *            a String to avoid problems with 'unsafe' characters in the URL
+     * @param boundary
+     *            the ReadingBoundaryModel that specifies whether the readings will be
+     *            separated with a string, and if so, what string it will be. If
+     *            the readings have join_next or join_prior respectively set, this
+     *            will be respected in preference to the boundary model.
      *
      * @return status.ok if compress was successful.
      *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
      *         concatenated
      */
     @POST
-    @Path("concatenate/{read2Id}/{con}")
+    @Path("concatenate/{read2Id}")
     @Consumes(MediaType.APPLICATION_JSON)
     // @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    public Response compressReadings(@PathParam("read2Id") long readId2,
-                                     @PathParam("con") String con, CharacterModel character) {
+    public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
 
         Node read1, read2;
         errorMessage = "problem with a reading. could not compress";
-        boolean toConcatenate;
-        switch (con) {
-            case "0":
-                toConcatenate = false;
-                break;
-            case "1":
-                toConcatenate = true;
-                break;
-            default:
-                errorMessage = "argument concatenate has an invalid value";
-                return errorResponse(Status.INTERNAL_SERVER_ERROR);
-        }
 
         try (Transaction tx = db.beginTx()) {
             read1 = db.getNodeById(readId);
@@ -1005,7 +988,7 @@ public class Reading {
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
             }
             if (canBeCompressed(read1, read2)) {
-                compress(read1, read2, toConcatenate, character.getCharacter());
+                compress(read1, read2, boundary);
                 tx.success();
                 return Response.ok().build();
             }
@@ -1025,22 +1008,27 @@ public class Reading {
      *            the first reading
      * @param read2
      *            the second reading
-     * @param with_str
-     *            the string to come between the texts of the readings.
-     * @param toConcatenate
-     *            boolean: if true - texts of readings will be concatenated with
-     *            with_str in between. if false: texts of readings will be
-     *            concatenated with one empty space in between.
+     * @param boundary
+     *            the BoundaryModel that determines, in compbination with reading flags
+     *            join_next and join_prior, how the reading text will be constructed.
      */
-    private void compress(Node read1, Node read2, boolean toConcatenate, String with_str) {
-        String textRead1 = (String) read1.getProperty("text");
-        String textRead2 = (String) read2.getProperty("text");
-        String insertedText = (toConcatenate) ? with_str : " ";
+    private void compress(Node read1, Node read2, ReadingBoundaryModel boundary) {
+        String newText;
+        Boolean joined = (read1.hasProperty("join_next") && (Boolean) read1.getProperty("join_next")) ||
+                (read2.hasProperty("join_prior") && (Boolean) read2.getProperty("join_prior"));
+        if (boundary.getSeparate() && !joined) {
+            newText = String.join(boundary.getCharacter(),
+                    read1.getProperty("text").toString(), read2.getProperty("text").toString());
+        } else {
+            newText = String.join("",
+                    read1.getProperty("text").toString(), read2.getProperty("text").toString());
+        }
 
-        read1.setProperty("text", textRead1 + insertedText + textRead2);
+        read1.setProperty("text", newText);
 
-        Relationship from1to2 = getRelationshipBetweenReadings(read1, read2);
-        from1to2.delete();
+        for (Relationship r : getSequenceBetweenReadings(read1, read2) ) {
+            r.delete();
+        }
         copyRelationships(read1, read2);
         read2.delete();
     }
@@ -1055,18 +1043,9 @@ public class Reading {
      *            the node from which relationships are copied
      */
     private void copyRelationships(Node read1, Node read2) {
-        for (Relationship tempRel : read2.getRelationships(Direction.OUTGOING)) {
+        for (Relationship tempRel : read2.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
             Node tempNode = tempRel.getOtherNode(read2);
-            Relationship rel1 = read1.createRelationshipTo(tempNode, ERelations.SEQUENCE);
-            for (String key : tempRel.getPropertyKeys()) {
-                rel1.setProperty(key, tempRel.getProperty(key));
-            }
-            tempRel.delete();
-        }
-
-        for (Relationship tempRel : read2.getRelationships(Direction.INCOMING)) {
-            Node tempNode = tempRel.getOtherNode(read2);
-            Relationship rel1 = tempNode.createRelationshipTo(read1, ERelations.SEQUENCE);
+            Relationship rel1 = read1.createRelationshipTo(tempNode, tempRel.getType());
             for (String key : tempRel.getPropertyKeys()) {
                 rel1.setProperty(key, tempRel.getProperty(key));
             }
@@ -1085,47 +1064,48 @@ public class Reading {
      * @return true if ok to compress, false otherwise
      */
     private boolean canBeCompressed(Node read1, Node read2) {
-        Iterable<Relationship> rel;
-        rel = read2.getRelationships(ERelations.SEQUENCE);
-
-        Iterator<Relationship> normalFromRead2 = rel.iterator();
-        if (!normalFromRead2.hasNext()) {
-            errorMessage = "second readings is not connected. could not compress";
+        // The readings need to be contiguous...
+        List<Relationship> from1to2 = getSequenceBetweenReadings(read1, read2);
+        if (from1to2.isEmpty()) {
+            errorMessage = "reading are not contiguous. could not compress";
             return false;
         }
-        Relationship from1to2 = getRelationshipBetweenReadings(read1, read2);
-        if (from1to2 == null) {
-            errorMessage = "reading are not neighbors. could not compress";
-            return false;
-        }
-
+        // ...they need to not have any non-sequence relationships...
         if (hasNonSequenceRelationships(read1) || hasNonSequenceRelationships(read2)) {
             errorMessage = "reading has other relations. could not compress";
             return false;
         }
-
-        if (1 != read2.getDegree(ERelations.SEQUENCE, Direction.INCOMING)) {
-            errorMessage = "reading has more then one predecessor. could not compress";
+        // ...and they need to have an effective degree of 1 (that is, the graph needs to
+        // be non-forking at this point, though there might be both a SEQUENCE and a
+        // LEMMA_TEXT relationship.)
+        if (1 != getEffectiveDegree(read2, Direction.INCOMING) || 1 != getEffectiveDegree(read1, Direction.OUTGOING)) {
+            errorMessage = "graph forks between these readings. could not compress";
             return false;
         }
         return true;
     }
 
+    private int getEffectiveDegree(Node reading, Direction direction) {
+        HashSet<Node> connected = new HashSet<>();
+        for (Relationship rel : reading.getRelationships(direction, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+            connected.add(rel.getOtherNode(reading));
+        }
+        return connected.size();
+    }
+
     /**
-     * checks if a reading has relationships which are not SEQUENCE
+     * checks if a reading has relationships which are not SEQUENCE, e.g. RELATED or
+     * other user-defined relationships
      *
      * @param read
      *            the reading
      * @return true if it has, false otherwise
      */
     private boolean hasNonSequenceRelationships(Node read) {
-        String type;
-        String normal = ERelations.SEQUENCE.toString();
-
         for (Relationship rel : read.getRelationships()) {
-            type = rel.getType().name();
+            String type = rel.getType().name();
 
-            if (!type.equals(normal)) {
+            if (!type.equals(ERelations.SEQUENCE.toString()) && !type.equals(ERelations.LEMMA_TEXT.toString())) {
                 return true;
             }
         }
@@ -1138,7 +1118,7 @@ public class Reading {
     }
 
     /**
-     * get the normal relationship between two readings
+     * get the sequence/lemma relationship(s) between two readings
      *
      * @param read1
      *            the first reading
@@ -1146,14 +1126,14 @@ public class Reading {
      *            the second reading
      * @return the SEQUENCE relationship
      */
-    private Relationship getRelationshipBetweenReadings(Node read1, Node read2) {
-        Relationship from1to2 = null;
-        for (Relationship tempRel : read1.getRelationships()) {
+    private List<Relationship> getSequenceBetweenReadings(Node read1, Node read2) {
+        ArrayList<Relationship> foundRels = new ArrayList<>();
+        for (Relationship tempRel : read1.getRelationships(ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
             if (tempRel.getOtherNode(read1).equals(read2)) {
-                from1to2 = tempRel;
+                foundRels.add(tempRel);
             }
         }
-        return from1to2;
+        return foundRels;
     }
 
     private String getTraditionId () {

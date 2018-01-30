@@ -326,13 +326,12 @@ public class StemmawebInputOutputTest {
             tx.success();
         }
 
-        CharacterModel characterModel = new CharacterModel();
-        characterModel.setCharacter(" ");
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel(); // take all the defaults
         jerseyResponse = jerseyTest
                 .resource()
-                .path("/reading/" + blasphemias.getId() + "/concatenate/" + aporia.getId() + "/1")
+                .path("/reading/" + blasphemias.getId() + "/concatenate/" + aporia.getId())
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, characterModel);
+                .post(ClientResponse.class, readingBoundaryModel);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         try(Transaction tx = db.beginTx()) {
             assertEquals("βλασφημίας ἀπορία", blasphemias.getProperty("text"));
