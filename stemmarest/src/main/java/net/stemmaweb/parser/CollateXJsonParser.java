@@ -128,6 +128,7 @@ public class CollateXJsonParser {
                         thisReading.setProperty("join_next", rm.getJoin_next());
                         thisReading.setProperty("annotation", rm.getAnnotation());
                         thisReading.setProperty("rank", rank);
+                        thisReading.setProperty("section_id", parentNode.getId());
                         createdReadings.put(lookupKey, thisReading);
                     }
                     Node lastReading = lastWitnessReading.get(thisWitness);
