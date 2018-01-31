@@ -1,6 +1,8 @@
 package net.stemmaweb.rest;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -700,6 +702,14 @@ public class Reading {
             String originalText = originalReading.getProperty("text").toString();
             if (splitIndex >= originalText.length())
                 errorMessage = "The index must be smaller than the text length";
+
+            else if (model.getIsRegex()) {
+                // Test that the regex matches on the original text
+                Pattern p = Pattern.compile(model.getCharacter());
+                Matcher m = p.matcher(originalText);
+                if (!m.find())
+                    errorMessage = "The given regular expression does not match the original text";
+            }
 
             else if (!originalText.contains(model.getCharacter()))
                 errorMessage = "no such separator exists";

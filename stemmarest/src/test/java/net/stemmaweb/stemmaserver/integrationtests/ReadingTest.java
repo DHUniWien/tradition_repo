@@ -1402,6 +1402,46 @@ public class ReadingTest {
         }
     }
 
+    @Test
+    public void splitReadingZeroLengthRegexTest() {
+        try (Transaction tx = db.beginTx()) {
+            Node rood = db.findNode(Nodes.READING, "text", "rood-of-the-world");
+            assertNotNull(rood);
+
+            // Try it with a non-matching regex
+            ReadingBoundaryModel rbm = new ReadingBoundaryModel();
+            rbm.setSeparate(false);
+            rbm.setCharacter("(?=0)");
+            rbm.setIsRegex(true);
+            ClientResponse response = jerseyTest.resource()
+                    .path("/reading/" + rood.getId() + "/split/0")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+            assertEquals("The given regular expression does not match the original text",
+                    Util.getValueFromJson(response, "error"));
+
+            // Now try one that matches
+            rbm.setCharacter("(?=-)");
+            response = jerseyTest.resource()
+                    .path("/reading/" + rood.getId() + "/split/0")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            GraphModel result = response.getEntity(new GenericType<GraphModel>() {});
+            assertEquals(4, result.getReadings().size());
+
+            Node nof = db.findNode(Nodes.READING, "text", "-of");
+            assertNotNull(nof);
+            assertEquals(true, nof.getProperty("join_prior"));
+
+            Response witText = new Witness(tradId, "C").getWitnessAsText();
+            assertEquals(expectedWitnessC, witText.getEntity());
+
+            tx.success();
+        }
+    }
+
     /**
      * test that all readings of a tradition are returned sorted ascending
      * according to rank
