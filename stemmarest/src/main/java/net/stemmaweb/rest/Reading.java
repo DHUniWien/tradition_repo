@@ -672,17 +672,16 @@ public class Reading {
      * Opposite of compress
      *
      * @param splitIndex
-     *            the index of the first letter of the second word: "unto" with
-     *            index 2 gets "un" and "to". if the index is zero the reading
-     *            is split using the separator
+     *            the index of the first letter of the second word, indicating where
+     *            the reading is to be split: e.g. "unto" with index 2 produces "un"
+     *            and "to". If the index is zero the reading is split on all occurrences
+     *            of the separator.
      * @param model
-     *            the string which is between the words to be split, if no
-     *            separator is specified (empty String) the reading is split
-     *            using whitespace as default. If a splitIndex and a separator
-     *            were specified the reading is split using the splitIndex and
-     *            removing the separator from the beginning of the second word.
-     *            Is given as a String to avoid problems with 'unsafe'
-     *            characters in the URL
+     *            the ReadingBoundaryModel indicating how the reading is to be split.
+     *            If 'separate' is false, then the 'join_next' and 'join_prior' attributes
+     *            are set on the respective readings. If splitIndex is zero, then the
+     *            'character' must occur somewhere in the reading string, and will be
+     *            removed from the reading text.
      * @return a GraphModel in JSON containing all the created and modified
      *         readings and the deleted relationships on success or
      *         Status.INTERNAL_SERVER_ERROR with a detailed message else
@@ -718,23 +717,8 @@ public class Reading {
             if (errorMessage != null)
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
-            String[] splitWords = splitUpText(splitIndex, model.getCharacter(), originalText);
-
-            if (!hasRankGap(originalReading, splitWords.length)) {
-                Long rankGap = (Long) originalReading.getProperty("rank") + splitWords.length;
-                String tradId = getTraditionId();
-                for (Relationship rel : originalReading.getRelationships(
-                        Direction.OUTGOING, ERelations.SEQUENCE)) {
-                    Node nextNode = rel.getEndNode();
-                    if (nextNode.hasProperty("rank") &&
-                            ((long)nextNode.getProperty("rank") <= rankGap)) {
-                        nextNode.setProperty("rank", rankGap);
-                        new Tradition(tradId).recalculateRank(nextNode.getId());
-                    }
-                }
-            }
-
-            readingsAndRelationships = split(originalReading, splitWords);
+            readingsAndRelationships = split(originalReading, splitIndex, model);
+            new Tradition(getTraditionId()).recalculateRank(originalReading.getId());
 
             tx.success();
         } catch (Exception e) {
@@ -776,62 +760,40 @@ public class Reading {
     }
 
     /**
-     * Checks if there is a rank gap after the reading to be split. The rank gap
-     * has to have at least the size of the readings words. E.g. if the reading
-     * is "the little mouse" and has rank 5 the next reading has to have at
-     * least rank 8.
-     *
-     * @param originalReading
-     *            the reading to be split
-     * @param numberOfWords
-     *            the number of words the reading to be split contains
-     * @return true if there is a rank gap
-     */
-    private boolean hasRankGap(Node originalReading, int numberOfWords) {
-        String rankKey = "rank";
-        Long rank = (Long) originalReading.getProperty(rankKey);
-        for (Relationship rel : originalReading.getRelationships(
-                Direction.OUTGOING, ERelations.SEQUENCE)) {
-            Node nextNode = rel.getEndNode();
-            if (nextNode.hasProperty(rankKey)) {
-                Long nextRank = (Long) nextNode.getProperty(rankKey);
-                if (nextRank - rank >= numberOfWords) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
      * Performs all necessary steps in the database to split the reading.
      *
      * @param originalReading
      *            the reading to be split
-     * @param splitWords
+     * @param splitIndex
      *            the words the reading consists of
+     * @param model
+     *            the ReadingBoundaryModel saying how the reading should be split
      * @return a model of the split graph
      */
-    private GraphModel split(Node originalReading, String[] splitWords) {
+    private GraphModel split(Node originalReading, int splitIndex, ReadingBoundaryModel model) {
         ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<>();
         ArrayList<RelationshipModel> deletedRelationships = new ArrayList<>();
 
+        // Get the witness sequences that come out of the original reading, as well as
+        // the list of witnesses
         ArrayList<Relationship> originalOutgoingRels = new ArrayList<>();
+        ArrayList<String> allWitnesses = new ArrayList<>();
         for (Relationship oldRel : originalReading
                 .getRelationships(ERelations.SEQUENCE, Direction.OUTGOING) ) {
             originalOutgoingRels.add(oldRel);
-        }
-        ArrayList<String> allWitnesses = new ArrayList<>();
-        for (Relationship relationship : originalReading.getRelationships(
-                ERelations.SEQUENCE, Direction.INCOMING)) {
-            String[] witnesses = (String[]) relationship.getProperty("witnesses");
+            String[] witnesses = (String[]) oldRel.getProperty("witnesses");
             Collections.addAll(allWitnesses, witnesses);
-
         }
-        originalReading.setProperty("text", splitWords[0]);
 
+        // Get the sequence of reading text that should be created
+        String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
+                originalReading.getProperty("text").toString());
+
+        // Change the first reading
+        originalReading.setProperty("text", splitWords[0]);
         createdOrChangedReadings.add(new ReadingModel(originalReading));
 
+        // Add the new readings
         Node lastReading = originalReading;
 
         for (int i = 1; i < splitWords.length; i++) {
@@ -841,6 +803,8 @@ public class Reading {
             newReading.setProperty("text", splitWords[i]);
             Long previousRank = (Long) lastReading.getProperty("rank");
             newReading.setProperty("rank", previousRank + 1);
+            if (!model.getSeparate())
+                newReading.setProperty("join_prior", true);
 
             Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
             Collections.sort(allWitnesses);
@@ -850,7 +814,7 @@ public class Reading {
             createdOrChangedReadings.add(new ReadingModel(newReading));
         }
         for (Relationship oldRel : originalOutgoingRels) {
-            Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), ERelations.SEQUENCE);
+            Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
             RelationshipService.copyRelationshipProperties(oldRel, newRel);
             deletedRelationships.add(new RelationshipModel(oldRel));
             oldRel.delete();

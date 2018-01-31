@@ -15,7 +15,6 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -1324,21 +1323,22 @@ public class ReadingTest {
     }
 
     /**
-     * tests the splitting of a reading when there is no rank-gap after it
-     * should return error
-     * (this test isn't necessary anymore, since we now perform a recalculation
-     *  of the rank(s) after each reading-operation.
-     *  but, we could use this test to verify that this recalculation works correctly.)
+     * tests the rank reassignment of readings that follow a split, when there wasn't a prior
+     * gap in the ranks
      */
-    @Ignore
     @Test
     public void splitReadingNoAvailableRankTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'unto me'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node untoMe = nodes.next();
-            assertFalse(nodes.hasNext());
+            Node untoMe = db.findNode(Nodes.READING, "text", "unto me");
+            assertNotNull(untoMe);
+
+            // find the rank of this reading and the following ones
+            Long thisRank = Long.valueOf(untoMe.getProperty("rank").toString());
+            HashMap<Long, Long> readingRanks = new HashMap<>();
+            for (Relationship r : untoMe.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
+                Node next = r.getEndNode();
+                readingRanks.put(next.getId(), Long.valueOf(next.getProperty("rank").toString()));
+            }
 
             // split reading
             ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
@@ -1349,11 +1349,46 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, readingBoundaryModel);
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(
-                    "There has to be a rank-gap after a reading to be split",
-                    response.getEntity(String.class));
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+            // check the re-ranking
+            assertEquals(thisRank, untoMe.getProperty("rank"));
+            for (Long nid : readingRanks.keySet()) {
+                Long savedRank = readingRanks.get(nid);
+                Node n = db.getNodeById(nid);
+                if (savedRank == thisRank + 1) {
+                    assertEquals(savedRank + 1, n.getProperty("rank"));
+                } else
+                    assertEquals(savedRank, n.getProperty("rank"));
+            }
+            tx.success();
+        }
+    }
+
+    /**
+     * test a reading split where the text should not be separated
+     */
+    @Test
+    public void splitReadingSeparateFalseTest() {
+        try (Transaction tx = db.beginTx()) {
+            Node untome = db.findNode(Nodes.READING, "text", "unto me");
+            assertNotNull(untome);
+
+            ReadingBoundaryModel rbm = new ReadingBoundaryModel();
+            rbm.setSeparate(false);
+            rbm.setCharacter("");
+            ClientResponse response = jerseyTest.resource()
+                    .path("/reading/" + untome.getId() + "/split/2")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+            // Find the new nodes
+            assertEquals("un", untome.getProperty("text"));
+            Node follower = db.findNode(Nodes.READING, "text", "to me");
+            assertNotNull(follower);
+            assertTrue(follower.hasProperty("join_prior"));
+            assertEquals(true, follower.getProperty("join_prior"));
             tx.success();
         }
     }
