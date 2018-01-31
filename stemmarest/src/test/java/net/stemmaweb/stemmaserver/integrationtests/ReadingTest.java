@@ -920,11 +920,13 @@ public class ReadingTest {
     @Test
     public void splitReadingTest() {
         Node node;
+        Node endNode;
         Result result;
         Iterator<Node> nodes;
         try (Transaction tx = db.beginTx()) {
             node = db.findNode(Nodes.READING, "text", "the root");
             assertTrue(node.hasRelationship(ERelations.RELATED));
+            endNode = db.findNode(Nodes.READING, "is_end", true);
 
             // delete relationship, so that splitting is possible
             node.getSingleRelationship(ERelations.RELATED,
@@ -946,14 +948,21 @@ public class ReadingTest {
 
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
+        // Check the return value; there should be two changed readings and two rewritten relationships.
         GraphModel readingsAndRelationshipsModel = response
                 .getEntity(GraphModel.class);
-        HashSet<String> rdgWords = new HashSet<>();
-        readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.add(x.getText()));
-        assertTrue(rdgWords.contains("the"));
-        assertTrue(rdgWords.contains("root"));
-        assertEquals(1, readingsAndRelationshipsModel.getRelationships()
-                .size());
+        // Check the readings
+        assertEquals(2, readingsAndRelationshipsModel.getReadings().size());
+        HashMap<String, String> rdgWords = new HashMap<>();
+        readingsAndRelationshipsModel.getReadings().forEach(x -> rdgWords.put(x.getText(), x.getId()));
+        assertTrue(rdgWords.containsKey("the"));
+        assertTrue(rdgWords.containsKey("root"));
+        // Check the relationships
+        assertEquals(2, readingsAndRelationshipsModel.getRelationships().size());
+        HashSet<String> relPaths = new HashSet<>();
+        readingsAndRelationshipsModel.getRelationships().forEach(x -> relPaths.add(x.getSource() + "->" + x.getTarget()));
+        assertTrue(relPaths.contains(rdgWords.get("the") + "->" + rdgWords.get("root")));
+        assertTrue(relPaths.contains(rdgWords.get("root") + "->" + String.valueOf(endNode.getId())));
 
         try (Transaction tx = db.beginTx()) {
             result = db.execute("match (w:READING {text:'the'}) return w");
@@ -1754,7 +1763,7 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            String expectedWitnessA = "{\"text\":\"when april with his showerstestsweet with fruit the drought of march has pierced unto me the root\"}";
+            expectedWitnessA = "{\"text\":\"when april with his showerstestsweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
@@ -1801,7 +1810,7 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            String expectedWitnessA = "{\"text\":\"when april with his showers\"sweet with fruit the drought of march has pierced unto me the root\"}";
+            expectedWitnessA = "{\"text\":\"when april with his showers\"sweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
@@ -1895,7 +1904,7 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            String expectedWitnessA = "{\"text\":\"when april with his showerssweet with fruit the drought of march has pierced unto me the root\"}";
+            expectedWitnessA = "{\"text\":\"when april with his showerssweet with fruit the drought of march has pierced unto me the root\"}";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedWitnessA, resp.getEntity());
             tx.success();
@@ -1938,6 +1947,47 @@ public class ReadingTest {
 
             assertEquals("showers", showers.getProperty("text"));
             assertEquals("fruit", fruit.getProperty("text"));
+            tx.success();
+        }
+    }
+
+    @Test
+    public void splitCompressJoinedReadingTest() {
+        try (Transaction tx = db.beginTx()) {
+            Node rood = db.findNode(Nodes.READING, "text", "rood-of-the-world");
+            assertNotNull(rood);
+
+            // First split it, unseparated
+            ReadingBoundaryModel rbm = new ReadingBoundaryModel();
+            rbm.setSeparate(false);
+            rbm.setCharacter("-");
+            ClientResponse response = jerseyTest.resource()
+                    .path("/reading/" + rood.getId() + "/split/0")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            GraphModel result = response.getEntity(new GenericType<GraphModel>() {});
+            HashMap<String, String> text2id = new HashMap<>();
+            for (ReadingModel rm : result.getReadings()) {
+                text2id.put(rm.getText(), rm.getId());
+                if (rm.getId().equals(String.valueOf(rood.getId())))
+                    assertEquals("rood", rm.getText());
+                else
+                    assertTrue(rm.getJoin_prior());
+            }
+
+            // Then join it with defaults; the separation should be overridden by join_prior settings
+            rbm = new ReadingBoundaryModel();
+            response = jerseyTest.resource()
+                    .path("/reading/" + text2id.get("rood") + "/concatenate/" + text2id.get("of"))
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+            // Check the reading of C
+            Response resp = new Witness(tradId, "C").getWitnessAsText();
+            String expC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh roodoftheworld\"}";
+            assertEquals(expC, resp.getEntity());
             tx.success();
         }
     }

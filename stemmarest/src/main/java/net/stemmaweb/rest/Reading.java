@@ -682,9 +682,9 @@ public class Reading {
      *            are set on the respective readings. If splitIndex is zero, then the
      *            'character' must occur somewhere in the reading string, and will be
      *            removed from the reading text.
-     * @return a GraphModel in JSON containing all the created and modified
-     *         readings and the deleted relationships on success or
-     *         Status.INTERNAL_SERVER_ERROR with a detailed message else
+     * @return a GraphModel in JSON containing all the created and modified readings and
+     *         new sequence relationships on success, or Status.INTERNAL_SERVER_ERROR with
+     *         a detailed message on failure
      */
     @POST
     @Path("split/{splitIndex}")
@@ -772,7 +772,7 @@ public class Reading {
      */
     private GraphModel split(Node originalReading, int splitIndex, ReadingBoundaryModel model) {
         ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<>();
-        ArrayList<RelationshipModel> deletedRelationships = new ArrayList<>();
+        ArrayList<RelationshipModel> createdRelationships = new ArrayList<>();
 
         // Get the witness sequences that come out of the original reading, as well as
         // the list of witnesses
@@ -809,6 +809,7 @@ public class Reading {
             Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
             Collections.sort(allWitnesses);
             relationship.setProperty("witnesses", allWitnesses.toArray(new String[allWitnesses.size()]));
+            createdRelationships.add(new RelationshipModel(relationship));
 
             lastReading = newReading;
             createdOrChangedReadings.add(new ReadingModel(newReading));
@@ -816,11 +817,11 @@ public class Reading {
         for (Relationship oldRel : originalOutgoingRels) {
             Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
             RelationshipService.copyRelationshipProperties(oldRel, newRel);
-            deletedRelationships.add(new RelationshipModel(oldRel));
+            createdRelationships.add(new RelationshipModel(newRel));
             oldRel.delete();
         }
 
-        return new GraphModel(createdOrChangedReadings, deletedRelationships);
+        return new GraphModel(createdOrChangedReadings, createdRelationships);
     }
 
     /**
