@@ -33,7 +33,7 @@ public class CollateXInputTest extends TestCase {
         jerseyTest = Util.setupJersey();
     }
 
-    public void testParseCollateX() throws Exception {
+    public void testParseCollateX() {
         ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
@@ -62,7 +62,20 @@ public class CollateXInputTest extends TestCase {
         assertTrue(foundReading);
     }
 
-    public void testAddRelationship() throws Exception {
+    public void testParseCollateXFromPlaintext() {
+        // To check that we deal as sensibly as possible with extraneous spaces in the
+        // CollateX default string tokenisation
+        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Quick foxes", "LR", "1",
+                "src/TestFiles/quick_brown_fox.xml", "collatex");
+        assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
+
+        String tradId = Util.getValueFromJson(cResult, "tradId");
+        Witness witness = new Witness(tradId, "w1");
+        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
+        assertEquals("the quick brown fox jumped over the lazy dogs .", witnessText);
+    }
+
+    public void testAddRelationship() {
         // Parse the file
         ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
@@ -105,7 +118,7 @@ public class CollateXInputTest extends TestCase {
 
     }
 
-    public void testParseCollateXJersey() throws Exception {
+    public void testParseCollateXJersey() {
         ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());

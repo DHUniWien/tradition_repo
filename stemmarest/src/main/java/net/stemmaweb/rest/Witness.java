@@ -144,14 +144,15 @@ public class Witness {
             return Response.status(Status.NOT_FOUND)
                     .entity("No witness path found for this sigil").build();
         // Remove the meta node from the list
-        Boolean joinPrior;
+        Boolean joinNext = false;
         try (Transaction tx = db.beginTx()) {
             for (Node node : witnessReadings) {
                 if (booleanValue(node, "is_end")) continue;
                 if (booleanValue(node, "is_lacuna")) continue;
-                joinPrior = booleanValue(node, "join_prior");
-                if (!joinPrior && !booleanValue(node, "join_next") && !witnessAsText.equals(""))
+                if (!joinNext && !booleanValue(node, "join_prior")
+                        && !witnessAsText.equals("") && !witnessAsText.endsWith(" "))
                     witnessAsText += " ";
+                joinNext = booleanValue(node, "join_next");
                 witnessAsText += node.getProperty("text").toString();
             }
             tx.success();

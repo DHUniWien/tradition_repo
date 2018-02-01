@@ -1,17 +1,13 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
@@ -25,6 +21,8 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -110,6 +108,50 @@ public class WitnessTest {
                 .resource()
                 .path("/tradition/" + tradId + "/witness/B/text")
                 .get(String.class);
+        assertEquals(expectedText, returnedText);
+    }
+
+    @Test
+    public void witnessAsTextWithJoins() {
+        String expectedText = "the quick brown fox jumped over the lazy dogs.";
+        String foxId = null;
+        try {
+            foxId = Util.getValueFromJson(
+                    Util.createTraditionFromFileOrString(jerseyTest, "quick brown fox", "LR",
+                    "1", "src/TestFiles/quick_brown_fox.xml", "collatex"), "tradId");
+        } catch (Exception e) {
+            fail();
+        }
+        String returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
+        assertNotEquals(expectedText, returnedText);
+
+        // Find the reading that is the period
+        Node period = null;
+        try (Transaction tx = db.beginTx()) {
+            period = db.findNode(Nodes.READING, "text", ". ");
+            assertNotNull(period);
+            period.setProperty("join_prior", true);
+            tx.success();
+        }
+        returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
+        assertEquals(expectedText, returnedText);
+
+        // Now find its predecessors and mark them as join_next
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship r : period.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+                Node n = r.getStartNode();
+                n.setProperty("join_next", true);
+            }
+            tx.success();
+        }
+        returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
+        assertEquals(expectedText, returnedText);
+
+        try (Transaction tx = db.beginTx()) {
+            period.removeProperty("join_prior");
+            tx.success();
+        }
+        returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
         assertEquals(expectedText, returnedText);
     }
 
