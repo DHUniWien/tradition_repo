@@ -964,6 +964,7 @@ public class Reading {
             }
             if (canBeCompressed(read1, read2)) {
                 compress(read1, read2, boundary);
+                ReadingService.recalculateRank(read1);
                 tx.success();
                 return Response.ok().build();
             }
@@ -1089,7 +1090,7 @@ public class Reading {
 
     private Response errorResponse (Status status) {
         String errorJson = String.format("{\"error\": \"%s\"}", errorMessage);
-        return Response.status(status).entity(errorJson).build();
+        return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(errorJson).build();
     }
 
     /**

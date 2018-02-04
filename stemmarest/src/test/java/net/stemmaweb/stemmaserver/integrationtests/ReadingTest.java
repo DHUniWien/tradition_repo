@@ -245,6 +245,7 @@ public class ReadingTest {
 
             assertEquals(Status.BAD_REQUEST.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("Reading has no such property 'test'",
                     Util.getValueFromJson(response, "error"));
             tx.success();
@@ -640,6 +641,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(
                     "The witness list has to contain at least one witness",
                     Util.getValueFromJson(response, "error"));
@@ -666,6 +668,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("The reading has to be in at least two witnesses",
                     Util.getValueFromJson(response, "error"));
             tx.success();
@@ -691,6 +694,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(
                     "The reading has to be in the witnesses to be duplicated",
                     Util.getValueFromJson(response, "error"));
@@ -793,6 +797,7 @@ public class ReadingTest {
 
             assertEquals(Status.CONFLICT.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("Readings to be merged would make the graph cyclic",
                     Util.getValueFromJson(response, "error"));
 
@@ -830,6 +835,7 @@ public class ReadingTest {
 
             assertEquals(Status.CONFLICT.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("Readings to be merged would make the graph cyclic",
                     Util.getValueFromJson(response, "error"));
 
@@ -867,6 +873,7 @@ public class ReadingTest {
 
             assertEquals(Status.CONFLICT.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(
                     "Readings to be merged cannot contain cross-location relationships",
                     Util.getValueFromJson(response, "error"));
@@ -911,6 +918,7 @@ public class ReadingTest {
 //                    response.getEntity(String.class));
             //TODO (SK 20151001: decide if this test is still necessary;
             //                   if so, modify it, otherwise we can remove it.
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("Readings to be merged would make the graph cyclic",
                     Util.getValueFromJson(response, "error"));
             tx.success();
@@ -1139,6 +1147,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, readingBoundaryModel);
 
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals("no such separator exists",
@@ -1169,6 +1178,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("The separator does not appear in the index location in the text",
                     Util.getValueFromJson(response, "error"));
             tx.success();
@@ -1293,6 +1303,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("The index must be smaller than the text length",
                     Util.getValueFromJson(response, "error"));
 
@@ -1322,6 +1333,7 @@ public class ReadingTest {
 
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(
                     "A reading to be split cannot be part of any relationship",
                     Util.getValueFromJson(response, "error"));
@@ -1418,6 +1430,7 @@ public class ReadingTest {
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, rbm);
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("The given regular expression does not match the original text",
                     Util.getValueFromJson(response, "error"));
 
@@ -1978,6 +1991,7 @@ public class ReadingTest {
 
             assertEquals(Response.Status.CONFLICT.getStatusCode(),
                     response.getStatus());
+            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals("reading are not contiguous. could not compress",
                     Util.getValueFromJson(response, "error"));
 
@@ -2088,6 +2102,7 @@ public class ReadingTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
         assertEquals("this was the last reading of this witness",
                 Util.getValueFromJson(response, "error"));
     }
@@ -2150,6 +2165,7 @@ public class ReadingTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 actualResponse.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, actualResponse.getType());
         assertEquals("this was the first reading of this witness",
                 Util.getValueFromJson(actualResponse, "error"));
     }
