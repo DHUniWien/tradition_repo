@@ -16,6 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static net.stemmaweb.services.ReadingService.addWitnessLink;
+import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
 
 /**
@@ -175,7 +176,8 @@ public class TEIParallelSegParser {
                 }
             } // end parseloop
 
-            // Now calculate the whole tradition.
+            // Now try re-ranking the nodes.
+            recalculateRank(startNode);
             tx.success();
         } catch (Exception e) {
             System.out.println(String.format("Error encountered in XML line %d column %d: ",
@@ -184,9 +186,6 @@ public class TEIParallelSegParser {
             e.printStackTrace();
             return Response.serverError().build();
         }
-        // Now try re-ranking the nodes.
-        if (new Tradition(tradId).recalculateRank(startNode.getId()) == null)
-            return Response.serverError().entity("Could not calculate ranks on new graph").build();
 
         // Merge all mergeable readings, to get rid of duplicates across apparatus entries.
         Long endRank;
@@ -383,7 +382,7 @@ public class TEIParallelSegParser {
             Node wordNode = db.createNode(Nodes.READING);
             wordNode.setProperty("text", word);
             wordNode.setProperty("section_id", sectId);
-            wordNode.setProperty("rank", 0);
+            wordNode.setProperty("rank", 0L);
             if (join_prior) {
                 wordNode.setProperty("join_prior", true);
                 join_prior = false;

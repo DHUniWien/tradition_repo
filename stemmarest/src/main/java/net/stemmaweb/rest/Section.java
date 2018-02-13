@@ -8,7 +8,6 @@ import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -21,7 +20,9 @@ import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static net.stemmaweb.services.ReadingService.AlignmentTraverse;
 import static net.stemmaweb.services.ReadingService.addWitnessLink;
+import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
 import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
 
@@ -392,13 +393,14 @@ public class Section {
                 if (r.getEndNode().hasProperty("is_end"))
                     r.delete();
 
+            // Collect all readings from the second section and alter their section metadata
+            final Long newId = newSection.getId();
+            db.traversalDescription().depthFirst().expand(new AlignmentTraverse())
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
+                    .stream().forEach(x -> x.setProperty("section_id", newId));
 
             // Re-initialize the ranks on the new section
-            Tradition t = new Tradition(tradId);
-            if (t.recalculateRank(newStart.getId()) == null) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity("Rank recalculation of new section failed!").build();
-            }
+            recalculateRank(newStart);
 
             tx.success();
         } catch (Exception e) {
@@ -442,6 +444,17 @@ public class Section {
             Node trueStart = DatabaseService.getStartNode(String.valueOf(firstSection.getId()), db);
             Node trueEnd = DatabaseService.getEndNode(String.valueOf(secondSection.getId()), db);
 
+            // Collect all readings from the second section and alter their section metadata
+            final Long keptId = firstSection.getId();
+            db.traversalDescription().depthFirst().expand(new AlignmentTraverse())
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes()
+                    .stream().forEach(x -> x.setProperty("section_id", keptId));
+
+            // Collect the last readings from the first section, for later rank recalculation
+            List<Node> firstSectionEnd = new ArrayList<>();
+            oldEnd.getRelationships(Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE)
+                    .forEach(x -> firstSectionEnd.add(x.getStartNode()));
+
             // First we turn oldEnd and oldStart into placeholder readings, linked to each other
             oldStart.getSingleRelationship(ERelations.COLLATION, Direction.INCOMING).delete();
             oldEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
@@ -471,7 +484,6 @@ public class Section {
             if (plr != null) plr.delete();
             if (nlr != null) nlr.delete();
 
-
             // Remove each placeholder in turn
             removePlaceholder(oldEnd);
             removePlaceholder(oldStart);
@@ -485,12 +497,9 @@ public class Section {
             secondSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).delete();
             secondSection.delete();
 
-            // Re-initialize the ranks on the new section
-            Tradition t = new Tradition(tradId);
-            if (t.recalculateRank(trueStart.getId()) == null) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity("Rank recalculation of new section failed!").build();
-            }
+            // Re-initialize the ranks starting from the final readings of the first section.
+            for (Node n : firstSectionEnd)
+                recalculateRank(n);
 
             tx.success();
         } catch (Exception e) {
@@ -573,84 +582,10 @@ public class Section {
         return couldBeIdenticalReadings;
     }
 
-    /**
-     * Adds all the words that could be on the same rank to the result list
-     *
-     * @param sameText                 -
-     */
-    private List<ReadingModel> couldBeIdenticalCheck(List<Node> sameText) {
-
-        Node biggerRankNode;
-        Node smallerRankNode;
-        long biggerRank;
-        long smallerRank;
-        long rank;
-        boolean gotOne;
-
-        HashSet<Node> couldBeIdentical = new HashSet<>();
-
-        for (int i = 0; i < sameText.size() - 1; i++) {
-            long rankA = (long) sameText.get(i).getProperty("rank");
-            long rankB = (long) sameText.get(i + 1).getProperty("rank");
-
-            if (rankA == rankB) {
-                // Definitely
-                couldBeIdentical.add(sameText.get(i));
-                couldBeIdentical.add(sameText.get(i+1));
-                continue;
-            } else if (rankA < rankB) {
-                biggerRankNode = sameText.get(i + 1);
-                smallerRankNode = sameText.get(i);
-                smallerRank = rankA;
-                biggerRank = rankB;
-            } else {
-                biggerRankNode = sameText.get(i);
-                smallerRankNode = sameText.get(i + 1);
-                smallerRank = rankB;
-                biggerRank = rankA;
-            }
-
-            gotOne = false;
-            Iterable<Relationship> rels = smallerRankNode
-                    .getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
-
-            for (Relationship rel : rels) {
-                rank = (long) rel.getEndNode().getProperty("rank");
-                if (rank <= biggerRank) {
-                    gotOne = true;
-                    break;
-                }
-            }
-
-            if (gotOne) {
-                gotOne = false;
-
-                Iterable<Relationship> rels2 = biggerRankNode
-                        .getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
-
-                for (Relationship rel : rels2) {
-                    rank = (long) rel.getStartNode().getProperty("rank");
-                    if (rank >= smallerRank) {
-                        gotOne = true;
-                        break;
-                    }
-                }
-            }
-            if (!gotOne) {
-                couldBeIdentical.add(smallerRankNode);
-                couldBeIdentical.add(biggerRankNode);
-            }
-            if (couldBeIdentical.size() > 0) {
-                return couldBeIdentical.stream().map(ReadingModel::new).collect(Collectors.toList());
-            }
-        }
-        return null;
-    }
-
     // Retrieve all readings of a tradition between two ranks as Nodes
     private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
         List<Node> readings;
-        PathExpander e = new ReadingService.AlignmentTraverse();
+        PathExpander e = new AlignmentTraverse();
         try (Transaction tx = db.beginTx()) {
             readings = db.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)

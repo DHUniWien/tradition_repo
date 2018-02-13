@@ -465,6 +465,13 @@ public class RelationTest {
         assertEquals(tmpGraphModel.getRelationships().size(), 1L);
         String relationshipId = ((RelationshipModel) tmpGraphModel.getRelationships().toArray()[0]).getId();
 
+        try (Transaction tx = db.beginTx()) {
+            Relationship rel = db.getRelationshipById(Integer.parseInt(relationshipId));
+            assertEquals("root", rel.getStartNode().getProperty("text"));
+            assertEquals("teh", rel.getEndNode().getProperty("text"));
+            tx.success();
+        }
+
         ClientResponse response = jerseyTest
                 .resource()
                 .path("/reading/7")
@@ -478,13 +485,6 @@ public class RelationTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long)18L);
-
-        try (Transaction tx = db.beginTx()) {
-            Relationship rel = db.getRelationshipById(Integer.parseInt(relationshipId));
-            assertEquals("root", rel.getStartNode().getProperty("text"));
-            assertEquals("teh", rel.getEndNode().getProperty("text"));
-            tx.success();
-        }
 
         Result result = db.execute("match (w:READING {text:'rood'}) return w");
         Iterator<Node> nodes = result.columnAs("w");

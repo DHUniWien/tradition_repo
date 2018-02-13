@@ -173,6 +173,8 @@ public class ReadingService {
 
     private static class RankCalcEvaluate implements Evaluator {
 
+        HashSet<Node> visited = new HashSet<>();
+
         @Override
         public Evaluation evaluate(Path path) {
             // Get the last node on the path and see if its rank needs to be changed
@@ -181,19 +183,30 @@ public class ReadingService {
             Long minRank;
 
             // If we are here from a sequence relationship, note what our minimum rank must be
+            visited.add(thisNode);
             if (path.lastRelationship() == null)
                 return Evaluation.EXCLUDE_AND_CONTINUE;
-            else if (path.lastRelationship().getType().toString().equals("RELATED"))
-                minRank = thisRank;
+            else if (path.lastRelationship().getType().toString().equals("RELATED")
+                    && visited.contains(path.lastRelationship().getStartNode()))
+                minRank = (Long) path.lastRelationship().getStartNode().getProperty("rank");
             else
                 minRank = (Long) path.lastRelationship().getStartNode().getProperty("rank") + 1;
 
-            // The rank must also be max of colocated readings
+            // The rank must also be max of colocated readings that have been visited
             HashSet<Node> colocated = colocatedReadings(thisNode);
             if (colocated.size() > 0) {
-                Long maxRank = Collections.max(colocated.stream().map(x -> (Long) x.getProperty("rank"))
-                        .collect(Collectors.toList()));
-                if (maxRank > minRank) minRank = maxRank;
+                // maxRank is the highest rank of all the nodes so far visited, and should be adjusted
+                // for all colocated nodes
+                Long maxRank;
+                List<Long> l = colocated.stream().filter(x -> visited.contains(x))
+                        .map(x -> (Long) x.getProperty("rank")).collect(Collectors.toList());
+                maxRank = l.isEmpty() ? minRank : Collections.max(l);
+
+                if (maxRank > minRank) {
+                    minRank = maxRank;
+                    final long mr = minRank;
+                    colocated.forEach(x -> x.setProperty("rank", mr));
+                }
             }
             if (thisRank.equals(minRank))
                 return Evaluation.EXCLUDE_AND_PRUNE;
@@ -204,6 +217,13 @@ public class ReadingService {
         }
     }
 
+    /**
+     * Recalculates ranks, starting from startNode, until the ranks stop changing. Note that
+     * the rank on startNode needs to be correct before this is run.
+     *
+     * @param startNode - the reading from which to begin the recalculation
+     * @return list of nodes whose ranks were changed
+     */
     public static List<Node> recalculateRank (Node startNode) {
         RankCalcEvaluate e = new RankCalcEvaluate();
         AlignmentTraverse a = new AlignmentTraverse();

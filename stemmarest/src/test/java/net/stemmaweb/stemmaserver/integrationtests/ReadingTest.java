@@ -1348,7 +1348,7 @@ public class ReadingTest {
      * gap in the ranks
      */
     @Test
-    public void splitReadingNoAvailableRankTest() {
+    public void splitReadingNoRankGapTest() {
         try (Transaction tx = db.beginTx()) {
             Node untoMe = db.findNode(Nodes.READING, "text", "unto me");
             assertNotNull(untoMe);
@@ -2042,6 +2042,52 @@ public class ReadingTest {
             Response resp = new Witness(tradId, "C").getWitnessAsText();
             String expC = "{\"text\":\"when showers sweet with fruit to drought of march has pierced teh roodoftheworld\"}";
             assertEquals(expC, resp.getEntity());
+            tx.success();
+        }
+    }
+
+    @Test
+    public void compressReadingsCheckRankTest() {
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Sapientia", "LR", "1",
+                "src/TestFiles/sapientia_2.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        String sapId = Util.getValueFromJson(jerseyResult, "tradId");
+        List<SectionModel> testSections = jerseyTest.resource().path("/tradition/" + sapId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String sapSectId = testSections.get(0).getId();
+        try (Transaction tx = db.beginTx()) {
+            // Identify the first five nodes by rank
+            Node n1 = db.findNode(Nodes.READING, "text", "Verbum");
+            Node n2 = db.findNode(Nodes.READING, "text", "Ista");
+            Optional<Node> n3o = db.findNodes(Nodes.READING, "text", "sequencia").stream()
+                    .filter(x -> (Long) x.getProperty("rank") == 3L).findFirst();
+            assertTrue(n3o.isPresent());
+            Node n3 = n3o.get();
+            HashSet<Long> fourth = new HashSet<>();
+            db.findNodes(Nodes.READING, "rank", 6L).stream()
+                    .filter(x -> x.getProperty("section_id").toString().equals(sapSectId))
+                    .forEach(x -> fourth.add(x.getId()));
+            assertEquals(3, fourth.size());
+
+            ReadingBoundaryModel rbm = new ReadingBoundaryModel();
+            ClientResponse response = jerseyTest.resource()
+                    .path("/reading/" + n1.getId() + "/concatenate/" + n2.getId())
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            response = jerseyTest.resource()
+                    .path("/reading/" + n1.getId() + "/concatenate/" + n3.getId())
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rbm);
+            assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+            for (Long nid : fourth) {
+                Node n = db.getNodeById(nid);
+                ReadingModel rm = jerseyTest.resource().path("/reading/" + n.getId())
+                        .type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
+                assertEquals(Long.valueOf(4), rm.getRank());
+            }
+
             tx.success();
         }
     }
