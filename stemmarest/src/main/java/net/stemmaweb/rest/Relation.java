@@ -234,9 +234,12 @@ public class Relation {
             Long rankA = (Long) readingA.getProperty("rank");
             Long rankB = (Long) readingB.getProperty("rank");
             if (!rankA.equals(rankB) && relationshipModel.implies_colocation()) {
-                // Which one is the lower-ranked reading?
-                Long nodeId = rankA < rankB ? readingA.getId() : readingB.getId();
-                Set<Node> changedRank = new Tradition(tradId).recalculateRank(nodeId);
+                // Which one is the lower-ranked reading? Promote it, and recalculate from that point
+                Long higherRank = rankA < rankB ? rankB : rankA;
+                Node lowerRanked = rankA < rankB ? readingA : readingB;
+                lowerRanked.setProperty("rank", higherRank);
+                changedReadings.add(new ReadingModel(lowerRanked));
+                List<Node> changedRank = ReadingService.recalculateRank(lowerRanked);
                 for (Node cr : changedRank) changedReadings.add(new ReadingModel(cr));
             }
 

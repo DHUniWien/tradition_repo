@@ -728,7 +728,8 @@ public class Reading {
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
             readingsAndRelationships = split(originalReading, splitIndex, model);
-            new Tradition(getTraditionId()).recalculateRank(originalReading.getId());
+            // new Tradition(getTraditionId()).recalculateRank(originalReading.getId());
+            ReadingService.recalculateRank(originalReading);
 
             tx.success();
         } catch (Exception e) {
@@ -811,8 +812,8 @@ public class Reading {
 
             newReading = ReadingService.copyReadingProperties(lastReading, newReading);
             newReading.setProperty("text", splitWords[i]);
-            Long previousRank = (Long) lastReading.getProperty("rank");
-            newReading.setProperty("rank", previousRank + 1);
+            // Long previousRank = (Long) lastReading.getProperty("rank");
+            // newReading.setProperty("rank", previousRank + 1);
             if (!model.getSeparate())
                 newReading.setProperty("join_prior", true);
 
@@ -964,6 +965,8 @@ public class Reading {
             }
             if (canBeCompressed(read1, read2)) {
                 compress(read1, read2, boundary);
+                ReadingService.recalculateRank(read1);
+                // new Tradition(getTraditionId()).recalculateRank(readId);
                 tx.success();
                 return Response.ok().build();
             }
@@ -1089,7 +1092,7 @@ public class Reading {
 
     private Response errorResponse (Status status) {
         String errorJson = String.format("{\"error\": \"%s\"}", errorMessage);
-        return Response.status(status).entity(errorJson).build();
+        return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(errorJson).build();
     }
 
     /**
