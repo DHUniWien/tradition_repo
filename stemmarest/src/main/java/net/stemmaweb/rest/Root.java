@@ -25,6 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.rest.Util.jsonresp;
+
 /**
  * The root of the REST hierarchy. Deals with system-wide collections of
  * objects.
@@ -85,21 +88,20 @@ public class Root {
 
         if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Response.Status.CONFLICT)
-                    .entity("{\"error\":\"No user with this id exists\"}")
+                    .entity(jsonerror("No user with this id exists"))
                     .build();
         }
 
         if (fileDetail == null && uploadedInputStream == null && empty == null) {
             // No file to parse
-            String response = "{\"error\":\"No file found\"}";
-            return Response.status(Response.Status.BAD_REQUEST).entity(response).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("No file found")).build();
         }
 
         String tradId;
         try {
             tradId = this.createTradition(name, direction, language, is_public);
         } catch (Exception e) {
-            return Response.serverError().entity(String.format("{\"error\":\"%s\"}", e.getMessage())).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         // Link the given user to the created tradition.
@@ -107,7 +109,7 @@ public class Root {
             this.linkUserToTradition(userId, tradId);
         } catch (Exception e) {
             new Tradition(tradId).deleteTraditionById();
-            return Response.serverError().entity(String.format("{\"error\":\"%s\"}", e.getMessage())).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         // Otherwise we should treat the file contents as a single section of that tradition, and send it off
@@ -128,13 +130,13 @@ public class Root {
                     tradId = new JSONObject(dataResult.getEntity().toString()).get("parentId").toString();
                 } catch (JSONException e) {
                     e.printStackTrace();
-                    return Response.serverError().entity("{\"error\":\"Bad file parse response\"}").build();
+                    return Response.serverError().entity(jsonerror("Bad file parse response")).build();
                 }
             }
 
         }
 
-        return Response.status(Response.Status.CREATED).entity("{\"tradId\":\"" + tradId + "\"}").build();
+        return Response.status(Response.Status.CREATED).entity(jsonresp("tradId", tradId)).build();
     }
 
     /*
@@ -163,7 +165,7 @@ public class Root {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(traditionList).build();
     }
@@ -180,7 +182,7 @@ public class Root {
                     .forEachRemaining(t -> userList.add(new UserModel(t)));
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(userList).build();
     }

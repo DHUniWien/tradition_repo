@@ -17,6 +17,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+
 /**
  * Comprises all the api calls related to a stemma.
  * Can be called using http://BASE_URL/stemma
@@ -56,7 +58,7 @@ public class Stemma {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null) {
             return Response.status(Status.NOT_FOUND)
-                    .entity(String.format("No stemma %s found for tradition %s", name, tradId)).build();
+                    .entity(jsonerror(String.format("No stemma %s found for tradition %s", name, tradId))).build();
         }
         StemmaModel result = new StemmaModel(stemmaNode);
         Status returncode = newCreated ? Status.CREATED : Status.OK;
@@ -83,23 +85,22 @@ public class Stemma {
             // Check that the names matched.
             JSONObject content = new JSONObject(replaceResult.getEntity().toString());
             if (!content.get("name").equals(originalName)) {
-                String errormsg = "Name mismatch between original and replacement stemma";
                 return Response.status(Status.BAD_REQUEST)
-                        .entity("{\"error\":\"" + errormsg + "\"}").build();
+                        .entity(jsonerror("Name mismatch between original and replacement stemma")).build();
             }
 
             // OK, we can commit it.
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return this.getStemma();
     }
 
 
     @DELETE
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces(MediaType.TEXT_PLAIN)
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         assert stemmaNode != null;
@@ -135,8 +136,7 @@ public class Stemma {
             tx.success();
             return Response.ok().build();
         } catch (Exception e ){
-            return Response.status(Status.INTERNAL_SERVER_ERROR)
-                    .entity("{\"error\":\"" + e.getMessage() + "\"}").build();
+            return Response.serverError().entity(e.getMessage()).build();
         }
     }
     /**
@@ -158,7 +158,7 @@ public class Stemma {
                     + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
                     + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
             if(!foundStemma.hasNext())
-                return Response.status(Status.NOT_FOUND).build();
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("No such witness found in stemma")).build();
 
             // Fish the stemma and requested archetype out of the query
             Map<String, Object> queryRow = foundStemma.next();
@@ -168,7 +168,7 @@ public class Stemma {
             // Check if the stemma has contamination. If so it can't be reoriented!
             if (stemma.hasProperty("is_contaminated"))
                 return Response.status(Status.PRECONDITION_FAILED)
-                        .entity("Contaminated stemma cannot be reoriented").build();
+                        .entity(jsonerror("Contaminated stemma cannot be reoriented")).build();
 
             // Delete its current HAS_ARCHETYPE, if any
             Relationship currentArchetype = stemma.getSingleRelationship(ERelations.HAS_ARCHETYPE, Direction.OUTGOING);

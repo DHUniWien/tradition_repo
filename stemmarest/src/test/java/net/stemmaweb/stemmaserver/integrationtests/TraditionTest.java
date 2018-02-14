@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -67,14 +66,10 @@ public class TraditionTest {
         /*
          * create a tradition inside the test DB
          */
-        try {
-            tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml", "1");
-        } catch (FileNotFoundException e) {
-            fail();
-        }
+        tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml", "1");
     }
 
-    private String createTraditionFromFile(String tName, String fName, String userId) throws FileNotFoundException {
+    private String createTraditionFromFile(String tName, String fName, String userId) {
 
         ClientResponse jerseyResult = null;
         try {
@@ -91,13 +86,8 @@ public class TraditionTest {
         expectedIds.add(tradId);
 
         // import a second tradition into the db
-        try {
-            String testfile = "src/TestFiles/testTradition.xml";
-            expectedIds.add(createTraditionFromFile("Tradition", testfile, "1"));
-        } catch (FileNotFoundException f) {
-            // this error should not occur
-            fail();
-        }
+        String testfile = "src/TestFiles/testTradition.xml";
+        expectedIds.add(createTraditionFromFile("Tradition", testfile, "1"));
 
         List<TraditionModel> traditions = jerseyTest.resource().path("/traditions")
                 .get(new GenericType<List<TraditionModel>>() {});
@@ -404,7 +394,7 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-        assertEquals(removalResponse.getEntity(String.class), "Error: A user with this id does not exist");
+        assertEquals("A user with this id does not exist", Util.getValueFromJson(removalResponse, "error"));
 
         /* PostCondition
          * The user with id 1 has still tradition
@@ -493,7 +483,7 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, textInfo);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), removalResponse.getStatus());
-        assertEquals("There is no Tradition with this id", removalResponse.getEntity(String.class));
+        assertEquals("There is no Tradition with this id", Util.getValueFromJson(removalResponse, "error"));
 
         /*
          * Post condition nothing has changed
@@ -571,13 +561,8 @@ public class TraditionTest {
         int originalNodeCount = numNodes.get();
 
         // upload the florilegium
-        String florId = null;
-        try {
-            String testfile = "src/TestFiles/florilegium_graphml.xml";
-            florId = createTraditionFromFile("Florilegium", testfile, userModel.getId());
-        } catch (FileNotFoundException e) {
-            fail();
-        }
+        String testfile = "src/TestFiles/florilegium_graphml.xml";
+        String florId = createTraditionFromFile("Florilegium", testfile, userModel.getId());
 
         // give it a stemma
         String newStemma = null;

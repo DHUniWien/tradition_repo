@@ -20,6 +20,9 @@ import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.rest.Util.jsonresp;
+
 /**
  * Comprises all the API calls related to a witness.
  * Can be called using http://BASE_URL/witness
@@ -81,11 +84,11 @@ public class Witness {
 
         Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         ArrayList<Node> iterationList = sectionsRequested(traditionNode);
         if (iterationList.size() == 0)
-            return Response.status(Status.NOT_FOUND).entity("Section not found in this tradition").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("Section not found in this tradition")).build();
 
         // Empty out the layer list if it is the default.
         if (layer.size() == 1 && layer.get(0).equals(""))
@@ -95,7 +98,7 @@ public class Witness {
         for (Node currentSection: iterationList) {
             if (iterationList.size() > 1 && (!end.equals("E") || startRank != 0))
                 return Response.status(Status.BAD_REQUEST)
-                        .entity("Cannot request specific start/end across sections").build();
+                        .entity(jsonerror("Cannot request specific start/end across sections")).build();
 
             if (end.equals("E")) {
                 // Find the rank of the graph's end.
@@ -105,14 +108,14 @@ public class Witness {
                     tx.success();
                 } catch (Exception e) {
                     e.printStackTrace();
-                    return Response.serverError().entity(e.getMessage()).build();
+                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
                 }
             } else
                 endRank = Long.parseLong(end);
 
             if (endRank == startRank) {
                 return Response.status(Status.BAD_REQUEST)
-                        .entity("end-rank is equal to start-rank")
+                        .entity(jsonerror("end-rank is equal to start-rank"))
                         .build();
             }
 
@@ -134,15 +137,15 @@ public class Witness {
                 tx.success();
             } catch (Exception e) {
                 if (e.getMessage().equals("CONFLICT"))
-                    return Response.status(Status.CONFLICT).entity("Traversal end node not reached").build();
+                    return Response.status(Status.CONFLICT).entity(jsonerror("Traversal end node not reached")).build();
                 e.printStackTrace();
-                return Response.serverError().build();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
         }
         // If the path is size 0 then we didn't even get to the end node; the witness path doesn't exist.
         if (witnessReadings.size() == 0)
             return Response.status(Status.NOT_FOUND)
-                    .entity("No witness path found for this sigil").build();
+                    .entity(jsonerror("No witness path found for this sigil")).build();
         // Remove the meta node from the list
         Boolean joinNext = false;
         try (Transaction tx = db.beginTx()) {
@@ -159,7 +162,7 @@ public class Witness {
         }
 
         return Response.status(Response.Status.OK)
-                .entity("{\"text\":\"" + witnessAsText.trim() + "\"}")
+                .entity(jsonresp("text", witnessAsText.trim()))
                 .build();
 
     }
@@ -179,11 +182,11 @@ public class Witness {
 
         Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         ArrayList<Node> iterationList = sectionsRequested(traditionNode);
         if (iterationList.size() == 0)
-            return Response.status(Status.NOT_FOUND).entity("Section not found in this tradition").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("Section not found in this tradition")).build();
 
         for (Node currentSection: iterationList) {
             try (Transaction tx = db.beginTx()) {
@@ -192,16 +195,16 @@ public class Witness {
                 tx.success();
             } catch (Exception e) {
                 if (e.getMessage().equals("CONFLICT"))
-                    return Response.status(Status.CONFLICT).entity("Traversal end node not reached").build();
+                    return Response.status(Status.CONFLICT).entity(jsonerror("Traversal end node not reached")).build();
                 e.printStackTrace();
-                return Response.serverError().entity(e.getMessage()).build();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
         }
 
         // If the path is size 0 then the witness path doesn't exist.
         if (readingModels.size() == 0)
             return Response.status(Status.NOT_FOUND)
-                    .entity("No witness path found for this sigil").build();
+                    .entity(jsonerror("No witness path found for this sigil")).build();
         // Remove the meta node from the list
         if (readingModels.get(readingModels.size() - 1).getText().equals("#END#"))
             readingModels.remove(readingModels.size() - 1);

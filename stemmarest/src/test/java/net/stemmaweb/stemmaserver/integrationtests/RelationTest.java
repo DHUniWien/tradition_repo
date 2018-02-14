@@ -222,12 +222,12 @@ public class RelationTest {
             Iterable<Relationship> rels = march1.getRelationships(ERelations.RELATED);
 
             assertFalse(rels.iterator().hasNext());
-            String expectedText = "{\"text\":\"when april with his showers sweet with " +
+            String expectedText = "{\"text\": \"when april with his showers sweet with " +
                     "fruit the drought of march has pierced unto the root\"}";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
             assertEquals(expectedText, resp.getEntity());
 
-            expectedText = "{\"text\":\"when showers sweet with april fruit the march " +
+            expectedText = "{\"text\": \"when showers sweet with april fruit the march " +
                     "of drought has pierced to the root\"}";
             resp = new Witness(tradId, "B").getWitnessAsText();
             assertEquals(expectedText, resp.getEntity());
@@ -430,7 +430,7 @@ public class RelationTest {
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed, it would result in a cyclic graph.",
-                actualResponse.getEntity(String.class));
+                Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
             Node node29 = db.getNodeById(29L);
@@ -518,7 +518,7 @@ public class RelationTest {
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
         assertEquals("This relationship creation is not allowed, it would result in a cyclic graph.",
-                actualResponse.getEntity(String.class));
+                Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
             Node node22 = db.getNodeById(22L);

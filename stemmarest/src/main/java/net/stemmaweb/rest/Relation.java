@@ -20,6 +20,8 @@ import net.stemmaweb.services.ReadingService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+
 
 /**
  * Comprises all the api calls related to a relation.
@@ -123,7 +125,7 @@ public class Relation {
                     }
                     tx.success();
                 } catch (Exception e) {
-                    return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+                    return Response.serverError().build();
                 }
             }
             // List<String> list = new ArrayList<String>();
@@ -154,13 +156,13 @@ public class Relation {
 
             if (!readingA.getProperty("section_id").equals(readingB.getProperty("section_id"))) {
                 return Response.status(Status.CONFLICT)
-                        .entity("Cannot create relationship across tradition sections")
+                        .entity(jsonerror("Cannot create relationship across tradition sections"))
                         .build();
             }
 
             if (isMetaReading(readingA) || isMetaReading(readingB)) {
                 return Response.status(Status.CONFLICT)
-                        .entity("Cannot set relationship on a meta reading")
+                        .entity(jsonerror("Cannot set relationship on a meta reading"))
                         .build();
             }
 
@@ -185,12 +187,12 @@ public class Relation {
             if (isCyclic && colocation) {
                     return Response
                             .status(Status.CONFLICT)
-                            .entity("This relationship creation is not allowed, it would result in a cyclic graph.")
+                            .entity(jsonerror("This relationship creation is not allowed, it would result in a cyclic graph."))
                             .build();
             } else if (!isCyclic && !colocation) {
                 return Response
                         .status(Status.CONFLICT)
-                        .entity("This relationship creation is not allowed. The two readings can be co-located.")
+                        .entity(jsonerror("This relationship creation is not allowed. The two readings can be co-located."))
                         .build();
             } // TODO add constraints about witness uniqueness or lack thereof
 
@@ -202,7 +204,7 @@ public class Relation {
                     if (thisRel.getType().equals(relationshipModel.getType())) {
                         // TODO allow for update of existing relationship
                         tx.success();
-                        return Response.status(Status.NOT_MODIFIED).build();
+                        return Response.status(Status.NOT_MODIFIED).type(MediaType.TEXT_PLAIN_TYPE).build();
                     } else if (thisRel.weak_relation()) {
                         // Rewrite the link that's already there
                         relationshipAtoB = relationship;
@@ -210,7 +212,7 @@ public class Relation {
                         tx.success();
                         String msg = String.format("Relationship of type %s already exists between readings %s and %s",
                                 relationshipModel.getType(), relationshipModel.getSource(), relationshipModel.getTarget());
-                        return Response.status(Status.CONFLICT).entity(msg).build();
+                        return Response.status(Status.CONFLICT).entity(jsonerror(msg)).build();
                     }
                 }
             }
@@ -249,7 +251,7 @@ public class Relation {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.status(Response.Status.CREATED).entity(readingsAndRelationshipModel).build();
     }
@@ -304,7 +306,7 @@ public class Relation {
                     }
 
                     if (relationshipAtoB == null) {
-                        return Response.status(Status.NOT_FOUND).entity(0L).build();
+                        return Response.status(Status.NOT_FOUND).entity(jsonerror("Relationship not found")).build();
                     } else {
                         RelationshipModel relInfo = new RelationshipModel(relationshipAtoB);
                         relationshipAtoB.delete();
@@ -312,7 +314,7 @@ public class Relation {
                     }
                     tx.success();
                 } catch (Exception e) {
-                    return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
                 }
                 break;
 
@@ -343,12 +345,12 @@ public class Relation {
                     }
                     tx.success();
                 } catch (Exception e) {
-                    return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
                 }
                 break;
 
             default:
-                return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
+                return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
         }
         return Response.status(Response.Status.OK).entity(deleted).build();
     }
@@ -372,11 +374,11 @@ public class Relation {
                 relationshipModel = new RelationshipModel(relationship);
                 relationship.delete();
             } else {
-                return Response.status(Status.FORBIDDEN).build();
+                return Response.status(Status.FORBIDDEN).entity(jsonerror("This is not a relationship link")).build();
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(relationshipModel).build();
     }

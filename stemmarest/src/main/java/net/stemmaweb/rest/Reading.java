@@ -20,6 +20,8 @@ import net.stemmaweb.services.RelationshipService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
  * http://BASE_URL/reading
@@ -52,7 +54,7 @@ public class Reading {
             reading = new ReadingModel(db.getNodeById(readId));
             tx.success();
         } catch (NotFoundException e) {
-            return Response.status(Status.NO_CONTENT).build();
+            return Response.noContent().build();
         } catch (Exception e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
@@ -1090,9 +1092,9 @@ public class Reading {
         return false;
     }
 
+    // Class-level utility function to encapsulate the instance-wide error message
     private Response errorResponse (Status status) {
-        String errorJson = String.format("{\"error\": \"%s\"}", errorMessage);
-        return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(errorJson).build();
+        return Response.status(status).type(MediaType.APPLICATION_JSON_TYPE).entity(jsonerror(errorMessage)).build();
     }
 
     /**

@@ -20,6 +20,8 @@ import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.rest.Util.jsonresp;
 import static net.stemmaweb.services.ReadingService.AlignmentTraverse;
 import static net.stemmaweb.services.ReadingService.addWitnessLink;
 import static net.stemmaweb.services.ReadingService.recalculateRank;
@@ -57,13 +59,13 @@ public class Section {
     public Response getSectionInfo() {
         SectionModel result;
         if (!sectionInTradition())
-            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
             result = new SectionModel(db.getNodeById(Long.valueOf(sectId)));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok().entity(result).build();
     }
@@ -73,7 +75,7 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response updateSectionInfo(SectionModel newInfo) {
         if (!sectionInTradition())
-            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
             if (newInfo.getName() != null)
@@ -83,7 +85,7 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return getSectionInfo();
     }
@@ -91,7 +93,8 @@ public class Section {
     @DELETE
     public Response deleteSection() {
         if (!sectionInTradition())
-            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
+                    .entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
             Node foundSection = db.getNodeById(Long.valueOf(sectId));
             if (foundSection != null) {
@@ -113,7 +116,8 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().type(MediaType.APPLICATION_JSON_TYPE)
+                    .entity(jsonerror(e.getMessage())).build();
         }
 
         return Response.ok().build();
@@ -128,11 +132,12 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllWitnessInSection() {
         if (!sectionInTradition())
-            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
         ArrayList<Node> sectionWitnessNodes = collectSectionWitnesses();
         if (sectionWitnessNodes == null)
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("No witnesses found in section").build();
+            return Response.serverError()
+                    .entity(jsonerror("No witnesses found in section")).build();
 
         try (Transaction tx = db.beginTx()) {
             ArrayList<WitnessModel> sectionWits = new ArrayList<>();
@@ -141,7 +146,8 @@ public class Section {
             return Response.ok().entity(sectionWits).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Section witnesses could not be queried").build();
+            return Response.serverError()
+                    .entity(jsonerror("Section witnesses could not be queried")).build();
         }
     }
 
@@ -182,11 +188,11 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getAllReadings() {
         if (!sectionInTradition())
-            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
         ArrayList<ReadingModel> readingModels = sectionReadings();
         if (readingModels == null)
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror("No readings found in section")).build();
         return Response.ok(readingModels).build();
     }
 
@@ -220,7 +226,7 @@ public class Section {
         ArrayList<RelationshipModel> relList = sectionRelationships();
 
         if (relList == null) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror("No relationships found in section")).build();
         }
         return Response.ok(relList).build();
     }
@@ -254,6 +260,7 @@ public class Section {
     // PUT section/ID/orderAfter/ID
     @PUT
     @Path("/orderAfter/{priorSectID}")
+    @Produces(MediaType.TEXT_PLAIN)
     public Response reorderSectionAfter(@PathParam("priorSectID") String priorSectID) {
         try (Transaction tx = db.beginTx()) {
             if (!sectionInTradition())
@@ -294,16 +301,17 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().build();
         }
         return Response.ok().build();
     }
 
     @POST
     @Path("/splitAtRank/{rankstr}")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
         if (!sectionInTradition())
-            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
         Long rank = Long.valueOf(rankstr);
         // Get the reading(s) at the given rank, and at the prior rank
@@ -334,7 +342,7 @@ public class Section {
             // Make sure we have readings at the requested rank in this section
             if (thisRank.size() == 0)
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity("Rank not found within section").build();
+                        .entity(jsonerror("Rank not found within section")).build();
 
             // Make a new section node and insert it into the sequence
             Node newSection = db.createNode(Nodes.SECTION);
@@ -405,13 +413,14 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().entity(String.format("{sectionId: %d}", newSectionId)).build();
+        return Response.ok().entity(jsonresp("sectionId", newSectionId)).build();
     }
 
     @POST
     @Path("/merge/{otherId}")
+    @Produces(MediaType.TEXT_PLAIN)
     public Response mergeSections (@PathParam("otherId") String otherId) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -504,7 +513,7 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(e.getMessage()).build();
         }
         return Response.ok().build();
     }
@@ -531,7 +540,7 @@ public class Section {
         Node startNode = DatabaseService.getStartNode(sectId, db);
         if (startNode == null) {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("There is no section with this id").build();
+                    .entity(jsonerror("Tradition and/or section not found")).build();
         }
 
         List<List<ReadingModel>> couldBeIdenticalReadings;
@@ -543,7 +552,7 @@ public class Section {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(couldBeIdenticalReadings).build();
     }
@@ -616,7 +625,7 @@ public class Section {
                                          @PathParam("endRank") long endRank) {
         ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(startRank, endRank);
         if (identicalReadings == null)
-            return Response.status(Response.Status.NOT_FOUND).entity("no identical readings were found").build();
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("no identical readings were found")).build();
 
         return Response.ok(identicalReadings).build();
     }
@@ -693,10 +702,11 @@ public class Section {
      */
     @GET
     @Path("/graphml")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces(MediaType.APPLICATION_XML + "; charset=utf-8")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
-            return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
+            return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
+                    .entity("No such tradition found").build();
 
         GraphMLExporter exporter = new GraphMLExporter();
         return exporter.writeNeo4J(tradId, sectId, includeWitnesses);

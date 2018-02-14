@@ -1,8 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import javax.ws.rs.core.Response;
 
@@ -93,8 +91,7 @@ public class WitnessTest {
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
-        assertEquals("No witness path found for this sigil",
-                response.getEntity(String.class));
+        assertEquals("No witness path found for this sigil", Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -126,7 +123,7 @@ public class WitnessTest {
         assertNotEquals(expectedText, returnedText);
 
         // Find the reading that is the period
-        Node period = null;
+        Node period;
         try (Transaction tx = db.beginTx()) {
             period = db.findNode(Nodes.READING, "text", ". ");
             assertNotNull(period);
@@ -178,7 +175,7 @@ public class WitnessTest {
                 .path("/tradition/" + tradId + "/witness/D/readings")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        assertEquals("No witness path found for this sigil", response.getEntity(String.class));
+        assertEquals("No witness path found for this sigil", Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -220,13 +217,13 @@ public class WitnessTest {
                 .queryParam("end", "5")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("end-rank is equal to start-rank", response.getEntity(String.class));
+        assertEquals("end-rank is equal to start-rank", Util.getValueFromJson(response, "error"));
     }
 
     //if the end rank is too high, will return all the readings between start rank to end of witness
     @Test
     public void witnessBetweenRanksTooHighEndRankTest() {
-        String expectedText = "{\"text\":\"showers sweet with fruit the drought of march has pierced unto the root\"}";
+        String expectedText = "{\"text\": \"showers sweet with fruit the drought of march has pierced unto the root\"}";
         String response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witness/A/text")
@@ -314,7 +311,7 @@ public class WitnessTest {
     }
 
     private String constructResult (String text) {
-        return String.format("{\"text\":\"%s\"}", text);
+        return String.format("{\"text\": \"%s\"}", text);
     }
 
     /*

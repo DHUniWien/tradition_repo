@@ -135,7 +135,7 @@ public class UserNode {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().build();
         }
         return Response.status(Response.Status.CREATED).build();
         //return Response.status(Response.Status.CREATED).entity(userModel).build();
@@ -182,7 +182,7 @@ public class UserNode {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().build();
         }
         return Response.status(Response.Status.CREATED).build();
     }
@@ -242,7 +242,7 @@ public class UserNode {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().build();
         }
         return Response.status(Status.OK).build();
     }
@@ -283,7 +283,7 @@ public class UserNode {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().build();
         }
         return Response.ok(resultList).build();
     }
@@ -327,7 +327,7 @@ public class UserNode {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().build();
         }
         return Response.ok(jsonObj).build();
     }

@@ -17,6 +17,8 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
+import static net.stemmaweb.rest.Util.jsonerror;
+
 /**
  * Comprises all the API calls related to a user.
  * Can be called using http://BASE_URL/user
@@ -47,11 +49,11 @@ public class User {
             if (foundUser != null) {
                 userModel = new UserModel(foundUser);
             } else {
-                return Response.status(Status.NO_CONTENT).build();
+                return Response.noContent().build();
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(userModel).build();
     }
@@ -87,7 +89,7 @@ public class User {
                     extantUser.setProperty("active", userModel.getActive());
                 tx.success();
             } catch (Exception e) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
             returnedStatus = Response.Status.OK;
         } else {
@@ -106,7 +108,7 @@ public class User {
 
                 tx.success();
             } catch (Exception e) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
             returnedStatus = Response.Status.CREATED;
         }
@@ -158,7 +160,7 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     public Response getUserTraditions() {
         if (!DatabaseService.userExists(userId, db)) {
-            return Response.status(Status.NOT_FOUND).build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("User does not exist")).build();
         }
 
         ArrayList<TraditionModel> traditions = new ArrayList<>();
@@ -167,7 +169,7 @@ public class User {
             DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION)
                     .forEach(x -> traditions.add(new TraditionModel(x)));
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(traditions).build();
     }

@@ -20,6 +20,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.InputStream;
 import java.util.*;
+
+import static net.stemmaweb.rest.Util.jsonerror;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
 
@@ -86,7 +88,7 @@ public class Tradition {
                 JSONObject newStemma = new JSONObject(result.getEntity().toString());
                 restStemma = new Stemma(traditionId, newStemma.getString("name"), true);
             } catch (org.codehaus.jettison.json.JSONException e) {
-                return Response.status(Status.INTERNAL_SERVER_ERROR).entity("Error reading JSON response on creation").build();
+                return Response.serverError().entity(jsonerror("Error reading JSON response on creation")).build();
             }
             return restStemma.getStemma();
         } else {
@@ -177,7 +179,7 @@ public class Tradition {
             result = new GraphMLParser().parseGraphML(uploadedInputStream, traditionNode);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)
-            result = Response.status(Status.BAD_REQUEST).entity("Unrecognized file type " + filetype).build();
+            result = Response.status(Status.BAD_REQUEST).entity(jsonerror("Unrecognized file type " + filetype)).build();
 
         if (result.getStatus() > 201) {
             // If the result wasn't a success, delete the section node before returning the result.
@@ -201,11 +203,13 @@ public class Tradition {
     }
 
     /**
-     * Initializes ranks in sessions where readings have no rank-property
+     * Initializes ranks in sections where readings have no rank-property
      *
      * This does not belong to the official API!
      * It is just a hack to initialize sections where their readings have
      * no "rank" defined
+     *
+     * TODO do we need this or can we use the usual rank calculation?
      */
     @GET
     @Path("/initRanks")
@@ -213,7 +217,7 @@ public class Tradition {
     public Response initRanks() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         ArrayList<SectionModel> updatedSections = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
@@ -269,7 +273,7 @@ public class Tradition {
             }
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(updatedSections).build();
 
@@ -290,11 +294,11 @@ public class Tradition {
     public Response getAllSections() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         ArrayList<SectionModel> sectionList = produceSectionList(traditionNode);
         if (sectionList == null)
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror("Something went wrong building section list")).build();
 
         return Response.ok(sectionList).build();
     }
@@ -311,7 +315,7 @@ public class Tradition {
     public Response getAllWitnesses() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         ArrayList<WitnessModel> witnessList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
@@ -319,7 +323,7 @@ public class Tradition {
                     .forEach(r -> witnessList.add(new WitnessModel(r)));
             tx.success();
         } catch (Exception e) {
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(witnessList).build();
     }
@@ -336,7 +340,7 @@ public class Tradition {
     public Response getAllStemmata() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 
         // find all stemmata associated with this tradition
         ArrayList<StemmaModel> stemmata = new ArrayList<>();
@@ -346,7 +350,7 @@ public class Tradition {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         return Response.ok(stemmata).build();
@@ -364,15 +368,15 @@ public class Tradition {
         ArrayList<RelationshipModel> relList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("tradition not found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
         ArrayList<SectionModel> ourSections = produceSectionList(traditionNode);
         if (ourSections == null)
-            return Response.status(Status.INTERNAL_SERVER_ERROR).entity("section lookup failed").build();
+            return Response.serverError().entity(jsonerror("section lookup failed")).build();
         for (SectionModel s : ourSections) {
             Section sectRest = new Section(traditionId, s.getId());
             ArrayList<RelationshipModel> sectRels = sectRest.sectionRelationships();
             if (sectRels == null)
-                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+                return Response.serverError().entity(jsonerror("something went wrong in section relationships")).build();
             relList.addAll(sectRels);
         }
 
@@ -392,19 +396,19 @@ public class Tradition {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND)
-                    .entity("There is no tradition with this id").build();
+                    .entity(jsonerror("There is no tradition with this id")).build();
 
         ArrayList<SectionModel> allSections = produceSectionList(traditionNode);
         if (allSections == null)
-            return Response.status(Status.INTERNAL_SERVER_ERROR)
-                    .entity("Tradition has no sections").build();
+            return Response.serverError()
+                    .entity(jsonerror("Tradition has no sections")).build();
 
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         for (SectionModel sm : allSections) {
             Section sectRest = new Section(traditionId, sm.getId());
             ArrayList<ReadingModel> sectionReadings = sectRest.sectionReadings();
             if (sectionReadings == null)
-                return Response.status(Status.INTERNAL_SERVER_ERROR).entity("section lookup failed").build();
+                return Response.serverError().entity(jsonerror("section lookup failed")).build();
             readingModels.addAll(sectionReadings);
 
         }
@@ -432,7 +436,7 @@ public class Tradition {
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
             if( traditionNode == null ) {
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity("There is no Tradition with this id")
+                        .entity(jsonerror("There is no Tradition with this id"))
                         .build();
             }
 
@@ -440,7 +444,7 @@ public class Tradition {
                 Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwner());
                 if (newUser == null) {
                     return Response.status(Response.Status.NOT_FOUND)
-                            .entity("Error: A user with this id does not exist")
+                            .entity(jsonerror("A user with this id does not exist"))
                             .build();
                 }
                 Relationship oldOwnership = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING);
@@ -466,7 +470,7 @@ public class Tradition {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(tradition).build();
     }
@@ -500,11 +504,12 @@ public class Tradition {
                 tx.success();
             } catch (Exception e) {
                 e.printStackTrace();
-                return Response.status(Status.INTERNAL_SERVER_ERROR).build();
+                return Response.serverError().build();
             }
         } else {
             return Response.status(Response.Status.NOT_FOUND)
-                    .entity("A tradition with this id was not found!")
+                    .type(MediaType.APPLICATION_JSON)
+                    .entity(jsonerror("A tradition with this id was not found!"))
                     .build();
         }
 
@@ -526,7 +531,7 @@ public class Tradition {
     public Response getTraditionInfo() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 
         TraditionModel metadata = new TraditionModel(traditionNode);
         return Response.ok(metadata).build();
@@ -542,7 +547,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_XML)
     public Response getGraphML() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
-            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+            return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
         GraphMLExporter exporter = new GraphMLExporter();
         return exporter.writeNeo4J(traditionId);
     }
@@ -557,7 +562,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_XML)
     public Response getGraphMLStemmaweb() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
-            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+            return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
         StemmawebExporter parser = new StemmawebExporter();
         return parser.writeNeo4J(traditionId);
     }
