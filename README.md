@@ -3,6 +3,8 @@
 
 Stemmarest is a [Neo4j](http://neo4j.com/)-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). The repository is accessed via a REST API, to date still incompletely documented.
 
+Development of Stemmarest was begun by a team of software engineering students at Uni Bern, and since 2016 has been continued by the Digital Humanities group at Uni Wien.
+
 ## Downloading
 
 You can get a version of Stemmarest via Docker Hub:
