@@ -1,42 +1,44 @@
-#Stemmarest
-###a graph-based data storage solution for Stemmaweb
----
-Stemmarest is a java application designed to improve the performance of [stemmaweb](http://stemmaweb.net/stemmaweb/) by using the graph-database [Neo4j](http://neo4j.com/).
+# Stemmarest
+### a graph-based data storage solution for Stemmaweb
 
-###Downloading
----
+Stemmarest is a [Neo4j](http://neo4j.com/)-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). The repository is accessed via a REST API, to date still incompletely documented.
 
+## Downloading
 
-git clone https://github.com/tohotforice/PSE2_DH.git
+You can get a version of Stemmarest via Docker Hub:
 
-###Building
----
-- Stemmarest needs to be built using [Maven](http://maven.apache.org/run-maven/index.html#Quick_Start). This can be done using a java IDE (e.g Eclipse) and a Maven plugin
+    docker pull dhuniwien/stemmarest:latest
+	docker run -d --rm --name stemmarest dhuniwien/stemmarest:latest
 
+Alternatively, if you wish to build from source, you can clone this repository and build a Stemmarest WAR file yourself (see below).
 
+## Building
 
+Stemmarest needs to be built using [Maven](http://maven.apache.org/run-maven/index.html#Quick_Start). This can be done either in a suitable Java IDE, or at the command line after the Maven tools have been installed:
 
-###Running 
----
-As this application represents a server side only, there is no full GUI included
+    cd stemmarest
+    mvn package  # note that this will also run the tests
 
+A WAR file will be produced, in `stemmarest/target/stemmarest.war`, that can then be deployed to the Tomcat server of your choice.
 
-It is possible though to test it by using the test interface testGui.html which is located at StemmaClient
+#### Note for Mac users
 
->####Using the test interface
->1. Create a user and give it an id (this is necessary as every graph needs to be owned by a user)
->2. Import an GraphML file using the id of the user you have created. The generated id of the tradition will be returned
->3. Use the custom request by typing in the API call you want (all calls are listed in the documentation)
+At present, building Stemmarest on a Mac can lead to a runtime error like the following:
 
-**A word about node id's:** when a graph is being imported each node gets from Neo4j a unique id-number. In order to use an id in an API call (e.g. reading-id) it is necessary to explicitly get it from the data base. This can be done by using the _getAllReadings_ method (*getallreadings/fromtradition/{traditionId}*) or by actually going into the data base (see _Neo4j visualization_ in section Database)
+    java.lang.NoClassDefFoundError: javax/ws/rs/core/Link
+   	  at org.apache.cxf.jaxrs.impl.RuntimeDelegateImpl.<init>(RuntimeDelegateImpl.java:53)
+   	  at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+   	  at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
+   	  at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+   	  at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
+	  
+If you are having this problem, copy the provided `pom.xml.macosx` to `pom.xml` and try the build again.
 
-###Database
----
-- The application's database is located in the database folder in stemmarest. It can be reset anytime by simply deleting this folder
+##Running
 
-- To view the data base it is necessary to install [Neo4j](http://neo4j.com/download/) and start it on the database location
+The application has been tested on Tomcat version 8.0.XX; to deploy it, copy the WAR file into the `webapps` directory of your Tomcat server.
 
-- [Neo4j visualization](http://neo4j.com/developer/guide-data-visualization/) information
+Stemmarest requires a location for its data storage; by default this is `/var/lib/stemmarest`, but can be changed by setting the environment variable `STEMMAREST_HOME`. The directory specified must have its permissions set so that the Tomcat user can write to it.
 
-
+Note that if, at any time, you wish to inspect the database visually, you may shut down the Stemmarest server and start an instance of Neo4J at the database directory location. **Make sure that your version of Neo4J matches the version specified in `pom.xml`!**
 
