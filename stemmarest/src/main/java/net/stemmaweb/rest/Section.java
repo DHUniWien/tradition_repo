@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.model.ReadingModel;
@@ -28,8 +29,10 @@ import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
 import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
 
-/*
- * Created by tla on 11/02/2017.
+/**
+ * Comprises all the API calls related to a tradition section.
+ *
+ * @author tla
  */
 public class Section {
     private GraphDatabaseService db;
@@ -47,6 +50,9 @@ public class Section {
      * Delegation
      */
 
+    /**
+     * @param sigil - The sigil of the requested witness
+     */
     @Path("/witness/{sigil}")
     public Witness getWitnessFromSection(@PathParam("sigil") String sigil) {
         return new Witness(tradId, sectId, sigil);
@@ -54,8 +60,19 @@ public class Section {
 
 
     // Base paths
+
+    /**
+     * Get the metadata for a section.
+     *
+     * @summary Get section
+     * @return  JSON data for the requested section
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = SectionModel.class)
     public Response getSectionInfo() {
         SectionModel result;
         if (!sectionInTradition())
@@ -70,9 +87,20 @@ public class Section {
         return Response.ok().entity(result).build();
     }
 
+    /**
+     * Update the metadata for a section.
+     *
+     * @summary Update section
+     * @param newInfo - A JSON specification of the section update
+     * @return  JSON data for the updated section
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = SectionModel.class)
     public Response updateSectionInfo(SectionModel newInfo) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -90,7 +118,17 @@ public class Section {
         return getSectionInfo();
     }
 
+    /**
+     * Delete the specified section, and update the tradition's sequence of sections to
+     * account for any resulting gap.
+     *
+     * @summary Delete section
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @DELETE
+    @ReturnType("java.lang.Void")
     public Response deleteSection() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
@@ -127,9 +165,19 @@ public class Section {
      * Collections
      */
 
+    /**
+     * Gets a list of all the witnesses of the section with the given id.
+     *
+     * @summary Get witnesses
+     * @return A list of witness metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @GET
     @Path("/witnesses")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnessInSection() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -178,14 +226,18 @@ public class Section {
     }
 
     /**
-     * Returns a list of all readings in a tradition
+     * Gets a list of all readings in the given tradition section.
      *
-     * @return the list of readings in json format on success or an ERROR in
-     * JSON format
+     * @summary Get readings
+     * @return A list of reading metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -215,13 +267,18 @@ public class Section {
     }
 
     /**
-     * Gets a list of all relationships of a tradition with the given id.
+     * Gets a list of all relationships defined within the given section.
      *
-     * @return Http Response 200 and a list of relationship model in JSON
+     * @summary Get relationships
+     * @return A list of relationship metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/relationships")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel>")
     public Response getAllRelationships() {
         ArrayList<RelationshipModel> relList = sectionRelationships();
 
@@ -257,10 +314,20 @@ public class Section {
      * Manipulation
      */
 
-    // PUT section/ID/orderAfter/ID
+    /**
+     * Move this section to a new place in the section sequence.
+     *
+     * @summary Reorder section
+     * @param priorSectID - the ID of the section that should precede this one
+     * @statuscode 200 - on success
+     * @statuscode 400 - if the priorSectId doesn't belong to the given tradition
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @PUT
     @Path("/orderAfter/{priorSectID}")
     @Produces(MediaType.TEXT_PLAIN)
+    @ReturnType("java.lang.Void")
     public Response reorderSectionAfter(@PathParam("priorSectID") String priorSectID) {
         try (Transaction tx = db.beginTx()) {
             if (!sectionInTradition())
@@ -306,9 +373,21 @@ public class Section {
         return Response.ok().build();
     }
 
+    /**
+     * Split a section into two at the given graph rank, and adjust the tradition's section order accordingly.
+     * Returns a JSON response of the form {@code {"sectionId": <ID>}}, containing the ID of the new section.
+     *
+     * @summary Reorder section
+     * @param rankstr - the rank at which the section should be split
+     * @statuscode 200 - on success
+     * @statuscode 400 - if the section doesn't contain the specified rank
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @POST
     @Path("/splitAtRank/{rankstr}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -341,7 +420,7 @@ public class Section {
 
             // Make sure we have readings at the requested rank in this section
             if (thisRank.size() == 0)
-                return Response.status(Response.Status.NOT_FOUND)
+                return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("Rank not found within section")).build();
 
             // Make a new section node and insert it into the sequence
@@ -418,9 +497,21 @@ public class Section {
         return Response.ok().entity(jsonresp("sectionId", newSectionId)).build();
     }
 
+    /**
+     * Merge two sections into one, and adjust the tradition's section order accordingly. The
+     * specified sections must be contiguous, and will be merged according to their existing order.
+     *
+     * @summary Merge sections
+     * @param otherId - the rank at which the section should be split
+     * @statuscode 200 - on success
+     * @statuscode 400 - if the sections are not contiguous
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @POST
     @Path("/merge/{otherId}")
     @Produces(MediaType.TEXT_PLAIN)
+    @ReturnType("java.lang.Void")
     public Response mergeSections (@PathParam("otherId") String otherId) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -523,17 +614,22 @@ public class Section {
      */
 
     /**
-     * Returns a list of a list of readingModels with could be one the same rank
-     * without problems
+     * Returns a list of sets of readings that could potentially be identical - that is, they
+     * have the same text and same joining properties, and are co-located. This is used to
+     * identify possible inconsistencies in the collation.
      *
+     * @summary List mergeable readings
      * @param startRank - where to start
      * @param endRank   - where to end
-     * @return list of readings that could be at the same rank in JSON format or
-     * an ERROR in JSON format
+     * @return lists of readings that may be merged.
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") long startRank,
             @PathParam("endRank") long endRank) {
@@ -609,18 +705,21 @@ public class Section {
 
 
     /**
-     * Get all readings which have the same text and the same rank between given
-     * ranks
+     * Get all readings which have the same text and the same rank, between the given ranks.
+     * This is a constrained version of {@code mergeablereadings}.
      *
+     * @summary Find identical readings
      * @param startRank the rank from where to start the search
-     * @param endRank   the end rank of the search range
-     * @return a list of lists as a json ok response: each list contain
-     * identical readings on success or an ERROR in JSON format
+     * @param endRank   the rank at which to end the search
+     * @return a list of lists of identical readings
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
      */
     // TODO refactor all these traversals somewhere!
     @GET
     @Path("/identicalreadings/{startRank}/{endRank}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getIdenticalReadings(@PathParam("startRank") long startRank,
                                          @PathParam("endRank") long endRank) {
         ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(startRank, endRank);
@@ -695,14 +794,19 @@ public class Section {
 
     // Export the dot / SVG for a particular section
     /**
-     * Returns DOT file from specified tradition owned by user
+     * Returns a GraphML file that describes the specified section and its data.
      *
-     * @param includeWitnesses - Whether or not to include RELATED edges in the dot
+     * @summary Download GraphML
+     * @param includeWitnesses - Whether or not to include witness information in the XML
      * @return GraphML description of the section subgraph
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/graphml")
     @Produces(MediaType.APPLICATION_XML + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
@@ -714,14 +818,19 @@ public class Section {
 
     // Export the dot / SVG for a particular section
     /**
-     * Returns DOT file from specified tradition owned by user
+     * Returns a GraphViz dot file that describes the specified section and its data.
      *
+     * @summary Download GraphViz
      * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
      * @return Plaintext dot format
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();

@@ -9,6 +9,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -222,15 +223,15 @@ public class RelationTest {
             Iterable<Relationship> rels = march1.getRelationships(ERelations.RELATED);
 
             assertFalse(rels.iterator().hasNext());
-            String expectedText = "{\"text\": \"when april with his showers sweet with " +
-                    "fruit the drought of march has pierced unto the root\"}";
-            Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedText, resp.getEntity());
+            String expectedText = "when april with his showers sweet with " +
+                    "fruit the drought of march has pierced unto the root";
+            WitnessTextModel resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
+            assertEquals(expectedText, resp.getText());
 
-            expectedText = "{\"text\": \"when showers sweet with april fruit the march " +
-                    "of drought has pierced to the root\"}";
-            resp = new Witness(tradId, "B").getWitnessAsText();
-            assertEquals(expectedText, resp.getEntity());
+            expectedText = "when showers sweet with april fruit the march " +
+                    "of drought has pierced to the root";
+            resp = (WitnessTextModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
+            assertEquals(expectedText, resp.getText());
 
             tx.success();
         }

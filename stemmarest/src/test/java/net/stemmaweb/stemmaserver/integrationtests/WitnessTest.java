@@ -5,6 +5,7 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -71,16 +72,16 @@ public class WitnessTest {
 
     @Test
     public void witnessAsTextTestA() {
-        String expectedText = constructResult("when april with his showers sweet with "
-                + "fruit the drought of march has pierced unto the root");
+        String expectedText = "when april with his showers sweet with "
+                + "fruit the drought of march has pierced unto the root";
         Response resp = new Witness(tradId, "A").getWitnessAsText();
-        assertEquals(expectedText, resp.getEntity());
+        assertEquals(expectedText, ((WitnessTextModel) resp.getEntity()).getText());
 
         String returnedText = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witness/A/text")
                 .get(String.class);
-        assertEquals(expectedText, returnedText);
+        assertEquals(constructResult(expectedText), returnedText);
     }
 
     @Test
@@ -96,16 +97,16 @@ public class WitnessTest {
 
     @Test
     public void witnessAsTextTestB() {
-        String expectedText = constructResult("when showers sweet with april fruit the march "
-                + "of drought has pierced to the root");
+        String expectedText = "when showers sweet with april fruit the march "
+                + "of drought has pierced to the root";
         Response resp = new Witness(tradId, "B").getWitnessAsText();
-        assertEquals(expectedText, resp.getEntity());
+        assertEquals(expectedText, ((WitnessTextModel) resp.getEntity()).getText());
 
         String returnedText = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witness/B/text")
                 .get(String.class);
-        assertEquals(expectedText, returnedText);
+        assertEquals(constructResult(expectedText), returnedText);
     }
 
     @Test
@@ -119,8 +120,8 @@ public class WitnessTest {
         } catch (Exception e) {
             fail();
         }
-        String returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
-        assertNotEquals(expectedText, returnedText);
+        WitnessTextModel returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        assertNotEquals(expectedText, returnedText.getText());
 
         // Find the reading that is the period
         Node period;
@@ -130,8 +131,8 @@ public class WitnessTest {
             period.setProperty("join_prior", true);
             tx.success();
         }
-        returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
-        assertEquals(expectedText, returnedText);
+        returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        assertEquals(expectedText, returnedText.getText());
 
         // Now find its predecessors and mark them as join_next
         try (Transaction tx = db.beginTx()) {
@@ -141,15 +142,15 @@ public class WitnessTest {
             }
             tx.success();
         }
-        returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
-        assertEquals(expectedText, returnedText);
+        returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        assertEquals(expectedText, returnedText.getText());
 
         try (Transaction tx = db.beginTx()) {
             period.removeProperty("join_prior");
             tx.success();
         }
-        returnedText = Util.getValueFromJson(new Witness(foxId, "w1").getWitnessAsText(), "text");
-        assertEquals(expectedText, returnedText);
+        returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        assertEquals(expectedText, returnedText.getText());
     }
 
     @Test
@@ -223,7 +224,7 @@ public class WitnessTest {
     //if the end rank is too high, will return all the readings between start rank to end of witness
     @Test
     public void witnessBetweenRanksTooHighEndRankTest() {
-        String expectedText = "{\"text\": \"showers sweet with fruit the drought of march has pierced unto the root\"}";
+        String expectedText = constructResult("showers sweet with fruit the drought of march has pierced unto the root");
         String response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/witness/A/text")
@@ -311,7 +312,7 @@ public class WitnessTest {
     }
 
     private String constructResult (String text) {
-        return String.format("{\"text\": \"%s\"}", text);
+        return String.format("{\"text\":\"%s\"}", text);
     }
 
     /*

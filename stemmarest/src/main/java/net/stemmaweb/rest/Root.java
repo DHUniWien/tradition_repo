@@ -4,6 +4,8 @@ package net.stemmaweb.rest;
 //import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 //import org.glassfish.jersey.media.multipart.FormDataParam;
 
+import com.qmino.miredot.annotations.MireDotIgnore;
+import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
@@ -18,8 +20,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.xml.stream.XMLStreamException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,52 +39,83 @@ public class Root {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
     
-    /**
+    /*
      * Delegated API calls
      */
 
+    /**
+     * @param tradId - the ID of the tradition being queried
+     */
     @Path("/tradition/{tradId}")
     public Tradition getTradition(@PathParam("tradId") String tradId) {
         return new Tradition(tradId);
     }
+    /**
+     * @param userId - The ID of a stemmarest user; this is usually either an email address or a Google ID token.
+     */
     @Path("/user/{userId}")
     public User getUser(@PathParam("userId") String userId) {
         return new User(userId);
     }
+    /**
+     * @param readingId - the ID of the reading being queried
+     */
     @Path("/reading/{readingId}")
     public Reading getReading(@PathParam("readingId") String readingId) {
         return new Reading(readingId);
     }
+    @MireDotIgnore
     @Path("/usernode")
     public UserNode getUserNode() {
         return new UserNode();
     }
+
     /*
      * Resource creation calls
      */
 
     /**
      * Imports a new tradition from file data of various forms, and creates at least one section
-     * in doing so.
+     * in doing so. Returns the ID of the given tradition, in the form {@code {"tradId": <ID>}}.
      *
-     * @return Http Response with the id of the imported tradition on success or
-     *         an ERROR in JSON format
-     * @throws XMLStreamException for bad XML data
+     * @summary Upload new tradition
+     *
+     * @param name      the name of the tradition. Default is the empty string.
+     * @param language  the language of the tradition text (e.g. Latin, Syriac).
+     * @param direction the direction in which the text should be read. Possible values
+     *                  are {@code LR} (left to right), {@code RL} (right to left), or {@code BI} (bidirectional).
+     *                  Default is LR.
+     * @param userId    the ID of the user to whom this tradition belongs. Required.
+     * @param is_public If true, the tradition will be marked as publicly viewable.
+     * @param filetype  the type of file being uploaded. Possible values are {@code collatex},
+     *                  {@code cxjson}, {@code csv}, {@code tsv}, {@code xls}, {@code xlsx},
+     *                  {@code graphml}, {@code stemmaweb}, or {@code teips}.
+     *                  Required if 'file' is present.
+     * @param empty     Should be set to some non-null value if the tradition is being created without any data file.
+     *                  Required if 'file' is not present.
+     * @param uploadedInputStream The file data to upload.
+     * @param fileDetail The file data to upload.
+     *
+     * @statuscode 201 - The tradition was created successfully.
+     * @statuscode 400 - No file was specified, and the 'empty' flag was not set.
+     * @statuscode 409 - The requested owner does not exist in the database.
+     * @statuscode 500 - Something went wrong. An error message will be returned.
+     *
      */
     @POST
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
-                                  @FormDataParam("filetype") String filetype,
+                                  @FormDataParam("userId") String userId,
+                                  @FormDataParam("public") String is_public,
                                   @FormDataParam("language") String language,
                                   @DefaultValue("LR") @FormDataParam("direction") String direction,
-                                  @FormDataParam("public") String is_public,
-                                  @FormDataParam("userId") String userId,
                                   @FormDataParam("empty") String empty,
+                                  @FormDataParam("filetype") String filetype,
                                   @FormDataParam("file") InputStream uploadedInputStream,
-                                  @FormDataParam("file") FormDataContentDisposition fileDetail) throws IOException,
-            XMLStreamException {
+                                  @FormDataParam("file") FormDataContentDisposition fileDetail) {
 
         if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Response.Status.CONFLICT)
@@ -146,12 +177,19 @@ public class Root {
     /**
      * Gets a list of all the complete traditions in the database.
      *
-     * @return Http Response 200 and a list of tradition models in JSON on
-     *         success or Http Response 500
+     * @summary List traditions
+     *
+     * @param publiconly    Returns only the traditions marked as being public.
+     *                      Default is false.
+     *
+     * @return A list, one item per tradition, of tradition metadata.
+     * @statuscode 200 on success
+     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
     public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
 
@@ -170,9 +208,19 @@ public class Root {
         return Response.ok(traditionList).build();
     }
 
+    /**
+     * Gets a list of all the users in the database.
+     *
+     * @summary List users
+     *
+     * @return A list, one item per user, of user metadata.
+     * @statuscode 200 on success
+     * @statuscode 500 on failure, with an error report in JSON format
+     */
     @GET
     @Path("/users")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.UserModel>")
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
 
@@ -187,8 +235,7 @@ public class Root {
         return Response.ok(userList).build();
     }
 
-    private String createTradition(String name, String direction, String language, String isPublic)
-            throws Exception {
+    private String createTradition(String name, String direction, String language, String isPublic) {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node

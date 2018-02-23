@@ -20,28 +20,73 @@ import org.neo4j.graphdb.Transaction;
 @JsonInclude(Include.NON_NULL)
 public class ReadingModel implements Comparable<ReadingModel> {
 
-    private Boolean grammar_invalid; // dn0
+    /**
+     * The internal ID of the reading
+     */
     private String id;              // dn1
+    /**
+     * True if the reading appears in all witnesses
+     */
     private Boolean is_common = false;       // dn2
+    /**
+     * True if the reading is a collation end node
+     */
     private Boolean is_end = false;          // dn3
+    /**
+     * True if the reading is a 'lacuna' node, representing missing text
+     */
     private Boolean is_lacuna = false;       // dn4
+    /**
+     * True if the reading has been set as canonical / lemma text for editorial purposes
+     */
     private Boolean is_lemma = false;        // dn5
+    /**
+     * True if the reading text is nonsensical
+     */
     private Boolean is_nonsense = false;     // dn6
     private Boolean is_ph = false;           // dn7
+    /**
+     * True if the reading is a collation start node
+     */
     private Boolean is_start = false;        // dn8
+    /**
+     * True if the reading's grammatical form does not make sense in context
+     */
+    private Boolean grammar_invalid; // dn0
+    /**
+     * True if the reading is a partial word that should be joined directly to the next reading
+     */
     private Boolean join_next = false;       // dn9
+    /**
+     * True if the reading is a partial word that should be joined directly to the prior reading
+     */
     private Boolean join_prior = false;      // dn10
+    /**
+     * The language of the reading text
+     */
     private String language;        // dn11
     private String lexemes;         // dn12
-    private String normal_form;     // dn13
+    /**
+     * The canonically-spelled form of the reading text
+     */
+    private String normal_form;     // dn1
+    /**
+     * The graph rank of this reading, in its collation
+     */
     private Long rank;              // dn14
+    /**
+     * The text of the reading
+     */
     private String text;            // dn15
     private String orig_reading;    // meant for use with duplicated readings, not saved
+    /**
+     * The user-supplied annotation or comment for this reading
+     */
     private String annotation;      // general purpose saving of information
 
     /**
      * Generates a model from a Neo4j Node
-     * @param node -
+     * @param node - The node with label READING from which the model should take its values
      */
     public ReadingModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {

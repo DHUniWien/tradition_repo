@@ -1,6 +1,8 @@
 package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
+
+import com.qmino.miredot.annotations.MireDotIgnore;
 import org.neo4j.graphdb.Relationship;
 
 /**
@@ -20,20 +22,61 @@ public class RelationshipModel {
         yes
     }
 
+    /**
+     * The ID of the first reading in the relationship
+     */
     private String source;              // source
+    /**
+     * The ID of the second reading in the relationship
+     */
     private String target;              // target
+    /**
+     * The internal database ID of this relationship
+     */
     private String id;                  // id
+    /**
+     * True if the source reading could be guessed by a scribe who saw the target reading in an exemplar
+     */
     private Boolean a_derivable_from_b = false;  // de0
+    /**
+     * A numeric value to designate the impact that this variation has on the meaning of the text
+     */
     private Long alters_meaning = 0L;      // de1
+    /**
+     * User supplied annotation or comment on the relatinoship
+     */
     private String annotation;          // de2
+    /**
+     * True if the target reading could be guessed by a scribe who saw the source reading in an exemplar
+     */
     private Boolean b_derivable_from_a = false;  // de3
+    /**
+     * Gosh I don't remember
+     */
     private String displayform;         // de4
+    /**
+     * I don't remember this either
+     */
     private String extra;               // de5
+    /**
+     * True if the editor believes this variation has stemmatic / genealogical significance
+     */
     private Significance is_significant = Significance.no; // de6
+    /**
+     * True if this variation is unlikely to have arisen in two branches of the stemma coincidentally
+     */
     private Boolean non_independent = false;     // de7
+    @MireDotIgnore
     private String reading_a;           // de8
+    @MireDotIgnore
     private String reading_b;           // de9
+    /**
+     * The extent to which this relationship should be applied more widely. Valid values are {@code local} and {@code document}.
+     */
     private String scope;               // de10
+    /**
+     * The type of relationship (e.g. {@code spelling}, {@code transposition}, {@code grammatical}
+     */
     private String type;                // de11
 
     public RelationshipModel(){

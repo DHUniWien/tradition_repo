@@ -17,10 +17,25 @@ import org.neo4j.graphdb.Transaction;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class UserModel {
+    /**
+     * ID of the user in question - either an email address or an OAuth ID token.
+     */
     private String id;
+    /**
+     * Passphrase hash of the user in question.
+     */
     private String passphrase = "NOT YET SET";
+    /**
+     * Role of the user in question. Valid values are 'user' and 'admin'.
+     */
     private String role;
+    /**
+     * True if the user is active in the database and may be assigned new traditions.
+     */
     private Boolean active = true;
+    /**
+     * Email address of the user in the database.
+     */
     private String email = "NOT YET SET";
 
     public UserModel() {}

@@ -14,8 +14,17 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class ReadingBoundaryModel {
+    /**
+     * The character / criterion that separates readings / words. Defaults to a single space.
+     */
     private String character = " ";
+    /**
+     * Whether readings should be treated as separate words.
+     */
     private Boolean separate = true;
+    /**
+     * Whether the separation criterion (i.e. {@code character}) is by regular expression.
+     */
     private Boolean isRegex = false;
 
     public String getCharacter() {

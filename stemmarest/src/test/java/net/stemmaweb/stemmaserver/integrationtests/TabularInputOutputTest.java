@@ -4,10 +4,7 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -59,8 +56,8 @@ public class TabularInputOutputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "K");
-        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
-        System.out.println(witnessText);
+        WitnessTextModel resp = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        System.out.println(resp.getText());
 
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
@@ -85,14 +82,14 @@ public class TabularInputOutputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "E");
-        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
+        WitnessTextModel tm = (WitnessTextModel) witness.getWitnessAsText().getEntity();
         List<String> layers = new ArrayList<>();
         layers.add("a.c.");
-        String witnessLayerText = Util.getValueFromJson(witness.getWitnessAsTextWithLayer(
-                layers, "0", "E"), "text");
-        System.out.println(witnessText);
-        System.out.println(witnessLayerText);
-        assertFalse(witnessLayerText.equals(witnessText));
+        WitnessTextModel ltm = (WitnessTextModel) witness.getWitnessAsTextWithLayer(
+                layers, "0", "E").getEntity();
+        System.out.println(tm.getText());
+        System.out.println(ltm.getText());
+        assertFalse(tm.getText().equals(ltm.getText()));
 
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();

@@ -14,6 +14,9 @@ import org.neo4j.graphdb.Node;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class WitnessModel {
+    /**
+     * The sigil of the witness
+     */
     private String sigil;
 
     @SuppressWarnings("unused")     // It's used by response.getEntity(GenericType blah)

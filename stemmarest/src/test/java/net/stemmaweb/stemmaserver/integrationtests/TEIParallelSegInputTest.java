@@ -4,6 +4,7 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -114,15 +115,14 @@ public class TEIParallelSegInputTest {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "T");
-        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
-        assertEquals(tText, witnessText);
+        WitnessTextModel tm = (WitnessTextModel) new Witness(tradId, "T").getWitnessAsText().getEntity();
+        assertEquals(tText, tm.getText());
         // Get a layered witness text
         Witness q = new Witness(tradId, "Q");
         List<String> layers = new ArrayList<>();
         layers.add("a.c.");
-        String witnessLayerText = Util.getValueFromJson(
-                q.getWitnessAsTextWithLayer(layers, "0", "E"), "text");
-        assertEquals(qacText, witnessLayerText);
+        WitnessTextModel ltm = (WitnessTextModel) q.getWitnessAsTextWithLayer(layers, "0", "E").getEntity();
+        assertEquals(qacText, ltm.getText());
 
         // Fail to get a witness text with a conflicting set of layers
         layers.add("s.l.");
@@ -132,8 +132,8 @@ public class TEIParallelSegInputTest {
         // Get a witness text with a valid set of layers
         layers.remove(0);
         layers.add("margin");
-        witnessLayerText = Util.getValueFromJson(q.getWitnessAsTextWithLayer(layers, "0", "E"), "text");
-        assertEquals(qpcText, witnessLayerText);
+        ltm = (WitnessTextModel) q.getWitnessAsTextWithLayer(layers, "0", "E").getEntity();
+        assertEquals(qpcText, ltm.getText());
 
     }
 

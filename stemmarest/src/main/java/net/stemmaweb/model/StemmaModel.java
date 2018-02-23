@@ -1,6 +1,7 @@
 package net.stemmaweb.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.qmino.miredot.annotations.MireDotIgnore;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.rest.ERelations;
 import org.neo4j.graphdb.Direction;
@@ -18,10 +19,23 @@ import javax.xml.bind.annotation.XmlRootElement;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class StemmaModel {
 
+    /**
+     * The name (identifier) of the stemma. Must be unique within a tradition.
+     */
     private String identifier;
+    /**
+     * True if this is an undirected tree, rather than a directed stemma.
+     */
     private Boolean is_undirected;
+    /**
+     * True if the stemma indicates witness contamination / conflation.
+     */
     private Boolean is_contaminated;
+    @MireDotIgnore
     private Long from_jobid;
+    /**
+     * A string that holds the dot specification of the stemma or tree topology.
+     */
     private String dot;
 
     public StemmaModel () {

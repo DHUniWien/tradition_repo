@@ -16,7 +16,14 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class GraphModel {
+    /**
+     * A set of readings that make up a portion of a variant graph.
+     */
     private HashSet<ReadingModel> readings;
+    /**
+     * A set of links that make up a portion of a variant graph. Depending on context, these can be
+     * either relationship links or sequence (path) links.
+     */
     private HashSet<RelationshipModel> relationships;
     
     public GraphModel(List<ReadingModel> readings, List<RelationshipModel> relationships) {

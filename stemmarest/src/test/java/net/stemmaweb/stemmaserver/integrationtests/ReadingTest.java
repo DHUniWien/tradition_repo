@@ -47,9 +47,9 @@ public class ReadingTest {
     private String tradId;
     private String sectId;
 
-    private String expectedWitnessA = "{\"text\": \"when april with his showers sweet with fruit the drought of march has pierced unto me the root\"}";
-    private String expectedWitnessB = "{\"text\": \"when april his showers sweet with fruit the march of drought has pierced to the root\"}";
-    private String expectedWitnessC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh rood-of-the-world\"}";
+    private String expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the root";
+    private String expectedWitnessB = "when april his showers sweet with fruit the march of drought has pierced to the root";
+    private String expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood-of-the-world";
 
     private GraphDatabaseService db;
 
@@ -100,16 +100,16 @@ public class ReadingTest {
                 .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(number, listOfReadings.size());
-        Response resp;
+        WitnessTextModel resp;
 
-        resp = new Witness(tradId, "A").getWitnessAsText();
-        assertEquals(expectedWitnessA, resp.getEntity());
+        resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
+        assertEquals(expectedWitnessA, resp.getText());
 
-        resp = new Witness(tradId, "B").getWitnessAsText();
-        assertEquals(expectedWitnessB, resp.getEntity());
+        resp = (WitnessTextModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
+        assertEquals(expectedWitnessB, resp.getText());
 
-        resp = new Witness(tradId, "C").getWitnessAsText();
-        assertEquals(expectedWitnessC, resp.getEntity());
+        resp = (WitnessTextModel) new Witness(tradId, "C").getWitnessAsText().getEntity();
+        assertEquals(expectedWitnessC, resp.getText());
 
         return listOfReadings;
     }
@@ -141,9 +141,9 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             assertEquals("snow", node.getProperty("text"));
 
-            String expectedWitnessA = "{\"text\": \"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
-            Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, resp.getEntity());
+            String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
+            WitnessTextModel resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
+            assertEquals(expectedWitnessA, resp.getText());
             tx.success();
         }
     }
@@ -213,9 +213,9 @@ public class ReadingTest {
             assertEquals("snow", node.getProperty("text"));
             assertEquals("hebrew", node.getProperty("language"));
             assertTrue(Boolean.valueOf(node.getProperty("is_lemma").toString()));
-            String expectedWitnessA = "{\"text\": \"when april with his snow sweet with fruit the drought of march has pierced unto me the root\"}";
+            String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, resp.getEntity());
+            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
             tx.success();
         }
     }
@@ -1025,7 +1025,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            expectedWitnessC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
+            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
             testNumberOfReadingsAndWitnesses(32);
             tx.success();
@@ -1061,7 +1061,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            expectedWitnessC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
+            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
             testNumberOfReadingsAndWitnesses(32);
             tx.success();
@@ -1090,7 +1090,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            expectedWitnessC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh rood of-the-world\"}";
+            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of-the-world";
 
             testNumberOfReadingsAndWitnesses(30);
             tx.success();
@@ -1119,7 +1119,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            expectedWitnessC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh rood the-world\"}";
+            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood the-world";
 
             testNumberOfReadingsAndWitnesses(30);
             tx.success();
@@ -1208,7 +1208,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
-            expectedWitnessA = "{\"text\": \"when april with his showers sweet with fruit the drought of march has pierced unto me the r t\"}";
+            expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r t";
 
             testNumberOfReadingsAndWitnesses(30);
             tx.success();
@@ -1238,7 +1238,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
-            expectedWitnessA = "{\"text\": \"when april with his showers sweet with fruit the drought of march has pierced unto me the r ot\"}";
+            expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r ot";
 
             testNumberOfReadingsAndWitnesses(30);
             tx.success();
@@ -1274,7 +1274,7 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            expectedWitnessC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh rood of the world\"}";
+            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
             testNumberOfReadingsAndWitnesses(32);
             tx.success();
@@ -1449,7 +1449,7 @@ public class ReadingTest {
             assertEquals(true, nof.getProperty("join_prior"));
 
             Response witText = new Witness(tradId, "C").getWitnessAsText();
-            assertEquals(expectedWitnessC, witText.getEntity());
+            assertEquals(expectedWitnessC, ((WitnessTextModel) witText.getEntity()).getText());
 
             tx.success();
         }
@@ -1816,9 +1816,9 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            expectedWitnessA = "{\"text\": \"when april with his showerstestsweet with fruit the drought of march has pierced unto me the root\"}";
+            expectedWitnessA = "when april with his showerstestsweet with fruit the drought of march has pierced unto me the root";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, resp.getEntity());
+            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
             tx.success();
         }
     }
@@ -1863,9 +1863,9 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            expectedWitnessA = "{\"text\": \"when april with his showers\"sweet with fruit the drought of march has pierced unto me the root\"}";
+            expectedWitnessA = "when april with his showers\"sweet with fruit the drought of march has pierced unto me the root";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, resp.getEntity());
+            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
             tx.success();
         }
     }
@@ -1910,9 +1910,9 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            expectedWitnessB = "{\"text\": \"when april his showers/sweet with fruit the march of drought has pierced to the root\"}";
+            expectedWitnessB = "when april his showers/sweet with fruit the march of drought has pierced to the root";
             Response resp = new Witness(tradId, "B").getWitnessAsText();
-            assertEquals(expectedWitnessB, resp.getEntity());
+            assertEquals(expectedWitnessB, ((WitnessTextModel) resp.getEntity()).getText());
             tx.success();
         }
     }
@@ -1957,9 +1957,9 @@ public class ReadingTest {
             nodes = result.columnAs("w");
             assertFalse(nodes.hasNext());
 
-            expectedWitnessA = "{\"text\": \"when april with his showerssweet with fruit the drought of march has pierced unto me the root\"}";
+            expectedWitnessA = "when april with his showerssweet with fruit the drought of march has pierced unto me the root";
             Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, resp.getEntity());
+            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
             tx.success();
         }
     }
@@ -2039,9 +2039,9 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
 
             // Check the reading of C
-            Response resp = new Witness(tradId, "C").getWitnessAsText();
-            String expC = "{\"text\": \"when showers sweet with fruit to drought of march has pierced teh roodoftheworld\"}";
-            assertEquals(expC, resp.getEntity());
+            WitnessTextModel resp = (WitnessTextModel) new Witness(tradId, "C").getWitnessAsText().getEntity();
+            String expC = "when showers sweet with fruit to drought of march has pierced teh roodoftheworld";
+            assertEquals(expC, resp.getText());
             tx.success();
         }
     }

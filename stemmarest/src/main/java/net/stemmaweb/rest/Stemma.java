@@ -10,6 +10,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -46,14 +47,19 @@ public class Stemma {
         name = requestedName;
         newCreated = created;
     }
+
     /**
-     * Returns JSON string with a Stemma of a tradition in DOT format
+     * Fetches the information for the specified stemma.
      *
-     * @return Http Response ok and a stemma model on success or an ERROR in
-     *         JSON format
+     * @summary Get stemma
+     * @return The stemma information, including its dot specification.
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = StemmaModel.class)
     public Response getStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null) {
@@ -65,9 +71,22 @@ public class Stemma {
         return Response.status(returncode).entity(result).build();
     }
 
+    /**
+     * Stores a new or updated stemma under the given name.
+     *
+     * @summary Replace or add new stemma
+     * @param dot - The string specification of the new or replacement stemma topology.
+     * @return The stemma information, including its dot specification.
+     * @statuscode 200 - on success, if stemma is updated
+     * @statuscode 201 - on success, if stemma is new
+     * @statuscode 400 - if the stemma name in the URL doesn't match the name in the JSON information
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = StemmaModel.class)
     public Response replaceStemma(String dot) {
         DotParser parser = new DotParser(db);
         // Wrap this entire thing in a transaction so that we can roll back
@@ -99,8 +118,17 @@ public class Stemma {
     }
 
 
+    /**
+     * Deletes the stemma that is identified by the given name.
+     *
+     * @summary Delete stemma
+     * @return The stemma information, including its dot specification.
+     * @statuscode 200 - on success, if stemma is updated
+     * @statuscode 500 - on failure, with an error message
+     */
     @DELETE
     @Produces(MediaType.TEXT_PLAIN)
+    @ReturnType("java.lang.Void")
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         assert stemmaNode != null;
@@ -139,12 +167,17 @@ public class Stemma {
             return Response.serverError().entity(e.getMessage()).build();
         }
     }
+
     /**
-     * Reorients a stemma tree with a given new root node
+     * Reorients a stemma tree so that the given witness node is the root (archetype). This operation
+     * can only be performed on a stemma without contamination links.
      *
      * @param nodeId - archetype node
-     * @return Http Response ok and DOT JSON string on success or an ERROR in
-     *         JSON format
+     * @return The updated stemma model
+     * @statuscode 200 - on success, if stemma is updated
+     * @statuscode 404 - if the witness does not occur in this stemma
+     * @statuscode 412 - if the stemma is contaminated
+     * @statuscode 500 - on failure, with an error message
      */
     @POST
     @Path("reorient/{nodeId}")

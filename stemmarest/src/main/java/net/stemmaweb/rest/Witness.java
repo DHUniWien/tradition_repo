@@ -10,7 +10,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
@@ -61,17 +63,24 @@ public class Witness {
      * finds a witness in the database and returns it as a string; if start and end are
      * specified, a substring of the full witness text between those ranks inclusive is
      * returned. if end-rank is too high or start-rank too low will return up to the end
-     * / from the start of the witness. If layers are specified, return the text composed
-     * of those layers.
+     * / from the start of the witness. If one or more witness layers are specified, return
+     * the text composed of those layers.
      *
-     * @param layer - the text layer to return, e.g. "a.c."
+     * @summary Get witness text
+     * @param layer - the text layer(s) to return, e.g. "a.c." or "s.l.". These layers must not conflict with each other!
      * @param start - the starting rank
      * @param end   - the end rank
-     * @return a witness as a string
+     * @return The witness text as a string.
+     * @statuscode 200 - on success
+     * @statuscode 400 - if a start or end rank is specified on the tradition-wide call, or if the start rank and end rank match
+     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
+     * @statuscode 409 - if a section's end node cannot be reached while assembling the witness text
+     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("/text")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = WitnessTextModel.class)
     public Response getWitnessAsTextWithLayer(
             @QueryParam("layer") @DefaultValue("") List<String> layer,
             @QueryParam("start") @DefaultValue("0") String start,
@@ -160,21 +169,26 @@ public class Witness {
             }
             tx.success();
         }
-
-        return Response.status(Response.Status.OK)
-                .entity(jsonresp("text", witnessAsText.trim()))
-                .build();
+        WitnessTextModel wtm = new WitnessTextModel(witnessAsText.trim());
+        return Response.ok(wtm).build();
 
     }
 
     /**
-     * finds a witness in the database and returns it as a list of readings
+     * Returns the sequence of readings for a given witness.
      *
-     * @return a witness as a list of models of readings in json format
+     * @summary Get readings
+     * @param witnessClass - the text layer to return, e.g. "a.c."
+     * @return The witness text as a list of readings.
+     * @statuscode 200 - on success
+     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
+     * @statuscode 409 - if a section's end node cannot be reached while assembling the witness text
+     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getWitnessAsReadings(@QueryParam("layer") @DefaultValue("") List<String> witnessClass) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         if (witnessClass.size() == 1 && witnessClass.get(0).equals(""))

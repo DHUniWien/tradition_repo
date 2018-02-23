@@ -48,8 +48,8 @@ public class CollateXInputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "W2");
-        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
-        assertEquals("Ich hab auch hier wieder ein Pläzchen", witnessText);
+        WitnessTextModel response = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
 
         result = tradition.getAllReadings();
         @SuppressWarnings("unchecked")
@@ -71,8 +71,8 @@ public class CollateXInputTest extends TestCase {
 
         String tradId = Util.getValueFromJson(cResult, "tradId");
         Witness witness = new Witness(tradId, "w1");
-        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
-        assertEquals("the quick brown fox jumped over the lazy dogs .", witnessText);
+        WitnessTextModel response = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        assertEquals("the quick brown fox jumped over the lazy dogs .", response.getText());
     }
 
     public void testAddRelationship() {
@@ -137,8 +137,8 @@ public class CollateXInputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "W2");
-        String witnessText = Util.getValueFromJson(witness.getWitnessAsText(), "text");
-        assertEquals("Ich hab auch hier wieder ein Pläzchen", witnessText);
+        WitnessTextModel response = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
 
         result = tradition.getAllReadings();
         @SuppressWarnings("unchecked")

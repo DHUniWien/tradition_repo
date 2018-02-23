@@ -4,6 +4,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.qmino.miredot.annotations.MireDotIgnore;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Node;
@@ -30,16 +31,40 @@ public class TraditionModel {
     }
 
     // Properties
+    /**
+     * ID of the tradition
+     */
     private String id;
+    /**
+     * Name of the tradition
+     */
     private String name;
+    /**
+     * Language of the tradition
+     */
     private String language;
+    /**
+     * Direction of the tradition (LR, RL, or BI)
+     */
     private Direction direction;
+    /**
+     * Whether the tradition should be viewable by other users
+     */
     private Boolean is_public;
+    @MireDotIgnore
     private Integer stemweb_jobid;
+    /**
+     * User ID of the tradition's owner
+     */
     private String owner;
 
     // Derived from relationships
+    /**
+     * The list of witness sigla belonging to this tradition
+     */
     private ArrayList<String> witnesses;
+
+    @MireDotIgnore
     private ArrayList<String> reltypes;
 
     public TraditionModel() {}

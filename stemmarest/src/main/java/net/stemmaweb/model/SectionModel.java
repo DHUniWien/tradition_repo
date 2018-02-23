@@ -19,9 +19,21 @@ import org.neo4j.graphdb.Transaction;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class SectionModel {
+    /**
+     * The internal ID of the section
+     */
     private String id;
+    /**
+     * The name of the section
+     */
     private String name;
+    /**
+     * The language of the section's text
+     */
     private String language;
+    /**
+     * The graph rank of the section's end node. This is a rough indication of the length of the section.
+     */
     private Long endRank;
 
     public SectionModel() {

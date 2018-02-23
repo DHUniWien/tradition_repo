@@ -17,7 +17,13 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
 public class DuplicateModel {
+    /**
+     * A list of reading IDs as strings
+     */
     private List<String> readings;
+    /**
+     * A list of witness sigla as strings
+     */
     private List<String> witnesses;
 
     public List<String> getReadings() {

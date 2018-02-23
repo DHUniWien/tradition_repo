@@ -10,6 +10,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationshipModel;
@@ -44,17 +45,23 @@ public class Relation {
     }
 
     /**
-     * Creates a new relationship between the two nodes specified.
+     * Creates a new relationship between the specified reading nodes.
      *
+     * @summary Create relationship
      * @param relationshipModel - JSON structure of the relationship to create
-     * @return Http Response 201 and a model containing the created relationship
-     *         and the readings involved in JSON on success or an ERROR in JSON
-     *         format
+     * @return The relationship(s) created, as well as any other readings in the graph that
+     * had a relationship set between them.
+     * @statuscode 201 - on success
+     * @statuscode 304 - if the specified relationship type/scope already exists
+     * @statuscode 400 - if the request has an invalid scope
+     * @statuscode 409 - if the relationship cannot legally be created
+     * @statuscode 500 - on failure, with JSON error message
      */
     // TODO make this an idempotent PUT call
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
     public Response create(RelationshipModel relationshipModel) {
 
         String scope = relationshipModel.getScope();
@@ -274,14 +281,18 @@ public class Relation {
     /**
      * Remove the relationship specified. There should be only one.
      *
+     * @summary Delete relationship
      * @param relationshipModel - the JSON specification of the relationship(s) to delete
-     * @return HTTP Response 404 when no node was found, 200 and list of relationship edges
-     *    removed on success
+     * @return A list of all relationships that were removed.
+     * @statuscode 200 - on success
+     * @statuscode 400 - if an invalid scope was specified
+     * @statuscode 404 - if no matching relationship was found
+     * @statuscode 500 - on failure, with JSON error message
      */
     @DELETE
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel>")
     public Response delete(RelationshipModel relationshipModel) {
         ArrayList<RelationshipModel> deleted = new ArrayList<>();
 
@@ -356,15 +367,19 @@ public class Relation {
     }
     
     /**
-     * Removes a relationship by ID
+     * Removes a relationship by internal ID.
      *
+     * @summary Delete relationship by ID
      * @param relationshipId - the ID of the relationship to delete
-     * @return HTTP Response 404 when no Relationship was found with id, 200 and
-     *         a model of the relationship in JSON when the Relationship was
-     *         removed
+     * @return The deleted relationship
+     * @statuscode 200 - on success
+     * @statuscode 403 - if the given ID does not belong to a relationship
+     * @statuscode 500 - on failure, with JSON error message
      */
     @DELETE
     @Path("{relationshipId}")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = RelationshipModel.class)
     public Response deleteById(@PathParam("relationshipId") String relationshipId) {
         RelationshipModel relationshipModel;
 

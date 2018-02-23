@@ -7,6 +7,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
@@ -27,6 +28,9 @@ import static net.stemmaweb.rest.Util.jsonerror;
 
 public class User {
     private GraphDatabaseService db;
+    /**
+     * The ID of a stemmarest user; this is usually either an email address or a Google ID token.
+     */
     private String userId;
 
     public User (String requestedId) {
@@ -36,12 +40,17 @@ public class User {
     }
 
     /**
-     * Gets a user by the id.
+     * Gets the information for the given user ID.
+     *
+     * @summary Get user
      *
      * @return A JSON UserModel or a JSON error message
+     * @statuscode 200 on success
+     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("net.stemmaweb.model.UserModel")
     public Response getUserById() {
         UserModel userModel;
         try (Transaction tx = db.beginTx()) {
@@ -59,14 +68,20 @@ public class User {
     }
 
     /**
-     * Creates a user based on the parameters submitted in JSON.
+     * Creates or updates a user according to the specification given.
      *
-     * @param userModel -  in JSON format
+     * @summary Create / update user
+     *
+     * @param userModel - a user specification
      * @return A JSON UserModel or a JSON error message
+     * @statuscode 200 on success, if an existing user was updated
+     * @statuscode 201 on success, if a new user was created
+     * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = UserModel.class)
     public Response create(UserModel userModel) {
         // Find any existing user
         Node extantUser;
@@ -118,12 +133,18 @@ public class User {
 
 
 
-        /**
-         * Removes a user and all its traditions
-         *
-         * @return OK on success or an ERROR in JSON format
-         */
+    /**
+     * Removes a user. This may only be used when the user's traditions have already been deleted.
+     *
+     * @summary Delete user
+     *
+     * @statuscode 200 on success
+     * @statuscode 404 if the requested user doesn't exist
+     * @statuscode 412 if the user still owns traditions
+     * @statuscode 500 on failure, with an error report in JSON format
+     */
     @DELETE
+    @ReturnType("java.lang.Void")
     public Response deleteUser() {
         Node foundUser;
         try (Transaction tx = db.beginTx()) {
@@ -151,13 +172,16 @@ public class User {
     }
 
     /**
-     * Get all Traditions of a user
+     * Get a list of the traditions belong to the user.
      *
-     * @return A JSON list of TraditionModel objects
+     * @summary List user traditions
+     *
+     * @return A JSON list of tradition metadata objects
      */
     @GET
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
     public Response getUserTraditions() {
         if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("User does not exist")).build();

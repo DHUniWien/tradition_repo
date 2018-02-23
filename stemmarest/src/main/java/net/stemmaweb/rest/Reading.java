@@ -12,6 +12,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
@@ -34,6 +35,9 @@ public class Reading {
     private String errorMessage; // global error message used for sub-method calls
 
     private GraphDatabaseService db;
+    /**
+     * The ID of the reading to query
+     */
     private Long readId;
 
     public Reading(String requestedId) {
@@ -43,11 +47,16 @@ public class Reading {
     }
 
     /**
-     * Returns a single reading by global neo4j id
-     * @return the reading fetched by the id
-     */
+     * Returns the metadata for a single reading.
+     *
+     * @summary Get a reading
+     * @return The reading information as a JSON structure.
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
+    */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = ReadingModel.class)
     public Response getReading() {
         ReadingModel reading;
         try (Transaction tx = db.beginTx()) {
@@ -63,19 +72,22 @@ public class Reading {
     }
 
     /**
-     * Changes properties of a reading according to its keys
+     * Changes the properties of an existing reading.
+     * @summary Update an existing reading
      *
      * @param changeModels
-     *            an array of ReadingChangePropertyModel objects. Will be converted from
-     *            a json string. Example: a json string for an array size 1
-     *            which should change the value of 'language' to 'german' will
-     *            look like
-     *            this:[{\"key\":\"language\",\"newProperty\":\"german\"}]
-     * @return ok response with a model of the modified reading in json format
+     *            an array of named key/value property pairs. For example, a request to
+     *            change the reading's language to German will look like this:
+     *            {@code {"properties": [{"key":"language","newProperty":"German"}]}}
+     * @return The metadata of the updated reading
+     * @statuscode 200 - on success
+     * @statuscode 400 - on an invalid property key, or an invalid property value type
+     * @statuscode 500 - on error, with an error message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = ReadingModel.class)
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
         ReadingModel modelToReturn = new ReadingModel();
         Node reading;
@@ -111,14 +123,18 @@ public class Reading {
 
     /**
      * Gets all readings related to the given reading.
+     * @summary Get related readings
      *
      * @param filterTypes - a list of relationship types to filter by
-     * @return a list of ReadingModels in JSON containing all related readings
+     * @return a list of readings related via the given relationship types.
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
      *
      */
     @GET
     @Path("related")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
         ArrayList<ReadingModel> relatedReadings = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
@@ -141,14 +157,17 @@ public class Reading {
     }
 
     /**
-     * Gets all readings related to the given reading.
+     * Deletes all relationships associated with the given reading.
+     * @summary Delete all reading relationships
      *
-     * @return a list of ReadingModels in JSON containing all related readings
-     *
+     * @return a list of the relationships that were deleted.
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
      */
     @DELETE
     @Path("relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel")
     public Response deleteAllRelations() {
         ArrayList<RelationshipModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
@@ -169,13 +188,16 @@ public class Reading {
 
     /**
      * Gets the list of witnesses that carry the given reading.
+     * @summary Get reading witnesses
      *
-     * @return a list of WitnessModels that are associated with the reading
-     *
+     * @return the metadata of the witnesses to this reading.
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("witnesses")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel")
     public Response getReadingWitnesses() {
         HashSet<String> normalWitnesses = new HashSet<>();
 
@@ -209,21 +231,28 @@ public class Reading {
 
         return Response.ok(normalWitnesses).build();
     }
-        /**
-         * Duplicates a reading in a specific tradition. Opposite of merge
-         *
-         * @param duplicateModel
-         *            a model in JSON containing the readings to be duplicated and
-         *            the witnesses of the old readings which the duplicated new
-         *            readings should now belong to
-         * @return a GraphModel in JSON containing all the created readings and the
-         *         deleted relationships on success or Status.INTERNAL_SERVER_ERROR
-         *         with a detailed message else
-         */
+    /**
+     * Duplicates a reading in a specific tradition; this should be used when a reading has
+     * been mis-collated, or when the editor otherwise wishes to assert that seemingly
+     * identical readings in different witnesses are distinct.
+     *
+     * This is the opposite of the {@code merge} call.
+     *
+     * @summary Duplicate a reading
+     *
+     * @param duplicateModel
+     *            specifies the reading(s) to be duplicated, as well as the witnesses to which
+     *            the duplicated new reading(s) should now belong.
+     * @return a GraphModel in JSON containing all the created readings and the
+     *         deleted relationships.
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
+     */
     @POST
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
     public Response duplicateReading(DuplicateModel duplicateModel) {
 
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
@@ -455,17 +484,22 @@ public class Reading {
     }
 
     /**
-     * Merges two readings into one single reading in a specific tradition.
-     * Opposite of duplicate
+     * Merges two co-located readings into one single reading. This will primarily be used
+     * when a collation has missed that a pair of readings is identical.
      *
-     * @param secondReadId
-     *            the id of the second reading to be merged
-     * @return Status.ok if the merge was successful.
-     *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
+     * This is the opposite of the {@code duplicate} call.
+     *
+     * @summary Merge readings
+     *
+     * @param secondReadId - the id of the second reading to be merged
+     * @statuscode 200 - on success
+     * @statuscode 409 - if merging the readings would invalidate the graph.
+     *                   This usually means that they are not in the same variant location.
+     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("merge/{secondReadId}")
-    // @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
 
         Node stayingReading;
@@ -672,28 +706,33 @@ public class Reading {
     }
 
     /**
-     * Splits up a single reading into several ones in a specific tradition.
-     * Opposite of compress
+     * Splits up a single reading into smaller consecutive reading units. Note that this
+     * operation should not change the text of any witness!
      *
-     * @param splitIndex
-     *            the index of the first letter of the second word, indicating where
-     *            the reading is to be split: e.g. "unto" with index 2 produces "un"
+     * This is the opposite of the {@code compress} call.
+     *
+     * @summary Split a reading
+     *
+     * @param splitIndex - the index of the first letter of the second word, indicating where
+     *            the reading is to be split. For example, "unto" with index 2 produces "un"
      *            and "to". If the index is zero the reading is split on all occurrences
      *            of the separator.
      * @param model
-     *            the ReadingBoundaryModel indicating how the reading is to be split.
+     *            A set of criteria indicating how the reading is to be split.
      *            If 'separate' is false, then the 'join_next' and 'join_prior' attributes
      *            are set on the respective readings. If splitIndex is zero, then the
      *            'character' must occur somewhere in the reading string, and will be
      *            removed from the reading text.
-     * @return a GraphModel in JSON containing all the created and modified readings and
-     *         new sequence relationships on success, or Status.INTERNAL_SERVER_ERROR with
-     *         a detailed message on failure
+     * @return a JSON description of all the readings that were created or modified, as well
+     *         as the new sequence links necessary to construct the bath.
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with a descriptive error message
      */
     @POST
     @Path("split/{splitIndex}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
         assert (model != null);
@@ -838,17 +877,21 @@ public class Reading {
     }
 
     /**
-     * gets the next readings from a given readings in the same witness
+     * Gets the reading that follows the requested reading in the given witness.
      *
-     * @param witnessId
-     *            : the id (name) of the witness
+     * @summary Next reading
      *
-     * @return http.ok and a model of the requested reading in json on success
-     *         or an ERROR in JSON format
+     * @param witnessId - the id (sigil) of the witness
+     *
+     * @return the following reading
+     * @statuscode 200 - on success
+     * @statuscode 404 - if there is no subsequent reading
+     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("next/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = ReadingModel.class)
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId) {
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
@@ -879,17 +922,21 @@ public class Reading {
     }
 
     /**
-     * gets the previous readings from a given readings in the same witness
+     * Gets the reading that precedes the requested reading in the given witness.
      *
-     * @param witnessId
-     *            : the id (name) of the witness
+     * @summary Prior reading
      *
-     * @return http.ok and a model of the requested reading in json on success
-     *         or an ERROR in JSON format
+     * @param witnessId - the id (sigil) of the witness
+     *
+     * @return the prior reading
+     * @statuscode 200 - on success
+     * @statuscode 404 - if there is no prior reading
+     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("prior/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = ReadingModel.class)
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId) {
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
@@ -932,26 +979,31 @@ public class Reading {
     }
 
     /**
-     * Compress two readings into one. Texts will be concatenated together (with
-     * or without a space or extra text. The reading with the lower rank will be
-     * given first. Opposite of split
+     * Collapse two consecutive readings into one. Texts will be concatenated together
+     * (with or without a space or extra text). This call may only be used on consecutive
+     * readings with no divergent witness paths between them, and no relationships marked
+     * on either individual reading. The reading with the lower rank (i.e., that which
+     * comes first in the text) must be given first in the URL.
      *
-     * @param readId2
-     *            the id of the second reading
+     * This is the opposite of the {@code split} call.
+     *
+     * @summary Concatenate readings
+     *
+     * @param readId2 - the id of the second reading
      * @param boundary
-     *            the ReadingBoundaryModel that specifies whether the readings will be
-     *            separated with a string, and if so, what string it will be. If
-     *            the readings have join_next or join_prior respectively set, this
-     *            will be respected in preference to the boundary model.
+     *            The specification of whether the reading text will be separated with a string,
+     *            and if so, what string it will be. If the readings have {@code join_next} or
+     *            {@code join_prior} set, this will be respected in preference to the boundary specification.
      *
-     * @return status.ok if compress was successful.
-     *         Status.INTERNAL_SERVER_ERROR with a detailed message if not
-     *         concatenated
+     * @statuscode 200 - on success
+     * @statuscode 409 - if the readings cannot legally be concatenated
+     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("concatenate/{read2Id}")
     @Consumes(MediaType.APPLICATION_JSON)
     // @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
 
         Node read1, read2;
@@ -963,12 +1015,11 @@ public class Reading {
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
                 tx.success();
                 errorMessage = "the first reading has a higher rank then the second reading";
-                return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                return errorResponse(Status.CONFLICT);
             }
             if (canBeCompressed(read1, read2)) {
                 compress(read1, read2, boundary);
                 ReadingService.recalculateRank(read1);
-                // new Tradition(getTraditionId()).recalculateRank(readId);
                 tx.success();
                 return Response.ok().build();
             }

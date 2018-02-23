@@ -1,5 +1,7 @@
 package net.stemmaweb.rest;
 
+import com.qmino.miredot.annotations.MireDotIgnore;
+import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
@@ -34,6 +36,9 @@ import static net.stemmaweb.rest.Util.jsonerror;
 
 public class Tradition {
     private GraphDatabaseService db;
+    /**
+     * This is where the tradition ID should go
+     */
     private String traditionId;
 
     public Tradition(String requestedId) {
@@ -42,10 +47,13 @@ public class Tradition {
         traditionId = requestedId;
     }
 
-    /*********************
+    /*
      * Delegated API calls
      */
 
+    /**
+     * @param sectionId - the ID of the requested tradition section
+     */
     @Path("/section/{sectionId}")
     public Section getSection(@PathParam("sectionId") String sectionId) {
         ArrayList<SectionModel> tradSections = produceSectionList(DatabaseService.getTraditionNode(traditionId, db));
@@ -56,11 +64,17 @@ public class Tradition {
         return null;
     }
 
+    /**
+     * @param sigil - the sigil of the requested witness
+     */
     @Path("/witness/{sigil}")
     public Witness getWitness(@PathParam("sigil") String sigil) {
         return new Witness(traditionId, sigil);
     }
 
+    /**
+     * @param name - the name of the requested stemma
+     */
     @Path("/stemma/{name}")
     public Stemma getStemma(@PathParam("name") String name) {
         return new Stemma(traditionId, name);
@@ -71,13 +85,25 @@ public class Tradition {
         return new Relation(traditionId);
     }
 
-    /*************************
+    /*
      * Resource creation calls
+     */
+
+    /**
+     * Create / save a new stemma for this tradition.
+     *
+     * @summary Upload stemma
+     *
+     * @param dot - the stemma definition in modified GraphViz dot format
+     * @return The stemma specification in JSON format.
+     * @statuscode 201 - on success
+     * @statuscode 500 - on error, with an error message
      */
     @POST  // a new stemma
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("net.stemmaweb.model.StemmaModel")
     public Response newStemma(String dot) {
         DotParser parser = new DotParser(db);
         Response result = parser.importStemmaFromDot(dot, traditionId);
@@ -131,10 +157,27 @@ public class Tradition {
         return sectionList;
     }
 
+    /**
+     * Create a new section for this tradition. Returns the ID of the new section, in the
+     * form {@code {"parentId": <ID>}}.
+     *
+     * @summary Upload section
+     *
+     * @param sectionName - The name of the section
+     * @param filetype - The format of the section data file.
+     *                 See the documentation of POST /tradition for possible values.
+     * @param uploadedInputStream - The section file data
+     * @return The stemma specification in JSON format.
+     * @statuscode 201 - on success
+     * @statuscode 400 - if the file type is unrecognised
+     * @statuscode 500 - on error, with an error message
+     */
+
     @POST
     @Path("/section")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream) {
@@ -165,12 +208,14 @@ public class Tradition {
             // Pass it off to the Excel reader
             result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
         if (filetype.equals("teips"))
+            // Pass it off to the TEI parser
             result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
         // TODO we need to parse TEI double-endpoint attachment from CTE
         if (filetype.equals("collatex"))
             // Pass it off to the CollateX parser
             result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
         if (filetype.equals("cxjson"))
+            // Pass it off to the CollateX JSON parser
             result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, sectionNode);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the somewhat legacy GraphML parser
@@ -214,6 +259,7 @@ public class Tradition {
     @GET
     @Path("/initRanks")
     @Produces(MediaType.APPLICATION_JSON)
+    @MireDotIgnore
     public Response initRanks() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -282,15 +328,19 @@ public class Tradition {
      * Collection retrieval calls
      */
 
-    /*
+    /**
      * Gets a list of all sections of a tradition with the given id.
      *
-     * @return Http Response 200 and a list of section models in JSON on success
-     * or an ERROR in JSON format
+     * @summary Get sections
+     * @return A list of section metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/sections")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.SectionModel>")
     public Response getAllSections() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -306,12 +356,16 @@ public class Tradition {
     /**
      * Gets a list of all the witnesses of a tradition with the given id.
      *
-     * @return Http Response 200 and a list of witness models in JSON on success
-     * or an ERROR in JSON format
+     * @summary Get witnesses
+     * @return A list of witness metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/witnesses")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnesses() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -329,14 +383,18 @@ public class Tradition {
     }
 
     /**
-     * Gets a list of all Stemmata available, as dot format
+     * Gets a list of all the stemmata associated with this tradition.
      *
-     * @return Http Response ok and a collection of StemmaModels that include
-     * the dot
+     * @summary Get stemmata
+     * @return A list of section metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/stemmata")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.StemmaModel>")
     public Response getAllStemmata() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -357,13 +415,18 @@ public class Tradition {
     }
 
     /**
-     * Gets a list of all relationships of a tradition with the given id.
+     * Gets a list of all relationships defined within the given tradition.
      *
-     * @return Http Response 200 and a list of relationship model in JSON
+     * @summary Get relationships
+     * @return A list of relationship metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/relationships")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel>")
     public Response getAllRelationships() {
         ArrayList<RelationshipModel> relList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
@@ -384,14 +447,18 @@ public class Tradition {
     }
 
     /**
-     * Returns a list of all readings in a tradition
+     * Gets a list of all readings in the given tradition.
      *
-     * @return the list of readings in json format on success or an ERROR in
-     * JSON format
+     * @summary Get readings
+     * @return A list of reading metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -420,16 +487,21 @@ public class Tradition {
      * Tradition-specific calls
      */
 
-    /*
+    /**
      * Changes the metadata of the tradition.
      *
-     * @param tradition in JSON Format
-     * @return OK and information about the tradition in JSON on success or an
-     * ERROR in JSON format
+     * @summary Update tradition information
+     *
+     * @param tradition A JSON specification of the desired tradition metadata.
+     * @return The updated tradition information.
+     * @statuscode 200 - on success
+     * @statuscode 404 - if the tradition or the requested owner does not exist
+     * @statuscode 500 - on error, with an error message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = TraditionModel.class)
     public Response changeTraditionMetadata(TraditionModel tradition) {
 
         try (Transaction tx = db.beginTx()) {
@@ -476,11 +548,17 @@ public class Tradition {
     }
 
     /**
-     * Removes a complete tradition
+     * Removes an entire tradition, including all witnesses, stemmata, sections, readings,
+     * and relationships.
      *
-     * @return http response
+     * @summary Delete tradition
+     *
+     * @statuscode 200 - on success
+     * @statuscode 404 - if tradition does not exist
+     * @statuscode 500 - on error, with an error message
      */
     @DELETE
+    @ReturnType("java.lang.Void")
     public Response deleteTraditionById() {
         Node foundTradition = DatabaseService.getTraditionNode(traditionId, db);
         if (foundTradition != null) {
@@ -504,7 +582,7 @@ public class Tradition {
                 tx.success();
             } catch (Exception e) {
                 e.printStackTrace();
-                return Response.serverError().build();
+                return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
         } else {
             return Response.status(Response.Status.NOT_FOUND)
@@ -513,7 +591,7 @@ public class Tradition {
                     .build();
         }
 
-        return Response.status(Response.Status.OK).build();
+        return Response.ok().build();
     }
 
     /*
@@ -521,13 +599,17 @@ public class Tradition {
      *
      */
 
-    /*
-     * Returns the tradition metadata
-     *
-     * @return TraditionModel
+    /**
+     * Returns the stored information (metadata) of a tradition.
+     * @summary Get tradition information
+     * @return A JSON structure containing the tradition's metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if tradition does not exist
+     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = TraditionModel.class)
     public Response getTraditionInfo() {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -538,13 +620,15 @@ public class Tradition {
     }
 
     /**
-     * Returns GraphML file from specified tradition owned by user
+     * Returns a GraphML file that describes the specified tradition and its data.
+     * @summary Download GraphML
      *
      * @return XML data
      */
     @GET
     @Path("/graphml")
     @Produces(MediaType.APPLICATION_XML)
+    @ReturnType("java.lang.Void")
     public Response getGraphML() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
@@ -553,13 +637,15 @@ public class Tradition {
     }
 
     /**
-     * Returns GraphML file from specified tradition owned by user
+     * Returns a legacy Stemmaweb-compatible GraphML file that describes the specified tradition and its data.
+     * @summary Download legacy GraphML
      *
      * @return XML data
      */
     @GET
     @Path("/stemmaweb")
     @Produces(MediaType.APPLICATION_XML)
+    @ReturnType("java.lang.Void")
     public Response getGraphMLStemmaweb() {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
@@ -568,7 +654,9 @@ public class Tradition {
     }
 
     /**
-     * Returns DOT file from specified tradition owned by user
+     * Returns a GraphViz dot file that describes the specified tradition and its data.
+     *
+     * @summary Download GraphViz
      *
      * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
      * @return Plaintext dot format
@@ -576,6 +664,7 @@ public class Tradition {
     @GET
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
@@ -585,7 +674,9 @@ public class Tradition {
     }
 
     /**
-     * Returns a JSON representation of a tradition.
+     * Returns a JSON file that contains the aligned reading data for the tradition.
+     *
+     * @summary Download JSON alignment
      *
      * @param toConflate - Zero or more relationship types whose readings should be treated as identical
      * @return the JSON alignment
@@ -593,12 +684,15 @@ public class Tradition {
     @GET
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response getJson(@QueryParam("conflate") List<String> toConflate) {
         return new TabularExporter(db).exportAsJSON(traditionId, toConflate);
     }
 
     /**
-     * Returns a CSV representation of a tradition.
+     * Returns a CSV file that contains the aligned reading data for the tradition.
+     *
+     * @summary Download CSV alignment
      *
      * @param toConflate - Zero or more relationship types whose readings should be treated as identical
      * @return the CSV alignment as plaintext
@@ -606,12 +700,15 @@ public class Tradition {
     @GET
     @Path("/csv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response getCsv(@QueryParam("conflate") List<String> toConflate) {
         return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate);
     }
 
     /**
-     * Returns a tab-separated representation of a tradition.
+     * Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.
+     *
+     * @summary Download TSV alignment
      *
      * @param toConflate - Zero or more relationship types whose readings should be treated as identical
      * @return the TSV alignment as plaintext
@@ -619,6 +716,7 @@ public class Tradition {
     @GET
     @Path("/tsv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
     public Response getTsv(@QueryParam("conflate") List<String> toConflate) {
         return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate);
     }
