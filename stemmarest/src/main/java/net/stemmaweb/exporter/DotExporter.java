@@ -208,8 +208,9 @@ public class DotExporter
 
         // Get the node label
         String nodeLabel = node.getProperty("text").toString();
-        if (dm.getShowNormalForm() && !node.getProperty("normal_form").toString().equals(nodeLabel))
-            nodeLabel += "<" + nodeLabel + "<BR><FONT COLOR=\"grey\">" + node.getProperty("normal_form").toString()
+        if (dm.getShowNormalForm() && node.hasProperty("normal_form")
+            && !node.getProperty("normal_form").toString().equals(nodeLabel))
+            nodeLabel = "<" + nodeLabel + "<BR/><FONT COLOR=\"grey\">" + node.getProperty("normal_form").toString()
                     + "</FONT>>";
         else
             nodeLabel = "\"" + nodeLabel + "\"";

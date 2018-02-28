@@ -63,7 +63,7 @@ public class SectionTest extends TestCase {
     }
 
     // test creation of a tradition, that it has a single section
-    public void testTraditionCreated() throws Exception {
+    public void testTraditionCreated() {
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
         assertEquals(1, tSections.size());
@@ -79,7 +79,7 @@ public class SectionTest extends TestCase {
         assertEquals("My new name", Util.getValueFromJson(jerseyResult, "name"));
     }
 
-    public void testAddSection() throws Exception {
+    public void testAddSection() {
         // Get the existing start and end nodes
         Node startNode = DatabaseService.getStartNode(tradId, db);
         Node endNode = DatabaseService.getEndNode(tradId, db);
@@ -111,7 +111,7 @@ public class SectionTest extends TestCase {
         }
     }
 
-    public void testSectionRelationships() throws Exception {
+    public void testSectionRelationships() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2"), "parentId");
         List<RelationshipModel> sectRels = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/relationships")
@@ -122,7 +122,7 @@ public class SectionTest extends TestCase {
         assertEquals(22, allRels.size());
     }
 
-    public void testSectionReadings() throws Exception {
+    public void testSectionReadings() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2"), "parentId");
         List<ReadingModel> sectRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/readings")
@@ -133,7 +133,7 @@ public class SectionTest extends TestCase {
         assertEquals(77, allRdgs.size());
     }
 
-    public void testSectionWitnesses() throws Exception {
+    public void testSectionWitnesses() {
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
         String sectId = tSections.get(0).getId();
@@ -143,7 +143,7 @@ public class SectionTest extends TestCase {
         assertEquals(37, sectWits.size());
     }
 
-    public void testAddGraphmlSectionWithWitnesses() throws Exception {
+    public void testAddGraphmlSectionWithWitnesses() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2_graphml.xml",
                 "graphml", "section 2"), "parentId");
 
@@ -171,7 +171,7 @@ public class SectionTest extends TestCase {
         }
     }
 
-    public void testDeleteSection() throws Exception {
+    public void testDeleteSection() {
         List<ReadingModel> tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(30, tReadings.size());
@@ -216,7 +216,7 @@ public class SectionTest extends TestCase {
     }
 
     // test ordering of sections
-    public void testSectionOrdering() throws Exception {
+    public void testSectionOrdering() {
         String florId = importFlorilegium();
         // Test that we get the sections back in the correct order
         List<SectionModel> returnedSections = jerseyTest.resource()
@@ -480,9 +480,30 @@ public class SectionTest extends TestCase {
         String yWord = "συντυχίας";
         String zWord = "βλασφημοῦντος";
 
-        String getSectionDot = "/tradition/" + florId + "/section/" + targetSection + "/dot";
+        String getSectionDot = "/tradition/" + florId + "/section/" + returnedSections.get(2).getId() + "/dot";
         jerseyResult = jerseyTest.resource()
                 .path(getSectionDot)
+                .queryParam("expand_sigla", "true")
+                .type(MediaType.TEXT_PLAIN)
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        String dotStr = jerseyResult.getEntity(String.class);
+        assertFalse(dotStr.contains("majority"));
+        assertTrue(dotStr.contains("συντυχίας"));
+
+
+        // Set a normal form on one reading, see if it turns up in dot output
+        try (Transaction tx = db.beginTx()) {
+            Node n = db.findNode(Nodes.READING, "text", "ὄψιν,");
+            assertNotNull(n);
+            n.setProperty("normal_form", "ὄψιν");
+            tx.success();
+        }
+
+        getSectionDot = "/tradition/" + florId + "/section/" + targetSection + "/dot";
+        jerseyResult = jerseyTest.resource()
+                .path(getSectionDot)
+                .queryParam("show_normal", "true")
                 .type(MediaType.TEXT_PLAIN)
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
@@ -491,6 +512,7 @@ public class SectionTest extends TestCase {
         Boolean spottedZ = false;
         Boolean sectionStartLabeled = false;
         Boolean sectionEndLabeled = false;
+        Boolean spottedNormalForm = false;
         for (String dotLine : dotLines) {
             assertFalse(dotLine.contains(wWord));
             assertFalse(dotLine.contains(xWord));
@@ -501,8 +523,11 @@ public class SectionTest extends TestCase {
                 sectionStartLabeled = true;
             if (dotLine.contains("#END#"))
                 sectionEndLabeled = true;
+            if (dotLine.contains("<ὄψιν,<BR/><FONT COLOR=\"grey\">ὄψιν</FONT>>"))
+                spottedNormalForm = true;
         }
         assertTrue(spottedZ);
+        assertTrue(spottedNormalForm);
         assertTrue(sectionStartLabeled);
         assertTrue(sectionEndLabeled);
     }
