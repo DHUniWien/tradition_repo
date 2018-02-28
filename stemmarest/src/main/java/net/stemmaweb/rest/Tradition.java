@@ -665,12 +665,18 @@ public class Tradition {
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
+    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
+                           @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
+                           @DefaultValue("false") @QueryParam("normalise") Boolean normalise,
+                           @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
-        DotExporter parser = new DotExporter(db);
-        return parser.writeNeo4J(traditionId, includeRelatedRelationships);
+        // Put our options into an object
+        DisplayOptionModel dm = new DisplayOptionModel(
+                includeRelatedRelationships, showNormalForms, normalise, displayAllSigla);
+        DotExporter exporter = new DotExporter(db);
+        return exporter.writeNeo4J(traditionId, dm);
     }
 
     /**

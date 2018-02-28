@@ -178,7 +178,7 @@ public class TraditionParseTest {
         }
     }
 
-    @SuppressWarnings("unused")
+    /*
     private void toSVG(String traditionID, Boolean includeRelatedRelationships, String outFile)
     {
         DotExporter parser = new DotExporter(db);
@@ -190,6 +190,7 @@ public class TraditionParseTest {
         gv.add(dot);
         gv.writeGraphToFile( gv.getGraph( gv.getDotSource(), type ), out );
     }
+    */
 
     @After
     public void tearDown() throws Exception {

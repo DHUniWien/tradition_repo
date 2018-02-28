@@ -3,10 +3,7 @@ package net.stemmaweb.rest;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -822,6 +819,11 @@ public class Section {
      *
      * @summary Download GraphViz
      * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
+     * @param displayAllSigla - Whether to always display sigil lists; if false, use 'majority' label
+     * @param showNormalForms - Whether to display the normal (canonical) form of a reading alongside
+     *                        its literal form
+     * @param normalise - Produce a graph based on the normal forms rather than the literal ones;
+     *                  overrides show_normal
      * @return Plaintext dot format
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -831,12 +833,19 @@ public class Section {
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships) {
+    public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
+                           @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
+                           @DefaultValue("false") @QueryParam("normalise") Boolean normalise,
+                           @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
 
-        DotExporter parser = new DotExporter(db);
-        return parser.writeNeo4J(tradId, sectId, includeRelatedRelationships);
+        // Put our options into an object
+        DisplayOptionModel dm = new DisplayOptionModel(
+                includeRelatedRelationships, showNormalForms, normalise, displayAllSigla);
+        // Make the dot.
+        DotExporter exporter = new DotExporter(db);
+        return exporter.writeNeo4J(tradId, sectId, dm);
     }
 
     // Export a list of variants for a section

@@ -109,7 +109,6 @@ public class SectionTest extends TestCase {
             assertEquals(DatabaseService.getEndNode(newSectId, db).getId(), DatabaseService.getEndNode(tradId, db).getId());
             tx.success();
         }
-
     }
 
     public void testSectionRelationships() throws Exception {
@@ -474,7 +473,7 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         // Do a basic sanity check of the dot file - does it have the right number of lines?
         String[] dotLines = jerseyResult.getEntity(String.class).split("\n");
-        assertEquals(646, dotLines.length);
+        assertEquals(650, dotLines.length);
 
         String wWord = "Μαξίμου";
         String xWord = "βλασφημεῖται";
