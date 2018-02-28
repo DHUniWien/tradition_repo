@@ -162,8 +162,8 @@ public class DotExporter
                     if (dm.getIncludeRelated()) {
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
                             write("\tn" + relatedRel.getStartNode().getId() + "->" + "n" +
-                                    relatedRel.getEndNode().getId() + " [style=dotted, label=\"" +
-                                    relatedRel.getProperty("type").toString() + "\", id=\"e" +
+                                    relatedRel.getEndNode().getId() + " [style=dotted, constraint=false, arrowhead=none, " +
+                                    "label=\"" + relatedRel.getProperty("type").toString() + "\", id=\"e" +
                                     edgeId++ + "\"];\n");
                         }
                     }

@@ -499,7 +499,7 @@ public class SectionTest extends TestCase {
                 spottedZ = true;
             if (dotLine.contains("#START#"))
                 sectionStartLabeled = true;
-            if (dotLine.contains("#START#"))
+            if (dotLine.contains("#END#"))
                 sectionEndLabeled = true;
         }
         assertTrue(spottedZ);
