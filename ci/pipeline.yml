@@ -89,6 +89,8 @@ jobs:
         - get: stemmarest-sources
           trigger: true
           passed: [test]
+        - get: stemmarest-config
+          trigger: true
         - get: maven-config
           trigger: true
 
@@ -108,6 +110,7 @@ jobs:
 
           inputs:
             - name: stemmarest-sources
+            - name: stemmarest-config
             - name: maven-config
           outputs:
             - name: artifacts
@@ -123,6 +126,9 @@ jobs:
               #
               mkdir -p /root/.m2/
               cp maven-config/settings.xml /root/.m2/
+              # fetch pom.xml for building REST docs
+              #
+              cp stemmarest-config/pom.xml stemmarest-sources/stemmarest/
               cd stemmarest-sources/stemmarest/
               # run maven
               #
@@ -132,6 +138,7 @@ jobs:
               /bin/cp target/stemmarest.war ../../artifacts/
               /bin/cp build/server.xml ../../artifacts/
               /bin/cp build/tomcat-users.xml ../../artifacts/
+              /bin/cp -r target/miredot ../../artifacts/doc
               # set initial random password
               /bin/sed -i s/CHANGE_THIS/`/usr/bin/pwgen 16`/ ../../artifacts/tomcat-users.xml
               # also get Dockerfile for put: below
