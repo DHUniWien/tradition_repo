@@ -10,6 +10,7 @@ import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
@@ -25,6 +26,8 @@ import javax.ws.rs.core.MediaType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static org.junit.Assert.assertNotEquals;
 
 /**
  * Tests for text section functionality.
@@ -77,6 +80,10 @@ public class SectionTest extends TestCase {
     }
 
     public void testAddSection() throws Exception {
+        // Get the existing start and end nodes
+        Node startNode = DatabaseService.getStartNode(tradId, db);
+        Node endNode = DatabaseService.getEndNode(tradId, db);
+
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2"), "parentId");
 
@@ -95,6 +102,14 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         String witFragment = Util.getValueFromJson(jerseyResponse, "text");
         assertEquals(aText, witFragment);
+
+        try (Transaction tx = db.beginTx()) {
+            assertEquals(startNode.getId(), DatabaseService.getStartNode(tradId, db).getId());
+            assertNotEquals(endNode.getId(), DatabaseService.getEndNode(tradId, db).getId());
+            assertEquals(DatabaseService.getEndNode(newSectId, db).getId(), DatabaseService.getEndNode(tradId, db).getId());
+            tx.success();
+        }
+
     }
 
     public void testSectionRelationships() throws Exception {

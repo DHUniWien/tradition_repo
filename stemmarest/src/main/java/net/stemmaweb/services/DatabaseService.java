@@ -39,14 +39,17 @@ public class DatabaseService {
 
     private static Node getBoundaryNode(String nodeId, GraphDatabaseService db, ERelations direction) {
         Node boundNode = null;
-        // If we have been asked for a tradition node, use the first of its section nodes instead.
+        // If we have been asked for a tradition node, use either the first or the last of
+        // its section nodes instead.
         Node currentNode = getTraditionNode(nodeId, db);
         if (currentNode != null) {
             ArrayList<Node> sections = getSectionNodes(nodeId, db);
-            if (sections != null && sections.size() > 0)
-                return getBoundaryNode(String.valueOf(sections.get(0).getId()), db, direction);
-            else
-                return null;
+            if (sections != null && sections.size() > 0) {
+                Node relevantSection = direction.equals(ERelations.HAS_END)
+                        ? sections.get(sections.size() - 1)
+                        : sections.get(0);
+                return getBoundaryNode(String.valueOf(relevantSection.getId()), db, direction);
+            } else return null;
         }
         // Were we asked for a nonexistent tradition node (i.e. a non-Long that corresponds to no tradition)?
         Long nodeIndex;
