@@ -224,11 +224,8 @@ public class ReadingTest {
     public void changeReadingPropertiesPropertyKeyNotFoundTest() {
         Node node;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            node = nodes.next();
-            assertFalse(nodes.hasNext());
+            node = db.findNode(Nodes.READING, "text", "showers");
+            assertNotNull(node);
 
             KeyPropertyModel keyModel = new KeyPropertyModel();
             keyModel.setKey("test");
@@ -254,10 +251,19 @@ public class ReadingTest {
 
     @Test
     public void getReadingJsonTest() throws JsonProcessingException {
-        String expected = "{\"id\":\"16\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false,\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false,\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\"}";
+        Long nodeId;
+        try (Transaction tx = db.beginTx()) {
+            Node n = db.findNode(Nodes.READING, "text", "has");
+            assertNotNull(n);
+            nodeId = n.getId();
+            tx.success();
+        }
+        String expected = String.format("{\"id\":\"%d\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false," +
+                "\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false," +
+                "\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\"}", nodeId);
 
         ClientResponse resp = jerseyTest.resource()
-                .path("/reading/" + 16)
+                .path("/reading/" + nodeId.toString())
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
         ObjectMapper mapper = new ObjectMapper();

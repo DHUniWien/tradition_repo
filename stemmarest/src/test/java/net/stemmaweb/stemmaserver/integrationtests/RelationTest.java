@@ -44,6 +44,7 @@ public class RelationTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
+    private HashMap<String, String> readingLookup;
 
     @Before
     public void setUp() throws Exception {
@@ -64,6 +65,16 @@ public class RelationTest {
         ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         tradId = Util.getValueFromJson(jerseyResponse, "tradId");
+        /*
+         * get a mapping of reading text/rank to ID
+         */
+        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        readingLookup = new HashMap<>();
+        for (ReadingModel rm : allReadings) {
+            String key = rm.getText() + "/" + rm.getRank().toString();
+            readingLookup.put(key, rm.getId());
+        }
     }
 
     /**
@@ -71,10 +82,12 @@ public class RelationTest {
      */
     @Test
     public void createRelationshipTest() {
-        RelationshipModel relationship = new RelationshipModel();
         String relationshipId;
-        relationship.setSource("17");
-        relationship.setTarget("25");
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("showers/5", "25");
+        RelationshipModel relationship = new RelationshipModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("repetition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -93,8 +106,8 @@ public class RelationTest {
             relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
-            assertEquals(17L, loadedRelationship.getStartNode().getId());
-            assertEquals(25L, loadedRelationship.getEndNode().getId());
+            assertEquals(Long.valueOf(source), (Long) loadedRelationship.getStartNode().getId());
+            assertEquals(Long.valueOf(target), (Long) loadedRelationship.getEndNode().getId());
             assertEquals("repetition", loadedRelationship.getProperty("type"));
             assertEquals(0L,loadedRelationship.getProperty("alters_meaning"));
             assertEquals("yes",loadedRelationship.getProperty("is_significant"));
@@ -152,17 +165,19 @@ public class RelationTest {
     }
 
     /**
-     * Test the removal method DELETE /relationship/{tradidtionId}/relationships/{relationshipId}
+     * Test the removal method DELETE /relationship/{traditionId}/relationships/{relationshipId}
      */
     @Test(expected=NotFoundException.class)
     public void deleteRelationshipTest() {
         /*
          * Create a relationship
          */
-        RelationshipModel relationship = new RelationshipModel();
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("showers/5", "25");
         String relationshipId;
-        relationship.setSource("16");
-        relationship.setTarget("24");
+        RelationshipModel relationship = new RelationshipModel();
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -321,8 +336,10 @@ public class RelationTest {
         RelationshipModel relationship = new RelationshipModel();
         String relationshipId1;
         String relationshipId2;
-        relationship.setSource("16");
-        relationship.setTarget("17");
+        String source = readingLookup.getOrDefault("april/2", "17");
+        String target = readingLookup.getOrDefault("pierced/15", "17");
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -338,8 +355,10 @@ public class RelationTest {
         GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<GraphModel>(){});
         relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
-        relationship.setSource("27");
-        relationship.setTarget("17");
+        source = readingLookup.getOrDefault("april/8", "17");
+        target = readingLookup.getOrDefault("pierced/15", "17");
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -383,9 +402,10 @@ public class RelationTest {
     @Test
     public void createRelationshipTestWithCrossRelationConstraint() {
         RelationshipModel relationship = new RelationshipModel();
-        relationship.setSource("7");
-        relationship.setTarget("21");
-
+        String source = readingLookup.getOrDefault("root/18", "17");
+        String target = readingLookup.getOrDefault("teh/16", "25");
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -413,8 +433,10 @@ public class RelationTest {
             assertEquals(rankChange.get(r.getText()), r.getRank());
         }
 
-        relationship.setSource("22");
-        relationship.setTarget("29");
+        source = readingLookup.getOrDefault("root/18", "17");
+        target = readingLookup.getOrDefault("the/17", "25");
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -434,8 +456,8 @@ public class RelationTest {
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
-            Node node29 = db.getNodeById(29L);
-            Iterator<Relationship> rels = node29
+            Node the = db.getNodeById(Long.valueOf(target));
+            Iterator<Relationship> rels = the
                     .getRelationships(ERelations.RELATED)
                     .iterator();
 
@@ -447,8 +469,10 @@ public class RelationTest {
     @Test
     public void createRelationshipTestWithCrossRelationConstraintNotDirectlyCloseToEachOther() {
         RelationshipModel relationship = new RelationshipModel();
-        relationship.setSource("7");
-        relationship.setTarget("21");
+        String source = readingLookup.getOrDefault("root/18", "17");
+        String target = readingLookup.getOrDefault("teh/16", "25");
+        relationship.setSource(source);
+        relationship.setTarget(target);
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
@@ -475,14 +499,14 @@ public class RelationTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/reading/7")
+                .path("/reading/" + source)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long) 18L);
 
         response = jerseyTest
                 .resource()
-                .path("/reading/21")
+                .path("/reading/" + target)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.getEntity(ReadingModel.class).getRank(), (Long)18L);

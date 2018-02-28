@@ -6,6 +6,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -47,6 +49,7 @@ public class TraditionTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
+    private HashMap<String, String> readingLookup;
 
     @Before
     public void setUp() throws Exception {
@@ -67,6 +70,17 @@ public class TraditionTest {
          * create a tradition inside the test DB
          */
         tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml", "1");
+        /*
+         * get a mapping of reading text/rank to ID
+         */
+        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        readingLookup = new HashMap<>();
+        for (ReadingModel rm : allReadings) {
+            String key = rm.getText() + "/" + rm.getRank().toString();
+            readingLookup.put(key, rm.getId());
+        }
+
     }
 
     private String createTraditionFromFile(String tName, String fName, String userId) {
@@ -194,73 +208,75 @@ public class TraditionTest {
                 .get(String.class);
 
         String[] exp = new String[64];
-        exp[0] = "digraph \"Tradition\" {";
-        exp[1] = "graph [bgcolor=\"none\", rankdir=\"LR\"];";
-        exp[2] = "node [fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"];";
-        exp[3] = "edge [arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"];";
-        exp[4] = "subgraph { rank=same \"n5\" \"#SILENT#\" }";
-        exp[5] = "\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];";
-        exp[6] = "n5 [id=\"__START__\", label=\"#START#\"];";
-        exp[7] = "n6 [id=\"n6\", label=\"when\"];";
-        exp[8] = "n5->n6 [label=\"A, B, C\", id=\"e0\", penwidth=\"1.4\"];";
-        exp[9] = "n17 [id=\"n17\", label=\"april\"]";
-        exp[10] = "n6->n17 [label=\"A\", id=\"e1\", penwidth=\"1.0\"];";
-        exp[11] = "n25 [id=\"n25\", label=\"showers\"];";
-        exp[12] = "n24->n25 [label=\"A\", id=\"e2\", penwidth=\"1.0\"];";
-        exp[13] = "n6->n25 [label=\"B, C\", id=\"e3\", penwidth=\"1.2\", minlen=\"4\"];";
-        exp[14] = "n23 [id=\"n23\", label=\"with\"];";
-        exp[15] = "n17->n23 [label=\"A\", id=\"e4\", penwidth=\"1.0\"];";
-        exp[16] = "n26 [id=\"n26\", label=\"sweet\"];";
-        exp[17] = "n25->n26 [label=\"A, B, C\", id=\"e5\", penwidth=\"1.4\"];";
-        exp[18] = "n24 [id=\"n24\", label=\"his\"];";
-        exp[19] = "n23->n24 [label=\"A\", id=\"e6\", penwidth=\"1.0\"];";
-        exp[20] = "n27 [id=\"n27\", label=\"with\"];";
-        exp[21] = "n26->n27 [label=\"A, B, C\", id=\"e7\", penwidth=\"1.4\"];";
-        exp[22] = "n28 [id=\"n28\", label=\"april\"];";
-        exp[23] = "n27->n28 [label=\"B, C\", id=\"e10\", penwidth=\"1.2\"];";
-        exp[24] = "n8 [id=\"n8\", label=\"fruit\"];";
-        exp[25] = "n27->n8 [label=\"A\", id=\"e8\", penwidth=\"1.0\", minlen=\"2\"];";
-        exp[26] = "n28->n8 [label=\"B, C\", id=\"e9\", penwidth=\"1.2\"];";
-        exp[27] = "n10 [id=\"n10\", label=\"teh\"];";
-        exp[28] = "n8->n10 [label=\"C\", id=\"e11\", penwidth=\"1.0\"];";
-        exp[29] = "n9 [id=\"n9\", label=\"the\"];";
-        exp[30] = "n8->n9 [label=\"A, B\", id=\"e12\", penwidth=\"1.2\"];";
-        exp[31] = "n12 [id=\"n12\", label=\"drought\"];";
-        exp[32] = "n10->n12 [label=\"C\", id=\"e13\", penwidth=\"1.0\"];";
-        exp[33] = "n9->n12 [label=\"A\", id=\"e14\", penwidth=\"1.0\"];";
-        exp[34] = "n11 [id=\"n11\", label=\"march\"];";
-        exp[35] = "n9->n11 [label=\"B\", id=\"e15\", penwidth=\"1.0\"];";
-        exp[36] = "n13 [id=\"n13\", label=\"of\"];";
-        exp[37] = "n12->n13 [label=\"A, C\", id=\"e16\", penwidth=\"1.2\"];";
-        exp[38] = "n11->n13 [label=\"B\", id=\"e17\", penwidth=\"1.0\"];";
-        exp[39] = "n15 [id=\"n15\", label=\"drought\"];";
-        exp[40] = "n13->n15 [label=\"B\", id=\"e19\", penwidth=\"1.0\"];";
-        exp[41] = "n14 [id=\"n14\", label=\"march\"];";
-        exp[42] = "n13->n14 [label=\"A, C\", id=\"e18\", penwidth=\"1.2\"];";
-        exp[43] = "n16 [id=\"n16\", label=\"has\"];";
-        exp[44] = "n15->n16 [label=\"B\", id=\"e21\", penwidth=\"1.0\"];";
-        exp[45] = "n14->n16 [label=\"A, C\", id=\"e20\", penwidth=\"1.2\"];";
-        exp[46] = "n18 [id=\"n18\", label=\"pierced\"];";
-        exp[47] = "n16->n18 [label=\"A, B, C\", id=\"e22\", penwidth=\"1.4\"];";
-        exp[48] = "n20 [id=\"n20\", label=\"to\"];";
-        exp[49] = "n18->n20 [label=\"B\", id=\"e25\", penwidth=\"1.0\"];";
-        exp[50] = "n19 [id=\"n19\", label=\"unto\"];";
-        exp[51] = "n18->n19 [label=\"A\", id=\"e23\", penwidth=\"1.0\"];";
-        exp[52] = "n21 [id=\"n21\", label=\"teh\"];";
-        exp[53] = "n18->n21 [label=\"C\", id=\"e24\", penwidth=\"1.0\"];";
-        exp[54] = "n22 [id=\"n22\", label=\"the\"];";
-        exp[55] = "n19->n22 [label=\"A\", id=\"e27\", penwidth=\"1.0\"];";
-        exp[56] = "n20->n22 [label=\"B\", id=\"e26\", penwidth=\"1.0\"];";
-        exp[57] = "n29 [id=\"n29\", label=\"rood\"];";
-        exp[58] = "n21->n29 [label=\"C\", id=\"e28\", penwidth=\"1.0\"];";
-        exp[59] = "n7 [id=\"n7\", label=\"root\"];";
-        exp[60] = "n22->n7 [label=\"A, B\", id=\"e29\", penwidth=\"1.2\"];";
-        exp[61] = "n4 [id=\"__END__\", label=\"#END#\"];";
-        exp[62] = "n29->n4 [label=\"C\", id=\"e30\", penwidth=\"1.0\", minlen=\"2\"];";
-        exp[63] = "n7->n4 [label=\"A, B\", id=\"e31\", penwidth=\"1.2\"];";
+        exp[0] = "digraph \"Tradition\" \\{";
+        exp[1] = "graph \\[bgcolor=\"none\", rankdir=\"LR\"\\]";
+        exp[2] = "node \\[fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"\\]";
+        exp[3] = "edge \\[arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"\\]";
+        exp[4] = String.format("subgraph \\{ rank=same \"n%s\" \"#SILENT#\" \\}", readingLookup.get("#START#/0"));
+        exp[5] = "\"#SILENT#\" \\[shape=diamond,color=white,penwidth=0,label=\"\"\\]";
+        exp[6] = String.format("n%s \\[id=\"__START__\", label=\"#START#\"\\]", readingLookup.get("#START#/0"));
+        exp[7] = String.format("n%s \\[id=\"n%s\", label=\"when\"\\]", readingLookup.get("when/1"), readingLookup.get("when/1"));
+        exp[9] = String.format("n%s \\[id=\"n%s\", label=\"april\"\\]", readingLookup.get("april/2"), readingLookup.get("april/2"));
+        exp[11] = String.format("n%s \\[id=\"n%s\", label=\"showers\"\\]", readingLookup.get("showers/5"), readingLookup.get("showers/5"));
+        exp[14] = String.format("n%s \\[id=\"n%s\", label=\"with\"\\]", readingLookup.get("with/3"), readingLookup.get("with/3"));
+        exp[16] = String.format("n%s \\[id=\"n%s\", label=\"sweet\"\\]", readingLookup.get("sweet/6"), readingLookup.get("sweet/6"));
+        exp[18] = String.format("n%s \\[id=\"n%s\", label=\"his\"\\]", readingLookup.get("his/4"), readingLookup.get("his/4"));
+        exp[20] = String.format("n%s \\[id=\"n%s\", label=\"with\"\\]", readingLookup.get("with/7"), readingLookup.get("with/7"));
+        exp[22] = String.format("n%s \\[id=\"n%s\", label=\"april\"\\]", readingLookup.get("april/8"), readingLookup.get("april/8"));
+        exp[24] = String.format("n%s \\[id=\"n%s\", label=\"fruit\"\\]", readingLookup.get("fruit/9"), readingLookup.get("fruit/9"));
+        exp[27] = String.format("n%s \\[id=\"n%s\", label=\"teh\"\\]", readingLookup.get("teh/10"), readingLookup.get("teh/10"));
+        exp[29] = String.format("n%s \\[id=\"n%s\", label=\"the\"\\]", readingLookup.get("the/10"), readingLookup.get("the/10"));
+        exp[31] = String.format("n%s \\[id=\"n%s\", label=\"drought\"\\]", readingLookup.get("drought/11"), readingLookup.get("drought/11"));
+        exp[34] = String.format("n%s \\[id=\"n%s\", label=\"march\"\\]", readingLookup.get("march/11"), readingLookup.get("march/11"));
+        exp[36] = String.format("n%s \\[id=\"n%s\", label=\"of\"\\]", readingLookup.get("of/12"), readingLookup.get("of/12"));
+        exp[39] = String.format("n%s \\[id=\"n%s\", label=\"drought\"\\]", readingLookup.get("drought/13"), readingLookup.get("drought/13"));
+        exp[41] = String.format("n%s \\[id=\"n%s\", label=\"march\"\\]", readingLookup.get("march/13"), readingLookup.get("march/13"));
+        exp[43] = String.format("n%s \\[id=\"n%s\", label=\"has\"\\]", readingLookup.get("has/14"), readingLookup.get("has/14"));
+        exp[46] = String.format("n%s \\[id=\"n%s\", label=\"pierced\"\\]", readingLookup.get("pierced/15"), readingLookup.get("pierced/15"));
+        exp[48] = String.format("n%s \\[id=\"n%s\", label=\"to\"\\]", readingLookup.get("to/16"), readingLookup.get("to/16"));
+        exp[50] = String.format("n%s \\[id=\"n%s\", label=\"unto\"\\]", readingLookup.get("unto/16"), readingLookup.get("unto/16"));
+        exp[52] = String.format("n%s \\[id=\"n%s\", label=\"teh\"\\]", readingLookup.get("teh/16"), readingLookup.get("teh/16"));
+        exp[54] = String.format("n%s \\[id=\"n%s\", label=\"the\"\\]", readingLookup.get("the/17"), readingLookup.get("the/17"));
+        exp[57] = String.format("n%s \\[id=\"n%s\", label=\"rood\"\\]", readingLookup.get("rood/17"), readingLookup.get("rood/17"));
+        exp[59] = String.format("n%s \\[id=\"n%s\", label=\"root\"\\]", readingLookup.get("root/18"), readingLookup.get("root/18"));
+        exp[61] = String.format("n%s \\[id=\"__END__\", label=\"#END#\"\\]", readingLookup.get("#END#/19"));
+        exp[8] = String.format("n%s->n%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("#START#/0"), readingLookup.get("when/1"));
+        exp[10] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("when/1"), readingLookup.get("april/2"));
+        exp[12] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("april/2"), readingLookup.get("with/3"));
+        exp[13] = String.format("n%s->n%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\", minlen=\"4\"\\]", readingLookup.get("when/1"), readingLookup.get("showers/5"));
+        exp[15] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("with/3"), readingLookup.get("his/4"));
+        exp[17] = String.format("n%s->n%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("showers/5"), readingLookup.get("sweet/6"));
+        exp[19] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("his/4"), readingLookup.get("showers/5"));
+        exp[21] = String.format("n%s->n%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("sweet/6"), readingLookup.get("with/7"));
+        exp[23] = String.format("n%s->n%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("with/7"), readingLookup.get("april/8"));
+        exp[25] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("with/7"), readingLookup.get("fruit/9"));
+        exp[26] = String.format("n%s->n%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("april/8"), readingLookup.get("fruit/9"));
+        exp[28] = String.format("n%s->n%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("fruit/9"), readingLookup.get("teh/10"));
+        exp[30] = String.format("n%s->n%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("fruit/9"), readingLookup.get("the/10"));
+        exp[32] = String.format("n%s->n%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/10"), readingLookup.get("drought/11"));
+        exp[33] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("drought/11"));
+        exp[35] = String.format("n%s->n%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("march/11"));
+        exp[37] = String.format("n%s->n%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("drought/11"), readingLookup.get("of/12"));
+        exp[38] = String.format("n%s->n%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("march/11"), readingLookup.get("of/12"));
+        exp[40] = String.format("n%s->n%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("of/12"), readingLookup.get("drought/13"));
+        exp[42] = String.format("n%s->n%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("of/12"), readingLookup.get("march/13"));
+        exp[44] = String.format("n%s->n%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("drought/13"), readingLookup.get("has/14"));
+        exp[45] = String.format("n%s->n%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("march/13"), readingLookup.get("has/14"));
+        exp[47] = String.format("n%s->n%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("has/14"), readingLookup.get("pierced/15"));
+        exp[49] = String.format("n%s->n%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("to/16"));
+        exp[51] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("unto/16"));
+        exp[53] = String.format("n%s->n%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("teh/16"));
+        exp[55] = String.format("n%s->n%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("unto/16"), readingLookup.get("the/17"));
+        exp[56] = String.format("n%s->n%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("to/16"), readingLookup.get("the/17"));
+        exp[58] = String.format("n%s->n%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/16"), readingLookup.get("rood/17"));
+        exp[60] = String.format("n%s->n%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("the/17"), readingLookup.get("root/18"));
+        exp[62] = String.format("n%s->n%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("rood/17"), readingLookup.get("#END#/19"));
+        exp[63] = String.format("n%s->n%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("root/18"), readingLookup.get("#END#/19"));
 
         for (String anExp : exp) {
-            assertTrue(str.contains(anExp));
+            Pattern p = Pattern.compile(anExp);
+            Matcher m = p.matcher(str);
+            assertTrue(m.find());
         }
     }
 
