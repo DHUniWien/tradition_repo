@@ -13,6 +13,13 @@ resources:
         repository: {{stemmarest-final-image}}
         insecure_registries: [ {{insecure-registries}} ]
 
+    - name: stemmarest-public
+      type: docker-image
+      source:
+        repository: dhuniwien/stemmarest
+        username: {{dockerhub-user}}
+        password: {{dockerhub-pass}}
+
     - name: maven-config
       type: git
       source:
@@ -151,6 +158,13 @@ jobs:
           build: artifacts/
           tag: version/version
           tag_as_latest: True
+
+      - put: stemmarest-public
+        params:
+          # Use the cached version just built
+          build: artifacts/
+          tag: version/version
+          tag_as_latest: true
 
 
   - name: deploy-editions-moe-test
