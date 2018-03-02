@@ -19,6 +19,7 @@ resources:
         repository: dhuniwien/stemmarest
         username: {{dockerhub-user}}
         password: {{dockerhub-pass}}
+        insecure_registries: [ {{insecure-registries}} ]
 
     - name: maven-config
       type: git
