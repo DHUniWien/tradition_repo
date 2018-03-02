@@ -488,6 +488,7 @@ public class SectionTest extends TestCase {
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         String dotStr = jerseyResult.getEntity(String.class);
+        assertTrue(dotStr.startsWith("digraph \"part 2\""));
         assertFalse(dotStr.contains("majority"));
         assertTrue(dotStr.contains("συντυχίας"));
 

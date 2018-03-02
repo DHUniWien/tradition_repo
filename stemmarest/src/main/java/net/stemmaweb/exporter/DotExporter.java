@@ -67,9 +67,20 @@ public class DotExporter
             output = File.createTempFile("graph_", ".dot");
             out = new FileOutputStream(output);
 
-            // Get the graph name - either the section name, or the tradition name if all sections
-            // were requested
-            String graphName = (sectionId != null) ? sections.get(0).getProperty("name").toString()
+            Node requestedSection = null;
+            if (sectionId != null)
+                requestedSection = db.getNodeById(Long.valueOf(sectionId));
+            if (requestedSection != null) {
+                if (!sections.contains(requestedSection))
+                    return Response.status(Status.BAD_REQUEST)
+                            .entity(String.format("Section %s not found in tradition %s", sectionId, tradId))
+                            .build();
+                sections.clear();
+                sections.add(requestedSection);
+            }
+            // Get the graph name - either the requested section name, or the tradition name
+            // if all sections were requested
+            String graphName = (sectionId != null) ? requestedSection.getProperty("name").toString()
                     : traditionNode.getProperty("name").toString();
 
             // Write the graph with the tradition name
@@ -89,10 +100,6 @@ public class DotExporter
             Boolean subgraphWritten = false;
 
             for (Node sectionNode: sections) {
-                // Did we request a specific section? If so, put out only that section.
-                if (sectionId != null && !String.valueOf(sectionNode.getId()).equals(sectionId))
-                    continue;
-
                 // Get the number of witnesses we have
                 ArrayList<Node> sectionWits = new Section(tradId, String.valueOf(sectionNode.getId()))
                         .collectSectionWitnesses();
