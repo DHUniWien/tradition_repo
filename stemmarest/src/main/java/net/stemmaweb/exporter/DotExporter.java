@@ -81,7 +81,7 @@ public class DotExporter
             }
             // Get the graph name - either the requested section name, or the tradition name
             // if all sections were requested
-            String graphName = (sectionId != null) ? requestedSection.getProperty("name").toString()
+            String graphName = (requestedSection != null) ? requestedSection.getProperty("name").toString()
                     : traditionNode.getProperty("name").toString();
 
             // Write the graph with the tradition name

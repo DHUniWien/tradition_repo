@@ -204,6 +204,8 @@ public class Section {
         ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
         try (Transaction tx = db.beginTx()) {
             for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE)) {
+                if (!relationship.hasProperty("witnesses"))
+                    continue;
                 for (String sigil : (String[]) relationship.getProperty("witnesses")) {
                     for (Node curWitness : traditionWitnesses) {
                         if (sigil.equals(curWitness.getProperty("sigil"))) {
