@@ -19,6 +19,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.DatabaseService;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -217,10 +218,13 @@ public class DotExporter
         String nodeLabel = node.getProperty("text").toString();
         if (dm.getShowNormalForm() && node.hasProperty("normal_form")
             && !node.getProperty("normal_form").toString().equals(nodeLabel))
-            nodeLabel = "<" + nodeLabel + "<BR/><FONT COLOR=\"grey\">" + node.getProperty("normal_form").toString()
+            // Do URL escaping of any labels
+            nodeLabel = "<" + escapeHtml4(nodeLabel) + "<BR/><FONT COLOR=\"grey\">"
+                    + escapeHtml4(node.getProperty("normal_form").toString())
                     + "</FONT>>";
         else
-            nodeLabel = "\"" + nodeLabel + "\"";
+            // Escape double quotes since we are wrapping in double quotes
+            nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
 
         // Put it all together
         return("\t" + "n" + node.getId() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");

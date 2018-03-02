@@ -480,6 +480,19 @@ public class SectionTest extends TestCase {
         String yWord = "συντυχίας";
         String zWord = "βλασφημοῦντος";
 
+        // Set a normal form on one reading, see if it turns up in dot output.
+        // Also stick a double quote inside one of the readings
+        try (Transaction tx = db.beginTx()) {
+            Node n = db.findNode(Nodes.READING, "text", "ὄψιν,");
+            assertNotNull(n);
+            n.setProperty("text", "ὄψ\"ιν,");
+            n.setProperty("normal_form", "ὄψιν");
+            n = db.findNode(Nodes.READING, "text", "γυναικῶν.");
+            assertNotNull(n);
+            n.setProperty("text", "γυν\"αι\"κῶν.");
+            tx.success();
+        }
+
         String getSectionDot = "/tradition/" + florId + "/section/" + returnedSections.get(2).getId() + "/dot";
         jerseyResult = jerseyTest.resource()
                 .path(getSectionDot)
@@ -490,16 +503,9 @@ public class SectionTest extends TestCase {
         String dotStr = jerseyResult.getEntity(String.class);
         assertTrue(dotStr.startsWith("digraph \"part 2\""));
         assertFalse(dotStr.contains("majority"));
-        assertTrue(dotStr.contains("συντυχίας"));
+        assertTrue(dotStr.contains(yWord));
+        assertTrue(dotStr.contains("γυν\\\"αι\\\"κῶν."));
 
-
-        // Set a normal form on one reading, see if it turns up in dot output
-        try (Transaction tx = db.beginTx()) {
-            Node n = db.findNode(Nodes.READING, "text", "ὄψιν,");
-            assertNotNull(n);
-            n.setProperty("normal_form", "ὄψιν");
-            tx.success();
-        }
 
         getSectionDot = "/tradition/" + florId + "/section/" + targetSection + "/dot";
         jerseyResult = jerseyTest.resource()
@@ -508,29 +514,16 @@ public class SectionTest extends TestCase {
                 .type(MediaType.TEXT_PLAIN)
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        dotLines = jerseyResult.getEntity(String.class).split("\n");
+        dotStr = jerseyResult.getEntity(String.class);
+        dotLines = dotStr.split("\n");
         assertEquals(120, dotLines.length);
-        Boolean spottedZ = false;
-        Boolean sectionStartLabeled = false;
-        Boolean sectionEndLabeled = false;
-        Boolean spottedNormalForm = false;
-        for (String dotLine : dotLines) {
-            assertFalse(dotLine.contains(wWord));
-            assertFalse(dotLine.contains(xWord));
-            assertFalse(dotLine.contains(yWord));
-            if (dotLine.contains(zWord))
-                spottedZ = true;
-            if (dotLine.contains("#START#"))
-                sectionStartLabeled = true;
-            if (dotLine.contains("#END#"))
-                sectionEndLabeled = true;
-            if (dotLine.contains("<ὄψιν,<BR/><FONT COLOR=\"grey\">ὄψιν</FONT>>"))
-                spottedNormalForm = true;
-        }
-        assertTrue(spottedZ);
-        assertTrue(spottedNormalForm);
-        assertTrue(sectionStartLabeled);
-        assertTrue(sectionEndLabeled);
+        assertFalse(dotStr.contains(wWord));
+        assertFalse(dotStr.contains(xWord));
+        assertFalse(dotStr.contains(yWord));
+        assertTrue(dotStr.contains(zWord));
+        assertTrue(dotStr.contains("#START#"));
+        assertTrue(dotStr.contains("#END#"));
+        assertTrue(dotStr.contains("<ὄ&psi;&quot;&iota;&nu;,<BR/><FONT COLOR=\"grey\">ὄ&psi;&iota;&nu;</FONT>>"));
     }
 
     @After
