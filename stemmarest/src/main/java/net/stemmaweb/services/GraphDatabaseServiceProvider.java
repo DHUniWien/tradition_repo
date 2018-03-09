@@ -2,8 +2,8 @@ package net.stemmaweb.services;
 
 
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.shell.ShellSettings;
 
 import java.io.File;
 
@@ -25,10 +25,12 @@ public class GraphDatabaseServiceProvider {
     public GraphDatabaseServiceProvider(String db_location) {
 
         GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-        db = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location))
-                    .setConfig(ShellSettings.remote_shell_enabled, "true")
-                    .setConfig(ShellSettings.remote_shell_port, "1337")
-                    .newGraphDatabase();
+        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data"));
+        File config = new File(db_location + "/conf/neo4j.conf");
+        if (config.exists())
+            db = dbbuilder.loadPropertiesFromFile(config.toString()).newGraphDatabase();
+        else
+            db = dbbuilder.newGraphDatabase();
     }
 
     // Manage an existing (e.g. test) DB

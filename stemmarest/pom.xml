@@ -129,7 +129,7 @@
         </dependency>
         <dependency>
             <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-shell</artifactId>
+            <artifactId>neo4j-bolt</artifactId>
             <version>${neo4j-version}</version>
         </dependency>
         <!-- Used for better documentation of REST interfaces -->
