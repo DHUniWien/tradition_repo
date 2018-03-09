@@ -149,8 +149,9 @@ jobs:
               /bin/cp -r target/miredot ../../artifacts/doc
               # set initial random password
               /bin/sed -i s/CHANGE_THIS/`/usr/bin/pwgen 16`/ ../../artifacts/tomcat-users.xml
-              # also get Dockerfile for put: below
+              # also get Dockerfile and neo4j.conf for put: below
               /bin/cp ../ci/resources/Dockerfile-stemmarest-final ../../artifacts/Dockerfile
+              /bin/cp ../../stemmarest-config/neo4j.conf ../../artifacts/
 
       # build docker image
       - put: stemmarest-image
