@@ -3,6 +3,8 @@ package net.stemmaweb.model;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -79,10 +81,15 @@ public class ReadingModel implements Comparable<ReadingModel> {
      */
     private String text;            // dn15
     private String orig_reading;    // meant for use with duplicated readings, not saved
+    private String display;         // HTML rendering of token, for graph/image display
     /**
      * The user-supplied annotation or comment for this reading
      */
     private String annotation;      // general purpose saving of information
+    /**
+     * Any additional user-supplied JSON data for this reading
+     */
+    private String extra;
 
     /**
      * Generates a model from a Neo4j Node
@@ -121,8 +128,21 @@ public class ReadingModel implements Comparable<ReadingModel> {
                 this.setRank(Long.parseLong(node.getProperty("rank").toString()));
             if (node.hasProperty("text"))
                 this.setText(node.getProperty("text").toString());
+            if (node.hasProperty("display"))
+                this.setText(node.getProperty("display").toString());
             if (node.hasProperty("annotation"))
                 this.setAnnotation(node.getProperty("annotation").toString());
+            if (node.hasProperty("extra")) {
+                String jsonData = node.getProperty("extra").toString();
+                try {
+                    // Try to parse it, before we actually attempt to use it
+                    new JSONObject(jsonData);
+                    this.setExtra(jsonData);
+                } catch (JSONException e) {
+                    // Emit a warning, but carry on
+                    System.err.println("Invalid JSON string in reading extra parameter: " + jsonData);
+                }
+            }
             tx.success();
         }
     }
@@ -254,6 +274,14 @@ public class ReadingModel implements Comparable<ReadingModel> {
         this.text = text;
     }
 
+    public String getDisplay() {
+        return display;
+    }
+
+    public void setDisplay(String text) {
+        this.display = text;
+    }
+
     public String getAnnotation() {
         return annotation;
     }
@@ -275,4 +303,11 @@ public class ReadingModel implements Comparable<ReadingModel> {
     }
 
 
+    public String getExtra() {
+        return extra;
+    }
+
+    public void setExtra(String extra) {
+        this.extra = extra;
+    }
 }

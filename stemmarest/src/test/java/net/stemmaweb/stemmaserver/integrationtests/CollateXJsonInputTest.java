@@ -55,15 +55,15 @@ public class CollateXJsonInputTest extends TestCase {
         // Check for correct number of readings and ranks
         List<ReadingModel> allreadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(330, allreadings.size());
+        assertEquals(381, allreadings.size());
         for (ReadingModel r: allreadings)
             if (r.getIs_end())
-                assertEquals(85L, r.getRank(), 0);
+                assertEquals(87L, r.getRank(), 0);
 
         // Check for witnesses and their layers
         List<WitnessModel> allwits = jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
                 .get(new GenericType<List<WitnessModel>>() {});
-        assertEquals(19, allwits.size());
+        assertEquals(22, allwits.size());
 
         // Check a witness text
         String witExpected = "Դրձեալ ի թվականուես հայոց. ի ն՟է՟. ամին. զօրաժողով լինէր ազգն արապաց. ուռհա և ամ եդեսացւոց " +
@@ -92,13 +92,35 @@ public class CollateXJsonInputTest extends TestCase {
         List<ReadingModel> gReadings = jerseyTest.resource().path("/tradition/" + tradId + "/witness/G/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(77, gReadings.size());
-        JSONObject token = new JSONObject(gReadings.get(0).getAnnotation());
+        JSONObject token = new JSONObject(gReadings.get(0).getExtra());
         assertEquals(firstPage, token.getJSONObject("page").getString("n"));
         assertEquals(firstLine, token.getJSONObject("line").getString("xml:id"));
         assertEquals(firstContext, token.getString("context"));
+
+        // Check that the display token is used in the .dot output, if it exists
+        ClientResponse resp = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/dot")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), resp.getStatus());
+        String dotStr = resp.getEntity(String.class);
+        assertTrue(dotStr.contains("label=\"Դարձեալ\"];")); // no HTML
+        assertTrue(dotStr.contains("label=\"&\"];")); // no HTML, no escaping
+        assertTrue(dotStr.contains("label=<Դարձ<O>ել</O>>];")); // HTML, no quotes
+
+        // Now check that everything works with normal forms turned on
+        resp = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/dot")
+                .queryParam("show_normal", "true")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), resp.getStatus());
+        dotStr = resp.getEntity(String.class);
+        assertTrue(dotStr.contains("label=<<FONT COLOR=\"red\">Դ</FONT>արձեալ>];")); // HTML, no normal form
+        assertTrue(dotStr.contains("label=<Դ<O>ր</O>ձլ<BR/><FONT COLOR=\"grey\">Դարձեալ</FONT>>];")); // HTML, normal form
+        assertTrue(dotStr.contains("label=\"Դարձեալ\"];"));  // no HTML, no normal form
+        assertTrue(dotStr.contains("label=<Դարձեալ<BR/><FONT COLOR=\"grey\">դարձեալ</FONT>>];")); // no HTML, normal form
+        assertTrue(dotStr.contains("label=<&amp;<BR/><FONT COLOR=\"grey\">և</FONT>>];")); // no HTML / HTML escape, normal form
+
     }
 
-    public void testNoRedundantWitnesses() throws Exception {
+    public void testNoRedundantWitnesses() {
         Traverser sTrav = DatabaseService.returnTraditionSection(sectId, db);
         try (Transaction tx = db.beginTx()) {
             for (Relationship r : sTrav.relationships())
@@ -115,7 +137,7 @@ public class CollateXJsonInputTest extends TestCase {
         }
     }
 
-    public void testAddSection() throws Exception {
+    public void testAddSection() {
         // Add another section
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
                 "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "parentId");
@@ -132,10 +154,10 @@ public class CollateXJsonInputTest extends TestCase {
 
         List<WitnessModel> allwits = jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
                 .get(new GenericType<List<WitnessModel>>() {});
-        assertEquals(20, allwits.size());
+        assertEquals(23, allwits.size());
     }
 
-    public void testSectionBySection() throws Exception {
+    public void testSectionBySection() {
         FormDataMultiPart form = new FormDataMultiPart();
         // Make an empty tradition
         form.field("empty", "true");
@@ -160,7 +182,7 @@ public class CollateXJsonInputTest extends TestCase {
                 "src/TestFiles/Matthew-407.json", "cxjson", "AM 407"), "parentId");
         allwits = jerseyTest.resource().path("/tradition/" + newTradId + "/witnesses")
                 .get(new GenericType<List<WitnessModel>>() {});
-        assertEquals(20, allwits.size());
+        assertEquals(23, allwits.size());
 
         // Check section ordering
         List<SectionModel> ourSections = jerseyTest.resource().path("/tradition/" + newTradId + "/sections/")

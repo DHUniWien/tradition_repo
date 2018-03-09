@@ -834,7 +834,7 @@ public class Section {
     @GET
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("normalise") Boolean normalise,

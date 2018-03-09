@@ -43,9 +43,11 @@ public class CollateXJsonParser {
                 for (int j = 0; j < jrow.length(); j++) {
                     String rtext = "";
                     String rnormal = "";
+                    String rdisplay = "";
                     Boolean joinPrior = false;
                     Boolean joinNext = false;
                     JSONArray jcell = jrow.getJSONArray(j);
+                    JSONArray rownames = new JSONArray();
                     JSONArray rowsource = new JSONArray();
                     for (int k = 0; k < jcell.length(); k++) {
                         JSONObject jtoken = jcell.getJSONObject(k);
@@ -55,31 +57,42 @@ public class CollateXJsonParser {
                         }
                         // Patch together reading attributes from the CollateX token object:
                         // Reading text
+                        String thisToken = jtoken.getString("t");
                         rtext = readingAppend(rtext, jtoken, "t", joinNext);
                         // Normal form
                         if (jtoken.has("normal_form"))
                             rnormal = readingAppend(rnormal, jtoken, "normal_form", joinNext);
                         else
                             rnormal = readingAppend(rnormal, jtoken, "t", joinNext);
+                        if (jtoken.has("display"))
+                            rdisplay = readingAppend(rdisplay, jtoken, "display", joinNext);
+                        else
+                            rdisplay = readingAppend(rdisplay, jtoken, "t", joinNext);
                         jtoken.remove("t");
                         jtoken.remove("normal_form");
+                        jtoken.remove("display");
                         // Join_next attribute; the last value will prevail
                         joinNext = jtoken.has("join_next") && jtoken.getBoolean("join_next");
                         jtoken.remove("join_next");
                         // Save the remaining token contents as a string in the annotation field, for future reference
-                        if (jtoken.length() > 0)
+                        if (jtoken.length() > 0) {
+                            rownames.put(thisToken);
                             rowsource.put(jtoken);
+                        }
                     }
                     ReadingModel rdg = new ReadingModel();
                     // These might all be blank
                     rdg.setText(rtext);
                     rdg.setNormal_form(rnormal);
+                    // Only set the display value if it differs from the token itself
+                    if (!rdisplay.equals(rtext))
+                        rdg.setDisplay(rdisplay);
                     rdg.setJoin_next(joinNext);
                     rdg.setJoin_prior(joinPrior);
                     if (rowsource.length() > 1)
-                        rdg.setAnnotation(rowsource.toString());
+                        rdg.setExtra(rowsource.toJSONObject(rownames).toString());
                     else if (rowsource.length() == 1)
-                        rdg.setAnnotation(rowsource.get(0).toString());
+                        rdg.setExtra(rowsource.getJSONObject(0).toString());
                     row.add(rdg);
                 }
                 collationTable.add(row);
@@ -114,9 +127,9 @@ public class CollateXJsonParser {
                     ReadingModel rm = row.get(w);
                     String thisWitness = collationWitnesses.get(w);
                     List<String> witParts = parseWitnessSigil(thisWitness);
-                    String lookupKey = String.join(rm.getText(), rm.getNormal_form(),
+                    String lookupKey = String.join(rm.getText(), rm.getNormal_form(), rm.getDisplay(),
                             rm.getJoin_next().toString(), rm.getJoin_prior().toString());
-                    if (lookupKey.equals("falsefalse")) continue;  // Don't add blank readings
+                    if (lookupKey.equals("nullfalsefalse")) continue;  // Don't add blank readings
                     Node thisReading;
                     if (createdReadings.containsKey(lookupKey))
                         thisReading = createdReadings.get(lookupKey);
@@ -124,9 +137,14 @@ public class CollateXJsonParser {
                         thisReading = db.createNode(Nodes.READING);
                         thisReading.setProperty("text", rm.getText());
                         thisReading.setProperty("normal_form", rm.getNormal_form());
+                        if (rm.getDisplay() != null)
+                            thisReading.setProperty("display", rm.getDisplay());
                         thisReading.setProperty("join_prior", rm.getJoin_prior());
                         thisReading.setProperty("join_next", rm.getJoin_next());
-                        thisReading.setProperty("annotation", rm.getAnnotation());
+                        if (rm.getAnnotation() != null)
+                            thisReading.setProperty("annotation", rm.getAnnotation());
+                        if (rm.getExtra() != null)
+                            thisReading.setProperty("extra", rm.getExtra());
                         thisReading.setProperty("rank", rank);
                         thisReading.setProperty("section_id", parentNode.getId());
                         createdReadings.put(lookupKey, thisReading);

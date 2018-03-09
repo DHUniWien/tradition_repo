@@ -214,14 +214,26 @@ public class DotExporter
         if (node.hasProperty("is_end") && (Boolean) node.getProperty("is_end")) nodeDotId = "__END__";
         else if (node.hasProperty("is_start") && (Boolean) node.getProperty("is_start")) nodeDotId = "__START__";
 
-        // Get the node label
-        String nodeLabel = node.getProperty("text").toString();
+        // Get the node label. If there is a 'display' property, strip any leading / trailing angle
+        // brackets, because if we are also showing normal forms, we have to wedge more into the
+        // HTML specification.
+        Boolean hasHTML = node.hasProperty("display");
+        String nodeLabel = hasHTML ? node.getProperty("display").toString()
+                : node.getProperty("text").toString();
         if (dm.getShowNormalForm() && node.hasProperty("normal_form")
-            && !node.getProperty("normal_form").toString().equals(nodeLabel))
-            // Do URL escaping of any labels
-            nodeLabel = "<" + escapeHtml4(nodeLabel) + "<BR/><FONT COLOR=\"grey\">"
-                    + escapeHtml4(node.getProperty("normal_form").toString())
-                    + "</FONT>>";
+            && !node.getProperty("normal_form").toString().equals(node.getProperty("text").toString())) {
+            String labelExtra = "<BR/><FONT COLOR=\"grey\">"
+                    + escapeHtml4(node.getProperty("normal_form").toString()) + "</FONT>";
+            if (hasHTML)
+                // We have to glom the normal_form HTML onto the existing HTML label
+                nodeLabel = String.format("<%s>", nodeLabel + labelExtra);
+            else
+                // Do URL escaping of any labels
+                nodeLabel = String.format("<%s>", escapeHtml4(nodeLabel) + labelExtra);
+        }
+        else if (hasHTML)
+            // Wrap it in angle brackets
+            nodeLabel = String.format("<%s>", nodeLabel);
         else
             // Escape double quotes since we are wrapping in double quotes
             nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
