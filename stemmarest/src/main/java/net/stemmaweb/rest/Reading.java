@@ -392,7 +392,7 @@ public class Reading {
         Long ourRank = (Long) originalReading.getProperty("rank");
         for (RelationshipModel rm : sectionRest.sectionRelationships()) {
             Relationship originalRel = db.getRelationshipById(Long.valueOf(rm.getId()));
-            if (rm.implies_colocation() &&
+            if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                     (rm.getSource().equals(String.valueOf(originalReading.getId())) ||
                      rm.getTarget().equals(String.valueOf(originalReading.getId())))) {
                 Relationship newRel = addedReading.createRelationshipTo(
@@ -401,7 +401,8 @@ public class Reading {
                 for (String key : originalRel.getPropertyKeys()) {
                     newRel.setProperty(key, originalRel.getProperty(key));
                 }
-            } else if (!rm.implies_colocation()){
+            } else if (!(originalRel.hasProperty("colocation") &&
+                    originalRel.getProperty("colocation").equals(true))){
                 // Get the related readings
                 ReadingModel relSource = new ReadingModel(db.getNodeById(Long.valueOf(rm.getSource())));
                 ReadingModel relTarget = new ReadingModel(db.getNodeById(Long.valueOf(rm.getTarget())));
@@ -594,10 +595,7 @@ public class Reading {
     private boolean hasNonColoRelations(Node stayingReading, Node deletingReading) {
         for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
             if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)) {
-                Node traditionNode = DatabaseService.getTraditionNode(getTraditionId(), db);
-                RelationTypeModel rtm = RelationshipService.returnRelationType(traditionNode,
-                        stayingRel.getProperty("name").toString());
-                return !rtm.getIs_colocation();
+                return !(stayingRel.hasProperty("colocation") && stayingRel.getProperty("colocation").equals(true));
             }
         }
         return false;

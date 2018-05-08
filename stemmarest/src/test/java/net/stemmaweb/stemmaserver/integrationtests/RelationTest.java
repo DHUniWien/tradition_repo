@@ -626,7 +626,7 @@ public class RelationTest {
         assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
 
         List<RelationshipModel> collaterels = allrels.stream()
-                .filter(x -> x.weak_relation() && x.getReading_b().equals("henricus"))
+                .filter(x -> x.getType().equals("collated") && x.getReading_b().equals("henricus"))
                 .collect(Collectors.toList());
         assertEquals(1, collaterels.size());
         rel = collaterels.get(0);

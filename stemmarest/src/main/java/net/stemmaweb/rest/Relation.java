@@ -180,17 +180,18 @@ public class Relation {
             RelationTypeModel rmodel = RelationshipService.returnRelationType(traditionNode, relationshipModel.getType());
 
             // Remove any weak relationships that might conflict
+            // LATER better idea: write a traverser that will disregard weak relations
             Boolean colocation = rmodel.getIs_colocation();
             if (colocation) {
                 Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsA) {
-                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("name").toString());
+                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
                 Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsB) {
-                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("name").toString());
+                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
@@ -245,6 +246,7 @@ public class Relation {
             relationshipAtoB.setProperty("non_independent", relationshipModel.getNon_independent());
             relationshipAtoB.setProperty("reading_a", readingA.getProperty("text"));
             relationshipAtoB.setProperty("reading_b", readingB.getProperty("text"));
+            if (colocation) relationshipAtoB.setProperty("colocation", true);
 
             // Recalculate the ranks, if necessary
             Long rankA = (Long) readingA.getProperty("rank");

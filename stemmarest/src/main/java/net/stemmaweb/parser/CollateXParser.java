@@ -1,5 +1,7 @@
 package net.stemmaweb.parser;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
@@ -54,6 +56,7 @@ public class CollateXParser {
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
             Long highestRank = 0L;
+            Boolean transpositionSeen = false;
             for (int i = 0; i < readingNodes.getLength(); i++) {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
@@ -118,6 +121,7 @@ public class CollateXParser {
                 }
                 Relationship relation = source.createRelationshipTo(target, rtype);
                 if (rtype != null && rtype.equals(ERelations.RELATED)) {
+                    transpositionSeen = true;
                     relation.setProperty("source", source.getId());
                     relation.setProperty("target", target.getId());
                     relation.setProperty("type", "transposition");
@@ -132,16 +136,21 @@ public class CollateXParser {
             // Create all the witnesses
             seenWitnesses.forEach(x -> Util.createExtant(traditionNode, x));
 
-/*
-            // Set the user if it exists in the system; auto-create the user if it doesn't exist
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
-            if (userNode == null) {
-                userNode = db.createNode(Nodes.USER);
-                userNode.setProperty("id", userId);
-                db.findNode(Nodes.ROOT, "name", "Root node").createRelationshipTo(userNode, ERelations.SYSTEMUSER);
+            // Create the 'transposition' relationship type if it occurred in the data
+            if (transpositionSeen) {
+                RelationTypeModel relType = new RelationTypeModel("transposition");
+                relType.setDescription("This is the same (or nearly the same) reading in a different location.");
+                relType.setBindlevel(50);
+                // Set the booleans
+                relType.setIs_colocation(false);
+                relType.setIs_weak(false);
+                relType.setIs_transitive(true);
+                relType.setIs_generalizable(true);
+                relType.setUse_regular(false);
+                // Create the node
+                relType.instantiate(traditionNode);
             }
-            userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-*/
+
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

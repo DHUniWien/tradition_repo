@@ -304,7 +304,8 @@ public class StemmawebExporter {
                     writer.writeAttribute("target", endNode);
                     writer.writeAttribute("id", "e" + edgeId++);
                     for(String prop : props) {
-                        if (rel.hasProperty(prop)) {
+                        // Skip internal properties like "colocation" on RELATED links
+                        if (rel.hasProperty(prop) && relationMap.containsKey(prop)) {
                             String value = rel.getProperty(prop).toString();
                             if (!value.equals("")) {
                                 writer.writeStartElement("data");

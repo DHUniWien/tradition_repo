@@ -95,7 +95,7 @@ public class StemmawebParser {
                             ERelations relKind = (currentRelModel.getType() != null) ?
                                     ERelations.RELATED : ERelations.SEQUENCE;
                             Relationship relship = null;
-                            // Sequence relationships are specified multiple times in the graph, once
+                            // Sequence relationships are specified multiple times in the GraphML, once
                             // per witness. Reading relationships should be specified only once.
                             if (from.hasRelationship(relKind, Direction.BOTH)) {
                                 for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
@@ -147,7 +147,7 @@ public class StemmawebParser {
                                     witList = (String[]) relship.getProperty(witnessClass);
                                 ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
                                 currentWits.add(edgeWitness);
-                                relship.setProperty(witnessClass, currentWits.toArray(new String[currentWits.size()]));
+                                relship.setProperty(witnessClass, currentWits.toArray(new String[0]));
                             }
                             // Finished working on currentRel
                             witnessClass = "witnesses";
@@ -345,6 +345,8 @@ public class StemmawebParser {
 
             // Create the witness nodes
             witnesses.keySet().forEach(x -> Util.createExtant(traditionNode, x));
+            // Set colocation information on relationship types
+            Util.setColocationFlags(traditionNode);
             tx.success();
         } catch(Exception e) {
             e.printStackTrace();

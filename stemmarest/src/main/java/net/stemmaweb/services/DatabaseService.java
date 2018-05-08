@@ -213,9 +213,18 @@ public class DatabaseService {
         return Evaluation.INCLUDE_AND_CONTINUE;
     };
 
-    private static Traverser returnTraverser (Node startNode, String type) {
+    private static Evaluator traditionRelations = path -> {
+        if (path.length() == 0)
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        if (path.lastRelationship().getType().name().equals(ERelations.RELATED.toString()))
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        return Evaluation.EXCLUDE_AND_CONTINUE;
+    };
+
+    private static Traverser returnTraverser (Node startNode, Evaluator e) {
         Traverser tv;
-        Evaluator e = type.equals("tradition") ? traditionCrawler : sectionCrawler;
         GraphDatabaseService db = startNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             tv = db.traversalDescription()
@@ -234,7 +243,7 @@ public class DatabaseService {
     }
 
     public static Traverser returnEntireTradition(Node traditionNode) {
-        return returnTraverser(traditionNode, "tradition");
+        return returnTraverser(traditionNode, traditionCrawler);
     }
 
     public static Traverser returnTraditionSection(String sectionId, GraphDatabaseService db) {
@@ -247,8 +256,12 @@ public class DatabaseService {
         return tv;
     }
 
+    public static Traverser returnTraditionRelations(Node traditionNode) {
+        return returnTraverser(traditionNode, traditionRelations);
+    }
+
     @SuppressWarnings("WeakerAccess")
     public static Traverser returnTraditionSection(Node sectionNode) {
-        return returnTraverser(sectionNode, "section");
+        return returnTraverser(sectionNode, sectionCrawler);
     }
 }
