@@ -85,6 +85,9 @@ public class Tradition {
         return new Relation(traditionId);
     }
 
+    @Path("/relationtype/{name}")
+    public RelationType getRelationType(@PathParam("name") String name) { return new RelationType(traditionId, name); }
+
     /*
      * Resource creation calls
      */
