@@ -13,11 +13,13 @@ import javax.ws.rs.core.Response.Status;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
+import net.stemmaweb.services.RelationshipService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -173,19 +175,23 @@ public class Relation {
                         .build();
             }
 
+            // Get, or create implicitly, the relationship type node for the given type.
+            Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+            RelationTypeModel rmodel = RelationshipService.returnRelationType(traditionNode, relationshipModel.getType());
+
             // Remove any weak relationships that might conflict
-            Boolean colocation = relationshipModel.implies_colocation();
+            Boolean colocation = rmodel.getIs_colocation();
             if (colocation) {
                 Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsA) {
-                    RelationshipModel rm = new RelationshipModel(r);
-                    if (rm.weak_relation())
+                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("name").toString());
+                    if (rm.getIs_weak())
                         r.delete();
                 }
                 Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsB) {
-                    RelationshipModel rm = new RelationshipModel(r);
-                    if (rm.weak_relation())
+                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("name").toString());
+                    if (rm.getIs_weak())
                         r.delete();
                 }
             }
@@ -208,11 +214,12 @@ public class Relation {
             for (Relationship relationship : relationships) {
                 if (relationship.getOtherNode(readingA).equals(readingB)) {
                     RelationshipModel thisRel = new RelationshipModel(relationship);
+                    RelationTypeModel rtm = RelationshipService.returnRelationType(traditionNode, thisRel.getType());
                     if (thisRel.getType().equals(relationshipModel.getType())) {
                         // TODO allow for update of existing relationship
                         tx.success();
                         return Response.status(Status.NOT_MODIFIED).type(MediaType.TEXT_PLAIN_TYPE).build();
-                    } else if (thisRel.weak_relation()) {
+                    } else if (rtm.getIs_weak()) {
                         // Rewrite the link that's already there
                         relationshipAtoB = relationship;
                     } else {
@@ -242,7 +249,7 @@ public class Relation {
             // Recalculate the ranks, if necessary
             Long rankA = (Long) readingA.getProperty("rank");
             Long rankB = (Long) readingB.getProperty("rank");
-            if (!rankA.equals(rankB) && relationshipModel.implies_colocation()) {
+            if (!rankA.equals(rankB) && colocation) {
                 // Which one is the lower-ranked reading? Promote it, and recalculate from that point
                 Long higherRank = rankA < rankB ? rankB : rankA;
                 Node lowerRanked = rankA < rankB ? readingA : readingB;

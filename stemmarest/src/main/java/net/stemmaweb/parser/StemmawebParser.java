@@ -9,6 +9,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -73,6 +74,7 @@ public class StemmawebParser {
 
         try (Transaction tx = db.beginTx()) {
             tradId = traditionNode.getProperty("id").toString();
+            makeStemmawebRelationTypes(traditionNode);
             outer:
             while (true) {
                 // START READING THE GRAPHML FILE
@@ -364,6 +366,52 @@ public class StemmawebParser {
         return Response.status(Response.Status.CREATED)
                 .entity(String.format("{\"parentId\":\"%d\"}", parentNode.getId()))
                 .build();
+    }
+
+    // Make the relationship types that existed in legacy stemmaweb, and attach them to the tradition
+    private void makeStemmawebRelationTypes(Node tradNode) {
+        Map<String, String> stemmawebRelations = new HashMap<String, String>() {{
+            put("collated", "Internal use only");
+            put("orthographic", "These are the same reading, neither unusually spelled.");
+            put("punctuation", "These are the same reading apart from punctuation.");
+            put("spelling", "These are the same reading, spelled differently.");
+            put("grammatical", "These readings share a root (lemma), but have different parts of speech (morphologies).");
+            put("lexical", "These readings share a part of speech (morphology), but have different roots (lemmata).");
+            put("uncertain", "These readings are related, but a clear category cannot be assigned.");
+            put("other", "These readings are related in a way not covered by the existing types.");
+            put("transposition", "This is the same (or nearly the same) reading in a different location.");
+            put("repetition", "This is a reading that was repeated in one or more witnesses.");
+        }};
+        for (String n : stemmawebRelations.keySet()) {
+            RelationTypeModel relType = new RelationTypeModel(n);
+            relType.setDescription(stemmawebRelations.get(n));
+            // Set the bindlevel
+            int bindlevel = 0;
+            switch (n) {
+                case "spelling":
+                    bindlevel = 1;
+                    break;
+                case "grammatical":
+                case "lexical":
+                    bindlevel = 2;
+                    break;
+                case "collated":
+                case "transposition":
+                case "repetition":
+                    bindlevel = 50;
+                    break;
+            }
+            relType.setBindlevel(bindlevel);
+            // Set the booleans
+            relType.setIs_colocation(!(n.equals("transposition") || n.equals("repetition")));
+            relType.setIs_weak(n.equals("collated"));
+            relType.setIs_transitive(!(n.equals("collated") || n.equals("uncertain") || n.equals("other")
+                    || n.equals("repetition")));
+            relType.setIs_generalizable(!(n.equals("collated")|| n.equals("uncertain") || n.equals("other")));
+            relType.setUse_regular(n.equals("orthographic"));
+            // Create the node
+            relType.instantiate(tradNode);
+        }
     }
 
     private void setTypedProperty( PropertyContainer ent, String attr, String type, String val ) {

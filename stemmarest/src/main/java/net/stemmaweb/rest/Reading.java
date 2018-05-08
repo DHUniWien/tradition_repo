@@ -14,6 +14,7 @@ import javax.ws.rs.core.Response.Status;
 
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.*;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
@@ -558,7 +559,7 @@ public class Reading {
          return false;
          }
          */
-        if (containClassTwoRelationships(stayingReading, deletingReading)) {
+        if (hasNonColoRelations(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged cannot contain cross-location relationships";
             return false;
         }
@@ -590,12 +591,13 @@ public class Reading {
      *            the reading which will be deleted from the database
      * @return true if a relationship between two readings is of class 2
      */
-    private boolean containClassTwoRelationships(Node stayingReading, Node deletingReading) {
+    private boolean hasNonColoRelations(Node stayingReading, Node deletingReading) {
         for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
-            if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)
-                    && (stayingRel.getProperty("type").equals("transposition")
-                    || stayingRel.getProperty("type").equals("repetition"))) {
-                return true;
+            if (stayingRel.getOtherNode(stayingReading).equals(deletingReading)) {
+                Node traditionNode = DatabaseService.getTraditionNode(getTraditionId(), db);
+                RelationTypeModel rtm = RelationshipService.returnRelationType(traditionNode,
+                        stayingRel.getProperty("name").toString());
+                return !rtm.getIs_colocation();
             }
         }
         return false;
