@@ -729,6 +729,38 @@ public class RelationTest {
         assertTrue(foundCollated);
     }
 
+    @Test
+    public void createRelationshipWrongTraditionTest() {
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR",
+                "1", "src/TestFiles/legendfrag.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(jerseyResponse, "tradId");
+
+        // We pretend to set a relationship between "ex" and "de"
+        List<ReadingModel> lfReadings = jerseyTest.resource().path("/tradition/" + newTradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {}).stream().filter(x -> x.getRank() == 7)
+                .collect(Collectors.toList());
+        RelationshipModel model = new RelationshipModel();
+        model.setType("lexical");
+        model.setReading_a("de");
+        model.setReading_b("ex");
+        for (ReadingModel rm : lfReadings) {
+            if (rm.getText().equals("de")) model.setSource(rm.getId());
+            if (rm.getText().equals("ex")) model.setTarget(rm.getId());
+        }
+
+        // Posting to the wrong tradition should fail
+        jerseyResponse = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, model);
+        assertEquals(ClientResponse.Status.CONFLICT.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+
+        // Posting to the right tradition should succeed
+        jerseyResponse = jerseyTest.resource().path("/tradition/" + newTradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, model);
+        assertEquals(Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+    }
+
     /*
      * Test if the get relationship method returns the correct value
      */
@@ -746,7 +778,7 @@ public class RelationTest {
             assertTrue(rel.getReading_b().equals("april")
                     || rel.getReading_b().equals("drought")
                     || rel.getReading_b().equals("march"));
-            assertTrue(rel.getType().equals("transposition"));
+            assertEquals("transposition", rel.getType());
         }
     }
 

@@ -619,7 +619,7 @@ public class TraditionTest {
                 rel.setSource(rdg1.getId());
                 rel.setTarget(rdg2.getId());
                 jerseyResponse = jerseyTest.resource()
-                        .path("/tradition/" + tradId + "/relation")
+                        .path("/tradition/" + florId + "/relation")
                         .type(MediaType.APPLICATION_JSON)
                         .post(ClientResponse.class, rel);
                 assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
@@ -634,7 +634,7 @@ public class TraditionTest {
             txrel.setSource(String.valueOf(tx1.getId()));
             txrel.setTarget(String.valueOf(tx2.getId()));
             jerseyResponse = jerseyTest.resource()
-                    .path("/tradition/" + tradId + "/relation")
+                    .path("/tradition/" + florId + "/relation")
                     .type(MediaType.APPLICATION_JSON)
                     .post(ClientResponse.class, txrel);
             assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
