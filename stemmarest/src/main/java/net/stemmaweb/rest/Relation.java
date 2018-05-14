@@ -161,6 +161,14 @@ public class Relation {
             Node readingA = db.getNodeById(Long.parseLong(relationshipModel.getSource()));
             Node readingB = db.getNodeById(Long.parseLong(relationshipModel.getTarget()));
 
+            Node ourSection = db.getNodeById(Long.valueOf(readingA.getProperty("section_id").toString()));
+            Node ourTradition = ourSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
+            if (!ourTradition.getProperty("id").equals(tradId))
+                return Response.status(Status.CONFLICT)
+                    .entity(jsonerror("The specified readings do not belong to the specified tradition"))
+                    .build();
+
+
             if (!readingA.getProperty("section_id").equals(readingB.getProperty("section_id"))) {
                 return Response.status(Status.CONFLICT)
                         .entity(jsonerror("Cannot create relationship across tradition sections"))
