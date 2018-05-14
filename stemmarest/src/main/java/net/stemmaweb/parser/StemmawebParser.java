@@ -9,11 +9,11 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
+import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -63,6 +63,7 @@ public class StemmawebParser {
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
         HashMap<String, String> keytypes = new HashMap<>(); // to store data key value types
         HashMap<String, Boolean> witnesses = new HashMap<>();  // to store witnesses found
+        HashSet<String> relationtypes = new HashSet<>(); // to note the relation types we've seen
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
@@ -74,7 +75,6 @@ public class StemmawebParser {
 
         try (Transaction tx = db.beginTx()) {
             tradId = traditionNode.getProperty("id").toString();
-            makeStemmawebRelationTypes(traditionNode);
             outer:
             while (true) {
                 // START READING THE GRAPHML FILE
@@ -118,8 +118,18 @@ public class StemmawebParser {
                                 relship = from.createRelationshipTo(to, relKind);
 
                             if (relKind.equals(ERelations.RELATED)) {
-                                if (currentRelModel.getType() != null)
-                                    relship.setProperty("type", currentRelModel.getType());
+                                // Set the n4j relationship properties
+                                if (currentRelModel.getType() != null) {
+                                    String typeName = currentRelModel.getType();
+                                    relship.setProperty("type", typeName);
+                                    // Make sure this relationship type exists
+                                    if (!relationtypes.contains(typeName)) {
+                                        Response rtResult = new RelationType(tradId, typeName).makeDefaultType();
+                                        if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                                            return rtResult;
+                                        else relationtypes.add(typeName);
+                                    }
+                                }
                                 if (currentRelModel.getA_derivable_from_b() != null)
                                     relship.setProperty("a_derivable_from_b", currentRelModel.getA_derivable_from_b());
                                 if (currentRelModel.getAlters_meaning() != null)
@@ -368,52 +378,6 @@ public class StemmawebParser {
         return Response.status(Response.Status.CREATED)
                 .entity(String.format("{\"parentId\":\"%d\"}", parentNode.getId()))
                 .build();
-    }
-
-    // Make the relationship types that existed in legacy stemmaweb, and attach them to the tradition
-    private void makeStemmawebRelationTypes(Node tradNode) {
-        Map<String, String> stemmawebRelations = new HashMap<String, String>() {{
-            put("collated", "Internal use only");
-            put("orthographic", "These are the same reading, neither unusually spelled.");
-            put("punctuation", "These are the same reading apart from punctuation.");
-            put("spelling", "These are the same reading, spelled differently.");
-            put("grammatical", "These readings share a root (lemma), but have different parts of speech (morphologies).");
-            put("lexical", "These readings share a part of speech (morphology), but have different roots (lemmata).");
-            put("uncertain", "These readings are related, but a clear category cannot be assigned.");
-            put("other", "These readings are related in a way not covered by the existing types.");
-            put("transposition", "This is the same (or nearly the same) reading in a different location.");
-            put("repetition", "This is a reading that was repeated in one or more witnesses.");
-        }};
-        for (String n : stemmawebRelations.keySet()) {
-            RelationTypeModel relType = new RelationTypeModel(n);
-            relType.setDescription(stemmawebRelations.get(n));
-            // Set the bindlevel
-            int bindlevel = 0;
-            switch (n) {
-                case "spelling":
-                    bindlevel = 1;
-                    break;
-                case "grammatical":
-                case "lexical":
-                    bindlevel = 2;
-                    break;
-                case "collated":
-                case "transposition":
-                case "repetition":
-                    bindlevel = 50;
-                    break;
-            }
-            relType.setBindlevel(bindlevel);
-            // Set the booleans
-            relType.setIs_colocation(!(n.equals("transposition") || n.equals("repetition")));
-            relType.setIs_weak(n.equals("collated"));
-            relType.setIs_transitive(!(n.equals("collated") || n.equals("uncertain") || n.equals("other")
-                    || n.equals("repetition")));
-            relType.setIs_generalizable(!(n.equals("collated")|| n.equals("uncertain") || n.equals("other")));
-            relType.setUse_regular(n.equals("orthographic"));
-            // Create the node
-            relType.instantiate(tradNode);
-        }
     }
 
     private void setTypedProperty( PropertyContainer ent, String attr, String type, String val ) {

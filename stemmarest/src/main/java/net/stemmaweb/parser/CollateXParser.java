@@ -4,6 +4,7 @@ import com.sun.org.apache.xpath.internal.operations.Bool;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -138,17 +139,10 @@ public class CollateXParser {
 
             // Create the 'transposition' relationship type if it occurred in the data
             if (transpositionSeen) {
-                RelationTypeModel relType = new RelationTypeModel("transposition");
-                relType.setDescription("This is the same (or nearly the same) reading in a different location.");
-                relType.setBindlevel(50);
-                // Set the booleans
-                relType.setIs_colocation(false);
-                relType.setIs_weak(false);
-                relType.setIs_transitive(true);
-                relType.setIs_generalizable(true);
-                relType.setUse_regular(false);
-                // Create the node
-                relType.instantiate(traditionNode);
+                Response rtResult = new RelationType(traditionNode.getProperty("id").toString(), "transposition")
+                        .makeDefaultType();
+                if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                    return rtResult;
             }
 
             tx.success();

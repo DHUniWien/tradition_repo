@@ -156,16 +156,16 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * Create the Neo4J node corresponding to this relation type model.
      * @param traditionNode - The tradition to which this model belongs
      */
-    public void instantiate (Node traditionNode) {
-        match_relation_node(traditionNode, false);
+    public Node instantiate (Node traditionNode) {
+        return match_relation_node(traditionNode, false);
     }
 
     /**
      * Update the Neo4J node corresponding to this relation type model.
      * @param traditionNode - The tradition to which this model belongs
      */
-    public void update (Node traditionNode) {
-        match_relation_node(traditionNode, true);
+    public Node update (Node traditionNode) {
+        return match_relation_node(traditionNode, true);
     }
 
     /**
@@ -192,7 +192,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         return relTypeNode;
     }
 
-    private void match_relation_node(Node traditionNode, Boolean allow_update) {
+    private Node match_relation_node(Node traditionNode, Boolean allow_update) {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         Node relType = this.lookup(traditionNode);
         try (Transaction tx = db.beginTx()) {
@@ -215,8 +215,10 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                 }
             }
             tx.success();
+            return relType;
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
         }
     }
 

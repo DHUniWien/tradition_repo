@@ -176,8 +176,7 @@ public class Relation {
             }
 
             // Get, or create implicitly, the relationship type node for the given type.
-            Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-            RelationTypeModel rmodel = RelationshipService.returnRelationType(traditionNode, relationshipModel.getType());
+            RelationTypeModel rmodel = RelationshipService.returnRelationType(tradId, relationshipModel.getType());
 
             // Remove any weak relationships that might conflict
             // LATER better idea: write a traverser that will disregard weak relations
@@ -185,13 +184,13 @@ public class Relation {
             if (colocation) {
                 Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsA) {
-                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("type").toString());
+                    RelationTypeModel rm = RelationshipService.returnRelationType(tradId, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
                 Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsB) {
-                    RelationTypeModel rm = RelationshipService.returnRelationType(traditionNode, r.getProperty("type").toString());
+                    RelationTypeModel rm = RelationshipService.returnRelationType(tradId, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
@@ -215,7 +214,7 @@ public class Relation {
             for (Relationship relationship : relationships) {
                 if (relationship.getOtherNode(readingA).equals(readingB)) {
                     RelationshipModel thisRel = new RelationshipModel(relationship);
-                    RelationTypeModel rtm = RelationshipService.returnRelationType(traditionNode, thisRel.getType());
+                    RelationTypeModel rtm = RelationshipService.returnRelationType(tradId, thisRel.getType());
                     if (thisRel.getType().equals(relationshipModel.getType())) {
                         // TODO allow for update of existing relationship
                         tx.success();

@@ -3,7 +3,10 @@ package net.stemmaweb.services;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.RelationType;
 import org.neo4j.graphdb.*;
+
+import javax.ws.rs.core.Response;
 
 /**
  * 
@@ -34,18 +37,15 @@ public class RelationshipService {
      * Returns a RelationTypeModel for the given relationship type string, associated with
      * the given tradition. Creates the type with default values if it doesn't already exist.
      *
-     * @param traditionNode - The Neo4J node representing the tradition
+     * @param traditionId   - The ID string of the tradition
      * @param relType       - The name of the relationship type (e.g. "spelling")
      * @return A RelationTypeModel with the relationship type information.
      */
-    public static RelationTypeModel returnRelationType(Node traditionNode, String relType) {
-        RelationTypeModel rtDefault = new RelationTypeModel(relType);
-        Node relTypeNode = rtDefault.lookup(traditionNode);
-        if (relTypeNode == null) {
-            rtDefault.instantiate(traditionNode);
-            return rtDefault;
-        } else {
-            return new RelationTypeModel(relTypeNode);
-        }
+    public static RelationTypeModel returnRelationType(String traditionId, String relType) {
+        RelationType rtRest = new RelationType(traditionId, relType);
+        Response rtResult = rtRest.getRelationType();
+        if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode())
+            rtResult = rtRest.makeDefaultType();
+        return (RelationTypeModel) rtResult.getEntity();
     }
 }
