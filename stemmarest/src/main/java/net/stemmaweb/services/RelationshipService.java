@@ -5,6 +5,8 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
 
 import javax.ws.rs.core.Response;
 
@@ -47,5 +49,27 @@ public class RelationshipService {
         if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode())
             rtResult = rtRest.makeDefaultType();
         return (RelationTypeModel) rtResult.getEntity();
+    }
+
+    public static class RelationTraverse implements Evaluator {
+        private String tradId;
+        private RelationTypeModel rtm;
+
+        public RelationTraverse (String tradId, RelationTypeModel reltypemodel) {
+            this.tradId = tradId;
+            this.rtm = reltypemodel;
+        }
+
+        @Override
+        public Evaluation evaluate(Path path) {
+            if (path.endNode().equals(path.startNode()))
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            if (path.lastRelationship().getProperty("type").equals(rtm.getName()))
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString());
+            if (rtm.getBindlevel() > othertm.getBindlevel())
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        }
     }
 }

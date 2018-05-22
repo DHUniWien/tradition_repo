@@ -19,12 +19,12 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
-import net.stemmaweb.services.RelationshipService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
-
+import static net.stemmaweb.services.RelationshipService.returnRelationType;
+import static net.stemmaweb.services.RelationshipService.RelationTraverse;
 
 /**
  * Comprises all the api calls related to a relation.
@@ -118,7 +118,6 @@ public class Relation {
                                 relship = new RelationshipModel(thisRelation);
                                 relship.setSource(Long.toString((Long) id));
                                 relship.setTarget(Long.toString(node_id));
-                                // relship.setType(relationshipModel.getType());
                                 response = this.create_local(relship);
                                 if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
                                     if (Status.CREATED.getStatusCode() != response.getStatus()) {
@@ -184,7 +183,7 @@ public class Relation {
             }
 
             // Get, or create implicitly, the relationship type node for the given type.
-            RelationTypeModel rmodel = RelationshipService.returnRelationType(tradId, relationshipModel.getType());
+            RelationTypeModel rmodel = returnRelationType(tradId, relationshipModel.getType());
 
             // Remove any weak relationships that might conflict
             // LATER better idea: write a traverser that will disregard weak relations
@@ -192,13 +191,13 @@ public class Relation {
             if (colocation) {
                 Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsA) {
-                    RelationTypeModel rm = RelationshipService.returnRelationType(tradId, r.getProperty("type").toString());
+                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
                 Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsB) {
-                    RelationTypeModel rm = RelationshipService.returnRelationType(tradId, r.getProperty("type").toString());
+                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
@@ -222,15 +221,12 @@ public class Relation {
             for (Relationship relationship : relationships) {
                 if (relationship.getOtherNode(readingA).equals(readingB)) {
                     RelationshipModel thisRel = new RelationshipModel(relationship);
-                    RelationTypeModel rtm = RelationshipService.returnRelationType(tradId, thisRel.getType());
+                    RelationTypeModel rtm = returnRelationType(tradId, thisRel.getType());
                     if (thisRel.getType().equals(relationshipModel.getType())) {
                         // TODO allow for update of existing relationship
                         tx.success();
                         return Response.status(Status.NOT_MODIFIED).type(MediaType.TEXT_PLAIN_TYPE).build();
-                    } else if (rtm.getIs_weak()) {
-                        // Rewrite the link that's already there
-                        relationshipAtoB = relationship;
-                    } else {
+                    } else if (!rtm.getIs_weak()) {
                         tx.success();
                         String msg = String.format("Relationship of type %s already exists between readings %s and %s",
                                 relationshipModel.getType(), relationshipModel.getSource(), relationshipModel.getTarget());
@@ -238,39 +234,11 @@ public class Relation {
                     }
                 }
             }
-            if (relationshipAtoB == null)
-                relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
 
-            relationshipAtoB.setProperty("type", nullToEmptyString(relationshipModel.getType()));
-            relationshipAtoB.setProperty("scope", nullToEmptyString(relationshipModel.getScope()));
-            relationshipAtoB.setProperty("annotation", nullToEmptyString(relationshipModel.getAnnotation()));
-            relationshipAtoB.setProperty("displayform",
-                    nullToEmptyString(relationshipModel.getDisplayform()));
-            relationshipAtoB.setProperty("a_derivable_from_b", relationshipModel.getA_derivable_from_b());
-            relationshipAtoB.setProperty("b_derivable_from_a", relationshipModel.getB_derivable_from_a());
-            relationshipAtoB.setProperty("alters_meaning", relationshipModel.getAlters_meaning());
-            relationshipAtoB.setProperty("is_significant", relationshipModel.getIs_significant());
-            relationshipAtoB.setProperty("non_independent", relationshipModel.getNon_independent());
-            relationshipAtoB.setProperty("reading_a", readingA.getProperty("text"));
-            relationshipAtoB.setProperty("reading_b", readingB.getProperty("text"));
-            if (colocation) relationshipAtoB.setProperty("colocation", true);
-
-            // Recalculate the ranks, if necessary
-            Long rankA = (Long) readingA.getProperty("rank");
-            Long rankB = (Long) readingB.getProperty("rank");
-            if (!rankA.equals(rankB) && colocation) {
-                // Which one is the lower-ranked reading? Promote it, and recalculate from that point
-                Long higherRank = rankA < rankB ? rankB : rankA;
-                Node lowerRanked = rankA < rankB ? readingA : readingB;
-                lowerRanked.setProperty("rank", higherRank);
-                changedReadings.add(new ReadingModel(lowerRanked));
-                List<Node> changedRank = ReadingService.recalculateRank(lowerRanked);
-                for (Node cr : changedRank) changedReadings.add(new ReadingModel(cr));
-            }
-
-            createdRelationships.add(new RelationshipModel(relationshipAtoB));
-            readingsAndRelationshipModel = new GraphModel(changedReadings, createdRelationships);
-
+            // We are finally ready to write a relationship.
+            readingsAndRelationshipModel = createSingleRelationship(readingA, readingB, relationshipModel, rmodel);
+            // We can also write any transitive relationships.
+            propagateRelationship(readingsAndRelationshipModel, rmodel);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -280,7 +248,55 @@ public class Relation {
     }
 
     /**
-     * Checks, if a reading is a "Meta"-reading
+     * Muck with the database to set a relation
+     *
+     * @param readingA - the source reading
+     * @param readingB - the target reading
+     * @param relModel - the RelationshipModel to set
+     * @param rtm      - the RelationTypeModel describing what sort of relation this is
+     * @return a GraphModel containing the single n4j relationship plus whatever readings were re-ranked
+     */
+    private GraphModel createSingleRelationship (Node readingA, Node readingB,
+                                                 RelationshipModel relModel, RelationTypeModel rtm) {
+        ArrayList<ReadingModel> changedReadings = new ArrayList<>();
+        ArrayList<RelationshipModel> createdRelationships = new ArrayList<>();
+
+        Boolean colocation = rtm.getIs_colocation();
+        Relationship relationshipAtoB = readingA.createRelationshipTo(readingB, ERelations.RELATED);
+
+        relationshipAtoB.setProperty("type", nullToEmptyString(relModel.getType()));
+        relationshipAtoB.setProperty("scope", nullToEmptyString(relModel.getScope()));
+        relationshipAtoB.setProperty("annotation", nullToEmptyString(relModel.getAnnotation()));
+        relationshipAtoB.setProperty("displayform",
+                nullToEmptyString(relModel.getDisplayform()));
+        relationshipAtoB.setProperty("a_derivable_from_b", relModel.getA_derivable_from_b());
+        relationshipAtoB.setProperty("b_derivable_from_a", relModel.getB_derivable_from_a());
+        relationshipAtoB.setProperty("alters_meaning", relModel.getAlters_meaning());
+        relationshipAtoB.setProperty("is_significant", relModel.getIs_significant());
+        relationshipAtoB.setProperty("non_independent", relModel.getNon_independent());
+        relationshipAtoB.setProperty("reading_a", readingA.getProperty("text"));
+        relationshipAtoB.setProperty("reading_b", readingB.getProperty("text"));
+        if (colocation) relationshipAtoB.setProperty("colocation", true);
+
+        // Recalculate the ranks, if necessary
+        Long rankA = (Long) readingA.getProperty("rank");
+        Long rankB = (Long) readingB.getProperty("rank");
+        if (!rankA.equals(rankB) && colocation) {
+            // Which one is the lower-ranked reading? Promote it, and recalculate from that point
+            Long higherRank = rankA < rankB ? rankB : rankA;
+            Node lowerRanked = rankA < rankB ? readingA : readingB;
+            lowerRanked.setProperty("rank", higherRank);
+            changedReadings.add(new ReadingModel(lowerRanked));
+            List<Node> changedRank = ReadingService.recalculateRank(lowerRanked);
+            for (Node cr : changedRank) changedReadings.add(new ReadingModel(cr));
+        }
+
+        createdRelationships.add(new RelationshipModel(relationshipAtoB));
+        return new GraphModel(changedReadings, createdRelationships);
+    }
+
+    /**
+     * Checks if a reading is a "Meta"-reading
      *
      * @param reading - the reading to check
      * @return true or false
@@ -292,6 +308,44 @@ public class Relation {
                         (reading.hasProperty("is_ph") && reading.getProperty("is_ph").equals(true)) ||
                         (reading.hasProperty("is_end") && reading.getProperty("is_end").equals(true))
                 );
+    }
+
+    /**
+     * Propagates reading relationships according to type specification.
+     * NOTE - To be used inside a transaction
+     *
+     * @param newRelationResult - the GraphModel that contains a relationship just created
+     * @param rtm - the relation type specification
+     */
+    private void propagateRelationship(GraphModel newRelationResult, RelationTypeModel rtm) {
+        // First see if this relationship type should be propagated.
+        if (!rtm.getIs_transitive()) return;
+        // Now go through all the relationships that have been created, and make sure that any
+        // transitivity effects have been accounted for.
+        for (RelationshipModel rm : newRelationResult.getRelationships()) {
+            RelationTraverse relTraverser = new RelationTraverse(tradId, rtm);
+            Node startNode = db.getNodeById(Long.valueOf(rm.getSource()));
+            ArrayList<Node> relatedNodes = new ArrayList<>();
+            // Get all the readings that are related by this or a more closely-bound type.
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.RELATED)
+                    .evaluator(relTraverser)
+                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(startNode).nodes().forEach(relatedNodes::add);
+            // Now go through them and make sure the relations are explicit.
+            while (!relatedNodes.isEmpty()) {
+                Node readingA = relatedNodes.remove(0);
+                HashSet<Node> alreadyRelated = new HashSet<>();
+                readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
+                for (Node readingB : relatedNodes) {
+                    if (!alreadyRelated.contains(readingB)) {
+                        GraphModel interim = createSingleRelationship(readingA, readingB, rm, rtm);
+                        newRelationResult.addReadings(interim.getReadings());
+                        newRelationResult.addRelationships(interim.getRelationships());
+                    }
+                }
+            }
+        }
     }
 
     /**
