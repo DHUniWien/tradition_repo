@@ -77,11 +77,11 @@ public class RelationType {
         if (extantRelType != null) {
             extantRelType = rtModel.update(traditionNode);
             if (extantRelType != null)
-                return Response.status(Response.Status.CREATED).entity(rtModel).build();
+                return Response.ok().build();
         } else {
             extantRelType = rtModel.instantiate(traditionNode);
             if (extantRelType != null)
-                return Response.ok().build();
+                return Response.status(Response.Status.CREATED).entity(rtModel).build();
         }
         return Response.serverError().build();
     }

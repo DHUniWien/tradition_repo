@@ -450,6 +450,36 @@ public class Tradition {
     }
 
     /**
+     * Gets a list of all relation types defined within the given tradition.
+     *
+     * @summary Get relationships
+     * @return A list of relationship metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
+     */
+    @GET
+    @Path("/relationtypes")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationTypeModel>")
+    public Response getAllRelationTypes() {
+        ArrayList<RelationTypeModel> relTypeList = new ArrayList<>();
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_RELATION_TYPE)
+                    .forEach(x -> relTypeList.add(new RelationTypeModel(x)));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+
+        return Response.ok(relTypeList).build();
+    }
+
+    /**
      * Gets a list of all readings in the given tradition.
      *
      * @summary Get readings

@@ -2,7 +2,10 @@ package net.stemmaweb.model;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.RelationType;
 import org.neo4j.graphdb.*;
+
+import javax.xml.bind.annotation.XmlRootElement;
 
 /**
  * This model describes the properties of a particular relationship type.
@@ -12,6 +15,8 @@ import org.neo4j.graphdb.*;
  *
  * @author tla
  */
+
+@XmlRootElement
 public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
     /**
@@ -53,6 +58,10 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * pairs should be made on the regularized form of the reading.
      */
     private Boolean use_regular;
+
+    public RelationTypeModel () {
+        this("noname");
+    }
 
     public RelationTypeModel (String name) {
         this.thename = name;
