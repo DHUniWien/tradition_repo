@@ -331,20 +331,20 @@ public class RelationTest {
     @Test(expected=NotFoundException.class)
     public void deleteRelationshipDocumentWideTest() {
         /*
-         * Create a relationship
+         * Create two local relations between teh and the.
          */
         RelationshipModel relationship = new RelationshipModel();
         String relationshipId1;
         String relationshipId2;
-        String source = readingLookup.getOrDefault("april/2", "17");
-        String target = readingLookup.getOrDefault("pierced/15", "17");
+        String source = readingLookup.getOrDefault("teh/16", "17");
+        String target = readingLookup.getOrDefault("the/17", "17");
         relationship.setSource(source);
         relationship.setTarget(target);
-        relationship.setType("transposition");
+        relationship.setType("spelling");
         relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("pierced");
+        relationship.setIs_significant("no");
+        relationship.setReading_a("teh");
+        relationship.setReading_b("the");
         relationship.setScope("local");
 
         ClientResponse actualResponse = jerseyTest
@@ -355,16 +355,10 @@ public class RelationTest {
         GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<GraphModel>(){});
         relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
 
-        source = readingLookup.getOrDefault("april/8", "17");
-        target = readingLookup.getOrDefault("pierced/15", "17");
+        source = readingLookup.getOrDefault("teh/10", "17");
+        target = readingLookup.getOrDefault("the/10", "17");
         relationship.setSource(source);
         relationship.setTarget(target);
-        relationship.setType("transposition");
-        relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("pierced");
-        relationship.setScope("local");
 
         actualResponse = jerseyTest
                 .resource()
@@ -374,6 +368,7 @@ public class RelationTest {
         GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<GraphModel>(){});
         relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
 
+        // Now try deleting them.
         relationship.setScope("document");
 
         ClientResponse removalResponse = jerseyTest
@@ -393,6 +388,7 @@ public class RelationTest {
             RelationshipModel relMod2 = new RelationshipModel(rel2);
             assertEquals(rel2, relMod2);
             tx.success();
+            fail("These relationships should no longer exist");
         }
     }
 
@@ -423,7 +419,7 @@ public class RelationTest {
         GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
         assertEquals(1, tmpGraphModel.getRelationships().size());
         assertEquals(3, tmpGraphModel.getReadings().size());
-        assertEquals(true, tmpGraphModel.getReadings().stream().findFirst().isPresent());
+        assertTrue(tmpGraphModel.getReadings().stream().findFirst().isPresent());
         HashMap<String, Long> rankChange = new HashMap<>();
         rankChange.put("teh", 18L);
         rankChange.put("rood", 19L);

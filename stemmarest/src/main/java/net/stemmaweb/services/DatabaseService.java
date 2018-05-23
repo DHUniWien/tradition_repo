@@ -173,6 +173,24 @@ public class DatabaseService {
         return result;
     }
 
+    /**
+     * This method can be used to get the existing relationships between two nodes.
+     * @param startNode - node 1
+     * @param endNode   - node 2
+     * @return - a list of relationships between the two, empty if none
+     */
+    public static ArrayList<Relationship> getRelationshipTo(Node startNode, Node endNode, RelationshipType rtype) {
+        ArrayList<Relationship> found = new ArrayList<>();
+        GraphDatabaseService db = startNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship r : startNode.getRelationships(rtype, Direction.BOTH))
+                if (r.getOtherNode(startNode).equals(endNode))
+                    found.add(r);
+            tx.success();
+        }
+        return found;
+    }
+
 
     /**
      * This method can be used to determine whether a user with given Id exists

@@ -91,9 +91,10 @@ public class Relation {
                     // Get all the readings that belong to our tradition
                     ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
                     // Pick out the ones that share the readingA text
-                    List<Node> ourA = tradReadings.stream().filter(x -> x.hasProperty("text")
-                                    && x.getProperty("text").equals(readingA.getProperty("text")))
-                            .collect(Collectors.toList());
+                    HashSet<Node> ourA = tradReadings.stream().filter(x -> x.hasProperty("text")
+                            && x.getProperty("text").equals(readingA.getProperty("text"))
+                            && !x.getProperty("rank").equals(readingA.getProperty("rank")))
+                            .collect(Collectors.toCollection(HashSet::new));
                     HashMap<Long, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
                         long node_id = cur_node.getId();
@@ -104,9 +105,10 @@ public class Relation {
                     }
 
                     // Pick out the ones that share the readingB text
-                    List<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
-                            && x.getProperty("text").equals(readingB.getProperty("text")))
-                            .collect(Collectors.toList());
+                    HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
+                            && x.getProperty("text").equals(readingB.getProperty("text"))
+                            && !x.getProperty("rank").equals(readingA.getProperty("rank")))
+                            .collect(Collectors.toCollection(HashSet::new));
                     RelationshipModel relship;
                     for (Node cur_node : ourB) {
                         long node_id = cur_node.getId();
@@ -148,11 +150,6 @@ public class Relation {
     // properties (e.g. rank) have changed.
     private Response create_local(RelationshipModel relationshipModel) {
         GraphModel readingsAndRelationshipModel;
-        ArrayList<ReadingModel> changedReadings = new ArrayList<>();
-        ArrayList<RelationshipModel> createdRelationships = new ArrayList<>();
-
-        Relationship relationshipAtoB = null;
-
         try (Transaction tx = db.beginTx()) {
             /*
              * Currently search by id search, because is much faster by measurement. Because
@@ -333,17 +330,48 @@ public class Relation {
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().forEach(relatedNodes::add);
             // Now go through them and make sure the relations are explicit.
-            while (!relatedNodes.isEmpty()) {
-                Node readingA = relatedNodes.remove(0);
+            ArrayList<Node> iterateNodes = new ArrayList<>(relatedNodes);
+            while (!iterateNodes.isEmpty()) {
+                Node readingA = iterateNodes.remove(0);
                 HashSet<Node> alreadyRelated = new HashSet<>();
                 readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
-                for (Node readingB : relatedNodes) {
+                for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
                         GraphModel interim = createSingleRelationship(readingA, readingB, rm, rtm);
                         newRelationResult.addReadings(interim.getReadings());
                         newRelationResult.addRelationships(interim.getRelationships());
                     }
                 }
+            }
+            // Now go back through them and make sure that relations to more loosely-bound
+            // transitive nodes are marked.
+            for (Node sibling : relatedNodes) {
+                HashMap<Node, Relationship> connections = new HashMap<>();
+                // Get the nodes we are directly related to, and the relations involved, if
+                // they meet the criteria
+                for (Relationship r : sibling.getRelationships(ERelations.RELATED)) {
+                    RelationTypeModel othertm = returnRelationType(tradId, r.getProperty("type").toString());
+                    if (othertm.getBindlevel() > rtm.getBindlevel() && othertm.getIs_transitive())
+                        connections.put(r.getOtherNode(sibling), r);
+                }
+
+                HashSet<Node> cousins = new HashSet<>(relatedNodes);
+                for (Node n : connections.keySet()) {
+                    cousins.remove(n);
+                    RelationshipModel newmodel = new RelationshipModel(connections.get(n));
+                    RelationTypeModel newtm = returnRelationType(tradId, newmodel.getType());
+                    for (Node c : cousins) {
+                        ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED);
+                        if (priorLinks.size() == 0) {
+                            // Create a relationship based on the looser link
+                            GraphModel interim = createSingleRelationship(n, c, newmodel, newtm);
+                            newRelationResult.addReadings(interim.getReadings());
+                            newRelationResult.addRelationships(interim.getRelationships());
+                        }
+                    }
+                }
+
+
             }
         }
     }

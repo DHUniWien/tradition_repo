@@ -320,8 +320,8 @@ public class TraditionTest {
             Node tradNode = ownership.iterator().next().getEndNode();
             TraditionModel tradition = new TraditionModel(tradNode);
 
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
+            assertEquals(tradId, tradition.getId());
+            assertEquals("Tradition", tradition.getName());
 
             tx.success();
         } catch (Exception e) {
@@ -390,8 +390,8 @@ public class TraditionTest {
             tradition.setId(tradNode.getProperty("id").toString());
             tradition.setName(tradNode.getProperty("name").toString());
 
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
+            assertEquals(tradId, tradition.getId());
+            assertEquals("Tradition", tradition.getName());
 
             tx.success();
         }
@@ -427,8 +427,8 @@ public class TraditionTest {
             tx.success();
         }
 
-        assertTrue(tradition.getId().equals(tradId));
-        assertTrue(tradition.getName().equals("Tradition"));
+        assertEquals(tradId, tradition.getId());
+        assertEquals("Tradition", tradition.getName());
 
     }
 
@@ -478,8 +478,8 @@ public class TraditionTest {
             tradition.setId(tradNode.getProperty("id").toString());
             tradition.setName(tradNode.getProperty("name").toString());
 
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
+            assertEquals(tradId, tradition.getId());
+            assertEquals("Tradition", tradition.getName());
 
             tx.success();
         }
@@ -517,8 +517,8 @@ public class TraditionTest {
             tradition.setId(tradNode.getProperty("id").toString());
             tradition.setName(tradNode.getProperty("name").toString());
 
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
+            assertEquals(tradId, tradition.getId());
+            assertEquals("Tradition", tradition.getName());
 
             tx.success();
         }
@@ -550,7 +550,7 @@ public class TraditionTest {
 
         Node startNode = DatabaseService.getStartNode(tradId, db);
 
-        assertTrue(startNode == null);
+        assertNull(startNode);
     }
 
     /**

@@ -1,8 +1,6 @@
 package net.stemmaweb.services;
 
 import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluation;
@@ -64,10 +62,16 @@ public class RelationshipService {
         public Evaluation evaluate(Path path) {
             if (path.endNode().equals(path.startNode()))
                 return Evaluation.INCLUDE_AND_CONTINUE;
+            // If the relationship isn't transitive, we don't follow it.
+            if (!rtm.getIs_transitive())
+                return Evaluation.EXCLUDE_AND_PRUNE;
+            // If it's the same relationship type, we do follow it.
             if (path.lastRelationship().getProperty("type").equals(rtm.getName()))
                 return Evaluation.INCLUDE_AND_CONTINUE;
+            // If it's a different relationship type, we follow it if it is bound more closely
+            // than our type (lower bindlevel) and if that type is also transitive.
             RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString());
-            if (rtm.getBindlevel() > othertm.getBindlevel())
+            if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())
                 return Evaluation.INCLUDE_AND_CONTINUE;
             return Evaluation.EXCLUDE_AND_PRUNE;
         }

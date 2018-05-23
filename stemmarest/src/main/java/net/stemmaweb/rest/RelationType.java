@@ -88,7 +88,7 @@ public class RelationType {
 
     /**
      * Creates a relation type with the given name according to default values.
-     * For use internally.
+     * Method for use internally, logic intended for Stemmaweb backwards compatibility.
      *
      * @summary Create a default relationship type
      *
@@ -125,7 +125,7 @@ public class RelationType {
 
         relType.setDescription(defaultRelations.get(useType));
         // Set the bindlevel
-        int bindlevel = 0;
+        int bindlevel = 0; // orthographic, punctuation, uncertain, other
         switch (useType) {
             case "spelling":
                 bindlevel = 1;
