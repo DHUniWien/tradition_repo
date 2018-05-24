@@ -1,0 +1,144 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Building stemmarest Jersey Webapp 1.0-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+[WARNING] The POM for com.alexmerz:graphviz:jar:0.8.6 is missing, no dependency information available
+[WARNING] The artifact org.apache.commons:commons-io:jar:1.3.2 has been relocated to commons-io:commons-io:jar:1.3.2
+[INFO] 
+[INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ stemmarest ---
+[WARNING] The artifact org.apache.commons:commons-io:jar:1.3.2 has been relocated to commons-io:commons-io:jar:1.3.2
+[INFO] net.stemmaweb.rest:stemmarest:war:1.0-SNAPSHOT
+[INFO] +- com.sun.jersey:jersey-server:jar:1.19:compile
+[INFO] +- com.sun.jersey:jersey-servlet:jar:1.19:compile
+[INFO] +- com.sun.jersey:jersey-json:jar:1.19:compile
+[INFO] |  +- org.codehaus.jettison:jettison:jar:1.1:compile
+[INFO] |  +- com.sun.xml.bind:jaxb-impl:jar:2.2.3-1:compile
+[INFO] |  |  \- javax.xml.bind:jaxb-api:jar:2.2.2:compile
+[INFO] |  |     +- javax.xml.stream:stax-api:jar:1.0-2:compile
+[INFO] |  |     \- javax.activation:activation:jar:1.1:compile
+[INFO] |  +- org.codehaus.jackson:jackson-core-asl:jar:1.9.2:compile
+[INFO] |  +- org.codehaus.jackson:jackson-mapper-asl:jar:1.9.2:compile
+[INFO] |  +- org.codehaus.jackson:jackson-jaxrs:jar:1.9.2:compile
+[INFO] |  \- org.codehaus.jackson:jackson-xc:jar:1.9.2:compile
+[INFO] +- com.sun.jersey:jersey-core:jar:1.19:compile
+[INFO] |  \- javax.ws.rs:jsr311-api:jar:1.1.1:compile
+[INFO] +- com.sun.jersey.contribs:jersey-multipart:jar:1.19:compile
+[INFO] |  \- org.jvnet.mimepull:mimepull:jar:1.9.3:compile
+[INFO] +- com.sun.jersey:jersey-client:jar:1.19:test
+[INFO] +- com.sun.jersey.jersey-test-framework:jersey-test-framework-grizzly2:jar:1.19:test
+[INFO] |  +- com.sun.jersey.jersey-test-framework:jersey-test-framework-core:jar:1.19:test
+[INFO] |  |  \- javax.servlet:javax.servlet-api:jar:3.0.1:test
+[INFO] |  \- com.sun.jersey:jersey-grizzly2-servlet:jar:1.19:test
+[INFO] |     +- org.glassfish.grizzly:grizzly-http-servlet:jar:2.2.16:test
+[INFO] |     |  \- org.glassfish.grizzly:grizzly-http-server:jar:2.2.16:test
+[INFO] |     |     \- org.glassfish.grizzly:grizzly-rcm:jar:2.2.16:test
+[INFO] |     \- com.sun.jersey:jersey-grizzly2:jar:1.19:test
+[INFO] |        \- org.glassfish.grizzly:grizzly-http:jar:2.2.16:test
+[INFO] |           \- org.glassfish.grizzly:grizzly-framework:jar:2.2.16:test
+[INFO] +- junit:junit:jar:4.12:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:1.3:test
+[INFO] +- org.hamcrest:hamcrest-all:jar:1.3:test
+[INFO] +- org.powermock:powermock-module-junit4:jar:1.6.1:test
+[INFO] |  \- org.powermock:powermock-module-junit4-common:jar:1.6.1:test
+[INFO] |     +- org.powermock:powermock-core:jar:1.6.1:test
+[INFO] |     |  \- org.javassist:javassist:jar:3.18.2-GA:test
+[INFO] |     \- org.powermock:powermock-reflect:jar:1.6.1:test
+[INFO] |        \- org.objenesis:objenesis:jar:2.1:test
+[INFO] +- org.powermock:powermock-api-mockito:jar:1.6.1:test
+[INFO] |  +- org.mockito:mockito-all:jar:1.10.8:test
+[INFO] |  \- org.powermock:powermock-api-support:jar:1.6.1:test
+[INFO] +- com.carrotsearch:junit-benchmarks:jar:0.7.2:test
+[INFO] +- com.h2database:h2:jar:1.4.186:test
+[INFO] +- org.apache.cxf:cxf-bundle-jaxrs:jar:2.7.7:compile
+[INFO] |  +- org.codehaus.woodstox:woodstox-core-asl:jar:4.2.0:compile
+[INFO] |  +- org.codehaus.woodstox:stax2-api:jar:3.1.1:compile
+[INFO] |  +- org.apache.ws.xmlschema:xmlschema-core:jar:2.0.3:compile
+[INFO] |  +- org.apache.geronimo.specs:geronimo-javamail_1.4_spec:jar:1.7.1:compile
+[INFO] |  +- wsdl4j:wsdl4j:jar:1.6.3:compile
+[INFO] |  +- org.eclipse.jetty:jetty-server:jar:8.1.12.v20130726:compile
+[INFO] |  +- org.eclipse.jetty:jetty-continuation:jar:8.1.12.v20130726:compile
+[INFO] |  +- org.eclipse.jetty:jetty-http:jar:8.1.12.v20130726:compile
+[INFO] |  +- org.eclipse.jetty:jetty-io:jar:8.1.12.v20130726:compile
+[INFO] |  +- org.eclipse.jetty:jetty-util:jar:8.1.12.v20130726:compile
+[INFO] |  +- org.eclipse.jetty:jetty-security:jar:8.1.12.v20130726:compile
+[INFO] |  +- org.slf4j:slf4j-api:jar:1.7.5:runtime
+[INFO] |  +- org.apache.geronimo.specs:geronimo-servlet_3.0_spec:jar:1.0:compile
+[INFO] |  \- javax.ws.rs:javax.ws.rs-api:jar:2.0-m10:compile
+[INFO] +- com.fasterxml.jackson.core:jackson-core:jar:2.2.3:compile
+[INFO] +- com.fasterxml.jackson.core:jackson-annotations:jar:2.2.3:compile
+[INFO] +- com.fasterxml.jackson.core:jackson-databind:jar:2.2.3:compile
+[INFO] +- commons-io:commons-io:jar:1.3.2:test
+[INFO] +- org.apache.poi:poi:jar:3.13:compile
+[INFO] |  \- commons-codec:commons-codec:jar:1.9:compile
+[INFO] +- org.apache.poi:poi-ooxml:jar:3.13:compile
+[INFO] |  \- org.apache.poi:poi-ooxml-schemas:jar:3.13:compile
+[INFO] |     \- org.apache.xmlbeans:xmlbeans:jar:2.6.0:compile
+[INFO] |        \- stax:stax-api:jar:1.0.1:compile
+[INFO] +- com.alexmerz:graphviz:jar:0.8.6:compile
+[INFO] +- org.checkerframework:checker-qual:jar:1.9.6:compile
+[INFO] +- com.opencsv:opencsv:jar:3.4:compile
+[INFO] |  \- org.apache.commons:commons-lang3:jar:3.3.2:compile
+[INFO] +- org.apache.clerezza.ext:org.json.simple:jar:0.4:compile
+[INFO] |  \- com.googlecode.json-simple:json-simple:jar:1.1:compile
+[INFO] +- org.neo4j:neo4j:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-kernel:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-lucene-index:jar:3.2.2:compile
+[INFO] |  |  +- org.apache.lucene:lucene-analyzers-common:jar:5.5.0:compile
+[INFO] |  |  +- org.apache.lucene:lucene-core:jar:5.5.0:compile
+[INFO] |  |  +- org.apache.lucene:lucene-queryparser:jar:5.5.0:compile
+[INFO] |  |  \- org.apache.lucene:lucene-codecs:jar:5.5.0:compile
+[INFO] |  +- org.neo4j:neo4j-graph-algo:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-udc:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-cypher:jar:3.2.2:compile
+[INFO] |  |  +- org.scala-lang:scala-library:jar:2.11.8:compile
+[INFO] |  |  +- org.scala-lang:scala-reflect:jar:2.11.8:compile
+[INFO] |  |  +- org.neo4j:neo4j-graph-matching:jar:3.1.3:compile
+[INFO] |  |  +- org.neo4j:neo4j-codegen:jar:3.2.2:compile
+[INFO] |  |  |  \- org.ow2.asm:asm:jar:5.2:compile
+[INFO] |  |  +- org.neo4j:neo4j-cypher-compiler-2.3:jar:2.3.11:compile
+[INFO] |  |  |  +- org.neo4j:neo4j-cypher-frontend-2.3:jar:2.3.11:compile
+[INFO] |  |  |  \- com.googlecode.concurrentlinkedhashmap:concurrentlinkedhashmap-lru:jar:1.4.2:compile
+[INFO] |  |  +- org.neo4j:neo4j-cypher-compiler-3.1:jar:3.1.5:compile
+[INFO] |  |  |  +- org.neo4j:neo4j-cypher-frontend-3.1:jar:3.1.5:compile
+[INFO] |  |  |  \- com.github.ben-manes.caffeine:caffeine:jar:2.3.3:compile
+[INFO] |  |  +- org.neo4j:neo4j-cypher-compiler-3.2:jar:3.2.2:compile
+[INFO] |  |  |  +- org.neo4j:neo4j-cypher-frontend-3.2:jar:3.2.2:compile
+[INFO] |  |  |  \- org.neo4j:neo4j-cypher-ir-3.2:jar:3.2.2:compile
+[INFO] |  |  +- org.parboiled:parboiled-scala_2.11:jar:1.1.7:compile
+[INFO] |  |  |  \- org.parboiled:parboiled-core:jar:1.1.7:compile
+[INFO] |  |  \- net.sf.opencsv:opencsv:jar:2.3:compile
+[INFO] |  +- org.neo4j:neo4j-jmx:jar:3.2.2:compile
+[INFO] |  \- org.neo4j:neo4j-consistency-check:jar:3.2.2:compile
+[INFO] |     +- org.neo4j:neo4j-command-line:jar:3.2.2:compile
+[INFO] |     \- org.neo4j:neo4j-dbms:jar:3.2.2:compile
+[INFO] |        +- org.neo4j:neo4j-import-tool:jar:3.2.2:compile
+[INFO] |        \- org.apache.commons:commons-compress:jar:1.12:compile
+[INFO] +- org.neo4j:neo4j-kernel:test-jar:tests:3.2.2:test
+[INFO] |  +- org.neo4j:neo4j-graphdb-api:jar:3.2.2:compile
+[INFO] |  |  \- org.neo4j:neo4j-resource:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-common:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-collections:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-primitive-collections:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-io:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-csv:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-logging:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-lucene-upgrade:jar:3.2.2:compile
+[INFO] |  |  \- org.apache.lucene:lucene-backward-codecs:jar:5.5.0:compile
+[INFO] |  +- org.neo4j:neo4j-configuration:jar:3.2.2:compile
+[INFO] |  +- org.neo4j:neo4j-index:jar:3.2.2:compile
+[INFO] |  \- org.neo4j:neo4j-ssl:jar:3.2.2:compile
+[INFO] |     +- io.netty:netty-all:jar:4.1.8.Final:compile
+[INFO] |     \- org.bouncycastle:bcpkix-jdk15on:jar:1.53:compile
+[INFO] |        \- org.bouncycastle:bcprov-jdk15on:jar:1.53:compile
+[INFO] +- org.neo4j:neo4j-io:test-jar:tests:3.2.2:test
+[INFO] |  \- org.neo4j:neo4j-unsafe:jar:3.2.2:compile
+[INFO] \- org.neo4j:neo4j-shell:jar:3.2.2:compile
+[INFO]    \- jline:jline:jar:2.12:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 1.085 s
+[INFO] Finished at: 2017-09-25T11:49:07+02:00
+[INFO] Final Memory: 21M/437M
+[INFO] ------------------------------------------------------------------------

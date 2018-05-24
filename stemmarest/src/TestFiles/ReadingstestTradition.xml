@@ -510,5 +510,13 @@
       <data key="de11">transposition</data>
       <data key="de10">local</data>
     </edge>
+    <edge source="n4" target="n28" id="e8">
+      <data key="de8">fruit</data>
+      <data key="de6">no</data>
+      <data key="de9">fruit</data>
+      <data key="de1">0</data>
+      <data key="de11">orthographic</data>
+      <data key="de10">local</data>
+    </edge>
   </graph>
 </graphml>

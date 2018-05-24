@@ -86,6 +86,22 @@ public class RelationTypeTest extends TestCase {
         assertEquals(1, allRelTypes.get(0).getBindlevel());
     }
 
+    private void checkExpectedRelations(HashSet<String> createdRels, HashSet<String> expectedLinks) {
+        try (Transaction tx = db.beginTx()) {
+            for (String rid : createdRels) {
+                Relationship link = db.getRelationshipById(Long.valueOf(rid));
+                String lookfor = String.format("%s -> %s: %s",
+                        link.getStartNode().getId(), link.getEndNode().getId(), link.getProperty("type"));
+                String lookrev = String.format("%s -> %s: %s",
+                        link.getEndNode().getId(), link.getStartNode().getId(), link.getProperty("type"));
+                String message = String.format("looking for %s in %s", lookfor,
+                        java.util.Arrays.toString(expectedLinks.toArray()));
+                assertTrue(message,expectedLinks.remove(lookfor) ^ expectedLinks.remove(lookrev));
+            }
+            tx.success();
+        }
+        assertTrue(expectedLinks.isEmpty());
+    }
     public void testAddExplicitRelationType() {
         String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
         String legei = readingLookup.getOrDefault("λεγει/1", "17");
@@ -140,7 +156,7 @@ public class RelationTypeTest extends TestCase {
         newRel.setTarget(Legei);
         newRel.setScope("local");
         newRel.setType("spelling");
-        expectedLinks.add(String.format("%s -> %s", legei, Legei));
+        expectedLinks.add(String.format("%s -> %s: spelling", legei, Legei));
 
         ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
@@ -161,19 +177,10 @@ public class RelationTypeTest extends TestCase {
         assertEquals(2, result.getRelationships().size());
         assertEquals(0, result.getReadings().size());
         result.getRelationships().forEach(x -> createdRels.add(x.getId()));
-        expectedLinks.add(String.format("%s -> %s", legei, legeiAcute));
-        expectedLinks.add(String.format("%s -> %s", Legei, legeiAcute));
+        expectedLinks.add(String.format("%s -> %s: spelling", legei, legeiAcute));
+        expectedLinks.add(String.format("%s -> %s: spelling", Legei, legeiAcute));
 
-        try (Transaction tx = db.beginTx()) {
-            for (String rid : createdRels) {
-                Relationship link = db.getRelationshipById(Long.valueOf(rid));
-                String lookfor = String.format("%s -> %s", link.getStartNode().getId(), link.getEndNode().getId());
-                assertTrue(expectedLinks.contains(lookfor));
-                expectedLinks.remove(lookfor);
-            }
-            tx.success();
-        }
-        assertTrue(expectedLinks.isEmpty());
+        checkExpectedRelations(createdRels, expectedLinks);
     }
 
     public void testBindlevelTransitivity() {
@@ -244,18 +251,7 @@ public class RelationTypeTest extends TestCase {
         expectedLinks.add(String.format("%s -> %s: orthographic", palin, palinac));
         expectedLinks.add(String.format("%s -> %s: orthographic", palin58, palinac58));
 
-        try (Transaction tx = db.beginTx()) {
-            for (String rid : createdRels) {
-                Relationship link = db.getRelationshipById(Long.valueOf(rid));
-                String lookfor = String.format("%s -> %s: %s",
-                        link.getStartNode().getId(), link.getEndNode().getId(), link.getProperty("type"));
-                assertTrue(expectedLinks.contains(lookfor));
-                expectedLinks.remove(lookfor);
-            }
-            tx.success();
-        }
-        assertTrue(expectedLinks.isEmpty());
-
+        checkExpectedRelations(createdRels, expectedLinks);
     }
 
     public void testTransitivityReRanking() {

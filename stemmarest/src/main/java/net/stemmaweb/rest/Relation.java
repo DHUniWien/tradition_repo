@@ -138,10 +138,7 @@ public class Relation {
                     return Response.serverError().build();
                 }
             }
-            // List<String> list = new ArrayList<String>();
-            // GenericEntity<List<String>> entity = new GenericEntity<List<String>>(list) {};
-            GenericEntity<GraphModel> entity = new GenericEntity<GraphModel>(relationChanges) {};
-            return Response.status(Status.CREATED).entity(entity).build();
+            return Response.status(Status.CREATED).entity(relationChanges).build();
         }
         return Response.status(Status.BAD_REQUEST).entity("Undefined Scope").build();
     }
@@ -335,8 +332,10 @@ public class Relation {
                 Node readingA = iterateNodes.remove(0);
                 HashSet<Node> alreadyRelated = new HashSet<>();
                 readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
+                // System.out.println(String.format("Propagating on node %d / %s", readingA.getId(), readingA.getProperty("text")));
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
+                        // System.out.println(String.format("...making relationship %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
                         GraphModel interim = createSingleRelationship(readingA, readingB, rm, rtm);
                         newRelationResult.addReadings(interim.getReadings());
                         newRelationResult.addRelationships(interim.getRelationships());

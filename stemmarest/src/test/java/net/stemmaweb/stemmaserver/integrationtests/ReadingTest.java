@@ -2237,7 +2237,7 @@ public class ReadingTest {
         assertEquals("the root", relatedReadings.get(0).getText());
         List<ReadingModel> allRels = jerseyTest.resource().path("/reading/" + readId + "/related")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(3, allRels.size());
+        assertEquals(2, allRels.size());
     }
 
 /*  Write this test when we are sure what we need to test!
