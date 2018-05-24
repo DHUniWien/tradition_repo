@@ -8,6 +8,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
@@ -23,7 +24,6 @@ public class RelationTypeTest extends TestCase {
     private JerseyTest jerseyTest;
 
     private String tradId;
-    private String sectId;
     private HashMap<String,String> readingLookup;
 
 
@@ -39,9 +39,6 @@ public class RelationTypeTest extends TestCase {
                 "src/TestFiles/john.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        List<SectionModel> testSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
-                .get(new GenericType<List<SectionModel>>() {});
-        sectId = testSections.get(0).getId();
         List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         readingLookup = new HashMap<>();
@@ -259,6 +256,94 @@ public class RelationTypeTest extends TestCase {
         }
         assertTrue(expectedLinks.isEmpty());
 
+    }
+
+    public void testTransitivityReRanking() {
+        // Use the εὑρίσκω variants at ranks 22 and 24/25
+        String eurisko22 = readingLookup.getOrDefault("εὑρίσκω/22", "17");
+        String euricko22 = readingLookup.getOrDefault("ε̣υριϲκω/22", "17");
+        String euricko24 = readingLookup.getOrDefault("ευριϲκω/24", "17");
+        String eurecko24 = readingLookup.getOrDefault("ευρηϲκω/24", "17");
+        String ricko25 = readingLookup.getOrDefault("ριϲκω/25", "17");
+
+        HashSet<String> testReadings = new HashSet<>();
+
+        // First make the same-rank relations
+        RelationshipModel newRel = new RelationshipModel();
+        newRel.setSource(eurisko22);
+        newRel.setTarget(euricko22);
+        newRel.setScope("local");
+        newRel.setType("orthographic");
+        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        assertEquals(1, result.getRelationships().size());
+        assertEquals(0, result.getReadings().size());
+        testReadings.add(eurisko22);
+        testReadings.add(euricko22);
+
+        try (Transaction tx = db.beginTx()) {
+            for (String nid : testReadings) {
+                Node n = db.getNodeById(Long.valueOf(nid));
+                assertEquals(22L, n.getProperty("rank"));
+            }
+            tx.success();
+        }
+
+        newRel.setSource(euricko24);
+        newRel.setTarget(eurecko24);
+        newRel.setType("spelling");
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        assertEquals(1, result.getRelationships().size());
+        assertEquals(0, result.getReadings().size());
+        testReadings.add(euricko24);
+        testReadings.add(eurecko24);
+
+        // Now join them together, and test that the ranks changed
+        newRel.setTarget(eurisko22);
+        newRel.setType("orthographic");
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        assertEquals(4, result.getRelationships().size());
+        assertEquals(2, result.getReadings().size());
+
+        try (Transaction tx = db.beginTx()) {
+            for (String nid : testReadings) {
+                Node n = db.getNodeById(Long.valueOf(nid));
+                assertEquals(24L, n.getProperty("rank"));
+            }
+            tx.success();
+        }
+
+        // Now add in an "other" relation, which is *not* transitive, to make sure the ranks still update.
+        newRel.setTarget(ricko25);
+        newRel.setType("other");
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        assertEquals(1, result.getRelationships().size());
+        // This will affect pretty much all subsequent readings in the graph.
+        assertTrue(result.getReadings().size() > 500);
+        testReadings.add(ricko25);
+
+        try (Transaction tx = db.beginTx()) {
+            for (String nid : testReadings) {
+                Node n = db.getNodeById(Long.valueOf(nid));
+                assertEquals(25L, n.getProperty("rank"));
+            }
+            tx.success();
+        }
     }
 
     public void tearDown() throws Exception {
