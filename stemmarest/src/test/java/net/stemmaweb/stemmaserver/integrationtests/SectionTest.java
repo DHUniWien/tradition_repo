@@ -119,7 +119,7 @@ public class SectionTest extends TestCase {
         assertEquals(9, sectRels.size());
         List<RelationshipModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
                 .get(new GenericType<List<RelationshipModel>>() {});
-        assertEquals(22, allRels.size());
+        assertEquals(21, allRels.size());
     }
 
     public void testSectionReadings() {

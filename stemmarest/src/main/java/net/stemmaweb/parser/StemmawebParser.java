@@ -145,10 +145,6 @@ public class StemmawebParser {
                                         relship.setProperty("is_significant", currentRelModel.getIs_significant());
                                     if (currentRelModel.getNon_independent() != null)
                                         relship.setProperty("non_independent", currentRelModel.getNon_independent());
-                                    if (currentRelModel.getReading_a() != null)
-                                        relship.setProperty("reading_a", currentRelModel.getReading_a());
-                                    if (currentRelModel.getReading_b() != null)
-                                        relship.setProperty("reading_b", currentRelModel.getReading_b());
                                     if (currentRelModel.getScope() != null)
                                         relship.setProperty("scope", currentRelModel.getScope());
                                 } else {
@@ -226,12 +222,6 @@ public class StemmawebParser {
                                                 currentRelModel.setNon_independent(true);
                                             else
                                                 currentRelModel.setNon_independent(false);
-                                            break;
-                                        case "reading_a":
-                                            currentRelModel.setReading_a(val);
-                                            break;
-                                        case "reading_b":
-                                            currentRelModel.setReading_b(val);
                                             break;
                                         case "scope":
                                             currentRelModel.setScope(val);

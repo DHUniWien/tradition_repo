@@ -19,6 +19,42 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.qmino</groupId>
+                <artifactId>miredot-plugin</artifactId>
+                <version>2.1</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.neo4j</groupId>
+                        <artifactId>neo4j</artifactId>
+                        <version>${neo4j-version}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>restdoc</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <licence>cHJvamVjdHxuZXQuc3RlbW1hd2ViLnJlc3Quc3RlbW1hcmVzdHwyMDIwLTAzLTA4fHRydWV8LTEjTUN3Q0ZGTEJBcTIvSkhBN2E1WWdvMVNzUW9SdFFaY1FBaFJPOVg1QzVlRzl4NDZXcUpKZU9lMTBLazZBS3c9PQ==</licence>
+                    <restModel>
+                        <restFramework>
+                            <name>jax-rs</name>
+                        </restFramework>
+                    </restModel>
+                    <output>
+                        <title>Stemmarest - a repository for variant text traditions</title>
+                        <html>
+                            <initialCollapseLevel>3</initialCollapseLevel>
+                            <intro>build/docintro.html</intro>
+                        </html>
+                        <raml/>
+                    </output>
+                    <!-- insert other configuration here (optional) -->
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
@@ -51,13 +87,6 @@
             <groupId>org.apache.cxf</groupId>
             <artifactId>cxf-bundle-jaxrs</artifactId>
             <version>2.7.7</version>
-            <!-- javax.ws.rs is JAX-RS 2; we (and jersey 1.x) run version 1 (aka jsr311) only -->
-           <exclusions>
-               <exclusion>
-                   <groupId>javax.ws.rs</groupId>
-                    <artifactId>*</artifactId>
-               </exclusion>
-           </exclusions>
         </dependency>
         <!-- Jackson 2.x Core -->
         <dependency>

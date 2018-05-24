@@ -115,8 +115,6 @@ public class TranspositionTest {
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("teh");
-        relationship.setReading_b("root");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -142,8 +140,6 @@ public class TranspositionTest {
         relationship.setType("uncertain");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("the");
-        relationship.setReading_b("rood");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -175,8 +171,6 @@ public class TranspositionTest {
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("teh");
-        relationship.setReading_b("root");
 
         actualResponse = jerseyTest
                 .resource()

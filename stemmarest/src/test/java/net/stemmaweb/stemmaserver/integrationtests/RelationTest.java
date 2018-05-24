@@ -91,8 +91,6 @@ public class RelationTest {
         relationship.setType("repetition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -129,8 +127,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -152,8 +148,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -181,8 +175,6 @@ public class RelationTest {
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
         relationship.setScope("local");
 
         ClientResponse actualResponse = jerseyTest
@@ -281,8 +273,6 @@ public class RelationTest {
         r.setSource(idTeh.toString());
         r.setTarget(idThe.toString());
         r.setType("spelling");
-        r.setReading_a("teh");
-        r.setReading_b("the");
         r.setAlters_meaning(1L);
         r.setIs_significant("maybe");
         r.setScope("document");
@@ -343,8 +333,6 @@ public class RelationTest {
         relationship.setType("spelling");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("no");
-        relationship.setReading_a("teh");
-        relationship.setReading_b("the");
         relationship.setScope("local");
 
         ClientResponse actualResponse = jerseyTest
@@ -405,8 +393,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("root");
-        relationship.setReading_b("teh");
 
         // This relationship should be makeable, and three readings including the end node
         // will change rank
@@ -436,8 +422,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("root");
-        relationship.setReading_b("the");
 
         // this one should not be make-able, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
@@ -472,8 +456,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("root");
-        relationship.setReading_b("teh");
 
         // This relationship should be make-able
         ClientResponse actualResponse = jerseyTest
@@ -526,8 +508,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("rood");
-        relationship.setReading_b("unto");
 
         // this one should not be make-able, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
@@ -571,8 +551,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("showers");
-        relationship.setReading_b("pierced");
 
         ClientResponse actualResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation")
@@ -610,9 +588,9 @@ public class RelationTest {
 
         // Try to overwrite a strong relationship
         List<RelationshipModel> orthorels = allrels.stream().filter(
-                x -> x.getType().equals("orthographic") && x.getReading_a().equals("suecia") && x.getReading_b().equals("Swecia"))
+                x -> x.getType().equals("orthographic"))
                 .collect(Collectors.toList());
-        assertEquals(1, orthorels.size());
+        assertFalse(orthorels.isEmpty());
         RelationshipModel rel = orthorels.get(0);
         rel.setType("spelling");
         rel.setScope("document");
@@ -622,9 +600,9 @@ public class RelationTest {
         assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
 
         List<RelationshipModel> collaterels = allrels.stream()
-                .filter(x -> x.getType().equals("collated") && x.getReading_b().equals("henricus"))
+                .filter(x -> x.getType().equals("collated"))
                 .collect(Collectors.toList());
-        assertEquals(1, collaterels.size());
+        assertFalse(collaterels.isEmpty());
         rel = collaterels.get(0);
         // Change this to a stronger relationship type
         rel.setType("other");
@@ -694,8 +672,6 @@ public class RelationTest {
         model.setSource(roodId.toString());
         model.setTarget(the1Id.toString());
         model.setType("collated");
-        model.setReading_a("rood");
-        model.setReading_b("the");
 
         ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
@@ -706,7 +682,6 @@ public class RelationTest {
 
         model.setTarget(the2Id.toString());
         model.setType("orthographic");
-        model.setReading_b("root");
         response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, model);
@@ -737,8 +712,6 @@ public class RelationTest {
                 .collect(Collectors.toList());
         RelationshipModel model = new RelationshipModel();
         model.setType("lexical");
-        model.setReading_a("de");
-        model.setReading_b("ex");
         for (ReadingModel rm : lfReadings) {
             if (rm.getText().equals("de")) model.setSource(rm.getId());
             if (rm.getText().equals("ex")) model.setTarget(rm.getId());
@@ -766,14 +739,11 @@ public class RelationTest {
                 .resource()
                 .path("/tradition/" + tradId + "/relationships")
                 .get(ClientResponse.class);
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        List<RelationshipModel> relationships = response.getEntity(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(3, relationships.size());
         for (RelationshipModel rel : relationships) {
-            assertTrue(rel.getReading_b().equals("april")
-                    || rel.getReading_b().equals("drought")
-                    || rel.getReading_b().equals("march"));
+            assertEquals("local", rel.getScope());
             assertEquals("transposition", rel.getType());
         }
     }

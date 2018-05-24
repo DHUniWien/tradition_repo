@@ -134,9 +134,7 @@ public class TraditionTest {
         rel.setSource("27");
         rel.setTarget("16");
         rel.setId("36");
-        rel.setReading_a("april");
         rel.setIs_significant("no");
-        rel.setReading_b("april");
         rel.setAlters_meaning(0L);
         rel.setType("transposition");
         rel.setScope("local");
@@ -149,9 +147,7 @@ public class TraditionTest {
         assertEquals(rel.getSource(), relLoaded.getSource());
         assertEquals(rel.getTarget(), relLoaded.getTarget());
         assertEquals(rel.getId(), relLoaded.getId());
-        assertEquals(rel.getReading_a(), relLoaded.getReading_a());
         assertEquals(rel.getIs_significant(), relLoaded.getIs_significant());
-        assertEquals(rel.getReading_b(), relLoaded.getReading_b());
         assertEquals(rel.getAlters_meaning(), relLoaded.getAlters_meaning());
         assertEquals(rel.getType(), relLoaded.getType());
         assertEquals(rel.getScope(), relLoaded.getScope());
@@ -570,8 +566,6 @@ public class TraditionTest {
                 ReadingModel rdg1 = new ReadingModel(atRank.next());
                 ReadingModel rdg2 = new ReadingModel(atRank.next());
                 RelationshipModel rel = new RelationshipModel();
-                rel.setReading_a(rdg1.getText());
-                rel.setReading_b(rdg2.getText());
                 rel.setType("grammatical");
                 rel.setScope("local");
                 rel.setSource(rdg1.getId());

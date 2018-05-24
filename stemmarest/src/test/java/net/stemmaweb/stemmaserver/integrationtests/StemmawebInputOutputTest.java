@@ -345,8 +345,6 @@ public class StemmawebInputOutputTest {
         relationship.setType("lexical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("βλασφημίας ἀπορία");
-        relationship.setReading_b("βλασφημία");
 
         jerseyResponse = jerseyTest
                 .resource()

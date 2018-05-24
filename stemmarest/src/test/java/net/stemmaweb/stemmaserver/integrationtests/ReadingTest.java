@@ -517,6 +517,9 @@ public class ReadingTest {
     public void duplicateWithDuplicateForOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
             Node originalOf = db.findNode(Nodes.READING, "text", "of");
+            Node aMarch = db.findNodes(Nodes.READING, "text", "march").next();
+            assertNotNull(aMarch);
+            String marchId = String.valueOf(aMarch.getId());
             // get all relationships as baseline
             List<RelationshipModel> origRelations = jerseyTest.resource()
                     .path("/tradition/" + tradId + "/relationships")
@@ -533,11 +536,13 @@ public class ReadingTest {
             ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
             assertEquals("of", firstWord.getText());
             assertEquals(1, readingsAndRelationshipsModel.getRelationships().size());
+            // make sure newly-invalid transposition has disappeared
             List<RelationshipModel> nowRelations = jerseyTest.resource()
                     .path("/tradition/" + tradId + "/relationships")
                     .get(new GenericType<List<RelationshipModel>>() {});
             assertEquals(origRelations.size() - 1, nowRelations.size());
-            for (RelationshipModel nr : nowRelations) assertNotEquals("march", nr.getReading_a());
+            for (RelationshipModel nr : nowRelations)
+                assertFalse(nr.getSource().equals(marchId) || nr.getTarget().equals(marchId));
 
             testNumberOfReadingsAndWitnesses(30);
 
