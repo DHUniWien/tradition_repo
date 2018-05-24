@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.FileNotFoundException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -68,23 +67,13 @@ public class StemmaTest {
          * load a tradition to the test DB
          * and gets the generated id of the inserted tradition
          */
-        try {
-            String fileName = "src/TestFiles/testTradition.xml";
-            tradId = createTraditionFromFile("Tradition", fileName);
-        } catch (FileNotFoundException e) {
-            fail();
-        }
+        String fileName = "src/TestFiles/testTradition.xml";
+        tradId = createTraditionFromFile("Tradition", fileName);
     }
 
-    private String createTraditionFromFile(String tName, String fName)  throws FileNotFoundException {
-        String tradId = "";
-        try {
-            ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
-            tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail();
-        }
+    private String createTraditionFromFile(String tName, String fName) {
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
+        String tradId = Util.getValueFromJson(jerseyResult, "tradId");
         assert(tradId.length() != 0);
         return tradId;
     }
@@ -464,13 +453,8 @@ public class StemmaTest {
 
     @Test
     public void deleteStemmaTest () {
-        String tradId = null;
-        try {
-            String fileName = "src/TestFiles/florilegium_graphml.xml";
-            tradId = createTraditionFromFile("Florilegium", fileName);
-        } catch (FileNotFoundException e) {
-            fail();
-        }
+        String fileName = "src/TestFiles/florilegium_graphml.xml";
+        String tradId = createTraditionFromFile("Florilegium", fileName);
 
         // Count the nodes to start with
         int originalNodeCount = countGraphNodes();

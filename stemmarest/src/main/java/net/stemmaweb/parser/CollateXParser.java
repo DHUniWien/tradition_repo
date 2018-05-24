@@ -1,7 +1,5 @@
 package net.stemmaweb.parser;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;

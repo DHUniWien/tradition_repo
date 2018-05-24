@@ -279,6 +279,7 @@ public class Tradition {
 
                     while (!queue.isEmpty()) {
                         Node curNode = queue.poll();
+                        if (curNode == null) continue; // how do you get a null member of a queue?
                         if (!curNode.hasProperty("rank")) {
                             curNode.setProperty("rank", 0L);
                         }

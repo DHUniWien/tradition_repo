@@ -1,8 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import net.stemmaweb.rest.ERelations;
 
 import org.junit.After;
@@ -13,6 +10,8 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
+
+import static org.junit.Assert.*;
 
 /**
  * 
@@ -47,8 +46,8 @@ public class UnicodeTest {
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
             Node foundNode = graphDb.getNodeById(n.getId());
-            assertTrue(foundNode.getId() == n.getId());
-            assertTrue(foundNode.getProperty("name").equals("Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³"));
+            assertEquals(foundNode.getId(), n.getId());
+            assertEquals("Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³", foundNode.getProperty("name"));
             tx.success();
         }
     }
@@ -81,7 +80,7 @@ public class UnicodeTest {
             Node foundNode2 = graphDb.getNodeById(node2.getId());
             Relationship foundRelationship = graphDb.getRelationshipById(relationship.getId());
 
-            assertTrue(foundNode1.getId() == node1.getId());
+            assertEquals(foundNode1.getId(), node1.getId());
             assertEquals("בדיקה", foundNode1.getProperty("name"));
             assertEquals("עוד בדיקה", foundNode2.getProperty("name"));
             assertEquals("יחס", foundRelationship.getProperty("type"));
@@ -105,8 +104,8 @@ public class UnicodeTest {
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
             Node foundNode = graphDb.getNodeById(n.getId());
-            assertTrue(foundNode.getId() == n.getId());
-            assertFalse(foundNode.getProperty("name").equals("בליקה"));
+            assertEquals(foundNode.getId(), n.getId());
+            assertNotEquals("בליקה", foundNode.getProperty("name"));
             tx.success();
         }
     }
@@ -127,7 +126,7 @@ public class UnicodeTest {
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
             Node foundNode = graphDb.getNodeById(n.getId());
-            assertTrue(foundNode.getId() == n.getId());
+            assertEquals(foundNode.getId(), n.getId());
             assertEquals("ειπον", foundNode.getProperty("name"));
             tx.success();
         }
@@ -149,8 +148,8 @@ public class UnicodeTest {
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
             Node foundNode = graphDb.getNodeById(n.getId());
-            assertTrue(foundNode.getId() == n.getId());
-            assertFalse(foundNode.getProperty("name").equals("ειπων"));
+            assertEquals(foundNode.getId(), n.getId());
+            assertNotEquals("ειπων", foundNode.getProperty("name"));
             tx.success();
         }
     }
@@ -171,7 +170,7 @@ public class UnicodeTest {
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
             Node foundNode = graphDb.getNodeById(n.getId());
-            assertTrue(foundNode.getId() == n.getId());
+            assertEquals(foundNode.getId(), n.getId());
             assertEquals("المطلق", foundNode.getProperty("name"));
             tx.success();
         }
@@ -193,8 +192,8 @@ public class UnicodeTest {
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
             Node foundNode = graphDb.getNodeById(n.getId());
-            assertTrue(foundNode.getId() == n.getId());
-            assertFalse(foundNode.getProperty("name").equals("المطلو"));
+            assertEquals(foundNode.getId(), n.getId());
+            assertNotEquals("المطلو", foundNode.getProperty("name"));
             tx.success();
         }
     }

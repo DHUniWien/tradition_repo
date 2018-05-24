@@ -38,9 +38,8 @@ public class StemmaModel {
      */
     private String dot;
 
-    public StemmaModel () {
-
-    }
+    @SuppressWarnings("unused")
+    public StemmaModel () {}
 
     public StemmaModel(Node stemmaNode) {
         GraphDatabaseService db = stemmaNode.getGraphDatabase();

@@ -573,7 +573,7 @@ public class Section {
                     .forEach(x -> addWitnessLink(oldStart, trueEnd, x, "witnesses"));
             oldWitnesses.addAll(newWitnesses);
             Relationship link = oldEnd.createRelationshipTo(oldStart, ERelations.SEQUENCE);
-            link.setProperty("witnesses", oldWitnesses.toArray(new String[oldWitnesses.size()]));
+            link.setProperty("witnesses", oldWitnesses.toArray(new String[0]));
 
             // Reconfigure the lemma text link, if there is one
             Relationship plr = oldEnd.getSingleRelationship(ERelations.LEMMA_TEXT, Direction.INCOMING);

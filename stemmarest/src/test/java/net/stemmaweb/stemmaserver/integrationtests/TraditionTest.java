@@ -381,20 +381,11 @@ public class TraditionTest {
         /* Preconditon
          * The user with id 1 has tradition
          */
-        Result result;
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            assertEquals(tradId, tradition.getId());
-            assertEquals("Tradition", tradition.getName());
-
-            tx.success();
-        }
+        ClientResponse jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        List<TraditionModel> tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
 
         /*
          * Change the owner of the tradition
@@ -415,20 +406,12 @@ public class TraditionTest {
         /* PostCondition
          * The user with id 1 has still tradition
          */
-        TraditionModel tradition = new TraditionModel();
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            tx.success();
-        }
-
-        assertEquals(tradId, tradition.getId());
-        assertEquals("Tradition", tradition.getName());
+        jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
+        assertEquals("Tradition", tradList.get(0).getName());
 
     }
 
@@ -457,32 +440,18 @@ public class TraditionTest {
         /*
          * The user with id 42 has no tradition
          */
-        Result result;
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            assertTrue(!tradIterator.hasNext());
-
-            tx.success();
-
-        }
+        ClientResponse jerseyResult = jerseyTest.resource().path("/user/42/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        assertEquals(0, jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {}).size());
 
         /*
          * The user with id 1 has tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            assertEquals(tradId, tradition.getId());
-            assertEquals("Tradition", tradition.getName());
-
-            tx.success();
-        }
+        jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        List<TraditionModel> tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
 
         /*
          * Change the owner of the tradition
@@ -509,30 +478,19 @@ public class TraditionTest {
         /*
          * Test if user with id 1 has still the old tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            assertEquals(tradId, tradition.getId());
-            assertEquals("Tradition", tradition.getName());
-
-            tx.success();
-        }
+        jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
+        assertEquals("Tradition", tradList.get(0).getName());
 
         /*
          * The user with id 42 has still no tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            assertTrue(!tradIterator.hasNext());
-
-            tx.success();
-        }
+        jerseyResult = jerseyTest.resource().path("/user/42/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        assertEquals(0, jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {}).size());
     }
 
     /**

@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.*;
 import java.util.*;
 
 
@@ -12,7 +11,6 @@ import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
@@ -45,21 +43,13 @@ public class StemmawebLegacyTest {
 
     @Before
     public void setUp() throws Exception {
-
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
-                .newImpermanentDatabase())
-                .getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
-        Root webResource = new Root();
 
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory
-                .newJerseyTestServer()
-                .addResource(webResource)
-                .create();
-        jerseyTest.setUp();
+        jerseyTest = Util.setupJersey();
     }
 
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
@@ -78,7 +68,7 @@ public class StemmawebLegacyTest {
     // Tradition test
 
     @Test
-    public void testEmptyTraditionCreation() throws FileNotFoundException {
+    public void testEmptyTraditionCreation() {
         /* Perl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
@@ -101,7 +91,7 @@ public class StemmawebLegacyTest {
             Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
             assertNotNull(tradNode);
             assertEquals(TRADNAME, tradNode.getProperty("name"));
-            assertEquals(true, tradNode.hasRelationship());
+            assertTrue(tradNode.hasRelationship());
             Iterable<Relationship> relationships = tradNode.getRelationships();
             // There should be only one relationship between the USER and TRADITION nodes
             int rel_count = 0;

@@ -2,7 +2,6 @@ package net.stemmaweb.model;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.RelationType;
 import org.neo4j.graphdb.*;
 
 import javax.xml.bind.annotation.XmlRootElement;

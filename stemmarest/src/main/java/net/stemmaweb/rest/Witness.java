@@ -23,7 +23,6 @@ import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
-import static net.stemmaweb.rest.Util.jsonresp;
 
 /**
  * Comprises all the API calls related to a witness.
@@ -86,7 +85,7 @@ public class Witness {
             @QueryParam("start") @DefaultValue("0") String start,
             @QueryParam("end") @DefaultValue("E") String end) {
 
-        String witnessAsText = "";
+        StringBuilder witnessAsText = new StringBuilder();
 
         long startRank = Long.parseLong(start);
         long endRank;
@@ -162,14 +161,14 @@ public class Witness {
                 if (booleanValue(node, "is_end")) continue;
                 if (booleanValue(node, "is_lacuna")) continue;
                 if (!joinNext && !booleanValue(node, "join_prior")
-                        && !witnessAsText.equals("") && !witnessAsText.endsWith(" "))
-                    witnessAsText += " ";
+                        && !witnessAsText.toString().equals("") && !witnessAsText.toString().endsWith(" "))
+                    witnessAsText.append(" ");
                 joinNext = booleanValue(node, "join_next");
-                witnessAsText += node.getProperty("text").toString();
+                witnessAsText.append(node.getProperty("text").toString());
             }
             tx.success();
         }
-        WitnessTextModel wtm = new WitnessTextModel(witnessAsText.trim());
+        WitnessTextModel wtm = new WitnessTextModel(witnessAsText.toString().trim());
         return Response.ok(wtm).build();
 
     }

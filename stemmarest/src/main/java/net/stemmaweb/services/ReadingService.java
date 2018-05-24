@@ -1,6 +1,5 @@
 package net.stemmaweb.services;
 
-import net.stemmaweb.model.RelationshipModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -57,7 +56,7 @@ public class ReadingService {
             String[] witList = (String[]) link.getProperty(witClass);
             HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
             currentWits.add(sigil);
-            link.setProperty(witClass, currentWits.toArray(new String[currentWits.size()]));
+            link.setProperty(witClass, currentWits.toArray(new String[0]));
         } else {
             String[] witList = {sigil};
             link.setProperty(witClass, witList);

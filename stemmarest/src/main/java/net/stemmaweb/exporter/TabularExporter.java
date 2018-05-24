@@ -53,7 +53,7 @@ public class TabularExporter {
         ArrayList<String> witnesses = new ArrayList<>();
         for (HashMap<String, Object> witRecord : asJson.getAlignment())
             witnesses.add(witRecord.get("witness").toString());
-        writer.writeNext(witnesses.toArray(new String[witnesses.size()]));
+        writer.writeNext(witnesses.toArray(new String[0]));
         // ...and then each token row.
         for (int i = 0; i < asJson.getLength(); i++) {
             ArrayList<String> readings = new ArrayList<>();
@@ -61,7 +61,7 @@ public class TabularExporter {
                 ArrayList<HashMap<String, String>> tokenList = (ArrayList<HashMap<String, String>>) witRecord.get("tokens");
                 readings.add(tokenList.get(i).get("t"));
             }
-            writer.writeNext(readings.toArray(new String[readings.size()]));
+            writer.writeNext(readings.toArray(new String[0]));
         }
         try {
             writer.close();

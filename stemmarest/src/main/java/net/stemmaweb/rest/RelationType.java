@@ -7,11 +7,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -83,7 +80,7 @@ public class RelationType {
             if (extantRelType != null)
                 return Response.status(Response.Status.CREATED).entity(rtModel).build();
         }
-        return Response.serverError().build();
+        return Response.serverError().entity(jsonerror("Could neither instantiate nor update relation type")).build();
     }
 
     /**
@@ -152,7 +149,7 @@ public class RelationType {
         // Create the node
         Node result = relType.instantiate(tradNode);
         if (result == null)
-            return Response.serverError().build();
+            return Response.serverError().entity(jsonerror("Could not instantiate default relation type")).build();
         else
             return Response.status(Response.Status.CREATED).entity(relType).build();
     }

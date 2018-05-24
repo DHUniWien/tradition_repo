@@ -76,7 +76,7 @@ public class StemmawebInputOutputTest {
     public void graphMLImportXMLStreamErrorTest() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaWithError.xml", "stemmaweb");
-        assertFalse(response == null);
+        assertNotNull(response);
         assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
                     response.getStatus());
         assertFalse(traditionNodeExists());

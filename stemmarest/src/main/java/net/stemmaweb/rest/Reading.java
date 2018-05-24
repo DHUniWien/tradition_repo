@@ -14,7 +14,6 @@ import javax.ws.rs.core.Response.Status;
 
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationshipService;
@@ -471,15 +470,13 @@ public class Reading {
                 Relationship addedRelationship = originNode
                         .createRelationshipTo(targetNode, ERelations.SEQUENCE);
                 Collections.sort(remainingWitnesses);
-                addedRelationship.setProperty("witnesses", remainingWitnesses
-                        .toArray(new String[remainingWitnesses.size()]));
+                addedRelationship.setProperty("witnesses", remainingWitnesses.toArray(new String[0]));
 
                 if (stayingWitnesses.isEmpty()) {
                     originalRel.delete();
                 } else {
                     Collections.sort(stayingWitnesses);
-                    originalRel.setProperty("witnesses", stayingWitnesses
-                            .toArray(new String[stayingWitnesses.size()]));
+                    originalRel.setProperty("witnesses", stayingWitnesses.toArray(new String[0]));
                 }
             }
         }
@@ -860,7 +857,7 @@ public class Reading {
 
             Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
             Collections.sort(allWitnesses);
-            relationship.setProperty("witnesses", allWitnesses.toArray(new String[allWitnesses.size()]));
+            relationship.setProperty("witnesses", allWitnesses.toArray(new String[0]));
             createdRelationships.add(new RelationshipModel(relationship));
 
             lastReading = newReading;

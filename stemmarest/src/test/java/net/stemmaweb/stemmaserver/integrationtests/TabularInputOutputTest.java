@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import static org.junit.Assert.assertNotEquals;
+
 
 /**
  * Test tabular parsing of various forms.
@@ -43,7 +45,7 @@ public class TabularInputOutputTest extends TestCase {
         jerseyTest.setUp();
     }
 
-    public void testParseCSV() throws Exception {
+    public void testParseCSV() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium_simple.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
@@ -69,7 +71,7 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(foundReading);
     }
 
-    public void testParseCsvLayers() throws Exception {
+    public void testParseCsvLayers() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
@@ -89,7 +91,7 @@ public class TabularInputOutputTest extends TestCase {
                 layers, "0", "E").getEntity();
         System.out.println(tm.getText());
         System.out.println(ltm.getText());
-        assertFalse(tm.getText().equals(ltm.getText()));
+        assertNotEquals(tm.getText(), ltm.getText());
 
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
@@ -101,7 +103,7 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(foundReading);
     }
 
-    public void testSetRelationship() throws Exception {
+    public void testSetRelationship() {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -139,7 +141,7 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(1, readingsAndRelationships.getRelationships().size());
     }
 
-    public void testParseExcel() throws Exception {
+    public void testParseExcel() {
         // Test a bad file
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample_bad.xlsx", "xlsx");

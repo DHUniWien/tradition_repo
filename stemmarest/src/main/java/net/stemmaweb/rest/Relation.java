@@ -5,7 +5,6 @@ import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
-import javax.ws.rs.core.GenericEntity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -332,10 +331,10 @@ public class Relation {
                 Node readingA = iterateNodes.remove(0);
                 HashSet<Node> alreadyRelated = new HashSet<>();
                 readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
-                // System.out.println(String.format("Propagating on node %d / %s", readingA.getId(), readingA.getProperty("text")));
+                System.out.println(String.format("Propagating on node %d / %s", readingA.getId(), readingA.getProperty("text")));
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
-                        // System.out.println(String.format("...making relationship %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
+                        System.out.println(String.format("...making relationship %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
                         GraphModel interim = createSingleRelationship(readingA, readingB, rm, rtm);
                         newRelationResult.addReadings(interim.getReadings());
                         newRelationResult.addRelationships(interim.getRelationships());
