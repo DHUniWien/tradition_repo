@@ -290,7 +290,7 @@ public class ReadingTest {
                     .path("/reading/" + node.getId())
                     .type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
-            assertTrue(readingModel != null);
+            assertNotNull(readingModel);
             assertEquals(expectedReadingModel.getRank(), readingModel.getRank());
             assertEquals(expectedReadingModel.getText(), readingModel.getText());
             tx.success();
@@ -763,21 +763,16 @@ public class ReadingTest {
             int numberOfRelationships = 0;
             for (Relationship rel : stayingNode.getRelationships(ERelations.RELATED)) {
                 numberOfRelationships++;
-                // test that relationships have been copied
-                if (rel.getOtherNode(stayingNode).getProperty("text").equals("when")) {
-                    assertEquals("grammatical", rel.getProperty("type"));
-                    assertEquals("when", rel.getOtherNode(stayingNode).getProperty("text"));
-                }
+                // test that relationships have been preserved
                 if (rel.getOtherNode(stayingNode).getProperty("text").equals("the root")) {
                     assertEquals("transposition", rel.getProperty("type"));
                     assertEquals("the root", rel.getOtherNode(stayingNode).getProperty("text"));
                 }
 
-                // test that relationship between the two readings has been
-                // deleted
-                assertTrue(rel.getOtherNode(stayingNode) != stayingNode);
+                // test that relationship between the two readings has been deleted
+                assertNotSame(rel.getOtherNode(stayingNode), stayingNode);
             }
-            assertEquals(2, numberOfRelationships);
+            assertEquals(1, numberOfRelationships);
             tx.success();
         }
     }
@@ -2226,7 +2221,7 @@ public class ReadingTest {
     public void relatedReadingsTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'fruit', rank:8}) return w");
+            Result result = db.execute("match (w:READING {text:'fruit', rank:9}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             readId = nodes.next().getId();
