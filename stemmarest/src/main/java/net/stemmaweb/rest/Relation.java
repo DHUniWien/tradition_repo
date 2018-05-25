@@ -78,16 +78,18 @@ public class Relation {
             GraphModel createResult = (GraphModel)response.getEntity();
             relationChanges.addReadings(createResult.getReadings());
             relationChanges.addRelations(createResult.getRelations());
-            Long thisRelId = 0L;
-            if (relationChanges.getRelations().stream().findFirst().isPresent()) // this will always be true
-                thisRelId = Long.valueOf(relationChanges.getRelations().stream().findFirst().get().getId());
+            // Fish out the ID of the relationship that we explicitly created
+            String thisRelId = createResult.getRelations().stream()
+                    .filter(x -> x.getTarget().equals(relationModel.getTarget())
+                            && x.getSource().equals(relationModel.getSource()))
+                    .findFirst().get().getId();
             if (scope.equals(SCOPE_GLOBAL)) {
                 Boolean use_normal = returnRelationType(tradId, relationModel.getType()).getUse_regular();
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
                     Node thisTradition = DatabaseService.getTraditionNode(tradId, db);
-                    Relationship thisRelation = db.getRelationshipById(thisRelId);
+                    Relationship thisRelation = db.getRelationshipById(Long.valueOf(thisRelId));
 
                     // Get all the readings that belong to our tradition
                     ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
@@ -138,6 +140,7 @@ public class Relation {
                     }
                     tx.success();
                 } catch (Exception e) {
+                    e.printStackTrace();
                     return Response.serverError().build();
                 }
             }
