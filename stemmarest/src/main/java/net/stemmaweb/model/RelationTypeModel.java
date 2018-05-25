@@ -65,7 +65,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     public RelationTypeModel (String name) {
         this.thename = name;
         // Set some defaults
-        this.description = "A type of reading relationship";
+        this.description = "A type of reading relation";
         this.bindlevel = 10;
         this.is_colocation = true;
         this.is_weak = false;

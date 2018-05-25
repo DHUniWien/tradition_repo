@@ -5,7 +5,7 @@ import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
@@ -114,11 +114,11 @@ public class SectionTest extends TestCase {
     public void testSectionRelationships() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2"), "parentId");
-        List<RelationshipModel> sectRels = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> sectRels = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(9, sectRels.size());
-        List<RelationshipModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(21, allRels.size());
     }
 

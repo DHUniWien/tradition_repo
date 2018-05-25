@@ -428,11 +428,11 @@ public class Tradition {
      * @statuscode 500 - on failure, with an error message
      */
     @GET
-    @Path("/relationships")
+    @Path("/relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel>")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships() {
-        ArrayList<RelationshipModel> relList = new ArrayList<>();
+        ArrayList<RelationModel> relList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
@@ -441,9 +441,9 @@ public class Tradition {
             return Response.serverError().entity(jsonerror("section lookup failed")).build();
         for (SectionModel s : ourSections) {
             Section sectRest = new Section(traditionId, s.getId());
-            ArrayList<RelationshipModel> sectRels = sectRest.sectionRelationships();
+            ArrayList<RelationModel> sectRels = sectRest.sectionRelationships();
             if (sectRels == null)
-                return Response.serverError().entity(jsonerror("something went wrong in section relationships")).build();
+                return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
             relList.addAll(sectRels);
         }
 

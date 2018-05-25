@@ -16,7 +16,7 @@ public enum Nodes implements Label {
     TRADITION,      // is a tradition root node
     SECTION,        // is a part of a tradition
     STEMMA,         // is a stemma root node
-    RELATION_TYPE,  // is a defined relationship type
+    RELATION_TYPE,  // is a defined relation type
     REFERENCE,      // is an entity reference
     PERSON,
     PERSONREF,      // ...to a person

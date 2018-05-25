@@ -206,11 +206,11 @@ public class StemmawebInputOutputTest {
         assertEquals(13, witnesses.size());  // should be 13
 
         // Check for the correct number of relationships
-        List<RelationshipModel> relations = jerseyTest
+        List<RelationModel> relations = jerseyTest
                 .resource()
-                .path("/tradition/" + traditionId + "/relationships")
+                .path("/tradition/" + traditionId + "/relations")
                 .type(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<RelationshipModel>>() {});
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(7, relations.size());
 
         // Spot-check a correct relationship setup
@@ -339,7 +339,7 @@ public class StemmawebInputOutputTest {
         }
 
         // Add a new
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(String.valueOf(blasphemias.getId()));
         relationship.setTarget(String.valueOf(blasphemia.getId()));
         relationship.setType("lexical");
@@ -397,11 +397,11 @@ public class StemmawebInputOutputTest {
         assertEquals(13, witnesses.size());
 
         // Check for the correct number of relationships
-        List<RelationshipModel> relations = jerseyTest
+        List<RelationModel> relations = jerseyTest
                 .resource()
-                .path("/tradition/" + traditionId + "/relationships")
+                .path("/tradition/" + traditionId + "/relations")
                 .type(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<RelationshipModel>>() {
+                .get(new GenericType<List<RelationModel>>() {
                 });
         assertEquals(8, relations.size());
 

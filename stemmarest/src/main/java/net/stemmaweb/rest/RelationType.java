@@ -18,7 +18,7 @@ import static net.stemmaweb.rest.Util.jsonerror;
 public class RelationType {
     private GraphDatabaseService db;
     /**
-     * The name of a type of reading relationship.
+     * The name of a type of reading relation.
      */
     private String traditionId;
     private String typeName;
@@ -87,7 +87,7 @@ public class RelationType {
      * Creates a relation type with the given name according to default values.
      * Method for use internally, logic intended for Stemmaweb backwards compatibility.
      *
-     * @summary Create a default relationship type
+     * @summary Create a default relation type
      *
      * @return A JSON RelationTypeModel or a JSON error message
      * @statuscode 200 on success, if an existing type was updated

@@ -166,7 +166,7 @@ public class DotExporter
 
                     }
 
-                    // Retrieve reading relationships, if requested
+                    // Retrieve reading relations, if requested
                     if (dm.getIncludeRelated()) {
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
                             write("\tn" + relatedRel.getStartNode().getId() + "->" + "n" +

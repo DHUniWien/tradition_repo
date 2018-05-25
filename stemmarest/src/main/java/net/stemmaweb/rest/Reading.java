@@ -16,7 +16,7 @@ import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.RelationshipService;
+import net.stemmaweb.services.RelationService;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
@@ -125,8 +125,8 @@ public class Reading {
      * Gets all readings related to the given reading.
      * @summary Get related readings
      *
-     * @param filterTypes - a list of relationship types to filter by
-     * @return a list of readings related via the given relationship types.
+     * @param filterTypes - a list of relation types to filter by
+     * @return a list of readings related via the given relation types.
      * @statuscode 200 - on success
      * @statuscode 500 - on error, with an error message
      *
@@ -157,23 +157,23 @@ public class Reading {
     }
 
     /**
-     * Deletes all relationships associated with the given reading.
-     * @summary Delete all reading relationships
+     * Deletes all relations associated with the given reading.
+     * @summary Delete all reading relations
      *
-     * @return a list of the relationships that were deleted.
+     * @return a list of the relations that were deleted.
      * @statuscode 200 - on success
      * @statuscode 500 - on error, with an error message
      */
     @DELETE
     @Path("relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel")
     public Response deleteAllRelations() {
-        ArrayList<RelationshipModel> deleted = new ArrayList<>();
+        ArrayList<RelationModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
             for (Relationship rel : reading.getRelationships(ERelations.RELATED)) {
-                deleted.add(new RelationshipModel(rel));
+                deleted.add(new RelationModel(rel));
                 rel.delete();
             }
             tx.success();
@@ -244,7 +244,7 @@ public class Reading {
      *            specifies the reading(s) to be duplicated, as well as the witnesses to which
      *            the duplicated new reading(s) should now belong.
      * @return a GraphModel in JSON containing all the created readings and the
-     *         deleted relationships.
+     *         deleted relations.
      * @statuscode 200 - on success
      * @statuscode 500 - on error, with an error message
      */
@@ -256,7 +256,7 @@ public class Reading {
     public Response duplicateReading(DuplicateModel duplicateModel) {
 
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
-        ArrayList<RelationshipModel> tempDeleted = new ArrayList<>();
+        ArrayList<RelationModel> tempDeleted = new ArrayList<>();
 
         Node originalReading;
 
@@ -284,16 +284,16 @@ public class Reading {
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
 
-        // Now outside our main transaction block, try to put back the deleted relationships.
-        ArrayList<RelationshipModel> deletedRelationships = new ArrayList<>();
+        // Now outside our main transaction block, try to put back the deleted relations.
+        ArrayList<RelationModel> deletedRelations = new ArrayList<>();
         Relation relationRest = new Relation(getTraditionId());
-        for (RelationshipModel rm : tempDeleted) {
+        for (RelationModel rm : tempDeleted) {
             Response result = relationRest.create(rm);
             if (Status.CREATED.getStatusCode() != result.getStatus())
-                deletedRelationships.add(rm);
+                deletedRelations.add(rm);
         }
-        GraphModel readingsAndRelationships = new GraphModel(createdReadings, deletedRelationships);
-        return Response.ok(readingsAndRelationships).build();
+        GraphModel readingsAndRelations = new GraphModel(createdReadings, deletedRelations);
+        return Response.ok(readingsAndRelations).build();
     }
 
     /**
@@ -360,10 +360,10 @@ public class Reading {
      *            : the reading to be duplicated
      * @param addedReading
      *            : the newly duplicated reading
-     * @return a list of the deleted relationships
+     * @return a list of the deleted relations
      */
-    private ArrayList<RelationshipModel> duplicate(List<String> newWitnesses,
-            Node originalReading, Node addedReading) {
+    private ArrayList<RelationModel> duplicate(List<String> newWitnesses,
+                                               Node originalReading, Node addedReading) {
         // copy reading properties to newly added reading
         addedReading = ReadingService.copyReadingProperties(originalReading, addedReading);
 
@@ -382,14 +382,14 @@ public class Reading {
                             originalRelationship.getEndNode());
         }
 
-        // replicated all colocated relationships of the original reading;
-        // delete all non-colocated relationships that cross our rank
-        ArrayList<RelationshipModel> tempDeleted = new ArrayList<>();
+        // replicated all colocated relations of the original reading;
+        // delete all non-colocated relations that cross our rank
+        ArrayList<RelationModel> tempDeleted = new ArrayList<>();
         String sectId = originalReading.getProperty("section_id").toString();
         String tradId = getTraditionId();
         Section sectionRest = new Section(tradId, sectId);
         Long ourRank = (Long) originalReading.getProperty("rank");
-        for (RelationshipModel rm : sectionRest.sectionRelationships()) {
+        for (RelationModel rm : sectionRest.sectionRelationships()) {
             Relationship originalRel = db.getRelationshipById(Long.valueOf(rm.getId()));
             if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                     (rm.getSource().equals(String.valueOf(originalReading.getId())) ||
@@ -412,11 +412,11 @@ public class Reading {
                 }
             }
         }
-/*
+/*  TODO why is this commented out?
         // see if any of the deleted non-colocations can be safely put back
         Relation relationRest = new Relation(tradId);
-        ArrayList<RelationshipModel> removedRelationships = new ArrayList<>();
-        for (RelationshipModel rm : tempDeleted) {
+        ArrayList<RelationModel> removedRelationships = new ArrayList<>();
+        for (RelationModel rm : tempDeleted) {
             Response result = relationRest.create(rm);
             if (Status.CREATED.getStatusCode() != result.getStatus())
                 removedRelationships.add(rm);
@@ -558,7 +558,7 @@ public class Reading {
          }
          */
         if (hasNonColoRelations(stayingReading, deletingReading)) {
-            errorMessage = "Readings to be merged cannot contain cross-location relationships";
+            errorMessage = "Readings to be merged cannot contain cross-location relations";
             return false;
         }
         // If the two readings are aligned, there is no need to test for cycles.
@@ -580,14 +580,13 @@ public class Reading {
     }
 
     /**
-     * Checks if the two readings have a relationship between them which is of
-     * class two (transposition / repetition).
+     * Checks if the two readings have a relation between them which implies non-colocation.
      *
      * @param stayingReading
      *            the reading which stays in the database
      * @param deletingReading
      *            the reading which will be deleted from the database
-     * @return true if a relationship between two readings is of class 2
+     * @return true if the readings have a non-colocation relation
      */
     private boolean hasNonColoRelations(Node stayingReading, Node deletingReading) {
         for (Relationship stayingRel : stayingReading.getRelationships(ERelations.RELATED)) {
@@ -608,10 +607,10 @@ public class Reading {
      *            the reading which will be deleted from the database
      */
     private void merge(Node stayingReading, Node deletingReading) throws Exception {
-        deleteRelationshipBetweenReadings(stayingReading, deletingReading);
+        deleteRelationBetweenReadings(stayingReading, deletingReading);
         copyWitnesses(stayingReading, deletingReading, Direction.INCOMING);
         copyWitnesses(stayingReading, deletingReading, Direction.OUTGOING);
-        addRelationshipsToStayingReading(stayingReading, deletingReading);
+        addRelationsToStayingReading(stayingReading, deletingReading);
         deletingReading.delete();
     }
 
@@ -623,7 +622,7 @@ public class Reading {
      * @param deletingReading
      *            the reading which will be deleted from the database
      */
-    private void deleteRelationshipBetweenReadings(Node stayingReading, Node deletingReading) {
+    private void deleteRelationBetweenReadings(Node stayingReading, Node deletingReading) {
         for (Relationship firstRel : stayingReading.getRelationships(ERelations.RELATED)) {
             for (Relationship secondRel : deletingReading.getRelationships(ERelations.RELATED)) {
                 if (firstRel.equals(secondRel)) {
@@ -676,28 +675,28 @@ public class Reading {
     }
 
     /**
-     * Adds relationships from deletedReading to staying reading.
+     * Adds relations from deletedReading to staying reading.
      *
      * @param stayingReading
      *            the reading which stays in the database
      * @param deletingReading
      *            the reading which will be deleted from the database
      */
-    private void addRelationshipsToStayingReading(Node stayingReading,
-            Node deletingReading) {
+    private void addRelationsToStayingReading(Node stayingReading,
+                                              Node deletingReading) {
         // copy relationships from deletingReading to stayingReading
         for (Relationship oldRel : deletingReading.getRelationships(
                 ERelations.RELATED, Direction.OUTGOING)) {
             Relationship newRel = stayingReading.createRelationshipTo(
                     oldRel.getEndNode(), ERelations.RELATED);
-            RelationshipService.copyRelationshipProperties(oldRel, newRel);
+            RelationService.copyRelationshipProperties(oldRel, newRel);
             oldRel.delete();
         }
         for (Relationship oldRel : deletingReading.getRelationships(
                 ERelations.RELATED, Direction.INCOMING)) {
             Relationship newRel = oldRel.getStartNode().createRelationshipTo(
                     stayingReading, ERelations.RELATED);
-            RelationshipService.copyRelationshipProperties(oldRel, newRel);
+            RelationService.copyRelationshipProperties(oldRel, newRel);
             oldRel.delete();
         }
     }
@@ -733,7 +732,7 @@ public class Reading {
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
         assert (model != null);
-        GraphModel readingsAndRelationships;
+        GraphModel readingsAndRelations;
         Node originalReading;
         try (Transaction tx = db.beginTx()) {
             originalReading = db.getNodeById(readId);
@@ -760,12 +759,12 @@ public class Reading {
             }
 
             else if (originalReading.hasRelationship(ERelations.RELATED))
-                errorMessage = "A reading to be split cannot be part of any relationship";
+                errorMessage = "A reading to be split cannot be part of any relation";
 
             if (errorMessage != null)
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
-            readingsAndRelationships = split(originalReading, splitIndex, model);
+            readingsAndRelations = split(originalReading, splitIndex, model);
             // new Tradition(getTraditionId()).recalculateRank(originalReading.getId());
             ReadingService.recalculateRank(originalReading);
 
@@ -775,7 +774,7 @@ public class Reading {
             errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
-        return Response.ok(readingsAndRelationships).build();
+        return Response.ok(readingsAndRelations).build();
     }
 
     /**
@@ -821,7 +820,7 @@ public class Reading {
      */
     private GraphModel split(Node originalReading, int splitIndex, ReadingBoundaryModel model) {
         ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<>();
-        ArrayList<RelationshipModel> createdRelationships = new ArrayList<>();
+        ArrayList<RelationModel> createdRelations = new ArrayList<>();
 
         // Get the witness sequences that come out of the original reading, as well as
         // the list of witnesses
@@ -858,19 +857,20 @@ public class Reading {
             Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
             Collections.sort(allWitnesses);
             relationship.setProperty("witnesses", allWitnesses.toArray(new String[0]));
-            createdRelationships.add(new RelationshipModel(relationship));
+            // TODO wtf, a sequence relationship into a RelationModel?
+            createdRelations.add(new RelationModel(relationship));
 
             lastReading = newReading;
             createdOrChangedReadings.add(new ReadingModel(newReading));
         }
         for (Relationship oldRel : originalOutgoingRels) {
             Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
-            RelationshipService.copyRelationshipProperties(oldRel, newRel);
-            createdRelationships.add(new RelationshipModel(newRel));
+            RelationService.copyRelationshipProperties(oldRel, newRel);
+            createdRelations.add(new RelationModel(newRel));
             oldRel.delete();
         }
 
-        return new GraphModel(createdOrChangedReadings, createdRelationships);
+        return new GraphModel(createdOrChangedReadings, createdRelations);
     }
 
     /**
@@ -978,7 +978,7 @@ public class Reading {
     /**
      * Collapse two consecutive readings into one. Texts will be concatenated together
      * (with or without a space or extra text). This call may only be used on consecutive
-     * readings with no divergent witness paths between them, and no relationships marked
+     * readings with no divergent witness paths between them, and no relations marked
      * on either individual reading. The reading with the lower rank (i.e., that which
      * comes first in the text) must be given first in the URL.
      *

@@ -9,7 +9,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -69,7 +69,7 @@ public class StemmawebParser {
         // Some state variables
         Node currentNode = null;        // holds the current
         String currentGraph = null;     // holds the ID of the current XML graph element
-        RelationshipModel currentRelModel = null;
+        RelationModel currentRelModel = null;
         String edgeWitness = null;
         String witnessClass = "witnesses";
 
@@ -106,7 +106,7 @@ public class StemmawebParser {
                                             // If a RELATED link already exists, we have a problem.
                                             if (relKind.equals(ERelations.RELATED))
                                                 return Response.status(Response.Status.BAD_REQUEST)
-                                                        .entity("Error: Tradition specifies the reading relationship " +
+                                                        .entity("Error: Tradition specifies the reading relation " +
                                                                 currentRelModel.getScope() + " -- " + currentRelModel.getTarget() +
                                                                 "twice")
                                                         .build();
@@ -172,7 +172,7 @@ public class StemmawebParser {
                         switch (local_name) {
                             case "data":
                                 if (currentRelModel != null) {
-                                    // We are working on a relationship node. Apply the data.
+                                    // We are working on a relation node. Apply the data.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
                                     String keytype = keytypes.get(attr);
                                     String val = reader.getElementText();
@@ -285,7 +285,7 @@ public class StemmawebParser {
                                 }
                                 break;
                             case "edge":
-                                currentRelModel = new RelationshipModel();
+                                currentRelModel = new RelationModel();
                                 currentRelModel.setSource(reader.getAttributeValue("", "source"));
                                 currentRelModel.setTarget(reader.getAttributeValue("", "target"));
                                 currentRelModel.setA_derivable_from_b(null);
@@ -302,7 +302,7 @@ public class StemmawebParser {
                                 // Sequence relationships are specified multiple times in the graph, once
                                 // per witness. Reading relationships should be specified only once.
                                 if (from.hasRelationship(relKind, Direction.BOTH)) {
-                                    for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
+                                    for (Relationship qr : from.getRelations(relKind, Direction.BOTH)) {
                                         if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
                                             // If a RELATED link already exists, we have a problem.
                                             if (relKind.equals(ERelations.RELATED))

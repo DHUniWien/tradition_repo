@@ -63,7 +63,7 @@ public class RelationTypeTest extends TestCase {
         String legei = readingLookup.getOrDefault("λεγει/1", "17");
 
         // Make a relationship, check that there is a suitable relationship type created
-        RelationshipModel newRel = new RelationshipModel();
+        RelationModel newRel = new RelationModel();
         newRel.setSource(legeiAcute);
         newRel.setTarget(legei);
         newRel.setScope("document");
@@ -76,7 +76,7 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(2, result.getRelationships().size());
+        assertEquals(2, result.getRelations().size());
 
         // Now check that the spelling relation type has been created
         List<RelationTypeModel> allRelTypes = jerseyTest.resource().path("/tradition/" + tradId + "/relationtypes")
@@ -117,7 +117,7 @@ public class RelationTypeTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         // Now use it
-        RelationshipModel newRel = new RelationshipModel();
+        RelationModel newRel = new RelationModel();
         newRel.setSource(legeiAcute);
         newRel.setTarget(legei);
         newRel.setScope("document");
@@ -130,7 +130,7 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(2, result.getRelationships().size());
+        assertEquals(2, result.getRelations().size());
 
         // Check that our relation type hasn't changed
         List<RelationTypeModel> allRelTypes = jerseyTest.resource().path("/tradition/" + tradId + "/relationtypes")
@@ -151,7 +151,7 @@ public class RelationTypeTest extends TestCase {
         HashSet<String> expectedLinks = new HashSet<>();
 
         // Set the first link
-        RelationshipModel newRel = new RelationshipModel();
+        RelationModel newRel = new RelationModel();
         newRel.setSource(legei);
         newRel.setTarget(Legei);
         newRel.setScope("local");
@@ -163,9 +163,9 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(1, result.getRelationships().size());
+        assertEquals(1, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
-        result.getRelationships().forEach(x -> createdRels.add(x.getId()));
+        result.getRelations().forEach(x -> createdRels.add(x.getId()));
 
         // Set the second link
         newRel.setTarget(legeiAcute);
@@ -174,9 +174,9 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(2, result.getRelationships().size());
+        assertEquals(2, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
-        result.getRelationships().forEach(x -> createdRels.add(x.getId()));
+        result.getRelations().forEach(x -> createdRels.add(x.getId()));
         expectedLinks.add(String.format("%s -> %s: spelling", legei, legeiAcute));
         expectedLinks.add(String.format("%s -> %s: spelling", Legei, legeiAcute));
 
@@ -199,7 +199,7 @@ public class RelationTypeTest extends TestCase {
         HashSet<String> expectedLinks = new HashSet<>();
 
         // Set the first link
-        RelationshipModel newRel = new RelationshipModel();
+        RelationModel newRel = new RelationModel();
         newRel.setSource(palin);
         newRel.setTarget(Palin);
         newRel.setScope("document");
@@ -212,9 +212,9 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(2, result.getRelationships().size());
+        assertEquals(2, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
-        result.getRelationships().forEach(x -> createdRels.add(x.getId()));
+        result.getRelations().forEach(x -> createdRels.add(x.getId()));
 
         // Set the second link, should result in one extra per rank
         newRel.setTarget(pali_);
@@ -224,9 +224,9 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(4, result.getRelationships().size());
+        assertEquals(4, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
-        result.getRelationships().forEach(x -> createdRels.add(x.getId()));
+        result.getRelations().forEach(x -> createdRels.add(x.getId()));
         expectedLinks.add(String.format("%s -> %s: spelling", palin, pali_));
         expectedLinks.add(String.format("%s -> %s: spelling", palin58, pali_58));
         expectedLinks.add(String.format("%s -> %s: spelling", Palin, pali_));
@@ -241,9 +241,9 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(6, result.getRelationships().size());
+        assertEquals(6, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
-        result.getRelationships().forEach(x -> createdRels.add(x.getId()));
+        result.getRelations().forEach(x -> createdRels.add(x.getId()));
         expectedLinks.add(String.format("%s -> %s: orthographic", Palin, palinac));
         expectedLinks.add(String.format("%s -> %s: orthographic", Palin58, palinac58));
         expectedLinks.add(String.format("%s -> %s: spelling", pali_, palinac));
@@ -265,7 +265,7 @@ public class RelationTypeTest extends TestCase {
         HashSet<String> testReadings = new HashSet<>();
 
         // First make the same-rank relations
-        RelationshipModel newRel = new RelationshipModel();
+        RelationModel newRel = new RelationModel();
         newRel.setSource(eurisko22);
         newRel.setTarget(euricko22);
         newRel.setScope("local");
@@ -275,7 +275,7 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(1, result.getRelationships().size());
+        assertEquals(1, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         testReadings.add(eurisko22);
         testReadings.add(euricko22);
@@ -296,7 +296,7 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(1, result.getRelationships().size());
+        assertEquals(1, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         testReadings.add(euricko24);
         testReadings.add(eurecko24);
@@ -309,7 +309,7 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(4, result.getRelationships().size());
+        assertEquals(4, result.getRelations().size());
         assertEquals(2, result.getReadings().size());
 
         try (Transaction tx = db.beginTx()) {
@@ -328,7 +328,7 @@ public class RelationTypeTest extends TestCase {
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
-        assertEquals(1, result.getRelationships().size());
+        assertEquals(1, result.getRelations().size());
         // This will affect pretty much all subsequent readings in the graph.
         assertTrue(result.getReadings().size() > 500);
         testReadings.add(ricko25);

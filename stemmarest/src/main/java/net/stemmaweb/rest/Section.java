@@ -266,29 +266,29 @@ public class Section {
     }
 
     /**
-     * Gets a list of all relationships defined within the given section.
+     * Gets a list of all relations defined within the given section.
      *
-     * @summary Get relationships
-     * @return A list of relationship metadata
+     * @summary Get relations
+     * @return A list of relation metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
      * @statuscode 500 - on failure, with an error message
      */
     @GET
-    @Path("/relationships")
+    @Path("/relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel>")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships() {
-        ArrayList<RelationshipModel> relList = sectionRelationships();
+        ArrayList<RelationModel> relList = sectionRelationships();
 
         if (relList == null) {
-            return Response.serverError().entity(jsonerror("No relationships found in section")).build();
+            return Response.serverError().entity(jsonerror("No relations found in section")).build();
         }
         return Response.ok(relList).build();
     }
 
-    ArrayList<RelationshipModel> sectionRelationships() {
-        ArrayList<RelationshipModel> relList = new ArrayList<>();
+    ArrayList<RelationModel> sectionRelationships() {
+        ArrayList<RelationModel> relList = new ArrayList<>();
 
         Node startNode = DatabaseService.getStartNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
@@ -297,7 +297,7 @@ public class Section {
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().forEach(
                     n -> n.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(
-                            r -> relList.add(new RelationshipModel(r)))
+                            r -> relList.add(new RelationModel(r)))
             );
 
             tx.success();

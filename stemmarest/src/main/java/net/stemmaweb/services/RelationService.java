@@ -10,12 +10,12 @@ import javax.ws.rs.core.Response;
 
 /**
  * 
- * Provides helper methods related to relationships.
+ * Provides helper methods related to reading relations.
  * 
  * @author PSE FS 2015 Team2
  *
  */
-public class RelationshipService {
+public class RelationService {
 
     /**
      * Copies all the properties of a relationship to another if the property
@@ -34,12 +34,12 @@ public class RelationshipService {
     }
 
     /**
-     * Returns a RelationTypeModel for the given relationship type string, associated with
+     * Returns a RelationTypeModel for the given relation type string, associated with
      * the given tradition. Creates the type with default values if it doesn't already exist.
      *
      * @param traditionId   - The ID string of the tradition
-     * @param relType       - The name of the relationship type (e.g. "spelling")
-     * @return A RelationTypeModel with the relationship type information.
+     * @param relType       - The name of the relation type (e.g. "spelling")
+     * @return A RelationTypeModel with the relation type information.
      */
     public static RelationTypeModel returnRelationType(String traditionId, String relType) {
         RelationType rtRest = new RelationType(traditionId, relType);
@@ -62,13 +62,13 @@ public class RelationshipService {
         public Evaluation evaluate(Path path) {
             if (path.endNode().equals(path.startNode()))
                 return Evaluation.INCLUDE_AND_CONTINUE;
-            // If the relationship isn't transitive, we don't follow it.
+            // If the relation isn't transitive, we don't follow it.
             if (!rtm.getIs_transitive())
                 return Evaluation.EXCLUDE_AND_PRUNE;
-            // If it's the same relationship type, we do follow it.
+            // If it's the same relation type, we do follow it.
             if (path.lastRelationship().getProperty("type").equals(rtm.getName()))
                 return Evaluation.INCLUDE_AND_CONTINUE;
-            // If it's a different relationship type, we follow it if it is bound more closely
+            // If it's a different relation type, we follow it if it is bound more closely
             // than our type (lower bindlevel) and if that type is also transitive.
             RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString());
             if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())

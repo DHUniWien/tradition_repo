@@ -24,20 +24,20 @@ public class GraphModel {
      * A set of links that make up a portion of a variant graph. Depending on context, these can be
      * either relationship links or sequence (path) links.
      */
-    private HashSet<RelationshipModel> relationships;
+    private HashSet<RelationModel> relations;
     
-    public GraphModel(List<ReadingModel> readings, List<RelationshipModel> relationships) {
+    public GraphModel(List<ReadingModel> readings, List<RelationModel> relations) {
         super();
         this.readings = new HashSet<>();
-        this.relationships = new HashSet<>();
+        this.relations = new HashSet<>();
         this.readings.addAll(readings);
-        this.relationships.addAll(relationships);
+        this.relations.addAll(relations);
     }
 
     public GraphModel() {
         super();
         this.readings = new HashSet<>();
-        this.relationships = new HashSet<>();
+        this.relations = new HashSet<>();
     }
 
     public HashSet<ReadingModel> getReadings() { return readings; }
@@ -49,14 +49,14 @@ public class GraphModel {
 
     public void addReadings(HashSet<ReadingModel> readings) { this.readings.addAll(readings); }
 
-    public HashSet<RelationshipModel> getRelationships() {
-        return relationships;
+    public HashSet<RelationModel> getRelations() {
+        return relations;
     }
 
-    public void setRelationships(List<RelationshipModel> relationships) {
-        this.relationships.clear();
-        this.relationships.addAll(relationships);
+    public void setRelations(List<RelationModel> relations) {
+        this.relations.clear();
+        this.relations.addAll(relations);
     }
 
-    public void addRelationships(HashSet<RelationshipModel> relationships) { this.relationships.addAll(relationships); }
+    public void addRelations(HashSet<RelationModel> relations) { this.relations.addAll(relations); }
 }

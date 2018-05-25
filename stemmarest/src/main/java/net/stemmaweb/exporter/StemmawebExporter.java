@@ -255,7 +255,7 @@ public class StemmawebExporter {
             writer.writeEndElement(); // graph
 
             // graph 2
-            // get the same nodes again, but this time we will later also search for other relationships
+            // get the same nodes again, but this time we will later also search for reading relations
 
             writer.writeStartElement("graph");
             writer.writeAttribute("edgedefault", "directed");

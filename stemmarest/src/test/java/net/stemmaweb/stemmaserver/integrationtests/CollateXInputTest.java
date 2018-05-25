@@ -98,22 +98,22 @@ public class CollateXInputTest extends TestCase {
         assertNotNull(source);
         assertNotNull(target);
 
-        // Make the relationship
-        RelationshipModel relationship = new RelationshipModel();
-        relationship.setSource(source);
-        relationship.setTarget(target);
-        relationship.setType("spelling");
-        relationship.setScope("local");
+        // Make the relation
+        RelationModel relation = new RelationModel();
+        relation.setSource(source);
+        relation.setTarget(target);
+        relation.setType("spelling");
+        relation.setScope("local");
         ClientResponse actualResponse = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+                .post(ClientResponse.class, relation);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
         GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
         assertEquals(0, readingsAndRelationships.getReadings().size());
-        assertEquals(1, readingsAndRelationships.getRelationships().size());
+        assertEquals(1, readingsAndRelationships.getRelations().size());
 
 
     }

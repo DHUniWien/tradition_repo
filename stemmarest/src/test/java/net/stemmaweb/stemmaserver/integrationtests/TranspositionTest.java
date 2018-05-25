@@ -6,7 +6,7 @@ import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -98,7 +98,7 @@ public class TranspositionTest {
     public void disallowedTranspositionTest() {
 
         // First make sure that the pivot relationship does not exist
-        RelationshipModel shouldnotexist = new RelationshipModel();
+        RelationModel shouldnotexist = new RelationModel();
         shouldnotexist.setSource(tehId.toString());
         shouldnotexist.setTarget(rootId.toString());
         shouldnotexist.setScope("local");
@@ -109,7 +109,7 @@ public class TranspositionTest {
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), checkme.getStatus());
 
         // Now set up the relationship to be created
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(tehId.toString());
         relationship.setTarget(rootId.toString());
         relationship.setType("transposition");
@@ -132,7 +132,7 @@ public class TranspositionTest {
 
     {
         // First create the pivot alignment
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         String relationshipId;
 
         relationship.setSource(theId.toString());
@@ -151,7 +151,7 @@ public class TranspositionTest {
         // Make sure it is there
         try (Transaction tx = db.beginTx()) {
             GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
-            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
+            relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(theId, (Long) loadedRelationship.getStartNode().getId());
@@ -165,7 +165,7 @@ public class TranspositionTest {
         }
 
         // Now create the transposition, which should work this time
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(tehId.toString());
         relationship.setTarget(rootId.toString());
         relationship.setType("transposition");
@@ -182,7 +182,7 @@ public class TranspositionTest {
         // and make sure it is there.
         try (Transaction tx = db.beginTx()) {
             GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
-            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
+            relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(tehId, (Long) loadedRelationship.getStartNode().getId());

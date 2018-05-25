@@ -130,7 +130,7 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, jsonPayload);
 
-        RelationshipModel rel = new RelationshipModel();
+        RelationModel rel = new RelationModel();
         rel.setSource("27");
         rel.setTarget("16");
         rel.setId("36");
@@ -139,10 +139,10 @@ public class TraditionTest {
         rel.setType("transposition");
         rel.setScope("local");
 
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
-        RelationshipModel relLoaded = relationships.get(2);
+        List<RelationModel> relationships = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        RelationModel relLoaded = relationships.get(2);
 
         assertEquals(rel.getSource(), relLoaded.getSource());
         assertEquals(rel.getTarget(), relLoaded.getTarget());
@@ -156,9 +156,9 @@ public class TraditionTest {
     @Test
     public void getAllRelationshipsCorrectAmountTest() {
 
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> relationships = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
 
         assertEquals(3, relationships.size());
     }
@@ -565,7 +565,7 @@ public class TraditionTest {
                 assertTrue(atRank.hasNext());
                 ReadingModel rdg1 = new ReadingModel(atRank.next());
                 ReadingModel rdg2 = new ReadingModel(atRank.next());
-                RelationshipModel rel = new RelationshipModel();
+                RelationModel rel = new RelationModel();
                 rel.setType("grammatical");
                 rel.setScope("local");
                 rel.setSource(rdg1.getId());
@@ -580,7 +580,7 @@ public class TraditionTest {
             // and a transposition, for kicks
             Node tx1 = db.findNode(Nodes.READING, "rank", 217);
             Node tx2 = db.findNode(Nodes.READING, "rank", 219);
-            RelationshipModel txrel = new RelationshipModel();
+            RelationModel txrel = new RelationModel();
             txrel.setType("transposition");
             txrel.setScope("local");
             txrel.setSource(String.valueOf(tx1.getId()));

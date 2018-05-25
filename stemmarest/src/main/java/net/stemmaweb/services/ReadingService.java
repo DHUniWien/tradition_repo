@@ -324,7 +324,7 @@ public class ReadingService {
         }
 
         // check if higherRankReading is found in one of the paths, but don't crawl the graph beyond
-        // that reading's rank. Also disregard any relationship already existing between the two nodes.
+        // that reading's rank. Also disregard any relation already existing between the two nodes.
         Relationship existingRel = null;
         for (Relationship r : firstReading.getRelationships(ERelations.RELATED)) {
             if (r.getOtherNode(firstReading).equals(secondReading))

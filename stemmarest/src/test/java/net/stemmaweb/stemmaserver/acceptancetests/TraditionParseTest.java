@@ -6,16 +6,14 @@ import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
 import net.stemmaweb.stemmaserver.Util;
@@ -165,9 +163,9 @@ public class TraditionParseTest {
             assertEquals(handler.numEdges, foundEdges.get());
 
             // Number of relationships
-            ArrayList<RelationshipModel> dbRelations = jerseyTest.resource()
+            ArrayList<RelationModel> dbRelations = jerseyTest.resource()
                     .path("/tradition/" + tm.getId() + "/relationships")
-                    .get(new GenericType<ArrayList<RelationshipModel>>() {});
+                    .get(new GenericType<ArrayList<RelationModel>>() {});
             assertEquals(handler.numRelationships, dbRelations.size());
 
             // Number of witnesses

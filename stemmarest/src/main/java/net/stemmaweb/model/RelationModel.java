@@ -12,7 +12,7 @@ import org.neo4j.graphdb.Relationship;
  */
 
 @XmlRootElement
-public class RelationshipModel {
+public class RelationModel {
 
     @SuppressWarnings("unused")
     private enum Significance {
@@ -74,7 +74,7 @@ public class RelationshipModel {
      */
     private String type;                // de11
 
-    public RelationshipModel(){
+    public RelationModel(){
 
     }
 
@@ -82,7 +82,7 @@ public class RelationshipModel {
      * Creates a relationshipModel directly from a Relationship from Neo4J db
      * @param rel - The relationship node to initialize from
      */
-    public RelationshipModel(Relationship rel){
+    public RelationModel(Relationship rel){
         source = rel.getStartNode().getId() + "";
         target = rel.getEndNode().getId() + "";
 

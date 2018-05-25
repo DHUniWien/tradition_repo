@@ -123,7 +123,7 @@ public class TabularInputOutputTest extends TestCase {
         assertNotNull(target);
 
         // Now set the relationship
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(source);
         relationship.setTarget(target);
         relationship.setType("grammatical");
@@ -138,7 +138,7 @@ public class TabularInputOutputTest extends TestCase {
 
         GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
         assertEquals(0, readingsAndRelationships.getReadings().size());
-        assertEquals(1, readingsAndRelationships.getRelationships().size());
+        assertEquals(1, readingsAndRelationships.getRelations().size());
     }
 
     public void testParseExcel() {

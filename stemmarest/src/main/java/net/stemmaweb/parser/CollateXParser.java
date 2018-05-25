@@ -135,7 +135,7 @@ public class CollateXParser {
             // Create all the witnesses
             seenWitnesses.forEach(x -> Util.createExtant(traditionNode, x));
 
-            // Create the 'transposition' relationship type if it occurred in the data
+            // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {
                 Response rtResult = new RelationType(traditionNode.getProperty("id").toString(), "transposition")
                         .makeDefaultType();
