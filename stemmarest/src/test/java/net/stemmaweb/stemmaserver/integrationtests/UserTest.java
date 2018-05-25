@@ -74,7 +74,7 @@ public class UserTest {
 
         try (Transaction tx = db.beginTx()) {
             Node notaUser = db.findNode(Nodes.USER, "id", "1337");
-            assertTrue(notaUser == null);
+            assertNull(notaUser);
             tx.success();
         }
 
@@ -90,7 +90,7 @@ public class UserTest {
         assertEquals(1, allUsers.size());
         Optional<UserModel> newUser = allUsers.stream().filter(x -> x.getId().equals("1337")).findFirst();
         assertTrue(newUser.isPresent());
-        assertTrue(newUser.get().getPassphrase().equals("ABCDSaltedHash"));
+        assertEquals("ABCDSaltedHash", newUser.get().getPassphrase());
     }
 
 

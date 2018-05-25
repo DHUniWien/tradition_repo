@@ -14,7 +14,7 @@ import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.Root;
 
@@ -325,14 +325,12 @@ public abstract class BenchmarkTests {
     @BenchmarkOptions(benchmarkRounds = 15, warmupRounds = 5)
     @Test
     public void createAndDeleteARelationship(){
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(theRoot + "");
         relationship.setTarget(untoMe + "");
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("the root");
-        relationship.setReading_b("unto me");
         relationship.setScope("local");
 
 
@@ -342,8 +340,8 @@ public abstract class BenchmarkTests {
                 .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships =
                 actualResponse.getEntity(new GenericType<GraphModel>() {});
-        String relationshipId = ((RelationshipModel) readingsAndRelationships
-                .getRelationships().toArray()[0]).getId();
+        String relationshipId = ((RelationModel) readingsAndRelationships
+                .getRelations().toArray()[0]).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)

@@ -166,7 +166,7 @@ public class DotExporter
 
                     }
 
-                    // Retrieve reading relationships, if requested
+                    // Retrieve reading relations, if requested
                     if (dm.getIncludeRelated()) {
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
                             write("\tn" + relatedRel.getStartNode().getId() + "->" + "n" +
@@ -271,7 +271,7 @@ public class DotExporter
                 continue;
             String[] layerwits = witnessInfo.get(prop);
             Arrays.sort(layerwits);
-            for (String s : Arrays.asList(layerwits)) {
+            for (String s : layerwits) {
                 if (lex_str.length() > 0) lex_str.append(", ");
                 lex_str.append(s);
                 lex_str.append(" (");

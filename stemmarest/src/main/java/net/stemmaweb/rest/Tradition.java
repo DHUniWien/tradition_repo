@@ -85,6 +85,9 @@ public class Tradition {
         return new Relation(traditionId);
     }
 
+    @Path("/relationtype/{name}")
+    public RelationType getRelationType(@PathParam("name") String name) { return new RelationType(traditionId, name); }
+
     /*
      * Resource creation calls
      */
@@ -276,6 +279,7 @@ public class Tradition {
 
                     while (!queue.isEmpty()) {
                         Node curNode = queue.poll();
+                        if (curNode == null) continue; // how do you get a null member of a queue?
                         if (!curNode.hasProperty("rank")) {
                             curNode.setProperty("rank", 0L);
                         }
@@ -424,11 +428,11 @@ public class Tradition {
      * @statuscode 500 - on failure, with an error message
      */
     @GET
-    @Path("/relationships")
+    @Path("/relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationshipModel>")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships() {
-        ArrayList<RelationshipModel> relList = new ArrayList<>();
+        ArrayList<RelationModel> relList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
@@ -437,13 +441,43 @@ public class Tradition {
             return Response.serverError().entity(jsonerror("section lookup failed")).build();
         for (SectionModel s : ourSections) {
             Section sectRest = new Section(traditionId, s.getId());
-            ArrayList<RelationshipModel> sectRels = sectRest.sectionRelationships();
+            ArrayList<RelationModel> sectRels = sectRest.sectionRelationships();
             if (sectRels == null)
-                return Response.serverError().entity(jsonerror("something went wrong in section relationships")).build();
+                return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
             relList.addAll(sectRels);
         }
 
        return Response.ok(relList).build();
+    }
+
+    /**
+     * Gets a list of all relation types defined within the given tradition.
+     *
+     * @summary Get relationships
+     * @return A list of relationship metadata
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
+     */
+    @GET
+    @Path("/relationtypes")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.RelationTypeModel>")
+    public Response getAllRelationTypes() {
+        ArrayList<RelationTypeModel> relTypeList = new ArrayList<>();
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        try (Transaction tx = db.beginTx()) {
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_RELATION_TYPE)
+                    .forEach(x -> relTypeList.add(new RelationTypeModel(x)));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+
+        return Response.ok(relTypeList).build();
     }
 
     /**

@@ -191,7 +191,7 @@ public class TabularParser {
                             layerMap.get(layerLabel).add(baseWit);
                         } else layerMap.get("witnesses").add(w);
                     // Finally, set the properties for each layer label
-                    layerMap.forEach((x, y) -> r.setProperty(x, y.toArray(new String[y.size()])));
+                    layerMap.forEach((x, y) -> r.setProperty(x, y.toArray(new String[0])));
                 }
             }
 
@@ -205,7 +205,7 @@ public class TabularParser {
                         if (lastReading.get(x).equals(readingNode))
                             readingWits.add(x);
                     });
-                    endRelation.setProperty("witnesses", readingWits.toArray(new String[readingWits.size()]));
+                    endRelation.setProperty("witnesses", readingWits.toArray(new String[0]));
                 } // else we've already connected this reading.
             }
 

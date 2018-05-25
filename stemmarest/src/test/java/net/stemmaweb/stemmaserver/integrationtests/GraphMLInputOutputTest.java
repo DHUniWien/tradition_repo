@@ -19,6 +19,8 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertNotEquals;
+
 /**
  * Tests for our own input/output formats.
  * Created by tla on 17/02/2017.
@@ -50,7 +52,7 @@ public class GraphMLInputOutputTest extends TestCase {
 
     }
 
-    public void testXMLOutput() throws Exception {
+    public void testXMLOutput() {
         // Just request the tradition and make sure that we get XML back out
         ClientResponse r = jerseyTest.resource().path("/tradition/" + tradId + "/graphml")
                 .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
@@ -59,7 +61,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .contains("<key attr.name=\"neolabel\" attr.type=\"string\" for=\"node\" id=\"dn0\"/>"));
     }
 
-    public void testXMLInputExistingTradition() throws Exception {
+    public void testXMLInputExistingTradition() {
         ClientResponse r = jerseyTest.resource().path("/tradition/" + tradId + "/graphml")
                 .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
         String graphML = r.getEntity(String.class);
@@ -67,10 +69,10 @@ public class GraphMLInputOutputTest extends TestCase {
         r = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
                 "me@example.org", graphML, "graphml");
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), r.getStatus());
-        assertFalse(tradId.equals(Util.getValueFromJson(r, "tradId")));
+        assertNotEquals(tradId, Util.getValueFromJson(r, "tradId"));
     }
 
-    public void testXMLInput() throws Exception {
+    public void testXMLInput() {
         // Now we have to be able to parse back in what we spat out.
         ClientResponse r = jerseyTest.resource().path("/tradition/" + tradId + "/graphml")
                 .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);

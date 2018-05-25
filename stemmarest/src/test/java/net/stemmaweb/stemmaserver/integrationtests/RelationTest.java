@@ -8,7 +8,7 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -85,14 +85,12 @@ public class RelationTest {
         String relationshipId;
         String source = readingLookup.getOrDefault("april/2", "17");
         String target = readingLookup.getOrDefault("showers/5", "25");
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(source);
         relationship.setTarget(target);
         relationship.setType("repetition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -103,7 +101,7 @@ public class RelationTest {
 
         try (Transaction tx = db.beginTx()) {
             GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
-            relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
+            relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
             Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
 
             assertEquals(Long.valueOf(source), (Long) loadedRelationship.getStartNode().getId());
@@ -122,15 +120,13 @@ public class RelationTest {
      */
     @Test
     public void createRelationshipWithInvalidTargetIdTest() {
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
 
         relationship.setSource("16");
         relationship.setTarget("1337");
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -145,15 +141,13 @@ public class RelationTest {
      */
     @Test
     public void createRelationshipWithInvalidSourceIdTest() {
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
 
         relationship.setSource("1337");
         relationship.setTarget("24");
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
 
         ClientResponse actualResponse = jerseyTest
                 .resource()
@@ -175,14 +169,12 @@ public class RelationTest {
         String source = readingLookup.getOrDefault("april/2", "17");
         String target = readingLookup.getOrDefault("showers/5", "25");
         String relationshipId;
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(source);
         relationship.setTarget(target);
         relationship.setType("transposition");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("showers");
         relationship.setScope("local");
 
         ClientResponse actualResponse = jerseyTest
@@ -191,7 +183,7 @@ public class RelationTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        relationshipId = ((RelationshipModel) readingsAndRelationships.getRelationships().toArray()[0]).getId();
+        relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
 
         ClientResponse removalResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation/" + relationshipId)
@@ -277,12 +269,10 @@ public class RelationTest {
         assertTrue(idTeh > 0L);
         assertTrue(idThe > 0L);
         // Create the test relationship
-        RelationshipModel r = new RelationshipModel();
+        RelationModel r = new RelationModel();
         r.setSource(idTeh.toString());
         r.setTarget(idThe.toString());
         r.setType("spelling");
-        r.setReading_a("teh");
-        r.setReading_b("the");
         r.setAlters_meaning(1L);
         r.setIs_significant("maybe");
         r.setScope("document");
@@ -294,9 +284,9 @@ public class RelationTest {
         assertNotNull(secondId);
 
         // Get the baseline number of relationships
-        List<RelationshipModel> currentRels = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> currentRels = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         int existingRels = currentRels.size();
 
         // Set the test relationship
@@ -307,9 +297,9 @@ public class RelationTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
         GraphModel newRels = jerseyResponse.getEntity(new GenericType<GraphModel>() {});
         // Test that two new relationships were created
-        assertEquals(2, newRels.getRelationships().size());
+        assertEquals(2, newRels.getRelations().size());
         // Test that they have the same is_significant property
-        for (RelationshipModel rm : newRels.getRelationships()) {
+        for (RelationModel rm : newRels.getRelations()) {
             assertEquals(r.getIs_significant(), rm.getIs_significant());
             assertEquals(r.getAlters_meaning(), rm.getAlters_meaning());
             assertEquals(r.getScope(), rm.getScope());
@@ -317,34 +307,32 @@ public class RelationTest {
 
         // Test that there are now n+2 relationships in our tradition
         currentRels = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+                .path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(existingRels + 2, currentRels.size());
 
         // ...and that there are still only n relationships in our identical tradition.
-        List<RelationshipModel> secondRels = jerseyTest.resource()
-                .path("/tradition/" + secondId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> secondRels = jerseyTest.resource()
+                .path("/tradition/" + secondId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(existingRels, secondRels.size());
     }
 
     @Test(expected=NotFoundException.class)
     public void deleteRelationshipDocumentWideTest() {
         /*
-         * Create a relationship
+         * Create two local relations between teh and the.
          */
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         String relationshipId1;
         String relationshipId2;
-        String source = readingLookup.getOrDefault("april/2", "17");
-        String target = readingLookup.getOrDefault("pierced/15", "17");
+        String source = readingLookup.getOrDefault("teh/16", "17");
+        String target = readingLookup.getOrDefault("the/17", "17");
         relationship.setSource(source);
         relationship.setTarget(target);
-        relationship.setType("transposition");
+        relationship.setType("spelling");
         relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("pierced");
+        relationship.setIs_significant("no");
         relationship.setScope("local");
 
         ClientResponse actualResponse = jerseyTest
@@ -353,18 +341,12 @@ public class RelationTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships1 = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        relationshipId1 = ((RelationshipModel) readingsAndRelationships1.getRelationships().toArray()[0]).getId();
+        relationshipId1 = ((RelationModel) readingsAndRelationships1.getRelations().toArray()[0]).getId();
 
-        source = readingLookup.getOrDefault("april/8", "17");
-        target = readingLookup.getOrDefault("pierced/15", "17");
+        source = readingLookup.getOrDefault("teh/10", "17");
+        target = readingLookup.getOrDefault("the/10", "17");
         relationship.setSource(source);
         relationship.setTarget(target);
-        relationship.setType("transposition");
-        relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-        relationship.setReading_a("april");
-        relationship.setReading_b("pierced");
-        relationship.setScope("local");
 
         actualResponse = jerseyTest
                 .resource()
@@ -372,8 +354,9 @@ public class RelationTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         GraphModel readingsAndRelationships2 = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        relationshipId2 = ((RelationshipModel) readingsAndRelationships2.getRelationships().toArray()[0]).getId();
+        relationshipId2 = ((RelationModel) readingsAndRelationships2.getRelations().toArray()[0]).getId();
 
+        // Now try deleting them.
         relationship.setScope("document");
 
         ClientResponse removalResponse = jerseyTest
@@ -387,12 +370,13 @@ public class RelationTest {
             Relationship rel1 = db.getRelationshipById(Long.parseLong(relationshipId1));
             Relationship rel2 = db.getRelationshipById(Long.parseLong(relationshipId2));
 
-            RelationshipModel relMod1 = new RelationshipModel(rel1);
+            RelationModel relMod1 = new RelationModel(rel1);
             assertEquals(rel1, relMod1);
 
-            RelationshipModel relMod2 = new RelationshipModel(rel2);
+            RelationModel relMod2 = new RelationModel(rel2);
             assertEquals(rel2, relMod2);
             tx.success();
+            fail("These relationships should no longer exist");
         }
     }
 
@@ -401,7 +385,7 @@ public class RelationTest {
      */
     @Test
     public void createRelationshipTestWithCrossRelationConstraint() {
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         String source = readingLookup.getOrDefault("root/18", "17");
         String target = readingLookup.getOrDefault("teh/16", "25");
         relationship.setSource(source);
@@ -409,8 +393,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("root");
-        relationship.setReading_b("teh");
 
         // This relationship should be makeable, and three readings including the end node
         // will change rank
@@ -421,9 +403,9 @@ public class RelationTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
         GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        assertEquals(1, tmpGraphModel.getRelationships().size());
+        assertEquals(1, tmpGraphModel.getRelations().size());
         assertEquals(3, tmpGraphModel.getReadings().size());
-        assertEquals(true, tmpGraphModel.getReadings().stream().findFirst().isPresent());
+        assertTrue(tmpGraphModel.getReadings().stream().findFirst().isPresent());
         HashMap<String, Long> rankChange = new HashMap<>();
         rankChange.put("teh", 18L);
         rankChange.put("rood", 19L);
@@ -440,8 +422,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("root");
-        relationship.setReading_b("the");
 
         // this one should not be make-able, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
@@ -452,7 +432,7 @@ public class RelationTest {
 
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
-        assertEquals("This relationship creation is not allowed, it would result in a cyclic graph.",
+        assertEquals("This relation creation is not allowed, it would result in a cyclic graph.",
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
@@ -468,7 +448,7 @@ public class RelationTest {
 
     @Test
     public void createRelationshipTestWithCrossRelationConstraintNotDirectlyCloseToEachOther() {
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         String source = readingLookup.getOrDefault("root/18", "17");
         String target = readingLookup.getOrDefault("teh/16", "25");
         relationship.setSource(source);
@@ -476,8 +456,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("root");
-        relationship.setReading_b("teh");
 
         // This relationship should be make-able
         ClientResponse actualResponse = jerseyTest
@@ -487,8 +465,8 @@ public class RelationTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), actualResponse.getStatus());
         GraphModel tmpGraphModel = actualResponse.getEntity(new GenericType<GraphModel>(){});
-        assertEquals(tmpGraphModel.getRelationships().size(), 1L);
-        String relationshipId = ((RelationshipModel) tmpGraphModel.getRelationships().toArray()[0]).getId();
+        assertEquals(tmpGraphModel.getRelations().size(), 1L);
+        String relationshipId = ((RelationModel) tmpGraphModel.getRelations().toArray()[0]).getId();
 
         try (Transaction tx = db.beginTx()) {
             Relationship rel = db.getRelationshipById(Integer.parseInt(relationshipId));
@@ -530,8 +508,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("rood");
-        relationship.setReading_b("unto");
 
         // this one should not be make-able, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
@@ -542,7 +518,7 @@ public class RelationTest {
         // RETURN CONFLICT IF THE CROSS RELATED RULE IS TAKING ACTION
 
         assertEquals(Status.CONFLICT.getStatusCode(), actualResponse.getStatusInfo().getStatusCode());
-        assertEquals("This relationship creation is not allowed, it would result in a cyclic graph.",
+        assertEquals("This relation creation is not allowed, it would result in a cyclic graph.",
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
@@ -556,7 +532,7 @@ public class RelationTest {
 
     @Test
     public void createRelationshipTestWithCyclicConstraint() {
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
 
         Result result = db.execute("match (w:READING {text:'showers'}) return w");
         Iterator<Node> nodes = result.columnAs("w");
@@ -575,8 +551,6 @@ public class RelationTest {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setIs_significant("yes");
-        relationship.setReading_a("showers");
-        relationship.setReading_b("pierced");
 
         ClientResponse actualResponse = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/relation")
@@ -609,15 +583,15 @@ public class RelationTest {
                 "src/TestFiles/legendfrag.xml", "stemmaweb");
         String newTradId = Util.getValueFromJson(response, "tradId");
 
-        List<RelationshipModel> allrels = jerseyTest.resource().path("/tradition/" + newTradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> allrels = jerseyTest.resource().path("/tradition/" + newTradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
 
         // Try to overwrite a strong relationship
-        List<RelationshipModel> orthorels = allrels.stream().filter(
-                x -> x.getType().equals("orthographic") && x.getReading_a().equals("suecia") && x.getReading_b().equals("Swecia"))
+        List<RelationModel> orthorels = allrels.stream().filter(
+                x -> x.getType().equals("orthographic"))
                 .collect(Collectors.toList());
-        assertEquals(1, orthorels.size());
-        RelationshipModel rel = orthorels.get(0);
+        assertFalse(orthorels.isEmpty());
+        RelationModel rel = orthorels.get(0);
         rel.setType("spelling");
         rel.setScope("document");
         response = jerseyTest.resource().path("/tradition/" + newTradId + "/relation")
@@ -625,10 +599,10 @@ public class RelationTest {
                 .post(ClientResponse.class, rel);
         assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
 
-        List<RelationshipModel> collaterels = allrels.stream()
-                .filter(x -> x.weak_relation() && x.getReading_b().equals("henricus"))
+        List<RelationModel> collaterels = allrels.stream()
+                .filter(x -> x.getType().equals("collated"))
                 .collect(Collectors.toList());
-        assertEquals(1, collaterels.size());
+        assertFalse(collaterels.isEmpty());
         rel = collaterels.get(0);
         // Change this to a stronger relationship type
         rel.setType("other");
@@ -660,7 +634,7 @@ public class RelationTest {
             otherId = String.valueOf(other.getId());
             tx.success();
         }
-        RelationshipModel r = new RelationshipModel();
+        RelationModel r = new RelationModel();
         r.setSource(otherId);
         r.setTarget(myId);
         r.setType("spelling");
@@ -694,12 +668,10 @@ public class RelationTest {
         assertTrue(the2Id > 0);
 
         // Make a collated relationship between rood and the
-        RelationshipModel model = new RelationshipModel();
+        RelationModel model = new RelationModel();
         model.setSource(roodId.toString());
         model.setTarget(the1Id.toString());
         model.setType("collated");
-        model.setReading_a("rood");
-        model.setReading_b("the");
 
         ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
@@ -710,18 +682,17 @@ public class RelationTest {
 
         model.setTarget(the2Id.toString());
         model.setType("orthographic");
-        model.setReading_b("root");
         response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, model);
         assertEquals(Response.Status.CONFLICT.getStatusCode(), response.getStatus());
 
         // Check that the collated link is still there
-        List<RelationshipModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(4, allRels.size());
         Boolean foundCollated = false;
-        for (RelationshipModel r : allRels) {
+        for (RelationModel r : allRels) {
             if (r.getType().equals("collated") && r.getSource().equals(roodId.toString())
                     && r.getTarget().equals(the1Id.toString()))
                 foundCollated = true;
@@ -739,10 +710,8 @@ public class RelationTest {
         List<ReadingModel> lfReadings = jerseyTest.resource().path("/tradition/" + newTradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {}).stream().filter(x -> x.getRank() == 7)
                 .collect(Collectors.toList());
-        RelationshipModel model = new RelationshipModel();
+        RelationModel model = new RelationModel();
         model.setType("lexical");
-        model.setReading_a("de");
-        model.setReading_b("ex");
         for (ReadingModel rm : lfReadings) {
             if (rm.getText().equals("de")) model.setSource(rm.getId());
             if (rm.getText().equals("ex")) model.setTarget(rm.getId());
@@ -768,16 +737,13 @@ public class RelationTest {
     public void getRelationshipTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/relationships")
+                .path("/tradition/" + tradId + "/relations")
                 .get(ClientResponse.class);
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-        for (RelationshipModel rel : relationships) {
-            assertTrue(rel.getReading_b().equals("april")
-                    || rel.getReading_b().equals("drought")
-                    || rel.getReading_b().equals("march"));
+        List<RelationModel> relationships = response.getEntity(new GenericType<List<RelationModel>>() {});
+        assertEquals(3, relationships.size());
+        for (RelationModel rel : relationships) {
+            assertEquals("local", rel.getScope());
             assertEquals("transposition", rel.getType());
         }
     }
@@ -789,7 +755,7 @@ public class RelationTest {
     public void getRelationshipCorrectStatusTest(){
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/relationships")
+                .path("/tradition/" + tradId + "/relations")
                 .get(ClientResponse.class);
         assertEquals(Response.ok().build().getStatus(), response.getStatus());
     }
@@ -801,7 +767,7 @@ public class RelationTest {
     public void getRelationshipExceptionTest() {
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/6999/relationships")
+                .path("/tradition/6999/relations")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
@@ -818,7 +784,7 @@ public class RelationTest {
 
         ClientResponse response = jerseyTest
                 .resource()
-                .path("/tradition/" + newTradId + "/relationships")
+                .path("/tradition/" + newTradId + "/relations")
                 .get(ClientResponse.class);
         assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
         assertEquals("[]", response.getEntity(String.class));

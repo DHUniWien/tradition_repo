@@ -157,7 +157,7 @@ public class TEIParallelSegParser {
                                 Node chainEnd = createPlaceholderNode("chainEnd");
                                 Relationship ceRel = chain.get(chain.size()-1)
                                         .createRelationshipTo(chainEnd, ERelations.SEQUENCE);
-                                ceRel.setProperty("witnesses", readingWitnesses.toArray(new String[readingWitnesses.size()]));
+                                ceRel.setProperty("witnesses", readingWitnesses.toArray(new String[0]));
                                 // Link inactive witnesses straight from placeholder to placeholder
                                 ArrayList<String> inactiveWitnesses = activeWitnesses.keySet().stream()
                                         .filter(x -> !activeWitnesses.get(x)).collect(Collectors.toCollection(ArrayList::new));
@@ -166,7 +166,7 @@ public class TEIParallelSegParser {
 
                                 // Link the beginning of the chain to the documentPrior
                                 Relationship link = documentPrior.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
-                                link.setProperty("witnesses", readingWitnesses.toArray(new String[readingWitnesses.size()]));
+                                link.setProperty("witnesses", readingWitnesses.toArray(new String[0]));
 
                                 // The end of the chain is the new documentPrior
                                 documentPrior = chainEnd;
@@ -254,9 +254,8 @@ public class TEIParallelSegParser {
                                         addWitnessLink(appStart, appEnd, w, "witnesses");
                                 } else {
                                     // Connect only the current active witnesses from the enclosing app to this one
-                                    ArrayList<String> recursedActive = activeWitnesses.keySet().stream()
-                                            .filter(activeWitnesses::get).collect(Collectors.toCollection(ArrayList::new));
-                                    r.setProperty("witnesses", recursedActive.toArray(new String[recursedActive.size()]));
+                                    r.setProperty("witnesses", activeWitnesses.keySet().stream()
+                                            .filter(activeWitnesses::get).toArray(String[]::new));
                                     // and app start-to-end should be entirely via the readings.
                                 }
 
@@ -283,7 +282,7 @@ public class TEIParallelSegParser {
                             case "lem":
                                 // Hook up the end of the reading to the end of the app
                                 Relationship el = readingEnd.createRelationshipTo(appEnd, ERelations.SEQUENCE);
-                                el.setProperty(witClass, readingWitnesses.toArray(new String[readingWitnesses.size()]));
+                                el.setProperty(witClass, readingWitnesses.toArray(new String[0]));
                                 // Clear some state variables
                                 readingEnd = null;
                                 readingWitnesses.clear();
@@ -316,7 +315,7 @@ public class TEIParallelSegParser {
                                 if (variantClass != null)
                                     witClass = variantClass;
                                 Relationship link = appStart.createRelationshipTo(readingEnd, ERelations.SEQUENCE);
-                                link.setProperty(witClass, readingWitnesses.toArray(new String[readingWitnesses.size()]));
+                                link.setProperty(witClass, readingWitnesses.toArray(new String[0]));
                                 break;
 
                             case "witStart":
@@ -350,7 +349,7 @@ public class TEIParallelSegParser {
                             if (chain.size() > 0) {
                                 // Attach the chain to the reading start; error if there is no reading start
                                 Relationship link = readingEnd.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
-                                link.setProperty("witnesses", readingWitnesses.toArray(new String[readingWitnesses.size()]));
+                                link.setProperty("witnesses", readingWitnesses.toArray(new String[0]));
                                 // Set the reading end to be the end of the chain
                                 readingEnd = chain.get(chain.size()-1);
                             }
@@ -390,7 +389,7 @@ public class TEIParallelSegParser {
             if (!chain.isEmpty()) {
                 Node lastNode = chain.get(chain.size() - 1);
                 Relationship seq = lastNode.createRelationshipTo(wordNode, ERelations.SEQUENCE);
-                seq.setProperty(witClass, readingWitnesses.toArray(new String[readingWitnesses.size()]));
+                seq.setProperty(witClass, readingWitnesses.toArray(new String[0]));
             }
             chain.add(wordNode);
         }
@@ -421,7 +420,7 @@ public class TEIParallelSegParser {
     }
 
     private void setAllWitnesses(Relationship r) {
-        String[] activewits = activeWitnesses.keySet().toArray(new String[activeWitnesses.size()]);
+        String[] activewits = activeWitnesses.keySet().toArray(new String[0]);
         r.setProperty("witnesses", activewits);
     }
 

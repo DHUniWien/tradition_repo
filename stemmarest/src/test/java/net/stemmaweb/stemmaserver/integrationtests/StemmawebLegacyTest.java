@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.io.*;
 import java.util.*;
 
 
@@ -12,7 +11,6 @@ import com.sun.jersey.multipart.FormDataMultiPart;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
@@ -45,21 +43,13 @@ public class StemmawebLegacyTest {
 
     @Before
     public void setUp() throws Exception {
-
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
-                .newImpermanentDatabase())
-                .getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
-        Root webResource = new Root();
 
         /*
          * Create a JersyTestServer serving the Resource under test
          */
-        jerseyTest = JerseyTestServerFactory
-                .newJerseyTestServer()
-                .addResource(webResource)
-                .create();
-        jerseyTest.setUp();
+        jerseyTest = Util.setupJersey();
     }
 
     private String createTraditionFromFile(String tName, String tDir, String userId, String fName, String fType) {
@@ -78,7 +68,7 @@ public class StemmawebLegacyTest {
     // Tradition test
 
     @Test
-    public void testEmptyTraditionCreation() throws FileNotFoundException {
+    public void testEmptyTraditionCreation() {
         /* Perl-Specification:
             my $t = Text::Tradition->new( 'name' => 'empty' );
             is( ref( $t ), 'Text::Tradition', "initialized an empty Tradition object" );
@@ -101,7 +91,7 @@ public class StemmawebLegacyTest {
             Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
             assertNotNull(tradNode);
             assertEquals(TRADNAME, tradNode.getProperty("name"));
-            assertEquals(true, tradNode.hasRelationship());
+            assertTrue(tradNode.hasRelationship());
             Iterable<Relationship> relationships = tradNode.getRelationships();
             // There should be only one relationship between the USER and TRADITION nodes
             int rel_count = 0;
@@ -276,8 +266,8 @@ public class StemmawebLegacyTest {
         }
 
         // Get the existing number of relationships
-        List<RelationshipModel> existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         int er = existingRels.size();
 
         /*
@@ -287,7 +277,7 @@ public class StemmawebLegacyTest {
         is( $v1[0]->[1], 'n22', "Got correct node 2" );
          */
 
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(n21);
         relationship.setTarget(n22);
         relationship.setType("lexical");
@@ -300,12 +290,12 @@ public class StemmawebLegacyTest {
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         GraphModel tmpGraphModel = response.getEntity(new GenericType<GraphModel>(){});
-        assertEquals(1, tmpGraphModel.getRelationships().size());
-        RelationshipModel rm = tmpGraphModel.getRelationships().stream().findAny().get();
+        assertEquals(1, tmpGraphModel.getRelations().size());
+        RelationModel rm = tmpGraphModel.getRelations().stream().findAny().get();
         assertEquals(n21, rm.getSource());
         assertEquals(n22, rm.getTarget());
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er + 1, existingRels.size());
 
         /*
@@ -314,7 +304,7 @@ public class StemmawebLegacyTest {
         is( scalar @v2, 2, "Added a global relationship with two instances" );
         */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(n24);
         relationship.setTarget(n23);
         relationship.setType("spelling");
@@ -326,9 +316,9 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(2, response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size());
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(2, response.getEntity(new GenericType<GraphModel>(){}).getRelations().size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er + 3, existingRels.size());
 
 
@@ -337,7 +327,7 @@ public class StemmawebLegacyTest {
         is( scalar @v1, 1, "Deleted first relationship" );
          */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(n22);
         relationship.setTarget(n21);
         relationship.setScope("local");
@@ -348,9 +338,9 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(1, response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size());
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(1, response.getEntity(new GenericType<ArrayList<RelationModel>>(){}).size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er + 2, existingRels.size());
 
 
@@ -359,7 +349,7 @@ public class StemmawebLegacyTest {
         is( scalar @v2, 2, "Deleted second global relationship" );
          */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(n12);
         relationship.setTarget(n13);
         relationship.setScope("document");
@@ -370,16 +360,16 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(2, response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size());
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(2, response.getEntity(new GenericType<ArrayList<RelationModel>>(){}).size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er, existingRels.size());
 
 
         /*
         my @v3 = $c->del_relationship( 'n1', 'n2' );  # 'when', 'april'
         is( scalar @v3, 0, "Nothing deleted on non-existent relationship" );
-        removeModel = new RelationshipModel();
+        removeModel = new RelationModel();
          */
 
         relationship.setSource(n1);
@@ -392,8 +382,8 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er, existingRels.size());
 
 
@@ -403,7 +393,7 @@ public class StemmawebLegacyTest {
         is( @v4, 2, "Re-added global relationship" );
         */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(n24);
         relationship.setTarget(n23);
         relationship.setType("spelling");
@@ -415,9 +405,9 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
-        assertEquals(2, response.getEntity(new GenericType<GraphModel>(){}).getRelationships().size());
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(2, response.getEntity(new GenericType<GraphModel>(){}).getRelations().size());
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er + 2, existingRels.size());
 
 
@@ -427,7 +417,7 @@ public class StemmawebLegacyTest {
         ok( $c->get_relationship( 'n24', 'n23' ), "Other globally-added relationship exists" );
         */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(n12);
         relationship.setTarget(n13);
         relationship.setScope("local");
@@ -438,9 +428,9 @@ public class StemmawebLegacyTest {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, relationship);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        assertEquals(response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){}).size(), 1);
-        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        assertEquals(response.getEntity(new GenericType<ArrayList<RelationModel>>(){}).size(), 1);
+        existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
         assertEquals(er + 1, existingRels.size());
 
         // we don't need this, because we are going to get all relationships
@@ -451,12 +441,12 @@ public class StemmawebLegacyTest {
 
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/relationships")
+                .path("/tradition/" + tradId + "/relations")
                 .get(ClientResponse.class);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
         boolean foundRelation = false;
-        ArrayList<RelationshipModel> relList = response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){});
-        for (RelationshipModel relItem : relList) {
+        ArrayList<RelationModel> relList = response.getEntity(new GenericType<ArrayList<RelationModel>>(){});
+        for (RelationModel relItem : relList) {
             if ((relItem.getSource().equals(n23) && relItem.getTarget().equals(n24)) ||
                     (relItem.getSource().equals(n24) && relItem.getTarget().equals(n23))) {
                 foundRelation = true;
@@ -521,7 +511,7 @@ public class StemmawebLegacyTest {
         }
          */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(r9_2);
         relationship.setTarget(r8_1);
         relationship.setType("collated");
@@ -537,7 +527,7 @@ public class StemmawebLegacyTest {
 
         /* SK: Tests if we are able to create a relationship from the 1st to the 2nd tradition */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(r9_2);
         relationship.setTarget(n24);
         relationship.setType("collated");
@@ -598,7 +588,7 @@ public class StemmawebLegacyTest {
             }
         }
 
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(r9_2);
         relationship.setTarget(r9_3);
         relationship.setType("lexical");
@@ -626,13 +616,13 @@ public class StemmawebLegacyTest {
 
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/relationships")
+                .path("/tradition/" + tradId + "/relations")
                 .get(ClientResponse.class);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
 
-        ArrayList<RelationshipModel> relList = response.getEntity(new GenericType<ArrayList<RelationshipModel>>(){});
+        ArrayList<RelationModel> relList = response.getEntity(new GenericType<ArrayList<RelationModel>>(){});
         found_expected_tradition: {
-            for (RelationshipModel relItem : relList) {
+            for (RelationModel relItem : relList) {
                 if ((relItem.getSource().equals(r9_2) && relItem.getTarget().equals(r9_3)) ||
                         (relItem.getSource().equals(r9_3) && relItem.getTarget().equals(r9_2))) {
                     assertEquals("lexical", relItem.getType());
@@ -653,7 +643,7 @@ public class StemmawebLegacyTest {
         }
         */
 
-        relationship = new RelationshipModel();
+        relationship = new RelationModel();
         relationship.setSource(r8_6);
         relationship.setTarget(r10_3);
         relationship.setType("orthographic");
@@ -748,7 +738,7 @@ public class StemmawebLegacyTest {
         }
         */
 
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(r36_4);
         relationship.setTarget(r38_3);
         relationship.setType("transposition");
@@ -769,7 +759,7 @@ public class StemmawebLegacyTest {
         }
         */
 
-        RelationshipModel relationship2 = new RelationshipModel();
+        RelationModel relationship2 = new RelationModel();
         relationship2.setSource(r36_3);
         relationship2.setTarget(r38_2);
         relationship2.setType("transposition");
@@ -792,7 +782,7 @@ public class StemmawebLegacyTest {
         }
         */
 
-        RelationshipModel relationship3 = new RelationshipModel();
+        RelationModel relationship3 = new RelationModel();
         relationship3.setSource(r28_2);
         relationship3.setTarget(r29_2);
         relationship3.setType("transposition");
@@ -814,7 +804,7 @@ public class StemmawebLegacyTest {
         }
         */
 
-        RelationshipModel relationship4 = new RelationshipModel();
+        RelationModel relationship4 = new RelationModel();
         relationship4.setSource(r28_3);
         relationship4.setTarget(r29_3);
         relationship4.setType("orthographic");
@@ -835,7 +825,7 @@ public class StemmawebLegacyTest {
         }
         */
 
-        RelationshipModel relationship5 = new RelationshipModel();
+        RelationModel relationship5 = new RelationModel();
         relationship5.setSource(r28_2);
         relationship5.setTarget(r29_2);
         relationship5.setType("transposition");
@@ -900,7 +890,7 @@ public class StemmawebLegacyTest {
             }
          **/
 
-        RelationshipModel relationship = new RelationshipModel();
+        RelationModel relationship = new RelationModel();
         relationship.setSource(r463_2);
         relationship.setTarget(r463_4);
         relationship.setType("orthographic");

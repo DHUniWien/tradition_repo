@@ -1,7 +1,9 @@
 package net.stemmaweb.parser;
 
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -10,6 +12,7 @@ import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
+import java.util.HashSet;
 
 /**
  * Utility functions for the parsers
@@ -85,5 +88,22 @@ public class Util {
         return found;
     }
 
+    // Helper to set colocation flags on all colocated RELATED links.
+    // NOTE: For use inside a transaction
+    static void setColocationFlags (Node traditionNode) {
+        HashSet<String> colocatedTypes = new HashSet<>();
+        for (Relationship r : traditionNode.getRelationships(ERelations.HAS_RELATION_TYPE, Direction.OUTGOING)) {
+            RelationTypeModel relType = new RelationTypeModel(r.getEndNode());
+            if (relType.getIs_colocation()) colocatedTypes.add(relType.getName());
+        }
+
+        // Traverse the tradition looking for these types
+        for (Relationship rel : DatabaseService.returnTraditionRelations(traditionNode).relationships()) {
+            if (colocatedTypes.contains(rel.getProperty("type").toString()))
+                rel.setProperty("colocation", true);
+            else if (rel.hasProperty("colocation"))
+                rel.removeProperty("colocation");
+        }
+    }
 
 }

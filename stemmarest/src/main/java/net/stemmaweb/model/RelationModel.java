@@ -2,7 +2,6 @@ package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.qmino.miredot.annotations.MireDotIgnore;
 import org.neo4j.graphdb.Relationship;
 
 /**
@@ -13,7 +12,7 @@ import org.neo4j.graphdb.Relationship;
  */
 
 @XmlRootElement
-public class RelationshipModel {
+public class RelationModel {
 
     @SuppressWarnings("unused")
     private enum Significance {
@@ -66,12 +65,8 @@ public class RelationshipModel {
      * True if this variation is unlikely to have arisen in two branches of the stemma coincidentally
      */
     private Boolean non_independent = false;     // de7
-    @MireDotIgnore
-    private String reading_a;           // de8
-    @MireDotIgnore
-    private String reading_b;           // de9
     /**
-     * The extent to which this relationship should be applied more widely. Valid values are {@code local} and {@code document}.
+     * The extent to which this relationship should be applied more widely. Currently valid values are {@code local} and {@code document}.
      */
     private String scope;               // de10
     /**
@@ -79,7 +74,7 @@ public class RelationshipModel {
      */
     private String type;                // de11
 
-    public RelationshipModel(){
+    public RelationModel(){
 
     }
 
@@ -87,7 +82,7 @@ public class RelationshipModel {
      * Creates a relationshipModel directly from a Relationship from Neo4J db
      * @param rel - The relationship node to initialize from
      */
-    public RelationshipModel(Relationship rel){
+    public RelationModel(Relationship rel){
         source = rel.getStartNode().getId() + "";
         target = rel.getEndNode().getId() + "";
 
@@ -120,12 +115,6 @@ public class RelationshipModel {
                     break;
                 case "non_independent":
                     non_independent = (Boolean) rel.getProperty("non_independent");
-                    break;
-                case "reading_a":
-                    reading_a = rel.getProperty("reading_a").toString();
-                    break;
-                case "reading_b":
-                    reading_b = rel.getProperty("reading_b").toString();
                     break;
                 case "scope":
                     scope = rel.getProperty("scope").toString();
@@ -228,22 +217,6 @@ public class RelationshipModel {
         this.non_independent = non_independent;
     }
 
-    public String getReading_a() {
-        return reading_a;
-    }
-
-    public void setReading_a(String reading_a) {
-        this.reading_a = reading_a;
-    }
-
-    public String getReading_b() {
-        return reading_b;
-    }
-
-    public void setReading_b(String reading_b) {
-        this.reading_b = reading_b;
-    }
-
     public String getScope() {
         return scope;
     }
@@ -258,15 +231,6 @@ public class RelationshipModel {
 
     public void setType(String type) {
         this.type = type;
-    }
-
-    // Attribute methods; these will eventually go into RelationshipTypeModel.
-    public Boolean implies_colocation() {
-        return !(this.type.equals("transposition") || this.type.equals("repetition"));
-    }
-
-    public Boolean weak_relation() {
-        return this.type.equals("collated");
     }
 
 }

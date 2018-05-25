@@ -255,7 +255,7 @@ public class StemmawebExporter {
             writer.writeEndElement(); // graph
 
             // graph 2
-            // get the same nodes again, but this time we will later also search for other relationships
+            // get the same nodes again, but this time we will later also search for reading relations
 
             writer.writeStartElement("graph");
             writer.writeAttribute("edgedefault", "directed");
@@ -304,7 +304,8 @@ public class StemmawebExporter {
                     writer.writeAttribute("target", endNode);
                     writer.writeAttribute("id", "e" + edgeId++);
                     for(String prop : props) {
-                        if (rel.hasProperty(prop)) {
+                        // Skip internal properties like "colocation" on RELATED links
+                        if (rel.hasProperty(prop) && relationMap.containsKey(prop)) {
                             String value = rel.getProperty(prop).toString();
                             if (!value.equals("")) {
                                 writer.writeStartElement("data");

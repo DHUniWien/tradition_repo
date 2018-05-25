@@ -9,10 +9,11 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import net.stemmaweb.model.RelationshipModel;
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
+import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -62,12 +63,13 @@ public class StemmawebParser {
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
         HashMap<String, String> keytypes = new HashMap<>(); // to store data key value types
         HashMap<String, Boolean> witnesses = new HashMap<>();  // to store witnesses found
+        HashSet<String> relationtypes = new HashSet<>(); // to note the relation types we've seen
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
         Node currentNode = null;        // holds the current
         String currentGraph = null;     // holds the ID of the current XML graph element
-        RelationshipModel currentRelModel = null;
+        RelationModel currentRelModel = null;
         String edgeWitness = null;
         String witnessClass = "witnesses";
 
@@ -80,76 +82,86 @@ public class StemmawebParser {
 
                 switch (event) {
                     case XMLStreamConstants.END_ELEMENT:
-                        if (reader.getLocalName().equals("graph")) {
-                            // Clear out the currentGraph string.
-                            currentGraph = null;
-                        } else if (reader.getLocalName().equals("node")){
-                            // Finished working on currentNode
-                            currentNode = null;
-                        } else if (reader.getLocalName().equals("edge")) {
-                            Node from = db.getNodeById(idToNeo4jId.get(currentRelModel.getSource()));
-                            Node to = db.getNodeById(idToNeo4jId.get(currentRelModel.getTarget()));
+                        switch (reader.getLocalName()) {
+                            case "graph":
+                                // Clear out the currentGraph string.
+                                currentGraph = null;
+                                break;
+                            case "node":
+                                // Finished working on currentNode
+                                currentNode = null;
+                                break;
+                            case "edge":
+                                Node from = db.getNodeById(idToNeo4jId.get(currentRelModel.getSource()));
+                                Node to = db.getNodeById(idToNeo4jId.get(currentRelModel.getTarget()));
 
-                            ERelations relKind = (currentRelModel.getType() != null) ?
-                                    ERelations.RELATED : ERelations.SEQUENCE;
-                            Relationship relship = null;
-                            // Sequence relationships are specified multiple times in the graph, once
-                            // per witness. Reading relationships should be specified only once.
-                            if (from.hasRelationship(relKind, Direction.BOTH)) {
-                                for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
-                                    if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
-                                        // If a RELATED link already exists, we have a problem.
-                                        if (relKind.equals(ERelations.RELATED))
-                                            return Response.status(Response.Status.BAD_REQUEST)
-                                                    .entity("Error: Tradition specifies the reading relationship " +
-                                                            currentRelModel.getScope() + " -- " + currentRelModel.getTarget() +
-                                                            "twice")
-                                                    .build();
-                                        // It's a SEQUENCE link, so we are good.
-                                        relship = qr;
-                                        break;
+                                ERelations relKind = (currentRelModel.getType() != null) ?
+                                        ERelations.RELATED : ERelations.SEQUENCE;
+                                Relationship relship = null;
+                                // Sequence relationships are specified multiple times in the GraphML, once
+                                // per witness. Reading relationships should be specified only once.
+                                if (from.hasRelationship(relKind, Direction.BOTH)) {
+                                    for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
+                                        if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
+                                            // If a RELATED link already exists, we have a problem.
+                                            if (relKind.equals(ERelations.RELATED))
+                                                return Response.status(Response.Status.BAD_REQUEST)
+                                                        .entity("Error: Tradition specifies the reading relation " +
+                                                                currentRelModel.getScope() + " -- " + currentRelModel.getTarget() +
+                                                                "twice")
+                                                        .build();
+                                            // It's a SEQUENCE link, so we are good.
+                                            relship = qr;
+                                            break;
+                                        }
                                     }
                                 }
-                            }
-                            // If not, create it.
-                            if (relship == null)
-                                relship = from.createRelationshipTo(to, relKind);
+                                // If not, create it.
+                                if (relship == null)
+                                    relship = from.createRelationshipTo(to, relKind);
 
-                            if (relKind.equals(ERelations.RELATED)) {
-                                if (currentRelModel.getType() != null)
-                                    relship.setProperty("type", currentRelModel.getType());
-                                if (currentRelModel.getA_derivable_from_b() != null)
-                                    relship.setProperty("a_derivable_from_b", currentRelModel.getA_derivable_from_b());
-                                if (currentRelModel.getAlters_meaning() != null)
-                                    relship.setProperty("alters_meaning", currentRelModel.getAlters_meaning());
-                                if (currentRelModel.getB_derivable_from_a() != null)
-                                    relship.setProperty("b_derivable_from_a", currentRelModel.getB_derivable_from_a());
-                                if (currentRelModel.getDisplayform() != null)
-                                    relship.setProperty("displayform", currentRelModel.getDisplayform());
-                                if (currentRelModel.getIs_significant() != null)
-                                    relship.setProperty("is_significant", currentRelModel.getIs_significant());
-                                if (currentRelModel.getNon_independent() != null)
-                                    relship.setProperty("non_independent", currentRelModel.getNon_independent());
-                                if (currentRelModel.getReading_a() != null)
-                                    relship.setProperty("reading_a", currentRelModel.getReading_a());
-                                if (currentRelModel.getReading_b() != null)
-                                    relship.setProperty("reading_b", currentRelModel.getReading_b());
-                                if (currentRelModel.getScope() != null)
-                                    relship.setProperty("scope", currentRelModel.getScope());
-                            } else {
-                                // If this is an edge relationship, record the witness information
-                                // either in "witnesses" or in the field indicated by "extra"
+                                if (relKind.equals(ERelations.RELATED)) {
+                                    // Set the n4j relationship properties
+                                    if (currentRelModel.getType() != null) {
+                                        String typeName = currentRelModel.getType();
+                                        relship.setProperty("type", typeName);
+                                        // Make sure this relationship type exists
+                                        if (!relationtypes.contains(typeName)) {
+                                            Response rtResult = new RelationType(tradId, typeName).makeDefaultType();
+                                            if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                                                return rtResult;
+                                            else relationtypes.add(typeName);
+                                        }
+                                    }
+                                    if (currentRelModel.getA_derivable_from_b() != null)
+                                        relship.setProperty("a_derivable_from_b", currentRelModel.getA_derivable_from_b());
+                                    if (currentRelModel.getAlters_meaning() != null)
+                                        relship.setProperty("alters_meaning", currentRelModel.getAlters_meaning());
+                                    if (currentRelModel.getB_derivable_from_a() != null)
+                                        relship.setProperty("b_derivable_from_a", currentRelModel.getB_derivable_from_a());
+                                    if (currentRelModel.getDisplayform() != null)
+                                        relship.setProperty("displayform", currentRelModel.getDisplayform());
+                                    if (currentRelModel.getIs_significant() != null)
+                                        relship.setProperty("is_significant", currentRelModel.getIs_significant());
+                                    if (currentRelModel.getNon_independent() != null)
+                                        relship.setProperty("non_independent", currentRelModel.getNon_independent());
+                                    if (currentRelModel.getScope() != null)
+                                        relship.setProperty("scope", currentRelModel.getScope());
+                                } else {
+                                    // If this is an edge relationship, record the witness information
+                                    // either in "witnesses" or in the field indicated by "extra"
 
-                                String[] witList = {};
-                                if (relship.hasProperty(witnessClass))
-                                    witList = (String[]) relship.getProperty(witnessClass);
-                                ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
-                                currentWits.add(edgeWitness);
-                                relship.setProperty(witnessClass, currentWits.toArray(new String[currentWits.size()]));
-                            }
-                            // Finished working on currentRel
-                            witnessClass = "witnesses";
-                            currentRelModel = null;
+                                    String[] witList = {};
+                                    if (relship.hasProperty(witnessClass))
+                                        witList = (String[]) relship.getProperty(witnessClass);
+                                    ArrayList<String> currentWits = new ArrayList<>(Arrays.asList(witList));
+                                    currentWits.add(edgeWitness);
+                                    relship.setProperty(witnessClass, currentWits.toArray(new String[0]));
+                                }
+                                // Finished working on currentRel
+                                witnessClass = "witnesses";
+                                currentRelModel = null;
+                                break;
                         }
                         break;
                     case XMLStreamConstants.END_DOCUMENT:
@@ -160,7 +172,7 @@ public class StemmawebParser {
                         switch (local_name) {
                             case "data":
                                 if (currentRelModel != null) {
-                                    // We are working on a relationship node. Apply the data.
+                                    // We are working on a relation node. Apply the data.
                                     String attr = keymap.get(reader.getAttributeValue("", "key"));
                                     String keytype = keytypes.get(attr);
                                     String val = reader.getElementText();
@@ -210,12 +222,6 @@ public class StemmawebParser {
                                                 currentRelModel.setNon_independent(true);
                                             else
                                                 currentRelModel.setNon_independent(false);
-                                            break;
-                                        case "reading_a":
-                                            currentRelModel.setReading_a(val);
-                                            break;
-                                        case "reading_b":
-                                            currentRelModel.setReading_b(val);
                                             break;
                                         case "scope":
                                             currentRelModel.setScope(val);
@@ -279,7 +285,7 @@ public class StemmawebParser {
                                 }
                                 break;
                             case "edge":
-                                currentRelModel = new RelationshipModel();
+                                currentRelModel = new RelationModel();
                                 currentRelModel.setSource(reader.getAttributeValue("", "source"));
                                 currentRelModel.setTarget(reader.getAttributeValue("", "target"));
                                 currentRelModel.setA_derivable_from_b(null);
@@ -296,7 +302,7 @@ public class StemmawebParser {
                                 // Sequence relationships are specified multiple times in the graph, once
                                 // per witness. Reading relationships should be specified only once.
                                 if (from.hasRelationship(relKind, Direction.BOTH)) {
-                                    for (Relationship qr : from.getRelationships(relKind, Direction.BOTH)) {
+                                    for (Relationship qr : from.getRelations(relKind, Direction.BOTH)) {
                                         if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
                                             // If a RELATED link already exists, we have a problem.
                                             if (relKind.equals(ERelations.RELATED))
@@ -343,6 +349,8 @@ public class StemmawebParser {
 
             // Create the witness nodes
             witnesses.keySet().forEach(x -> Util.createExtant(traditionNode, x));
+            // Set colocation information on relationship types
+            Util.setColocationFlags(traditionNode);
             tx.success();
         } catch(Exception e) {
             e.printStackTrace();

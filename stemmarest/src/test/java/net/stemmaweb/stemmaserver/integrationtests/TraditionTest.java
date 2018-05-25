@@ -130,28 +130,24 @@ public class TraditionTest {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, jsonPayload);
 
-        RelationshipModel rel = new RelationshipModel();
+        RelationModel rel = new RelationModel();
         rel.setSource("27");
         rel.setTarget("16");
         rel.setId("36");
-        rel.setReading_a("april");
         rel.setIs_significant("no");
-        rel.setReading_b("april");
         rel.setAlters_meaning(0L);
         rel.setType("transposition");
         rel.setScope("local");
 
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
-        RelationshipModel relLoaded = relationships.get(2);
+        List<RelationModel> relationships = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        RelationModel relLoaded = relationships.get(2);
 
         assertEquals(rel.getSource(), relLoaded.getSource());
         assertEquals(rel.getTarget(), relLoaded.getTarget());
         assertEquals(rel.getId(), relLoaded.getId());
-        assertEquals(rel.getReading_a(), relLoaded.getReading_a());
         assertEquals(rel.getIs_significant(), relLoaded.getIs_significant());
-        assertEquals(rel.getReading_b(), relLoaded.getReading_b());
         assertEquals(rel.getAlters_meaning(), relLoaded.getAlters_meaning());
         assertEquals(rel.getType(), relLoaded.getType());
         assertEquals(rel.getScope(), relLoaded.getScope());
@@ -160,9 +156,9 @@ public class TraditionTest {
     @Test
     public void getAllRelationshipsCorrectAmountTest() {
 
-        List<RelationshipModel> relationships = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/relationships")
-                .get(new GenericType<List<RelationshipModel>>() {});
+        List<RelationModel> relationships = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
 
         assertEquals(3, relationships.size());
     }
@@ -320,8 +316,8 @@ public class TraditionTest {
             Node tradNode = ownership.iterator().next().getEndNode();
             TraditionModel tradition = new TraditionModel(tradNode);
 
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
+            assertEquals(tradId, tradition.getId());
+            assertEquals("Tradition", tradition.getName());
 
             tx.success();
         } catch (Exception e) {
@@ -381,20 +377,11 @@ public class TraditionTest {
         /* Preconditon
          * The user with id 1 has tradition
          */
-        Result result;
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
-
-            tx.success();
-        }
+        ClientResponse jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        List<TraditionModel> tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
 
         /*
          * Change the owner of the tradition
@@ -415,20 +402,12 @@ public class TraditionTest {
         /* PostCondition
          * The user with id 1 has still tradition
          */
-        TraditionModel tradition = new TraditionModel();
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            tx.success();
-        }
-
-        assertTrue(tradition.getId().equals(tradId));
-        assertTrue(tradition.getName().equals("Tradition"));
+        jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
+        assertEquals("Tradition", tradList.get(0).getName());
 
     }
 
@@ -457,32 +436,18 @@ public class TraditionTest {
         /*
          * The user with id 42 has no tradition
          */
-        Result result;
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            assertTrue(!tradIterator.hasNext());
-
-            tx.success();
-
-        }
+        ClientResponse jerseyResult = jerseyTest.resource().path("/user/42/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        assertEquals(0, jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {}).size());
 
         /*
          * The user with id 1 has tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
-
-            tx.success();
-        }
+        jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        List<TraditionModel> tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
 
         /*
          * Change the owner of the tradition
@@ -509,30 +474,19 @@ public class TraditionTest {
         /*
          * Test if user with id 1 has still the old tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            Node tradNode = tradIterator.next();
-            TraditionModel tradition = new TraditionModel();
-            tradition.setId(tradNode.getProperty("id").toString());
-            tradition.setName(tradNode.getProperty("name").toString());
-
-            assertTrue(tradition.getId().equals(tradId));
-            assertTrue(tradition.getName().equals("Tradition"));
-
-            tx.success();
-        }
+        jerseyResult = jerseyTest.resource().path("/user/1/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        tradList = jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {});
+        assertEquals(1, tradList.size());
+        assertEquals(tradId, tradList.get(0).getId());
+        assertEquals("Tradition", tradList.get(0).getName());
 
         /*
          * The user with id 42 has still no tradition
          */
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'42'}) return n");
-            Iterator<Node> tradIterator = result.columnAs("n");
-            assertTrue(!tradIterator.hasNext());
-
-            tx.success();
-        }
+        jerseyResult = jerseyTest.resource().path("/user/42/traditions").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        assertEquals(0, jerseyResult.getEntity(new GenericType<List<TraditionModel>>() {}).size());
     }
 
     /**
@@ -550,7 +504,7 @@ public class TraditionTest {
 
         Node startNode = DatabaseService.getStartNode(tradId, db);
 
-        assertTrue(startNode == null);
+        assertNull(startNode);
     }
 
     /**
@@ -611,9 +565,7 @@ public class TraditionTest {
                 assertTrue(atRank.hasNext());
                 ReadingModel rdg1 = new ReadingModel(atRank.next());
                 ReadingModel rdg2 = new ReadingModel(atRank.next());
-                RelationshipModel rel = new RelationshipModel();
-                rel.setReading_a(rdg1.getText());
-                rel.setReading_b(rdg2.getText());
+                RelationModel rel = new RelationModel();
                 rel.setType("grammatical");
                 rel.setScope("local");
                 rel.setSource(rdg1.getId());
@@ -628,7 +580,7 @@ public class TraditionTest {
             // and a transposition, for kicks
             Node tx1 = db.findNode(Nodes.READING, "rank", 217);
             Node tx2 = db.findNode(Nodes.READING, "rank", 219);
-            RelationshipModel txrel = new RelationshipModel();
+            RelationModel txrel = new RelationModel();
             txrel.setType("transposition");
             txrel.setScope("local");
             txrel.setSource(String.valueOf(tx1.getId()));

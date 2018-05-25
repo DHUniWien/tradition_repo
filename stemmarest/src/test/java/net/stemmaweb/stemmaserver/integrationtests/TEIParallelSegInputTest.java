@@ -114,7 +114,6 @@ public class TEIParallelSegInputTest {
 
 
         // Get a witness text
-        Witness witness = new Witness(tradId, "T");
         WitnessTextModel tm = (WitnessTextModel) new Witness(tradId, "T").getWitnessAsText().getEntity();
         assertEquals(tText, tm.getText());
         // Get a layered witness text

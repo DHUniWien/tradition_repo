@@ -30,13 +30,13 @@ public class AlignmentModel {
     private long length;
     private ArrayList<HashMap<String, Object>> alignment;
 
-    // Get an alignment table with no conflation based on relationship
+    // Get an alignment table with no conflation based on relation
     public AlignmentModel(Node traditionNode) {
         this(traditionNode, new ArrayList<>());
     }
 
     // Get an alignment table where some of the related readings are conflated.
-    public AlignmentModel(Node traditionNode, List<String> conflateRelationships) {
+    public AlignmentModel(Node traditionNode, List<String> conflateRelations) {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {
@@ -50,13 +50,13 @@ public class AlignmentModel {
             // We arbitrarily use the first reading we come to as the reference
             // for all the readings that are equivalent to it.
             HashMap<Node, Node> conflatedReadings = new HashMap<>();
-            if (conflateRelationships.size() > 0) {
+            if (conflateRelations.size() > 0) {
                 PathExpander relationConflater = new PathExpander() {
                     @Override
                     public Iterable<Relationship> expand(Path path, BranchState branchState) {
                         ArrayList<Relationship> relevantRelations = new ArrayList<>();
                         for (Relationship rel : path.endNode().getRelationships(ERelations.RELATED))
-                            if (conflateRelationships.contains(rel.getProperty("type").toString()))
+                            if (conflateRelations.contains(rel.getProperty("type").toString()))
                                 relevantRelations.add(rel);
                         return relevantRelations;
                     }
@@ -73,7 +73,7 @@ public class AlignmentModel {
                         .nodes().forEach(x -> {
                     if (!conflatedReadings.containsKey(x)) {
                         conflatedReadings.put(x, x);
-                        // Traverse the readings for the given relationships.
+                        // Traverse the readings for the given relations.
                         ResourceIterable<Node> equivalent = db.traversalDescription().depthFirst()
                                 .expand(relationConflater)
                                 .evaluator(Evaluators.all())
