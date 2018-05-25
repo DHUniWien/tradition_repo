@@ -145,7 +145,7 @@ public class RelationType {
                 || useType.equals("other") || useType.equals("repetition") || useType.equals("transposition")));
         relType.setIs_generalizable(!(useType.equals("collated")|| useType.equals("uncertain")
                 || useType.equals("other")));
-        relType.setUse_regular(useType.equals("orthographic"));
+        relType.setUse_regular(!useType.equals("orthographic"));
         // Create the node
         Node result = relType.instantiate(tradNode);
         if (result == null)

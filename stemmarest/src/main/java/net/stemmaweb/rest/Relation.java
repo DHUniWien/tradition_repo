@@ -1,6 +1,7 @@
 package net.stemmaweb.rest;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
@@ -64,9 +65,9 @@ public class Relation {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response create(RelationModel relationModel) {
-
+        // Make sure a scope is set
+        if (relationModel.getScope() == null) relationModel.setScope(SCOPE_LOCAL);
         String scope = relationModel.getScope();
-        if (scope == null) scope=SCOPE_LOCAL;
         if (scope.equals(SCOPE_GLOBAL) || scope.equals(SCOPE_LOCAL)) {
             GraphModel relationChanges = new GraphModel();
 
@@ -81,6 +82,7 @@ public class Relation {
             if (relationChanges.getRelations().stream().findFirst().isPresent()) // this will always be true
                 thisRelId = Long.valueOf(relationChanges.getRelations().stream().findFirst().get().getId());
             if (scope.equals(SCOPE_GLOBAL)) {
+                Boolean use_normal = returnRelationType(tradId, relationModel.getType()).getUse_regular();
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
@@ -90,9 +92,11 @@ public class Relation {
                     // Get all the readings that belong to our tradition
                     ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
                     // Pick out the ones that share the readingA text
-                    HashSet<Node> ourA = tradReadings.stream().filter(x -> x.hasProperty("text")
-                            && x.getProperty("text").equals(readingA.getProperty("text"))
-                            && !x.getProperty("rank").equals(readingA.getProperty("rank")))
+                    Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
+                            ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
+                    HashSet<Node> ourA = tradReadings.stream()
+                            .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA))
+                                    && !x.getProperty("rank").equals(readingA.getProperty("rank")))
                             .collect(Collectors.toCollection(HashSet::new));
                     HashMap<Long, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
@@ -105,7 +109,7 @@ public class Relation {
 
                     // Pick out the ones that share the readingB text
                     HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
-                            && x.getProperty("text").equals(readingB.getProperty("text"))
+                            && nodefilter.apply(x).equals(nodefilter.apply(readingB))
                             && !x.getProperty("rank").equals(readingA.getProperty("rank")))
                             .collect(Collectors.toCollection(HashSet::new));
                     RelationModel userel;
@@ -163,20 +167,24 @@ public class Relation {
                     .build();
 
 
-            if (!readingA.getProperty("section_id").equals(readingB.getProperty("section_id"))) {
+            if (!readingA.getProperty("section_id").equals(readingB.getProperty("section_id")))
                 return Response.status(Status.CONFLICT)
                         .entity(jsonerror("Cannot create relation across tradition sections"))
                         .build();
-            }
 
-            if (isMetaReading(readingA) || isMetaReading(readingB)) {
+            if (isMetaReading(readingA) || isMetaReading(readingB))
                 return Response.status(Status.CONFLICT)
-                        .entity(jsonerror("Cannot set relation on a meta reading"))
-                        .build();
-            }
+                    .entity(jsonerror("Cannot set relation on a meta reading"))
+                    .build();
 
             // Get, or create implicitly, the relation type node for the given type.
             RelationTypeModel rmodel = returnRelationType(tradId, relationModel.getType());
+
+            // Check that the relation type is compatible with the passed relation model
+            if (!relationModel.getScope().equals("local") && !rmodel.getIs_generalizable())
+                return Response.status(Status.CONFLICT)
+                        .entity(jsonerror("Relation type " + rmodel.getName() + " cannot be made outside a local scope"))
+                        .build();
 
             // Remove any weak relations that might conflict
             // LATER better idea: write a traverser that will disregard weak relations
@@ -331,7 +339,8 @@ public class Relation {
                 Node readingA = iterateNodes.remove(0);
                 HashSet<Node> alreadyRelated = new HashSet<>();
                 readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
-                System.out.println(String.format("Propagating on node %d / %s", readingA.getId(), readingA.getProperty("text")));
+                System.out.println(String.format("Propagating type model %s on node %d / %s",
+                        rtm.getName(), readingA.getId(), readingA.getProperty("text")));
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
                         System.out.println(String.format("...making relation %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));

@@ -66,7 +66,7 @@ public class RelationModel {
      */
     private Boolean non_independent = false;     // de7
     /**
-     * The extent to which this relationship should be applied more widely. Valid values are {@code local} and {@code document}.
+     * The extent to which this relationship should be applied more widely. Currently valid values are {@code local} and {@code document}.
      */
     private String scope;               // de10
     /**

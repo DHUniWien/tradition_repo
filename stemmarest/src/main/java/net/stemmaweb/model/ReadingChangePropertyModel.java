@@ -1,5 +1,6 @@
 package net.stemmaweb.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
@@ -13,6 +14,8 @@ public class ReadingChangePropertyModel {
 
     private List<KeyPropertyModel> properties;
 
+    public ReadingChangePropertyModel() { this.properties = new ArrayList<>(); }
+
     public List<KeyPropertyModel> getProperties() {
         return properties;
     }
@@ -20,5 +23,7 @@ public class ReadingChangePropertyModel {
     public void setProperties(List<KeyPropertyModel> properties) {
         this.properties = properties;
     }
+
+    public void addProperty(KeyPropertyModel property) { this.properties.add(property); }
 
 }

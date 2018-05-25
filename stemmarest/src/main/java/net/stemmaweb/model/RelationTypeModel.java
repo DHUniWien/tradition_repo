@@ -75,6 +75,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     }
 
     public RelationTypeModel (Node n) {
+        this();
         try (Transaction tx = n.getGraphDatabase().beginTx()) {
             if (n.hasProperty("name"))
                 this.setName(n.getProperty("name").toString());

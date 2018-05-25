@@ -141,6 +141,72 @@ public class RelationTypeTest extends TestCase {
         assertEquals(10, allRelTypes.get(0).getBindlevel());
     }
 
+    public void testNonGeneralizable() {
+        String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
+        String legei = readingLookup.getOrDefault("λεγει/1", "17");
+
+        // Make a relationship type of our own
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("important");
+        rtm.setDescription("Something we care about for our own reasons");
+        rtm.setIs_colocation(true);
+        rtm.setIs_generalizable(false);
+        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/important")
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, rtm);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+
+        // Now use it
+        RelationModel newRel = new RelationModel();
+        newRel.setSource(legeiAcute);
+        newRel.setTarget(legei);
+        newRel.setScope("document");
+        newRel.setType("important");
+
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
+    }
+
+    public void testUseRegular() {
+        // Set a normal form
+        String auTw = readingLookup.getOrDefault("αυΤω/3", "17");
+        String autwi = readingLookup.getOrDefault("αὐτῷ/3", "17");
+
+        KeyPropertyModel kp = new KeyPropertyModel();
+        kp.setKey("normal_form");
+        kp.setProperty("αυτῶ");
+        ReadingChangePropertyModel newNormal = new ReadingChangePropertyModel();
+        newNormal.addProperty(kp);
+        ClientResponse jerseyResult = jerseyTest.resource().path("/reading/" + auTw)
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, newNormal);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+
+        // Now make the relation
+        RelationModel newRel = new RelationModel();
+        newRel.setSource(autwi);
+        newRel.setTarget(auTw);
+        newRel.setType("grammatical");
+        newRel.setScope("document");
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+
+        // and check that the normal form αυτῶ was found at rank 28.
+        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        assertEquals(2, result.getRelations().size());
+        assertEquals(0, result.getReadings().size());
+        for (RelationModel rm : result.getRelations()) {
+            if (rm.getSource().equals(autwi)) continue;
+            ReadingModel otherRankReading = jerseyTest.resource().path("/reading/" + rm.getTarget())
+                    .get(new GenericType<ReadingModel>() {});
+            assertEquals("αυτῶ", otherRankReading.getText());
+        }
+    }
+
     public void testSimpleTransitivity() {
         String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
         String legei = readingLookup.getOrDefault("λεγει/1", "17");
