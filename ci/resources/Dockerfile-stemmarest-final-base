@@ -11,6 +11,6 @@ RUN mkdir -p /var/lib/stemmarest/conf \
  && chown -R tomcat8. /var/lib/stemmarest \
  && chmod -R g+w /var/lib/stemmarest \
  && chmod -R +2000 /var/lib/stemmarest \
- && chown -R tomcat8. /usr/local/tomcat \
+ && chown -R tomcat8. /usr/local/tomcat 
 
 ENV STEMMAREST_HOME /var/lib/stemmarest/
