@@ -260,7 +260,7 @@ public class ReadingTest {
         }
         String expected = String.format("{\"id\":\"%d\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false," +
                 "\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false," +
-                "\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\"}", nodeId);
+                "\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
 
         ClientResponse resp = jerseyTest.resource()
                 .path("/reading/" + nodeId.toString())
@@ -293,8 +293,39 @@ public class ReadingTest {
             assertNotNull(readingModel);
             assertEquals(expectedReadingModel.getRank(), readingModel.getRank());
             assertEquals(expectedReadingModel.getText(), readingModel.getText());
+            assertEquals(expectedReadingModel.getWitnesses(), readingModel.getWitnesses());
             tx.success();
         }
+    }
+
+    @Test
+    public void getReadingModelWitnesses() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/florilegium_tei_ps.xml", "teips");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, sects.size());
+        String newSectId = sects.get(0).getId();
+
+        // Go through all readings, ensure no witness duplicates
+        List<ReadingModel> allreadings = jerseyTest.resource()
+                .path("/tradition/" + newTradId + "/section/" + newSectId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+
+        for (ReadingModel r : allreadings) {
+            List<String> witnesses = r.getWitnesses();
+            HashSet<String> uniquewits = new HashSet<>(witnesses);
+            assertEquals(witnesses.size(), uniquewits.size());
+
+            // Look at reading κρίνετε, check that a.c. witnesses are handled
+            if (r.getText().equals("κρίνετε")) {
+                HashSet<String> krineiWits = new HashSet<>(Arrays.asList("C", "P", "S", "E", "F", "K", "Q", "H (s.l.)"));
+                assertTrue(krineiWits.containsAll(uniquewits));
+                assertTrue(uniquewits.containsAll(krineiWits));
+            }
+        }
+
     }
 
     @Test

@@ -1,15 +1,22 @@
 package net.stemmaweb.model;
 
+import net.stemmaweb.rest.ERelations;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Provides a model for a reading outside of the database. Can be parsed into a
@@ -91,6 +98,12 @@ public class ReadingModel implements Comparable<ReadingModel> {
      */
     private String extra;
 
+    /* === Calculated read-only values === */
+    /**
+     * The list of witnesses to which this reading belongs. Read-only.
+     */
+    private List<String> witnesses;
+
     /**
      * Generates a model from a Neo4j Node
      * @param node - The node with label READING from which the model should take its values
@@ -143,6 +156,18 @@ public class ReadingModel implements Comparable<ReadingModel> {
                     System.err.println("Invalid JSON string in reading extra parameter: " + jsonData);
                 }
             }
+            List<String> collectedWits = new ArrayList<>();
+            for (Relationship r : node.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
+                for (String prop : r.getPropertyKeys()) {
+                    String[] sigla = (String[]) r.getProperty(prop);
+                    if (prop.equals("witnesses")) {
+                        collectedWits.addAll(Arrays.asList(sigla));
+                    } else {
+                        Arrays.stream(sigla).forEach(x -> collectedWits.add(String.format("%s (%s)", x, prop)));
+                    }
+                }
+            }
+            this.witnesses = collectedWits;
             tx.success();
         }
     }
@@ -295,6 +320,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
     }
 
     public void setOrig_reading(String orig_reading) {  this.orig_reading = orig_reading; }
+
+    public List<String> getWitnesses() { return witnesses; }
 
     @Override
     public int compareTo(@NonNull ReadingModel readingModel) {
