@@ -5,6 +5,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -47,8 +48,14 @@ public class SectionModel {
             setId(String.valueOf(node.getId()));
             if (node.hasProperty("name"))
                 setName(node.getProperty("name").toString());
+            // If this node has a language set, use it; otherwise fall back to the tradition language.
             if (node.hasProperty("language"))
                 setLanguage(node.getProperty("language").toString());
+            else {
+                Node tn = node.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
+                if (tn.hasProperty("language"))
+                    setLanguage(tn.getProperty("language").toString());
+            }
             Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
             setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
