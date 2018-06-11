@@ -43,7 +43,8 @@ public class Reading {
     public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        readId = Long.valueOf(requestedId);
+        // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
+        readId = Long.valueOf(requestedId.replaceAll("n", ""));
     }
 
     /**
