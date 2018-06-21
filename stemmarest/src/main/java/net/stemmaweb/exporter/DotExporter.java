@@ -117,7 +117,7 @@ public class DotExporter
                 // HACK - now that we know which node is functioning as the start node, set the subgraph and
                 // the silent node that keeps the graph straight. Make sure we only do this once.
                 if (!subgraphWritten) {
-                    write("\tsubgraph { rank=same \"n" + startNode.getId() + "\" \"#SILENT#\" }\n");
+                    write("\tsubgraph { rank=same " + startNode.getId() + " \"#SILENT#\" }\n");
                     write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
                     subgraphWritten = true;
                 }
@@ -239,7 +239,7 @@ public class DotExporter
             nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
 
         // Put it all together
-        return("\t" + "n" + node.getId() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
+        return("\t" + node.getId() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
     }
 
     private static String sequenceLabel(Map<String, String[]> witnessInfo, int numWits, DisplayOptionModel dm) {
@@ -296,7 +296,7 @@ public class DotExporter
     {
         String text;
         try {
-            text = "\tn" + sNodeId + "->" + "n" + eNodeId + " [label=\"" + label
+            text = "\t" + sNodeId + "->" + eNodeId + " [label=\"" + label
                     + "\", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
