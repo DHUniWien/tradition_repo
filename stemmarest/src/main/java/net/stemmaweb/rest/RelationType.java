@@ -141,8 +141,8 @@ public class RelationType {
         // Set the booleans
         relType.setIs_colocation(!(useType.equals("transposition") || useType.equals("repetition")));
         relType.setIs_weak(useType.equals("collated"));
-        relType.setIs_transitive(!(useType.equals("collated") || useType.equals("uncertain")
-                || useType.equals("other") || useType.equals("repetition") || useType.equals("transposition")));
+        relType.setIs_transitive(!(useType.equals("uncertain") || useType.equals("other")
+                || useType.equals("repetition") || useType.equals("transposition")));
         relType.setIs_generalizable(!(useType.equals("collated")|| useType.equals("uncertain")
                 || useType.equals("other")));
         relType.setUse_regular(!useType.equals("orthographic"));

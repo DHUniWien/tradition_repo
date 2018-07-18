@@ -1,5 +1,6 @@
 package net.stemmaweb.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import net.stemmaweb.rest.ERelations;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -329,6 +330,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return (int) (this.rank - compareRank);
     }
 
+    @JsonIgnore
+    public String normalized() { return normal_form == null ? text : normal_form; }
 
     public String getExtra() {
         return extra;

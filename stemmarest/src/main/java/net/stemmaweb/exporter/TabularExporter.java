@@ -2,6 +2,8 @@ package net.stemmaweb.exporter;
 
 import com.opencsv.CSVWriter;
 import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.AlignmentModel.WitnessTokensModel;
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -10,9 +12,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A class for writing a graph out to various forms of table: JSON, CSV, Excel, etc.
@@ -25,44 +26,44 @@ public class TabularExporter {
     }
 
     public Response exportAsJSON(String tradId, List<String> conflate) {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        if(traditionNode==null) {
+        ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
+        if(traditionSections==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        // Get the model.
-        AlignmentModel asJson = new AlignmentModel(traditionNode, conflate);
-        return Response.ok(asJson, MediaType.APPLICATION_JSON_TYPE).build();
+
+        return Response.ok(getTraditionAlignment(traditionSections, conflate),
+                MediaType.APPLICATION_JSON_TYPE).build();
     }
 
-    public Response exportAsJSON(String tradId) {
-        return exportAsJSON(tradId, new ArrayList<>());
-    }
 
     public Response exportAsCSV(String tradId, char separator, List<String> conflate) {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        if(traditionNode==null) {
+        ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
+        if(traditionSections==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        // Get the model.
-        AlignmentModel asJson = new AlignmentModel(traditionNode, conflate);
+        // Get the alignment model from exportAsJSON, and then turn that into CSV.
+        AlignmentModel wholeTradition = getTraditionAlignment(traditionSections, conflate);
 
-        // Write the CSV to a string that we can return.
+        // Got this far? Turn it into CSV.
+        // The CSV will go into a string that we can return.
         StringWriter sw = new StringWriter();
         CSVWriter writer = new CSVWriter(sw, separator);
-        // First the witnesses...
-        ArrayList<String> witnesses = new ArrayList<>();
-        for (HashMap<String, Object> witRecord : asJson.getAlignment())
-            witnesses.add(witRecord.get("witness").toString());
-        writer.writeNext(witnesses.toArray(new String[0]));
-        // ...and then each token row.
-        for (int i = 0; i < asJson.getLength(); i++) {
-            ArrayList<String> readings = new ArrayList<>();
-            for (HashMap<String, Object> witRecord : asJson.getAlignment()) {
-                ArrayList<HashMap<String, String>> tokenList = (ArrayList<HashMap<String, String>>) witRecord.get("tokens");
-                readings.add(tokenList.get(i).get("t"));
-            }
-            writer.writeNext(readings.toArray(new String[0]));
+
+        // First write out the witness list
+        writer.writeNext(wholeTradition.getAlignment().stream()
+                .map(WitnessTokensModel::getWitness).toArray(String[]::new));
+
+        // Now write out the normal_form or text for the reading in each "row"
+        for (int i = 0; i < wholeTradition.getLength(); i++) {
+            AtomicInteger ai = new AtomicInteger(i);
+            writer.writeNext(wholeTradition.getAlignment().stream()
+                    .map(x -> {
+                        ReadingModel rm = x.getTokens().get(ai.get());
+                        return rm == null ? null : rm.normalized();
+                    }).toArray(String[]::new));
         }
+
+        // Close off the CSV writer and return
         try {
             writer.close();
         } catch (IOException e) {
@@ -72,8 +73,60 @@ public class TabularExporter {
         return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
     }
 
-    public Response exportAsCSV(String tradId, char separator) {
-        return exportAsCSV(tradId, separator, new ArrayList<>());
+    private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, List<String> conflate) {
+        // Make a new alignment model that has a column for every witness layer across the requested sections.
+        // For each section, get the model. Keep track of which witnesses correspond to
+        // which columns in which section.
+        HashMap<String, String> allWitnesses = new HashMap<>();
+        ArrayList<AlignmentModel> tables = new ArrayList<>();
+        for (Node sectionNode : traditionSections) {
+            AlignmentModel asJson = new AlignmentModel(sectionNode, conflate);
+            // Save the alignment to our tables list
+            tables.add(asJson);
+            // Save the witness -> column mapping to our map
+            for (WitnessTokensModel witRecord : asJson.getAlignment()) {
+                String wit = witRecord.getWitness();
+                String base = witRecord.hasBase() ? witRecord.getBase() : witRecord.getWitness();
+                allWitnesses.put(wit, base);
+            }
+        }
+
+        // Now make an alignment model containing all witness layers in allWitnesses, filling in if necessary
+        // either nulls or the base witness per witness layer, per section.
+        AlignmentModel wholeTradition = new AlignmentModel();
+        ArrayList<String> sortableWits = new ArrayList<>(allWitnesses.keySet());
+        Collections.sort(sortableWits);
+        for (String wit : sortableWits) {
+            // Set up the tradition-spanning witness token model for this witness
+            WitnessTokensModel wtm = wholeTradition.new WitnessTokensModel();
+            wtm.setWitness(wit);
+            wtm.setBase(allWitnesses.get(wit));
+            wtm.setTokens(new ArrayList<>());
+            // Now fill in tokens from each section in turn.
+            for (AlignmentModel aSection : tables) {
+                // Find the WitnessTokensModel corresponding to wit, if it exists
+                Optional<WitnessTokensModel> thisWitness = aSection.getAlignment().stream()
+                        .filter(x -> x.getWitness().equals(wit)).findFirst();
+                if (!thisWitness.isPresent()) {
+                    // Try again for the base witness
+                    String base = allWitnesses.get(wit);
+                    thisWitness = aSection.getAlignment().stream()
+                            .filter(x -> x.getWitness().equals(base)).findFirst();
+                }
+                if (thisWitness.isPresent()) {
+                    WitnessTokensModel witcolumn = thisWitness.get();
+                    wtm.getTokens().addAll(witcolumn.getTokens());
+                } else {
+                    // Add a bunch of nulls
+                    wtm.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) aSection.getLength(), null)));
+                }
+            }
+            // Add the WitnessTokensModel to the new AlignmentModel.
+            wholeTradition.addWitness(wtm);
+        }
+        // Record the length of the whole alignment
+        wholeTradition.setLength(wholeTradition.getAlignment().get(0).getTokens().size());
+        return wholeTradition;
     }
 
 }

@@ -1,5 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import com.opencsv.CSVReader;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
@@ -10,15 +11,18 @@ import net.stemmaweb.services.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Result;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.io.StringReader;
+import java.util.*;
 
 import static org.junit.Assert.assertNotEquals;
 
@@ -256,7 +260,7 @@ public class TabularInputOutputTest extends TestCase {
         for (int i = 0; i < witnesses.length(); i++) {
             Object r6 = witnesses.getJSONObject(i).getJSONArray("tokens").get(5);
             if (!r6.toString().equals("null"))
-                readingsAt6.add(((JSONObject) r6).getString("t"));
+                readingsAt6.add(((JSONObject) r6).getString("text"));
         }
         assertEquals(1, readingsAt6.size());
 
@@ -265,16 +269,185 @@ public class TabularInputOutputTest extends TestCase {
         for (int i = 0; i < witnesses.length(); i++) {
             Object r9 = witnesses.getJSONObject(i).getJSONArray("tokens").get(8);
             if (!r9.toString().equals("null"))
-                readingsAt9.add(((JSONObject) r9).getString("t"));
+                readingsAt9.add(((JSONObject) r9).getString("text"));
         }
         assertEquals(1, readingsAt9.size());
     }
 
-    // TODO testOutputCSV
+    public void testCSVExport() throws Exception {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "1",
+                "src/TestFiles/plaetzchen_cx.xml", "collatex");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+        assertNotNull(traditionId);
 
-    // TODO testOutputExcel
+        // Set a spelling relationship between "plätzchen" nodes
+        String ptz;
+        String pz;
+        try (Transaction tx = db.beginTx()) {
+            Result res = db.execute("MATCH (n:READING {text:\"Plätzchen\", rank:5}) RETURN n");
+            Iterator<Node> nodes = res.columnAs("n");
+            assertTrue(nodes.hasNext());
+            ptz = String.valueOf(nodes.next().getId());
+            res = db.execute("MATCH (n:READING {text:\"Pläzchen\", rank:5}) RETURN n");
+            nodes = res.columnAs("n");
+            assertTrue(nodes.hasNext());
+            pz = String.valueOf(nodes.next().getId());
+            tx.success();
+        }
+        RelationModel spellingrel = new RelationModel();
+        spellingrel.setSource(ptz);
+        spellingrel.setTarget(pz);
+        spellingrel.setType("spelling");
+        spellingrel.setScope("local");
+        ClientResponse result = jerseyTest.resource().path("/tradition/" + traditionId + "/relation/")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, spellingrel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
 
-    // TODO testOutputWithLayers
+
+        // Get CSV without conflation
+        result = jerseyTest.resource().path("/tradition/" + traditionId + "/csv")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        CSVReader rdr = new CSVReader(new StringReader(result.getEntity(String.class)));
+        // See that we have our witnesses
+        String[] wits = rdr.readNext();
+        assertEquals(3, wits.length);
+        assertEquals("W2", wits[1]);
+        // See that we have our rows
+        List<String[]> rows = rdr.readAll();
+        assertEquals(5, rows.size());
+        // See that the last row has two separate readings
+        HashSet<String> rank5 = new HashSet<>(Arrays.asList(rows.get(4)));
+        assertEquals(2, rank5.size());
+        assertTrue(rank5.contains("Plätzchen"));
+        assertTrue(rank5.contains("Pläzchen"));
+
+
+        // Now with conflation
+        result = jerseyTest
+                .resource()
+                .path("/tradition/" + traditionId + "/csv")
+                .queryParam("conflate", "spelling")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        rdr = new CSVReader(new StringReader(result.getEntity(String.class)));
+        // See that we have our witnesses
+        wits = rdr.readNext();
+        assertEquals(3, wits.length);
+        assertEquals("W2", wits[1]);
+        // See that we have our rows
+        rows = rdr.readAll();
+        assertEquals(5, rows.size());
+        // See that the last row has two separate readings
+        rank5 = new HashSet<>(Arrays.asList(rows.get(4)));
+        assertEquals(1, rank5.size());
+        assertTrue(rank5.contains("Plätzchen") || rank5.contains("Pläzchen"));
+    }
+
+    public void testExportMultiSection() throws Exception {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/lf2.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+        assertNotNull(traditionId);
+
+        // Get the CSV and check the witness length
+        response = jerseyTest.resource().path("/tradition/" + traditionId + "/csv")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        CSVReader rdr = new CSVReader(new StringReader(response.getEntity(String.class)));
+        // See that we have our witnesses
+        String[] wits = rdr.readNext();
+        assertEquals(34, wits.length);
+        assertEquals("B", wits[1]);
+
+        // Add the second section
+        Util.addSectionToTradition(jerseyTest, traditionId, "src/TestFiles/legendfrag.xml",
+                "stemmaweb", "section 2");
+
+        // Export the whole thing to JSON and check the readings
+        response = jerseyTest.resource().path("/tradition/" + traditionId + "/json")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        JSONObject table = response.getEntity(JSONObject.class);
+        assertTrue(table.has("alignment"));
+        assertTrue(table.has("length"));
+        assertEquals(30, table.getInt("length"));
+        JSONObject witN = table.getJSONArray("alignment").getJSONObject(24);
+        assertEquals("N", witN.getString("witness"));
+        for (int i=0; i < 21; i++) {
+            assertEquals("null", witN.getJSONArray("tokens").getString(i));
+        }
+        JSONObject firstN = witN.getJSONArray("tokens").getJSONObject(21);
+        assertEquals("in", firstN.getString("text"));
+
+
+        // Now export the whole thing to CSV
+        response = jerseyTest.resource().path("/tradition/" + traditionId + "/csv")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        rdr = new CSVReader(new StringReader(response.getEntity(String.class)));
+        // See that we have our witnesses
+        wits = rdr.readNext();
+        assertEquals(37, wits.length);
+        assertEquals("Ab", wits[1]);
+    }
+
+    public void testExportWithLayers() throws Exception {
+        // Take the uncorrected MoE section
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+                "src/TestFiles/Matthew-401.json", "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+        assertNotNull(traditionId);
+
+        // Now add the section with corrections
+        Util.addSectionToTradition(jerseyTest, traditionId, "src/TestFiles/Matthew-407.json",
+                "cxjson", "AM 407");
+
+        // Export it to JSON
+        response = jerseyTest.resource().path("/tradition/" + traditionId + "/json")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        JSONObject table = response.getEntity(JSONObject.class);
+        assertEquals(239, table.getInt("length"));
+        JSONArray alignment = table.getJSONArray("alignment");
+        // There should be a.c. columns for these witnesses
+        String[] expectedCorr = {"Bz644", "C", "F", "G", "I", "J", "K", "M6605", "O", "W243", "Z"};
+        HashSet<String> correctedWits = new HashSet<>(Arrays.asList(expectedCorr));
+        HashSet<String> actualCorr = new HashSet<>();
+        // The text of C and C (a.c.) should be identical for the first 159 ranks
+        JSONArray cTokens = null;
+        JSONArray cAcTokens = null;
+        for (int i=0; i < alignment.length(); i++) {
+            JSONObject witTokens = alignment.getJSONObject(i);
+            String thisWit = witTokens.getString("witness");
+            String thisBase = witTokens.getString("base");
+            if (!thisWit.equals(thisBase))
+                actualCorr.add(thisBase);
+            if (thisWit.equals("C")) cTokens = witTokens.getJSONArray("tokens");
+            else if (thisBase.equals("C")) cAcTokens = witTokens.getJSONArray("tokens");
+
+        }
+        assertTrue(correctedWits.containsAll(actualCorr));
+        assertEquals(34, alignment.length());
+        assertNotNull(cTokens);
+        assertNotNull(cAcTokens);
+        // The first 159 ranks of witness C (a.c.) should be the same as for witness C
+        for (int i=0; i < 159; i++) {
+            try {
+                assertEquals(cTokens.getJSONObject(i).getString("text"),
+                        cAcTokens.getJSONObject(i).getString("text"));
+            } catch (JSONException e) {
+                assertEquals(cTokens.getString(i), cAcTokens.getString(i));
+            }
+        }
+
+    }
 
     public void tearDown() throws Exception {
         db.shutdown();

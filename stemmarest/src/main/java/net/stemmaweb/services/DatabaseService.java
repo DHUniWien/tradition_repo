@@ -102,6 +102,30 @@ public class DatabaseService {
         return sectionNodes;
     }
 
+    /*
+     *
+     * @param tradId      the tradition being checked
+     * @param sectionId   the section being checked
+     * @param db          the GraphDatabaseService where the tradition is stored
+     * @return            boolean indicating whether the section belongs to the tradition
+
+
+    public static Boolean sectionInTradition(String tradId, String sectionId, GraphDatabaseService db) {
+        ArrayList<Node> sectionNodes = getSectionNodes(tradId, db);
+        if (sectionNodes == null) return false;
+        Node sectionNode;
+        try (Transaction tx = db.beginTx()) {
+            sectionNode = db.getNodeById(Long.valueOf(sectionId));
+            tx.success();
+            if (sectionNode == null) return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return sectionNodes.contains(sectionNode);
+    }
+    **/
+
     /**
      *
      * @param tradId
