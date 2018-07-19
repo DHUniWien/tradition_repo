@@ -718,15 +718,19 @@ public class Tradition {
      *
      * @summary Download JSON alignment
      *
-     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param startSection - Restrict the output to start with the given section
+     * @param endSection   - Restrict the output to end with the given section
      * @return the JSON alignment
      */
     @GET
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getJson(@QueryParam("conflate") List<String> toConflate) {
-        return new TabularExporter(db).exportAsJSON(traditionId, toConflate);
+    public Response getJson(@QueryParam("conflate") List<String> toConflate,
+                            @DefaultValue("") @QueryParam("start_section") String startSection,
+                            @DefaultValue("") @QueryParam("end_section") String endSection) {
+        return new TabularExporter(db).exportAsJSON(traditionId, toConflate, startSection, endSection);
     }
 
     /**
@@ -734,15 +738,19 @@ public class Tradition {
      *
      * @summary Download CSV alignment
      *
-     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param startSection - Restrict the output to start with the given section
+     * @param endSection   - Restrict the output to end with the given section
      * @return the CSV alignment as plaintext
      */
     @GET
     @Path("/csv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getCsv(@QueryParam("conflate") List<String> toConflate) {
-        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate);
+    public Response getCsv(@QueryParam("conflate") List<String> toConflate,
+                           @DefaultValue("") @QueryParam("start_section") String startSection,
+                           @DefaultValue("") @QueryParam("end_section") String endSection) {
+        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate, startSection, endSection);
     }
 
     /**
@@ -750,15 +758,19 @@ public class Tradition {
      *
      * @summary Download TSV alignment
      *
-     * @param toConflate - Zero or more relationship types whose readings should be treated as identical
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param startSection - Restrict the output to start with the given section
+     * @param endSection   - Restrict the output to end with the given section
      * @return the TSV alignment as plaintext
      */
     @GET
     @Path("/tsv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getTsv(@QueryParam("conflate") List<String> toConflate) {
-        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate);
+    public Response getTsv(@QueryParam("conflate") List<String> toConflate,
+                           @DefaultValue("") @QueryParam("start_section") String startSection,
+                           @DefaultValue("") @QueryParam("end_section") String endSection) {
+        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate, startSection, endSection);
     }
 
 }

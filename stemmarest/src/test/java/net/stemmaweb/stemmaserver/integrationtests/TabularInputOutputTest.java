@@ -234,6 +234,120 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(3, i);
     }
 
+    public void testExportSelectedSections() throws Exception {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
+                "1", "src/TestFiles/florilegium_w.csv", "csv");
+        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+
+        ArrayList<String> tradSections = new ArrayList<>();
+        // Get the existing single section ID
+        SectionModel firstSection = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {}).get(0);
+        assertNotNull(firstSection);
+        tradSections.add(firstSection.getId());
+
+        // Add the other three sections
+        int i = 0;
+        while (i < 3) {
+            String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
+            String sectId = Util.getValueFromJson(
+                    Util.addSectionToTradition(jerseyTest, tradId, fileName, "csv", String.format("part %d", i)),
+                    "parentId");
+            tradSections.add(sectId);
+        }
+
+        // Request all sections
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/json")
+                 .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        JSONObject table = response.getEntity(JSONObject.class);
+        assertEquals(272, table.getInt("length"));
+        assertEquals(13, table.getJSONArray("alignment").length());
+
+        // Request section 4
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/json")
+                .queryParam("start_section", tradSections.get(3))
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        table = response.getEntity(JSONObject.class);
+        assertEquals(53, table.getInt("length"));
+        assertEquals(5, table.getJSONArray("alignment").length());
+
+        // Request sections up to 2
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/json")
+                .queryParam("end_section", tradSections.get(1))
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        table = response.getEntity(JSONObject.class);
+        assertEquals(155, table.getInt("length"));
+        assertEquals(13, table.getJSONArray("alignment").length());
+
+        // Request section 3
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/json")
+                .queryParam("start_section", tradSections.get(2))
+                .queryParam("end_section", tradSections.get(2))
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        table = response.getEntity(JSONObject.class);
+        assertEquals(64, table.getInt("length"));
+        assertEquals(13, table.getJSONArray("alignment").length());
+
+        // Request sections 3-1
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/csv")
+                .queryParam("start_section", tradSections.get(2))
+                .queryParam("end_section", tradSections.get(0))
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("End section found before start section reached", response.getEntity(String.class));
+
+        // Request sections 3-bad
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/tsv")
+                .queryParam("start_section", tradSections.get(2))
+                .queryParam("end_section", "123456")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("Specified end section not found", response.getEntity(String.class));
+
+        // Request sections bad-2
+        response = jerseyTest
+                .resource()
+                .path("/tradition/" + tradId + "/json")
+                .queryParam("start_section", "123456")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("Specified start section not found", response.getEntity(String.class));
+
+        // Request sections on nonexisten tradition
+        response = jerseyTest
+                .resource()
+                .path("/tradition/tradId/json")
+                .queryParam("end_section", tradSections.get(1))
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+
+    }
+
     public void testConflatedJSONExport () throws Exception {
         ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/globalrel_test.xml", "stemmaweb");
@@ -326,15 +440,15 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(rank5.contains("Pläzchen"));
 
 
-        // Now with conflation
+        // Now with conflation, and exercise the tab-sep functionality at the same time
         result = jerseyTest
                 .resource()
-                .path("/tradition/" + traditionId + "/csv")
+                .path("/tradition/" + traditionId + "/tsv")
                 .queryParam("conflate", "spelling")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        rdr = new CSVReader(new StringReader(result.getEntity(String.class)));
+        rdr = new CSVReader(new StringReader(result.getEntity(String.class)), '\t');
         // See that we have our witnesses
         wits = rdr.readNext();
         assertEquals(3, wits.length);

@@ -25,8 +25,13 @@ public class TabularExporter {
         this.db = db;
     }
 
-    public Response exportAsJSON(String tradId, List<String> conflate) {
-        ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
+    public Response exportAsJSON(String tradId, List<String> conflate, String startSection, String endSection) {
+        ArrayList<Node> traditionSections;
+        try {
+            traditionSections = getSections(tradId, startSection, endSection);
+        } catch (TabularExporterException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        }
         if(traditionSections==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
@@ -36,8 +41,13 @@ public class TabularExporter {
     }
 
 
-    public Response exportAsCSV(String tradId, char separator, List<String> conflate) {
-        ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
+    public Response exportAsCSV(String tradId, char separator, List<String> conflate, String startSection, String endSection) {
+        ArrayList<Node> traditionSections;
+        try {
+            traditionSections = getSections(tradId, startSection, endSection);
+        } catch (TabularExporterException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        }
         if(traditionSections==null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
@@ -71,6 +81,35 @@ public class TabularExporter {
             return Response.serverError().entity(e.getMessage()).build();
         }
         return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
+    }
+
+    private ArrayList<Node> getSections(String tradId, String startSection, String endSection)
+    throws TabularExporterException {
+        ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
+        // Does the tradition exist in the first place?
+        if (traditionSections == null) return null;
+
+        // Are we requesting all sections?
+        if (startSection.equals("") && endSection.equals("")) return traditionSections;
+
+        // Do the real work
+        Boolean inPart = startSection.equals("");
+        ArrayList<Node> collectedSections = new ArrayList<>();
+        for (Node section : traditionSections) {
+            if (String.valueOf(section.getId()).equals(startSection)) {
+                inPart = true;
+            }
+            if (inPart) collectedSections.add(section);
+            if (String.valueOf(section.getId()).equals(endSection)) {
+                if (!inPart) throw new TabularExporterException("End section found before start section reached");
+                inPart = false;
+            }
+        }
+        if (collectedSections.size() == 0 && !startSection.equals(""))
+            throw new TabularExporterException("Specified start section not found");
+        if (inPart && !endSection.equals(""))
+            throw new TabularExporterException("Specified end section not found");
+        return collectedSections;
     }
 
     private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, List<String> conflate) {
@@ -127,6 +166,12 @@ public class TabularExporter {
         // Record the length of the whole alignment
         wholeTradition.setLength(wholeTradition.getAlignment().get(0).getTokens().size());
         return wholeTradition;
+    }
+
+    private static class TabularExporterException extends Exception {
+        TabularExporterException (String message) {
+            super(message);
+        }
     }
 
 }

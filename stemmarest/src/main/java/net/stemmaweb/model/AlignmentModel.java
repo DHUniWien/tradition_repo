@@ -147,6 +147,9 @@ public class AlignmentModel {
                             tokens.add(null);
                         tokens.add(readingToken);
                     }
+                    // Skip this witness if it is the base and only layer, and empty
+                    if (tokens.size() == 0 && layer.equals("base") && layers.size() == 1) continue;
+
                     // Fill in any empty ranks at the end
                     for (int i = tokens.size(); i < length; i++)
                         tokens.add(null);
