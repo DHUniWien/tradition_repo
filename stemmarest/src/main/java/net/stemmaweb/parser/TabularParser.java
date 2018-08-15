@@ -60,13 +60,13 @@ public class TabularParser {
     public Response parseExcel(InputStream fileData, Node sectionNode, String excelType) {
         ArrayList<String[]> excelRows;
         try {
-            Object workbook;
+            Workbook workbook;
             if (excelType.equals("xls")) {
                 workbook = new HSSFWorkbook(fileData);
             } else { // it must be xlsx
                 workbook = new XSSFWorkbook(fileData);
             }
-            excelRows = getTableFromWorkbook((Workbook)workbook);
+            excelRows = getTableFromWorkbook(workbook);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
@@ -117,7 +117,7 @@ public class TabularParser {
                 // See if it is a layered witness, of the form XX (YY)
                 String[] sigilParts = sigil.split("\\s+\\(");  // now we have ["XX", "YY)"]
                 if (sigilParts.length == 1) // it is not a layered witness
-                    Util.createExtant(traditionNode, sigil);
+                    Util.findOrCreateExtant(traditionNode, sigil);
                 else if (sigilParts.length == 2) // it is a layered witness; store a ref to its base
                     layerWitnesses.put(sigil, sigilParts);
                 else   // what is this i don't even

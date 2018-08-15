@@ -348,7 +348,7 @@ public class StemmawebParser {
             }
 
             // Create the witness nodes
-            witnesses.keySet().forEach(x -> Util.createExtant(traditionNode, x));
+            witnesses.keySet().forEach(x -> Util.findOrCreateExtant(traditionNode, x));
             // Set colocation information on relationship types
             Util.setColocationFlags(traditionNode);
             tx.success();

@@ -12,7 +12,9 @@ import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 /**
  * Utility functions for the parsers
@@ -53,10 +55,20 @@ public class Util {
         return witnessNode;
     }
 
-    static Node createExtant(Node traditionNode, String sigil) {
-        Node witnessNode = createWitness(traditionNode, sigil, false);
-        traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
-        return witnessNode;
+    static void findOrCreateExtant(Node traditionNode, String sigil) {
+        // This list should contain either zero or one items.
+        ArrayList<Node> existingWit = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
+                .stream().filter(x -> x.hasProperty("hypothetical")
+                        && x.getProperty("hypothetical").equals(false)
+                        && x.getProperty("sigil").equals(sigil))
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (existingWit.size() == 0) {
+            Node witnessNode = createWitness(traditionNode, sigil, false);
+            traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
+        //     return witnessNode;
+        // } else {
+        //     return existingWit.get(0);
+        }
     }
 
     private static Boolean isDotId (String nodeid) {

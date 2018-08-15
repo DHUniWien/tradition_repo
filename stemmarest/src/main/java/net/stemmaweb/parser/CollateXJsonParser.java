@@ -44,7 +44,7 @@ public class CollateXJsonParser {
                     String rtext = "";
                     String rnormal = "";
                     String rdisplay = "";
-                    Boolean joinPrior = false;
+                    boolean joinPrior = false;
                     Boolean joinNext = false;
                     JSONArray jcell = jrow.getJSONArray(j);
                     JSONArray rownames = new JSONArray();
@@ -104,14 +104,12 @@ public class CollateXJsonParser {
 
         // Now we have the data in good old Java classes; proceed.
         Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
-        ArrayList<Node> tradWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
         try (Transaction tx = db.beginTx()) {
             // Check that we have all the witnesses
             for (String witString : collationWitnesses) {
                 List<String> wit = parseWitnessSigil(witString);
                 String sigil = wit.get(0);
-                if (tradWitnesses.stream().noneMatch(x -> x.getProperty("sigil").equals(sigil)))
-                    tradWitnesses.add(Util.createExtant(traditionNode, sigil));
+                Util.findOrCreateExtant(traditionNode, sigil);
             }
 
             // Create the start node for the section
@@ -184,7 +182,7 @@ public class CollateXJsonParser {
     private static void addWitnessToRelationship (Relationship seq, List<String> witParts) {
         String propertyName = witParts.size() == 1 ? "witnesses" : witParts.get(1);
         String sigil = witParts.get(0);
-        Boolean setWitness;
+        boolean setWitness;
         // First remove any redundant witness designations - i.e. we shouldn't have a sequence path
         // marked both for witness A and witness A (a.c.)
         if (propertyName.equals("witnesses")) {
@@ -232,7 +230,7 @@ public class CollateXJsonParser {
     private static String readingAppend (String current, JSONObject token, String key, Boolean joinNext)
             throws JSONException {
         StringBuilder prior = new StringBuilder(current);
-        Boolean noSpace = prior.length() == 0 || joinNext;
+        boolean noSpace = prior.length() == 0 || joinNext;
         if (token.has("join_prior") && token.getBoolean("join_prior"))
             noSpace = true;
         if (!noSpace)

@@ -176,6 +176,20 @@ public class TraditionTest {
     }
 
     @Test
+    public void getWitnessesMultiSectionTest () {
+        Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
+        // Add the same data as a second section
+        Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml", "stemmaweb", "section 2");
+        List<WitnessModel> witnesses = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(expectedWitnesses.size(), witnesses.size());
+        for (WitnessModel w: witnesses) {
+            assertTrue(expectedWitnesses.contains(w.getSigil()));
+        }
+    }
+
+    @Test
     public void getAllWitnessesTraditionNotFoundTest() {
         ClientResponse resp = jerseyTest.resource()
                 .path("/tradition/10000/witnesses")

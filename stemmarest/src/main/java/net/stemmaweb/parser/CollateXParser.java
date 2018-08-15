@@ -55,7 +55,7 @@ public class CollateXParser {
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
             Long highestRank = 0L;
-            Boolean transpositionSeen = false;
+            boolean transpositionSeen = false;
             for (int i = 0; i < readingNodes.getLength(); i++) {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
@@ -133,7 +133,7 @@ public class CollateXParser {
 
             }
             // Create all the witnesses
-            seenWitnesses.forEach(x -> Util.createExtant(traditionNode, x));
+            seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x));
 
             // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {

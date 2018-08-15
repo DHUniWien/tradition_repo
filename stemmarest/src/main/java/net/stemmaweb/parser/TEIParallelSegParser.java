@@ -109,7 +109,7 @@ public class TEIParallelSegParser {
                             case "witness":
                                 if(inHeader) {
                                     String sigil = reader.getAttributeValue(reader.getNamespaceURI("xml"), "id");
-                                    Util.createExtant(traditionNode, sigil);
+                                    Util.findOrCreateExtant(traditionNode, sigil);
                                     // All witnesses start active by default; if we encounter a witStart
                                     // we will start to use an explicit app siglorum.
                                     activeWitnesses.put(sigil, true);
