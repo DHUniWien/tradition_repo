@@ -275,14 +275,9 @@ public class SectionTest extends TestCase {
         List<SectionModel> returnedSections = jerseyTest.resource()
                 .path("/tradition/" + florId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
-        String reorderPath = "/tradition/" + florId + "/section/" + returnedSections.get(1).getId()
+        String reorderPath = "/section/" + returnedSections.get(1).getId()
                 + "/orderAfter/" + returnedSections.get(2).getId();
-        ClientResponse jerseyResult = jerseyTest.resource()
-                .path(reorderPath)
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        String bText = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
+        String bBefore = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
                 "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ " +
                 "διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, " +
                 "καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. θάλπει ἑστῶσα βοτάνη παρ᾽ ὕδατι, καὶ πάθος " +
@@ -292,11 +287,37 @@ public class SectionTest extends TestCase {
                 "ἀκούσῃς τινὸς ἐν ἀμφόδῳ ἢ ἐν ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν " +
                 "πληγὰς ἐπιθεῖναι δέῃ, μὴ παραιτήσῃ ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου " +
                 "τὴν χεῖρα διὰ τῆς πληγῆς, κἂν ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον.";
-        ClientResponse jerseyResponse = jerseyTest.resource()
-                .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
-        String wit = Util.getValueFromJson(jerseyResponse, "text");
-        assertEquals(bText, wit);
+        assertEquals(bBefore, _section_reorder_sequence(florId, reorderPath));
+
+        // Now try reordering a section to be first
+        String moveFirstPath = "/section/" + returnedSections.get(3).getId() + "/orderAfter/none";
+        String bAfter = "τοῦ Χρυσοστόμου Τοὺς ἐν τῇ πόλει βλασφημοῦντας, σωφρόνιζε. Κἂν ἀκούσῃς τινὸς ἐν ἀμφόδῳ ἢ ἐν " +
+                "ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν πληγὰς ἐπιθεῖναι δέῃ, μὴ παραιτήσῃ " +
+                "ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου τὴν χεῖρα διὰ τῆς πληγῆς, κἂν " +
+                "ἐγκαλῶσι τινές, κὰν εἰς δικαστήριον ἕλκωσιν, ἀκολούθησον. Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ " +
+                "ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον " +
+                "γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν " +
+                "ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. " +
+                "θάλπει ἑστῶσα βοτάνη παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν συντυχίαις γυναικῶν. τὸ ὄνομά μου " +
+                "βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος ἐπανατείνεται λέγων " +
+                "ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν.";
+        assertEquals(bAfter, _section_reorder_sequence(florId, moveFirstPath));
+
+        // Make sure it is idempotent by doing it all again
+        assertEquals(bAfter, _section_reorder_sequence(florId, reorderPath));
+        assertEquals(bAfter, _section_reorder_sequence(florId, moveFirstPath));
+    }
+
+    private String _section_reorder_sequence(String traditionId, String reorderPath) {
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + traditionId + reorderPath)
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + traditionId + "/witness/B/text").get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        return Util.getValueFromJson(jerseyResult, "text");
     }
 
     public void testSectionWrongTradition () {

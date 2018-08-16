@@ -317,7 +317,7 @@ public class Section {
      * Move this section to a new place in the section sequence.
      *
      * @summary Reorder section
-     * @param priorSectID - the ID of the section that should precede this one
+     * @param priorSectID - the ID of the section that should precede this one; "none" if this section should be first.
      * @statuscode 200 - on success
      * @statuscode 400 - if the priorSectId doesn't belong to the given tradition
      * @statuscode 404 - if no such tradition or section exists
@@ -331,39 +331,55 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             if (!sectionInTradition())
                 return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-            if (!sectionInTradition(priorSectID))
+            if (!priorSectID.equals("none") && !sectionInTradition(priorSectID))
                 return Response.status(Response.Status.NOT_FOUND).entity("Requested prior section not found").build();
 
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
 
             // Check that the requested prior section also exists and is part of the tradition
-            Node priorSection = db.getNodeById(Long.valueOf(priorSectID));
-            if (priorSection == null) {
-                return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
-            }
-            Node pnTradition = DatabaseService.getTraditionNode(priorSection, db);
-            if (!pnTradition.getProperty("id").equals(tradId))
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
+            Node priorSection = null;   // the requested prior section
+            Node latterSection = null;  // the section after the requested prior
+            if (priorSectID.equals("none")) {
+                // There is no prior section, and the first section will become the latter one. Find it.
+                ArrayList<Node> sectionNodes = DatabaseService.getSectionNodes(tradId, db);
+                if (sectionNodes == null)
+                    return Response.serverError().entity("Tradition has no sections").build();
+                for (Node s : sectionNodes) {
+                    if (!s.hasRelationship(ERelations.NEXT, Direction.INCOMING)) {
+                        latterSection = s;
+                        break;
+                    }
+                }
+                if (latterSection == null)
+                    return Response.serverError().entity("Could not find tradition's first section").build();
 
-            // Check for and remove the old "next" link from the given prior
-            Node latterSection = null;
-            if (priorSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
-                Relationship oldSeq = priorSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
-                latterSection = oldSeq.getEndNode();
-                oldSeq.delete();
+                // If we request the first section to go first, it should be a no-op.
+                else if (latterSection.equals(thisSection))
+                    return Response.ok().build();
+            } else {
+                priorSection = db.getNodeById(Long.valueOf(priorSectID));
+                if (priorSection == null) {
+                    return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
+                }
+                Node pnTradition = DatabaseService.getTraditionNode(priorSection, db);
+                if (!pnTradition.getProperty("id").equals(tradId))
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
+
+                if (priorSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
+                    Relationship oldSeq = priorSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
+                    latterSection = oldSeq.getEndNode();
+                    oldSeq.delete();
+                }
             }
 
             // Remove our node from its existing sequence
             removeFromSequence(thisSection);
 
-            // Link it up to the prior
-            priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
+            // Link it up to the prior if it exists
+            if (priorSection != null) priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
             // ...and to the old "next" if it exists
-            if (latterSection != null) {
-                thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
-            }
-
+            if (latterSection != null) thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -880,7 +896,7 @@ public class Section {
         if (traditionNode == null)
             return false;
 
-        Boolean found = false;
+        boolean found = false;
         try (Transaction tx = db.beginTx()) {
             for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
                 if (s.getId() == Long.valueOf(aSectionId)) {
