@@ -333,6 +333,8 @@ public class Section {
                 return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
             if (!priorSectID.equals("none") && !sectionInTradition(priorSectID))
                 return Response.status(Response.Status.NOT_FOUND).entity("Requested prior section not found").build();
+            if (priorSectID.equals(sectId))
+                return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
 
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
 

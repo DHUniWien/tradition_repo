@@ -330,6 +330,20 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.NOT_FOUND.getStatusCode(), jerseyResult.getStatus());
     }
 
+    public void testSectionOrderAfterSelf () {
+        String florId = importFlorilegium();
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + florId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String tryReorder = returnedSections.get(2).getId();
+        ClientResponse jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + tryReorder + "/orderAfter/" + tryReorder)
+                .put(ClientResponse.class);
+        assertEquals(ClientResponse.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
+        String errMsg = jerseyResult.getEntity(String.class);
+        assertEquals("Cannot reorder a section after itself", errMsg);
+    }
+
     public void testMergeSections() {
         String florId = importFlorilegium();
         List<SectionModel> returnedSections = jerseyTest.resource()
