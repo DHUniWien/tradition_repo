@@ -24,4 +24,7 @@
         <servlet-name>Jersey Web Application</servlet-name>
         <url-pattern>/*</url-pattern>
     </servlet-mapping>
+    <listener>
+        <listener-class>net.stemmaweb.services.ApplicationContextListener</listener-class>
+    </listener>
 </web-app>

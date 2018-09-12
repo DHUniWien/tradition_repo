@@ -30,13 +30,16 @@ public class ApplicationConfig extends Application {
         return s;
     }
     
+/*
     @PostConstruct
     public void initializeApp()
     {
+        // This has been moved to ApplicationContextListener so that
+        // apache tomcat properly shuts down neo4j.
         // Connect to the database, create the root node if necessary, and leave.
-        GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
-        DatabaseService.createRootNode(db);
-        registerShutdownHook(db);
+        //GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
+        //DatabaseService.createRootNode(db);
+        //registerShutdownHook(db);
     }
 
     private static void registerShutdownHook( final GraphDatabaseService graphDb )
@@ -46,5 +49,6 @@ public class ApplicationConfig extends Application {
         // running application).
         Runtime.getRuntime().addShutdownHook(new Thread(graphDb::shutdown));
     }
+    */
 
 }
