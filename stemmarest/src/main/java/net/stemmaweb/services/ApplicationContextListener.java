@@ -25,27 +25,24 @@ public class ApplicationContextListener implements ServletContextListener {
     private ServletContext context = null;
 
     public void contextDestroyed(ServletContextEvent event) {
-        this.context = event.getServletContext();
+        //Output a simple message to the server's console
         try {
-            GraphDatabaseService db = (GraphDatabaseService) this.context.getAttribute("neo4j");
-            if (db != null) {
-                db.shutdown();
-                JVMHelper.immolativeShutdown();
-            }
-            System.out.println("Stemmarest webapp - Neo4j shutdown finished!");
+            GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+            db.shutdown();
+            // logger.debug("This is debug: db shut down properly");
         } catch (Exception e) {
             // logger.debug("This is debug: shut down error");
             // logger.error("failed!", e);
             e.printStackTrace();
         }
+        this.context = null;
     }
 
     public void contextInitialized(ServletContextEvent event) {
-        GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
         this.context = event.getServletContext();
-        this.context.setAttribute("neo4j", db);
         //Output a simple message to the server's console
         // logger.debug("This is debug - Listener: context initialized");
+        GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
         DatabaseService.createRootNode(db);
 
 
