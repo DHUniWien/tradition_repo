@@ -514,7 +514,7 @@ public class Reading {
             }
             // See if they are on the same rank; if not, we will have to re-rank the graph
             // from the node before the one removed.
-            Boolean samerank = stayingReading.getProperty("rank").equals(deletingReading.getProperty("rank"));
+            boolean samerank = stayingReading.getProperty("rank").equals(deletingReading.getProperty("rank"));
             Iterable<Relationship> priorRels = deletingReading.getRelationships(
                     Direction.INCOMING, ERelations.LEMMA_TEXT, ERelations.SEQUENCE);
             Node aPriorNode = null;
@@ -1043,17 +1043,26 @@ public class Reading {
      */
     private void compress(Node read1, Node read2, ReadingBoundaryModel boundary) {
         String newText;
-        Boolean joined = (read1.hasProperty("join_next") && (Boolean) read1.getProperty("join_next")) ||
+        boolean joined = (read1.hasProperty("join_next") && (Boolean) read1.getProperty("join_next")) ||
                 (read2.hasProperty("join_prior") && (Boolean) read2.getProperty("join_prior"));
-        if (boundary.getSeparate() && !joined) {
-            newText = String.join(boundary.getCharacter(),
-                    read1.getProperty("text").toString(), read2.getProperty("text").toString());
-        } else {
-            newText = String.join("",
-                    read1.getProperty("text").toString(), read2.getProperty("text").toString());
+        // We need to join the text, the display form, and the normal form
+        String[] text_properties = {"text", "display", "normal_form"};
+        String plaintextform = null;
+        for (String prop : text_properties) {
+            if (boundary.getSeparate() && !joined) {
+                newText = String.join(boundary.getCharacter(),
+                        read1.getProperty(prop, read1.getProperty("text", "")).toString(),
+                        read2.getProperty(prop, read2.getProperty("text", "")).toString());
+            } else {
+                newText = String.join("",
+                        read1.getProperty(prop, read1.getProperty("text", "")).toString(),
+                        read2.getProperty(prop, read1.getProperty("text", "")).toString());
+            }
+            if (prop.equals("text"))
+                plaintextform = newText;
+            if (!newText.equals("") && (!newText.equals(plaintextform) || read1.hasProperty(prop)))
+                read1.setProperty(prop, newText);
         }
-
-        read1.setProperty("text", newText);
 
         for (Relationship r : getSequenceBetweenReadings(read1, read2) ) {
             r.delete();

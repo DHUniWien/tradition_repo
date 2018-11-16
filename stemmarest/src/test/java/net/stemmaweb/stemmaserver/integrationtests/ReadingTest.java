@@ -150,7 +150,7 @@ public class ReadingTest {
 
     @Test
     public void changeReadingPropertiesWrongDatatypeTest() {
-        Long nodeid;
+        long nodeid;
         try (Transaction tx = db.beginTx()) {
             nodeid = db.findNode(Nodes.READING, "text", "showers").getId();
             tx.success();
@@ -251,7 +251,7 @@ public class ReadingTest {
 
     @Test
     public void getReadingJsonTest() throws JsonProcessingException {
-        Long nodeId;
+        long nodeId;
         try (Transaction tx = db.beginTx()) {
             Node n = db.findNode(Nodes.READING, "text", "has");
             assertNotNull(n);
@@ -263,7 +263,7 @@ public class ReadingTest {
                 "\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
 
         ClientResponse resp = jerseyTest.resource()
-                .path("/reading/" + nodeId.toString())
+                .path("/reading/" + String.valueOf(nodeId))
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
         ObjectMapper mapper = new ObjectMapper();
@@ -2127,6 +2127,36 @@ public class ReadingTest {
 
             tx.success();
         }
+    }
+
+    @Test
+    public void concatenateAllFormsTest() {
+        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "M407", "LR",
+                "1", "src/TestFiles/Matthew-407.json", "cxjson");
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        String first_id = null;
+        String second_id = null;
+        try (Transaction tx = db.beginTx()) {
+            Result tomerge = db.execute("MATCH (a:READING {rank:3})-[:SEQUENCE {witnesses:['D']}]->(b:READING {rank:4}) RETURN id(a), id(b)");
+            while (tomerge.hasNext()) {
+                Map<String,Object> row = tomerge.next();
+                first_id = String.valueOf(row.get("id(a)"));
+                second_id = String.valueOf(row.get("id(b)"));
+            }
+            tx.success();
+        }
+        assertNotNull(first_id);
+        assertNotNull(second_id);
+        ReadingBoundaryModel rbm = new ReadingBoundaryModel();
+        jerseyResult = jerseyTest.resource().path("/reading/" + first_id + "/concatenate/" + second_id)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, rbm);
+        assertEquals(Status.OK.getStatusCode(), jerseyResult.getStatus());
+        ReadingModel compressed = jerseyTest.resource().path("/reading/" + first_id)
+                .get(ReadingModel.class);
+        assertEquals("թվկնութես հայո՛ց", compressed.getText());
+        assertEquals("թ<O>վկ</O>նութ<O>ես</O> հայո՛ց", compressed.getDisplay());
+        assertEquals("թուականութեանս հայո՛ց", compressed.getNormal_form());
     }
 
     @Test

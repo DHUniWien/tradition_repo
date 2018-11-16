@@ -207,7 +207,7 @@ public class StemmawebExporter {
                 writer.writeEndElement();
 
                 for(String prop : props) {
-                    if(prop!=null && !prop.equals("section_id")) {
+                    if(prop!=null && nodeMap.containsKey(prop)) {
                         writer.writeStartElement("data");
                         writer.writeAttribute("key",nodeMap.get(prop)[0]);
                         writer.writeCharacters((prop.equals("a.c.")) ? "(a.c.)" :node.getProperty(prop).toString());

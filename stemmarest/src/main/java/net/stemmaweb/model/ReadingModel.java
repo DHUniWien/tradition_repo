@@ -143,7 +143,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
             if (node.hasProperty("text"))
                 this.setText(node.getProperty("text").toString());
             if (node.hasProperty("display"))
-                this.setText(node.getProperty("display").toString());
+                this.setDisplay(node.getProperty("display").toString());
             if (node.hasProperty("annotation"))
                 this.setAnnotation(node.getProperty("annotation").toString());
             if (node.hasProperty("extra")) {
