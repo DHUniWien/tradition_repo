@@ -417,26 +417,23 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
 
-            // Make a list of readings that belong to the requested rank as well
-            // as the prior rank
-            ArrayList<Node> thisRank = new ArrayList<>();
-            ArrayList<Node> priorRank = new ArrayList<>();
-            ResourceIterable<Node> sectionReadings = db.traversalDescription().depthFirst()
+            // Make a list of relationships that cross our requested crank
+            ArrayList<Node> initialReadingsNewSection = new ArrayList<>();
+            ArrayList<Node> finalReadingsOldSection = new ArrayList<>();
+            ResourceIterable<Relationship> sectionSequences = db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-                    .nodes();
-            for (Node n : sectionReadings) {
-                Long nrank = (Long) n.getProperty("rank");
-                if (rank.equals(nrank)) {
-                    thisRank.add(n);
-                } else if (rank.equals(nrank + 1)) {
-                    priorRank.add(n);
+                    .relationships();
+            for (Relationship r : sectionSequences) {
+                if ((Long) r.getStartNode().getProperty("rank") < rank && (Long) r.getEndNode().getProperty("rank") >= rank) {
+                    finalReadingsOldSection.add(r.getStartNode());
+                    initialReadingsNewSection.add(r.getEndNode());
                 }
             }
 
             // Make sure we have readings at the requested rank in this section
-            if (thisRank.size() == 0)
+            if (initialReadingsNewSection.size() == 0)
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("Rank not found within section")).build();
 
@@ -459,36 +456,43 @@ public class Section {
             // START node
             Node newEnd = db.createNode(Nodes.READING);
             newEnd.setProperty("is_end", true);
-            newEnd.setProperty("rank", sectionEnd.getProperty("rank"));
+            newEnd.setProperty("text", "#END#");
+            newEnd.setProperty("rank", rank);
+            newEnd.setProperty("section", Long.valueOf(sectId));
             thisSection.createRelationshipTo(newEnd, ERelations.HAS_END);
+
             Node newStart = db.createNode(Nodes.READING);
             newStart.setProperty("is_start", true);
+            newStart.setProperty("text", "#START#");
             newStart.setProperty("rank", 0L);
+            newStart.setProperty("section", newSection.getId());
             newSection.createRelationshipTo(newStart, ERelations.COLLATION);
-            for (Node reading : priorRank)
-                for (Relationship rel : reading.getRelationships(Direction.OUTGOING))
-                    if (rel.isType(ERelations.SEQUENCE) || rel.isType(ERelations.LEMMA_TEXT)) {
-                        Relationship outRel = reading.createRelationshipTo(newEnd, rel.getType());
-                        Relationship inRel = newStart.createRelationshipTo(rel.getEndNode(), rel.getType());
-                        rel.getPropertyKeys().forEach(x -> outRel.setProperty(x, rel.getProperty(x)));
-                        rel.getPropertyKeys().forEach(x -> inRel.setProperty(x, rel.getProperty(x)));
-                        rel.delete();
+
+            // Reattach the readings to their respective new end/start nodes
+            for (Node reading : finalReadingsOldSection) {
+                // Delete outgoing sequence relationships
+                reading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).forEach(Relationship::delete);
+                reading.getRelationships(Direction.OUTGOING, ERelations.LEMMA_TEXT).forEach(Relationship::delete);
+                // Mirror incoming sequence relationships to the end node
+                for (Relationship seq : reading.getRelationships(Direction.INCOMING))
+                    if (seq.isType(ERelations.SEQUENCE) || seq.isType(ERelations.LEMMA_TEXT)) {
+                        Relationship seqToEnd = reading.createRelationshipTo(newEnd, seq.getType());
+                        seq.getPropertyKeys().forEach(x -> seqToEnd.setProperty(x, seq.getProperty(x)));
                     }
-            for (Node reading : thisRank) {
-                for (Relationship rel : reading.getRelationships(Direction.INCOMING)) {
-                    if (rel.getStartNode().equals(newStart))
-                        continue;
-                    if (rel.isType(ERelations.SEQUENCE) || rel.isType(ERelations.LEMMA_TEXT)) {
-                        Relationship inRel = rel.getStartNode().createRelationshipTo(newEnd, rel.getType());
-                        Relationship outRel = newStart.createRelationshipTo(reading, rel.getType());
-                        rel.getPropertyKeys().forEach(x -> inRel.setProperty(x, rel.getProperty(x)));
-                        rel.getPropertyKeys().forEach(x -> outRel.setProperty(x, rel.getProperty(x)));
-                        rel.delete();
+            }
+            for (Node reading : initialReadingsNewSection) {
+                reading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).forEach(Relationship::delete);
+                reading.getRelationships(Direction.INCOMING, ERelations.LEMMA_TEXT).forEach(Relationship::delete);
+                // Mirror incoming sequence relationships to the end node
+                for (Relationship seq : reading.getRelationships(Direction.OUTGOING))
+                    if (seq.isType(ERelations.SEQUENCE) || seq.isType(ERelations.LEMMA_TEXT)) {
+                        Relationship seqFromStart = newStart.createRelationshipTo(reading, seq.getType());
+                        seq.getPropertyKeys().forEach(x -> seqFromStart.setProperty(x, seq.getProperty(x)));
                     }
-                }
             }
 
-            // TODO Remove any superfluous witnesses in each split section
+            // TODO I *think* we don't need this anymore...
+            /*
             Node sectionStart = DatabaseService.getStartNode(sectId, db);
             for (Relationship r : sectionStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
                 if (r.getEndNode().hasProperty("is_end"))
@@ -496,6 +500,7 @@ public class Section {
             for (Relationship r : newStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
                 if (r.getEndNode().hasProperty("is_end"))
                     r.delete();
+            */
 
             // Collect all readings from the second section and alter their section metadata
             final Long newId = newSection.getId();
