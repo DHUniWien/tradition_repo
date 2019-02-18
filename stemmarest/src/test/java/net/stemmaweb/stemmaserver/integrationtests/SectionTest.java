@@ -10,6 +10,7 @@ import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -538,7 +539,7 @@ public class SectionTest extends TestCase {
             ClientResponse connectedTest = jerseyTest.resource()
                     .path("/tradition/" + florId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
                     .get(ClientResponse.class);
-            assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+            assertEquals(ClientResponse.Status.OK.getStatusCode(), connectedTest.getStatus());
         }
 
         // Check that the respective START and END nodes belong to the right sections
@@ -629,7 +630,12 @@ public class SectionTest extends TestCase {
             ClientResponse connectedTest = jerseyTest.resource()
                     .path("/tradition/" + mattId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
                     .get(ClientResponse.class);
-            assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+            assertEquals(ClientResponse.Status.OK.getStatusCode(), connectedTest.getStatus());
+        }
+        // Check that now-empty witnesses H and L are gone from the first section
+        for (WitnessModel wit : firstSectWits) {
+            assertNotEquals("H", wit.getSigil());
+            assertNotEquals("L", wit.getSigil());
         }
     }
 

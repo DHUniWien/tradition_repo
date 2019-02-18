@@ -199,20 +199,20 @@ public class Section {
 
     // Also used by the GraphML exporter
     public ArrayList<Node> collectSectionWitnesses() {
-        ArrayList<Node> witnessList = new ArrayList<>();
+        HashSet<Node> witnessList = new HashSet<>();
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         Node sectionStart = DatabaseService.getStartNode(sectId, db);
         ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
         try (Transaction tx = db.beginTx()) {
             for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE)) {
-                if (!relationship.hasProperty("witnesses"))
-                    continue;
-                for (String sigil : (String[]) relationship.getProperty("witnesses")) {
-                    for (Node curWitness : traditionWitnesses) {
-                        if (sigil.equals(curWitness.getProperty("sigil"))) {
-                            witnessList.add(curWitness);
-                            traditionWitnesses.remove(curWitness);
-                            break;
+                for (String witClass : relationship.getPropertyKeys()) {
+                    for (String sigil : (String[]) relationship.getProperty(witClass)) {
+                        for (Node curWitness : traditionWitnesses) {
+                            if (sigil.equals(curWitness.getProperty("sigil"))) {
+                                witnessList.add(curWitness);
+                                traditionWitnesses.remove(curWitness);
+                                break;
+                            }
                         }
                     }
                 }
@@ -222,7 +222,7 @@ public class Section {
             e.printStackTrace();
             return null;
         }
-        return witnessList;
+        return new ArrayList<>(witnessList);
     }
 
     /**
@@ -481,16 +481,6 @@ public class Section {
                     ReadingService.transferWitnesses(newStart, firstInNew, crossed);
             }
             linksToSplit.forEach(Relationship::delete);
-
-            /* TODO test if we need this
-            Node sectionStart = DatabaseService.getStartNode(sectId, db);
-            for (Relationship r : sectionStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
-                if (r.getEndNode().hasProperty("is_end"))
-                    r.delete();
-            for (Relationship r : newStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
-                if (r.getEndNode().hasProperty("is_end"))
-                    r.delete();
-            */
 
             // Collect all readings from the second section and alter their section metadata
             final Long newId = newSection.getId();
