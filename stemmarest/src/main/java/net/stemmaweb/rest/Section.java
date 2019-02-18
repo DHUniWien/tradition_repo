@@ -6,6 +6,7 @@ import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -412,28 +413,31 @@ public class Section {
         Long rank = Long.valueOf(rankstr);
         // Get the reading(s) at the given rank, and at the prior rank
         Node startNode = DatabaseService.getStartNode(sectId, db);
+        Node sectionEnd = DatabaseService.getEndNode(sectId, db);
         Long newSectionId;
 
         try (Transaction tx = db.beginTx()) {
             Node thisSection = db.getNodeById(Long.valueOf(sectId));
 
-            // Make a list of relationships that cross our requested crank
-            ArrayList<Node> initialReadingsNewSection = new ArrayList<>();
-            ArrayList<Node> finalReadingsOldSection = new ArrayList<>();
+            // Make sure we aren't just trying to split off the end node
+            if (rank.equals(sectionEnd.getProperty("rank")))
+                return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("Cannot split section at its end rank")).build();
+
+            // Make a list of relationships that cross our requested rank
+            HashSet<Relationship> linksToSplit = new HashSet<>();
             ResourceIterable<Relationship> sectionSequences = db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
                     .relationships();
             for (Relationship r : sectionSequences) {
                 if ((Long) r.getStartNode().getProperty("rank") < rank && (Long) r.getEndNode().getProperty("rank") >= rank) {
-                    finalReadingsOldSection.add(r.getStartNode());
-                    initialReadingsNewSection.add(r.getEndNode());
+                    linksToSplit.add(r);
                 }
             }
 
             // Make sure we have readings at the requested rank in this section
-            if (initialReadingsNewSection.size() == 0)
+            if (linksToSplit.size() == 0)
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("Rank not found within section")).build();
 
@@ -448,7 +452,6 @@ public class Section {
                 return reorder;
 
             // Attach the old END node to the new section
-            Node sectionEnd = DatabaseService.getEndNode(sectId, db);
             sectionEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
             newSection.createRelationshipTo(sectionEnd, ERelations.HAS_END);
 
@@ -469,30 +472,17 @@ public class Section {
             newSection.createRelationshipTo(newStart, ERelations.COLLATION);
 
             // Reattach the readings to their respective new end/start nodes
-            for (Node reading : finalReadingsOldSection) {
-                // Delete outgoing sequence relationships
-                reading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).forEach(Relationship::delete);
-                reading.getRelationships(Direction.OUTGOING, ERelations.LEMMA_TEXT).forEach(Relationship::delete);
-                // Mirror incoming sequence relationships to the end node
-                for (Relationship seq : reading.getRelationships(Direction.INCOMING))
-                    if (seq.isType(ERelations.SEQUENCE) || seq.isType(ERelations.LEMMA_TEXT)) {
-                        Relationship seqToEnd = reading.createRelationshipTo(newEnd, seq.getType());
-                        seq.getPropertyKeys().forEach(x -> seqToEnd.setProperty(x, seq.getProperty(x)));
-                    }
+            for (Relationship crossed : linksToSplit) {
+                Node lastInOld = crossed.getStartNode();
+                Node firstInNew = crossed.getEndNode();
+                if (!lastInOld.equals(startNode))
+                    ReadingService.transferWitnesses(lastInOld, newEnd, crossed);
+                if (!firstInNew.equals(sectionEnd))
+                    ReadingService.transferWitnesses(newStart, firstInNew, crossed);
             }
-            for (Node reading : initialReadingsNewSection) {
-                reading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).forEach(Relationship::delete);
-                reading.getRelationships(Direction.INCOMING, ERelations.LEMMA_TEXT).forEach(Relationship::delete);
-                // Mirror incoming sequence relationships to the end node
-                for (Relationship seq : reading.getRelationships(Direction.OUTGOING))
-                    if (seq.isType(ERelations.SEQUENCE) || seq.isType(ERelations.LEMMA_TEXT)) {
-                        Relationship seqFromStart = newStart.createRelationshipTo(reading, seq.getType());
-                        seq.getPropertyKeys().forEach(x -> seqFromStart.setProperty(x, seq.getProperty(x)));
-                    }
-            }
+            linksToSplit.forEach(Relationship::delete);
 
-            // TODO I *think* we don't need this anymore...
-            /*
+            /* TODO test if we need this
             Node sectionStart = DatabaseService.getStartNode(sectId, db);
             for (Relationship r : sectionStart.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING))
                 if (r.getEndNode().hasProperty("is_end"))
@@ -506,10 +496,15 @@ public class Section {
             final Long newId = newSection.getId();
             db.traversalDescription().depthFirst().expand(new AlignmentTraverse())
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
-                    .stream().forEach(x -> x.setProperty("section_id", newId));
+                    .stream().forEach(x -> {
+                        x.setProperty("section_id", newId);
+                        if (!x.equals(newStart))
+                            x.setProperty("rank", Long.valueOf(x.getProperty("rank").toString()) - rank + 1);
+                    }
+            );
 
             // Re-initialize the ranks on the new section
-            recalculateRank(newStart);
+            // recalculateRank(newStart);
 
             tx.success();
         } catch (Exception e) {

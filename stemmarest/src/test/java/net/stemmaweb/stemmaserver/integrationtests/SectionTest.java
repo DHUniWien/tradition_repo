@@ -602,7 +602,7 @@ public class SectionTest extends TestCase {
 
         // Check that the second half has readings on rank 1
         List<ReadingModel> part2rdgs = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + newSectionId + "/readings")
+                .path("/tradition/" + mattId + "/section/" + newSectionId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         boolean foundRank1 = false;
         for (ReadingModel rdg : part2rdgs)
@@ -612,7 +612,7 @@ public class SectionTest extends TestCase {
 
         // Check that the first half's end rank correct
         List<ReadingModel> part1rdgs = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + targetSectionId + "/readings")
+                .path("/tradition/" + mattId + "/section/" + targetSectionId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         ReadingModel firstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
         assertEquals(Long.valueOf(168), firstEnd.getRank());
