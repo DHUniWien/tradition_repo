@@ -127,10 +127,10 @@ public class SectionTest extends TestCase {
                 "stemmaweb", "section 2"), "parentId");
         List<ReadingModel> sectRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(47, sectRdgs.size());
+        assertEquals(46, sectRdgs.size());
         List<ReadingModel> allRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(77, allRdgs.size());
+        assertEquals(75, allRdgs.size());
     }
 
     public void testSectionWitnesses() {
@@ -174,12 +174,12 @@ public class SectionTest extends TestCase {
     public void testDeleteSection() {
         List<ReadingModel> tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(30, tReadings.size());
+        assertEquals(29, tReadings.size());
 
         Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(77, tReadings.size());
+        assertEquals(75, tReadings.size());
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
@@ -193,7 +193,7 @@ public class SectionTest extends TestCase {
 
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(47, tReadings.size());
+        assertEquals(46, tReadings.size());
     }
 
     private String importFlorilegium () {

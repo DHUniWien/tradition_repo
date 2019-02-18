@@ -155,7 +155,7 @@ public class GraphMLInputOutputTest extends TestCase {
         }
         assertNotNull(graphdoc);
         NodeList nodes = graphdoc.getElementsByTagName("node");
-        assertEquals(31, nodes.getLength());
+        assertEquals(30, nodes.getLength());
 
         // Get the GraphML output with witnesses included, make sure it is correct
         xmlresp = jerseyTest.resource().path("/tradition/" + multiTradId + "/section/"
@@ -173,7 +173,7 @@ public class GraphMLInputOutputTest extends TestCase {
         }
         assertNotNull(graphdoc);
         nodes = graphdoc.getElementsByTagName("node");
-        assertEquals(82, nodes.getLength());
+        assertEquals(81, nodes.getLength());
     }
 
     // testXMLInputMultiSection

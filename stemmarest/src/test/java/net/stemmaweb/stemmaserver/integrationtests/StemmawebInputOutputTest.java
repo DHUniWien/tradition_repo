@@ -180,7 +180,7 @@ public class StemmawebInputOutputTest {
                 .path("/tradition/" + traditionId + "/readings")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(319, readings.size()); // really 319
+        assertEquals(308, readings.size()); // really 319
 
         // Check for the correct number of sequence paths. Do this with a traversal.
         AtomicInteger sequenceCount = new AtomicInteger(0);
@@ -194,7 +194,7 @@ public class StemmawebInputOutputTest {
                     .relationships().forEach(x -> sequenceCount.getAndIncrement());
             tx.success();
         }
-        assertEquals(376, sequenceCount.get()); // should be 376
+        assertEquals(358, sequenceCount.get()); // should be 376
 
 
         // Check for the correct number of witnesses
@@ -246,7 +246,7 @@ public class StemmawebInputOutputTest {
                 .path("/tradition/" + traditionId + "/readings")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(319, origReadings.size());
+        assertEquals(308, origReadings.size());
 
         // Set the language
         String jsonPayload = "{\"language\":\"Greek\"}";
@@ -371,7 +371,7 @@ public class StemmawebInputOutputTest {
                 .path("/tradition/" + traditionId + "/readings")
                 .type(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(318, readings.size());
+        assertEquals(307, readings.size());
 
         // Check for the correct number of sequence paths. Do this with a traversal.
         AtomicInteger sequenceCount = new AtomicInteger(0);
@@ -385,7 +385,7 @@ public class StemmawebInputOutputTest {
                     .relationships().forEach(x -> sequenceCount.getAndIncrement());
             tx.success();
         }
-        assertEquals(375, sequenceCount.get());
+        assertEquals(357, sequenceCount.get());
 
 
         // Check for the correct number of witnesses

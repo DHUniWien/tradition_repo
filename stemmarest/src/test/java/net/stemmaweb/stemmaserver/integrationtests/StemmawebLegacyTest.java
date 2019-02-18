@@ -489,12 +489,12 @@ public class StemmawebLegacyTest {
                 .path("/tradition/" + tradId2 + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
-        String r8_1="", r9_2="";
+        String rStart="", r9_2="";
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
-            if (cur_rank == 9L && cur_reading.getIs_lacuna()) {
-                r8_1 = cur_reading.getId();
+            if (cur_reading.getIs_start()) {
+                rStart = cur_reading.getId();
             } else if (cur_rank == 4L && cur_text.equals("henricus")) {
                 r9_2 = cur_reading.getId();
             }
@@ -513,13 +513,13 @@ public class StemmawebLegacyTest {
 
         relationship = new RelationModel();
         relationship.setSource(r9_2);
-        relationship.setTarget(r8_1);
-        relationship.setType("collated");
+        relationship.setTarget(rStart);
+        relationship.setType("transposition");
         relationship.setScope("local");
 
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/relation")
+                .path("/tradition/" + tradId2 + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
@@ -535,7 +535,7 @@ public class StemmawebLegacyTest {
 
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/relation")
+                .path("/tradition/" + tradId2 + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());
