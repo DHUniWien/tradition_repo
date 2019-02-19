@@ -35,6 +35,14 @@ public class ReadingService {
         return newReading;
     }
 
+    public static boolean hasWitness(Relationship link, String sigil, String witClass) {
+        if (link.hasProperty(witClass)) {
+            String[] wits = (String[]) link.getProperty(witClass);
+            return Arrays.asList(wits).contains(sigil);
+        }
+        return false;
+    }
+
     /**
      * Add a witness of the given class (either "witnesses" or some layer) connecting the
      * two nodes given.
@@ -52,18 +60,39 @@ public class ReadingService {
                 link = r;
         if (link == null)
             link = start.createRelationshipTo(end, ERelations.SEQUENCE);
-        if (link.hasProperty(witClass)) {
-            String[] witList = (String[]) link.getProperty(witClass);
-            HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
-            currentWits.add(sigil);
-            link.setProperty(witClass, currentWits.toArray(new String[0]));
-        } else {
-            String[] witList = {sigil};
-            link.setProperty(witClass, witList);
+        // First see if we need to add this one
+        if (witClass.equals("witnesses") || !hasWitness(link, sigil, "witnesses")) {
+            // This is either a main witness or a layer witness where the main witness isn't.
+            if (link.hasProperty(witClass)) {
+                String[] witList = (String[]) link.getProperty(witClass);
+                HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
+                currentWits.add(sigil);
+                link.setProperty(witClass, currentWits.toArray(new String[0]));
+            } else {
+                String[] witList = {sigil};
+                link.setProperty(witClass, witList);
+            }
+        }
+        // Then see if we need to remove a layer
+        if (witClass.equals("witnesses")) {
+            for (String wc : link.getPropertyKeys()) {
+                if (wc.equals(witClass)) continue;
+                if (hasWitness(link, sigil, wc)) {
+                    // Remove the layer because we have added the main.
+                    String[] witList = (String[]) link.getProperty(wc);
+                    HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
+                    currentWits.remove(sigil);
+                    link.setProperty(wc, currentWits.toArray(new String[0]));
+                }
+            }
         }
     }
 
-
+    public static void transferWitnesses (Node start, Node end, Relationship copyFrom) {
+        for (String witclass : copyFrom.getPropertyKeys())
+            for (String w : (String[]) copyFrom.getProperty(witclass))
+                addWitnessLink(start, end, w, witclass);
+    }
 
     /**
      * Removes a reading from the sequence, matching up links on either side of it.

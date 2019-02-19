@@ -442,7 +442,8 @@ public class SectionTest extends TestCase {
                 .path("/tradition/" + florId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
 
-        String targetSection = returnedSections.get(1).getId();
+        SectionModel origSection = returnedSections.get(1);
+        String targetSectionId = origSection.getId();
 
         // Get the reading to split at
         ReadingModel targetReading = jerseyTest.resource()
@@ -451,29 +452,96 @@ public class SectionTest extends TestCase {
         assertEquals("τὸ", targetReading.getText());
 
         // Do the split
-        String splitPath = "/tradition/" + florId + "/section/" + targetSection
+        String splitPath = "/tradition/" + florId + "/section/" + targetSectionId
                 + "/splitAtRank/" + targetReading.getRank();
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path(splitPath)
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        String newSection = Util.getValueFromJson(jerseyResult, "sectionId");
+        String newSectionId = Util.getValueFromJson(jerseyResult, "sectionId");
+
+        // Get the data for both new sections
+        SectionModel shortenedSection = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSectionId)
+                .get(SectionModel.class);
+        // Check that the new section has the right ending rank
+        assertEquals(targetReading.getRank(), shortenedSection.getEndRank());
+
+        SectionModel newSection = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + newSectionId)
+                .get(SectionModel.class);
+        // Check that the new section has the right ending rank
+        assertEquals(Long.valueOf(origSection.getEndRank() - targetReading.getRank() + 1), newSection.getEndRank());
 
         // Check that superfluous witness B has been removed from the first half
         ClientResponse jerseyResponse = jerseyTest.resource()
-                .path("/tradition/" + florId + "/section/" + targetSection + "/witness/B/text")
+                .path("/tradition/" + florId + "/section/" + targetSectionId + "/witness/B/text")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.NOT_FOUND.getStatusCode(), jerseyResponse.getStatus());
 
         // Check that the second half contains witness B
         jerseyResponse = jerseyTest.resource()
-                .path("/tradition/" + florId + "/section/" + newSection + "/witness/B/text")
+                .path("/tradition/" + florId + "/section/" + newSectionId + "/witness/B/text")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         assertEquals("τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ " +
                 "λόγος ἐπανατείνεται λέγων ἐκείνοις εἶναι τὸ Οὐαὶ δι᾽ οὓς τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσιν.",
                 Util.getValueFromJson(jerseyResponse, "text"));
+
+        // Check that the first half can be exported to dot
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSectionId + "/dot")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        // ...and that there is only one start and end node each
+        String dotText = jerseyResponse.getEntity(String.class);
+        assertEquals(1, countOccurrences(dotText, "__END__"));
+        assertEquals(1, countOccurrences(dotText, "__START__"));
+
+        // Check that the second half can be exported to dot
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + newSectionId + "/dot")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        dotText = jerseyResponse.getEntity(String.class);
+        assertEquals(1, countOccurrences(dotText, "__END__"));
+        assertEquals(1, countOccurrences(dotText, "__START__"));
+
+
+        // Check that the second half has readings on rank 1
+        List<ReadingModel> part2rdgs = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + newSectionId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        boolean foundRank1 = false;
+        for (ReadingModel rdg : part2rdgs)
+            if (rdg.getRank().equals(1L))
+                foundRank1 = true;
+        assertTrue(foundRank1);
+
+        // Check that the first half's end rank correct
+        List<ReadingModel> part1rdgs = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSectionId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        ReadingModel firstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        assertEquals(targetReading.getRank(), firstEnd.getRank());
+
+        // Check that the second half's end rank is correct
+        ReadingModel secondEnd = part2rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        assertEquals(Long.valueOf(origSection.getEndRank() - targetReading.getRank() + 1), secondEnd.getRank());
+
+        // Check that the final nodes are all connected to END
+        List<WitnessModel> firstSectWits = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSectionId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        for (WitnessModel wit : firstSectWits) {
+            ClientResponse connectedTest = jerseyTest.resource()
+                    .path("/tradition/" + florId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
+                    .get(ClientResponse.class);
+            assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        }
+
+        // Check that the respective START and END nodes belong to the right sections
 
         // Check that the whole B text is still valid
         String bText = "τὸ ὄνομά μου βλασφημεῖται ἐν τοῖς ἔθνεσι. Διὰ τοῦτο χαλεπὴν τοῖς τοιούτοις ἀπειλὴν ὁ λόγος " +
@@ -490,6 +558,90 @@ public class SectionTest extends TestCase {
                 .path("/tradition/" + florId + "/witness/B/text").get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         assertEquals(bText, Util.getValueFromJson(jerseyResponse, "text"));
+    }
+
+    public void testSplitSectionMatthew() {
+        ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR",
+                "user@example.com", "src/TestFiles/ChronicleOfMatthew.xml", "stemmaweb");
+        String mattId = Util.getValueFromJson(jerseyResponse, "tradId");
+        List<SectionModel> returnedSections = jerseyTest.resource()
+                .path("/tradition/" + mattId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+
+        SectionModel origSection = returnedSections.get(0);
+        String targetSectionId = origSection.getId();
+
+        // Do the split
+        String splitPath = "/tradition/" + mattId + "/section/" + targetSectionId
+                + "/splitAtRank/168";
+        jerseyResponse = jerseyTest.resource()
+                .path(splitPath)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String newSectionId = Util.getValueFromJson(jerseyResponse, "sectionId");
+        // Check that the first half can be exported to dot
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + mattId + "/section/" + targetSectionId + "/dot")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        // ...and that there is only one start and end node each
+        String dotText = jerseyResponse.getEntity(String.class);
+        assertEquals(1, countOccurrences(dotText, "__END__"));
+        assertEquals(1, countOccurrences(dotText, "__START__"));
+
+        // Check that the second half can be exported to dot
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + mattId + "/section/" + newSectionId + "/dot")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        dotText = jerseyResponse.getEntity(String.class);
+        assertEquals(1, countOccurrences(dotText, "__END__"));
+        assertEquals(1, countOccurrences(dotText, "__START__"));
+
+
+        // Check that the second half has readings on rank 1
+        List<ReadingModel> part2rdgs = jerseyTest.resource()
+                .path("/tradition/" + mattId + "/section/" + newSectionId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        boolean foundRank1 = false;
+        for (ReadingModel rdg : part2rdgs)
+            if (rdg.getRank().equals(1L))
+                foundRank1 = true;
+        assertTrue(foundRank1);
+
+        // Check that the first half's end rank correct
+        List<ReadingModel> part1rdgs = jerseyTest.resource()
+                .path("/tradition/" + mattId + "/section/" + targetSectionId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        ReadingModel firstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        assertEquals(Long.valueOf(168), firstEnd.getRank());
+
+        // Check that the second half's end rank is correct
+        ReadingModel secondEnd = part2rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        assertEquals(Long.valueOf(origSection.getEndRank() - 168 + 1), secondEnd.getRank());
+
+        // Check that the final nodes are all connected to END
+        List<WitnessModel> firstSectWits = jerseyTest.resource()
+                .path("/tradition/" + mattId + "/section/" + targetSectionId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        for (WitnessModel wit : firstSectWits) {
+            ClientResponse connectedTest = jerseyTest.resource()
+                    .path("/tradition/" + mattId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
+                    .get(ClientResponse.class);
+            assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        }
+    }
+
+    private static int countOccurrences (String tstr, String substr) {
+        int lastindex = 0;
+        int cnt = 0;
+        while (lastindex > -1) {
+            lastindex = tstr.indexOf(substr, lastindex + 1);
+            if (lastindex > -1)
+                cnt++;
+        }
+        return cnt;
     }
 
     public void testSectionDotOutput() {
