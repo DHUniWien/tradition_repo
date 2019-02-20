@@ -379,7 +379,7 @@ public class Reading {
         String tradId = getTraditionId();
         Section sectionRest = new Section(tradId, sectId);
         Long ourRank = (Long) originalReading.getProperty("rank");
-        for (RelationModel rm : sectionRest.sectionRelationships()) {
+        for (RelationModel rm : sectionRest.sectionRelations()) {
             Relationship originalRel = db.getRelationshipById(Long.valueOf(rm.getId()));
             if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                     (rm.getSource().equals(String.valueOf(originalReading.getId())) ||

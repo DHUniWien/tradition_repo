@@ -16,10 +16,10 @@ import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
+import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
@@ -36,6 +36,7 @@ public class Witness {
     private String tradId;
     private String sigil;
     private String sectId;
+    private String errorMessage;
 
     public Witness (String traditionId, String requestedSigil) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -85,18 +86,13 @@ public class Witness {
             @QueryParam("start") @DefaultValue("0") String start,
             @QueryParam("end") @DefaultValue("E") String end) {
 
-        StringBuilder witnessAsText = new StringBuilder();
-
         long startRank = Long.parseLong(start);
         long endRank;
 
-        Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-
-        ArrayList<Node> iterationList = sectionsRequested(traditionNode);
-        if (iterationList.size() == 0)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("Section not found in this tradition")).build();
+        ArrayList<Node> iterationList = sectionsRequested();
+        if (iterationList == null)
+            return Response.status(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR)
+                    .entity(jsonerror(errorMessage)).build();
 
         // Empty out the layer list if it is the default.
         if (layer.size() == 1 && layer.get(0).equals(""))
@@ -136,8 +132,8 @@ public class Witness {
 
             Node startNode = DatabaseService.getStartNode(String.valueOf(currentSection.getId()), db);
             try (Transaction tx = db.beginTx()) {
-                final Long sr = startRank;
-                final Long er = endRank;
+                final long sr = startRank;
+                final long er = endRank;
                 witnessReadings.addAll(traverseReadings(startNode, layer).stream()
                         .filter(x -> Long.valueOf(x.getProperty("rank").toString()) >= sr
                                 && Long.valueOf(x.getProperty("rank").toString()) <= er)
@@ -154,21 +150,10 @@ public class Witness {
         if (witnessReadings.size() == 0)
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("No witness path found for this sigil")).build();
-        // Remove the meta node from the list
-        Boolean joinNext = false;
-        try (Transaction tx = db.beginTx()) {
-            for (Node node : witnessReadings) {
-                if (booleanValue(node, "is_end")) continue;
-                if (booleanValue(node, "is_lacuna")) continue;
-                if (!joinNext && !booleanValue(node, "join_prior")
-                        && !witnessAsText.toString().equals("") && !witnessAsText.toString().endsWith(" "))
-                    witnessAsText.append(" ");
-                joinNext = booleanValue(node, "join_next");
-                witnessAsText.append(node.getProperty("text").toString());
-            }
-            tx.success();
-        }
-        WitnessTextModel wtm = new WitnessTextModel(witnessAsText.toString().trim());
+        // Construct the text from the node reading models
+        String witnessText = ReadingService.textOfReadings(
+                witnessReadings.stream().map(ReadingModel::new).collect(Collectors.toList()), false);
+        WitnessTextModel wtm = new WitnessTextModel(witnessText);
         return Response.ok(wtm).build();
 
     }
@@ -193,13 +178,10 @@ public class Witness {
         if (witnessClass.size() == 1 && witnessClass.get(0).equals(""))
             witnessClass.remove(0);
 
-        Node traditionNode = DatabaseService.getTraditionNode(this.tradId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-
-        ArrayList<Node> iterationList = sectionsRequested(traditionNode);
-        if (iterationList.size() == 0)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("Section not found in this tradition")).build();
+        ArrayList<Node> iterationList = sectionsRequested();
+        if (iterationList == null)
+            return Response.status(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR)
+                    .entity(jsonerror(errorMessage)).build();
 
         for (Node currentSection: iterationList) {
             try (Transaction tx = db.beginTx()) {
@@ -247,43 +229,32 @@ public class Witness {
         return result;
     }
 
-    private ArrayList<Node> sectionsRequested(Node traditionNode) {
-        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+    private ArrayList<Node> sectionsRequested() {
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        if (traditionNode == null) {
+            errorMessage = "Requested tradition does not exist";
+            return null;
+        }
+
         ArrayList<Node> iterationList = new ArrayList<>();
-        int depth = sectionNodes.size();
-        try (Transaction tx = db.beginTx()) {
-            if (this.sectId == null) {
-                // order the sections by their occurrence in the tradition
-                for (Node n : sectionNodes) {
-                    if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
-                            .iterator()
-                            .hasNext()) {
-                        db.traversalDescription()
-                                .depthFirst()
-                                .relationships(ERelations.NEXT, Direction.OUTGOING)
-                                .evaluator(Evaluators.toDepth(depth))
-                                .uniqueness(Uniqueness.NODE_GLOBAL)
-                                .traverse(n)
-                                .nodes()
-                                .forEach(iterationList::add);
-                        break;
-                    }
-                }
-            } else {
-                Node sectionNode = db.getNodeById(Long.valueOf(sectId));
-                if (sectionNode != null) {
-                    Relationship rel = sectionNode.getSingleRelationship(ERelations.PART, Direction.INCOMING);
-                    if (rel != null && rel.getStartNode().getId() == traditionNode.getId())
-                        iterationList.add(sectionNode);
-                }
+        if (this.sectId == null) {
+            iterationList = DatabaseService.getSectionNodes(tradId, db);
+        } else {
+            if (!DatabaseService.sectionInTradition(tradId, sectId, db)) {
+                errorMessage = "Requested section does not exist in this tradition";
+                return null;
             }
-            tx.success();
+            try (Transaction tx = db.beginTx()) {
+                Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+                iterationList.add(sectionNode);
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+                errorMessage = e.getMessage();
+                return null;
+            }
         }
         return iterationList;
     }
 
-    // NOTE needs to be in transaction
-    private Boolean booleanValue(Node n, String p) {
-        return n.hasProperty(p) && Boolean.parseBoolean(n.getProperty(p).toString());
-    }
 }

@@ -242,13 +242,13 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
-        ArrayList<ReadingModel> readingModels = sectionReadings();
+        List<ReadingModel> readingModels = sectionReadings();
         if (readingModels == null)
             return Response.serverError().entity(jsonerror("No readings found in section")).build();
         return Response.ok(readingModels).build();
     }
 
-    ArrayList<ReadingModel> sectionReadings() {
+    List<ReadingModel> sectionReadings() {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node startNode = DatabaseService.getStartNode(sectId, db);
@@ -280,7 +280,7 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships() {
-        ArrayList<RelationModel> relList = sectionRelationships();
+        ArrayList<RelationModel> relList = sectionRelations();
 
         if (relList == null) {
             return Response.serverError().entity(jsonerror("No relations found in section")).build();
@@ -288,7 +288,7 @@ public class Section {
         return Response.ok(relList).build();
     }
 
-    ArrayList<RelationModel> sectionRelationships() {
+    ArrayList<RelationModel> sectionRelations() {
         ArrayList<RelationModel> relList = new ArrayList<>();
 
         Node startNode = DatabaseService.getStartNode(sectId, db);
@@ -307,6 +307,68 @@ public class Section {
             return null;
         }
         return relList;
+    }
+
+    /**
+     * Gets the lemma text for the section, if there is any.
+     *
+     * @summary Get lemma text
+     * @return A string that is the lemma text readings
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
+     */
+    @GET
+    @Path("/lemmatext")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.String")
+    public Response getLemmaText() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        List<ReadingModel> sectionLemmata = collectLemmaReadings();
+        if (sectionLemmata == null)
+            return Response.serverError().build();
+        return Response.ok(ReadingService.textOfReadings(sectionLemmata, true)).build();
+    }
+
+    /**
+     * Gets the list of lemma readings for the section, if there are any.
+     *
+     * @summary Get lemma text
+     * @return A JSON list of lemma text readings
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
+     */
+    @GET
+    @Path("/lemmareadings")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    public Response getLemmaReadings() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        List<ReadingModel> sectionLemmata = collectLemmaReadings();
+        return sectionLemmata == null ? Response.serverError().build() : Response.ok(sectionLemmata).build();
+    }
+
+    private List<ReadingModel> collectLemmaReadings () {
+        try (Transaction tx = db.beginTx()) {
+
+            Node startNode = DatabaseService.getStartNode(sectId, db);
+            ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
+                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                    .nodes();
+            tx.success();
+            // Filter out the start and end nodes
+            return sectionLemmata.stream().map(ReadingModel::new)
+                    .filter(ReadingModel::getIs_lemma)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
 
@@ -332,7 +394,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             if (!sectionInTradition())
                 return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-            if (!priorSectID.equals("none") && !sectionInTradition(priorSectID))
+            if (!priorSectID.equals("none") && !DatabaseService.sectionInTradition(tradId, priorSectID, db))
                 return Response.status(Response.Status.NOT_FOUND).entity("Requested prior section not found").build();
             if (priorSectID.equals(sectId))
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
@@ -522,7 +584,7 @@ public class Section {
     public Response mergeSections (@PathParam("otherId") String otherId) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-        if (!sectionInTradition(otherId))
+        if (!DatabaseService.sectionInTradition(tradId, otherId, db))
             return Response.status(Response.Status.NOT_FOUND).entity("Requested other section not found").build();
 
         try (Transaction tx = db.beginTx()) {
@@ -793,6 +855,80 @@ public class Section {
         return identicalReadingsList;
     }
 
+    /**
+     * Chain through the readings marked as lemmata and construct the LEMMA_TEXT link.
+     *
+     * @summary Set the lemma text
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 409 - on detection of conflicting lemma readings
+     * @statuscode 500 - on failure, with an error message
+     */
+    @POST
+    @Path("/setlemma")
+    @ReturnType("java.lang.void")
+    public Response setLemmaText() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
+        try (Transaction tx = db.beginTx()) {
+            Node startNode = DatabaseService.getStartNode(sectId, db);
+            Node endNode = DatabaseService.getEndNode(sectId, db);
+            // Delete any existing lemma text links
+            ResourceIterable<Relationship> lemmaLinks = db.traversalDescription().depthFirst()
+                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                    .relationships();
+            lemmaLinks.forEach(Relationship::delete);
+            // Go through the section readings collecting and ordering lemmata
+
+            List<ReadingModel> sectionLemmata = sectionReadings().stream().filter(ReadingModel::getIs_lemma)
+                    .sorted(ReadingModel::compareTo)
+                    .collect(Collectors.toList());
+
+            // Recreate links, checking for branching
+            Node priorLemma = startNode;
+            for (ReadingModel tl : sectionLemmata) {
+                Node thisLemma = db.getNodeById(Long.valueOf(tl.getId()));
+                ReadingModel pl = new ReadingModel(priorLemma);
+                // Check that we don't have same-rank readings
+                if (priorLemma.getProperty("rank").equals(thisLemma.getProperty("rank")))
+                    return Response.status(Response.Status.CONFLICT)
+                            .entity(jsonerror(String.format(
+                                    "Cannot have two lemma readings (%s and %s) in the same place",
+                                    pl.getNormal_form(), tl.getNormal_form())))
+                            .build();
+                // Create the new relationship
+                priorLemma.createRelationshipTo(thisLemma, ERelations.LEMMA_TEXT);
+                priorLemma = thisLemma;
+            }
+            // Connect the last lemma text to the end node
+            priorLemma.createRelationshipTo(endNode, ERelations.LEMMA_TEXT);
+
+            // Sanity check against branching
+            priorLemma = startNode;
+            while (!priorLemma.equals(endNode)) {
+                // This will throw an exception if there is more than a single relationship
+                Relationship r = priorLemma.getSingleRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING);
+                if (r == null)
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(jsonerror(String.format(
+                                    "Lemma chain ends prematurely at %s / %s",
+                                    priorLemma.getProperty("normal_form"),
+                                    priorLemma.getProperty("rank"))))
+                            .build();
+                priorLemma = r.getEndNode();
+            }
+            tx.success();
+        } catch (Exception e) {
+            if (e.getMessage().contains("More than one"))
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(jsonerror(e.getMessage())).build();
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        return Response.ok().build();
+    }
 
 
     /*
@@ -813,7 +949,7 @@ public class Section {
     @GET
     @Path("/graphml")
     @Produces(MediaType.APPLICATION_XML + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
@@ -880,23 +1016,7 @@ public class Section {
     }
 
     private Boolean sectionInTradition() {
-        return sectionInTradition(sectId);
+        return DatabaseService.sectionInTradition(tradId, sectId, db);
     }
 
-    private Boolean sectionInTradition(String aSectionId) {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        if (traditionNode == null)
-            return false;
-
-        boolean found = false;
-        try (Transaction tx = db.beginTx()) {
-            for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
-                if (s.getId() == Long.valueOf(aSectionId)) {
-                    found = true;
-                }
-            }
-            tx.success();
-        }
-        return found;
-    }
 }

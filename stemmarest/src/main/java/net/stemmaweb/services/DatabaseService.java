@@ -15,6 +15,32 @@ import org.neo4j.graphdb.traversal.Traverser;
  * @author PSE FS 2015 Team2
  */
 public class DatabaseService {
+
+    /**
+     * Check whether a given section actually belongs to the given tradition.
+     *
+     * @param tradId - The alleged parent tradition
+     * @param aSectionId - The section to check
+     * @param db - the GraphDatabaseService where the tradition is stored
+     * @return - true or false
+     */
+    public static Boolean sectionInTradition(String tradId, String aSectionId, GraphDatabaseService db) {
+        Node traditionNode = getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return false;
+
+        boolean found = false;
+        try (Transaction tx = db.beginTx()) {
+            for (Node s : getRelated(traditionNode, ERelations.PART)) {
+                if (s.getId() == Long.valueOf(aSectionId)) {
+                    found = true;
+                }
+            }
+            tx.success();
+        }
+        return found;
+    }
+
     /**
      *
      * @param nodeId the ID of the tradition or section whose start node should be returned
@@ -52,7 +78,7 @@ public class DatabaseService {
             } else return null;
         }
         // Were we asked for a nonexistent tradition node (i.e. a non-Long that corresponds to no tradition)?
-        Long nodeIndex;
+        long nodeIndex;
         try {
             nodeIndex = Long.valueOf(nodeId);
         } catch (NumberFormatException e) {
@@ -69,6 +95,7 @@ public class DatabaseService {
     }
 
     /**
+     * Return the list of a tradition's sections, ordered by NEXT relationship
      *
      * @param tradId    the tradition whose sections to return
      * @param db        the GraphDatabaseService where the tradition is stored
@@ -302,7 +329,6 @@ public class DatabaseService {
         return returnTraverser(traditionNode, traditionRelations);
     }
 
-    @SuppressWarnings("WeakerAccess")
     public static Traverser returnTraditionSection(Node sectionNode) {
         return returnTraverser(sectionNode, sectionCrawler);
     }

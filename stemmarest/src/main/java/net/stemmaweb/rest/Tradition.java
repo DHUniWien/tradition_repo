@@ -441,7 +441,7 @@ public class Tradition {
             return Response.serverError().entity(jsonerror("section lookup failed")).build();
         for (SectionModel s : ourSections) {
             Section sectRest = new Section(traditionId, s.getId());
-            ArrayList<RelationModel> sectRels = sectRest.sectionRelationships();
+            ArrayList<RelationModel> sectRels = sectRest.sectionRelations();
             if (sectRels == null)
                 return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
             relList.addAll(sectRels);
@@ -507,7 +507,7 @@ public class Tradition {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         for (SectionModel sm : allSections) {
             Section sectRest = new Section(traditionId, sm.getId());
-            ArrayList<ReadingModel> sectionReadings = sectRest.sectionReadings();
+            List<ReadingModel> sectionReadings = sectRest.sectionReadings();
             if (sectionReadings == null)
                 return Response.serverError().entity(jsonerror("section lookup failed")).build();
             readingModels.addAll(sectionReadings);

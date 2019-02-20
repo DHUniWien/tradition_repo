@@ -1,5 +1,6 @@
 package net.stemmaweb.services;
 
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -41,6 +42,7 @@ public class ReadingService {
      * @param witClass - the witness layer
      *
      */
+    @SuppressWarnings("WeakerAccess")
     public static boolean hasWitness(Relationship link, String sigil, String witClass) {
         if (link.hasProperty(witClass)) {
             String[] wits = (String[]) link.getProperty(witClass);
@@ -198,6 +200,22 @@ public class ReadingService {
         }
     }
 
+    public static String textOfReadings(List<ReadingModel> rml, Boolean normal) {
+        StringBuilder witnessAsText = new StringBuilder();
+        Boolean joinNext = false;
+        for (ReadingModel rm : rml) {
+            if (rm.getIs_end()) continue;
+            if (rm.getIs_lacuna()) continue;
+            if (!joinNext && !rm.getJoin_prior()
+                    && !witnessAsText.toString().equals("") && !witnessAsText.toString().endsWith(" "))
+                witnessAsText.append(" ");
+            joinNext = rm.getJoin_next();
+            String joinString = normal ? rm.normalized() : rm.getText();
+            // if (joinString == null) joinString = "";
+            witnessAsText.append(joinString);
+        }
+        return witnessAsText.toString();
+    }
 
     /* Custom evaluator for recalculating rank */
     private static HashSet<Node> colocatedReadings (Node reading) {
