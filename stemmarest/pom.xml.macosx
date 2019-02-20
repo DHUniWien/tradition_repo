@@ -209,7 +209,7 @@
         <jersey-group>org.glassfish.jersey</jersey-group>
         -->
         <neo4j-version>3.4.0</neo4j-version>
-        <jackson-version>2.9.7</jackson-version>
+        <jackson-version>2.9.8</jackson-version>
         <jersey-version>1.19</jersey-version>
         <jersey-group>com.sun.jersey</jersey-group>
 
