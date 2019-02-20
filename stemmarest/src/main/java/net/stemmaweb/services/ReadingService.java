@@ -23,18 +23,24 @@ public class ReadingService {
      *
      * @param oldReading - the reading to copy from
      * @param newReading - the reading to copy to
-     * @return the modified new reading
      */
-    public static Node copyReadingProperties(Node oldReading, Node newReading) {
+    public static void copyReadingProperties(Node oldReading, Node newReading) {
         for (String key : oldReading.getPropertyKeys()) {
             if (oldReading.hasProperty(key)) {
                 newReading.setProperty(key, oldReading.getProperty(key));
             }
         }
         newReading.addLabel(Nodes.READING);
-        return newReading;
     }
 
+    /**
+     * Returns true if the specified witness (layer) is in the relationship.
+     *
+     * @param link - the SEQUENCE relationship to test
+     * @param sigil - the witness sigil
+     * @param witClass - the witness layer
+     *
+     */
     public static boolean hasWitness(Relationship link, String sigil, String witClass) {
         if (link.hasProperty(witClass)) {
             String[] wits = (String[]) link.getProperty(witClass);
@@ -77,14 +83,36 @@ public class ReadingService {
         if (witClass.equals("witnesses")) {
             for (String wc : link.getPropertyKeys()) {
                 if (wc.equals(witClass)) continue;
-                if (hasWitness(link, sigil, wc)) {
-                    // Remove the layer because we have added the main.
-                    String[] witList = (String[]) link.getProperty(wc);
-                    HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
-                    currentWits.remove(sigil);
-                    link.setProperty(wc, currentWits.toArray(new String[0]));
-                }
+                removeWitnessLink(start, end, sigil, wc);
             }
+        }
+    }
+
+    /**
+     * Remove a witness of the given class (either "witnesses" or some layer) from the connection
+     * between the two nodes given.
+     * NOTE: for use in a transaction!
+     *
+     * @param start - the start node
+     * @param end   - the end node
+     * @param sigil - the witness sigil
+     * @param witClass - the witness layer class to use
+     */
+    public static void removeWitnessLink (Node start, Node end, String sigil, String witClass) {
+        Relationship link = null;
+        for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
+            if (r.getEndNode().equals(end))
+                link = r;
+        if (link == null) return;
+        // Look for the given witness in the given layer
+        if (link.hasProperty(witClass)) {
+            String[] witList = (String[]) link.getProperty(witClass);
+            HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
+            currentWits.remove(sigil);
+            if (currentWits.isEmpty())
+                link.delete();
+            else
+                link.setProperty(witClass, currentWits.toArray(new String[0]));
         }
     }
 
@@ -178,7 +206,7 @@ public class ReadingService {
         GraphDatabaseService db = reading.getGraphDatabase();
         colocated.add(reading);
         try (Transaction tx = db.beginTx()) {
-            List<Node> tocheck = colocated.stream().filter(x -> !checked.contains(x)).collect(Collectors.toList());
+            List<Node> tocheck = new ArrayList<>(colocated);
             while (tocheck.size() > 0) {
                 Node thisNode = tocheck.get(0);
                 checked.add(thisNode);

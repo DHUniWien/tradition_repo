@@ -5,9 +5,11 @@ import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
@@ -26,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
@@ -151,6 +154,16 @@ public class Util {
             e.printStackTrace();
         }
         return value;
+    }
+
+    public static String getSpecificReading(JerseyTest jerseyTest, String tradId, String sectId, String reading, Long rank) {
+        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        for (ReadingModel r : allReadings) {
+            if (r.getText().equals(reading) && r.getRank().equals(rank))
+                return r.getId();
+        }
+        return null;
     }
 
     public static void setupTestDB(GraphDatabaseService db, String userId) {

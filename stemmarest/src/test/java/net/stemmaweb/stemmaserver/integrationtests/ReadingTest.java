@@ -263,7 +263,7 @@ public class ReadingTest {
                 "\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
 
         ClientResponse resp = jerseyTest.resource()
-                .path("/reading/" + String.valueOf(nodeId))
+                .path("/reading/" + nodeId)
                 .type(MediaType.APPLICATION_JSON).get(ClientResponse.class);
 
         ObjectMapper mapper = new ObjectMapper();
@@ -685,7 +685,7 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(
-                    "The witness list has to contain at least one witness",
+                    "No witnesses have been assigned to the new reading",
                     Util.getValueFromJson(response, "error"));
             tx.success();
         }
@@ -711,7 +711,7 @@ public class ReadingTest {
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                     response.getStatusInfo().getStatusCode());
             assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("The reading has to be in at least two witnesses",
+            assertEquals("The reading cannot be split between fewer than two witnesses",
                     Util.getValueFromJson(response, "error"));
             tx.success();
         }
@@ -738,10 +738,39 @@ public class ReadingTest {
                     response.getStatusInfo().getStatusCode());
             assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
             assertEquals(
-                    "The reading has to be in the witnesses to be duplicated",
+                    "The reading does not contain the specified witness C",
                     Util.getValueFromJson(response, "error"));
             tx.success();
         }
+    }
+
+    @Test
+    public void duplicateLayerTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+                "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, sects.size());
+        String florSectId = sects.get(0).getId();
+
+        // Test one: duplicate a reading that has an a.c. link pointing at it
+        // "νόσοις", rank 69
+        String nosois = Util.getSpecificReading(jerseyTest, newTradId, florSectId, "νόσοις", 69L);
+        String request = "{\"readings\":[" + nosois + "], \"witnesses\":[\"A\", \"C\"]}";
+        response = jerseyTest.resource().path("/reading/" + nosois + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, request);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+        // Test two: duplicate a reading for an a.c. witness
+        // "κρίνεται", rank 34
+        String krinetai = Util.getSpecificReading(jerseyTest, newTradId, florSectId, "κρίνει", 37L);
+        request = "{\"readings\":[" + krinetai + "], \"witnesses\":[\"Q (a.c.)\"]}";
+        response = jerseyTest.resource().path("/reading/" + krinetai + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, request);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
     }
 
     @Test
@@ -1007,7 +1036,7 @@ public class ReadingTest {
         HashSet<String> relPaths = new HashSet<>();
         readingsAndRelationsModel.getRelations().forEach(x -> relPaths.add(x.getSource() + "->" + x.getTarget()));
         assertTrue(relPaths.contains(rdgWords.get("the") + "->" + rdgWords.get("root")));
-        assertTrue(relPaths.contains(rdgWords.get("root") + "->" + String.valueOf(endNode.getId())));
+        assertTrue(relPaths.contains(rdgWords.get("root") + "->" + endNode.getId()));
 
         try (Transaction tx = db.beginTx()) {
             result = db.execute("match (w:READING {text:'the'}) return w");
@@ -2216,7 +2245,7 @@ public class ReadingTest {
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-        assertEquals("this was the last reading of this witness",
+        assertEquals("this was the last reading for this witness",
                 Util.getValueFromJson(response, "error"));
     }
 
@@ -2279,7 +2308,7 @@ public class ReadingTest {
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 actualResponse.getStatus());
         assertEquals(MediaType.APPLICATION_JSON_TYPE, actualResponse.getType());
-        assertEquals("this was the first reading of this witness",
+        assertEquals("this was the first reading for this witness",
                 Util.getValueFromJson(actualResponse, "error"));
     }
 

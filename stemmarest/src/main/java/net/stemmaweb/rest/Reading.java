@@ -198,26 +198,34 @@ public class Reading {
     @GET
     @Path("witnesses")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel")
+    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getReadingWitnesses() {
+        try {
+            return Response.ok(collectWitnesses(false)).build();
+        } catch (Exception e) {
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private HashSet<String> collectWitnesses(Boolean includeAllLayers) {
         HashSet<String> normalWitnesses = new HashSet<>();
 
         // Look at all incoming SEQUENCE relationships to the reading
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
             // First get the "normal" witnesses
-            Iterable<Relationship> readingIncoming = reading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
-            for (Relationship r : readingIncoming)
+            Iterable<Relationship> readingSeqs = reading.getRelationships(Direction.BOTH, ERelations.SEQUENCE);
+            for (Relationship r : readingSeqs)
                 if (r.hasProperty("witnesses"))
                     Collections.addAll(normalWitnesses, (String[]) r.getProperty("witnesses"));
             // Now look for the specials, and add them if they are not in the normal witnesses
-            for (Relationship r : readingIncoming) {
+            for (Relationship r : readingSeqs) {
                 for (String prop : r.getPropertyKeys()) {
                     if (prop.equals("witnesses"))
                         continue;
                     String[] specialWits = (String[]) r.getProperty(prop);
                     for (String w : specialWits) {
-                        if (normalWitnesses.contains(w))
+                        if (normalWitnesses.contains(w) && !includeAllLayers)
                             continue;
                         normalWitnesses.add(w + " (" + prop + ")");
                     }
@@ -227,11 +235,11 @@ public class Reading {
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
-            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+            throw(e);
         }
-
-        return Response.ok(normalWitnesses).build();
+        return normalWitnesses;
     }
+
     /**
      * Duplicates a reading in a specific tradition; this should be used when a reading has
      * been mis-collated, or when the editor otherwise wishes to assert that seemingly
@@ -308,48 +316,29 @@ public class Reading {
      * @return true if specific reading can be duplicated, false else
      */
     private boolean canBeDuplicated(Node originalReading, List<String> newWitnesses) {
-        List<String> allWitnesses = allWitnessesOfReading(originalReading);
+        // Make a new REST object for the given reading, to check its witnesses
+        Reading tocheck = new Reading(String.valueOf(originalReading.getId()));
+        HashSet<String> allWitnesses = tocheck.collectWitnesses(true);
 
         if (newWitnesses.isEmpty()) {
-            errorMessage = "The witness list has to contain at least one witness";
+            errorMessage = "No witnesses have been assigned to the new reading";
             return false;
         }
 
         for (String newWitness : newWitnesses)
             if (!allWitnesses.contains(newWitness)) {
-                errorMessage = "The reading has to be in the witnesses to be duplicated";
+                errorMessage = "The reading does not contain the specified witness " + newWitness;
                 return false;
             }
 
         if (allWitnesses.size() < 2) {
-            errorMessage = "The reading has to be in at least two witnesses";
+            errorMessage = "The reading cannot be split between fewer than two witnesses";
             return false;
         }
 
         return true;
     }
 
-    /**
-     * Gets all witnesses of a reading in all its normal relationships.
-     *
-     * @param originalReading
-     *            the reading to be duplicated
-     * @return the list of witnesses of a reading
-     */
-    private List<String> allWitnessesOfReading(Node originalReading) {
-        List<String> allWitnesses = new LinkedList<>();
-        String[] currentWitnesses;
-        for (Relationship relationship : originalReading
-                .getRelationships(ERelations.SEQUENCE)) {
-            currentWitnesses = (String[]) relationship.getProperty("witnesses");
-            for (String currentWitness : currentWitnesses) {
-                if (!allWitnesses.contains(currentWitness)) {
-                    allWitnesses.add(currentWitness);
-                }
-            }
-        }
-        return allWitnesses;
-    }
 
     /**
      * Performs all necessary steps in the database to duplicate the reading.
@@ -366,21 +355,21 @@ public class Reading {
     private ArrayList<RelationModel> duplicate(List<String> newWitnesses,
                                                Node originalReading, Node addedReading) {
         // copy reading properties to newly added reading
-        addedReading = ReadingService.copyReadingProperties(originalReading, addedReading);
+        ReadingService.copyReadingProperties(originalReading, addedReading);
+        Reading rdgRest = new Reading(String.valueOf(originalReading.getId()));
 
         // add witnesses to the correct sequence links
-        // Incoming
-        for (Relationship originalRelationship : originalReading
-                .getRelationships(ERelations.SEQUENCE, Direction.INCOMING))
-            transferNewWitnessesFromOriginalReadingToAddedReading(
-                            newWitnesses, originalRelationship,
-                            originalRelationship.getStartNode(), addedReading);
-        // Outgoing
-        for (Relationship originalRelationship : originalReading
-                .getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
-            transferNewWitnessesFromOriginalReadingToAddedReading(
-                            newWitnesses, originalRelationship, addedReading,
-                            originalRelationship.getEndNode());
+        for (String wit : newWitnesses) {
+            HashMap<String, String> witness = parseSigil(wit);
+            Node prior = rdgRest.getNeighbourReadingInSequence(wit, Direction.INCOMING);
+            Node next = rdgRest.getNeighbourReadingInSequence(wit, Direction.OUTGOING);
+            try (Transaction tx = db.beginTx()) {
+                ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer"));
+                ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer"));
+                ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"));
+                ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"));
+                tx.success();
+            }
         }
 
         // replicated all colocated relations of the original reading;
@@ -413,74 +402,8 @@ public class Reading {
                 }
             }
         }
-/*  TODO why is this commented out?
-        // see if any of the deleted non-colocations can be safely put back
-        Relation relationRest = new Relation(tradId);
-        ArrayList<RelationModel> removedRelationships = new ArrayList<>();
-        for (RelationModel rm : tempDeleted) {
-            Response result = relationRest.create(rm);
-            if (Status.CREATED.getStatusCode() != result.getStatus())
-                removedRelationships.add(rm);
-        }
-*/
 
-        //return removedRelationships;
         return tempDeleted;
-    }
-
-    /**
-     * Transfers all the new witnesses from the relationships of the original
-     * reading to the relationships of the newly added reading.
-     *
-     * @param newWitnesses
-     *            the witnesses the duplicated reading will belong to
-     * @param originalRel -
-     * @param originNode -
-     * @param targetNode -
-     */
-    private void transferNewWitnessesFromOriginalReadingToAddedReading(
-            List<String> newWitnesses, Relationship originalRel,
-            Node originNode, Node targetNode) {
-        String[] oldWitnesses = (String[]) originalRel.getProperty("witnesses");
-        // if oldWitnesses only contains one witness and this one should be
-        // duplicated, create new relationship for addedReading and delete
-        // the one from the originalReading
-        if (oldWitnesses.length == 1) {
-            if (newWitnesses.contains(oldWitnesses[0])) {
-                Relationship newRel = originNode.createRelationshipTo(targetNode, ERelations.SEQUENCE);
-                newRel.setProperty("witnesses", oldWitnesses);
-                originalRel.delete();
-            }
-            // if oldWitnesses contains more than one witnesses, create new
-            // relationship and add those witnesses which should be duplicated
-        } else {
-            // add only those old witnesses to stayingWitnessess which are
-            // not in newWitnesses
-            ArrayList<String> remainingWitnesses = new ArrayList<>();
-            ArrayList<String> stayingWitnesses = new ArrayList<>();
-            for (String oldWitness : oldWitnesses) {
-                if (newWitnesses.contains(oldWitness)) {
-                    remainingWitnesses.add(oldWitness);
-                } else {
-                    stayingWitnesses.add(oldWitness);
-                }
-            }
-
-            // create new relationship for remaining witnesses if there are any
-            if (!remainingWitnesses.isEmpty()) {
-                Relationship addedRelationship = originNode
-                        .createRelationshipTo(targetNode, ERelations.SEQUENCE);
-                Collections.sort(remainingWitnesses);
-                addedRelationship.setProperty("witnesses", remainingWitnesses.toArray(new String[0]));
-
-                if (stayingWitnesses.isEmpty()) {
-                    originalRel.delete();
-                } else {
-                    Collections.sort(stayingWitnesses);
-                    originalRel.setProperty("witnesses", stayingWitnesses.toArray(new String[0]));
-                }
-            }
-        }
     }
 
     /**
@@ -848,7 +771,7 @@ public class Reading {
         for (int i = 1; i < splitWords.length; i++) {
             Node newReading = db.createNode();
 
-            newReading = ReadingService.copyReadingProperties(lastReading, newReading);
+            ReadingService.copyReadingProperties(lastReading, newReading);
             newReading.setProperty("text", splitWords[i]);
             // Long previousRank = (Long) lastReading.getProperty("rank");
             // newReading.setProperty("rank", previousRank + 1);
@@ -891,32 +814,12 @@ public class Reading {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId) {
-        try (Transaction tx = db.beginTx()) {
-            Node read = db.getNodeById(readId);
-            Node next;
-            Iterable<Relationship> incoming = read.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING);
-            Collection<Relationship> matching = StreamSupport.stream(incoming.spliterator(), false)
-                    .filter(x -> isPathFor(x, witnessId))
-                    .collect(Collectors.toList());
-            if (matching.size() != 1) {
-                errorMessage = matching.isEmpty()
-                        ? "There is no next reading!"
-                        : "There is more than one next reading!";
-                return errorResponse(Status.INTERNAL_SERVER_ERROR);
-            }
-            next = matching.iterator().next().getEndNode();
-            ReadingModel result = new ReadingModel(next);
-            if (result.getIs_end()) {
-                errorMessage = "this was the last reading of this witness";
-                return errorResponse(Status.NOT_FOUND);
-            }
-            tx.success();
-            return Response.ok(result).build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            errorMessage = e.getMessage();
-            return errorResponse(Status.INTERNAL_SERVER_ERROR);
-        }
+        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, Direction.OUTGOING);
+        if (foundNeighbour != null)
+            return Response.ok(new ReadingModel(foundNeighbour)).build();
+        Status errorStatus = errorMessage.contains("this was the last")
+                ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR;
+        return errorResponse(errorStatus);
     }
 
     /**
@@ -936,46 +839,74 @@ public class Reading {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId) {
+        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, Direction.INCOMING);
+        if (foundNeighbour != null)
+            return Response.ok(new ReadingModel(foundNeighbour)).build();
+        Status errorStatus = errorMessage.contains("this was the first")
+                ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR;
+        return errorResponse(errorStatus);
+    }
+
+    // Gets the neighbour reading in the given direction for the given witness. Returns
+    // the relevant ReadingModel, or sets errorMessage and returns null.
+    private Node getNeighbourReadingInSequence(String witnessId, Direction dir) {
+        Node neighbour = null;
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
-            Node prior;
-            Iterable<Relationship> incoming = read.getRelationships(ERelations.SEQUENCE, Direction.INCOMING);
+            String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
+            Iterable<Relationship> incoming = read.getRelationships(ERelations.SEQUENCE, dir);
             Collection<Relationship> matching = StreamSupport.stream(incoming.spliterator(), false)
                     .filter(x -> isPathFor(x, witnessId))
                     .collect(Collectors.toList());
             if (matching.size() != 1) {
                 errorMessage = matching.isEmpty()
-                        ? "There is no next reading!"
-                        : "There is more than one next reading!";
-                return errorResponse(Status.INTERNAL_SERVER_ERROR);
-            }
-            prior = matching.iterator().next().getStartNode();
-            ReadingModel result = new ReadingModel(prior);
-            if (result.getIs_start()) {
-                errorMessage = "this was the first reading of this witness";
-                return errorResponse(Status.NOT_FOUND);
+                        ? "There is no " + dirdisplay + " reading!"
+                        : "There is more than one " + dirdisplay + " reading!";
+            } else {
+                neighbour = matching.iterator().next().getOtherNode(read);
+                ReadingModel result = new ReadingModel(neighbour);
+                if (result.getIs_start() && dir == Direction.INCOMING) {
+                    errorMessage = "this was the first reading for this witness";
+                    neighbour = null;
+                } else if (result.getIs_end() && dir == Direction.OUTGOING) {
+                    errorMessage = "this was the last reading for this witness";
+                    neighbour = null;
+                }
             }
             tx.success();
-            return Response.ok(result).build();
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
-            return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
+        return neighbour;
     }
 
     // Assumes that we are already in a transaction!
     private Boolean isPathFor(Relationship sequence, String sigil) {
-        if (sequence.hasProperty("witnesses")) {
-            String[] wits = (String []) sequence.getProperty("witnesses");
+        HashMap<String, String> parsed = parseSigil(sigil);
+        if (sequence.hasProperty(parsed.get("layer"))) {
+            String[] wits = (String []) sequence.getProperty(parsed.get("layer"));
             for (String wit : wits) {
-                if (wit.equals(sigil))
+                if (wit.equals(parsed.get("sigil")))
                     return true;
             }
         }
         return false;
     }
 
+    // Small utility function for parsing witness sigla
+    private static HashMap<String, String> parseSigil (String sigil) {
+        HashMap<String, String> result = new HashMap<>();
+        String layer = "witnesses";
+        String layerpattern = "^(.*)\\s+\\((.*)\\)";
+        if (sigil.matches(layerpattern)) {
+            layer = sigil.replaceAll(layerpattern, "$2");
+            sigil = sigil.replaceAll(layerpattern, "$1");
+        }
+        result.put("layer", layer);
+        result.put("sigil", sigil);
+        return result;
+    }
     /**
      * Collapse two consecutive readings into one. Texts will be concatenated together
      * (with or without a space or extra text). This call may only be used on consecutive
