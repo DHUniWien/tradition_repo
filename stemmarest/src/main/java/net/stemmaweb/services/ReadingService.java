@@ -214,7 +214,7 @@ public class ReadingService {
             // if (joinString == null) joinString = "";
             witnessAsText.append(joinString);
         }
-        return witnessAsText.toString();
+        return witnessAsText.toString().trim();
     }
 
     /* Custom evaluator for recalculating rank */
