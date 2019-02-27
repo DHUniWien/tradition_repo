@@ -1,12 +1,15 @@
 package net.stemmaweb.services;
 
 import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.RelationType;
+import net.stemmaweb.rest.Tradition;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
 import javax.ws.rs.core.Response;
+import java.util.HashSet;
 
 /**
  * 
@@ -49,11 +52,11 @@ public class RelationService {
         return (RelationTypeModel) rtResult.getEntity();
     }
 
-    public static class RelationTraverse implements Evaluator {
+    public static class TransitiveRelationTraverser implements Evaluator {
         private String tradId;
         private RelationTypeModel rtm;
 
-        public RelationTraverse (String tradId, RelationTypeModel reltypemodel) {
+        public TransitiveRelationTraverser(String tradId, RelationTypeModel reltypemodel) {
             this.tradId = tradId;
             this.rtm = reltypemodel;
         }
@@ -72,6 +75,35 @@ public class RelationService {
             // than our type (lower bindlevel) and if that type is also transitive.
             RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString());
             if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        }
+    }
+
+    public static class ColocationTraverser implements Evaluator {
+        private String tradId;
+        private HashSet<String> colocatedRels;
+
+        public ColocationTraverser(String tradId) {
+            this.tradId = tradId;
+            // Populate the list of colocated relations for this tradition.
+            Tradition tradRest = new Tradition(tradId);
+            for (RelationTypeModel rtm : tradRest.collectRelationTypes())
+                if (rtm.getIs_colocation())
+                    colocatedRels.add(rtm.getName());
+        }
+
+        @Override
+        public Evaluation evaluate(Path path) {
+            if (path.endNode().equals(path.startNode()))
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            // Are we following a sequence link?
+            if (path.lastRelationship().isType(ERelations.SEQUENCE))
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            // Then we are following a relation link.
+            String type = path.lastRelationship().getProperty("type").toString();
+            // Is it one of our colocated relations?
+            if (colocatedRels.contains(type))
                 return Evaluation.INCLUDE_AND_CONTINUE;
             return Evaluation.EXCLUDE_AND_PRUNE;
         }

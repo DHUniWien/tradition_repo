@@ -464,20 +464,19 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationTypeModel>")
     public Response getAllRelationTypes() {
+        List<RelationTypeModel> relTypeList = collectRelationTypes();
+        if (relTypeList == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        return Response.ok(relTypeList).build();
+    }
+
+    public List<RelationTypeModel> collectRelationTypes() {
         ArrayList<RelationTypeModel> relTypeList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-        try (Transaction tx = db.beginTx()) {
-            DatabaseService.getRelated(traditionNode, ERelations.HAS_RELATION_TYPE)
-                    .forEach(x -> relTypeList.add(new RelationTypeModel(x)));
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
-
-        return Response.ok(relTypeList).build();
+        if (traditionNode == null) return null;
+        DatabaseService.getRelated(traditionNode, ERelations.HAS_RELATION_TYPE)
+                .forEach(x -> relTypeList.add(new RelationTypeModel(x)));
+        return relTypeList;
     }
 
     /**

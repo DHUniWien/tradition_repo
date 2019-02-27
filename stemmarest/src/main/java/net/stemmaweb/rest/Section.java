@@ -7,6 +7,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -309,6 +310,32 @@ public class Section {
         return relList;
     }
 
+
+    @GET
+    @Path("/colocated")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.GraphModel")
+    public Response getColocatedClusters() {
+        ArrayList<GraphModel> clusterList = new ArrayList<>();
+        Node startNode = DatabaseService.getStartNode(sectId, db);
+        try (Transaction tx = db.beginTx()) {
+            RelationService.ColocationTraverser ct = new RelationService.ColocationTraverser(tradId);
+            db.traversalDescription().breadthFirst()
+                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(ERelations.RELATED, Direction.BOTH)
+                    .evaluator(ct)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                    .traverse(startNode).iterator().forEachRemaining(
+                            x ->
+            );
+            tx.success();
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+    }
     /**
      * Gets the lemma text for the section, if there is any.
      *

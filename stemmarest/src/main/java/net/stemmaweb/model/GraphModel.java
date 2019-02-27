@@ -7,6 +7,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.neo4j.graphdb.Path;
 
 /**
  * This model contains a graph or subgraph returned from the Neo4j db
@@ -32,6 +33,14 @@ public class GraphModel {
         this.relations = new HashSet<>();
         this.readings.addAll(readings);
         this.relations.addAll(relations);
+    }
+
+    public GraphModel(Path readingRelPath) {
+        super();
+        this.readings = new HashSet<>();
+        this.relations = new HashSet<>();
+        readingRelPath.nodes().forEach(x -> this.readings.add(new ReadingModel(x)));
+        readingRelPath.relationships().forEach(x -> this.relations.add(new RelationModel(x)));
     }
 
     public GraphModel() {
