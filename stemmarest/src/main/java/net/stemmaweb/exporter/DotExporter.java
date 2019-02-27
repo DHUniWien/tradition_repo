@@ -18,6 +18,7 @@ import net.stemmaweb.rest.ERelations;
 
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
+import net.stemmaweb.rest.Reading;
 import net.stemmaweb.services.DatabaseService;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
 import org.neo4j.graphdb.*;
@@ -122,6 +123,40 @@ public class DotExporter
                     subgraphWritten = true;
                 }
 
+                // Pre-process graph: collapse graph to normalised version
+                // (if collated nodes have the same normal_form, then merge)
+                Set<Node> removableNodes = new HashSet<Node>();
+                Reading tempReading = new Reading(Long.toString(sectionStartNode.getId()));
+                for (Node node :  db.traversalDescription().breadthFirst()
+                        .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                        .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
+                        .uniqueness(Uniqueness.NODE_GLOBAL)
+                        .traverse(sectionStartNode)
+                        .nodes()) {
+                            for (Node collatedNode :  db.traversalDescription().breadthFirst()
+                              .relationships(ERelations.COLLATED)
+                              .uniqueness(Uniqueness.NODE_GLOBAL)
+                              .traverse(node)
+                              .nodes()) {
+                                  if ((node == collatedNode) || (! node.hasRelationship(ERelations.COLLATED))) {
+                                      continue;
+                                  }
+                                  if (node.getProperty("normal_form").equals(collatedNode.getProperty("normal_form"))) {
+                                      try {
+                                          tempReading.merge(node, collatedNode, true);
+                                      } catch (Exception e) {
+                                          Response.status(Status.INTERNAL_SERVER_ERROR)
+                                                  .entity("Problem merging nodes: " + e.getMessage())
+                                                  .build();
+                                      }
+                                      removableNodes.add(collatedNode);
+                                  }
+                            }
+                }
+                //now the nodes can be deleted
+                // removableNodes.forEach(t -> t.delete()); --> still triggers some errors (cause: relationships?)
+
+
                 for (Node node :  db.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
@@ -199,7 +234,7 @@ public class DotExporter
         }
 
         // Here is where to generate pictures from the file for debugging.
-        // writeFromDot(output, "svg");
+        //writeFromDot(result);
 
         return Response.ok().entity(result).build();
     }

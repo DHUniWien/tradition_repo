@@ -26,7 +26,7 @@ import static net.stemmaweb.rest.Util.jsonerror;
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
  * http://BASE_URL/reading
- * 
+ *
  * @author PSE FS 2015 Team2
  */
 
@@ -449,7 +449,7 @@ public class Reading {
             }
 
             // Do the deed
-            merge(stayingReading, deletingReading);
+            merge(stayingReading, deletingReading, true);
             // Re-rank nodes if necessary
             if (!samerank) {
                 ReadingService.recalculateRank(aPriorNode);
@@ -529,13 +529,17 @@ public class Reading {
      *            the reading which stays in the database
      * @param deletingReading
      *            the reading which will be deleted from the database
+     * @param postponeDeletion
+     *            if true, the deletion is postponed
      */
-    private void merge(Node stayingReading, Node deletingReading) throws Exception {
+    public void merge(Node stayingReading, Node deletingReading, Boolean postponeDeletion) throws Exception {
         deleteRelationBetweenReadings(stayingReading, deletingReading);
         copyWitnesses(stayingReading, deletingReading, Direction.INCOMING);
         copyWitnesses(stayingReading, deletingReading, Direction.OUTGOING);
         addRelationsToStayingReading(stayingReading, deletingReading);
-        deletingReading.delete();
+        if (!postponeDeletion) {
+            deletingReading.delete();
+        }
     }
 
     /**

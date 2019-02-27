@@ -121,6 +121,7 @@ public class CollateXJsonParser {
             long rank = 1L;
             for (ArrayList<ReadingModel> row : collationTable) {
                 HashMap<String, Node> createdReadings = new HashMap<>();
+                Node lastCollated = null;
                 for (int w = 0; w < row.size(); w++) {
                     ReadingModel rm = row.get(w);
                     String thisWitness = collationWitnesses.get(w);
@@ -146,6 +147,9 @@ public class CollateXJsonParser {
                         thisReading.setProperty("rank", rank);
                         thisReading.setProperty("section_id", parentNode.getId());
                         createdReadings.put(lookupKey, thisReading);
+                        if (lastCollated != null)
+                            lastCollated.createRelationshipTo(thisReading, ERelations.COLLATED);
+                        lastCollated = thisReading;
                     }
                     Node lastReading = lastWitnessReading.get(thisWitness);
                     Relationship seq = Util.getSequenceIfExists(lastReading, thisReading);
