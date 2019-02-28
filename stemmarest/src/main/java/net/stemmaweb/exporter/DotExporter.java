@@ -193,7 +193,7 @@ public class DotExporter
                             relStartNodeId = lastSectionEndId;
 
                         // LATER consider turning this red instead of labelling it
-                        String label = rel.getType().toString().equals("LEMMA_TEXT") ? "(LEMMA)"
+                        String label = rel.getType().toString().equals("LEMMA_TEXT") ? "\"(LEMMA)\""
                                 : sequenceLabel(convertProps(rel), numWits, dm);
                         Long rankDiff = (Long) node.getProperty("rank") - (Long) relStartNode.getProperty("rank");
                         write(relshipText(relStartNodeId, node.getId(), label, edgeId++,
@@ -281,22 +281,30 @@ public class DotExporter
         String[] witnesses = {""};
         StringBuilder lex_str = new StringBuilder();
         String label = null;
+        String siglaString = null;
+        Boolean isHTMLLabel = false;
         // Get the list of witnesses
         if (witnessInfo.containsKey("witnesses")) {
             witnesses = witnessInfo.get("witnesses");
             Arrays.sort(witnesses);
             label = "majority";
+            isHTMLLabel = true;
         }
-        // Join up the list of witnesses if the label should not be 'majority'
-        if (dm.getDisplayAllSigla() || numWits < 7 || witnesses.length <= (numWits / 2)) {
-            Iterator<String> it = Arrays.asList(witnesses).iterator();
-            while (it.hasNext()) {
-                lex_str.append(it.next());
-                if (it.hasNext()) {
-                    lex_str.append(", ");
-                }
+        // Join up the list of witnesses
+
+        Iterator<String> it = Arrays.asList(witnesses).iterator();
+        while (it.hasNext()) {
+            lex_str.append(it.next());
+            if (it.hasNext()) {
+                lex_str.append(", ");
             }
-            label = lex_str.toString();
+        }
+        siglaString = lex_str.toString();
+
+        // the label should not be 'majority'
+        if (dm.getDisplayAllSigla() || numWits < 7 || witnesses.length <= (numWits / 2)) {
+                isHTMLLabel = false;
+                label = siglaString;
         }
         // Add on the layer witnesses where applicable
         lex_str = new StringBuilder();
@@ -315,7 +323,12 @@ public class DotExporter
             }
         }
         label = lex_str.toString();
-
+        if (isHTMLLabel) {
+            label = "<font POINT-SIZE=\"10\" color=\"lightgrey\">" + siglaString + "</font><BR/>" + label;
+            label = String.format("<%s>", label);
+        } else {
+            label = String.format("\"%s\"", label);
+        }
         return(label);
     }
 
@@ -331,8 +344,8 @@ public class DotExporter
     {
         String text;
         try {
-            text = "\t" + sNodeId + "->" + eNodeId + " [label=\"" + label
-                    + "\", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
+            text = "\t" + sNodeId + "->" + eNodeId + " [label=" + label
+                    + ", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
             text += "];\n";
