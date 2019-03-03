@@ -24,7 +24,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.services.RelationService.returnRelationType;
-import static net.stemmaweb.services.RelationService.RelationTraverse;
+import static net.stemmaweb.services.RelationService.TransitiveRelationTraverser;
 
 /**
  * Comprises all the api calls related to a relation.
@@ -327,7 +327,7 @@ public class Relation {
         // Now go through all the relations that have been created, and make sure that any
         // transitivity effects have been accounted for.
         for (RelationModel rm : newRelationResult.getRelations()) {
-            RelationTraverse relTraverser = new RelationTraverse(tradId, rtm);
+            TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tradId, rtm);
             Node startNode = db.getNodeById(Long.valueOf(rm.getSource()));
             ArrayList<Node> relatedNodes = new ArrayList<>();
             // Get all the readings that are related by this or a more closely-bound type.

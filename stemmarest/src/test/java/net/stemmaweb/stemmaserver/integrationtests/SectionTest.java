@@ -191,28 +191,33 @@ public class SectionTest extends TestCase {
         assertEquals(46, tReadings.size());
     }
 
-    private String importFlorilegium () {
+    private List<String> importFlorilegium () {
+        List<String> florIds = new ArrayList<>();
         ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
                     "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
         assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         String florId = Util.getValueFromJson(jerseyResult, "tradId");
+        florIds.add(florId);
         // Get the existing single section ID
-        SectionModel firstSection = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+        SectionModel firstSection = jerseyTest.resource().path("/tradition/" + florId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {}).get(0);
         assertNotNull(firstSection);
+        florIds.add(firstSection.getId());
 
         // Add the other three sections
         int i = 0;
         while (i < 3) {
             String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
-            Util.addSectionToTradition(jerseyTest, florId, fileName, "csv", String.format("part %d", i));
+            jerseyResult = Util.addSectionToTradition(jerseyTest, florId, fileName, "csv", String.format("part %d", i));
+            florIds.add(Util.getValueFromJson(jerseyResult, "parentId"));
         }
-        return florId;
+        return florIds;
     }
 
     // test ordering of sections
     public void testSectionOrdering() {
-        String florId = importFlorilegium();
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
         // Test that we get the sections back in the correct order
         List<SectionModel> returnedSections = jerseyTest.resource()
                 .path("/tradition/" + florId + "/sections")
@@ -241,12 +246,10 @@ public class SectionTest extends TestCase {
     }
 
     public void testDeleteSectionMiddle() {
-        String florId = importFlorilegium();
-        List<SectionModel> returnedSections = jerseyTest.resource()
-                .path("/tradition/" + florId + "/sections")
-                .get(new GenericType<List<SectionModel>>() {});
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
         ClientResponse jerseyResult = jerseyTest.resource()
-                .path("/tradition/" + florId + "/section/" + returnedSections.get(1).getId())
+                .path("/tradition/" + florId + "/section/" + florIds.get(1))
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
@@ -266,12 +269,10 @@ public class SectionTest extends TestCase {
     }
 
     public void testReorderSections() {
-        String florId = importFlorilegium();
-        List<SectionModel> returnedSections = jerseyTest.resource()
-                .path("/tradition/" + florId + "/sections")
-                .get(new GenericType<List<SectionModel>>() {});
-        String reorderPath = "/section/" + returnedSections.get(1).getId()
-                + "/orderAfter/" + returnedSections.get(2).getId();
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
+        String reorderPath = "/section/" + florIds.get(1)
+                + "/orderAfter/" + florIds.get(2);
         String bBefore = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
                 "χρονίζει, πλείονα τὴν σῆψιν ἐργάζεται. βέλτιον γὰρ οἴκοι μένοντα σχολάζειν διηνεκῶς τῇ προσευχῇ, ἢ " +
                 "διὰ τοῦ τιμᾶν τὰς ἑορτὰς πάρεργον γίνεσθαι τῶν ἐχθρῶν Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, " +
@@ -285,7 +286,7 @@ public class SectionTest extends TestCase {
         assertEquals(bBefore, _section_reorder_sequence(florId, reorderPath));
 
         // Now try reordering a section to be first
-        String moveFirstPath = "/section/" + returnedSections.get(3).getId() + "/orderAfter/none";
+        String moveFirstPath = "/section/" + florIds.get(3) + "/orderAfter/none";
         String bAfter = "τοῦ Χρυσοστόμου Τοὺς ἐν τῇ πόλει βλασφημοῦντας, σωφρόνιζε. Κἂν ἀκούσῃς τινὸς ἐν ἀμφόδῳ ἢ ἐν " +
                 "ὁδῶ ἢ ἐν ἀγορᾷ βλασφημοῦντος τὸν Θεόν, πρόσελθε, ἐπιτίμησον, κἂν πληγὰς ἐπιθεῖναι δέῃ, μὴ παραιτήσῃ " +
                 "ῥάπισον αὐτοῦ τὴν ὄψιν, σύντριψον αὐτοῦ τὸ στόμα, ἁγίασόν σου τὴν χεῖρα διὰ τῆς πληγῆς, κἂν " +
@@ -316,7 +317,8 @@ public class SectionTest extends TestCase {
     }
 
     public void testSectionWrongTradition () {
-        String florId = importFlorilegium();
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
                 "src/TestFiles/lf2.xml", "stemmaweb", "section 2"), "parentId");
         ClientResponse jerseyResult = jerseyTest.resource()
@@ -326,11 +328,9 @@ public class SectionTest extends TestCase {
     }
 
     public void testSectionOrderAfterSelf () {
-        String florId = importFlorilegium();
-        List<SectionModel> returnedSections = jerseyTest.resource()
-                .path("/tradition/" + florId + "/sections")
-                .get(new GenericType<List<SectionModel>>() {});
-        String tryReorder = returnedSections.get(2).getId();
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
+        String tryReorder = florIds.get(2);
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + florId + "/section/" + tryReorder + "/orderAfter/" + tryReorder)
                 .put(ClientResponse.class);
@@ -340,15 +340,13 @@ public class SectionTest extends TestCase {
     }
 
     public void testMergeSections() {
-        String florId = importFlorilegium();
-        List<SectionModel> returnedSections = jerseyTest.resource()
-                .path("/tradition/" + florId + "/sections")
-                .get(new GenericType<List<SectionModel>>() {});
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
 
         // Try merge of 3 into 4
-        String targetSection = returnedSections.get(2).getId();
+        String targetSection = florIds.get(2);
         String requestPath = "/tradition/" + florId + "/section/" + targetSection
-                + "/merge/" + returnedSections.get(3).getId();
+                + "/merge/" + florIds.get(3);
         ClientResponse jerseyResponse = jerseyTest.resource()
                 .path(requestPath).post(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
@@ -382,15 +380,15 @@ public class SectionTest extends TestCase {
         assertEquals(dText, witFragment);
 
         // Now try merge of 1 into 3, which should fail
-        requestPath = "/tradition/" + florId + "/section/" + returnedSections.get(0).getId()
+        requestPath = "/tradition/" + florId + "/section/" + florIds.get(0)
                 + "/merge/" + targetSection;
         jerseyResponse = jerseyTest.resource()
                 .path(requestPath).post(ClientResponse.class);
         assertEquals(ClientResponse.Status.BAD_REQUEST.getStatusCode(), jerseyResponse.getStatus());
 
         // Now try merge of 2 into 1
-        targetSection = returnedSections.get(0).getId();
-        requestPath = "/tradition/" + florId + "/section/" + returnedSections.get(1).getId() + "/merge/" + targetSection;
+        targetSection = florIds.get(0);
+        requestPath = "/tradition/" + florId + "/section/" + florIds.get(1) + "/merge/" + targetSection;
         jerseyResponse = jerseyTest.resource().path(requestPath).post(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         assertEquals(2, jerseyTest.resource()
@@ -432,13 +430,13 @@ public class SectionTest extends TestCase {
     // Test merge of tradition sections with layered readings
 
     public void testSplitSection() {
-        String florId = importFlorilegium();
-        List<SectionModel> returnedSections = jerseyTest.resource()
-                .path("/tradition/" + florId + "/sections")
-                .get(new GenericType<List<SectionModel>>() {});
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
 
-        SectionModel origSection = returnedSections.get(1);
-        String targetSectionId = origSection.getId();
+        String targetSectionId = florIds.get(1);
+        SectionModel origSection = jerseyTest.resource()
+                .path("/tradition/" + florId + "/section/" + targetSectionId)
+                .get(SectionModel.class);
 
         // Get the reading to split at
         ReadingModel targetReading = jerseyTest.resource()
@@ -518,11 +516,15 @@ public class SectionTest extends TestCase {
         List<ReadingModel> part1rdgs = jerseyTest.resource()
                 .path("/tradition/" + florId + "/section/" + targetSectionId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        ReadingModel firstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        Optional<ReadingModel> oFirstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst();
+        assertTrue(oFirstEnd.isPresent());
+        ReadingModel firstEnd = oFirstEnd.get();
         assertEquals(targetReading.getRank(), firstEnd.getRank());
 
         // Check that the second half's end rank is correct
-        ReadingModel secondEnd = part2rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        Optional<ReadingModel> oSecondEnd = part2rdgs.stream().filter(ReadingModel::getIs_end).findFirst();
+        assertTrue(oSecondEnd.isPresent());
+        ReadingModel secondEnd = oSecondEnd.get();
         assertEquals(Long.valueOf(origSection.getEndRank() - targetReading.getRank() + 1), secondEnd.getRank());
 
         // Check that the final nodes are all connected to END
@@ -644,13 +646,21 @@ public class SectionTest extends TestCase {
         return cnt;
     }
 
-    public void testSectionDotOutput() {
-        String florId = importFlorilegium();
-        List<SectionModel> returnedSections = jerseyTest.resource()
-                .path("/tradition/" + florId + "/sections")
+    public void testRelatedClusters() {
+        List<SectionModel> tradSections = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, tradSections.size());
+        List<List<ReadingModel>> pathClusters = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + tradSections.get(0).getId() + "/colocated")
+                .get(new GenericType<List<List<ReadingModel>>>() {});
+        assertEquals(5, pathClusters.size());
+    }
 
-        String targetSection = returnedSections.get(3).getId();
+    public void testSectionDotOutput() {
+        List<String> florIds = importFlorilegium();
+        String florId = florIds.remove(0);
+        String targetSection = florIds.get(3);
 
         String getDot = "/tradition/" + florId + "/dot";
         ClientResponse jerseyResult = jerseyTest.resource()
@@ -680,7 +690,7 @@ public class SectionTest extends TestCase {
             tx.success();
         }
 
-        String getSectionDot = "/tradition/" + florId + "/section/" + returnedSections.get(2).getId() + "/dot";
+        String getSectionDot = "/tradition/" + florId + "/section/" + florIds.get(2) + "/dot";
         jerseyResult = jerseyTest.resource()
                 .path(getSectionDot)
                 .queryParam("expand_sigla", "true")
@@ -859,10 +869,6 @@ public class SectionTest extends TestCase {
         lemmaText = jerseyResult.getEntity(String.class);
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
                 "cultum magis illustrabatur jugiter informabatur Sanctus autem.", lemmaText);
-
-    }
-
-    public void testSetLemmaText() {
 
     }
 

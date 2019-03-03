@@ -73,7 +73,7 @@ public class AlignmentModel {
             HashMap<Node, Node> conflatedReadings = new HashMap<>();
             for (String conflate : conflateRelations) {
                 RelationTypeModel crtm = RelationService.returnRelationType(tradId, conflate);
-                RelationService.RelationTraverse reltraverser = new RelationService.RelationTraverse(tradId, crtm);
+                RelationService.TransitiveRelationTraverser reltraverser = new RelationService.TransitiveRelationTraverser(tradId, crtm);
                 traversedTradition.nodes().forEach(x -> {  // For each reading node in the section...
                     // If it isn't represented by anyone else yet, it's represented by itself
                     if (!conflatedReadings.containsKey(x)) conflatedReadings.put(x, x);
