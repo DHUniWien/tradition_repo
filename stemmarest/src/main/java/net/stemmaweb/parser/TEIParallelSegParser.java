@@ -61,9 +61,9 @@ public class TEIParallelSegParser {
             startNode = Util.createStartNode(parentNode);
 
             // State variables
-            Boolean inHeader = false;
-            Boolean inText = false;
-            Boolean skip = false;
+            boolean inHeader = false;
+            boolean inText = false;
+            boolean skip = false;
             // Keep track of the chain of nodes from a particular stream of text
             ArrayList<Node> chain;
             // Keep track of the witnesses represented in a particular reading
@@ -188,8 +188,9 @@ public class TEIParallelSegParser {
         }
 
         // Merge all mergeable readings, to get rid of duplicates across apparatus entries.
-        Long endRank;
+        long endRank;
         try (Transaction tx = db.beginTx()) {
+            assert(endNode != null);
             endRank = Long.valueOf(endNode.getProperty("rank").toString());
             tx.success();
         } catch (Exception e) {
@@ -223,7 +224,7 @@ public class TEIParallelSegParser {
         Node appEnd = createPlaceholderNode("END_" + appId);
 
         // Set up our state variables
-        Boolean skip = false;
+        boolean skip = false;
         ArrayList<String> readingWitnesses = new ArrayList<>();
         Node readingEnd = null;
         // Keep track of the last node from either an app or a common reading
@@ -281,6 +282,7 @@ public class TEIParallelSegParser {
                             case "rdg":
                             case "lem":
                                 // Hook up the end of the reading to the end of the app
+                                assert(readingEnd != null);
                                 Relationship el = readingEnd.createRelationshipTo(appEnd, ERelations.SEQUENCE);
                                 el.setProperty(witClass, readingWitnesses.toArray(new String[0]));
                                 // Clear some state variables
@@ -348,8 +350,9 @@ public class TEIParallelSegParser {
                             chain = makeReadingChain(reader, sectId, readingWitnesses, witClass);
                             if (chain.size() > 0) {
                                 // Attach the chain to the reading start; error if there is no reading start
+                                assert(readingEnd != null);
                                 Relationship link = readingEnd.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
-                                link.setProperty("witnesses", readingWitnesses.toArray(new String[0]));
+                                link.setProperty(witClass, readingWitnesses.toArray(new String[0]));
                                 // Set the reading end to be the end of the chain
                                 readingEnd = chain.get(chain.size()-1);
                             }
@@ -371,7 +374,7 @@ public class TEIParallelSegParser {
         String[] words = reader.getText().split("\\s");
 
         // If the first word is all punctuation, set join_prior on it
-        Boolean join_prior = words[0].matches("^\\p{Punct}+$");
+        boolean join_prior = words[0].matches("^\\p{Punct}+$");
 
         // Make the chain of readings with the remaining words
         ArrayList<Node> chain = new ArrayList<>();

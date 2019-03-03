@@ -111,8 +111,13 @@ public class ReadingService {
             String[] witList = (String[]) link.getProperty(witClass);
             HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
             currentWits.remove(sigil);
-            if (currentWits.isEmpty())
-                link.delete();
+            // Was this the last witness for the given class?
+            if (currentWits.isEmpty()) {
+                link.removeProperty(witClass);
+                // Was this the last witness class for the given link?
+                if (link.getAllProperties().size() == 0)
+                    link.delete();
+            }
             else
                 link.setProperty(witClass, currentWits.toArray(new String[0]));
         }
