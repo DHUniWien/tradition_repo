@@ -222,40 +222,38 @@ public class ReadingService {
         return witnessAsText.toString().trim();
     }
 
-    /* Custom evaluator for recalculating rank */
-    private static HashSet<Node> colocatedReadings (Node reading) {
-        HashSet<Node> colocated = new HashSet<>();
-        HashSet<Node> checked = new HashSet<>();
-        GraphDatabaseService db = reading.getGraphDatabase();
-        colocated.add(reading);
-        try (Transaction tx = db.beginTx()) {
-            List<Node> tocheck = new ArrayList<>(colocated);
-            while (tocheck.size() > 0) {
-                Node thisNode = tocheck.get(0);
-                checked.add(thisNode);
-                for (Relationship rel : thisNode.getRelationships(ERelations.RELATED, Direction.BOTH)) {
-                    if (!(rel.hasProperty("colocation") && rel.getProperty("colocation").equals(true))) continue;
-
-                    Node relNode = rel.getOtherNode(thisNode);
-                    colocated.add(relNode);
-                }
-                tocheck = colocated.stream().filter(x -> !checked.contains(x)).collect(Collectors.toList());
-            }
-            tx.success();
-        }
-        colocated.remove(reading);
-        return colocated;
-    }
-
     /* Custom evaluator and traverser that modifies reading rank as it goes */
 
     private static class RankCalcEvaluate implements Evaluator {
 
         HashSet<Node> visited = new HashSet<>();
+        Map<Long, Set<Node>> colocatedNodes = new HashMap<>();
+        Long initialRank = 0L;
+
+        // Constructor - we need to know where we are starting so we can build our list of
+        // equivalences and find our starting point.
+        RankCalcEvaluate(Node startNode) {
+            // Get the list of colocated nodes in this section.
+            GraphDatabaseService db = startNode.getGraphDatabase();
+            String sectionId = String.valueOf(startNode.getProperty("section_id"));
+            String tradId = db.getNodeById(Long.valueOf(sectionId))
+                    .getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
+                    .getProperty("id").toString();
+            List<Set<Node>> clusters = RelationService.getClusters(sectionId, tradId, startNode.getGraphDatabase());
+            assert(clusters != null);
+            for (Set<Node> cluster : clusters)
+                for (Node n : cluster)
+                    colocatedNodes.put(n.getId(), cluster);
+            // Figure out what the initial rank needs to be for this starting node - the max of prior node ranks
+            startNode.getRelationships(ERelations.SEQUENCE, Direction.INCOMING).forEach(x -> {
+                Long r = (Long) x.getStartNode().getProperty("rank", 0L);
+                if (r >= initialRank) initialRank = r+1;
+            });
+        }
 
         @Override
         public Evaluation evaluate(Path path) {
-            // Get the last node on the path and see if its rank needs to be changed
+            // Get the last node on the path and see if all its parents have been ranked yet
             Node thisNode = path.endNode();
             Long thisRank = (Long) thisNode.getProperty("rank");
             Long minRank;
@@ -271,7 +269,7 @@ public class ReadingService {
                 minRank = (Long) path.lastRelationship().getStartNode().getProperty("rank") + 1;
 
             // The rank must also be max of colocated readings that have been visited
-            HashSet<Node> colocated = colocatedReadings(thisNode);
+            Set<Node> colocated = colocatedNodes.get(thisNode.getId());
             if (colocated.size() > 0) {
                 // maxRank is the highest rank of all the nodes so far visited, and should be adjusted
                 // for all colocated nodes
@@ -303,7 +301,7 @@ public class ReadingService {
      * @return list of nodes whose ranks were changed
      */
     public static List<Node> recalculateRank (Node startNode) {
-        RankCalcEvaluate e = new RankCalcEvaluate();
+        RankCalcEvaluate e = new RankCalcEvaluate(startNode);
         AlignmentTraverse a = new AlignmentTraverse();
         GraphDatabaseService db = startNode.getGraphDatabase();
         ResourceIterable<Node> changed = db.traversalDescription().breadthFirst()
@@ -311,6 +309,20 @@ public class ReadingService {
                 .evaluator(e)
                 .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                 .traverse(startNode).nodes();
+        // Test that our colocated groups are actually colocated
+        Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
+        String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
+        List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db);
+        assert(clusters != null);
+        for (Set<Node> cluster : clusters) {
+            Long clusterRank = null;
+            for (Node n : cluster) {
+                if (clusterRank == null)
+                    clusterRank = (Long) n.getProperty("rank");
+                else
+                    assert(clusterRank.equals(n.getProperty("rank")));
+            }
+        }
         return changed.stream().collect(Collectors.toList());
     }
 
