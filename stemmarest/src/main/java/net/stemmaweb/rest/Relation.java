@@ -261,7 +261,7 @@ public class Relation {
      * @return a GraphModel containing the single n4j relationship plus whatever readings were re-ranked
      */
     private GraphModel createSingleRelation(Node readingA, Node readingB,
-                                            RelationModel relModel, RelationTypeModel rtm) {
+                                            RelationModel relModel, RelationTypeModel rtm) throws Exception {
         ArrayList<ReadingModel> changedReadings = new ArrayList<>();
         ArrayList<RelationModel> createdRelations = new ArrayList<>();
 
@@ -321,7 +321,7 @@ public class Relation {
      * @param newRelationResult - the GraphModel that contains a relation just created
      * @param rtm - the relation type specification
      */
-    private void propagateRelation(GraphModel newRelationResult, RelationTypeModel rtm) {
+    private void propagateRelation(GraphModel newRelationResult, RelationTypeModel rtm) throws Exception {
         // First see if this relation type should be propagated.
         if (!rtm.getIs_transitive()) return;
         // Now go through all the relations that have been created, and make sure that any

@@ -316,9 +316,12 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getColocatedClusters() {
-        List<Set<Node>> clusterList = RelationService.getClusters(tradId, sectId, db);
-        if (clusterList == null)
-            return Response.serverError().entity("Something went wrong; see logs").build();
+        List<Set<Node>> clusterList;
+        try {
+            clusterList = RelationService.getClusters(tradId, sectId, db);
+        } catch (Exception e) {
+            return Response.serverError().entity(e.getMessage()).build();
+        }
         List<List<ReadingModel>> result = new ArrayList<>();
         for (Set<Node> cluster : clusterList) {
             List<ReadingModel> clusterModel = new ArrayList<>();
@@ -542,14 +545,14 @@ public class Section {
             newEnd.setProperty("is_end", true);
             newEnd.setProperty("text", "#END#");
             newEnd.setProperty("rank", rank);
-            newEnd.setProperty("section", Long.valueOf(sectId));
+            newEnd.setProperty("section_id", Long.valueOf(sectId));
             thisSection.createRelationshipTo(newEnd, ERelations.HAS_END);
 
             Node newStart = db.createNode(Nodes.READING);
             newStart.setProperty("is_start", true);
             newStart.setProperty("text", "#START#");
             newStart.setProperty("rank", 0L);
-            newStart.setProperty("section", newSection.getId());
+            newStart.setProperty("section_id", newSection.getId());
             newSection.createRelationshipTo(newStart, ERelations.COLLATION);
 
             // Reattach the readings to their respective new end/start nodes
@@ -565,7 +568,7 @@ public class Section {
 
             // Collect all readings from the second section and alter their section metadata
             final Long newId = newSection.getId();
-            db.traversalDescription().depthFirst().expand(new AlignmentTraverse())
+            db.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
                     .stream().forEach(x -> {
                         x.setProperty("section_id", newId);
@@ -634,7 +637,7 @@ public class Section {
 
             // Collect all readings from the second section and alter their section metadata
             final Long keptId = firstSection.getId();
-            db.traversalDescription().depthFirst().expand(new AlignmentTraverse())
+            db.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes()
                     .stream().forEach(x -> x.setProperty("section_id", keptId));
 
@@ -748,8 +751,8 @@ public class Section {
      * @param questionedReadings -
      * @return list of lists of identical readings
      */
-    private List<List<ReadingModel>> getCouldBeIdenticalAsList(
-            List<Node> questionedReadings) {
+    private List<List<ReadingModel>> getCouldBeIdenticalAsList (
+            List<Node> questionedReadings) throws Exception {
 
         List<List<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
         HashSet<Long> processed = new HashSet<>();
@@ -776,9 +779,9 @@ public class Section {
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
-    private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) {
+    private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) throws Exception {
         List<Node> readings;
-        PathExpander e = new AlignmentTraverse();
+        PathExpander e = new AlignmentTraverse(startNode);
         try (Transaction tx = db.beginTx()) {
             readings = db.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
@@ -840,7 +843,7 @@ public class Section {
 
     // Retrieve all readings of a tradition between two ranks as ReadingModels
     private ArrayList<ReadingModel> getAllReadingsFromSectionBetweenRanks(
-            Node startNode, long startRank, long endRank) {
+            Node startNode, long startRank, long endRank) throws Exception {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         getReadingsBetweenRanks(startRank, endRank, startNode)
                 .forEach(x -> readingModels.add(new ReadingModel(x)));

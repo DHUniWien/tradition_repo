@@ -1,6 +1,7 @@
 package net.stemmaweb.services;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -226,70 +227,69 @@ public class ReadingService {
 
     private static class RankCalcEvaluate implements Evaluator {
 
-        HashSet<Node> visited = new HashSet<>();
-        Map<Long, Set<Node>> colocatedNodes = new HashMap<>();
-        Long initialRank = 0L;
+        Map<Long, Set<Node>> colocatedNodes;
 
         // Constructor - we need to know where we are starting so we can build our list of
-        // equivalences and find our starting point.
-        RankCalcEvaluate(Node startNode) {
+        // equivalences and find our starting point. Throws an exception if we can't get
+        // the related-reading clusters.
+        RankCalcEvaluate(Node startNode) throws Exception {
             // Get the list of colocated nodes in this section.
             GraphDatabaseService db = startNode.getGraphDatabase();
             String sectionId = String.valueOf(startNode.getProperty("section_id"));
             String tradId = db.getNodeById(Long.valueOf(sectionId))
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
                     .getProperty("id").toString();
-            List<Set<Node>> clusters = RelationService.getClusters(sectionId, tradId, startNode.getGraphDatabase());
-            assert(clusters != null);
-            for (Set<Node> cluster : clusters)
-                for (Node n : cluster)
-                    colocatedNodes.put(n.getId(), cluster);
-            // Figure out what the initial rank needs to be for this starting node - the max of prior node ranks
-            startNode.getRelationships(ERelations.SEQUENCE, Direction.INCOMING).forEach(x -> {
-                Long r = (Long) x.getStartNode().getProperty("rank", 0L);
-                if (r >= initialRank) initialRank = r+1;
-            });
+            colocatedNodes = buildColocationLookup(sectionId, tradId, startNode.getGraphDatabase());
         }
 
         @Override
         public Evaluation evaluate(Path path) {
-            // Get the last node on the path and see if all its parents have been ranked yet
+            // Get the last node on the path, check if its parents are ranked yet, and
+            // delete its rank if it is wrong
             Node thisNode = path.endNode();
-            Long thisRank = (Long) thisNode.getProperty("rank");
-            Long minRank;
+            Long maxParentRank = maxParentRank(thisNode);
+            // If this is the first node in the sequence, then maxParentRank had better not
+            // be null. This should also work for the #START# node.
+            assert path.lastRelationship() != null || (maxParentRank != null);
 
-            // If we are here from a sequence relationship, note what our minimum rank must be
-            visited.add(thisNode);
-            if (path.lastRelationship() == null)
-                return Evaluation.EXCLUDE_AND_CONTINUE;
-            else if (path.lastRelationship().getType().toString().equals("RELATED")
-                    && visited.contains(path.lastRelationship().getStartNode()))
-                minRank = (Long) path.lastRelationship().getStartNode().getProperty("rank");
-            else
-                minRank = (Long) path.lastRelationship().getStartNode().getProperty("rank") + 1;
+            // If maxParentRank is null, we remove our rank and stop calculating from here
+            if (maxParentRank == null) {
+                thisNode.removeProperty("rank");
+                return Evaluation.EXCLUDE_AND_PRUNE;
+            }
+            // If maxParentRank is our rank - 1, we stop calcuating from here
+            if (thisNode.hasProperty("rank")
+                    && thisNode.getProperty("rank").equals(maxParentRank + 1))
+                return Evaluation.EXCLUDE_AND_PRUNE;
 
-            // The rank must also be max of colocated readings that have been visited
-            Set<Node> colocated = colocatedNodes.get(thisNode.getId());
-            if (colocated.size() > 0) {
-                // maxRank is the highest rank of all the nodes so far visited, and should be adjusted
-                // for all colocated nodes
-                Long maxRank;
-                List<Long> l = colocated.stream().filter(x -> visited.contains(x))
-                        .map(x -> (Long) x.getProperty("rank")).collect(Collectors.toList());
-                maxRank = l.isEmpty() ? minRank : Collections.max(l);
+            // Otherwise we set the rank and continue.
+            thisNode.setProperty("rank", maxParentRank + 1);
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        }
 
-                if (maxRank > minRank) {
-                    minRank = maxRank;
-                    final long mr = minRank;
-                    colocated.forEach(x -> x.setProperty("rank", mr));
+        private Long maxParentRank (Node candidate) {
+            // Returns true if the parents of this node, and of all its colocated nodes,
+            // already have a rank.
+            Set<Node> toCheck;
+            Long maxRankFound = -1L;
+            if (colocatedNodes.containsKey(candidate.getId())) {
+                toCheck = colocatedNodes.get(candidate.getId());
+            } else {
+                toCheck = new HashSet<>();
+                toCheck.add(candidate);
+            }
+            for (Node n : toCheck) {
+                ArrayList<Node> parents = new ArrayList<>();
+                n.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)
+                        .forEach(x -> parents.add(x.getStartNode()));
+                for (Node p: parents) {
+                    if (!p.hasProperty("rank"))
+                        return null;
+                    Long thisRank = (Long) p.getProperty("rank");
+                    maxRankFound = thisRank > maxRankFound ? thisRank : maxRankFound;
                 }
             }
-            if (thisRank.equals(minRank))
-                return Evaluation.EXCLUDE_AND_PRUNE;
-            else {
-                thisNode.setProperty("rank", minRank);
-                return Evaluation.INCLUDE_AND_CONTINUE;
-            }
+            return maxRankFound;
         }
     }
 
@@ -299,17 +299,19 @@ public class ReadingService {
      *
      * @param startNode - the reading from which to begin the recalculation
      * @return list of nodes whose ranks were changed
+     * @throws Exception, if the RankCalcEvaluate initialisation fails
      */
-    public static List<Node> recalculateRank (Node startNode) {
+
+    public static List<Node> recalculateRank (Node startNode) throws Exception {
         RankCalcEvaluate e = new RankCalcEvaluate(startNode);
-        AlignmentTraverse a = new AlignmentTraverse();
+        AlignmentTraverse a = new AlignmentTraverse(startNode);
         GraphDatabaseService db = startNode.getGraphDatabase();
         ResourceIterable<Node> changed = db.traversalDescription().breadthFirst()
                 .expand(a)
                 .evaluator(e)
                 .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                 .traverse(startNode).nodes();
-        // Test that our colocated groups are actually colocated
+        // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
         String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
         List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db);
@@ -323,7 +325,66 @@ public class ReadingService {
                     assert(clusterRank.equals(n.getProperty("rank")));
             }
         }
+        // END TEMPORARY
         return changed.stream().collect(Collectors.toList());
+    }
+
+    /**
+     * A traversal expander for crawling an alignment, which includes sequence paths
+     * as well as colocated relation paths.
+     *
+     */
+    public static class AlignmentTraverse implements PathExpander {
+
+        private Relationship excludeRel = null;
+        private HashSet<String> includeRelationTypes = new HashSet<>();
+
+        // Walk the graph of sequences only
+        AlignmentTraverse() {}
+
+        // Walk the graph of sequences and colocated relations
+        public AlignmentTraverse(Node referenceNode) throws Exception {
+            // Get the colocated types for this node's tradition
+            List<RelationTypeModel> rtms = RelationService.ourRelationTypes(referenceNode);
+            for (RelationTypeModel rtm : rtms)
+                if (rtm.getIs_colocation())
+                    includeRelationTypes.add(rtm.getName());
+        }
+
+        @Override
+        public Iterable<Relationship> expand(Path path, BranchState state) {
+            return expansion(path, Direction.OUTGOING);
+        }
+
+        @Override
+        public PathExpander reverse() {
+            return new PathExpander() {
+                PathExpander parent = this;
+                @Override
+                public Iterable<Relationship> expand(Path path, BranchState branchState) {
+                    return expansion(path, Direction.INCOMING);
+                }
+
+                @Override
+                public PathExpander reverse() {
+                    return parent;
+                }
+            };
+        }
+
+        private Iterable<Relationship> expansion(Path path, Direction dir) {
+            ArrayList<Relationship> relevantRelations = new ArrayList<>();
+            // Get the sequence relationships
+            for (Relationship relationship : path.endNode()
+                    .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT))
+                relevantRelations.add(relationship);
+            // Get the alignment relationships and filter them
+            for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
+                if (includeRelationTypes.contains(r.getProperty("type").toString()) && !r.equals(excludeRel))
+                    relevantRelations.add(r);
+            }
+            return relevantRelations;
+        }
     }
 
     /* Custom evaluation and expander for checking alignment traversals */
@@ -350,50 +411,6 @@ public class ReadingService {
         }
     }
 
-    public static class AlignmentTraverse implements PathExpander {
-
-        private Relationship excludeRel = null;
-
-        public AlignmentTraverse() {}
-        AlignmentTraverse(Relationship excludeRel) { this.excludeRel = excludeRel; }
-
-        @Override
-        public Iterable<Relationship> expand(Path path, BranchState state) {
-            return expansion(path, Direction.OUTGOING);
-        }
-
-        @Override
-        public PathExpander reverse() {
-            return new PathExpander() {
-                @Override
-                public Iterable<Relationship> expand(Path path, BranchState branchState) {
-                    return expansion(path, Direction.INCOMING);
-                }
-
-                @Override
-                public PathExpander reverse() {
-                    return new AlignmentTraverse();
-                }
-            };
-        }
-
-        private Iterable<Relationship> expansion(Path path, Direction dir) {
-            ArrayList<Relationship> relevantRelations = new ArrayList<>();
-            // Get the sequence relationships
-            for (Relationship relationship : path.endNode()
-                    .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT))
-                relevantRelations.add(relationship);
-            // Get the alignment relationships and filter them
-            for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
-                if (!r.equals(excludeRel) && r.hasProperty("colocation") &&
-                        r.getProperty("colocation").equals(true)) {
-                    relevantRelations.add(r);
-                }
-            }
-            return relevantRelations;
-        }
-    }
-
     /**
      * Checks if both readings can be found in the same path through the
      * tradition. If yes when merging these nodes the graph would get cyclic.
@@ -403,40 +420,56 @@ public class ReadingService {
      * @param secondReading - the node with which to merge it
      * @return - true or false
      */
-    public static boolean wouldGetCyclic(Node firstReading,
-                                         Node secondReading) {
+    public static boolean wouldGetCyclic(Node firstReading, Node secondReading) throws Exception {
         GraphDatabaseService db = firstReading.getGraphDatabase();
-        Node lowerRankReading, higherRankReading;
-        if ((Long) firstReading.getProperty("rank") < (Long) secondReading.getProperty("rank")) {
-            lowerRankReading = firstReading;
-            higherRankReading = secondReading;
-        } else {
-            lowerRankReading = secondReading;
-            higherRankReading = firstReading;
-        }
+        // Get our list of colocations
+        Node sectionNode = db.getNodeById(Long.valueOf(firstReading.getProperty("section_id").toString()));
+        Node traditionNode = DatabaseService.getTraditionNode(sectionNode, db);
+        Map<Long, Set<Node>> colocatedLookup = buildColocationLookup(
+                traditionNode.getProperty("id").toString(), String.valueOf(sectionNode.getId()), db);
 
-        // check if higherRankReading is found in one of the paths, but don't crawl the graph beyond
-        // that reading's rank. Also disregard any relation already existing between the two nodes.
-        Relationship existingRel = null;
-        for (Relationship r : firstReading.getRelationships(ERelations.RELATED)) {
-            if (r.getOtherNode(firstReading).equals(secondReading))
-                existingRel = r;
-        }
-        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(existingRel);
-        RankEvaluate rankEvaluator = new RankEvaluate((Long) higherRankReading.getProperty("rank"));
-        for (Node node : db.traversalDescription()
-                .depthFirst()
-                .evaluator(rankEvaluator)
-                .expand(alignmentEvaluator)
-                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                // .evaluator(Evaluators.all())
-                .traverse(lowerRankReading).nodes()) {
-            if (node.equals(higherRankReading)) {
-                return true;
+        // Get the relevant cluster sets
+        Set<Node> firstCluster = colocatedLookup.containsKey(firstReading.getId()) ?
+                colocatedLookup.get(firstReading.getId()) : new HashSet<>();
+        Set<Node> secondCluster = colocatedLookup.containsKey(secondReading.getId()) ?
+                colocatedLookup.get(secondReading.getId()) : new HashSet<>();
+        firstCluster.add(firstReading);
+        secondCluster.add(secondReading);
+
+        // Find our max rank, as well as whether we need to reverse the search
+        boolean reverse = false;
+        Long maxRank = (Long) firstReading.getProperty("rank");
+        if ( maxRank > (Long) secondReading.getProperty("rank"))
+            reverse = true;
+        else
+            maxRank = (Long) secondReading.getProperty("rank");
+
+        // For each node in the lower cluster, see if we can reach any node in the
+        // higher cluster.
+        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse();
+        RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
+        for (Node lower : reverse ? secondCluster : firstCluster) {
+            for (Node n : db.traversalDescription()
+                    .depthFirst()
+                    .evaluator(rankEvaluator)
+                    .expand(alignmentEvaluator).traverse(lower).nodes()) {
+                if ((reverse ? firstCluster : secondCluster).contains(n))
+                    return true;
             }
         }
 
         return false;
+    }
+
+    private static Map<Long, Set<Node>> buildColocationLookup (String tradId, String sectionId, GraphDatabaseService db)
+            throws Exception {
+        Map<Long, Set<Node>> result = new HashMap<>();
+        List<Set<Node>> clusters = RelationService.getClusters(tradId, sectionId, db);
+        for (Set<Node> cluster : clusters)
+            for (Node n : cluster)
+                result.put(n.getId(), cluster);
+
+        return result;
     }
 
 }

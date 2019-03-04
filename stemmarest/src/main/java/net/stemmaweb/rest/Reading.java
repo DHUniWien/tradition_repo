@@ -474,7 +474,7 @@ public class Reading {
      *            the reading which will be deleted from the database
      * @return true if readings can be merged, false if not
      */
-    private boolean canBeMerged(Node stayingReading, Node deletingReading) {
+    private boolean canBeMerged(Node stayingReading, Node deletingReading) throws Exception {
         /*
          if (!doContainSameText(stayingReading, deletingReading)) {
          errorMessage = "Readings to be merged do not contain the same text";
