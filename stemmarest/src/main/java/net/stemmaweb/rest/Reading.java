@@ -530,10 +530,19 @@ public class Reading {
      * @param deletingReading
      *            the reading which will be deleted from the database
      */
-    private void merge(Node stayingReading, Node deletingReading) throws Exception {
+    private void merge(Node stayingReading, Node deletingReading) {
+        // Remove any existing relations between the readings
         deleteRelationBetweenReadings(stayingReading, deletingReading);
-        copyWitnesses(stayingReading, deletingReading, Direction.INCOMING);
-        copyWitnesses(stayingReading, deletingReading, Direction.OUTGOING);
+        // Transfer the witnesses of the to-be-deleted reading to the staying reading
+        for (Relationship r : deletingReading.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
+            ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r);
+            r.delete();
+        }
+        for (Relationship r : deletingReading.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
+            ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r);
+            r.delete();
+        }
+        // Transfer any existing reading relations to the node that will remain
         addRelationsToStayingReading(stayingReading, deletingReading);
         deletingReading.delete();
     }
@@ -553,48 +562,6 @@ public class Reading {
                     firstRel.delete();
                 }
             }
-        }
-    }
-
-    /**
-     * Copies the witnesses from the reading to be deleted to the staying
-     * reading.
-     *
-     * @param stayingReading
-     *            the reading which stays in the database
-     * @param deletingReading
-     *            the reading which will be deleted from the database
-     */
-    private void copyWitnesses(Node stayingReading, Node deletingReading,
-            Direction direction) throws Exception {
-        for (Relationship rel : deletingReading.getRelationships(ERelations.SEQUENCE, direction)) {
-            Node targetNode = rel.getOtherNode(deletingReading);
-            for (String witClass : rel.getPropertyKeys()) {
-                for (String w : (String[]) rel.getProperty(witClass))
-                    if (direction.equals(Direction.OUTGOING))
-                        ReadingService.addWitnessLink(stayingReading, targetNode, w, witClass);
-                    else
-                        ReadingService.addWitnessLink(targetNode, stayingReading, w, witClass);
-            }
-            rel.delete();
-        }
-        // Consistency check, that no double witness paths were created.
-        // witness -> class -> seen?
-        HashMap<String, HashMap<String, Boolean>> seenWitness = new HashMap<>();
-        for (Relationship rel : stayingReading.getRelationships(ERelations.SEQUENCE, direction)) {
-            for (String witClass : rel.getPropertyKeys())
-                for (String w : (String[]) rel.getProperty(witClass)) {
-                    if (seenWitness.containsKey(w)) {
-                        if (seenWitness.get(w).containsKey(witClass))
-                            throw new Exception("Double witness specification in reading merge");
-                        else
-                            seenWitness.get(w).put(witClass, true);
-                    } else {
-                        HashMap<String, Boolean> classmap = new HashMap<>();
-                        classmap.put(witClass, true);
-                        seenWitness.put(w, classmap);
-                    }
-                }
         }
     }
 

@@ -132,6 +132,16 @@
             <artifactId>neo4j-bolt</artifactId>
             <version>${neo4j-version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>graph-algorithms-core</artifactId>
+            <version>${neo4j-algo-version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>graph-algorithms-algo</artifactId>
+            <version>${neo4j-algo-version}</version>
+        </dependency>
         <!-- Used for better documentation of REST interfaces -->
         <dependency>
             <groupId>com.qmino</groupId>
@@ -202,6 +212,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.neo4j.community</groupId>
+            <artifactId>it-test-support</artifactId>
+            <version>${neo4j-version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-io</artifactId>
             <version>${neo4j-version}</version>
@@ -215,7 +231,8 @@
         <jersey-version>2.22.1</jersey-version>
         <jersey-group>org.glassfish.jersey</jersey-group>
         -->
-        <neo4j-version>3.4.0</neo4j-version>
+        <neo4j-version>3.5.2</neo4j-version>
+        <neo4j-algo-version>3.5.3.1</neo4j-algo-version>
         <jackson-version>2.9.8</jackson-version>
         <jersey-version>1.19</jersey-version>
         <jersey-group>com.sun.jersey</jersey-group>

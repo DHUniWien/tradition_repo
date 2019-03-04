@@ -314,27 +314,19 @@ public class Section {
     @GET
     @Path("/colocated")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.GraphModel")
+    @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getColocatedClusters() {
-        ArrayList<GraphModel> clusterList = new ArrayList<>();
-        Node startNode = DatabaseService.getStartNode(sectId, db);
-        try (Transaction tx = db.beginTx()) {
-            RelationService.ColocationTraverser ct = new RelationService.ColocationTraverser(tradId);
-            db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .relationships(ERelations.RELATED, Direction.BOTH)
-                    .evaluator(ct)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode).iterator().forEachRemaining(
-                            x ->
-            );
-            tx.success();
-
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        List<Set<Node>> clusterList = RelationService.getClusters(tradId, sectId, db);
+        if (clusterList == null)
+            return Response.serverError().entity("Something went wrong; see logs").build();
+        List<List<ReadingModel>> result = new ArrayList<>();
+        for (Set<Node> cluster : clusterList) {
+            List<ReadingModel> clusterModel = new ArrayList<>();
+            for (Node n : cluster)
+                clusterModel.add(new ReadingModel(n));
+            result.add(clusterModel);
         }
+        return Response.ok(result).build();
     }
     /**
      * Gets the lemma text for the section, if there is any.

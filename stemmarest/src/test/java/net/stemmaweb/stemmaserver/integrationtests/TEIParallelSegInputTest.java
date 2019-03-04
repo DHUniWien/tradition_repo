@@ -106,7 +106,7 @@ public class TEIParallelSegInputTest {
         @SuppressWarnings("unchecked")
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(317, allReadings.size());
-        Boolean foundReading = false;
+        boolean foundReading = false;
         for (ReadingModel r : allReadings)
             if (r.getText().equals("βλασφημίας"))
                 foundReading = true;
