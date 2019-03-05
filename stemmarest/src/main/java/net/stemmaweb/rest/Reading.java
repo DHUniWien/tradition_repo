@@ -266,6 +266,7 @@ public class Reading {
 
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
         ArrayList<RelationModel> tempDeleted = new ArrayList<>();
+        ArrayList<SequenceModel> newSequences = new ArrayList<>();
 
         Node originalReading;
 
@@ -280,12 +281,25 @@ public class Reading {
                 }
 
                 Node newNode = db.createNode();
-                tempDeleted.addAll(duplicate(newWitnesses, originalReading, newNode));
+                GraphModel localResult = duplicate(newWitnesses, originalReading, newNode);
+                tempDeleted.addAll(localResult.getRelations());
+                newSequences.addAll(localResult.getSequences());
                 ReadingModel newModel = new ReadingModel(newNode);
                 newModel.setOrig_reading(String.valueOf(readId));
                 createdReadings.add(newModel);
             }
 
+            // Remove any sequences from the list that were created only temporarily (e.g. if
+            // multiple nodes were duplicated serially.)
+            ArrayList<SequenceModel> tempSequences = new ArrayList<>();
+            for (SequenceModel sm : newSequences) {
+                try {
+                    db.getRelationshipById(Long.valueOf(sm.getId()));
+                } catch (NotFoundException e) {
+                    tempSequences.add(sm);
+                }
+            }
+            newSequences.removeAll(tempSequences);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -301,7 +315,8 @@ public class Reading {
             if (Status.CREATED.getStatusCode() != result.getStatus())
                 deletedRelations.add(rm);
         }
-        GraphModel readingsAndRelations = new GraphModel(createdReadings, deletedRelations);
+
+        GraphModel readingsAndRelations = new GraphModel(createdReadings, deletedRelations, newSequences);
         return Response.ok(readingsAndRelations).build();
     }
 
@@ -352,25 +367,29 @@ public class Reading {
      *            : the newly duplicated reading
      * @return a list of the deleted relations
      */
-    private ArrayList<RelationModel> duplicate(List<String> newWitnesses,
+    private GraphModel duplicate(List<String> newWitnesses,
                                                Node originalReading, Node addedReading) {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
         Reading rdgRest = new Reading(String.valueOf(originalReading.getId()));
 
         // add witnesses to the correct sequence links
+        HashSet<Relationship> newSequences = new HashSet<>();
         for (String wit : newWitnesses) {
             HashMap<String, String> witness = parseSigil(wit);
             Node prior = rdgRest.getNeighbourReadingInSequence(wit, Direction.INCOMING);
             Node next = rdgRest.getNeighbourReadingInSequence(wit, Direction.OUTGOING);
             try (Transaction tx = db.beginTx()) {
-                ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer"));
-                ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer"));
+                // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
+                newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
+                newSequences.add(ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer")));
                 ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"));
                 ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"));
                 tx.success();
             }
         }
+        ArrayList<SequenceModel> sequenceModels = new ArrayList<>();
+        newSequences.forEach(x -> sequenceModels.add(new SequenceModel(x)));
 
         // replicated all colocated relations of the original reading;
         // delete all non-colocated relations that cross our rank
@@ -403,7 +422,7 @@ public class Reading {
             }
         }
 
-        return tempDeleted;
+        return new GraphModel(new ArrayList<>(), tempDeleted, sequenceModels);
     }
 
     /**
@@ -655,10 +674,8 @@ public class Reading {
             if (errorMessage != null)
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
-            // FIXME this sends back ReadingModels with the old ranks!
             readingsAndRelations = split(originalReading, splitIndex, model);
-            // new Tradition(getTraditionId()).recalculateRank(originalReading.getId());
-            ReadingService.recalculateRank(originalReading);
+            ReadingService.recalculateRank(originalReading, true);
 
             tx.success();
         } catch (Exception e) {
@@ -708,22 +725,15 @@ public class Reading {
      *            the words the reading consists of
      * @param model
      *            the ReadingBoundaryModel saying how the reading should be split
-     * @return a model of the split graph
+     * @return a list of the new SEQUENCE relationships created.
      */
     private GraphModel split(Node originalReading, int splitIndex, ReadingBoundaryModel model) {
         ArrayList<ReadingModel> createdOrChangedReadings = new ArrayList<>();
-        ArrayList<RelationModel> createdRelations = new ArrayList<>();
+        ArrayList<SequenceModel> createdSequences = new ArrayList<>();
 
-        // Get the witness sequences that come out of the original reading, as well as
-        // the list of witnesses
+        // Get the sequence relationships that came out of the original reading
         ArrayList<Relationship> originalOutgoingRels = new ArrayList<>();
-        ArrayList<String> allWitnesses = new ArrayList<>();
-        for (Relationship oldRel : originalReading
-                .getRelationships(ERelations.SEQUENCE, Direction.OUTGOING) ) {
-            originalOutgoingRels.add(oldRel);
-            String[] witnesses = (String[]) oldRel.getProperty("witnesses");
-            Collections.addAll(allWitnesses, witnesses);
-        }
+        originalReading.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING).forEach(originalOutgoingRels::add);
 
         // Get the sequence of reading text that should be created
         String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
@@ -741,28 +751,32 @@ public class Reading {
 
             ReadingService.copyReadingProperties(lastReading, newReading);
             newReading.setProperty("text", splitWords[i]);
-            // Long previousRank = (Long) lastReading.getProperty("rank");
-            // newReading.setProperty("rank", previousRank + 1);
-            if (!model.getSeparate())
-                newReading.setProperty("join_prior", true);
+            // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
+            Long previousRank = (Long) lastReading.getProperty("rank");
+            newReading.setProperty("rank", previousRank + 1);
+            if (!model.getSeparate()) newReading.setProperty("join_prior", true);
 
-            Relationship relationship = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
-            Collections.sort(allWitnesses);
-            relationship.setProperty("witnesses", allWitnesses.toArray(new String[0]));
-            // TODO wtf, a sequence relationship into a RelationModel?
-            createdRelations.add(new RelationModel(relationship));
+            // Copy the witnesses from our outgoing sequence links
+            Relationship newSeq = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
+            // This will pick up the relationship we just made
+            for (Relationship r : originalOutgoingRels)
+                ReadingService.transferWitnesses(lastReading, newReading, r);
 
-            lastReading = newReading;
+            // Add the newly created objects to our eventual GraphModel
             createdOrChangedReadings.add(new ReadingModel(newReading));
+            createdSequences.add(new SequenceModel(newSeq));
+
+            // Loop
+            lastReading = newReading;
         }
         for (Relationship oldRel : originalOutgoingRels) {
             Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
             RelationService.copyRelationshipProperties(oldRel, newRel);
-            createdRelations.add(new RelationModel(newRel));
+            createdSequences.add(new SequenceModel(newRel));
             oldRel.delete();
         }
 
-        return new GraphModel(createdOrChangedReadings, createdRelations);
+        return new GraphModel(createdOrChangedReadings, new ArrayList<>(), createdSequences);
     }
 
     /**

@@ -7,7 +7,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import org.neo4j.graphdb.Path;
 
 /**
  * This model contains a graph or subgraph returned from the Neo4j db
@@ -22,31 +21,27 @@ public class GraphModel {
      */
     private HashSet<ReadingModel> readings;
     /**
-     * A set of links that make up a portion of a variant graph. Depending on context, these can be
-     * either relationship links or sequence (path) links.
+     * A set of reading relations that make up a portion of a variant graph.
      */
     private HashSet<RelationModel> relations;
-    
-    public GraphModel(List<ReadingModel> readings, List<RelationModel> relations) {
-        super();
-        this.readings = new HashSet<>();
-        this.relations = new HashSet<>();
+
+    /**
+     * A set of sequence links that make up a portion of a variant graph.
+     */
+    private HashSet<SequenceModel> sequences;
+
+    public GraphModel(List<ReadingModel> readings, List<RelationModel> relations, List<SequenceModel> sequences) {
+        this();
         this.readings.addAll(readings);
         this.relations.addAll(relations);
-    }
-
-    public GraphModel(Path readingRelPath) {
-        super();
-        this.readings = new HashSet<>();
-        this.relations = new HashSet<>();
-        readingRelPath.nodes().forEach(x -> this.readings.add(new ReadingModel(x)));
-        readingRelPath.relationships().forEach(x -> this.relations.add(new RelationModel(x)));
+        this.sequences.addAll(sequences);
     }
 
     public GraphModel() {
         super();
         this.readings = new HashSet<>();
         this.relations = new HashSet<>();
+        this.sequences = new HashSet<>();
     }
 
     public HashSet<ReadingModel> getReadings() { return readings; }
@@ -68,4 +63,15 @@ public class GraphModel {
     }
 
     public void addRelations(HashSet<RelationModel> relations) { this.relations.addAll(relations); }
+
+    public HashSet<SequenceModel> getSequences() {
+        return sequences;
+    }
+
+    public void setSequences(List<SequenceModel> sequences) {
+        this.sequences.clear();
+        this.sequences.addAll(sequences);
+    }
+
+    public void addSequences(HashSet<SequenceModel> sequences) { this.sequences.addAll(sequences); }
 }

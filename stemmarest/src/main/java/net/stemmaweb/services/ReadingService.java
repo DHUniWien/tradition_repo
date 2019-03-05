@@ -61,8 +61,9 @@ public class ReadingService {
      * @param end   - the end node
      * @param sigil - the witness sigil
      * @param witClass - the witness layer class to use
+     * @return the SEQUENCE Relationship to which the witness was added
      */
-    public static void addWitnessLink (Node start, Node end, String sigil, String witClass) {
+    public static Relationship addWitnessLink (Node start, Node end, String sigil, String witClass) {
         Relationship link = null;
         for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
             if (r.getEndNode().equals(end))
@@ -89,6 +90,7 @@ public class ReadingService {
                 removeWitnessLink(start, end, sigil, wc);
             }
         }
+        return link;
     }
 
     /**

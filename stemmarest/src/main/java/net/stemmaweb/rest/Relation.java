@@ -300,7 +300,7 @@ public class Relation {
         }
 
         createdRelations.add(new RelationModel(relationAtoB));
-        return new GraphModel(changedReadings, createdRelations);
+        return new GraphModel(changedReadings, createdRelations, new ArrayList<>());
     }
 
     /**

@@ -100,8 +100,13 @@ public class ReadingTest {
                 .path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(number, listOfReadings.size());
-        WitnessTextModel resp;
+        for (ReadingModel rm : listOfReadings)
+            if (rm.getIs_start())
+                assertEquals(Long.valueOf(0), rm.getRank());
+            else
+                assertTrue(rm.getRank() > 0);
 
+        WitnessTextModel resp;
         resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
         assertEquals(expectedWitnessA, resp.getText());
 
@@ -344,13 +349,6 @@ public class ReadingTest {
             Node firstNode = db.findNode(Nodes.READING, "text", "showers");
             Node secondNode = db.findNode(Nodes.READING, "text", "sweet");
 
-            String witnessA = jerseyTest.resource().path("/tradition/" + tradId + "/witness/A/text")
-                    .get(String.class);
-            String witnessB = jerseyTest.resource().path("/tradition/" + tradId + "/witness/B/text")
-                    .get(String.class);
-            String witnessC = jerseyTest.resource().path("/tradition/" + tradId + "/witness/C/text")
-                    .get(String.class);
-
             // get existing relationships
             List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
                     .get(new GenericType<List<RelationModel>>() {});
@@ -370,6 +368,10 @@ public class ReadingTest {
 
             // Check that no relationships were harmed by this duplication
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
+            assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
+            assertEquals(4, readingsAndRelationshipsModel.getSequences().size());
+
             List<RelationModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
                     .get(new GenericType<List<RelationModel>>() {});
             assertEquals(allRels.size(), ourRels.size());
@@ -379,15 +381,6 @@ public class ReadingTest {
                                 && x.getType().equals(rm.getType())).count();
                 assertEquals(1L, found);
             }
-
-            GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
-            assertEquals(witnessA, jerseyTest.resource().path("/tradition/" + tradId + "/witness/A/text")
-                    .get(String.class));
-            assertEquals(witnessB, jerseyTest.resource().path("/tradition/" + tradId + "/witness/B/text")
-                    .get(String.class));
-            assertEquals(witnessC, jerseyTest.resource().path("/tradition/" + tradId + "/witness/C/text")
-                    .get(String.class));
 
             testNumberOfReadingsAndWitnesses(31);
 
@@ -489,6 +482,8 @@ public class ReadingTest {
             }
 
             testNumberOfReadingsAndWitnesses(30);
+
+            // check that the new reading is really in the database
             List<Node> ofNodes = db.findNodes(Nodes.READING, "text", "of")
                     .stream().collect(Collectors.toList());
             assertEquals(2, ofNodes.size());
@@ -498,20 +493,11 @@ public class ReadingTest {
                     duplicatedOf = n;
             assertNotNull(duplicatedOf);
 
-            // test witnesses and number of paths
+            // test that original sequences are still there
             int numberOfPaths = 0;
             for (Relationship incoming : node.getRelationships(ERelations.SEQUENCE,
                     Direction.INCOMING)) {
                 assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
-                numberOfPaths++;
-            }
-            assertEquals(1, numberOfPaths);
-
-            numberOfPaths = 0;
-            for (Relationship incoming : duplicatedOf.getRelationships(ERelations.SEQUENCE,
-                    Direction.INCOMING)) {
-                assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
-                assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[1]);
                 numberOfPaths++;
             }
             assertEquals(1, numberOfPaths);
@@ -523,6 +509,15 @@ public class ReadingTest {
                 numberOfPaths++;
             }
             assertEquals(1, numberOfPaths);
+
+            // test witnesses and number of paths
+            assertEquals(2, readingsAndRelationshipsModel.getSequences().size());
+            for (SequenceModel seq : readingsAndRelationshipsModel.getSequences()) {
+                assertNull(seq.getLayers());
+                assertEquals(2, seq.getWitnesses().size());
+                assertTrue(seq.getWitnesses().contains("A"));
+                assertTrue(seq.getWitnesses().contains("C"));
+            }
 
             numberOfPaths = 0;
             for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.SEQUENCE,
@@ -567,6 +562,7 @@ public class ReadingTest {
             ReadingModel firstWord = (ReadingModel) readingsAndRelationshipsModel.getReadings().toArray()[0];
             assertEquals("of", firstWord.getText());
             assertEquals(1, readingsAndRelationshipsModel.getRelations().size());
+            assertEquals(2, readingsAndRelationshipsModel.getSequences().size());
             // make sure newly-invalid transposition has disappeared
             List<RelationModel> nowRelations = jerseyTest.resource()
                     .path("/tradition/" + tradId + "/relations")
@@ -762,6 +758,15 @@ public class ReadingTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, request);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        GraphModel changedGraph = response.getEntity(GraphModel.class);
+        assertEquals(1, changedGraph.getReadings().size());
+        assertEquals(0, changedGraph.getRelations().size());
+        assertEquals(2, changedGraph.getSequences().size());
+        for (SequenceModel seq : changedGraph.getSequences()) {
+            assertTrue(seq.getWitnesses().contains("A"));
+            assertTrue(seq.getWitnesses().contains("C"));
+            assertEquals(2, seq.getWitnesses().size());
+        }
 
         // Test two: duplicate a reading for an a.c. witness
         // "κρίνεται", rank 34
@@ -771,6 +776,17 @@ public class ReadingTest {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, request);
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        changedGraph = response.getEntity(GraphModel.class);
+        assertEquals(1, changedGraph.getReadings().size());
+        assertEquals(0, changedGraph.getRelations().size());
+        assertEquals(2, changedGraph.getSequences().size());
+        for (SequenceModel seq : changedGraph.getSequences()) {
+            assertEquals(0, seq.getWitnesses().size());
+            assertEquals(1, seq.getLayers().size());
+            assertTrue(seq.getLayers().containsKey("a.c."));
+            assertEquals(1, seq.getLayers().get("a.c.").size());
+            assertTrue(seq.getLayers().get("a.c.").contains("Q"));
+        }
     }
 
     @Test
@@ -1032,9 +1048,9 @@ public class ReadingTest {
         assertTrue(rdgWords.containsKey("the"));
         assertTrue(rdgWords.containsKey("root"));
         // Check the relationships
-        assertEquals(2, readingsAndRelationsModel.getRelations().size());
+        assertEquals(2, readingsAndRelationsModel.getSequences().size());
         HashSet<String> relPaths = new HashSet<>();
-        readingsAndRelationsModel.getRelations().forEach(x -> relPaths.add(x.getSource() + "->" + x.getTarget()));
+        readingsAndRelationsModel.getSequences().forEach(x -> relPaths.add(x.getSource() + "->" + x.getTarget()));
         assertTrue(relPaths.contains(rdgWords.get("the") + "->" + rdgWords.get("root")));
         assertTrue(relPaths.contains(rdgWords.get("root") + "->" + endNode.getId()));
 
@@ -1340,9 +1356,14 @@ public class ReadingTest {
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
+            // check that the text is right
             expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
-            testNumberOfReadingsAndWitnesses(32);
+            // check that the end node has the right rank
+            SectionModel ourSection = jerseyTest.resource()
+                    .path("/tradition/" + tradId + "/section/" + sectId)
+                    .get(SectionModel.class);
+            assertEquals(Long.valueOf(20), ourSection.getEndRank());
             tx.success();
         }
     }
@@ -1509,6 +1530,7 @@ public class ReadingTest {
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
             GraphModel result = response.getEntity(new GenericType<GraphModel>() {});
             assertEquals(4, result.getReadings().size());
+            assertEquals(4, result.getSequences().size());
 
             Node nof = db.findNode(Nodes.READING, "text", "-of");
             assertNotNull(nof);
