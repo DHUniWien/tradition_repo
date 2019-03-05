@@ -888,7 +888,7 @@ public class Section {
      */
     @POST
     @Path("/setlemma")
-    @ReturnType("java.lang.void")
+    @ReturnType("java.lang.Void")
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
