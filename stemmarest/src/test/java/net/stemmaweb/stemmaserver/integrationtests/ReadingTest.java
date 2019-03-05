@@ -1049,8 +1049,8 @@ public class ReadingTest {
             Node the3 = nodes.next();
             assertFalse(nodes.hasNext());
 
-            assertEquals((long) 17, the2.getProperty("rank"));
-            assertEquals((long) 17, the3.getProperty("rank"));
+            assertEquals((long) 16, the2.getProperty("rank"));
+            assertEquals((long) 16, the3.getProperty("rank"));
 
             result = db.execute("match (w:READING {text:'root'}) return w");
             nodes = result.columnAs("w");
@@ -1060,8 +1060,8 @@ public class ReadingTest {
             Node root2 = nodes.next();
             assertFalse(nodes.hasNext());
 
-            assertEquals((long) 18, root1.getProperty("rank"));
-            assertEquals((long) 18, root2.getProperty("rank"));
+            assertEquals((long) 17, root1.getProperty("rank"));
+            assertEquals((long) 17, root2.getProperty("rank"));
 
             // should contain one reading more now
             testNumberOfReadingsAndWitnesses(30);

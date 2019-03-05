@@ -655,6 +655,7 @@ public class Reading {
             if (errorMessage != null)
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
+            // FIXME this sends back ReadingModels with the old ranks!
             readingsAndRelations = split(originalReading, splitIndex, model);
             // new Tradition(getTraditionId()).recalculateRank(originalReading.getId());
             ReadingService.recalculateRank(originalReading);

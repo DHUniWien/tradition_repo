@@ -1003,6 +1003,7 @@ public class Section {
     @ReturnType("java.lang.String")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
+                           @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
                            @DefaultValue("false") @QueryParam("normalise") Boolean normalise,
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
@@ -1010,7 +1011,7 @@ public class Section {
 
         // Put our options into an object
         DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, normalise, displayAllSigla);
+                includeRelatedRelationships, showNormalForms, showRank, normalise, displayAllSigla);
         // Make the dot.
         DotExporter exporter = new DotExporter(db);
         return exporter.writeNeo4J(tradId, sectId, dm);

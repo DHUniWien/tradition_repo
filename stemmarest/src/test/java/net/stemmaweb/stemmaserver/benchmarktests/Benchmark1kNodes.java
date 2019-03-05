@@ -36,7 +36,7 @@ public class Benchmark1kNodes extends BenchmarkTests {
     public TestRule benchmarkRun = new BenchmarkRule();
 
     @BeforeClass
-    public static void prepareTheDatabase() {
+    public static void prepareTheDatabase() throws Exception {
 
         RandomGraphGenerator rgg = new RandomGraphGenerator();
 

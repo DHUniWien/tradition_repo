@@ -700,6 +700,7 @@ public class Tradition {
     @ReturnType("java.lang.Void")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
+                           @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
                            @DefaultValue("false") @QueryParam("normalise") Boolean normalise,
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
@@ -707,7 +708,7 @@ public class Tradition {
 
         // Put our options into an object
         DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, normalise, displayAllSigla);
+                includeRelatedRelationships, showNormalForms, showRank, normalise, displayAllSigla);
         DotExporter exporter = new DotExporter(db);
         return exporter.writeNeo4J(traditionId, dm);
     }

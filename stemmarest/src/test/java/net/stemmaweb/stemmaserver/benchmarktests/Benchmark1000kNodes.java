@@ -30,7 +30,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 public class Benchmark1000kNodes extends BenchmarkTests {
 
     @BeforeClass
-    public static void prepareTheDatabase(){
+    public static void prepareTheDatabase() throws Exception {
 
         /*
          * Fill the Testbench with a nice graph 9 users 2 traditions 5 witnesses with degree 10
@@ -38,7 +38,7 @@ public class Benchmark1000kNodes extends BenchmarkTests {
         initDatabase();
     }
 
-    public static void initDatabase() {
+    public static void initDatabase() throws Exception {
         RandomGraphGenerator rgg = new RandomGraphGenerator();
 
         GraphDatabaseService db = new GraphDatabaseServiceProvider(

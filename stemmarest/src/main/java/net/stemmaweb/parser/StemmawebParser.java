@@ -368,10 +368,13 @@ public class StemmawebParser {
             for (Relationship r : redundantRels)
                 r.delete();
 
+            // Re-rank the entire tradition
+            ReadingService.recalculateRank(sectionStart, true);
+
             // Create the witness nodes. n.b. Any witnesses represented only with a LACUNA
             // node will still be created, on the assumption that they will be used eventually.
             witnesses.keySet().forEach(x -> Util.findOrCreateExtant(traditionNode, x));
-            // Set colocation information on relationship types
+            // Set colocation information on relation types
             Util.setColocationFlags(traditionNode);
             tx.success();
         } catch(Exception e) {

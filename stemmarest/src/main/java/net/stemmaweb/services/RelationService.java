@@ -4,9 +4,6 @@ import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
-import org.neo4j.graphalgo.UnionFindProc;
-import org.neo4j.kernel.impl.proc.Procedures;
-import org.neo4j.kernel.internal.GraphDatabaseAPI;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
@@ -111,12 +108,6 @@ public class RelationService {
         // Now run the unionFind algorithm on the relevant subset of relation types
         List<Set<Node>> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            // Add the unionFind procedure to our object
-            GraphDatabaseAPI api = (GraphDatabaseAPI) db;
-            api.getDependencyResolver()
-                    .resolveDependency(Procedures.class, DependencyResolver.SelectionStrategy.ONLY)
-                    .registerProcedure(UnionFindProc.class);
-
             // Make the arguments
             String cypherNodes = String.format("MATCH (n:READING {section_id:%s}) RETURN id(n) AS id", sectionId);
             String cypherRels = String.format("MATCH (n:READING)-[r:RELATED]-(m) WHERE r.type IN [%s] RETURN id(n) AS source, id(m) AS target",

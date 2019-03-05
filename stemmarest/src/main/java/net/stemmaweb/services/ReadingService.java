@@ -228,18 +228,20 @@ public class ReadingService {
     private static class RankCalcEvaluate implements Evaluator {
 
         Map<Long, Set<Node>> colocatedNodes;
+        boolean recalculateAll;
 
         // Constructor - we need to know where we are starting so we can build our list of
         // equivalences and find our starting point. Throws an exception if we can't get
         // the related-reading clusters.
-        RankCalcEvaluate(Node startNode) throws Exception {
+        RankCalcEvaluate(Node startNode, Boolean recalculateAll) throws Exception {
             // Get the list of colocated nodes in this section.
             GraphDatabaseService db = startNode.getGraphDatabase();
             String sectionId = String.valueOf(startNode.getProperty("section_id"));
             String tradId = db.getNodeById(Long.valueOf(sectionId))
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
                     .getProperty("id").toString();
-            colocatedNodes = buildColocationLookup(sectionId, tradId, startNode.getGraphDatabase());
+            this.colocatedNodes = buildColocationLookup(tradId, sectionId, startNode.getGraphDatabase());
+            this.recalculateAll = recalculateAll;
         }
 
         @Override
@@ -257,8 +259,9 @@ public class ReadingService {
                 thisNode.removeProperty("rank");
                 return Evaluation.EXCLUDE_AND_PRUNE;
             }
-            // If maxParentRank is our rank - 1, we stop calcuating from here
-            if (thisNode.hasProperty("rank")
+            // If we aren't recalculating everything, and this isn't the starting node, and
+            // the rank isn't changing, we can stop
+            if (!recalculateAll && thisNode.hasProperty("rank") && path.lastRelationship() != null
                     && thisNode.getProperty("rank").equals(maxParentRank + 1))
                 return Evaluation.EXCLUDE_AND_PRUNE;
 
@@ -302,15 +305,24 @@ public class ReadingService {
      * @throws Exception, if the RankCalcEvaluate initialisation fails
      */
 
-    public static List<Node> recalculateRank (Node startNode) throws Exception {
-        RankCalcEvaluate e = new RankCalcEvaluate(startNode);
+    public static List<Node> recalculateRank (Node startNode, boolean recalculateAll) throws Exception {
+        RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll);
         AlignmentTraverse a = new AlignmentTraverse(startNode);
         GraphDatabaseService db = startNode.getGraphDatabase();
-        ResourceIterable<Node> changed = db.traversalDescription().breadthFirst()
+        // If we are recalculating all ranks, we should remove all ranks first
+        if (recalculateAll)
+            db.traversalDescription().depthFirst()
+                    .expand(new AlignmentTraverse())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                    .traverse(startNode).nodes().stream().forEach(x -> x.removeProperty("rank"));
+
+        // At this point we can start to reassign ranks
+        ResourceIterable<Node> changed = db.traversalDescription().depthFirst()
                 .expand(a)
                 .evaluator(e)
-                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                 .traverse(startNode).nodes();
+        List<Node> result = changed.stream().collect(Collectors.toList());
         // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
         String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
@@ -326,7 +338,11 @@ public class ReadingService {
             }
         }
         // END TEMPORARY
-        return changed.stream().collect(Collectors.toList());
+        return result;
+    }
+
+    public static List<Node> recalculateRank (Node startNode) throws Exception {
+        return recalculateRank(startNode, false);
     }
 
     /**

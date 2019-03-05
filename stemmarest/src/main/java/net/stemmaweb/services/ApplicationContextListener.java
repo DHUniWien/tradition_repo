@@ -42,10 +42,12 @@ public class ApplicationContextListener implements ServletContextListener {
         this.context = event.getServletContext();
         //Output a simple message to the server's console
         // logger.debug("This is debug - Listener: context initialized");
-        GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
-        DatabaseService.createRootNode(db);
-
-
+        try {
+            GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
+            DatabaseService.createRootNode(db);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 

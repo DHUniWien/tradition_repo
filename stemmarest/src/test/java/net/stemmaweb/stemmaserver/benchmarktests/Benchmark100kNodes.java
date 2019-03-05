@@ -30,7 +30,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 public class Benchmark100kNodes extends BenchmarkTests {
 
     @BeforeClass
-    public static void prepareTheDatabase(){
+    public static void prepareTheDatabase() throws Exception {
 
         RandomGraphGenerator rgg = new RandomGraphGenerator();
 

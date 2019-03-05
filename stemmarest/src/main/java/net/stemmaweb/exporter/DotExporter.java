@@ -98,7 +98,7 @@ public class DotExporter
             write("\tedge [arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"];\n");
             long edgeId = 0;
             Long lastSectionEndId = null;
-            Boolean subgraphWritten = false;
+            boolean subgraphWritten = false;
 
             for (Node sectionNode: sections) {
                 // Get the number of witnesses we have
@@ -169,7 +169,7 @@ public class DotExporter
                     // Retrieve reading relations, if requested
                     if (dm.getIncludeRelated()) {
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
-                            write("\tn" + relatedRel.getStartNode().getId() + "->" + "n" +
+                            write("\t" + relatedRel.getStartNode().getId() + "->" +
                                     relatedRel.getEndNode().getId() + " [style=dotted, constraint=false, arrowhead=none, " +
                                     "label=\"" + relatedRel.getProperty("type").toString() + "\", id=\"e" +
                                     edgeId++ + "\"];\n");
@@ -217,9 +217,11 @@ public class DotExporter
         // Get the node label. If there is a 'display' property, strip any leading / trailing angle
         // brackets, because if we are also showing normal forms, we have to wedge more into the
         // HTML specification.
-        Boolean hasHTML = node.hasProperty("display");
+        boolean hasHTML = node.hasProperty("display");
         String nodeLabel = hasHTML ? node.getProperty("display").toString()
                 : node.getProperty("text").toString();
+        if (dm.getShowRank())
+            nodeLabel = String.format("%s (%d)", nodeLabel, (Long) node.getProperty("rank"));
         if (dm.getShowNormalForm() && node.hasProperty("normal_form")
             && !node.getProperty("normal_form").toString().equals(node.getProperty("text").toString())) {
             String labelExtra = "<BR/><FONT COLOR=\"grey\">"
@@ -245,7 +247,7 @@ public class DotExporter
     private static String sequenceLabel(Map<String, String[]> witnessInfo, int numWits, DisplayOptionModel dm) {
         String[] witnesses = {""};
         StringBuilder lex_str = new StringBuilder();
-        String label = null;
+        String label = "";
         // Get the list of witnesses
         if (witnessInfo.containsKey("witnesses")) {
             witnesses = witnessInfo.get("witnesses");
@@ -265,7 +267,7 @@ public class DotExporter
         }
         // Add on the layer witnesses where applicable
         lex_str = new StringBuilder();
-        if (label != null) lex_str.append(label);
+        lex_str.append(label);
         for (String prop : witnessInfo.keySet()) {
             if (prop.equals("witnesses"))
                 continue;
