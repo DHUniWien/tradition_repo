@@ -88,7 +88,7 @@ public class TEIParallelSegParser {
                             case "text":
                                 // End of the text; add the end node.
                                 endNode = Util.createEndNode(parentNode);
-                                endNode.setProperty("rank", 0L);
+                                // endNode.setProperty("rank", 0L);
                                 Relationship endLink = documentPrior.createRelationshipTo(endNode, ERelations.SEQUENCE);
                                 setAllWitnesses(endLink);
                                 // Now go through and clean out all the placeholder nodes, linking the tradition.
@@ -384,7 +384,7 @@ public class TEIParallelSegParser {
             Node wordNode = db.createNode(Nodes.READING);
             wordNode.setProperty("text", word);
             wordNode.setProperty("section_id", sectId);
-            wordNode.setProperty("rank", 0L);
+            // wordNode.setProperty("rank", 0L);
             if (join_prior) {
                 wordNode.setProperty("join_prior", true);
                 join_prior = false;

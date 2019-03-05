@@ -305,7 +305,7 @@ public class ReadingService {
      * @throws Exception, if the RankCalcEvaluate initialisation fails
      */
 
-    public static List<Node> recalculateRank (Node startNode, boolean recalculateAll) throws Exception {
+    public static Set<Node> recalculateRank (Node startNode, boolean recalculateAll) throws Exception {
         RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll);
         AlignmentTraverse a = new AlignmentTraverse(startNode);
         GraphDatabaseService db = startNode.getGraphDatabase();
@@ -322,7 +322,7 @@ public class ReadingService {
                 .evaluator(e)
                 .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                 .traverse(startNode).nodes();
-        List<Node> result = changed.stream().collect(Collectors.toList());
+        Set<Node> result = changed.stream().collect(Collectors.toSet());
         // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
         String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
@@ -341,7 +341,7 @@ public class ReadingService {
         return result;
     }
 
-    public static List<Node> recalculateRank (Node startNode) throws Exception {
+    public static Set<Node> recalculateRank (Node startNode) throws Exception {
         return recalculateRank(startNode, false);
     }
 
@@ -462,14 +462,17 @@ public class ReadingService {
 
         // For each node in the lower cluster, see if we can reach any node in the
         // higher cluster.
-        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse();
+        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading);
         RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
         for (Node lower : reverse ? secondCluster : firstCluster) {
-            for (Node n : db.traversalDescription()
+            boolean followed_sequence = false;
+            for (Relationship r : db.traversalDescription()
                     .depthFirst()
                     .evaluator(rankEvaluator)
-                    .expand(alignmentEvaluator).traverse(lower).nodes()) {
-                if ((reverse ? firstCluster : secondCluster).contains(n))
+                    .expand(alignmentEvaluator).traverse(lower).relationships()) {
+                if (r.getType().name().equals(ERelations.SEQUENCE.name()))
+                    followed_sequence = true;
+                if ((reverse ? firstCluster : secondCluster).contains(r.getEndNode()) && followed_sequence)
                     return true;
             }
         }

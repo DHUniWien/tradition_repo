@@ -18,6 +18,7 @@ import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 public class RelationTypeTest extends TestCase {
     private GraphDatabaseService db;
@@ -395,8 +396,12 @@ public class RelationTypeTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
         assertEquals(1, result.getRelations().size());
-        // This will affect pretty much all subsequent readings in the graph.
-        assertTrue(result.getReadings().size() > 500);
+        // This will affect readings all the way to the end node.
+        assertTrue(result.getReadings().size() > 100);
+        Optional<ReadingModel> optEnd = result.getReadings().stream().filter(ReadingModel::getIs_end).findAny();
+        assertTrue(optEnd.isPresent());
+        assertEquals(Long.valueOf(69), optEnd.get().getRank());
+
         testReadings.add(ricko25);
 
         try (Transaction tx = db.beginTx()) {

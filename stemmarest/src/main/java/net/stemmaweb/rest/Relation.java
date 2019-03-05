@@ -79,10 +79,11 @@ public class Relation {
             relationChanges.addReadings(createResult.getReadings());
             relationChanges.addRelations(createResult.getRelations());
             // Fish out the ID of the relationship that we explicitly created
-            String thisRelId = createResult.getRelations().stream()
+            Optional<RelationModel> orm = createResult.getRelations().stream()
                     .filter(x -> x.getTarget().equals(relationModel.getTarget())
-                            && x.getSource().equals(relationModel.getSource()))
-                    .findFirst().get().getId();
+                            && x.getSource().equals(relationModel.getSource())).findFirst();
+            assert(orm.isPresent());
+            String thisRelId = orm.get().getId();
             if (scope.equals(SCOPE_GLOBAL)) {
                 Boolean use_normal = returnRelationType(tradId, relationModel.getType()).getUse_regular();
                 try (Transaction tx = db.beginTx()) {
@@ -291,8 +292,11 @@ public class Relation {
             Node lowerRanked = rankA < rankB ? readingA : readingB;
             lowerRanked.setProperty("rank", higherRank);
             changedReadings.add(new ReadingModel(lowerRanked));
-            List<Node> changedRank = ReadingService.recalculateRank(lowerRanked);
-            for (Node cr : changedRank) changedReadings.add(new ReadingModel(cr));
+            Set<Node> changedRank = ReadingService.recalculateRank(lowerRanked);
+            for (Node cr : changedRank)
+                if (!cr.equals(lowerRanked))
+                    changedReadings.add(new ReadingModel(cr));
+
         }
 
         createdRelations.add(new RelationModel(relationAtoB));

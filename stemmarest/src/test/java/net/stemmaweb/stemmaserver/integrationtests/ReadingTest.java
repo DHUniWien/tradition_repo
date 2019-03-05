@@ -260,7 +260,7 @@ public class ReadingTest {
         }
         String expected = String.format("{\"id\":\"%d\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false," +
                 "\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false," +
-                "\"join_prior\":false,\"language\":\"Default\",\"rank\":14,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
+                "\"join_prior\":false,\"language\":\"Default\",\"rank\":13,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
 
         ClientResponse resp = jerseyTest.resource()
                 .path("/reading/" + nodeId)
@@ -1566,12 +1566,12 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/3/8")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/3/9")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(1, listOfIdenticalReadings.size());
         identicalReadings = listOfIdenticalReadings.get(0);
         assertEquals(2, identicalReadings.size());
-        assertEquals("his", identicalReadings.get(1).getText());
+        assertEquals("fruit", identicalReadings.get(1).getText());
 
         assertEquals(identicalReadings.get(0).getText(),
                 identicalReadings.get(1).getText());
@@ -1583,7 +1583,7 @@ public class ReadingTest {
 
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/1/8")
+                .path("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/1/9")
                 .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(2, listOfIdenticalReadings.size());
 
@@ -1594,7 +1594,7 @@ public class ReadingTest {
 
         identicalReadings = listOfIdenticalReadings.get(1);
         assertEquals(2, identicalReadings.size());
-        assertEquals("his", identicalReadings.get(1).getText());
+        assertEquals("fruit", identicalReadings.get(1).getText());
         assertEquals(identicalReadings.get(0).getText(),
                 identicalReadings.get(1).getText());
     }
@@ -2316,7 +2316,7 @@ public class ReadingTest {
     public void relatedReadingsTest() {
         long readId;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'fruit', rank:9}) return w");
+            Result result = db.execute("match (w:READING {text:'fruit', rank:8}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             readId = nodes.next().getId();
