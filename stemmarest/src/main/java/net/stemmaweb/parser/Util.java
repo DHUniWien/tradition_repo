@@ -46,7 +46,11 @@ public class Util {
     }
 
     // Witness node creation
-    static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical) {
+    static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical) throws IllegalArgumentException {
+        // First check if the sigil has any characters that will cause trouble for REST
+        for (String illegal : new String[] {"<", ">", "#", "%", "\"", "{", "}", "|", "\\", "^", "[", "]", "`", "(", ")"})
+            if (sigil.contains(illegal))
+                throw new IllegalArgumentException("The character " + illegal + " may not appear in a sigil name.");
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         Node witnessNode = db.createNode(Nodes.WITNESS);
         witnessNode.setProperty("sigil", sigil);

@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
@@ -728,6 +729,30 @@ public class Section {
         }
         return Response.ok().build();
     }
+
+    /**
+     * Resets ranks within the given section
+     *
+     * This does not belong to the official API!
+     * It is a secret hack to fix ranks if we find they are broken or missing.
+     */
+    @GET
+    @Path("/initRanks")
+    @Produces(MediaType.APPLICATION_JSON)
+    @MireDotIgnore
+    public Response initRanks() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        try (Transaction tx = db.beginTx()) {
+            ReadingService.recalculateRank(DatabaseService.getStartNode(sectId, db), true);
+            tx.success();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.ok().build();
+
+    }
+
 
     /*
      * Analysis

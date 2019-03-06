@@ -1,10 +1,14 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -13,6 +17,7 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.*;
 
@@ -189,6 +194,78 @@ public class WitnessTest {
                 .queryParam("end", "5")
                 .get(String.class);
         assertEquals(expectedText, response);
+    }
+
+    @Test
+    public void lookupWitnessById() {
+        // Try it with a good ID
+        WitnessModel witnessA = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witness/A")
+                .get(WitnessModel.class);
+        String aId = witnessA.getId();
+        WitnessModel aById = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witness/" + aId)
+                .get(WitnessModel.class);
+        assertEquals(witnessA.getSigil(), aById.getSigil());
+        assertEquals(witnessA.getId(), aById.getId());
+
+        // Now try it with a bad ID
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witness/ABCD")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+
+        // Now try it with a bad numeric ID
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witness/12345")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+
+        // Now try it with a numeric ID of a node that is not a witness node
+        List<SectionModel> ourSections = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String sectId = ourSections.get(0).getId();
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witness/" + sectId)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+    }
+
+    @Test
+    public void deleteAWitness() {
+        // Get all the readings we have
+        HashSet<String> remaining = new HashSet<>();
+        remaining.addAll(jerseyTest.resource().path("/tradition/" + tradId + "/witness/B/readings")
+                .get(new GenericType<List<ReadingModel>>() {})
+                .stream().map(ReadingModel::getId).collect(Collectors.toList()));
+        remaining.addAll(jerseyTest.resource().path("/tradition/" + tradId + "/witness/C/readings")
+                .get(new GenericType<List<ReadingModel>>() {})
+                .stream().map(ReadingModel::getId).collect(Collectors.toList()));
+        // Try deleting witness A
+        ClientResponse result = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/witness/A").delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        // Check that it is no longer in the witness list
+        assertTrue(jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>(){}).stream().noneMatch(x -> x.getSigil().equals("A")));
+        // Check that all the remaining readings are in our pre-collected set
+        for (ReadingModel rm : jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {}))
+            if (!rm.getIs_end() && !rm.getIs_start())
+                assertTrue(remaining.contains(rm.getId()));
+    }
+
+    @Ignore
+    @Test
+    public void deleteWitnessFromStemma() {
+
+    }
+
+    @Ignore
+    @Test
+    public void createWitnessInvalidSigil() {
+
     }
 
     /**

@@ -11,6 +11,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationService;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
@@ -252,12 +253,10 @@ public class Tradition {
     }
 
     /**
-     * Initializes ranks in sections where readings have no rank-property
+     * Resets ranks across the whole tradition
      *
      * This does not belong to the official API!
      * It is a secret hack to fix ranks if we find they are broken or missing.
-     *
-     * TODO use the methods in ReadingService to get this done
      */
     @GET
     @Path("/initRanks")
@@ -267,70 +266,25 @@ public class Tradition {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        List<SectionModel> smlist = produceSectionList(traditionNode);
+        if (smlist == null)
+            return Response.ok().build();
 
-        ArrayList<SectionModel> updatedSections = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            ArrayList<Node> sectionList = DatabaseService.getRelated(traditionNode, ERelations.PART);
-            for(Node section: sectionList) {
-                Node startNode = DatabaseService.getRelated(section, ERelations.COLLATION).get(0);
-                if (!startNode.hasProperty("rank")) {
-                    LinkedList<Node> queue = new LinkedList<>();
-                    queue.add(startNode);
-
-                    while (!queue.isEmpty()) {
-                        Node curNode = queue.poll();
-                        if (curNode == null) continue; // how do you get a null member of a queue?
-                        if (!curNode.hasProperty("rank")) {
-                            curNode.setProperty("rank", 0L);
-                        }
-                        Iterator<Relationship> inRels = curNode.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).iterator();
-                        if (!inRels.hasNext()) {
-                            inRels = curNode.getRelationships(Direction.INCOMING, ERelations.LEMMA_TEXT).iterator();
-                        }
-                        Long maxRank = -1L;
-                        while(inRels.hasNext()) {
-                            Relationship curRel = inRels.next();
-                            Node inNode = curRel.getStartNode();
-                            if (!inNode.hasProperty("rank")) {
-                                queue.add(curNode);
-                                curNode = null;
-                                break;
-                            }
-                            Long inRank = (Long)inNode.getProperty("rank");
-                            if (inRank > maxRank)
-                                maxRank = inRank;
-                        }
-                        if (curNode != null) {
-                            maxRank += 1L;
-                            if (maxRank > (Long)curNode.getProperty("rank")) {
-                                curNode.setProperty("rank", maxRank + 1L);
-                            }
-                            Iterator<Relationship> outRels = curNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).iterator();
-                            if (!inRels.hasNext()) {
-                                outRels = curNode.getRelationships(Direction.OUTGOING, ERelations.LEMMA_TEXT).iterator();
-                            }
-                            while(outRels.hasNext()) {
-                                Relationship curRel = outRels.next();
-                                Node curOutNode = curRel.getEndNode();
-                                if(!queue.contains(curOutNode)) {
-                                    queue.add(curOutNode);
-                                }
-                            }
-                        }
-                    }
-                    updatedSections.add(new SectionModel(section));
-                }
+            for (SectionModel sm : smlist) {
+                ReadingService.recalculateRank(DatabaseService.getStartNode(sm.getId(), db), true);
             }
             tx.success();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(updatedSections).build();
+        return Response.ok().build();
 
     }
-    /*
-     * Collection retrieval calls
-     */
+
+    /*----------------------------*
+     * Collection retrieval calls *
+     *----------------------------*/
 
     /**
      * Gets a list of all sections of a tradition with the given id.

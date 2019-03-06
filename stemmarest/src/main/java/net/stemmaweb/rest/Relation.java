@@ -346,11 +346,11 @@ public class Relation {
                 Node readingA = iterateNodes.remove(0);
                 HashSet<Node> alreadyRelated = new HashSet<>();
                 readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
-                System.out.println(String.format("Propagating type model %s on node %d / %s",
-                        rtm.getName(), readingA.getId(), readingA.getProperty("text")));
+                // System.out.println(String.format("Propagating type model %s on node %d / %s",
+                //        rtm.getName(), readingA.getId(), readingA.getProperty("text")));
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
-                        System.out.println(String.format("...making relation %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
+                        // System.out.println(String.format("...making relation %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
                         GraphModel interim = createSingleRelation(readingA, readingB, rm, rtm);
                         newRelationResult.addReadings(interim.getReadings());
                         newRelationResult.addRelations(interim.getRelations());

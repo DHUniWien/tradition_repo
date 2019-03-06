@@ -1,6 +1,8 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,6 +14,7 @@ import javax.ws.rs.core.Response.Status;
 
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -19,8 +22,10 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.helpers.collection.Iterators;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
@@ -42,7 +47,23 @@ public class Witness {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
-        sigil = requestedSigil;
+        // The "sigil" might be a sigil, or it might be a node ID.
+        Long nodeId = null;
+        try {
+            nodeId = Long.valueOf(requestedSigil);
+        } catch (NumberFormatException e) {
+            sigil = requestedSigil;
+        }
+        if (nodeId != null) {
+            try (Transaction tx = db.beginTx()) {
+                // Look this up via Cypher, to avoid triggering an exception
+                Result lookup = db.execute(String.format("MATCH (n:WITNESS) WHERE id(n) = %d RETURN n", nodeId));
+                Iterator<Node> nc = lookup.columnAs("n");
+                nc.forEachRemaining(x -> sigil = x.getProperty("sigil").toString());
+                tx.success();
+            }
+        }
+        if (sigil == null) sigil = requestedSigil;
         sectId = null;
     }
 
@@ -58,6 +79,110 @@ public class Witness {
     public Response getWitnessAsText() {
         return getWitnessAsTextWithLayer(new ArrayList<>(), "0", "E");
     }
+
+    /**
+     * Returns a WitnessModel corresponding to the requested witness.
+     * @summary Get witness information
+     * @return  A WitnessModel containing information about the witness
+     * @statuscode 200 - on success
+     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
+     * @statuscode 500 - on error, with an error message
+     */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = WitnessModel.class)
+    public Response getWitnessInfo() {
+        WitnessModel thisWit;
+        try (Transaction tx = db.beginTx()) {
+            Node witnessNode = db.findNode(Nodes.WITNESS, "sigil", sigil);
+            if (witnessNode == null)
+                return Response.status(Status.NOT_FOUND).build();
+            thisWit = new WitnessModel(witnessNode);
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        return Response.ok(thisWit).build();
+    }
+
+    /**
+     * Deletes the requested witness.
+     * @summary Delete a witness
+     * @statuscode 200 - on success
+     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
+     * @statuscode 500 - on error, with an error message
+     */
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = WitnessModel.class)
+    public Response deleteWitness() {
+        if (sectId != null)
+            return Response.status(Status.BAD_REQUEST).entity("Cannot delete a witness from a single section").build();
+        try (Transaction tx = db.beginTx()) {
+            Node witnessNode = db.findNode(Nodes.WITNESS, "sigil", sigil);
+            if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
+            // Find all references to the witness throughout the tradition, and delete them
+            HashSet<Node> orphanReadings = new HashSet<>();
+            for (Relationship r : DatabaseService.returnEntireTradition(tradId, db).relationships()) {
+                if (r.isType(ERelations.SEQUENCE)) {
+                    Node start = r.getStartNode();
+                    Node end = r.getEndNode();
+                    for (String layer : r.getPropertyKeys()) {
+                        ReadingService.removeWitnessLink(start, end, sigil, layer);
+                    }
+                    // Was this the last outgoing for the start, or the last incoming for the end?
+                    if (!start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT).iterator().hasNext())
+                        orphanReadings.add(start);
+                    if (!end.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT).iterator().hasNext())
+                        orphanReadings.add(end);
+                }
+            }
+            // Delete any orphan readings
+            for (Node orphan : orphanReadings) {
+                if (orphan.hasRelationship()) {
+                    // Check that no SEQUENCE or LEMMA_TEXT relationships are left
+                    for (Relationship r : orphan.getRelationships()) {
+                        if (r.isType(ERelations.SEQUENCE) || r.isType(ERelations.LEMMA_TEXT))
+                            return Response.serverError()
+                                    .entity(String.format("Reading %d (%s) still has sequence links",
+                                            orphan.getId(), orphan.getProperty("text"))).build();
+                        r.delete();
+                    }
+                    orphan.delete();
+                }
+            }
+            // Look through any stemmata and turn the witness hypothetical in each of them
+            for (Relationship r : witnessNode.getRelationships(ERelations.HAS_WITNESS)) {
+                Node owner = r.getStartNode();
+                if (owner.hasLabel(Nodes.STEMMA)) {
+                    Node newHypothetical = db.createNode(Nodes.WITNESS);
+                    DatabaseService.copyProperties(witnessNode, newHypothetical);
+                    newHypothetical.setProperty("hypothetical", true);
+                    for (Relationship link : witnessNode.getRelationships(ERelations.TRANSMITTED)) {
+                        Relationship copy;
+                        if (link.getStartNode().equals(witnessNode))
+                            copy = newHypothetical.createRelationshipTo(link.getEndNode(), ERelations.TRANSMITTED);
+                        else
+                            copy = link.getStartNode().createRelationshipTo(newHypothetical, ERelations.TRANSMITTED);
+                        DatabaseService.copyProperties(link, copy);
+                        link.delete();
+                    }
+                    owner.createRelationshipTo(newHypothetical, ERelations.HAS_WITNESS);
+                } // otherwise it is the link to the TRADITION node.
+                r.delete();
+            }
+            // Delete the node
+            witnessNode.delete();
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        return Response.ok().build();
+    }
+
+
 
     /**
      * finds a witness in the database and returns it as a string; if start and end are

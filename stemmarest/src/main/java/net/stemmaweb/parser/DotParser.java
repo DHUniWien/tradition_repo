@@ -144,7 +144,7 @@ public class DotParser {
             // We need to traverse only those paths that belong to this stemma.
 
             // Traverse the stemma looking for a cycle.
-            Boolean contaminated = false;
+            boolean contaminated = false;
             for (Node witness : witnessesVisited.keySet()) {
                 ResourceIterator<Node> pathNodes = db.traversalDescription()
                         .depthFirst()

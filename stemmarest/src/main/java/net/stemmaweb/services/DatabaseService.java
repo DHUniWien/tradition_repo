@@ -260,6 +260,11 @@ public class DatabaseService {
         return extantUser != null;
     }
 
+    // General purpose property duplicator
+    public static void copyProperties(PropertyContainer original, PropertyContainer copy) {
+        for (String p : original.getPropertyKeys())
+            copy.setProperty(p, original.getProperty(p));
+    }
 
     /**
      * Tradition and section crawlers, respectively
