@@ -324,7 +324,9 @@ public class DotExporter
         }
         label = lex_str.toString();
         if (isHTMLLabel) {
-            label = "<font POINT-SIZE=\"10\" color=\"lightgrey\">" + siglaString + "</font><BR/>" + label;
+            if (witnesses.length != numWits) {
+                label = "<font POINT-SIZE=\"10\" color=\"lightgrey\">" + siglaString + "</font><BR/>" + label;
+            }
             label = String.format("<%s>", label);
         } else {
             label = String.format("\"%s\"", label);
