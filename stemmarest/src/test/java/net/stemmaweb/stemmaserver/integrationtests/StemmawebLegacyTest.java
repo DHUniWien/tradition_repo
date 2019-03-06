@@ -291,7 +291,9 @@ public class StemmawebLegacyTest {
         assertEquals(Status.CREATED.getStatusCode(), response.getStatus());
         GraphModel tmpGraphModel = response.getEntity(new GenericType<GraphModel>(){});
         assertEquals(1, tmpGraphModel.getRelations().size());
-        RelationModel rm = tmpGraphModel.getRelations().stream().findAny().get();
+        Optional<RelationModel> orm = tmpGraphModel.getRelations().stream().findAny();
+        assertTrue(orm.isPresent());
+        RelationModel rm = orm.get();
         assertEquals(n21, rm.getSource());
         assertEquals(n22, rm.getTarget());
         existingRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
@@ -489,12 +491,12 @@ public class StemmawebLegacyTest {
                 .path("/tradition/" + tradId2 + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
 
-        String rStart="", r9_2="";
+        String r8_1="", r9_2="";
         for (ReadingModel cur_reading : listOfReadings) {
             long cur_rank = cur_reading.getRank();
             String cur_text = cur_reading.getText();
-            if (cur_reading.getIs_start()) {
-                rStart = cur_reading.getId();
+            if (cur_rank == 3L && cur_reading.getIs_lacuna()) {
+                r8_1 = cur_reading.getId();
             } else if (cur_rank == 4L && cur_text.equals("henricus")) {
                 r9_2 = cur_reading.getId();
             }
@@ -513,8 +515,8 @@ public class StemmawebLegacyTest {
 
         relationship = new RelationModel();
         relationship.setSource(r9_2);
-        relationship.setTarget(rStart);
-        relationship.setType("transposition");
+        relationship.setTarget(r8_1);
+        relationship.setType("collated");
         relationship.setScope("local");
 
         response = jerseyTest
@@ -535,7 +537,7 @@ public class StemmawebLegacyTest {
 
         response = jerseyTest
                 .resource()
-                .path("/tradition/" + tradId2 + "/relation")
+                .path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relationship);
         assertEquals(Status.CONFLICT.getStatusCode(), response.getStatus());

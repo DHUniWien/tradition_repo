@@ -122,10 +122,10 @@ public class SectionTest extends TestCase {
                 "stemmaweb", "section 2"), "parentId");
         List<ReadingModel> sectRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(46, sectRdgs.size());
+        assertEquals(47, sectRdgs.size());
         List<ReadingModel> allRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(75, allRdgs.size());
+        assertEquals(77, allRdgs.size());
     }
 
     public void testSectionWitnesses() {
@@ -169,12 +169,12 @@ public class SectionTest extends TestCase {
     public void testDeleteSection() {
         List<ReadingModel> tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(29, tReadings.size());
+        assertEquals(30, tReadings.size());
 
         Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(75, tReadings.size());
+        assertEquals(77, tReadings.size());
 
         List<SectionModel> tSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
@@ -188,7 +188,7 @@ public class SectionTest extends TestCase {
 
         tReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        assertEquals(46, tReadings.size());
+        assertEquals(47, tReadings.size());
     }
 
     private List<String> importFlorilegium () {
@@ -611,11 +611,15 @@ public class SectionTest extends TestCase {
         List<ReadingModel> part1rdgs = jerseyTest.resource()
                 .path("/tradition/" + mattId + "/section/" + targetSectionId + "/readings")
                 .get(new GenericType<List<ReadingModel>>() {});
-        ReadingModel firstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        Optional<ReadingModel> ofe = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst();
+        assertTrue(ofe.isPresent());
+        ReadingModel firstEnd = ofe.get();
         assertEquals(Long.valueOf(168), firstEnd.getRank());
 
         // Check that the second half's end rank is correct
-        ReadingModel secondEnd = part2rdgs.stream().filter(ReadingModel::getIs_end).findFirst().get();
+        Optional<ReadingModel> ose = part2rdgs.stream().filter(ReadingModel::getIs_end).findFirst();
+        assertTrue(ose.isPresent());
+        ReadingModel secondEnd = ose.get();
         assertEquals(Long.valueOf(origSection.getEndRank() - 168 + 1), secondEnd.getRank());
 
         // Check that the final nodes are all connected to END
@@ -627,12 +631,25 @@ public class SectionTest extends TestCase {
                     .path("/tradition/" + mattId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
                     .get(ClientResponse.class);
             assertEquals(ClientResponse.Status.OK.getStatusCode(), connectedTest.getStatus());
+            // Check our lacunose texts
+            if (wit.getSigil().equals("C") || wit.getSigil().equals("E") || wit.getSigil().equals("G") ) {
+                assertEquals("", Util.getValueFromJson(connectedTest, "text"));
+                checkLacunaOnly(wit.getSigil(), mattId, targetSectionId);
+                checkLacunaOnly(wit.getSigil(), mattId, newSectionId);
+            }
+            if (wit.getSigil().equals("H") || wit.getSigil().equals("L")) {
+                assertEquals("", Util.getValueFromJson(connectedTest, "text"));
+                checkLacunaOnly(wit.getSigil(), mattId, targetSectionId);
+            }
         }
-        // Check that now-empty witnesses H and L are gone from the first section
-        for (WitnessModel wit : firstSectWits) {
-            assertNotEquals("H", wit.getSigil());
-            assertNotEquals("L", wit.getSigil());
-        }
+    }
+
+    private void checkLacunaOnly(String sigil, String tid, String sid) {
+        List<ReadingModel> readingList = jerseyTest.resource()
+                .path("/tradition/" + tid + "/section/" + sid + "/witness/" + sigil + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(1, readingList.size());
+        assertTrue(readingList.get(0).getIs_lacuna());
     }
 
     private static int countOccurrences (String tstr, String substr) {

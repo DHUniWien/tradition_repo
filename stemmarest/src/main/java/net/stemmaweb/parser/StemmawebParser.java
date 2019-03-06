@@ -65,7 +65,6 @@ public class StemmawebParser {
         HashMap<String, String> keytypes = new HashMap<>(); // to store data key value types
         HashMap<String, Boolean> witnesses = new HashMap<>();  // to store witnesses found
         HashSet<String> relationtypes = new HashSet<>(); // to note the relation types we've seen
-        ArrayList<Node> lacunaNodes = new ArrayList<>(); // to keep track of any lacunae we will need to delete
         String stemmata = ""; // holds Stemmatas for this GraphMl
 
         // Some state variables
@@ -276,9 +275,6 @@ public class StemmawebParser {
                                                 parentNode.createRelationshipTo(currentNode, ERelations.HAS_END);
                                             setTypedProperty(currentNode, attr, keytype, text);
                                             break;
-                                        case "is_lacuna":
-                                            lacunaNodes.add(currentNode);
-                                            setTypedProperty(currentNode, "is_placeholder", keytype, text);
                                         case "public": // This is overridden in the upload API
                                             break;
                                         case "rank": // These are set as strings in some XML and shouldn't be
@@ -329,7 +325,7 @@ public class StemmawebParser {
 */
                                 break;
                             case "node":
-                                assert currentGraph != null;
+                                assert(currentGraph != null);
                                 if (!currentGraph.equals("relationships")) {
                                     // only store nodes for the sequence graph
                                     currentNode = db.createNode(Nodes.READING);
@@ -354,25 +350,11 @@ public class StemmawebParser {
                 }
             }
 
-            // Remove any lacuna nodes that were created
-            for (Node ln: lacunaNodes) {
-                // This is essentially a placeholder node; remove it.
-                ReadingService.removePlaceholder(ln);
-                ln.delete();
-            }
-            // Remove any sequence links directly between START and END, which may have been created
-            // by the lacuna removal
-            Node sectionStart = DatabaseService.getStartNode(String.valueOf(parentNode.getId()), db);
-            Node sectionEnd = DatabaseService.getEndNode(String.valueOf(parentNode.getId()), db);
-            ArrayList<Relationship> redundantRels = DatabaseService.getRelationshipTo(sectionStart, sectionEnd, ERelations.SEQUENCE);
-            for (Relationship r : redundantRels)
-                r.delete();
-
             // Re-rank the entire tradition
+            Node sectionStart = DatabaseService.getStartNode(String.valueOf(parentNode.getId()), db);
             ReadingService.recalculateRank(sectionStart, true);
 
-            // Create the witness nodes. n.b. Any witnesses represented only with a LACUNA
-            // node will still be created, on the assumption that they will be used eventually.
+            // Create the witness nodes.
             witnesses.keySet().forEach(x -> Util.findOrCreateExtant(traditionNode, x));
             // Set colocation information on relation types
             Util.setColocationFlags(traditionNode);

@@ -255,10 +255,9 @@ public class Tradition {
      * Initializes ranks in sections where readings have no rank-property
      *
      * This does not belong to the official API!
-     * It is just a hack to initialize sections where their readings have
-     * no "rank" defined
+     * It is a secret hack to fix ranks if we find they are broken or missing.
      *
-     * TODO do we need this or can we use the usual rank calculation?
+     * TODO use the methods in ReadingService to get this done
      */
     @GET
     @Path("/initRanks")

@@ -508,6 +508,9 @@ public class Section {
                 return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("Cannot split section at its end rank")).build();
 
             // Make a list of relationships that cross our requested rank
+            // Keep track of the witnesses that had lacunae at this point; they will need lacunae
+            // at the start of the new section too.
+            boolean lacunoseWitsPresent = false;
             HashSet<Relationship> linksToSplit = new HashSet<>();
             ResourceIterable<Relationship> sectionSequences = db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
@@ -515,8 +518,14 @@ public class Section {
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
                     .relationships();
             for (Relationship r : sectionSequences) {
-                if ((Long) r.getStartNode().getProperty("rank") < rank && (Long) r.getEndNode().getProperty("rank") >= rank) {
+                Node thisStart = r.getStartNode();
+                Node thisEnd = r.getEndNode();
+                Long startRank = (Long) thisStart.getProperty("rank");
+                Long endRank = (Long) thisEnd.getProperty("rank");
+                if (startRank < rank && endRank >= rank) {
                     linksToSplit.add(r);
+                    if (thisStart.hasProperty("is_lacuna") && thisStart.getProperty("is_lacuna").equals(true)
+                            && endRank > rank) lacunoseWitsPresent = true;
                 }
             }
 
@@ -555,14 +564,28 @@ public class Section {
             newStart.setProperty("section_id", newSection.getId());
             newSection.createRelationshipTo(newStart, ERelations.COLLATION);
 
+            Node newLacuna = null;
+            if (lacunoseWitsPresent) {
+                newLacuna = db.createNode(Nodes.READING);
+                newLacuna.setProperty("is_lacuna", true);
+                newLacuna.setProperty("text", "#LACUNA#");
+                newLacuna.setProperty("rank", 1L);
+                newLacuna.setProperty("section_id", Long.valueOf(sectId));
+            }
+
             // Reattach the readings to their respective new end/start nodes
             for (Relationship crossed : linksToSplit) {
                 Node lastInOld = crossed.getStartNode();
                 Node firstInNew = crossed.getEndNode();
+                if (lastInOld.hasProperty("is_lacuna") && lastInOld.getProperty("is_lacuna").equals(true)
+                        && (Long) firstInNew.getProperty("rank") > rank) {
+                    ReadingService.transferWitnesses(newStart, newLacuna, crossed);
+                    ReadingService.transferWitnesses(newLacuna, firstInNew, crossed);
+                } else if (!firstInNew.equals(sectionEnd))
+                    ReadingService.transferWitnesses(newStart, firstInNew, crossed);
                 if (!lastInOld.equals(startNode))
                     ReadingService.transferWitnesses(lastInOld, newEnd, crossed);
-                if (!firstInNew.equals(sectionEnd))
-                    ReadingService.transferWitnesses(newStart, firstInNew, crossed);
+
             }
             linksToSplit.forEach(Relationship::delete);
 
@@ -576,6 +599,10 @@ public class Section {
                             x.setProperty("rank", Long.valueOf(x.getProperty("rank").toString()) - rank + 1);
                     }
             );
+
+            // Check for lacunae - if the last reading in the old section is a lacuna, the first reading
+            // in the new section should also be one
+
 
             // Re-initialize the ranks on the new section
             // recalculateRank(newStart);
@@ -678,6 +705,8 @@ public class Section {
             // Remove each placeholder in turn
             removePlaceholder(oldEnd);
             removePlaceholder(oldStart);
+
+            // TODO Look for any lacuna nodes in a row that can be merged
 
             // Move the second end node to the first section
             trueEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
