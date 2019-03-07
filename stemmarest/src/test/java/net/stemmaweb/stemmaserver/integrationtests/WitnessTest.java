@@ -254,6 +254,28 @@ public class WitnessTest {
                 .get(new GenericType<List<ReadingModel>>() {}))
             if (!rm.getIs_end() && !rm.getIs_start())
                 assertTrue(remaining.contains(rm.getId()));
+
+        // Now add a witness out-of-band, that doesn't have any particular data, to make sure we can
+        // delete errant witnesses
+        Long bogusId;
+        try (Transaction tx = db.beginTx()) {
+            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            Node bogus = db.createNode(Nodes.WITNESS);
+            bogusId = bogus.getId();
+            bogus.setProperty("hypothetical", false);
+            bogus.setProperty("sigil", "n\":\"RJKYRSKZ");
+            traditionNode.createRelationshipTo(bogus, ERelations.HAS_WITNESS);
+            tx.success();
+        }
+        assertNotNull(bogusId);
+        assertEquals(3, jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>(){}).size());
+        result = jerseyTest.resource()
+                .path(String.format("/tradition/%s/witness/%d", tradId, bogusId))
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        assertEquals(2, jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>(){}).size());
     }
 
     @Ignore

@@ -680,7 +680,7 @@ public class Tradition {
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getJson(@QueryParam("conflate") List<String> toConflate,
+    public Response getJson(@QueryParam("conflate") String toConflate,
                             @DefaultValue("") @QueryParam("start_section") String startSection,
                             @DefaultValue("") @QueryParam("end_section") String endSection) {
         return new TabularExporter(db).exportAsJSON(traditionId, toConflate, startSection, endSection);
@@ -700,7 +700,7 @@ public class Tradition {
     @Path("/csv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getCsv(@QueryParam("conflate") List<String> toConflate,
+    public Response getCsv(@QueryParam("conflate") String toConflate,
                            @DefaultValue("") @QueryParam("start_section") String startSection,
                            @DefaultValue("") @QueryParam("end_section") String endSection) {
         return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate, startSection, endSection);
@@ -720,7 +720,7 @@ public class Tradition {
     @Path("/tsv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getTsv(@QueryParam("conflate") List<String> toConflate,
+    public Response getTsv(@QueryParam("conflate") String toConflate,
                            @DefaultValue("") @QueryParam("start_section") String startSection,
                            @DefaultValue("") @QueryParam("end_section") String endSection) {
         return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate, startSection, endSection);
