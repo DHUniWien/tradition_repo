@@ -97,7 +97,9 @@ public class RelationService {
      * @return - a list of sets, where each set represents a group of colocated readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong in the algorithm.
      */
-    public static List<Set<Node>> getClusters(String tradId, String sectionId, GraphDatabaseService db) throws Exception {
+    public static List<Set<Node>> getClusters(
+            String tradId, String sectionId, GraphDatabaseService db)
+            throws Exception {
         // Get the tradition node and find the relevant relation types
         HashSet<String> colocatedRels = new HashSet<>();
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
@@ -106,12 +108,36 @@ public class RelationService {
                 colocatedRels.add(String.format("\"%s\"", rtm.getName()));
 
         // Now run the unionFind algorithm on the relevant subset of relation types
+        return collectSpecifiedClusters(sectionId, db, colocatedRels);
+    }
+
+    public static List<Set<Node>> getCloselyRelatedClusters(
+            String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
+            throws Exception {
+        HashSet<String> closeRelations = new HashSet<>();
+        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode);
+        int bindlevel = 0;
+        Optional<RelationTypeModel> thresholdModel = rtmlist.stream().filter(x -> x.getName().equals(thresholdName)).findFirst();
+        if (thresholdModel.isPresent())
+            bindlevel = thresholdModel.get().getBindlevel();
+        for (RelationTypeModel rtm : rtmlist)
+            if (rtm.getBindlevel() <= bindlevel)
+                closeRelations.add(String.format("\"%s\"", rtm.getName()));
+
+        return collectSpecifiedClusters(sectionId, db, closeRelations);
+    }
+
+    private static List<Set<Node>> collectSpecifiedClusters(
+            String sectionId, GraphDatabaseService db, Set<String> relatedTypes)
+            throws Exception {
+        // Now run the unionFind algorithm on the relevant subset of relation types
         List<Set<Node>> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             // Make the arguments
             String cypherNodes = String.format("MATCH (n:READING {section_id:%s}) RETURN id(n) AS id", sectionId);
             String cypherRels = String.format("MATCH (n:READING)-[r:RELATED]-(m) WHERE r.type IN [%s] RETURN id(n) AS source, id(m) AS target",
-                    String.join(",", colocatedRels));
+                    String.join(",", relatedTypes));
             // A struct to store the results
             Map<Long, Set<Long>> clusters = new HashMap<>();
             // Stream the results and collect the clusters

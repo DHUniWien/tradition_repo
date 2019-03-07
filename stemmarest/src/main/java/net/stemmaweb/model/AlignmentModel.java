@@ -48,7 +48,7 @@ public class AlignmentModel {
     public AlignmentModel() {}
 
     // Get an alignment table where some of the related readings are conflated.
-    public AlignmentModel(Node sectionNode, List<String> conflateRelations) {
+    public AlignmentModel(Node sectionNode, String collapseRelated) throws Exception {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {
@@ -67,28 +67,31 @@ public class AlignmentModel {
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
 
-            // Make a reference list of readings, and their conflation partners.
-            // We arbitrarily use the first reading we come to as the reference
-            // for all the readings that are equivalent to it.
-            HashMap<Node, Node> conflatedReadings = new HashMap<>();
-            for (String conflate : conflateRelations) {
-                RelationTypeModel crtm = RelationService.returnRelationType(tradId, conflate);
-                RelationService.TransitiveRelationTraverser reltraverser = new RelationService.TransitiveRelationTraverser(tradId, crtm);
-                traversedTradition.nodes().forEach(x -> {  // For each reading node in the section...
-                    // If it isn't represented by anyone else yet, it's represented by itself
-                    if (!conflatedReadings.containsKey(x)) conflatedReadings.put(x, x);
-                    // Get the representative
-                    Node referenceReading = conflatedReadings.get(x);
-                    // Traverse the readings for the given relation and its subsidiaries, and
-                    // note them all as being represented by referenceReading.
-                    ResourceIterable<Node> equivalent = db.traversalDescription().depthFirst()
-                            .relationships(ERelations.RELATED)
-                            .evaluator(reltraverser)
-                            .uniqueness(Uniqueness.NODE_GLOBAL).traverse(x)
-                            .nodes();
-                            equivalent.forEach(y -> conflatedReadings.put(y, referenceReading));
+            // Get the list of equivalent readings based on our reference relation - we
+            // will conflate any readings that are linked with relations of, at most,
+            // the bindlevel of the given relation type.
+            List<Set<Node>> readingClusters = RelationService.getCloselyRelatedClusters(tradId, sectId, db, collapseRelated);
+            HashMap<Node, Node> equivalences = new HashMap<>();
+            for (Set<Node> cluster : readingClusters) {
+                Node representative = null;
+                for (Node n : cluster) {
+                    ReadingModel rm = new ReadingModel(n);
+                    // Use the lemma if we have one
+                    if (rm.getIs_lemma()) {
+                        representative = n;
+                        break;
+                    }
+                    // Otherwise use a reading with a normal form if we have one
+                    if (!rm.normalized().equals(rm.getText()))
+                        representative = n;
+                }
+                // Otherwise use any arbitrary node.
+                if (representative == null)
+                    representative = cluster.iterator().next();
+                // Set the representative for all cluster members.
+                for (Node n : cluster)
+                    equivalences.put(n, representative);
 
-                });
             }
 
             // Now make the alignment.
@@ -126,29 +129,34 @@ public class AlignmentModel {
                     ArrayList<String> alternatives = new ArrayList<>();
                     if (!layer.equals("base")) alternatives.add(layer);
                     Evaluator e = new WitnessPath(sigil, alternatives).getEvalForWitness();
+                    ReadingModel filler;
                     for (Node r : db.traversalDescription().depthFirst()
                             .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                             .evaluator(e)
-                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                            .uniqueness(Uniqueness.NODE_PATH)
                             .traverse(startNode)
                             .nodes()) {
                         if (r.hasProperty("is_end"))
                             continue;
                         // Get the reading we should use
-                        if (conflatedReadings.containsKey(r))
-                            r = conflatedReadings.get(r);
+                        if (equivalences.containsKey(r))
+                            r = equivalences.get(r);
 
                         // Make the reading token
                         ReadingModel readingToken = new ReadingModel(r);
+                        // Check whether it was a lacuna
+                        if (readingToken.getIs_lacuna())
+                            filler = readingToken;
+                        else filler = null;
 
-                        // Put it at its proper rank, filling null tokens into the gap
+                        // Put it at its proper rank, filling null bzw. lacuna tokens into the gap
                         long currRankIndex = (long) r.getProperty("rank") - 1;
                         for (int i = tokens.size(); i < currRankIndex; i++)
-                            tokens.add(null);
+                            tokens.add(filler);
                         tokens.add(readingToken);
                     }
-                    // Skip this witness if it is the base and only layer, and empty
-                    if (tokens.size() == 0 && layer.equals("base") && layers.size() == 1) continue;
+                    // Skip this witness if it is empty
+                    if (tokens.size() == 0) continue;
 
                     // Fill in any empty ranks at the end
                     for (int i = tokens.size(); i < length; i++)

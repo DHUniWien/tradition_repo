@@ -25,34 +25,40 @@ public class TabularExporter {
         this.db = db;
     }
 
-    public Response exportAsJSON(String tradId, List<String> conflate, String startSection, String endSection) {
+    public Response exportAsJSON(String tradId, String conflate, String startSection, String endSection) {
         ArrayList<Node> traditionSections;
         try {
             traditionSections = getSections(tradId, startSection, endSection);
+            if(traditionSections==null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            return Response.ok(getTraditionAlignment(traditionSections, conflate),
+                    MediaType.APPLICATION_JSON_TYPE).build();
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(e.getMessage()).build();
         }
-        if(traditionSections==null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-
-        return Response.ok(getTraditionAlignment(traditionSections, conflate),
-                MediaType.APPLICATION_JSON_TYPE).build();
     }
 
 
-    public Response exportAsCSV(String tradId, char separator, List<String> conflate, String startSection, String endSection) {
+    public Response exportAsCSV(String tradId, char separator, String conflate, String startSection, String endSection) {
         ArrayList<Node> traditionSections;
+        AlignmentModel wholeTradition;
         try {
+            // Get our list of sections
             traditionSections = getSections(tradId, startSection, endSection);
+            if(traditionSections==null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+            // Get the alignment model from exportAsJSON, and then turn that into CSV.
+            wholeTradition = getTraditionAlignment(traditionSections, conflate);
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(e.getMessage()).build();
         }
-        if(traditionSections==null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
-        }
-        // Get the alignment model from exportAsJSON, and then turn that into CSV.
-        AlignmentModel wholeTradition = getTraditionAlignment(traditionSections, conflate);
 
         // Got this far? Turn it into CSV.
         // The CSV will go into a string that we can return.
@@ -93,7 +99,7 @@ public class TabularExporter {
         if (startSection.equals("") && endSection.equals("")) return traditionSections;
 
         // Do the real work
-        Boolean inPart = startSection.equals("");
+        boolean inPart = startSection.equals("");
         ArrayList<Node> collectedSections = new ArrayList<>();
         for (Node section : traditionSections) {
             if (String.valueOf(section.getId()).equals(startSection)) {
@@ -112,14 +118,15 @@ public class TabularExporter {
         return collectedSections;
     }
 
-    private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, List<String> conflate) {
+    private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, String collapseRelated)
+            throws Exception {
         // Make a new alignment model that has a column for every witness layer across the requested sections.
         // For each section, get the model. Keep track of which witnesses correspond to
         // which columns in which section.
         HashMap<String, String> allWitnesses = new HashMap<>();
         ArrayList<AlignmentModel> tables = new ArrayList<>();
         for (Node sectionNode : traditionSections) {
-            AlignmentModel asJson = new AlignmentModel(sectionNode, conflate);
+            AlignmentModel asJson = new AlignmentModel(sectionNode, collapseRelated);
             // Save the alignment to our tables list
             tables.add(asJson);
             // Save the witness -> column mapping to our map
