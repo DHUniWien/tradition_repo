@@ -1071,7 +1071,7 @@ public class Section {
         return exporter.writeNeo4J(tradId, sectId, dm);
     }
 
-    // Export a list of variants for a section
+    // TODO Export a list of variants for a section
 
     // For use in a transaction!
     private void removeFromSequence (Node thisSection) {

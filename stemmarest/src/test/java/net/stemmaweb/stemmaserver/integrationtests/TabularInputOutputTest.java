@@ -68,7 +68,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(310, allReadings.size());
-        Boolean foundReading = false;
+        boolean foundReading = false;
         for (ReadingModel r : allReadings)
             if (r.getText().equals("Μαξίμου"))
                 foundReading = true;
@@ -100,7 +100,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(311, allReadings.size());
-        Boolean foundReading = false;
+        boolean foundReading = false;
         for (ReadingModel r : allReadings)
             if (r.getText().equals("Μαξίμου"))
                 foundReading = true;
@@ -169,7 +169,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(11, allReadings.size());
-        Boolean foundReading = false;
+        boolean foundReading = false;
         for (ReadingModel r : allReadings)
             if (r.getText().equals("այնոսիկ"))
                 foundReading = true;
@@ -187,7 +187,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllWitnesses();
         allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(3, allWitnesses.size());
-        Boolean foundWitness = false;
+        boolean foundWitness = false;
         for (WitnessModel w : allWitnesses)
             if (w.getSigil().equals("Աբ2"))
                 foundWitness = true;
@@ -359,7 +359,6 @@ public class TabularInputOutputTest extends TestCase {
                 .resource()
                 .path("/tradition/" + traditionId + "/json")
                 .queryParam("conflate", "collated")
-                .queryParam("conflate", "spelling")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
@@ -562,6 +561,12 @@ public class TabularInputOutputTest extends TestCase {
         }
 
     }
+
+    // test florilegium layers with Q a.c. / s.l.
+    // test wits that don't appear (or their layers don't appear) in an earlier section
+    // test wits that don't appear (or their layers don't appear) in a later section
+    // test layer conflation hierarchy (spelling -> orthographic, punctuation)
+
 
     public void tearDown() throws Exception {
         db.shutdown();
