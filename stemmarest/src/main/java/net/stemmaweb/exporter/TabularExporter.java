@@ -7,6 +7,8 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.Transaction;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -25,10 +27,10 @@ public class TabularExporter {
         this.db = db;
     }
 
-    public Response exportAsJSON(String tradId, String conflate, String startSection, String endSection) {
+    public Response exportAsJSON(String tradId, String conflate, List<String> sectionList) {
         ArrayList<Node> traditionSections;
         try {
-            traditionSections = getSections(tradId, startSection, endSection);
+            traditionSections = getSections(tradId, sectionList);
             if(traditionSections==null) {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
@@ -43,12 +45,12 @@ public class TabularExporter {
     }
 
 
-    public Response exportAsCSV(String tradId, char separator, String conflate, String startSection, String endSection) {
+    public Response exportAsCSV(String tradId, char separator, String conflate, List<String> sectionList) {
         ArrayList<Node> traditionSections;
         AlignmentModel wholeTradition;
         try {
             // Get our list of sections
-            traditionSections = getSections(tradId, startSection, endSection);
+            traditionSections = getSections(tradId, sectionList);
             if(traditionSections==null) {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
@@ -89,32 +91,25 @@ public class TabularExporter {
         return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
     }
 
-    private ArrayList<Node> getSections(String tradId, String startSection, String endSection)
+    private ArrayList<Node> getSections(String tradId, List<String> sectionList)
     throws TabularExporterException {
         ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
         // Does the tradition exist in the first place?
         if (traditionSections == null) return null;
 
         // Are we requesting all sections?
-        if (startSection.equals("") && endSection.equals("")) return traditionSections;
+        if (sectionList.size() == 0) return traditionSections;
 
         // Do the real work
-        boolean inPart = startSection.equals("");
         ArrayList<Node> collectedSections = new ArrayList<>();
-        for (Node section : traditionSections) {
-            if (String.valueOf(section.getId()).equals(startSection)) {
-                inPart = true;
-            }
-            if (inPart) collectedSections.add(section);
-            if (String.valueOf(section.getId()).equals(endSection)) {
-                if (!inPart) throw new TabularExporterException("End section found before start section reached");
-                inPart = false;
+        for (String sectionId : sectionList) {
+            try (Transaction tx = db.beginTx()) {
+                collectedSections.add(db.getNodeById(Long.valueOf(sectionId)));
+                tx.success();
+            } catch (NotFoundException e) {
+                throw new TabularExporterException("Section " + sectionId + " not found in tradition");
             }
         }
-        if (collectedSections.size() == 0 && !startSection.equals(""))
-            throw new TabularExporterException("Specified start section not found");
-        if (inPart && !endSection.equals(""))
-            throw new TabularExporterException("Specified end section not found");
         return collectedSections;
     }
 

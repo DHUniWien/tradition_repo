@@ -274,7 +274,7 @@ public class TabularInputOutputTest extends TestCase {
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/json")
-                .queryParam("start_section", tradSections.get(3))
+                .queryParam("section", tradSections.get(3))
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -286,7 +286,8 @@ public class TabularInputOutputTest extends TestCase {
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/json")
-                .queryParam("end_section", tradSections.get(1))
+                .queryParam("section", tradSections.get(0))
+                .queryParam("section", tradSections.get(1))
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -298,8 +299,7 @@ public class TabularInputOutputTest extends TestCase {
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/json")
-                .queryParam("start_section", tradSections.get(2))
-                .queryParam("end_section", tradSections.get(2))
+                .queryParam("section", tradSections.get(2))
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -307,43 +307,23 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(64, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
-        // Request sections 3-1
-        response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/csv")
-                .queryParam("start_section", tradSections.get(2))
-                .queryParam("end_section", tradSections.get(0))
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("End section found before start section reached", response.getEntity(String.class));
 
         // Request sections 3-bad
         response = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/tsv")
-                .queryParam("start_section", tradSections.get(2))
-                .queryParam("end_section", "123456")
+                .queryParam("section", tradSections.get(2))
+                .queryParam("section", "123456")
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("Specified end section not found", response.getEntity(String.class));
+        assertEquals("Section 123456 not found in tradition", response.getEntity(String.class));
 
-        // Request sections bad-2
-        response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/json")
-                .queryParam("start_section", "123456")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("Specified start section not found", response.getEntity(String.class));
-
-        // Request sections on nonexisten tradition
+        // Request sections on nonexistent tradition
         response = jerseyTest
                 .resource()
                 .path("/tradition/tradId/json")
-                .queryParam("end_section", tradSections.get(1))
+                .queryParam("section", tradSections.get(1))
                 .type(MediaType.APPLICATION_JSON)
                 .get(ClientResponse.class);
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
@@ -640,7 +620,6 @@ public class TabularInputOutputTest extends TestCase {
         // Ensure that each text is correct
         for (WitnessTokensModel wtm : table) {
             assertEquals(alignment.getLength(), wtm.getTokens().size());
-            String sigil = wtm.constructSigil();
             WebResource request = jerseyTest.resource()
                     .path("/tradition/" + tradId + "/witness/" + wtm.getWitness() + "/readings");
             if (wtm.hasLayer()) {
