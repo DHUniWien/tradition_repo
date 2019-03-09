@@ -103,10 +103,9 @@ public class AlignmentModel {
                 // Now for each layer iteration, produce a set of tokens.
                 for (String layer : layers) {
                     WitnessTokensModel witnessRow = new WitnessTokensModel();
-                    if (layer.equals("base")) witnessRow.setWitness(sigil);
-                    else {
-                        witnessRow.setWitness(String.format("%s (%s)", sigil, layer));
-                        witnessRow.setBase(sigil);
+                    witnessRow.setWitness(sigil);
+                    if (!layer.equals("base")) {
+                        witnessRow.setLayer(layer);
                     }
 
                     // Make the object for the JSON token array
@@ -154,7 +153,7 @@ public class AlignmentModel {
                     alignment.add(witnessRow);
                 }
             }
-            Comparator<WitnessTokensModel> bySigil = Comparator.comparing(WitnessTokensModel::getWitness);
+            Comparator<WitnessTokensModel> bySigil = Comparator.comparing(WitnessTokensModel::constructSigil);
             alignment.sort(bySigil);
             tx.success();
         }

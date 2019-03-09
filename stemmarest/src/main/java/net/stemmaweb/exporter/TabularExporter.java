@@ -121,9 +121,10 @@ public class TabularExporter {
     private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, String collapseRelated)
             throws Exception {
         // Make a new alignment model that has a column for every witness layer across the requested sections.
-        // For each section, get the model. Keep track of which witnesses correspond to
-        // which columns in which section.
-        HashMap<String, String> allWitnesses = new HashMap<>();
+
+        // For each section, get the model. Keep track of which layers in which witnesses we have
+        // seen with a set.
+        HashSet<String> allWitnesses = new HashSet<>();
         ArrayList<AlignmentModel> tables = new ArrayList<>();
         for (Node sectionNode : traditionSections) {
             AlignmentModel asJson = new AlignmentModel(sectionNode, collapseRelated);
@@ -131,44 +132,43 @@ public class TabularExporter {
             tables.add(asJson);
             // Save the witness -> column mapping to our map
             for (WitnessTokensModel witRecord : asJson.getAlignment()) {
-                String wit = witRecord.getWitness();
-                String base = witRecord.hasBase() ? witRecord.getBase() : witRecord.getWitness();
-                allWitnesses.put(wit, base);
+                allWitnesses.add(witRecord.constructSigil());
             }
         }
 
-        // Now make an alignment model containing all witness layers in allWitnesses, filling in if necessary
-        // either nulls or the base witness per witness layer, per section.
+        // Now make an alignment model containing all witness layers present in allWitnesses, filling in
+        // if necessary either nulls or the base witness per witness layer, per section.
         AlignmentModel wholeTradition = new AlignmentModel();
-        ArrayList<String> sortableWits = new ArrayList<>(allWitnesses.keySet());
-        Collections.sort(sortableWits);
-        for (String wit : sortableWits) {
+        List<String> sortedWits = new ArrayList<>(allWitnesses);
+        Collections.sort(sortedWits);
+        for (String sigil : sortedWits) {
+            String[] parsed = WitnessTokensModel.parseSigil(sigil);
+
             // Set up the tradition-spanning witness token model for this witness
-            WitnessTokensModel wtm = new WitnessTokensModel();
-            wtm.setWitness(wit);
-            wtm.setBase(allWitnesses.get(wit));
-            wtm.setTokens(new ArrayList<>());
+            WitnessTokensModel wholeWitness = new WitnessTokensModel();
+            wholeWitness.setWitness(parsed[0]);
+            if (parsed[1] != null) wholeWitness.setLayer(parsed[1]);
+            wholeWitness.setTokens(new ArrayList<>());
             // Now fill in tokens from each section in turn.
             for (AlignmentModel aSection : tables) {
                 // Find the WitnessTokensModel corresponding to wit, if it exists
                 Optional<WitnessTokensModel> thisWitness = aSection.getAlignment().stream()
-                        .filter(x -> x.getWitness().equals(wit)).findFirst();
+                        .filter(x -> x.constructSigil().equals(sigil)).findFirst();
                 if (!thisWitness.isPresent()) {
                     // Try again for the base witness
-                    String base = allWitnesses.get(wit);
                     thisWitness = aSection.getAlignment().stream()
-                            .filter(x -> x.getWitness().equals(base)).findFirst();
+                            .filter(x -> x.getWitness().equals(parsed[0]) && !x.hasLayer()).findFirst();
                 }
                 if (thisWitness.isPresent()) {
                     WitnessTokensModel witcolumn = thisWitness.get();
-                    wtm.getTokens().addAll(witcolumn.getTokens());
+                    wholeWitness.getTokens().addAll(witcolumn.getTokens());
                 } else {
                     // Add a bunch of nulls
-                    wtm.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) aSection.getLength(), null)));
+                    wholeWitness.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) aSection.getLength(), null)));
                 }
             }
             // Add the WitnessTokensModel to the new AlignmentModel.
-            wholeTradition.addWitness(wtm);
+            wholeTradition.addWitness(wholeWitness);
         }
         // Record the length of the whole alignment
         wholeTradition.setLength(wholeTradition.getAlignment().get(0).getTokens().size());

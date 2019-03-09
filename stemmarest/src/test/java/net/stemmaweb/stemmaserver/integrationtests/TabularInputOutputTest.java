@@ -543,11 +543,11 @@ public class TabularInputOutputTest extends TestCase {
         for (int i=0; i < alignment.length(); i++) {
             JSONObject witTokens = alignment.getJSONObject(i);
             String thisWit = witTokens.getString("witness");
-            String thisBase = witTokens.getString("base");
-            if (!thisWit.equals(thisBase))
-                actualCorr.add(thisBase);
-            if (thisWit.equals("C")) cTokens = witTokens.getJSONArray("tokens");
-            else if (thisBase.equals("C")) cAcTokens = witTokens.getJSONArray("tokens");
+            String thisLayer = witTokens.isNull("layer") ? null : witTokens.getString("layer");
+            if (thisLayer != null)
+                actualCorr.add(thisWit);
+            if (thisWit.equals("C") && thisLayer == null) cTokens = witTokens.getJSONArray("tokens");
+            else if (thisWit.equals("C")) cAcTokens = witTokens.getJSONArray("tokens");
 
         }
         assertTrue(correctedWits.containsAll(actualCorr));
@@ -624,7 +624,7 @@ public class TabularInputOutputTest extends TestCase {
         HashSet<String> allSigla = new HashSet<>();
         // Ensure we have all our layers
         for (WitnessTokensModel wtm : table)
-            allSigla.add(wtm.getWitness());
+            allSigla.add(wtm.constructSigil());
         ArrayList<String> allExpectedWits = new ArrayList<>(Arrays.asList("D", "E", "E (a.c.)", "E (s.l.)", "F", "G",
                 "H", "H (s.l.)", "K", "P (a.c.)", "Q", "Q (a.c.)", "Q (s.l.)", "Q (margin)", "T", "T (a.c.)"));
         allExpectedWits.addAll(expectedWits);
@@ -640,55 +640,62 @@ public class TabularInputOutputTest extends TestCase {
         // Ensure that each text is correct
         for (WitnessTokensModel wtm : table) {
             assertEquals(alignment.getLength(), wtm.getTokens().size());
-            String sigil = wtm.getBase();
-            String layer = "";
-            WebResource request = jerseyTest.resource().path("/tradition/" + tradId + "/witness/" + sigil + "/readings");
-            if (!wtm.getBase().equals(wtm.getWitness())) {
-                layer = wtm.getWitness().substring(wtm.getWitness().indexOf('(')+1, wtm.getWitness().indexOf(')'));
-                request = request.queryParam("layer", layer);
+            String sigil = wtm.constructSigil();
+            WebResource request = jerseyTest.resource()
+                    .path("/tradition/" + tradId + "/witness/" + wtm.getWitness() + "/readings");
+            if (wtm.hasLayer()) {
+                request = request.queryParam("layer", wtm.getLayer());
             }
             List<ReadingModel> witReadings = request.get(new GenericType<List<ReadingModel>>() {});
             // Save the specific columns we will need later
-            if (sigil.equals("Q"))
-                switch(layer) {
-                    case "a.c.":
-                        qAcColumn = wtm.getTokens();
-                        break;
-                    case "s.l.":
-                        qSlColumn = wtm.getTokens();
-                        break;
-                    case "margin":
-                        qMarginColumn = wtm.getTokens();
-                        break;
-                    default:
-                        qColumn = wtm.getTokens();
-                }
-            else if (sigil.equals("E")) {
-                if (layer.equals("s.l."))
-                    eSlColumn = wtm.getTokens();
-                else if (layer.equals("a.c."))
+            switch (wtm.constructSigil()) {
+                case "Q (a.c.)":
+                    qAcColumn = wtm.getTokens();
+                    break;
+                case "Q (s.l.)":
+                    qSlColumn = wtm.getTokens();
+                    break;
+                case "Q (margin)":
+                    qMarginColumn = wtm.getTokens();
+                    break;
+                case "Q":
+                    qColumn = wtm.getTokens();
+                    break;
+                case "E (a.c.)":
                     eAcColumn = wtm.getTokens();
-                else eColumn = wtm.getTokens();
+                    break;
+                case "E (s.l.)":
+                    eSlColumn = wtm.getTokens();
+                    break;
+                case "E":
+                    eColumn = wtm.getTokens();
+                    break;
+                case "H (s.l.)":
+                    hSlColumn = wtm.getTokens();
+                    break;
+                case "H":
+                    hColumn = wtm.getTokens();
+                    break;
+                case "P (a.c.)":
+                    pAcColumn = wtm.getTokens();
+                    break;
+                case "P":
+                    pColumn = wtm.getTokens();
+                    break;
+                case "T (a.c.)":
+                    tAcColumn = wtm.getTokens();
+                    break;
+                case "T":
+                    tColumn = wtm.getTokens();
+                    break;
             }
-            else if (sigil.equals("H") && layer.equals("s.l."))
-                hSlColumn = wtm.getTokens();
-            else if (sigil.equals("H"))
-                hColumn = wtm.getTokens();
-            else if (sigil.equals("P") && layer.equals("a.c."))
-                pAcColumn = wtm.getTokens();
-            else if (sigil.equals("P"))
-                pColumn = wtm.getTokens();
-            else if (sigil.equals("T") && layer.equals("a.c."))
-                tAcColumn = wtm.getTokens();
-            else if (sigil.equals("T"))
-                tColumn = wtm.getTokens();
 
             // Make a copy of the tableReadings since we will mutate it
             List<ReadingModel> tableReadings = new ArrayList<>(wtm.getTokens());
             // Check that the first reading is at the correct rank
             Long firstRank = witReadings.get(0).getRank();
             // Account for section splits, above
-            if (wtm.getBase().equals("B") || wtm.getBase().equals("G"))
+            if (wtm.getWitness().equals("B") || wtm.getWitness().equals("G"))
                 firstRank += 37;
             int i = 1;
             while (i < firstRank) {
@@ -697,7 +704,7 @@ public class TabularInputOutputTest extends TestCase {
             }
             assertNotNull(tableReadings.get(i-1));
             // Check that the last reading is at the correct rank
-            if (!expectedWits.contains(sigil))
+            if (!expectedWits.contains(wtm.getWitness()))
                 for (int j = 227; j < alignment.getLength(); j++)
                     assertNull(tableReadings.get(j));
 
