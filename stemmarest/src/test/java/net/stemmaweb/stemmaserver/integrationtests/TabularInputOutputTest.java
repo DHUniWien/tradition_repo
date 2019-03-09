@@ -801,6 +801,21 @@ public class TabularInputOutputTest extends TestCase {
         return r1.getId().equals(r2.getId());
     }
 
+    public void testCharMatrixOutput () {
+        // Set up some data
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/testTradition.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+
+        // Get it back out
+        ClientResponse result = jerseyTest
+                .resource()
+                .path("/tradition/" + traditionId + "/matrix")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        // TODO finish testing this for real
+    }
 
     public void tearDown() throws Exception {
         db.shutdown();

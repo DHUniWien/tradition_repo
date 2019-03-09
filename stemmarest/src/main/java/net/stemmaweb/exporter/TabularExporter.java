@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * A class for writing a graph out to various forms of table: JSON, CSV, Excel, etc.
@@ -90,6 +91,68 @@ public class TabularExporter {
         }
         return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
     }
+
+
+    public Response exportAsCharMatrix(String tradId, String conflate, List<String> sectionList) {
+        ArrayList<Node> traditionSections;
+        AlignmentModel wholeTradition;
+        try {
+            traditionSections = getSections(tradId, sectionList);
+            if(traditionSections==null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+            wholeTradition = getTraditionAlignment(traditionSections, conflate);
+        } catch (TabularExporterException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+
+        // We will count on the order of the witness columns remaining constant.
+        List<String> witnessSigla = wholeTradition.getAlignment().stream()
+                .map(WitnessTokensModel::constructSigil).collect(Collectors.toList());
+        // Collect the character rows as they are built for each witness.
+        HashMap<String, StringBuilder> witnessRows = new HashMap<>();
+        for (String sigil : witnessSigla) witnessRows.put(sigil, new StringBuilder());
+        // Go rank by rank through all the lists of tokens, converting them into chars
+        for (int i = 0; i < wholeTradition.getLength(); i++) {
+            AtomicInteger ai = new AtomicInteger(i);
+            List<ReadingModel> row = wholeTradition.getAlignment().stream()
+                    .map(x -> x.getTokens().get(ai.get())).collect(Collectors.toList());
+            // Make reading-to-character lookup
+            HashMap<String, Character> charMap = new HashMap<>();
+            Character curr = 'A';
+            for (ReadingModel rm : row) {
+                if (rm == null) continue;
+                if (!charMap.containsKey(rm.getId())) {
+                    charMap.put(rm.getId(), curr);
+                    curr++;
+                }
+            }
+            // Employ it
+            for (int w = 0; w < witnessSigla.size(); w++) {
+                StringBuilder ourRow = witnessRows.get(witnessSigla.get(w));
+                ReadingModel ourReading = row.get(w);
+                if (ourReading == null)
+                    ourRow.append('X');
+                else if (ourReading.getIs_lacuna())
+                    ourRow.append('?');
+                else
+                    ourRow.append(charMap.get(row.get(w).getId()));
+            }
+        }
+        // Now let's build the whole matrix.
+        StringBuilder charMatrix = new StringBuilder();
+        charMatrix.append(String.format("%d\5%d\n", wholeTradition.getAlignment().size(), wholeTradition.getLength()));
+        for (String sigil : witnessRows.keySet()) {
+            charMatrix.append(String.format("%-10s", sigil));
+            charMatrix.append(witnessRows.get(sigil));
+            charMatrix.append("\n");
+        }
+
+        return Response.ok(charMatrix.toString()).build();
+    }
+
 
     private ArrayList<Node> getSections(String tradId, List<String> sectionList)
     throws TabularExporterException {

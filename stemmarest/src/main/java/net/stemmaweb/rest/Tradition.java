@@ -720,5 +720,23 @@ public class Tradition {
         return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate, sectionList);
     }
 
+    /**
+     * Returns a character matrix suitable for use with e.g. Phylip Pars.
+     *
+     * @summary Download character matrix for parsimony analysis
+     *
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
+     * @return the character matrix as plaintext
+     */
+    @GET
+    @Path("/matrix")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
+    public Response getCharMatrix(@QueryParam("conflate") String toConflate,
+                                  @QueryParam("section") List<String> sectionList) {
+        return new TabularExporter(db).exportAsCharMatrix(traditionId, toConflate, sectionList);
+    }
+
 }
 
