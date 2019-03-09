@@ -22,10 +22,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
-import org.neo4j.helpers.collection.Iterators;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
@@ -312,6 +310,9 @@ public class Witness {
             try (Transaction tx = db.beginTx()) {
                 Node startNode = DatabaseService.getStartNode(String.valueOf(currentSection.getId()), db);
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
+                // Remove the meta node from the list
+                if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getText().equals("#END#"))
+                    readingModels.remove(readingModels.size() - 1);
                 tx.success();
             } catch (Exception e) {
                 if (e.getMessage().equals("CONFLICT"))
@@ -325,9 +326,6 @@ public class Witness {
         if (readingModels.size() == 0)
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("No witness path found for this sigil")).build();
-        // Remove the meta node from the list
-        if (readingModels.get(readingModels.size() - 1).getText().equals("#END#"))
-            readingModels.remove(readingModels.size() - 1);
         // ...and return.
         return Response.status(Status.OK).entity(readingModels).build();
     }

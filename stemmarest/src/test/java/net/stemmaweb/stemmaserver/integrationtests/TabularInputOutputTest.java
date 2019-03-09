@@ -3,6 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import com.opencsv.CSVReader;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
@@ -23,6 +24,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.StringReader;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertNotEquals;
 
@@ -385,6 +387,8 @@ public class TabularInputOutputTest extends TestCase {
                 readingsAt9.add(((JSONObject) r9).getString("text"));
         }
         assertEquals(1, readingsAt9.size());
+
+        // TODO set some spelling & orthographic relations and make sure conflation still works
     }
 
     public void testCSVExport() throws Exception {
@@ -562,10 +566,254 @@ public class TabularInputOutputTest extends TestCase {
 
     }
 
-    // test florilegium layers with Q a.c. / s.l.
-    // test wits that don't appear (or their layers don't appear) in an earlier section
-    // test wits that don't appear (or their layers don't appear) in a later section
-    // test layer conflation hierarchy (spelling -> orthographic, punctuation)
+    public void testComplexLayerExport() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+                "src/TestFiles/florilegium_tei_ps.xml", "teips");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+
+        // Split this into multiple sections - ranks 38, 156, 228
+        List<SectionModel> allSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections/")
+                .get(new GenericType<List<SectionModel>>() {});
+        String section1 = allSections.get(0).getId();
+        ClientResponse jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/228")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        String section4 = Util.getValueFromJson(jerseyResponse, "sectionId");
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/156")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        // String section3 = Util.getValueFromJson(jerseyResponse, "sectionId");
+        jerseyResponse = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/38")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        // String section2 = Util.getValueFromJson(jerseyResponse, "sectionId");
+
+        // Section 1 should be missing witnesses B and G
+        // Section 4 should be missing all witnesses except A/B/C/P/S
+        List<WitnessModel> section1Wits = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + section1 + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(11, section1Wits.size());
+        for (WitnessModel wm : section1Wits) {
+            assertNotEquals("G", wm.getSigil());
+            assertNotEquals("B", wm.getSigil());
+        }
+        List<WitnessModel> section4Wits = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + section4 + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(5, section4Wits.size());
+        List<String> expectedWits = Arrays.asList("A", "B", "C", "P", "S");
+        for (WitnessModel wm : section4Wits)
+            assertTrue(expectedWits.contains(wm.getSigil()));
+
+        // Now we are ready to export tabular and see what we get.
+        jerseyResponse = jerseyTest.resource().path("/tradition/" + tradId + "/json")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        // Ensure we have all our witnesses
+        AlignmentModel alignment = jerseyResponse.getEntity(AlignmentModel.class);
+        assertEquals(280, alignment.getLength());
+        List<WitnessTokensModel> table = alignment.getAlignment();
+        assertEquals(21, table.size());
+
+        HashSet<String> allSigla = new HashSet<>();
+        // Ensure we have all our layers
+        for (WitnessTokensModel wtm : table)
+            allSigla.add(wtm.getWitness());
+        ArrayList<String> allExpectedWits = new ArrayList<>(Arrays.asList("D", "E", "E (a.c.)", "E (s.l.)", "F", "G",
+                "H", "H (s.l.)", "K", "P (a.c.)", "Q", "Q (a.c.)", "Q (s.l.)", "Q (margin)", "T", "T (a.c.)"));
+        allExpectedWits.addAll(expectedWits);
+        for (String sigil : allExpectedWits)
+            assertTrue(allSigla.contains(sigil));
+
+        // Set up variables for our specific witness tests
+        List<ReadingModel> qColumn = null, qAcColumn = null, qSlColumn = null, qMarginColumn = null;
+        List<ReadingModel> eColumn = null, eAcColumn = null, eSlColumn = null;
+        List<ReadingModel> hColumn = null, hSlColumn = null;
+        List<ReadingModel> pColumn = null, pAcColumn = null;
+        List<ReadingModel> tColumn = null, tAcColumn = null;
+        // Ensure that each text is correct
+        for (WitnessTokensModel wtm : table) {
+            assertEquals(alignment.getLength(), wtm.getTokens().size());
+            String sigil = wtm.getBase();
+            String layer = "";
+            WebResource request = jerseyTest.resource().path("/tradition/" + tradId + "/witness/" + sigil + "/readings");
+            if (!wtm.getBase().equals(wtm.getWitness())) {
+                layer = wtm.getWitness().substring(wtm.getWitness().indexOf('(')+1, wtm.getWitness().indexOf(')'));
+                request = request.queryParam("layer", layer);
+            }
+            List<ReadingModel> witReadings = request.get(new GenericType<List<ReadingModel>>() {});
+            // Save the specific columns we will need later
+            if (sigil.equals("Q"))
+                switch(layer) {
+                    case "a.c.":
+                        qAcColumn = wtm.getTokens();
+                        break;
+                    case "s.l.":
+                        qSlColumn = wtm.getTokens();
+                        break;
+                    case "margin":
+                        qMarginColumn = wtm.getTokens();
+                        break;
+                    default:
+                        qColumn = wtm.getTokens();
+                }
+            else if (sigil.equals("E")) {
+                if (layer.equals("s.l."))
+                    eSlColumn = wtm.getTokens();
+                else if (layer.equals("a.c."))
+                    eAcColumn = wtm.getTokens();
+                else eColumn = wtm.getTokens();
+            }
+            else if (sigil.equals("H") && layer.equals("s.l."))
+                hSlColumn = wtm.getTokens();
+            else if (sigil.equals("H"))
+                hColumn = wtm.getTokens();
+            else if (sigil.equals("P") && layer.equals("a.c."))
+                pAcColumn = wtm.getTokens();
+            else if (sigil.equals("P"))
+                pColumn = wtm.getTokens();
+            else if (sigil.equals("T") && layer.equals("a.c."))
+                tAcColumn = wtm.getTokens();
+            else if (sigil.equals("T"))
+                tColumn = wtm.getTokens();
+
+            // Make a copy of the tableReadings since we will mutate it
+            List<ReadingModel> tableReadings = new ArrayList<>(wtm.getTokens());
+            // Check that the first reading is at the correct rank
+            Long firstRank = witReadings.get(0).getRank();
+            // Account for section splits, above
+            if (wtm.getBase().equals("B") || wtm.getBase().equals("G"))
+                firstRank += 37;
+            int i = 1;
+            while (i < firstRank) {
+                assertNull(tableReadings.get(i-1));
+                i++;
+            }
+            assertNotNull(tableReadings.get(i-1));
+            // Check that the last reading is at the correct rank
+            if (!expectedWits.contains(sigil))
+                for (int j = 227; j < alignment.getLength(); j++)
+                    assertNull(tableReadings.get(j));
+
+            // Check that the (non-null) reading sequences are identical
+            tableReadings.removeIf(Objects::isNull);
+            List<String> witRdgIds = witReadings.stream().map(ReadingModel::getId).collect(Collectors.toList());
+            List<String> tableRdgIds = tableReadings.stream().map(ReadingModel::getId).collect(Collectors.toList());
+
+            assertEquals(witRdgIds, tableRdgIds);
+        }
+
+        // Specific data sanity tests...
+        // Ensure that H (s.l.) differs from H only at rank 32
+        // Ensure that Q (a.c.) differs from Q only at ranks 35, 87, 110
+        // Ensure that P (a.c.) differs from P only at ranks 69–71
+        // Ensure that Q and E (s.l.) differ from bases only at rank 87
+        // Ensure that E (a.c.) differs from E only at rank 87
+        // Ensure that Q (margin) differs from Q only at rank 101
+        // Ensure that T (a.c.) differs from T only at rank 200
+        assertNotNull(qColumn);
+        assertNotNull(qAcColumn);
+        assertNotNull(qSlColumn);
+        assertNotNull(qMarginColumn);
+        assertNotNull(eColumn);
+        assertNotNull(eAcColumn);
+        assertNotNull(eSlColumn);
+        assertNotNull(hColumn);
+        assertNotNull(hSlColumn);
+        assertNotNull(pColumn);
+        assertNotNull(pAcColumn);
+        assertNotNull(tColumn);
+        assertNotNull(tAcColumn);
+        for (int i = 0; i < alignment.getLength(); i++) {
+            if (i == 31) {
+                assertTrue(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertFalse(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            } else if (i == 34) {
+                assertFalse(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            } else if (i > 67 && i < 71) {
+                assertTrue(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertFalse(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            } else if (i == 86) {
+                assertFalse(checkRdgSame(qColumn, qAcColumn, i));
+                assertFalse(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertFalse(checkRdgSame(eColumn, eAcColumn, i));
+                assertFalse(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            } else if (i == 100) {
+                assertTrue(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertFalse(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            } else if (i == 109) {
+                assertFalse(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            } else if (i == 199) {
+                assertTrue(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertFalse(checkRdgSame(tColumn, tAcColumn, i));
+            } else {
+                assertTrue(checkRdgSame(qColumn, qAcColumn, i));
+                assertTrue(checkRdgSame(qColumn, qSlColumn, i));
+                assertTrue(checkRdgSame(qColumn, qMarginColumn, i));
+                assertTrue(checkRdgSame(eColumn, eAcColumn, i));
+                assertTrue(checkRdgSame(eColumn, eSlColumn, i));
+                assertTrue(checkRdgSame(hColumn, hSlColumn, i));
+                assertTrue(checkRdgSame(pColumn, pAcColumn, i));
+                assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            }
+        }
+    }
+
+    private boolean checkRdgSame(List<ReadingModel> c1, List<ReadingModel> c2, int index) {
+        ReadingModel r1 = c1.get(index);
+        ReadingModel r2 = c2.get(index);
+        if (r1 == null) return r2 == null;
+        if (r2 == null) return false; // we would have returned already if c1 were null
+        return r1.getId().equals(r2.getId());
+    }
 
 
     public void tearDown() throws Exception {

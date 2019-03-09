@@ -2,7 +2,7 @@ package net.stemmaweb.exporter;
 
 import com.opencsv.CSVWriter;
 import net.stemmaweb.model.AlignmentModel;
-import net.stemmaweb.model.AlignmentModel.WitnessTokensModel;
+import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -144,7 +144,7 @@ public class TabularExporter {
         Collections.sort(sortableWits);
         for (String wit : sortableWits) {
             // Set up the tradition-spanning witness token model for this witness
-            WitnessTokensModel wtm = wholeTradition.new WitnessTokensModel();
+            WitnessTokensModel wtm = new WitnessTokensModel();
             wtm.setWitness(wit);
             wtm.setBase(allWitnesses.get(wit));
             wtm.setTokens(new ArrayList<>());

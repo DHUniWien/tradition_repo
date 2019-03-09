@@ -8,6 +8,7 @@ import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
+import javax.xml.bind.annotation.XmlRootElement;
 import java.util.*;
 
 /**
@@ -23,23 +24,9 @@ import java.util.*;
  *             length => TEXTLEN };
  */
 
+@XmlRootElement
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AlignmentModel {
-
-    // A small class for each witness "column" in the alignment table
-    public class WitnessTokensModel {
-        String witness;
-        String base;
-        ArrayList<ReadingModel> tokens;
-
-        public void setWitness(String witness) {this.witness = witness;}
-        public String getWitness() {return this.witness;}
-        public void setBase(String base) {this.base = base;}
-        public String getBase() {return this.base;}
-        public Boolean hasBase() {return this.base != null;}
-        public void setTokens (ArrayList<ReadingModel> tokens) {this.tokens = tokens;}
-        public ArrayList<ReadingModel> getTokens() {return this.tokens;}
-    }
 
     private long length;
     private ArrayList<WitnessTokensModel> alignment;
