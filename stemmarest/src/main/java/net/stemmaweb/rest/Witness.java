@@ -2,7 +2,6 @@ package net.stemmaweb.rest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -46,31 +45,53 @@ public class Witness {
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;
         // The "sigil" might be a sigil, or it might be a node ID.
-        Long nodeId = null;
         try {
-            nodeId = Long.valueOf(requestedSigil);
+            Long nodeId = Long.valueOf(requestedSigil);
+            String found = getWitnessById(nodeId);
+            if (found != null)
+                sigil = found;
         } catch (NumberFormatException e) {
             sigil = requestedSigil;
-        }
-        if (nodeId != null) {
-            try (Transaction tx = db.beginTx()) {
-                // Look this up via Cypher, to avoid triggering an exception
-                Result lookup = db.execute(String.format("MATCH (n:WITNESS) WHERE id(n) = %d RETURN n", nodeId));
-                Iterator<Node> nc = lookup.columnAs("n");
-                nc.forEachRemaining(x -> sigil = x.getProperty("sigil").toString());
-                tx.success();
-            }
         }
         if (sigil == null) sigil = requestedSigil;
         sectId = null;
     }
 
     public Witness (String traditionId, String sectionId, String requestedSigil) {
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-        db = dbServiceProvider.getDatabase();
-        tradId = traditionId;
-        sigil = requestedSigil;
+        this(traditionId, requestedSigil);
         sectId = sectionId;
+    }
+
+    private String getWitnessById(Long nodeId) {
+        String foundSigil = null;
+        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+        try (Transaction tx = db.beginTx()) {
+            Node found = null;
+            for (Relationship r : tradNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
+                if (r.getEndNodeId() == nodeId)
+                    found = r.getEndNode();
+            }
+            if (found != null)
+                foundSigil = found.getProperty("sigil").toString();
+            tx.success();
+        }
+        return foundSigil;
+    }
+
+    private Node getWitnessBySigil() {
+        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+        Node found = null;
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship r : tradNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
+                Node wit = r.getEndNode();
+                if (wit.hasProperty("sigil") && wit.getProperty("sigil").equals(sigil)) {
+                    found = wit;
+                    break;
+                }
+            }
+            tx.success();
+        }
+        return found;
     }
 
     // Backwards compatibility for API
@@ -90,17 +111,9 @@ public class Witness {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = WitnessModel.class)
     public Response getWitnessInfo() {
-        WitnessModel thisWit;
-        try (Transaction tx = db.beginTx()) {
-            Node witnessNode = db.findNode(Nodes.WITNESS, "sigil", sigil);
-            if (witnessNode == null)
-                return Response.status(Status.NOT_FOUND).build();
-            thisWit = new WitnessModel(witnessNode);
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().build();
-        }
+        Node witnessNode = getWitnessBySigil();
+        if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
+        WitnessModel thisWit = new WitnessModel(witnessNode);
         return Response.ok(thisWit).build();
     }
 
@@ -118,7 +131,8 @@ public class Witness {
         if (sectId != null)
             return Response.status(Status.BAD_REQUEST).entity("Cannot delete a witness from a single section").build();
         try (Transaction tx = db.beginTx()) {
-            Node witnessNode = db.findNode(Nodes.WITNESS, "sigil", sigil);
+            // Find the node in question
+            Node witnessNode = getWitnessBySigil();
             if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
             // Find all references to the witness throughout the tradition, and delete them
             HashSet<Node> orphanReadings = new HashSet<>();

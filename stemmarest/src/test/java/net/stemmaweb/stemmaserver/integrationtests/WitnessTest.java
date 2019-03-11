@@ -197,6 +197,32 @@ public class WitnessTest {
     }
 
     @Test
+    public void getWitnessTest() {
+        // Get a witness
+        WitnessModel witnessA = jerseyTest.resource().path("/tradition/" + tradId + "/witness/A")
+                .get(WitnessModel.class);
+        assertEquals("A", witnessA.getSigil());
+        assertNotNull(witnessA.getId());
+        try {
+            Long ourId = Long.valueOf(witnessA.getId());
+            assertTrue(ourId > 0);
+        } catch (NumberFormatException n) {
+            fail();
+        }
+
+        // Add another tradition with witness A
+        String secondTradId = createTraditionFromFile("Chaucer", "src/TestFiles/Collatex-16.xml");
+        assertNotNull(secondTradId);
+
+        // Now try getting our same witness again
+        ClientResponse jerseyResponse = jerseyTest.resource().path("/tradition/" + tradId + "/witness/A")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        WitnessModel alsoA = jerseyResponse.getEntity(WitnessModel.class);
+        assertEquals(witnessA.getId(), alsoA.getId());
+    }
+
+    @Test
     public void lookupWitnessById() {
         // Try it with a good ID
         WitnessModel witnessA = jerseyTest.resource()
@@ -276,6 +302,14 @@ public class WitnessTest {
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         assertEquals(2, jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
                 .get(new GenericType<List<WitnessModel>>(){}).size());
+
+
+        // Now add another tradition with overlapping sigla and try to delete its witness B
+        String secondTradId = createTraditionFromFile("Chaucer", "src/TestFiles/Collatex-16.xml");
+        assertNotNull(secondTradId);
+        result = jerseyTest.resource().path(String.format("/tradition/%s/witness/B", secondTradId))
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
     }
 
     @Ignore
