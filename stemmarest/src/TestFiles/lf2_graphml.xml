@@ -1,992 +1,775 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
-  <key attr.name="is_start" attr.type="boolean" for="node" id="dn9"/>
+  <key attr.name="is_start" attr.type="boolean" for="node" id="dn8"/>
+  <key attr.name="section_id" attr.type="long" for="node" id="dn5"/>
+  <key attr.name="is_lacuna" attr.type="boolean" for="node" id="dn9"/>
   <key attr.name="is_common" attr.type="boolean" for="node" id="dn7"/>
-  <key attr.name="is_end" attr.type="boolean" for="node" id="dn2"/>
-  <key attr.name="language" attr.type="string" for="node" id="dn5"/>
-  <key attr.name="tradition_id" attr.type="string" for="node" id="dn4"/>
-  <key attr.name="sigil" attr.type="string" for="node" id="dn10"/>
-  <key attr.name="is_lacuna" attr.type="boolean" for="node" id="dn8"/>
-  <key attr.name="hypothetical" attr.type="boolean" for="node" id="dn12"/>
   <key attr.name="name" attr.type="string" for="node" id="dn1"/>
+  <key attr.name="is_end" attr.type="boolean" for="node" id="dn6"/>
   <key attr.name="rank" attr.type="long" for="node" id="dn3"/>
-  <key attr.name="text" attr.type="string" for="node" id="dn6"/>
+  <key attr.name="language" attr.type="string" for="node" id="dn4"/>
+  <key attr.name="text" attr.type="string" for="node" id="dn2"/>
   <key attr.name="neolabel" attr.type="string" for="node" id="dn0"/>
-  <key attr.name="quotesigil" attr.type="boolean" for="node" id="dn11"/>
-  <key attr.name="reading_a" attr.type="string" for="edge" id="de6"/>
-  <key attr.name="reading_b" attr.type="string" for="edge" id="de5"/>
-  <key attr.name="is_significant" attr.type="string" for="edge" id="de4"/>
+  <key attr.name="colocation" attr.type="boolean" for="edge" id="de3"/>
+  <key attr.name="is_significant" attr.type="string" for="edge" id="de5"/>
   <key attr.name="scope" attr.type="string" for="edge" id="de2"/>
   <key attr.name="neolabel" attr.type="string" for="edge" id="de0"/>
-  <key attr.name="type" attr.type="string" for="edge" id="de3"/>
+  <key attr.name="type" attr.type="string" for="edge" id="de4"/>
   <key attr.name="witnesses" attr.type="stringarray" for="edge" id="de1"/>
-  <graph id="Multi-section tradition" edgedefault="directed" parse.edgeids="canonical" parse.edges="87" parse.nodeids="canonical" parse.nodes="122" parse.order="nodesfirst">
-    <node id="106">
+  <graph id="Legend" edgedefault="directed" parse.edgeids="canonical" parse.edges="87" parse.nodeids="canonical" parse.nodes="88" parse.order="nodesfirst">
+    <node id="120">
       <data key="dn0">[SECTION]</data>
       <data key="dn1">section 2</data>
     </node>
-    <node id="107">
+    <node id="121">
       <data key="dn0">[READING]</data>
-      <data key="dn2">true</data>
+      <data key="dn2">#END#</data>
       <data key="dn3">22</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">#END#</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn6">true</data>
     </node>
-    <node id="148">
+    <node id="162">
       <data key="dn0">[READING]</data>
+      <data key="dn2">informabatur</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
       <data key="dn3">19</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">informabatur</data>
     </node>
-    <node id="152">
+    <node id="160">
       <data key="dn0">[READING]</data>
-      <data key="dn3">20</data>
+      <data key="dn3">18</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">Sanctus</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">&amp;</data>
     </node>
-    <node id="149">
+    <node id="155">
       <data key="dn0">[READING]</data>
-      <data key="dn3">19</data>
+      <data key="dn2">iugiter</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">firmabatur</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">17</data>
     </node>
-    <node id="147">
+    <node id="158">
       <data key="dn0">[READING]</data>
+      <data key="dn3">18</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">ac</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">et</data>
+    </node>
+    <node id="159">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">iugiter</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
       <data key="dn3">18</data>
     </node>
-    <node id="141">
+    <node id="157">
       <data key="dn0">[READING]</data>
       <data key="dn3">17</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">iugiter</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">ac</data>
     </node>
-    <node id="142">
+    <node id="154">
       <data key="dn0">[READING]</data>
-      <data key="dn3">17</data>
+      <data key="dn2">illustrabatur</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">jugiter</data>
-    </node>
-    <node id="140">
-      <data key="dn0">[READING]</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
       <data key="dn3">16</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">illustrabatur</data>
     </node>
     <node id="143">
       <data key="dn0">[READING]</data>
+      <data key="dn2">noticiam</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">ac</data>
-      <data key="dn3">17</data>
-    </node>
-    <node id="145">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">18</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">iugiter</data>
-    </node>
-    <node id="144">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">et</data>
-      <data key="dn3">18</data>
-    </node>
-    <node id="146">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">&amp;</data>
-      <data key="dn3">18</data>
-    </node>
-    <node id="153">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">autem</data>
-      <data key="dn3">21</data>
-    </node>
-    <node id="150">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">20</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">SAnctus</data>
-    </node>
-    <node id="151">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">20</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">anctus</data>
-    </node>
-    <node id="120">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">9</data>
-      <data key="dn7">false</data>
-      <data key="dn8">true</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">#LACUNA#</data>
-    </node>
-    <node id="119">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">ad</data>
-      <data key="dn3">8</data>
-    </node>
-    <node id="124">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">veram</data>
-      <data key="dn3">9</data>
-    </node>
-    <node id="127">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">dei</data>
-      <data key="dn3">10</data>
-    </node>
-    <node id="121">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">ueri</data>
-      <data key="dn3">9</data>
-    </node>
-    <node id="123">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">veri</data>
-      <data key="dn3">9</data>
-    </node>
-    <node id="129">
-      <data key="dn0">[READING]</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
       <data key="dn3">11</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">noticiam</data>
-    </node>
-    <node id="128">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">11</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">notitiam</data>
-    </node>
-    <node id="130">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">11</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">cultum</data>
-    </node>
-    <node id="131">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">et</data>
-      <data key="dn3">12</data>
-    </node>
-    <node id="132">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">&amp;</data>
-      <data key="dn3">12</data>
-    </node>
-    <node id="134">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">13</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">cultum</data>
-    </node>
-    <node id="133">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">13</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">noticiam</data>
-    </node>
-    <node id="135">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">magis</data>
-      <data key="dn3">14</data>
-    </node>
-    <node id="137">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">15</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">continue</data>
-    </node>
-    <node id="136">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">15</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">magisque</data>
-    </node>
-    <node id="108">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">0</data>
-      <data key="dn9">true</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">#START#</data>
-    </node>
-    <node id="109">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">quasi</data>
-      <data key="dn3">1</data>
-    </node>
-    <node id="111">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">2</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">duabus</data>
-    </node>
-    <node id="113">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">3</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">magnis</data>
-    </node>
-    <node id="114">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">4</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">luminaribus</data>
-    </node>
-    <node id="116">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">5</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">populus</data>
-    </node>
-    <node id="115">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">4</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">magnis</data>
-    </node>
-    <node id="112">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">3</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">luminaribus</data>
-    </node>
-    <node id="110">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">2</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">duobus</data>
-    </node>
-    <node id="117">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">terre</data>
-      <data key="dn3">6</data>
-    </node>
-    <node id="118">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">7</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">illius</data>
-    </node>
-    <node id="122">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">dei</data>
-      <data key="dn3">9</data>
-    </node>
-    <node id="125">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">ueri</data>
-      <data key="dn3">10</data>
-    </node>
-    <node id="126">
-      <data key="dn0">[READING]</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">veri</data>
-      <data key="dn3">10</data>
-    </node>
-    <node id="138">
-      <data key="dn0">[READING]</data>
-      <data key="dn3">15</data>
-      <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">ac magis</data>
     </node>
     <node id="139">
       <data key="dn0">[READING]</data>
-      <data key="dn3">16</data>
+      <data key="dn3">10</data>
       <data key="dn7">false</data>
-      <data key="dn4">46042e08-2eaf-41dd-af30-7fd18d2cf316</data>
-      <data key="dn5">Default</data>
-      <data key="dn6">illuminabatur</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">ueri</data>
     </node>
-    <node id="98">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Bc</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="136">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">9</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">dei</data>
     </node>
-    <node id="155">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">A</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="133">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">8</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">ad</data>
     </node>
-    <node id="158">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">B</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="137">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">9</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">veri</data>
     </node>
-    <node id="187">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">BA</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="141">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">10</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">dei</data>
     </node>
-    <node id="164">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">BL</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="146">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">12</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">&amp;</data>
     </node>
-    <node id="183">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">BLu</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="145">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">12</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">et</data>
     </node>
-    <node id="87">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">BS</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="142">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">notitiam</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">11</data>
     </node>
-    <node id="159">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">BSt</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="138">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">9</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">veram</data>
     </node>
-    <node id="90">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">BU</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="132">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">illius</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">7</data>
     </node>
-    <node id="160">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">C</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="131">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">6</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">terre</data>
     </node>
-    <node id="184">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Dr</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="130">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">populus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">5</data>
     </node>
-    <node id="161">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">F</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="128">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">luminaribus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">4</data>
     </node>
-    <node id="162">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">G</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="124">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">duobus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">2</data>
     </node>
-    <node id="156">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Gh</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="123">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">1</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">quasi</data>
     </node>
-    <node id="163">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">H</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="125">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">duabus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">2</data>
     </node>
-    <node id="182">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Ho</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="127">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">magnis</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">3</data>
     </node>
-    <node id="186">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">JG</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="126">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">luminaribus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">3</data>
     </node>
-    <node id="165">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">K</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="129">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">magnis</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">4</data>
+    </node>
+    <node id="122">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">#START#</data>
+      <data key="dn3">0</data>
+      <data key="dn8">true</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
     </node>
     <node id="166">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">L</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+      <data key="dn0">[READING]</data>
+      <data key="dn2">Sanctus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">20</data>
     </node>
-    <node id="179">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Li</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="156">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">jugiter</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">17</data>
+    </node>
+    <node id="161">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">18</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">ac</data>
+    </node>
+    <node id="163">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">firmabatur</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">19</data>
+    </node>
+    <node id="164">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">SAnctus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">20</data>
     </node>
     <node id="167">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">M</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+      <data key="dn0">[READING]</data>
+      <data key="dn3">21</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">autem</data>
     </node>
-    <node id="99">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">MN</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="165">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">anctus</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">20</data>
     </node>
-    <node id="168">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">O</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="153">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">illuminabatur</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">16</data>
     </node>
-    <node id="169">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">P</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="150">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">magisque</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">15</data>
     </node>
-    <node id="91">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">S</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="151">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">continue</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">15</data>
     </node>
-    <node id="185">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Sk</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="148">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">cultum</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">13</data>
     </node>
-    <node id="157">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">St</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="135">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">9</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">ueri</data>
     </node>
-    <node id="92">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">T</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="134">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">#LACUNA#</data>
+      <data key="dn3">9</data>
+      <data key="dn7">false</data>
+      <data key="dn9">true</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
     </node>
-    <node id="93">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">U</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="144">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">cultum</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">11</data>
     </node>
-    <node id="94">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">V</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="147">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">noticiam</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">13</data>
     </node>
-    <node id="89">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Vg</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="149">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">14</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">magis</data>
     </node>
-    <node id="95">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">X</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="152">
+      <data key="dn0">[READING]</data>
+      <data key="dn2">ac magis</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn3">15</data>
     </node>
-    <node id="178">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Y</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
+    <node id="140">
+      <data key="dn0">[READING]</data>
+      <data key="dn3">10</data>
+      <data key="dn7">false</data>
+      <data key="dn4">Default</data>
+      <data key="dn5">120</data>
+      <data key="dn2">veri</data>
     </node>
-    <node id="154">
-      <data key="dn0">[WITNESS]</data>
-      <data key="dn10">Ef</data>
-      <data key="dn11">false</data>
-      <data key="dn12">false</data>
-    </node>
-    <edge id="169" source="106" target="107">
+    <edge id="141" source="120" target="121">
       <data key="de0">HAS_END</data>
     </edge>
-    <edge id="240" source="148" target="107">
+    <edge id="212" source="162" target="121">
       <data key="de0">SEQUENCE</data>
       <data key="de1">[G]</data>
     </edge>
-    <edge id="241" source="148" target="152">
+    <edge id="207" source="160" target="162">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BL, BLu, BS, BSt, BU, C, Dr, Ef, H, Ho, JG, K, L, M, MN, P, S, St, T, U, V, X, Y]</data>
+      <data key="de1">[BLu]</data>
     </edge>
-    <edge id="242" source="149" target="152">
+    <edge id="201" source="155" target="160">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[Gh]</data>
+      <data key="de1">[BLu]</data>
     </edge>
-    <edge id="237" source="147" target="149">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Gh]</data>
-    </edge>
-    <edge id="228" source="141" target="147">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BSt, BU, Dr, G, Gh, H, K, L, O, P, S, St, T, V, X]</data>
-    </edge>
-    <edge id="252" source="141" target="142">
-      <data key="de0">RELATED</data>
-      <data key="de2">local</data>
-      <data key="de3">orthographic</data>
-      <data key="de4">no</data>
-      <data key="de5">jugiter</data>
-      <data key="de6">iugiter</data>
-    </edge>
-    <edge id="225" source="140" target="142">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[C, Ho, M]</data>
-    </edge>
-    <edge id="224" source="140" target="143">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BS, MN, U, Y]</data>
-    </edge>
-    <edge id="232" source="143" target="145">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BS, MN, U, Y]</data>
-    </edge>
-    <edge id="234" source="145" target="148">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BS, MN, U, Y]</data>
-    </edge>
-    <edge id="233" source="144" target="148">
+    <edge id="202" source="155" target="158">
       <data key="de0">SEQUENCE</data>
       <data key="de1">[BL, JG]</data>
     </edge>
-    <edge id="253" source="144" target="146">
+    <edge id="225" source="158" target="160">
       <data key="de0">RELATED</data>
-      <data key="de3">orthographic</data>
-      <data key="de4">no</data>
-      <data key="de5">&amp;</data>
-      <data key="de6">et</data>
       <data key="de2">global</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
     </edge>
-    <edge id="229" source="141" target="146">
+    <edge id="205" source="158" target="162">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[BLu]</data>
+      <data key="de1">[BL, JG]</data>
     </edge>
-    <edge id="227" source="140" target="141">
+    <edge id="206" source="159" target="162">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BSt, BU, Dr, G, Gh, H, K, L, O, P, St, T, V, X]</data>
+      <data key="de1">[BS, MN, U, Y]</data>
     </edge>
-    <edge id="226" source="140" target="152">
+    <edge id="204" source="157" target="159">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[F, Li, Sk]</data>
+      <data key="de1">[BS, MN, U, Y]</data>
     </edge>
-    <edge id="245" source="152" target="153">
+    <edge id="196" source="154" target="157">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BL, BLu, BS, BSt, BU, Bc, C, Dr, Ef, F, Gh, H, Ho, JG, K, L, Li, M, MN, P, S, Sk, St, T, U, V, X, Y]</data>
+      <data key="de1">[BS, MN, U, Y]</data>
     </edge>
-    <edge id="243" source="150" target="153">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BA]</data>
-    </edge>
-    <edge id="254" source="150" target="152">
-      <data key="de0">RELATED</data>
-      <data key="de4">no</data>
-      <data key="de2">global</data>
-      <data key="de3">orthographic</data>
-      <data key="de5">Sanctus</data>
-      <data key="de6">SAnctus</data>
-    </edge>
-    <edge id="255" source="151" target="152">
-      <data key="de0">RELATED</data>
-      <data key="de2">local</data>
-      <data key="de3">spelling</data>
-      <data key="de4">no</data>
-      <data key="de5">Sanctus</data>
-      <data key="de6">anctus</data>
-    </edge>
-    <edge id="244" source="151" target="153">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[O]</data>
-    </edge>
-    <edge id="246" source="153" target="107">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, Bc, C, Dr, Ef, F, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="192" source="120" target="107">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Vg]</data>
-    </edge>
-    <edge id="189" source="119" target="120">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Vg]</data>
-    </edge>
-    <edge id="188" source="119" target="124">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[JG]</data>
-    </edge>
-    <edge id="197" source="124" target="127">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[JG]</data>
-    </edge>
-    <edge id="193" source="121" target="127">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[H]</data>
-    </edge>
-    <edge id="247" source="121" target="123">
-      <data key="de0">RELATED</data>
-      <data key="de3">orthographic</data>
-      <data key="de5">veri</data>
-      <data key="de6">ueri</data>
-      <data key="de2">local</data>
-      <data key="de4">no</data>
-    </edge>
-    <edge id="196" source="123" target="127">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Ho, K, L, Li, M, MN, S, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="202" source="127" target="129">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BS, BSt, BU, C, Dr, G, H, Ho, JG, L, M, MN, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="249" source="128" target="129">
-      <data key="de0">RELATED</data>
-      <data key="de2">local</data>
-      <data key="de3">orthographic</data>
-      <data key="de4">no</data>
-      <data key="de5">noticiam</data>
-      <data key="de6">notitiam</data>
-    </edge>
-    <edge id="203" source="127" target="128">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[K, S]</data>
-    </edge>
-    <edge id="200" source="127" target="130">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BL, BLu]</data>
-    </edge>
-    <edge id="207" source="130" target="131">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BL, BLu]</data>
-    </edge>
-    <edge id="250" source="131" target="132">
-      <data key="de0">RELATED</data>
-      <data key="de3">orthographic</data>
-      <data key="de4">no</data>
-      <data key="de5">&amp;</data>
-      <data key="de6">et</data>
-      <data key="de2">global</data>
-    </edge>
-    <edge id="210" source="132" target="134">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, M, MN, O, P, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="209" source="131" target="134">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[K, S]</data>
-    </edge>
-    <edge id="208" source="131" target="133">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BL, BLu]</data>
-    </edge>
-    <edge id="211" source="133" target="135">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BL, BLu]</data>
-    </edge>
-    <edge id="213" source="134" target="135">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, BA, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, M, MN, O, P, S, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="215" source="134" target="137">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Li]</data>
-    </edge>
-    <edge id="251" source="136" target="137">
-      <data key="de0">RELATED</data>
-      <data key="de2">local</data>
-      <data key="de3">collated</data>
-      <data key="de4">no</data>
-      <data key="de5">continue</data>
-      <data key="de6">magisque</data>
-    </edge>
-    <edge id="214" source="134" target="136">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[B]</data>
-    </edge>
-    <edge id="212" source="134" target="148">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Ef]</data>
-    </edge>
-    <edge id="235" source="146" target="148">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BLu]</data>
-    </edge>
-    <edge id="236" source="147" target="148">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BSt, BU, C, Dr, G, H, Ho, K, L, M, O, P, S, St, T, V, X]</data>
-    </edge>
-    <edge id="231" source="142" target="147">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[C, Ho, M]</data>
-    </edge>
-    <edge id="238" source="148" target="150">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BA]</data>
-    </edge>
-    <edge id="239" source="148" target="151">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[O]</data>
-    </edge>
-    <edge id="201" source="127" target="134">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Li]</data>
-    </edge>
-    <edge id="171" source="108" target="134">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Ef]</data>
-    </edge>
-    <edge id="172" source="108" target="152">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Bc]</data>
-    </edge>
-    <edge id="173" source="108" target="109">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
-    </edge>
-    <edge id="174" source="109" target="111">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[X]</data>
-    </edge>
-    <edge id="179" source="111" target="113">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[X]</data>
-    </edge>
-    <edge id="181" source="113" target="114">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, T, V, Vg, X, Y]</data>
-    </edge>
-    <edge id="182" source="114" target="116">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, T, V, Vg, X, Y]</data>
-    </edge>
-    <edge id="183" source="115" target="116">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[St, U]</data>
-    </edge>
-    <edge id="180" source="112" target="115">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[St, U]</data>
-    </edge>
-    <edge id="177" source="110" target="112">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[St, U]</data>
-    </edge>
-    <edge id="176" source="110" target="113">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, T, V, Vg, Y]</data>
-    </edge>
-    <edge id="178" source="110" target="114">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[F]</data>
-    </edge>
-    <edge id="175" source="109" target="110">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, Y]</data>
-    </edge>
-    <edge id="184" source="116" target="117">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
-    </edge>
-    <edge id="185" source="117" target="118">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
-    </edge>
-    <edge id="186" source="118" target="119">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
-    </edge>
-    <edge id="191" source="119" target="122">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[F, Gh, O, P]</data>
-    </edge>
-    <edge id="194" source="122" target="125">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[F, Gh]</data>
-    </edge>
-    <edge id="248" source="125" target="126">
-      <data key="de0">RELATED</data>
-      <data key="de3">orthographic</data>
-      <data key="de5">veri</data>
-      <data key="de6">ueri</data>
-      <data key="de2">local</data>
-      <data key="de4">no</data>
-    </edge>
-    <edge id="195" source="122" target="126">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[O, P]</data>
-    </edge>
-    <edge id="199" source="126" target="129">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[O, P]</data>
-    </edge>
-    <edge id="198" source="125" target="129">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[F, Gh]</data>
-    </edge>
-    <edge id="206" source="129" target="140">
+    <edge id="178" source="143" target="154">
       <data key="de0">SEQUENCE</data>
       <data key="de1">[L]</data>
     </edge>
-    <edge id="218" source="135" target="140">
+    <edge id="170" source="139" target="143">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[M]</data>
+      <data key="de1">[F, Gh]</data>
     </edge>
-    <edge id="217" source="135" target="138">
+    <edge id="166" source="136" target="139">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[BSt]</data>
+      <data key="de1">[F, Gh]</data>
     </edge>
-    <edge id="222" source="138" target="140">
+    <edge id="163" source="133" target="136">
       <data key="de0">SEQUENCE</data>
-      <data key="de1">[BSt]</data>
+      <data key="de1">[F, Gh, O, P]</data>
     </edge>
-    <edge id="221" source="137" target="140">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[Li]</data>
-    </edge>
-    <edge id="220" source="136" target="140">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BL, BLu, BS, BU, C, Dr, F, G, Gh, H, Ho, K, MN, O, P, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="219" source="136" target="139">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[JG, S]</data>
-    </edge>
-    <edge id="223" source="139" target="141">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[JG, S]</data>
-    </edge>
-    <edge id="230" source="141" target="144">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[BL, JG]</data>
-    </edge>
-    <edge id="216" source="135" target="136">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, BA, BL, BLu, BS, BU, C, Dr, F, G, Gh, H, Ho, JG, K, MN, O, P, S, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="205" source="129" target="132">
-      <data key="de0">SEQUENCE</data>
-      <data key="de1">[A, B, BA, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, M, MN, O, P, Sk, St, T, U, V, X, Y]</data>
-    </edge>
-    <edge id="190" source="119" target="123">
+    <edge id="162" source="133" target="137">
       <data key="de0">SEQUENCE</data>
       <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Ho, K, L, Li, M, MN, S, Sk, St, T, U, V, X, Y]</data>
     </edge>
-    <edge id="187" source="119" target="121">
+    <edge id="168" source="137" target="141">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Ho, K, L, Li, M, MN, S, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="174" source="141" target="143">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BS, BSt, BU, C, Dr, G, H, Ho, JG, L, M, MN, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="177" source="143" target="146">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, M, MN, O, P, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="222" source="145" target="146">
+      <data key="de0">RELATED</data>
+      <data key="de2">global</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="176" source="142" target="145">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[K, S]</data>
+    </edge>
+    <edge id="175" source="141" target="142">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[K, S]</data>
+    </edge>
+    <edge id="169" source="138" target="141">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[JG]</data>
+    </edge>
+    <edge id="160" source="133" target="138">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[JG]</data>
+    </edge>
+    <edge id="158" source="132" target="133">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
+    </edge>
+    <edge id="157" source="131" target="132">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
+    </edge>
+    <edge id="156" source="130" target="131">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
+    </edge>
+    <edge id="154" source="128" target="130">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, T, V, Vg, X, Y]</data>
+    </edge>
+    <edge id="150" source="124" target="128">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[F]</data>
+    </edge>
+    <edge id="147" source="123" target="124">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, Y]</data>
+    </edge>
+    <edge id="146" source="123" target="125">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[X]</data>
+    </edge>
+    <edge id="151" source="125" target="127">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[X]</data>
+    </edge>
+    <edge id="148" source="124" target="127">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, T, V, Vg, Y]</data>
+    </edge>
+    <edge id="149" source="124" target="126">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[St, U]</data>
+    </edge>
+    <edge id="152" source="126" target="129">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[St, U]</data>
+    </edge>
+    <edge id="155" source="129" target="130">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[St, U]</data>
+    </edge>
+    <edge id="153" source="127" target="128">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, T, V, Vg, X, Y]</data>
+    </edge>
+    <edge id="145" source="122" target="123">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, Vg, X, Y]</data>
+    </edge>
+    <edge id="144" source="122" target="166">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Bc]</data>
+    </edge>
+    <edge id="198" source="154" target="166">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[F, Li, Sk]</data>
+    </edge>
+    <edge id="199" source="154" target="155">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BSt, BU, Dr, G, Gh, H, K, L, O, P, St, T, V, X]</data>
+    </edge>
+    <edge id="224" source="155" target="156">
+      <data key="de0">RELATED</data>
+      <data key="de2">local</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="203" source="156" target="161">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[C, Ho, M]</data>
+    </edge>
+    <edge id="209" source="161" target="163">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Gh]</data>
+    </edge>
+    <edge id="214" source="163" target="166">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Gh]</data>
+    </edge>
+    <edge id="226" source="164" target="166">
+      <data key="de0">RELATED</data>
+      <data key="de2">global</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="215" source="164" target="167">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BA]</data>
+    </edge>
+    <edge id="217" source="166" target="167">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BL, BLu, BS, BSt, BU, Bc, C, Dr, Ef, F, Gh, H, Ho, JG, K, L, Li, M, MN, P, S, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="227" source="165" target="166">
+      <data key="de0">RELATED</data>
+      <data key="de2">local</data>
+      <data key="de3">true</data>
+      <data key="de4">spelling</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="211" source="162" target="165">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[O]</data>
+    </edge>
+    <edge id="208" source="161" target="162">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BSt, BU, C, Dr, G, H, Ho, K, L, M, O, P, S, St, T, V, X]</data>
+    </edge>
+    <edge id="200" source="155" target="161">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BSt, BU, Dr, G, Gh, H, K, L, O, P, S, St, T, V, X]</data>
+    </edge>
+    <edge id="195" source="153" target="155">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[JG, S]</data>
+    </edge>
+    <edge id="191" source="150" target="153">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[JG, S]</data>
+    </edge>
+    <edge id="192" source="150" target="154">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BU, C, Dr, F, G, Gh, H, Ho, K, MN, O, P, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="193" source="151" target="154">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Li]</data>
+    </edge>
+    <edge id="187" source="148" target="151">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Li]</data>
+    </edge>
+    <edge id="173" source="141" target="148">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Li]</data>
+    </edge>
+    <edge id="165" source="135" target="141">
       <data key="de0">SEQUENCE</data>
       <data key="de1">[H]</data>
     </edge>
-    <edge id="170" source="106" target="108">
-      <data key="de0">COLLATION</data>
+    <edge id="159" source="133" target="135">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[H]</data>
     </edge>
-    <edge id="204" source="128" target="131">
+    <edge id="161" source="133" target="134">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Vg]</data>
+    </edge>
+    <edge id="164" source="134" target="121">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Vg]</data>
+    </edge>
+    <edge id="218" source="167" target="121">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BL, BLu, BS, BSt, BU, Bc, C, Dr, Ef, F, Gh, H, Ho, JG, K, L, Li, M, MN, O, P, S, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="216" source="165" target="167">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[O]</data>
+    </edge>
+    <edge id="219" source="135" target="137">
+      <data key="de0">RELATED</data>
+      <data key="de2">local</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="172" source="141" target="144">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BL, BLu]</data>
+    </edge>
+    <edge id="179" source="144" target="145">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BL, BLu]</data>
+    </edge>
+    <edge id="180" source="145" target="147">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BL, BLu]</data>
+    </edge>
+    <edge id="183" source="147" target="149">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BL, BLu]</data>
+    </edge>
+    <edge id="189" source="149" target="152">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BSt]</data>
+    </edge>
+    <edge id="194" source="152" target="154">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BSt]</data>
+    </edge>
+    <edge id="190" source="149" target="154">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[M]</data>
+    </edge>
+    <edge id="188" source="149" target="150">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, BA, BL, BLu, BS, BU, C, Dr, F, G, Gh, H, Ho, JG, K, MN, O, P, S, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="186" source="148" target="150">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[B]</data>
+    </edge>
+    <edge id="181" source="145" target="148">
       <data key="de0">SEQUENCE</data>
       <data key="de1">[K, S]</data>
+    </edge>
+    <edge id="184" source="148" target="162">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Ef]</data>
+    </edge>
+    <edge id="213" source="162" target="166">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BL, BLu, BS, BSt, BU, C, Dr, Ef, H, Ho, JG, K, L, M, MN, P, S, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="210" source="162" target="164">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[BA]</data>
+    </edge>
+    <edge id="185" source="148" target="149">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, BA, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, K, M, MN, O, P, S, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="182" source="146" target="148">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[A, B, BA, BS, BSt, BU, C, Dr, F, G, Gh, H, Ho, JG, M, MN, O, P, Sk, St, T, U, V, X, Y]</data>
+    </edge>
+    <edge id="143" source="122" target="148">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[Ef]</data>
+    </edge>
+    <edge id="142" source="120" target="122">
+      <data key="de0">COLLATION</data>
+    </edge>
+    <edge id="223" source="150" target="151">
+      <data key="de0">RELATED</data>
+      <data key="de2">local</data>
+      <data key="de3">true</data>
+      <data key="de4">collated</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="197" source="154" target="156">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[C, Ho, M]</data>
+    </edge>
+    <edge id="221" source="142" target="143">
+      <data key="de0">RELATED</data>
+      <data key="de2">local</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="171" source="140" target="143">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[O, P]</data>
+    </edge>
+    <edge id="220" source="139" target="140">
+      <data key="de0">RELATED</data>
+      <data key="de2">local</data>
+      <data key="de3">true</data>
+      <data key="de4">orthographic</data>
+      <data key="de5">no</data>
+    </edge>
+    <edge id="167" source="136" target="140">
+      <data key="de0">SEQUENCE</data>
+      <data key="de1">[O, P]</data>
     </edge>
   </graph>
 </graphml>
