@@ -21,6 +21,15 @@ public class GraphMLParser {
     private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    /**
+     * Parses a GraphML file representing either an entire tradition, or a single tradition
+     * section. Returns the ID of the object (either tradition or section) that was created.
+     *
+     * @param filestream - an InputStream with the XML data
+     * @param traditionNode - a Node to represent the tradition this data belongs to
+     * @return a Response object carrying a JSON dictionary {"parentId": <ID>}
+     */
+
     public Response parseGraphML(InputStream filestream, Node traditionNode)
     {
         // We will use a DOM parser for this
@@ -43,7 +52,9 @@ public class GraphMLParser {
         }
 
         String parentId = null;
+        String parentLabel = null;
         ArrayList<Node> sectionNodes = new ArrayList<>();
+        HashSet<String> sigla = new HashSet<>();
         // Keep track of XML ID to Neo4J ID mapping for all nodes
         HashMap<String, Node> entityMap = new HashMap<>();
 
@@ -59,7 +70,7 @@ public class GraphMLParser {
                 NodeList dataNodes = ((Element) entityXML).getElementsByTagName("data");
                 HashMap<String, Object> nodeProperties = returnProperties(dataNodes, dataKeys);
                 if (!nodeProperties.containsKey("neolabel"))
-                    return Response.serverError().entity("Node without label found").build();
+                    return Response.status(Response.Status.BAD_REQUEST).entity("Node without label found").build();
                 String neolabel = nodeProperties.remove("neolabel").toString();
                 String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
 
@@ -67,10 +78,11 @@ public class GraphMLParser {
                 // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
                 // node to match the one in the GraphML.
                 if (neolabel.contains("TRADITION")) {
-                    if (parentId != null) {
+                    if (parentLabel != null) {
                         // We apparently have two TRADITION nodes. Abort.
-                        entityMap.values().forEach(Node::delete);
-                        tx.success();
+                        // n.b. Old code, not sure if it was needed or just misunderstanding transactions
+                        // entityMap.values().forEach(Node::delete);
+                        // tx.success();
                         return Response.status(Response.Status.BAD_REQUEST)
                                 .entity("Multiple TRADITION nodes in input").build();
                     }
@@ -78,6 +90,7 @@ public class GraphMLParser {
                     String fileTraditionId = nodeProperties.get("id").toString();
                     Node existingTradition = db.findNode(Nodes.TRADITION, "id", fileTraditionId);
                     if (existingTradition == null) {
+                        // Set the ID of the new tradition node to match the old ID.
                         traditionNode.setProperty("id", fileTraditionId);
                         tradId = fileTraditionId;
                     } // else there is another tradition with the original ID, so this is a duplicate
@@ -89,6 +102,7 @@ public class GraphMLParser {
                         if (!p.equals("id"))
                             traditionNode.setProperty(p, nodeProperties.get(p));
                     parentId = tradId;
+                    parentLabel = "tradition";
                     entityMap.put(xmlId, traditionNode);
                 } else {
                     // Now we have the information of the XML, we can create the node.
@@ -101,7 +115,21 @@ public class GraphMLParser {
                     // them to our tradition node
                     if (neolabel.contains("SECTION")) sectionNodes.add(entity);
                 }
-             }
+            }
+
+            // Check the parent type
+            if (parentLabel == null) // i.e. if it hasn't been set to "tradition"
+                if (sectionNodes.size() == 0)
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity("Neither TRADITION nor SECTION found in input").build();
+                else
+                    parentLabel = "section";
+
+            // If we have seen multiple sections but no tradition, error out.
+            if (sectionNodes.size() > 1 && parentLabel.equals("section"))
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Multiple SECTION nodes but no TRADITION in input").build();
+
 
             // Next go through all the edges and create them between the nodes.
             NodeList edgeNodes = rootEl.getElementsByTagName("edge");
@@ -116,23 +144,34 @@ public class GraphMLParser {
                 if (!edgeProperties.containsKey("neolabel"))
                     return Response.serverError().entity("Node without label found").build();
                 String neolabel = edgeProperties.remove("neolabel").toString();
+                // If this is a SEQUENCE relation, track the sigla so we can be sure the witnesses
+                // exist (they are not exported for sections.)
+                if (neolabel.equals("SEQUENCE")) {
+                    for (String layer : edgeProperties.keySet()) {
+                        sigla.addAll(Arrays.asList((String[]) edgeProperties.get(layer)));
+                    }
+                }
                 Relationship newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
                 edgeProperties.forEach(newRel::setProperty);
             }
 
-            // Connect any sections to an existing tradition node, and to each other, if we didn't encounter
-            // a tradition node.
-            if (parentId == null) {
+            // Connect our new section to an existing tradition node, and to the last existing section,
+            // if this is a section-only upload.
+            if (parentLabel.equals("section")) {
+                Node newSection = sectionNodes.get(0);
                 ArrayList<Node> existingSections = DatabaseService.getSectionNodes(tradId, db);
-                Node lastExisting = null;
-                if (existingSections != null) lastExisting = existingSections.get(existingSections.size() - 1);
-                for (Node s : sectionNodes) {
-                    parentId = String.valueOf(s.getId());
-                    traditionNode.createRelationshipTo(s, ERelations.PART);
-                    if (lastExisting != null)
-                        lastExisting.createRelationshipTo(s, ERelations.NEXT);
-                    lastExisting = s;
+                assert(existingSections != null); // We should have already errored if this will be null.
+                if (existingSections.size() > 0) {
+                    Node lastExisting = existingSections.get(existingSections.size() - 1);
+                    lastExisting.createRelationshipTo(newSection, ERelations.NEXT);
                 }
+                traditionNode.createRelationshipTo(newSection, ERelations.PART);
+                parentId = String.valueOf(newSection.getId());
+            }
+
+            // Ensure that all witnesses we have encountered actually exist.
+            for (String sigil : sigla) {
+                Util.findOrCreateExtant(traditionNode, sigil);
             }
 
             // Sanity check: if we created any relationship-less nodes, delete them again.
@@ -144,7 +183,7 @@ public class GraphMLParser {
             return Response.serverError().build();
         }
 
-        String response = String.format("{\"parentId\":\"%s\"}", parentId);
+        String response = String.format("{\"parentId\":\"%s\",\"parentLabel\":\"%s\"}", parentId, parentLabel);
         return Response.status(Response.Status.CREATED).entity(response).build();
     }
 

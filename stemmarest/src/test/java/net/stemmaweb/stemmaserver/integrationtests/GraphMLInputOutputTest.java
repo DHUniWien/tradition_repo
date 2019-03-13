@@ -13,6 +13,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import javax.ws.rs.core.Response;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.ws.rs.core.MediaType;
 import java.io.StringReader;
@@ -176,9 +177,60 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(82, nodes.getLength());
     }
 
-    // testXMLInputMultiSection
+    public void testXMLInputCreateFromSection() {
+        List<SectionModel> ms = jerseyTest.resource().path("/tradition/" + multiTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String sectxml = jerseyTest.resource()
+                .path("/tradition/" + multiTradId + "/section/" + ms.get(1).getId() + "/graphml")
+                .get(String.class);
+        assertTrue(sectxml.contains("graphdrawing"));
 
-    // testXMLInputMultiSectionWithWitnesses
+        // Try to create a new tradition with only a section download
+        ClientResponse r = Util.createTraditionFromFileOrString(jerseyTest, "legend", "LR",
+                "me@example.org", sectxml, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String legendId = Util.getValueFromJson(r, "tradId");
+        String aWitnessText = Util.getValueFromJson(jerseyTest.resource().path("/tradition/" + legendId + "/witness/B/text")
+                .get(ClientResponse.class), "text");
+        assertEquals("quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magisque illustrabatur iugiter ac informabatur Sanctus autem", aWitnessText);
+        WitnessModel aWitness = jerseyTest.resource().path("/tradition/" + legendId + "/witness/B").get(WitnessModel.class);
+        assertEquals("B", aWitness.getSigil());
+    }
+
+    public void testXMLInputNewSectionWitnesses() {
+        String florId = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Florilegium",
+                "LR", "me@example.org", "src/TestFiles/florilegium_z.csv", "csv"), "tradId");
+        // Get the single-section XML
+        String chryxml = jerseyTest.resource().path("/tradition/" + florId + "/graphml").get(String.class);
+        assertTrue(chryxml.contains("graphdrawing"));
+
+        // Add a second section so we can export it
+        String florSect2 = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, florId,
+                "src/TestFiles/florilegium_y.csv", "csv", "Chrysostom"), "parentId");
+        String womenxml = jerseyTest.resource().path("/tradition/" + florId + "/section/" + florSect2 + "/graphml")
+                .get(String.class);
+        assertTrue(womenxml.contains("graphdrawing"));
+
+        // Check that all our witnesses are there
+        List<WitnessModel> wits = jerseyTest.resource().path("/tradition/" + florId + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(13, wits.size());
+
+        // Now make a new tradition with the GraphML
+        String flor2Id = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Floritwo",
+                "LR", "me@example.org", chryxml, "graphml"), "tradId");
+        // Count the witnesses
+        wits = jerseyTest.resource().path("/tradition/" + flor2Id + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(5, wits.size());
+        // Add the second section
+        ClientResponse r = Util.addSectionToTradition(jerseyTest, flor2Id, womenxml, "graphml", "Appearance of women");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        // Count the witnesses
+        wits = jerseyTest.resource().path("/tradition/" + flor2Id + "/witnesses")
+                .get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(13, wits.size());
+    }
 
     // testXMLUserNodes
 

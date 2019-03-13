@@ -155,10 +155,12 @@ public class Root {
                 return dataResult;
             }
             // If we just parsed GraphML (the only format that can preserve prior tradition IDs),
-            // get the actual tradition ID.
+            // get the actual tradition ID in case it changed.
             if (filetype.equals("graphml")) {
                 try {
-                    tradId = new JSONObject(dataResult.getEntity().toString()).get("parentId").toString();
+                    JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
+                    if (dataValues.get("parentLabel").toString().equals("tradition"))
+                        tradId = dataValues.get("parentId").toString();
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return Response.serverError().entity(jsonerror("Bad file parse response")).build();

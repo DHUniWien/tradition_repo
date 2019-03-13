@@ -199,12 +199,7 @@ public class Util {
         if (fName != null) {
             // It could be a filename or it could be a content string. Try one and then
             // the other.
-            InputStream input;
-            try {
-                input = new FileInputStream(fName);
-            } catch (FileNotFoundException e) {
-                input = new ByteArrayInputStream(fName.getBytes(StandardCharsets.UTF_8));
-            }
+            InputStream input = getFileOrStringContent(fName);
             FormDataBodyPart fdp = new FormDataBodyPart("file", input,
                     MediaType.APPLICATION_OCTET_STREAM_TYPE);
             form.bodyPart(fdp);
@@ -220,12 +215,7 @@ public class Util {
         FormDataMultiPart form = new FormDataMultiPart();
         form.field("filetype", fileType);
         form.field("name", sectionName);
-        InputStream input = null;
-        try {
-            input = new FileInputStream(fileName);
-        } catch (FileNotFoundException f) {
-            fail();
-        }
+        InputStream input = getFileOrStringContent(fileName);
         FormDataBodyPart fdp = new FormDataBodyPart("file", input,
                 MediaType.APPLICATION_OCTET_STREAM_TYPE);
         form.bodyPart(fdp);
@@ -233,6 +223,16 @@ public class Util {
                 .path("/tradition/" + traditionId + "/section")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
                 .post(ClientResponse.class, form);
+    }
+
+    private static InputStream getFileOrStringContent(String content) {
+        InputStream result;
+        try {
+            result = new FileInputStream(content);
+        } catch (FileNotFoundException e) {
+            result = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+        }
+        return result;
     }
 
 }
