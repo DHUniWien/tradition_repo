@@ -11,6 +11,7 @@ import org.w3c.dom.*;
 import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Parser for the GraphML that Stemmarest itself produces.
@@ -167,6 +168,12 @@ public class GraphMLParser {
                 }
                 traditionNode.createRelationshipTo(newSection, ERelations.PART);
                 parentId = String.valueOf(newSection.getId());
+            }
+
+            // Reset the section IDs stored on each reading to the ID of the newly created node
+            for (Node r : entityMap.values().stream().filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList())) {
+                String rSectId = r.getProperty("section_id").toString();
+                r.setProperty("section_id", entityMap.get(rSectId).getId());
             }
 
             // Ensure that all witnesses we have encountered actually exist.

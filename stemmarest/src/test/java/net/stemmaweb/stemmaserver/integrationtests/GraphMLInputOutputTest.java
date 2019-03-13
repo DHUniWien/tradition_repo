@@ -5,9 +5,13 @@ import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
@@ -19,6 +23,8 @@ import javax.ws.rs.core.MediaType;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertNotEquals;
 
@@ -103,6 +109,18 @@ public class GraphMLInputOutputTest extends TestCase {
         ArrayList<ReadingModel> rdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
                 .get(new GenericType<ArrayList<ReadingModel>>(){});
         assertEquals(26, rdgs.size());
+
+        // Do the readings claim to belong to the new sections and not the old?
+        Set<String> sections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {})
+                .stream().map(SectionModel::getId).collect(Collectors.toSet());
+        try (Transaction tx = db.beginTx()) {
+            List<Node> ourReadings = DatabaseService.returnEntireTradition(tradId, db).nodes().stream()
+                    .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
+            for (Node rdg : ourReadings)
+                assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
+            tx.success();
+        }
 
         // Do the witness texts match?
         ArrayList<WitnessModel> wits = jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
@@ -195,6 +213,18 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals("quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magisque illustrabatur iugiter ac informabatur Sanctus autem", aWitnessText);
         WitnessModel aWitness = jerseyTest.resource().path("/tradition/" + legendId + "/witness/B").get(WitnessModel.class);
         assertEquals("B", aWitness.getSigil());
+
+        // Do the readings have the right section ID set?
+        Set<String> newSections = jerseyTest.resource().path("/tradition/" + legendId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {})
+                .stream().map(SectionModel::getId).collect(Collectors.toSet());
+        try (Transaction tx = db.beginTx()) {
+            List<Node> ourReadings = DatabaseService.returnEntireTradition(legendId, db).nodes().stream()
+                    .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
+            for (Node rdg : ourReadings)
+                assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));
+            tx.success();
+        }
     }
 
     public void testXMLInputNewSectionWitnesses() {
@@ -235,6 +265,10 @@ public class GraphMLInputOutputTest extends TestCase {
     // testXMLUserNodes
 
     // testXMLDataTypes
+
+    // testXMLTooManySections
+
+    // testXMLNoSections
 
     public void tearDown() throws Exception {
         db.shutdown();
