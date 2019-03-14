@@ -960,16 +960,20 @@ public class Reading {
                 (read2.hasProperty("join_prior") && (Boolean) read2.getProperty("join_prior"));
         // We need to join the text, the display form, and the normal form
         String[] text_properties = {"text", "display", "normal_form"};
+        // This will store the combined plain text form
         String plaintextform = null;
+        // These are the (initial) default values in case display and normal_form aren't set
+        String r1plain = read1.getProperty("text", "").toString();
+        String r2plain = read2.getProperty("text", "").toString();
         for (String prop : text_properties) {
             if (boundary.getSeparate() && !joined) {
                 newText = String.join(boundary.getCharacter(),
-                        read1.getProperty(prop, read1.getProperty("text", "")).toString(),
-                        read2.getProperty(prop, read2.getProperty("text", "")).toString());
+                        read1.getProperty(prop, r1plain).toString(),
+                        read2.getProperty(prop, r2plain).toString());
             } else {
                 newText = String.join("",
-                        read1.getProperty(prop, read1.getProperty("text", "")).toString(),
-                        read2.getProperty(prop, read1.getProperty("text", "")).toString());
+                        read1.getProperty(prop, r1plain).toString(),
+                        read2.getProperty(prop, r2plain).toString());
             }
             if (prop.equals("text"))
                 plaintextform = newText;
