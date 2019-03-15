@@ -213,6 +213,8 @@ public class TabularParser {
             result = Response.Status.CREATED;
             response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
             tx.success();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
             e.printStackTrace();
             if (result.equals(Response.Status.OK))
