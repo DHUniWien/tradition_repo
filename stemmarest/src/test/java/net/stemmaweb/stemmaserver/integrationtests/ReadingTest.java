@@ -791,17 +791,17 @@ public class ReadingTest {
 
     @Test
     public void duplicateLayerConsistencyTest() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "589", "LR", "1",
-                "src/TestFiles/milestone-589.xml", "graphml");
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "570", "LR", "1",
+                "src/TestFiles/milestone-570a.xml", "graphml");
         String newTradId = Util.getValueFromJson(response, "tradId");
         List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
         assertEquals(1, sects.size());
         String msSectId = sects.get(0).getId();
 
-        // Test three: duplicate a reading that has only a witness and its a.c. layer
-        String brnjin = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "բրնձին", 47L);
-        String request = "{\"readings\":[" + brnjin + "], \"witnesses\":[\"M3380\"]}";
+        // Test three: duplicate a reading that has only a witness and the beginning of its a.c. layer
+        String brnjin = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "դաւ", 50L);
+        String request = "{\"readings\":[" + brnjin + "], \"witnesses\":[\"A\"]}";
         response = jerseyTest.resource().path("/reading/" + brnjin + "/duplicate")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, request);
@@ -821,6 +821,16 @@ public class ReadingTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
         checkRdgConsistency();
+
+        // Now try duplicating the reading where the layer ends
+        String thi = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "թի", 52L);
+        request = "{\"readings\":[" + thi + "], \"witnesses\":[\"A\"]}";
+        response = jerseyTest.resource().path("/reading/" + brnjin + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, request);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+        checkRdgConsistency();
     }
 
     private void checkRdgConsistency () {
@@ -828,7 +838,7 @@ public class ReadingTest {
             for (ResourceIterator<Node> it = db.findNodes(Nodes.READING); it.hasNext(); ) {
                 Node r = it.next();
                 if (r.hasProperty("is_start")) continue;
-                assertTrue(r.getRelationships(ERelations.SEQUENCE, Direction.INCOMING).iterator().hasNext());
+                assertTrue("dangling reading " + r.getId(), r.getRelationships(ERelations.SEQUENCE, Direction.INCOMING).iterator().hasNext());
             }
             tx.success();
         }
