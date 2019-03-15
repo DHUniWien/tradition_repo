@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.util.*;
 
 import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.rest.Util.jsonresp;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
 
@@ -278,7 +279,7 @@ public class Tradition {
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().build();
+        return Response.ok(jsonresp("result", "success")).build();
 
     }
 
