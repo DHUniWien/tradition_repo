@@ -749,7 +749,7 @@ public class Section {
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().build();
+        return Response.ok(jsonresp("result", "success")).build();
 
     }
 

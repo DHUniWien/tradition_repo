@@ -144,6 +144,8 @@ public class CollateXParser {
             }
 
             tx.success();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();

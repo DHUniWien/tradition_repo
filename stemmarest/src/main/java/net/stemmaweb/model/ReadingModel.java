@@ -17,6 +17,7 @@ import org.neo4j.graphdb.Transaction;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -157,8 +158,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
                     System.err.println("Invalid JSON string in reading extra parameter: " + jsonData);
                 }
             }
-            List<String> collectedWits = new ArrayList<>();
-            for (Relationship r : node.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
+            HashSet<String> collectedWits = new HashSet<>();
+            for (Relationship r : node.getRelationships(ERelations.SEQUENCE, Direction.BOTH)) {
                 for (String prop : r.getPropertyKeys()) {
                     String[] sigla = (String[]) r.getProperty(prop);
                     if (prop.equals("witnesses")) {
@@ -168,7 +169,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
                     }
                 }
             }
-            this.witnesses = collectedWits;
+            this.witnesses = new ArrayList<>(collectedWits);
+            this.witnesses.sort(String::compareTo);
             tx.success();
         }
     }

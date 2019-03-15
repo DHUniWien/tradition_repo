@@ -171,6 +171,8 @@ public class CollateXJsonParser {
             tx.success();
             String response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
             return Response.status(Response.Status.CREATED).entity(response).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
             e.printStackTrace();
             String error = String.format("{\"error\": \"%s\"}", e.getMessage());

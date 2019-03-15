@@ -179,6 +179,8 @@ public class TEIParallelSegParser {
             // Now try re-ranking the nodes.
             recalculateRank(startNode);
             tx.success();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
             System.out.println(String.format("Error encountered in XML line %d column %d: ",
                     reader.getLocation().getLineNumber(),

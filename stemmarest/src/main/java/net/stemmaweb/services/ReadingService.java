@@ -104,16 +104,42 @@ public class ReadingService {
      * @param witClass - the witness layer class to use
      */
     public static void removeWitnessLink (Node start, Node end, String sigil, String witClass) {
+        // If we are removing a base witness link, we need to check whether any layers for
+        // that witness end at our start node or start at our end node.
+        ArrayList<String> orphans = new ArrayList<>();
+        if (witClass.equals("witnesses")) {
+            for (Relationship r : start.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+                orphans.addAll(findWitLayers(r, sigil));
+            }
+            for (Relationship r : end.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+                orphans.addAll(findWitLayers(r, sigil));
+            }
+            // Any outgoing layers of this witness that arrive via another link are not orphans.
+            for (Relationship r : end.getRelationships(Direction.INCOMING, ERelations.SEQUENCE))
+                if (!r.getStartNode().equals(start))
+                    orphans.removeAll(findWitLayers(r, sigil));
+        } // else we are removing a layer explicitly, and needn't worry about orphans.
+
+        // Next, go through the outgoing sequences to find the appropriate link. As before, any
+        // incoming orphans that leave through a different link aren't really orphans.
         Relationship link = null;
-        for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
+        for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
             if (r.getEndNode().equals(end))
                 link = r;
+            else if (witClass.equals("witnesses")) {
+                orphans.removeAll(findWitLayers(r, sigil));
+            }
+        }
         if (link == null) return;
         // Look for the given witness in the given layer
         if (link.hasProperty(witClass)) {
             String[] witList = (String[]) link.getProperty(witClass);
             HashSet<String> currentWits = new HashSet<>(Arrays.asList(witList));
             currentWits.remove(sigil);
+            // Un-orphan any otherwise orphaned sigil layers.
+            for (String layer : orphans) {
+                link.setProperty(layer, new String[] {sigil});
+            }
             // Was this the last witness for the given class?
             if (currentWits.isEmpty()) {
                 link.removeProperty(witClass);
@@ -126,6 +152,24 @@ public class ReadingService {
         }
     }
 
+    private static ArrayList<String> findWitLayers (Relationship r, String sigil) {
+        ArrayList<String> sigLayers = new ArrayList<>();
+        for (String layer : r.getPropertyKeys()) {
+            if (layer.equals("witnesses")) continue;
+            if (Arrays.asList((String[]) r.getProperty(layer)).contains(sigil))
+                sigLayers.add(layer);
+        }
+        return sigLayers;
+    }
+
+    /**
+     * Transfers all witness links from the given SEQUENCE relationship to whatever sequence
+     * exists between the start and end node. Creates the sequence if necessary.
+     *
+     * @param start - the first node to link
+     * @param end   - the second node to link
+     * @param copyFrom  - the SEQUENCE relationship whose witnesses to take over
+     */
     public static void transferWitnesses (Node start, Node end, Relationship copyFrom) {
         for (String witclass : copyFrom.getPropertyKeys())
             for (String w : (String[]) copyFrom.getProperty(witclass))

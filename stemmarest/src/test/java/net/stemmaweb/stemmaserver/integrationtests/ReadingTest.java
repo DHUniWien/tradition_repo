@@ -790,6 +790,61 @@ public class ReadingTest {
     }
 
     @Test
+    public void duplicateLayerConsistencyTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "570", "LR", "1",
+                "src/TestFiles/milestone-570a.xml", "graphml");
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        List<SectionModel> sects = jerseyTest.resource().path("/tradition/" + newTradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        assertEquals(1, sects.size());
+        String msSectId = sects.get(0).getId();
+
+        // Test three: duplicate a reading that has only a witness and the beginning of its a.c. layer
+        String brnjin = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "դաւ", 50L);
+        String request = "{\"readings\":[" + brnjin + "], \"witnesses\":[\"A\"]}";
+        response = jerseyTest.resource().path("/reading/" + brnjin + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, request);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        // Find the new reading ID
+        GraphModel result = response.getEntity(GraphModel.class);
+        Optional<ReadingModel> duplicated = result.getReadings().stream()
+                .filter(x -> x.getOrig_reading().equals(brnjin)).findFirst();
+        assertTrue(duplicated.isPresent());
+        String dupId = duplicated.get().getId();
+
+        checkRdgConsistency();
+
+        // Now try merging them again
+        response = jerseyTest.resource().path("/reading/" + brnjin + "/merge/" + dupId)
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        checkRdgConsistency();
+
+        // Now try duplicating the reading where the layer ends
+        String thi = Util.getSpecificReading(jerseyTest, newTradId, msSectId, "թի", 52L);
+        request = "{\"readings\":[" + thi + "], \"witnesses\":[\"A\"]}";
+        response = jerseyTest.resource().path("/reading/" + brnjin + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, request);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+
+        checkRdgConsistency();
+    }
+
+    private void checkRdgConsistency () {
+        try (Transaction tx = db.beginTx()) {
+            for (ResourceIterator<Node> it = db.findNodes(Nodes.READING); it.hasNext(); ) {
+                Node r = it.next();
+                if (r.hasProperty("is_start")) continue;
+                assertTrue("dangling reading " + r.getId(), r.getRelationships(ERelations.SEQUENCE, Direction.INCOMING).iterator().hasNext());
+            }
+            tx.success();
+        }
+    }
+
+    @Test
     public void mergeReadingsTest() {
         try (Transaction tx = db.beginTx()) {
             Result result = db.execute("match (w:READING {text:'fruit'}) return w");

@@ -95,7 +95,7 @@ public class GraphMLParser {
                         traditionNode.setProperty("id", fileTraditionId);
                         tradId = fileTraditionId;
                     } // else there is another tradition with the original ID, so this is a duplicate
-                      // and needs its new ID.
+                    // and needs its new ID.
 
                     // This node is already created, but we need to reset its properties according to
                     // what is in the GraphML file. We also save this ID as the parent ID that was created.
@@ -161,7 +161,7 @@ public class GraphMLParser {
             if (parentLabel.equals("section")) {
                 Node newSection = sectionNodes.get(0);
                 ArrayList<Node> existingSections = DatabaseService.getSectionNodes(tradId, db);
-                assert(existingSections != null); // We should have already errored if this will be null.
+                assert (existingSections != null); // We should have already errored if this will be null.
                 if (existingSections.size() > 0) {
                     Node lastExisting = existingSections.get(existingSections.size() - 1);
                     lastExisting.createRelationshipTo(newSection, ERelations.NEXT);
@@ -185,6 +185,8 @@ public class GraphMLParser {
             entityMap.values().stream().filter(n -> !n.hasRelationship()).forEach(Node::delete);
 
             tx.success();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();

@@ -359,6 +359,8 @@ public class StemmawebParser {
             // Set colocation information on relation types
             Util.setColocationFlags(traditionNode);
             tx.success();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch(Exception e) {
             e.printStackTrace();
 

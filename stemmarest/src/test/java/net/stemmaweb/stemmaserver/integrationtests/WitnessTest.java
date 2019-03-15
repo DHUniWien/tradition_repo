@@ -318,10 +318,13 @@ public class WitnessTest {
 
     }
 
-    @Ignore
     @Test
     public void createWitnessInvalidSigil() {
-
+        ClientResponse r = Util.createTraditionFromFileOrString(jerseyTest, "592th", "LR", "1",
+                "src/TestFiles/592th.xml", "graphml");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        String error = r.getEntity(String.class);
+        assertEquals("The character \" may not appear in a sigil name.", error);
     }
 
     /**

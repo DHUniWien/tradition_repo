@@ -367,8 +367,7 @@ public class Reading {
      *            : the newly duplicated reading
      * @return a list of the deleted relations
      */
-    private GraphModel duplicate(List<String> newWitnesses,
-                                               Node originalReading, Node addedReading) {
+    private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
         Reading rdgRest = new Reading(String.valueOf(originalReading.getId()));
@@ -377,8 +376,10 @@ public class Reading {
         HashSet<Relationship> newSequences = new HashSet<>();
         for (String wit : newWitnesses) {
             HashMap<String, String> witness = parseSigil(wit);
-            Node prior = rdgRest.getNeighbourReadingInSequence(wit, Direction.INCOMING);
-            Node next = rdgRest.getNeighbourReadingInSequence(wit, Direction.OUTGOING);
+            Node prior = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
+            Node next = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
+            assert(prior != null);
+            assert(next != null);
             try (Transaction tx = db.beginTx()) {
                 // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
                 newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
@@ -785,6 +786,7 @@ public class Reading {
      * @summary Next reading
      *
      * @param witnessId - the id (sigil) of the witness
+     * @param layer - the witness layer to follow
      *
      * @return the following reading
      * @statuscode 200 - on success
@@ -795,8 +797,9 @@ public class Reading {
     @Path("next/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
-    public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId) {
-        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, Direction.OUTGOING);
+    public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
+                                            @DefaultValue("witnesses") @QueryParam("layer") String layer) {
+        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.OUTGOING);
         if (foundNeighbour != null)
             return Response.ok(new ReadingModel(foundNeighbour)).build();
         Status errorStatus = errorMessage.contains("this was the last")
@@ -810,6 +813,7 @@ public class Reading {
      * @summary Prior reading
      *
      * @param witnessId - the id (sigil) of the witness
+     * @param layer - the witness layer to follow
      *
      * @return the prior reading
      * @statuscode 200 - on success
@@ -820,8 +824,9 @@ public class Reading {
     @Path("prior/{witnessId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
-    public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId) {
-        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, Direction.INCOMING);
+    public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
+                                                @DefaultValue("witnesses") @QueryParam("layer") String layer) {
+        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.INCOMING);
         if (foundNeighbour != null)
             return Response.ok(new ReadingModel(foundNeighbour)).build();
         Status errorStatus = errorMessage.contains("this was the first")
@@ -831,15 +836,34 @@ public class Reading {
 
     // Gets the neighbour reading in the given direction for the given witness. Returns
     // the relevant ReadingModel, or sets errorMessage and returns null.
-    private Node getNeighbourReadingInSequence(String witnessId, Direction dir) {
+    private Node getNeighbourReadingInSequence(String witnessId, String layer, Direction dir) {
         Node neighbour = null;
         try (Transaction tx = db.beginTx()) {
             Node read = db.getNodeById(readId);
+            // Sanity check: does the requested witness+layer actually exist in this node in
+            // either direction?
+            ReadingModel rm = new ReadingModel(read);
+            if (!layer.equals("witnesses")) { // if the base witness isn't here we will error below anyway
+                String wholesigil = String.format("%s (%s)", witnessId, layer);
+                if (!rm.getWitnesses().contains(wholesigil)) {
+                    errorMessage = "Requested witness layer " + wholesigil + "does not pass through this node";
+                    return null;
+                }
+
+            }
             String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
-            Iterable<Relationship> incoming = read.getRelationships(ERelations.SEQUENCE, dir);
-            Collection<Relationship> matching = StreamSupport.stream(incoming.spliterator(), false)
-                    .filter(x -> isPathFor(x, witnessId))
+            Iterable<Relationship> seqs = read.getRelationships(ERelations.SEQUENCE, dir);
+            // Get the list of relations matching the given layer
+            Collection<Relationship> matching = StreamSupport.stream(seqs.spliterator(), false)
+                    .filter(x -> isPathFor(x, witnessId, layer))
                     .collect(Collectors.toList());
+            // If none and we are looking for a layer, re-fetch the list of relations matching the base layer
+            if (matching.size() == 0 && !layer.equals("witnesses")) {
+                matching = StreamSupport.stream(seqs.spliterator(), false)
+                        .filter(x -> isPathFor(x, witnessId, "witnesses"))
+                        .collect(Collectors.toList());
+            }
+            // We should now have exactly one matching sequence.
             if (matching.size() != 1) {
                 errorMessage = matching.isEmpty()
                         ? "There is no " + dirdisplay + " reading!"
@@ -864,12 +888,12 @@ public class Reading {
     }
 
     // Assumes that we are already in a transaction!
-    private Boolean isPathFor(Relationship sequence, String sigil) {
-        HashMap<String, String> parsed = parseSigil(sigil);
-        if (sequence.hasProperty(parsed.get("layer"))) {
-            String[] wits = (String []) sequence.getProperty(parsed.get("layer"));
+    // Returns true if the sequence contains the given witness layer.
+    private Boolean isPathFor(Relationship sequence, String sigil, String layer) {
+        if (sequence.hasProperty(layer)) {
+            String[] wits = (String []) sequence.getProperty(layer);
             for (String wit : wits) {
-                if (wit.equals(parsed.get("sigil")))
+                if (wit.equals(sigil))
                     return true;
             }
         }
