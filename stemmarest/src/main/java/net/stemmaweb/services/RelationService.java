@@ -10,6 +10,7 @@ import org.neo4j.graphdb.traversal.Evaluator;
 
 import javax.ws.rs.core.Response;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -160,6 +161,40 @@ public class RelationService {
             throw new Exception("Could not detect colocation clusters", e);
         }
         return result;
+    }
+
+    /**
+     *
+     */
+    public static class RelatedReadingsTraverser implements Evaluator {
+        private HashMap<String, RelationTypeModel> ourTypes;
+        private Function<RelationTypeModel, Boolean> criterion;
+
+        public RelatedReadingsTraverser(Node fromReading) throws Exception {
+            this(fromReading, x -> true);
+        }
+
+        public RelatedReadingsTraverser(Node fromReading, Function<RelationTypeModel, Boolean> criterion) throws Exception {
+            this.criterion = criterion;
+            // Make a lookup table of relation types
+            ourTypes = new HashMap<>();
+            ourRelationTypes(fromReading).forEach(x -> ourTypes.put(x.getName(), x));
+        }
+
+        @Override
+        public Evaluation evaluate (Path path) {
+            // Keep going from the start node
+            if (path.endNode().equals(path.startNode()))
+                return Evaluation.EXCLUDE_AND_CONTINUE;
+            // Check to see if the relation type satisfies our specified criterion
+            if (!path.lastRelationship().hasProperty("type"))
+                return Evaluation.EXCLUDE_AND_PRUNE;
+            RelationTypeModel thisrtm = ourTypes.get(path.lastRelationship().getProperty("type").toString());
+            if (criterion.apply(thisrtm))
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            return Evaluation.EXCLUDE_AND_PRUNE;
+
+        }
     }
 
     public static class TransitiveRelationTraverser implements Evaluator {

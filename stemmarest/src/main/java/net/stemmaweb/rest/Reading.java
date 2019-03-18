@@ -20,6 +20,7 @@ import net.stemmaweb.services.RelationService;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
@@ -140,14 +141,18 @@ public class Reading {
         ArrayList<ReadingModel> relatedReadings = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
-            for (Relationship r : reading.getRelationships(ERelations.RELATED)) {
-                if (filterTypes.size() > 0) {
-                    String relType = r.getProperty("type").toString();
-                    if (!filterTypes.contains(relType))
-                        continue;
-                }
-                relatedReadings.add(new ReadingModel(r.getOtherNode(reading)));
-            }
+            RelationService.RelatedReadingsTraverser rt;
+            if (filterTypes == null || filterTypes.size() == 0)
+                // Traverse all relations
+                rt = new RelationService.RelatedReadingsTraverser(reading);
+            else
+                // Traverse only the named relations
+                rt = new RelationService.RelatedReadingsTraverser(reading, x -> filterTypes.contains(x.getName()));
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.RELATED)
+                    .evaluator(rt)
+                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(reading).nodes().forEach(x -> relatedReadings.add(new ReadingModel(x)));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -507,8 +512,14 @@ public class Reading {
         }
         // If the two readings are aligned, there is no need to test for cycles.
         boolean aligned = false;
-        for (Relationship rel : stayingReading.getRelationships(ERelations.RELATED)) {
-            if (rel.getEndNode().equals(deletingReading)) {
+        RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
+                stayingReading, RelationTypeModel::getIs_colocation);
+        for (Node n : db.traversalDescription().depthFirst()
+                .relationships(ERelations.RELATED)
+                .evaluator(rt)
+                .uniqueness(Uniqueness.NODE_GLOBAL)
+                .traverse(stayingReading).nodes()) {
+            if (n.equals(deletingReading)) {
                 aligned = true;
                 break;
             }

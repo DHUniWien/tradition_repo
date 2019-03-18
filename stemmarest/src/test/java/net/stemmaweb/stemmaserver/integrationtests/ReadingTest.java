@@ -345,83 +345,89 @@ public class ReadingTest {
 
     @Test
     public void duplicateTest() {
+        ReadingModel firstRdg;
+        ReadingModel secondRdg;
         try (Transaction tx = db.beginTx()) {
             Node firstNode = db.findNode(Nodes.READING, "text", "showers");
             Node secondNode = db.findNode(Nodes.READING, "text", "sweet");
+            // lemmatise this showers
+            firstNode.setProperty("is_lemma", true);
+            // set the ReadingModels
+            firstRdg = new ReadingModel(firstNode);
+            secondRdg = new ReadingModel(secondNode);
+            tx.success();
+        }
+        assertNotNull(firstRdg);
+        assertNotNull(secondRdg);
 
-            // get existing relationships
-            List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
-                    .get(new GenericType<List<RelationModel>>() {});
+        // get existing relationships
+        List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
 
-            // duplicate reading
-            List<String> rdgs = new ArrayList<>();
-            rdgs.add(String.valueOf(firstNode.getId()));
-            rdgs.add(String.valueOf(secondNode.getId()));
-            DuplicateModel jsonPayload = new DuplicateModel();
-            jsonPayload.setReadings(rdgs);
-            jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
+        // duplicate reading
+        List<String> rdgs = new ArrayList<>();
+        rdgs.add(firstRdg.getId());
+        rdgs.add(secondRdg.getId());
+        DuplicateModel jsonPayload = new DuplicateModel();
+        jsonPayload.setReadings(rdgs);
+        jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
 
-            ClientResponse response = jerseyTest.resource()
-                    .path("/reading/" + firstNode.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+        ClientResponse response = jerseyTest.resource()
+                .path("/reading/" + firstRdg.getId() + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
 
-            // Check that no relationships were harmed by this duplication
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-            GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
-            assertEquals(4, readingsAndRelationshipsModel.getSequences().size());
+        // Check that no relationships were harmed by this duplication
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
+        assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
+        assertEquals(4, readingsAndRelationshipsModel.getSequences().size());
 
-            List<RelationModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
-                    .get(new GenericType<List<RelationModel>>() {});
-            assertEquals(allRels.size(), ourRels.size());
-            for (RelationModel rm : allRels) {
-                long found = ourRels.stream()
-                        .filter(x -> x.getSource().equals(rm.getSource()) && x.getTarget().equals(rm.getTarget())
-                                && x.getType().equals(rm.getType())).count();
-                assertEquals(1L, found);
-            }
+        List<RelationModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        assertEquals(allRels.size(), ourRels.size());
+        for (RelationModel rm : allRels) {
+            long found = ourRels.stream()
+                    .filter(x -> x.getSource().equals(rm.getSource()) && x.getTarget().equals(rm.getTarget())
+                            && x.getType().equals(rm.getType())).count();
+            assertEquals(1L, found);
+        }
 
-            testNumberOfReadingsAndWitnesses(31);
+        testNumberOfReadingsAndWitnesses(31);
 
-            // check that orig_reading was set in the model
-            List<ReadingModel> readingModels = new ArrayList<>(readingsAndRelationshipsModel.getReadings());
-            ReadingModel showersModel;
-            ReadingModel sweetModel;
-            if (readingModels.get(0).getText().equals("showers")) {
-                showersModel = readingModels.get(0);
-                sweetModel = readingModels.get(1);
-            } else {
-                showersModel = readingModels.get(1);
-                sweetModel = readingModels.get(0);
-            }
-            assertEquals(String.valueOf(firstNode.getId()), showersModel.getOrig_reading());
-            assertEquals(String.valueOf(secondNode.getId()), sweetModel.getOrig_reading());
+        // check that orig_reading was set in the model
+        List<ReadingModel> readingModels = new ArrayList<>(readingsAndRelationshipsModel.getReadings());
+        ReadingModel showersModel;
+        ReadingModel sweetModel;
+        if (readingModels.get(0).getText().equals("showers")) {
+            showersModel = readingModels.get(0);
+            sweetModel = readingModels.get(1);
+        } else {
+            showersModel = readingModels.get(1);
+            sweetModel = readingModels.get(0);
+        }
+        assertEquals(firstRdg.getId(), showersModel.getOrig_reading());
+        assertEquals(secondRdg.getId(), sweetModel.getOrig_reading());
 
+        try (Transaction tx = db.beginTx()) {
             // check that the nodes exist, and that orig_reading was not set on the node
-            ResourceIterator<Node> showers = db.findNodes(Nodes.READING, "text", "showers");
-            Node duplicatedShowers = null;
-            while (showers.hasNext()) {
-                Node n = showers.next();
-                if (!n.equals(firstNode))
-                    duplicatedShowers = n;
-            }
+            Node firstNode = db.getNodeById(Long.valueOf(firstRdg.getId()));
+            Node secondNode = db.getNodeById(Long.valueOf(secondRdg.getId()));
+            Node duplicatedShowers = db.getNodeById(Long.valueOf(showersModel.getId()));
+            Node duplicatedSweet = db.getNodeById(Long.valueOf(sweetModel.getId()));
+
             assertNotNull(duplicatedShowers);
             assertFalse(duplicatedShowers.hasProperty("orig_reading"));
+            assertFalse(duplicatedShowers.hasProperty("is_lemma"));
 
-            ResourceIterator<Node> sweet = db.findNodes(Nodes.READING, "text", "sweet");
-            Node duplicatedSweet = null;
-            while (sweet.hasNext()) {
-                Node n = sweet.next();
-                if (!n.equals(secondNode))
-                    duplicatedSweet = n;
-            }
             assertNotNull(duplicatedSweet);
             assertFalse(duplicatedSweet.hasProperty("orig_reading"));
+            assertFalse(duplicatedSweet.hasProperty("is_lemma"));
 
             // compare original and duplicated
             Iterable<String> keys = firstNode.getPropertyKeys();
             for (String key : keys) {
+                if (key.equals("is_lemma")) continue;
                 String val1 = firstNode.getProperty(key).toString();
                 String val2 = duplicatedShowers.getProperty(key).toString();
                 assertEquals(val1, val2);
@@ -911,6 +917,77 @@ public class ReadingTest {
             assertEquals(1, numberOfRelationships);
             tx.success();
         }
+    }
+
+    @Test
+    public void mergeRelatedReadingsTest() {
+        // Find the 'april' nodes, make sure they can be merged
+        List<ReadingModel> ourRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        Optional<ReadingModel> aprilA = ourRdgs.stream()
+                .filter(x -> x.getText().equals("april") && x.getWitnesses().contains("A")).findFirst();
+        Optional<ReadingModel> aprilB = ourRdgs.stream()
+                .filter(x -> x.getText().equals("april") && x.getWitnesses().contains("B")).findFirst();
+        assertTrue(aprilA.isPresent());
+        assertTrue(aprilB.isPresent());
+        ClientResponse result = jerseyTest.resource()
+                .path("/reading/" + aprilA.get().getId() + "/merge/" + aprilB.get().getId())
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+
+        // Make a relation between 'his' nodes and make sure they can be merged the other way
+        Optional<ReadingModel> hisA = ourRdgs.stream()
+                .filter(x -> x.getText().equals("his") && x.getWitnesses().contains("A")).findFirst();
+        Optional<ReadingModel> hisB = ourRdgs.stream()
+                .filter(x -> x.getText().equals("his") && x.getWitnesses().contains("B")).findFirst();
+        assertTrue(hisA.isPresent());
+        assertTrue(hisB.isPresent());
+        RelationModel link = new RelationModel();
+        link.setSource(hisB.get().getId());
+        link.setTarget(hisA.get().getId());
+        link.setType("spelling");
+        link.setScope("local");
+        result = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, link);
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        result = jerseyTest.resource().path("/reading/" + link.getTarget() + "/merge/" + link.getSource())
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+
+        // Change 'teh' to 'the', make relation from each to 'to', make sure they can be merged
+        ReadingModel rmThe, rmTeh, rmTo;
+        try (Transaction tx = db.beginTx()) {
+            Optional<Node> the = db.findNodes(Nodes.READING, "text", "the").stream().filter(x -> x.getProperty("rank").equals(16L)).findFirst();
+            assertTrue(the.isPresent());
+            rmThe = new ReadingModel(the.get());
+            Node teh = db.findNode(Nodes.READING, "text", "teh");
+            assertNotNull(teh);
+            teh.setProperty("text", "the");
+            rmTeh = new ReadingModel(teh);
+            Optional<Node> to = db.findNodes(Nodes.READING, "text", "to").stream().filter(x -> x.getProperty("rank").equals(15L)).findFirst();
+            assertTrue(to.isPresent());
+            rmTo = new ReadingModel(to.get());
+            tx.success();
+        }
+        link.setSource(rmTeh.getId());
+        link.setTarget(rmTo.getId());
+        link.setType("lexical");
+        result = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, link);
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        link.setSource(rmThe.getId());
+        result = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, link);
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        result = jerseyTest.resource().path("/reading/" + rmThe.getId()+ "/merge/" + rmTeh.getId())
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
     }
 
     @Test
