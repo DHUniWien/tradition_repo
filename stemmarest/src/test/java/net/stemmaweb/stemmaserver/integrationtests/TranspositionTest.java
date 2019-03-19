@@ -5,7 +5,6 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -19,7 +18,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.Map;
+import java.util.HashMap;
 
 import static org.junit.Assert.*;
 
@@ -64,31 +63,15 @@ public class TranspositionTest {
         ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-
+        tradId = Util.getValueFromJson(jerseyResult, "tradId");
         /*
          * gets the generated ids that we need for our tests
          */
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (u:USER)--(t:TRADITION), " +
-                    "(root:READING {text:'root'}), (rood:READING {text:'rood'}), " +
-                    "(:READING {text:'pierced'})-->(teh:READING {text:'teh'}), " +
-                    "(:READING {text:'to'})-->(the:READING {text:'the'}) " +
-                    "return t, root, rood, the, teh");
-            assertTrue(result.hasNext());
-            Map<String, Object> row = result.next();
-            tradId = (String) ((Node) row.get("t")).getProperty("id");
-            ReadingModel rootModel = new ReadingModel((Node) row.get("root"));
-            rootId = Long.valueOf(rootModel.getId());
-            ReadingModel roodModel = new ReadingModel((Node) row.get("rood"));
-            roodId = Long.valueOf(roodModel.getId());
-            ReadingModel tehModel = new ReadingModel((Node) row.get("teh"));
-            tehId = Long.valueOf(tehModel.getId());
-            ReadingModel theModel = new ReadingModel((Node) row.get("the"));
-            theId = Long.valueOf(theModel.getId());
-
-            tx.success();
-        }
-
+        HashMap<String, String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+        rootId = Long.valueOf(readingLookup.get("root/18"));
+        roodId = Long.valueOf(readingLookup.get("rood/17"));
+        tehId = Long.valueOf(readingLookup.get("teh/16"));
+        theId = Long.valueOf(readingLookup.get("the/17"));
     }
 
     /**

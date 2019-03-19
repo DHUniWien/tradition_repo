@@ -370,7 +370,8 @@ public class Reading {
      *            : the reading to be duplicated
      * @param addedReading
      *            : the newly duplicated reading
-     * @return a list of the deleted relations
+     * @return a GraphModel containing the new readings, new sequences and deleted relations.
+     *         Note that this does NOT return deleted or modified sequences.
      */
     private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) {
         // copy reading properties to newly added reading
@@ -500,12 +501,7 @@ public class Reading {
      * @return true if readings can be merged, false if not
      */
     private boolean canBeMerged(Node stayingReading, Node deletingReading) throws Exception {
-        /*
-         if (!doContainSameText(stayingReading, deletingReading)) {
-         errorMessage = "Readings to be merged do not contain the same text";
-         return false;
-         }
-         */
+        // Test for non-colo relations.
         if (hasNonColoRelations(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged cannot contain cross-location relations";
             return false;
@@ -524,6 +520,7 @@ public class Reading {
                 break;
             }
         }
+        // Test for cycles.
         if (!aligned) {
             if (ReadingService.wouldGetCyclic(stayingReading, deletingReading)) {
                 errorMessage = "Readings to be merged would make the graph cyclic";

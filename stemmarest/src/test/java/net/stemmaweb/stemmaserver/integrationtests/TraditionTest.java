@@ -73,13 +73,7 @@ public class TraditionTest {
         /*
          * get a mapping of reading text/rank to ID
          */
-        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
-                .get(new GenericType<List<ReadingModel>>() {});
-        readingLookup = new HashMap<>();
-        for (ReadingModel rm : allReadings) {
-            String key = rm.getText() + "/" + rm.getRank().toString();
-            readingLookup.put(key, rm.getId());
-        }
+        readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
 
     }
 
