@@ -40,13 +40,7 @@ public class RelationTypeTest extends TestCase {
                 "src/TestFiles/john.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
-        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
-                .get(new GenericType<List<ReadingModel>>() {});
-        readingLookup = new HashMap<>();
-        for (ReadingModel rm : allReadings) {
-            String key = rm.getText() + "/" + rm.getRank().toString();
-            readingLookup.put(key, rm.getId());
-        }
+        readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
     }
 
     public void testNoRelationTypes() {

@@ -25,10 +25,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertEquals;
@@ -233,6 +230,17 @@ public class Util {
                 .path("/tradition/" + traditionId + "/section")
                 .type(MediaType.MULTIPART_FORM_DATA_TYPE)
                 .post(ClientResponse.class, form);
+    }
+
+    public static HashMap<String, String> makeReadingLookup (JerseyTest jerseyTest, String tradId) {
+        HashMap<String, String> result = new HashMap<>();
+        List<ReadingModel> readings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        for (ReadingModel r : readings) {
+            String key = String.format("%s/%d", r.getText(), r.getRank());
+            result.put(key, r.getId());
+        }
+        return result;
     }
 
 }

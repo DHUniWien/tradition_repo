@@ -68,13 +68,7 @@ public class RelationTest {
         /*
          * get a mapping of reading text/rank to ID
          */
-        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
-                .get(new GenericType<List<ReadingModel>>() {});
-        readingLookup = new HashMap<>();
-        for (ReadingModel rm : allReadings) {
-            String key = rm.getText() + "/" + rm.getRank().toString();
-            readingLookup.put(key, rm.getId());
-        }
+        readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
     }
 
     /**
@@ -264,14 +258,14 @@ public class RelationTest {
         final Comparator<Node> highestRank = (o1, o2) -> Long.valueOf(o2.getProperty("rank").toString())
                 .compareTo(Long.valueOf(o1.getProperty("rank").toString()));
 
-        Long idThe = getReading("the", highestRank).getId();
-        Long idTeh = getReading("teh", highestRank).getId();
+        long idThe = getReading("the", highestRank).getId();
+        long idTeh = getReading("teh", highestRank).getId();
         assertTrue(idTeh > 0L);
         assertTrue(idThe > 0L);
         // Create the test relationship
         RelationModel r = new RelationModel();
-        r.setSource(idTeh.toString());
-        r.setTarget(idThe.toString());
+        r.setSource(String.valueOf(idTeh));
+        r.setTarget(String.valueOf(idThe));
         r.setType("spelling");
         r.setAlters_meaning(1L);
         r.setIs_significant("maybe");
@@ -649,9 +643,9 @@ public class RelationTest {
     @Test
     public void createBadRelationshipRestoreCollatedTest () {
         // Create a collation between rood and root
-        Long roodId;
-        Long the1Id = 0L;
-        Long the2Id = 0L;
+        long roodId;
+        long the1Id = 0L;
+        long the2Id = 0L;
         try (Transaction tx = db.beginTx()) {
             roodId = db.findNode(Nodes.READING, "text", "rood").getId();
             List<Node> thes = db.findNodes(Nodes.READING, "text", "the").stream()
@@ -669,8 +663,8 @@ public class RelationTest {
 
         // Make a collated relationship between rood and the
         RelationModel model = new RelationModel();
-        model.setSource(roodId.toString());
-        model.setTarget(the1Id.toString());
+        model.setSource(String.valueOf(roodId));
+        model.setTarget(String.valueOf(the1Id));
         model.setType("collated");
 
         ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
@@ -680,7 +674,7 @@ public class RelationTest {
 
         // Try to make a transposition relationship between rood and root
 
-        model.setTarget(the2Id.toString());
+        model.setTarget(String.valueOf(the2Id));
         model.setType("orthographic");
         response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
@@ -691,10 +685,10 @@ public class RelationTest {
         List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
                 .get(new GenericType<List<RelationModel>>() {});
         assertEquals(4, allRels.size());
-        Boolean foundCollated = false;
+        boolean foundCollated = false;
         for (RelationModel r : allRels) {
-            if (r.getType().equals("collated") && r.getSource().equals(roodId.toString())
-                    && r.getTarget().equals(the1Id.toString()))
+            if (r.getType().equals("collated") && r.getSource().equals(String.valueOf(roodId))
+                    && r.getTarget().equals(String.valueOf(the1Id)))
                 foundCollated = true;
         }
         assertTrue(foundCollated);
