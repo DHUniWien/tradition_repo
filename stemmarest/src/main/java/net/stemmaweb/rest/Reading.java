@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -103,9 +104,13 @@ public class Reading {
                     return errorResponse(Status.INTERNAL_SERVER_ERROR);
                 }
                 // Check that this field actually exists in our model
-                modelToReturn.getClass().getDeclaredField(currentKey);
+                Field ourField = modelToReturn.getClass().getDeclaredField(currentKey);
                 // Then set the property.
-                reading.setProperty(currentKey, keyPropertyModel.getProperty());
+                // Convert types not native to JSON
+                if (ourField.getType().equals(Long.class))
+                    reading.setProperty(currentKey, Long.valueOf(keyPropertyModel.getProperty().toString()));
+                else
+                    reading.setProperty(currentKey, keyPropertyModel.getProperty());
             }
             modelToReturn = new ReadingModel(reading);
             tx.success();
@@ -763,7 +768,10 @@ public class Reading {
             // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
             Long previousRank = (Long) lastReading.getProperty("rank");
             newReading.setProperty("rank", previousRank + 1);
-            if (!model.getSeparate()) newReading.setProperty("join_prior", true);
+            if (!model.getSeparate()) {
+                newReading.setProperty("join_prior", true);
+                lastReading.setProperty("join_next", true);
+            }
 
             // Copy the witnesses from our outgoing sequence links
             Relationship newSeq = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
@@ -808,11 +816,15 @@ public class Reading {
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.OUTGOING);
-        if (foundNeighbour != null)
+        if (foundNeighbour != null) {
+            ReadingModel result = new ReadingModel(foundNeighbour);
+            if (result.getIs_end()) {
+                errorMessage = "this was the last reading for this witness";
+                return errorResponse(Status.NOT_FOUND);
+            }
             return Response.ok(new ReadingModel(foundNeighbour)).build();
-        Status errorStatus = errorMessage.contains("this was the last")
-                ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR;
-        return errorResponse(errorStatus);
+        }
+        return errorResponse(Status.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -835,11 +847,15 @@ public class Reading {
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.INCOMING);
-        if (foundNeighbour != null)
+        if (foundNeighbour != null) {
+            ReadingModel result = new ReadingModel(foundNeighbour);
+            if (result.getIs_start()) {
+                errorMessage = "this was the first reading for this witness";
+                return errorResponse(Status.NOT_FOUND);
+            }
             return Response.ok(new ReadingModel(foundNeighbour)).build();
-        Status errorStatus = errorMessage.contains("this was the first")
-                ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR;
-        return errorResponse(errorStatus);
+        }
+        return errorResponse(Status.INTERNAL_SERVER_ERROR);
     }
 
     // Gets the neighbour reading in the given direction for the given witness. Returns
@@ -878,14 +894,6 @@ public class Reading {
                         : "There is more than one " + dirdisplay + " reading!";
             } else {
                 neighbour = matching.iterator().next().getOtherNode(read);
-                ReadingModel result = new ReadingModel(neighbour);
-                if (result.getIs_start() && dir == Direction.INCOMING) {
-                    errorMessage = "this was the first reading for this witness";
-                    neighbour = null;
-                } else if (result.getIs_end() && dir == Direction.OUTGOING) {
-                    errorMessage = "this was the last reading for this witness";
-                    neighbour = null;
-                }
             }
             tx.success();
         } catch (Exception e) {

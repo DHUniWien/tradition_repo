@@ -326,6 +326,16 @@ public class ReadingTest {
         List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
                 .get(new GenericType<List<RelationModel>>() {});
 
+        // set a lemma
+        KeyPropertyModel kp = new KeyPropertyModel();
+        kp.setKey("is_lemma");
+        kp.setProperty(true);
+        ReadingChangePropertyModel rcp = new ReadingChangePropertyModel();
+        rcp.addProperty(kp);
+        ClientResponse response = jerseyTest.resource().path("/reading/" + firstNodeId)
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, rcp);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
         // duplicate reading
         List<String> rdgs = new ArrayList<>();
         rdgs.add(firstNodeId);
@@ -334,7 +344,7 @@ public class ReadingTest {
         jsonPayload.setReadings(rdgs);
         jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
 
-        ClientResponse response = jerseyTest.resource()
+        response = jerseyTest.resource()
                 .path("/reading/" + firstNodeId + "/duplicate")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, jsonPayload);
