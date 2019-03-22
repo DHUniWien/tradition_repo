@@ -15,6 +15,7 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -52,6 +53,7 @@ public class ReadingTest {
     private String expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood-of-the-world";
 
     private GraphDatabaseService db;
+    private HashMap<String, String> readingLookup = new HashMap<>();
 
     /*
      * JerseyTest is the test environment to Test api calls it provides a
@@ -88,6 +90,8 @@ public class ReadingTest {
         List<SectionModel> testSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
                 .get(new GenericType<List<SectionModel>>() {});
         sectId = testSections.get(0).getId();
+        readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+
     }
 
     /**
@@ -121,45 +125,33 @@ public class ReadingTest {
 
     @Test
     public void changeReadingPropertiesOnePropertyTest() {
-        Node node;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            node = nodes.next();
-            assertFalse(nodes.hasNext());
+        String nodeId = readingLookup.get("showers/5");
 
-            KeyPropertyModel keyModel = new KeyPropertyModel();
-            keyModel.setKey("text");
-            keyModel.setProperty("snow");
-            ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-            List<KeyPropertyModel> models = new ArrayList<>();
-            models.add(keyModel);
-            chgModel.setProperties(models);
+        KeyPropertyModel keyModel = new KeyPropertyModel();
+        keyModel.setKey("text");
+        keyModel.setProperty("snow");
+        ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+        List<KeyPropertyModel> models = new ArrayList<>();
+        models.add(keyModel);
+        chgModel.setProperties(models);
 
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, chgModel);
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + nodeId)
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, chgModel);
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-            assertEquals("snow", node.getProperty("text"));
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals("snow", response.getEntity(ReadingModel.class).getText());
 
-            String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
-            WitnessTextModel resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
-            assertEquals(expectedWitnessA, resp.getText());
-            tx.success();
-        }
+        String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
+        WitnessTextModel resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
+        assertEquals(expectedWitnessA, resp.getText());
     }
 
     @Test
     public void changeReadingPropertiesWrongDatatypeTest() {
-        long nodeid;
-        try (Transaction tx = db.beginTx()) {
-            nodeid = db.findNode(Nodes.READING, "text", "showers").getId();
-            tx.success();
-        }
+        String nodeid = readingLookup.get("showers/5");
 
         KeyPropertyModel keyModel = new KeyPropertyModel();
         keyModel.setKey("text");
@@ -180,7 +172,7 @@ public class ReadingTest {
 
         // Check that the node text didn't change
         try (Transaction tx = db.beginTx()) {
-            Node node = db.getNodeById(nodeid);
+            Node node = db.getNodeById(Long.valueOf(nodeid));
             assertEquals("showers", node.getProperty("text").toString());
             tx.success();
         }
@@ -188,82 +180,68 @@ public class ReadingTest {
 
     @Test
     public void changeReadingPropertiesMultiplePropertiesTest() {
+        String nodeId = readingLookup.get("showers/5");
 
-        try (Transaction tx = db.beginTx()) {
-            Node node = db.findNode(Nodes.READING, "text", "showers");
+        KeyPropertyModel keyModel = new KeyPropertyModel();
+        keyModel.setKey("text");
+        keyModel.setProperty("snow");
+        ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+        List<KeyPropertyModel> models = new ArrayList<>();
+        models.add(keyModel);
+        KeyPropertyModel keyModel2 = new KeyPropertyModel();
+        keyModel2.setKey("language");
+        keyModel2.setProperty("hebrew");
+        models.add(keyModel2);
+        KeyPropertyModel keyModel3 = new KeyPropertyModel();
+        keyModel3.setKey("is_lemma");
+        keyModel3.setProperty(true);
+        models.add(keyModel3);
+        chgModel.setProperties(models);
 
-            KeyPropertyModel keyModel = new KeyPropertyModel();
-            keyModel.setKey("text");
-            keyModel.setProperty("snow");
-            ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-            List<KeyPropertyModel> models = new ArrayList<>();
-            models.add(keyModel);
-            KeyPropertyModel keyModel2 = new KeyPropertyModel();
-            keyModel2.setKey("language");
-            keyModel2.setProperty("hebrew");
-            models.add(keyModel2);
-            KeyPropertyModel keyModel3 = new KeyPropertyModel();
-            keyModel3.setKey("is_lemma");
-            keyModel3.setProperty(true);
-            models.add(keyModel3);
-            chgModel.setProperties(models);
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + nodeId)
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, chgModel);
 
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, chgModel);
-
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-            assertEquals("snow", node.getProperty("text"));
-            assertEquals("hebrew", node.getProperty("language"));
-            assertTrue(Boolean.valueOf(node.getProperty("is_lemma").toString()));
-            String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
-            Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
-            tx.success();
-        }
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        ReadingModel result = response.getEntity(ReadingModel.class);
+        assertEquals("snow", result.getText());
+        assertEquals("hebrew", result.getLanguage());
+        assertTrue(result.getIs_lemma());
+        String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
+        Response resp = new Witness(tradId, "A").getWitnessAsText();
+        assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
     }
 
     @Test
     public void changeReadingPropertiesPropertyKeyNotFoundTest() {
-        Node node;
-        try (Transaction tx = db.beginTx()) {
-            node = db.findNode(Nodes.READING, "text", "showers");
-            assertNotNull(node);
+        String nodeId = readingLookup.get("showers/5");
 
-            KeyPropertyModel keyModel = new KeyPropertyModel();
-            keyModel.setKey("test");
-            keyModel.setProperty("snow");
-            ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-            List<KeyPropertyModel> models = new ArrayList<>();
-            models.add(keyModel);
-            chgModel.setProperties(models);
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, chgModel);
+        KeyPropertyModel keyModel = new KeyPropertyModel();
+        keyModel.setKey("test");
+        keyModel.setProperty("snow");
+        ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+        List<KeyPropertyModel> models = new ArrayList<>();
+        models.add(keyModel);
+        chgModel.setProperties(models);
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + nodeId)
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, chgModel);
 
-            assertEquals(Status.BAD_REQUEST.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("Reading has no such property 'test'",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        assertEquals(Status.BAD_REQUEST.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("Reading has no such property 'test'",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
     public void getReadingJsonTest() throws JsonProcessingException {
-        long nodeId;
-        try (Transaction tx = db.beginTx()) {
-            Node n = db.findNode(Nodes.READING, "text", "has");
-            assertNotNull(n);
-            nodeId = n.getId();
-            tx.success();
-        }
-        String expected = String.format("{\"id\":\"%d\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false," +
+        String nodeId = readingLookup.get("has/13");
+        String expected = String.format("{\"id\":\"%s\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false," +
                 "\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false," +
                 "\"join_prior\":false,\"language\":\"Default\",\"rank\":13,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
 
@@ -281,26 +259,22 @@ public class ReadingTest {
 
     @Test
     public void getReadingReadingModelTest() {
+        String nodeId = readingLookup.get("showers/5");
+        ReadingModel expectedReadingModel;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
-
-            ReadingModel expectedReadingModel;
+            Node node = db.getNodeById(Long.valueOf(nodeId));
             expectedReadingModel = new ReadingModel(node);
+            tx.success();
+        }
 
             ReadingModel readingModel = jerseyTest.resource()
-                    .path("/reading/" + node.getId())
+                    .path("/reading/" + nodeId)
                     .type(MediaType.APPLICATION_JSON).get(ReadingModel.class);
 
             assertNotNull(readingModel);
             assertEquals(expectedReadingModel.getRank(), readingModel.getRank());
             assertEquals(expectedReadingModel.getText(), readingModel.getText());
             assertEquals(expectedReadingModel.getWitnesses(), readingModel.getWitnesses());
-            tx.success();
-        }
     }
 
     @Test
@@ -345,62 +319,77 @@ public class ReadingTest {
 
     @Test
     public void duplicateTest() {
+        String firstNodeId = readingLookup.get("showers/5");
+        String secondNodeId = readingLookup.get("sweet/6");
+
+        // get existing relationships
+        List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+
+        // set a lemma
+        KeyPropertyModel kp = new KeyPropertyModel();
+        kp.setKey("is_lemma");
+        kp.setProperty(true);
+        ReadingChangePropertyModel rcp = new ReadingChangePropertyModel();
+        rcp.addProperty(kp);
+        ClientResponse response = jerseyTest.resource().path("/reading/" + firstNodeId)
+                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, rcp);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // duplicate reading
+        List<String> rdgs = new ArrayList<>();
+        rdgs.add(firstNodeId);
+        rdgs.add(secondNodeId);
+        DuplicateModel jsonPayload = new DuplicateModel();
+        jsonPayload.setReadings(rdgs);
+        jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
+
+        response = jerseyTest.resource()
+                .path("/reading/" + firstNodeId + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
+
+        // Check that no relationships were harmed by this duplication
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
+        assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
+        assertEquals(4, readingsAndRelationshipsModel.getSequences().size());
+
+        List<RelationModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        assertEquals(allRels.size(), ourRels.size());
+        for (RelationModel rm : allRels) {
+            long found = ourRels.stream()
+                    .filter(x -> x.getSource().equals(rm.getSource()) && x.getTarget().equals(rm.getTarget())
+                            && x.getType().equals(rm.getType())).count();
+            assertEquals(1L, found);
+        }
+
+        testNumberOfReadingsAndWitnesses(31);
+
+        // check that orig_reading was set in the model
+        List<ReadingModel> readingModels = new ArrayList<>(readingsAndRelationshipsModel.getReadings());
+        ReadingModel showersModel;
+        ReadingModel sweetModel;
+        if (readingModels.get(0).getText().equals("showers")) {
+            showersModel = readingModels.get(0);
+            sweetModel = readingModels.get(1);
+        } else {
+            showersModel = readingModels.get(1);
+            sweetModel = readingModels.get(0);
+        }
+        assertEquals(firstNodeId, showersModel.getOrig_reading());
+        assertEquals(secondNodeId, sweetModel.getOrig_reading());
+
+        // check that the nodes exist, and that orig_reading was not set on the node
+        Node duplicatedShowers = null;
+        Node duplicatedSweet = null;
+        Node firstNode;
+        Node secondNode;
         try (Transaction tx = db.beginTx()) {
-            Node firstNode = db.findNode(Nodes.READING, "text", "showers");
-            Node secondNode = db.findNode(Nodes.READING, "text", "sweet");
-
-            // get existing relationships
-            List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
-                    .get(new GenericType<List<RelationModel>>() {});
-
-            // duplicate reading
-            List<String> rdgs = new ArrayList<>();
-            rdgs.add(String.valueOf(firstNode.getId()));
-            rdgs.add(String.valueOf(secondNode.getId()));
-            DuplicateModel jsonPayload = new DuplicateModel();
-            jsonPayload.setReadings(rdgs);
-            jsonPayload.setWitnesses(new ArrayList<>(Arrays.asList("A", "B")));
-
-            ClientResponse response = jerseyTest.resource()
-                    .path("/reading/" + firstNode.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
-
-            // Check that no relationships were harmed by this duplication
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-            GraphModel readingsAndRelationshipsModel = response.getEntity(GraphModel.class);
-            assertEquals(0, readingsAndRelationshipsModel.getRelations().size());
-            assertEquals(4, readingsAndRelationshipsModel.getSequences().size());
-
-            List<RelationModel> ourRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
-                    .get(new GenericType<List<RelationModel>>() {});
-            assertEquals(allRels.size(), ourRels.size());
-            for (RelationModel rm : allRels) {
-                long found = ourRels.stream()
-                        .filter(x -> x.getSource().equals(rm.getSource()) && x.getTarget().equals(rm.getTarget())
-                                && x.getType().equals(rm.getType())).count();
-                assertEquals(1L, found);
-            }
-
-            testNumberOfReadingsAndWitnesses(31);
-
-            // check that orig_reading was set in the model
-            List<ReadingModel> readingModels = new ArrayList<>(readingsAndRelationshipsModel.getReadings());
-            ReadingModel showersModel;
-            ReadingModel sweetModel;
-            if (readingModels.get(0).getText().equals("showers")) {
-                showersModel = readingModels.get(0);
-                sweetModel = readingModels.get(1);
-            } else {
-                showersModel = readingModels.get(1);
-                sweetModel = readingModels.get(0);
-            }
-            assertEquals(String.valueOf(firstNode.getId()), showersModel.getOrig_reading());
-            assertEquals(String.valueOf(secondNode.getId()), sweetModel.getOrig_reading());
-
-            // check that the nodes exist, and that orig_reading was not set on the node
+            firstNode = db.getNodeById(Long.valueOf(firstNodeId));
+            secondNode = db.getNodeById(Long.valueOf(secondNodeId));
             ResourceIterator<Node> showers = db.findNodes(Nodes.READING, "text", "showers");
-            Node duplicatedShowers = null;
             while (showers.hasNext()) {
                 Node n = showers.next();
                 if (!n.equals(firstNode))
@@ -408,9 +397,9 @@ public class ReadingTest {
             }
             assertNotNull(duplicatedShowers);
             assertFalse(duplicatedShowers.hasProperty("orig_reading"));
+            assertFalse(duplicatedShowers.hasProperty("is_lemma"));
 
             ResourceIterator<Node> sweet = db.findNodes(Nodes.READING, "text", "sweet");
-            Node duplicatedSweet = null;
             while (sweet.hasNext()) {
                 Node n = sweet.next();
                 if (!n.equals(secondNode))
@@ -418,10 +407,12 @@ public class ReadingTest {
             }
             assertNotNull(duplicatedSweet);
             assertFalse(duplicatedSweet.hasProperty("orig_reading"));
+            assertFalse(duplicatedSweet.hasProperty("is_lemma"));
 
             // compare original and duplicated
             Iterable<String> keys = firstNode.getPropertyKeys();
             for (String key : keys) {
+                if (key.equals("is_lemma")) continue;
                 String val1 = firstNode.getProperty(key).toString();
                 String val2 = duplicatedShowers.getProperty(key).toString();
                 assertEquals(val1, val2);
@@ -439,25 +430,22 @@ public class ReadingTest {
 
     @Test
     public void duplicateWithDuplicateForTwoWitnessesTest() {
-        try (Transaction tx = db.beginTx()) {
-            // get all relationships
-            List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
-                    .get(new GenericType<List<RelationModel>>() {});
-            // add a relationship between droughts
-            List<Node> droughts = db.findNodes(Nodes.READING, "text", "drought")
-                    .stream().collect(Collectors.toList());
-            assertEquals(2, droughts.size());
-            RelationModel drel = new RelationModel();
-            drel.setSource(String.valueOf(droughts.get(1).getId()));
-            drel.setTarget(String.valueOf(droughts.get(0).getId()));
-            drel.setType("transposition");
-            drel.setScope("local");
-            ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, drel);
-            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        // get all relationships
+        List<RelationModel> allRels = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        // add a relationship between droughts
+        RelationModel drel = new RelationModel();
+        drel.setSource(String.valueOf(readingLookup.get("drought/10")));
+        drel.setTarget(String.valueOf(readingLookup.get("drought/12")));
+        drel.setType("transposition");
+        drel.setScope("local");
+        ClientResponse response = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, drel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
-            // duplicate reading
+        // duplicate reading
+        try (Transaction tx = db.beginTx()) {
             Node node = db.findNode(Nodes.READING, "text", "of");
             String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"C\" ]}";
             response = jerseyTest.resource().path("/reading/" + node.getId() + "/duplicate")
@@ -622,122 +610,92 @@ public class ReadingTest {
 
     @Test
     public void duplicateWitnessCrossingTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'of'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        // Get our reading
+        String ofId = readingLookup.get("of/11");
+        // Get the list of relations
+        List<RelationModel> rms = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        int origRelCt = rms.size();
 
-            // duplicate reading
-            String jsonPayload = "{\"readings\":[" + node.getId()
-                    + "], \"witnesses\":[\"A\",\"B\" ]}";
-            ClientResponse response = jerseyTest.resource()
-                    .path("/reading/" + node.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
+        // duplicate reading
+        String jsonPayload = "{\"readings\":[" + ofId
+                + "], \"witnesses\":[\"B\" ]}";
+        ClientResponse response = jerseyTest.resource()
+                .path("/reading/" + ofId + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        GraphModel result = response.getEntity(GraphModel.class);
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        testNumberOfReadingsAndWitnesses(30);
 
-            testNumberOfReadingsAndWitnesses(30);
-
-            result = db.execute("match (w:READING {text:'of'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node originalOf = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node duplicatedOf = nodes.next();
-            assertFalse(nodes.hasNext());
-
-            // compare original and duplicated
-            Iterable<String> keys = originalOf.getPropertyKeys();
-            for (String key : keys) {
-                String val1 = originalOf.getProperty(key).toString();
-                String val2 = duplicatedOf.getProperty(key).toString();
-                assertEquals(val1, val2);
-            }
-            tx.success();
+        // check that our transposition is no longer there
+        rms = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .get(new GenericType<List<RelationModel>>() {});
+        assertEquals(origRelCt - 1, rms.size());
+        // check that the deleted relationship came back in our result
+        assertEquals(1, result.getRelations().size());
+        RelationModel delrm = result.getRelations().iterator().next();
+        for (RelationModel rm : rms) {
+            if (rm.getSource().equals(delrm.getSource()) && rm.getTarget().equals(delrm.getTarget()))
+                fail();
         }
     }
 
     @Test
     public void duplicateWithNoWitnessesInJSONTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertFalse(nodes.hasNext());
+        String rwId = readingLookup.get("rood-of-the-world/16");
+        // duplicate reading
+        String jsonPayload = "{\"readings\":[" + rwId
+                + "], \"witnesses\":[]}";
+        ClientResponse response = jerseyTest.resource()
+                .path("/reading/" + rwId + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
 
-            // duplicate reading
-            String jsonPayload = "{\"readings\":[" + firstNode.getId()
-                    + "], \"witnesses\":[]}";
-            ClientResponse response = jerseyTest.resource()
-                    .path("/reading/" + firstNode.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
-
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals(
-                    "No witnesses have been assigned to the new reading",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals(
+                "No witnesses have been assigned to the new reading",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
     public void duplicateWithOnlyOneWitnessTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertFalse(nodes.hasNext());
+        String rwId = readingLookup.get("rood-of-the-world/16");
+        // duplicate reading
+        String jsonPayload = "{\"readings\":[" + rwId
+                + "], \"witnesses\":[\"C\"]}";
+        ClientResponse response = jerseyTest.resource()
+                .path("/reading/" + rwId + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
 
-            // duplicate reading
-            String jsonPayload = "{\"readings\":[" + firstNode.getId()
-                    + "], \"witnesses\":[\"C\"]}";
-            ClientResponse response = jerseyTest.resource()
-                    .path("/reading/" + firstNode.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
-
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("The reading cannot be split between fewer than two witnesses",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("The reading cannot be split between fewer than two witnesses",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
     public void duplicateWithNotAllowedWitnessesTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertFalse(nodes.hasNext());
+        String rootId = readingLookup.get("root/17");
+        // duplicate reading
+        String jsonPayload = "{\"readings\":[" + rootId
+                + "], \"witnesses\":[\"C\"]}";
+        ClientResponse response = jerseyTest.resource()
+                .path("/reading/" + rootId + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, jsonPayload);
 
-            // duplicate reading
-            String jsonPayload = "{\"readings\":[" + firstNode.getId()
-                    + "], \"witnesses\":[\"C\"]}";
-            ClientResponse response = jerseyTest.resource()
-                    .path("/reading/" + firstNode.getId() + "/duplicate")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, jsonPayload);
-
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals(
-                    "The reading does not contain the specified witness C",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals(
+                "The reading does not contain the specified witness C",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
@@ -914,160 +872,155 @@ public class ReadingTest {
     }
 
     @Test
-    public void mergeReadingsGetsCyclicTest() {
+    public void mergeRelatedReadingsTest() {
+        // Find the 'april' nodes, make sure they can be merged
+        List<ReadingModel> ourRdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        Optional<ReadingModel> aprilA = ourRdgs.stream()
+                .filter(x -> x.getText().equals("april") && x.getWitnesses().contains("A")).findFirst();
+        Optional<ReadingModel> aprilB = ourRdgs.stream()
+                .filter(x -> x.getText().equals("april") && x.getWitnesses().contains("B")).findFirst();
+        assertTrue(aprilA.isPresent());
+        assertTrue(aprilB.isPresent());
+        ClientResponse result = jerseyTest.resource()
+                .path("/reading/" + aprilA.get().getId() + "/merge/" + aprilB.get().getId())
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+
+        // Make a relation between 'his' nodes and make sure they can be merged the other way
+        Optional<ReadingModel> hisA = ourRdgs.stream()
+                .filter(x -> x.getText().equals("his") && x.getWitnesses().contains("A")).findFirst();
+        Optional<ReadingModel> hisB = ourRdgs.stream()
+                .filter(x -> x.getText().equals("his") && x.getWitnesses().contains("B")).findFirst();
+        assertTrue(hisA.isPresent());
+        assertTrue(hisB.isPresent());
+        RelationModel link = new RelationModel();
+        link.setSource(hisB.get().getId());
+        link.setTarget(hisA.get().getId());
+        link.setType("spelling");
+        link.setScope("local");
+        result = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, link);
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        result = jerseyTest.resource().path("/reading/" + link.getTarget() + "/merge/" + link.getSource())
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+
+        // Change 'teh' to 'the', make relation from each to 'to', make sure they can be merged
+        ReadingModel rmThe, rmTeh, rmTo;
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'drought'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node secondNode = nodes.next();
-            assertFalse(nodes.hasNext());
-
-            // merge readings
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + firstNode.getId()
-                            + "/merge/" + secondNode.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class);
-
-            assertEquals(Status.CONFLICT.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("Readings to be merged would make the graph cyclic",
-                    Util.getValueFromJson(response, "error"));
-
-            testNumberOfReadingsAndWitnesses(29);
-
-            result = db.execute("match (w:READING {text:'drought'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();    // first Node
-            assertTrue(nodes.hasNext());
-            nodes.next();    // second Node
-            assertFalse(nodes.hasNext());
+            Optional<Node> the = db.findNodes(Nodes.READING, "text", "the").stream().filter(x -> x.getProperty("rank").equals(16L)).findFirst();
+            assertTrue(the.isPresent());
+            rmThe = new ReadingModel(the.get());
+            Node teh = db.findNode(Nodes.READING, "text", "teh");
+            assertNotNull(teh);
+            teh.setProperty("text", "the");
+            rmTeh = new ReadingModel(teh);
+            Optional<Node> to = db.findNodes(Nodes.READING, "text", "to").stream().filter(x -> x.getProperty("rank").equals(15L)).findFirst();
+            assertTrue(to.isPresent());
+            rmTo = new ReadingModel(to.get());
             tx.success();
         }
+        link.setSource(rmTeh.getId());
+        link.setTarget(rmTo.getId());
+        link.setType("lexical");
+        result = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, link);
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        link.setSource(rmThe.getId());
+        result = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, link);
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        result = jerseyTest.resource().path("/reading/" + rmThe.getId()+ "/merge/" + rmTeh.getId())
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+    }
+
+    @Test
+    public void mergeReadingsGetsCyclicTest() {
+        String drought1 = readingLookup.get("drought/10");
+        String drought2 = readingLookup.get("drought/12");
+        // merge readings
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + drought1 + "/merge/" + drought2)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class);
+
+        assertEquals(Status.CONFLICT.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("Readings to be merged would make the graph cyclic",
+                Util.getValueFromJson(response, "error"));
+
+        testNumberOfReadingsAndWitnesses(29);
+        // Make sure we still have two droughts
+        List<ReadingModel> remaining = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(2, remaining.stream().filter(x -> x.getText().equals("drought")).count());
     }
 
     @Test
     public void mergeReadingsGetsCyclicWithNodesFarApartTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'to'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node secondNode = nodes.next();
-            assertFalse(nodes.hasNext());
+        String to1 = readingLookup.get("to/9");
+        String to2 = readingLookup.get("to/15");
+        // merge readings
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + to2 + "/merge/" + to1)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class);
 
-            // merge readings
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + firstNode.getId()
-                            + "/merge/" + secondNode.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class);
+        assertEquals(Status.CONFLICT.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("Readings to be merged would make the graph cyclic",
+                Util.getValueFromJson(response, "error"));
 
-            assertEquals(Status.CONFLICT.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("Readings to be merged would make the graph cyclic",
-                    Util.getValueFromJson(response, "error"));
+        testNumberOfReadingsAndWitnesses(29);
 
-            testNumberOfReadingsAndWitnesses(29);
-
-            result = db.execute("match (w:READING {text:'to'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();    // first node
-            assertTrue(nodes.hasNext());
-            nodes.next();    // second node
-            assertFalse(nodes.hasNext());
-            tx.success();
-        }
+        // Make sure we still have two tos
+        List<ReadingModel> remaining = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(2, remaining.stream().filter(x -> x.getText().equals("to")).count());
     }
 
     @Test
     public void mergeReadingsWithClassTwoRelationshipsTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'march'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node secondNode = nodes.next();
-            assertFalse(nodes.hasNext());
+        String march1 = readingLookup.get("march/10");
+        String march2 = readingLookup.get("march/12");
+        // merge readings
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + march1 + "/merge/" + march2)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class);
 
-            // merge readings
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + firstNode.getId()
-                            + "/merge/" + secondNode.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class);
+        assertEquals(Status.CONFLICT.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals(
+                "Readings to be merged cannot contain cross-location relations",
+                Util.getValueFromJson(response, "error"));
 
-            assertEquals(Status.CONFLICT.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals(
-                    "Readings to be merged cannot contain cross-location relations",
-                    Util.getValueFromJson(response, "error"));
+        testNumberOfReadingsAndWitnesses(29);
 
-            testNumberOfReadingsAndWitnesses(29);
-
-            result = db.execute("match (w:READING {text:'march'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();    // first node
-            assertTrue(nodes.hasNext());
-            nodes.next();    // second node
-            assertFalse(nodes.hasNext());
-            tx.success();
-        }
-    }
-
-    @Test
-    public void mergeReadingsWithDifferentTextTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node firstNode = nodes.next();
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node secondNode = nodes.next();
-
-            // merge readings
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + firstNode.getId()
-                            + "/merge/" + secondNode.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class);
-
-            assertEquals(Status.CONFLICT.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-//            assertEquals("Readings to be merged do not contain the same text",
-//                    response.getEntity(String.class));
-            //TODO (SK 20151001: decide if this test is still necessary;
-            //                   if so, modify it, otherwise we can remove it.
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("Readings to be merged would make the graph cyclic",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        // Make sure we still have two marches
+        List<ReadingModel> remaining = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+        assertEquals(2, remaining.stream().filter(x -> x.getText().equals("march")).count());
     }
 
     @Test
     public void splitReadingTest() {
         Node node;
         Node endNode;
-        Result result;
-        Iterator<Node> nodes;
         try (Transaction tx = db.beginTx()) {
             node = db.findNode(Nodes.READING, "text", "the root");
             assertTrue(node.hasRelationship(ERelations.RELATED));
@@ -1102,6 +1055,12 @@ public class ReadingTest {
         readingsAndRelationsModel.getReadings().forEach(x -> rdgWords.put(x.getText(), x.getId()));
         assertTrue(rdgWords.containsKey("the"));
         assertTrue(rdgWords.containsKey("root"));
+        for (ReadingModel rm : readingsAndRelationsModel.getReadings()) {
+            if (rm.getText().equals("the"))
+                assertEquals(Long.valueOf(16), rm.getRank());
+            if (rm.getText().equals("root"))
+                assertEquals(Long.valueOf(17), rm.getRank());
+        }
         // Check the relationships
         assertEquals(2, readingsAndRelationsModel.getSequences().size());
         HashSet<String> relPaths = new HashSet<>();
@@ -1109,380 +1068,253 @@ public class ReadingTest {
         assertTrue(relPaths.contains(rdgWords.get("the") + "->" + rdgWords.get("root")));
         assertTrue(relPaths.contains(rdgWords.get("root") + "->" + endNode.getId()));
 
-        try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (w:READING {text:'the'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertTrue(nodes.hasNext());
-            Node the2 = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node the3 = nodes.next();
-            assertFalse(nodes.hasNext());
+        testNumberOfReadingsAndWitnesses(30);
 
-            assertEquals((long) 16, the2.getProperty("rank"));
-            assertEquals((long) 16, the3.getProperty("rank"));
-
-            result = db.execute("match (w:READING {text:'root'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node root1 = nodes.next();
-            assertTrue(nodes.hasNext());
-            Node root2 = nodes.next();
-            assertFalse(nodes.hasNext());
-
-            assertEquals((long) 17, root1.getProperty("rank"));
-            assertEquals((long) 17, root2.getProperty("rank"));
-
-            // should contain one reading more now
-            testNumberOfReadingsAndWitnesses(30);
-            tx.success();
-        }
     }
 
     @Test
     public void splitReadingWithOtherSeparatorAndMultipleWordsTest() {
-        try (Transaction tx = db.beginTx()) {
-
-            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
-
+        String rotw = readingLookup.get("rood-of-the-world/16");
             // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("-");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/0")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("-");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + rotw
+                        + "/split/0")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
+        expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
-            testNumberOfReadingsAndWitnesses(32);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(32);
     }
 
     @Test
     public void splitReadingWithSlashAsSeparatorTest() {
         // prepare the database for the test
+        String rotw;
         try (Transaction tx = db.beginTx()) {
             Node node = db.findNode(Nodes.READING, "text", "rood-of-the-world");
             assertNotNull(node);
             node.setProperty("text", "rood/of/the/world");
+            rotw = String.valueOf(node.getId());
             tx.success();
         }
 
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'rood/of/the/world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("/");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + rotw + "/split/0")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("/");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/0")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
-            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
-
-            testNumberOfReadingsAndWitnesses(32);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(32);
     }
 
     @Test
     public void splitReadingWithOtherSeparatorAndMultipleWordsAndIndexTest() {
-        try (Transaction tx = db.beginTx()) {
+        String rotw = readingLookup.get("rood-of-the-world/16");
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("-");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + rotw + "/split/4")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("-");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/4")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of-the-world";
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-
-            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of-the-world";
-
-            testNumberOfReadingsAndWitnesses(30);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(30);
     }
 
     @Test
     public void splitReadingWithLongSeparatorAndIndexTest() {
-        try (Transaction tx = db.beginTx()) {
+        String rotw = readingLookup.get("rood-of-the-world/16");
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("-of-");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + rotw + "/split/4")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("-of-");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/4")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood the-world";
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
-
-            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood the-world";
-
-            testNumberOfReadingsAndWitnesses(30);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(30);
     }
 
 
     @Test
     public void splitReadingWithNotExistingSeparatorInWordTest() {
-        // prepare the database for the test
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'rood-of-the-world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        String rotw = readingLookup.get("rood-of-the-world/16");
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("/");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/2")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("/");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + rotw + "/split/2")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals("no such separator exists",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals("no such separator exists",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
     public void splitReadingWithNotExistingSeparatorInIndexTest() {
         // prepare the database for the test
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        String root = readingLookup.get("root/17");
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("t");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + root + "/split/2")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("t");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/2")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
-
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("The separator does not appear in the index location in the text",
-                    Util.getValueFromJson(response, "error"));
-            tx.success();
-        }
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("The separator does not appear in the index location in the text",
+                Util.getValueFromJson(response, "error"));
     }
 
     @Test
     public void splitReadingWithExistingSeparatorInIndexTest() {
-        // prepare the database for the test
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        String root = readingLookup.get("root/17");
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("oo");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/1")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("oo");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + root + "/split/1")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
 
-            assertEquals(Status.OK.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r t";
+        assertEquals(Status.OK.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r t";
 
-            testNumberOfReadingsAndWitnesses(30);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(30);
     }
 
     @Test
     public void splitReadingWithExistingSeparatorInIndexOneCharTest() {
-        // prepare the database for the test
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        String root = readingLookup.get("root/17");
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("o");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/1")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("o");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + root + "/split/1")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
 
-            assertEquals(Status.OK.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r ot";
+        assertEquals(Status.OK.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        expectedWitnessA = "when april with his showers sweet with fruit the drought of march has pierced unto me the r ot";
 
-            testNumberOfReadingsAndWitnesses(30);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(30);
     }
 
     @Test
     public void splitReadingWithQuotesAsSeparatorTest() {
         // prepare the database for the test
+        String rotw;
         try (Transaction tx = db.beginTx()) {
             Node node = db.findNode(Nodes.READING, "text", "rood-of-the-world");
             assertNotNull(node);
             node.setProperty("text", "rood\"of\"the\"world");
+            rotw = String.valueOf(node.getId());
             tx.success();
         }
 
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'rood\"of\"the\"world'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("\"");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + rotw + "/split/0")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("\"");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/0")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
 
-            assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+        // check that the text is right
+        expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
 
-            // check that the text is right
-            expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood of the world";
-
-            // check that the end node has the right rank
-            SectionModel ourSection = jerseyTest.resource()
-                    .path("/tradition/" + tradId + "/section/" + sectId)
-                    .get(SectionModel.class);
-            assertEquals(Long.valueOf(20), ourSection.getEndRank());
-            tx.success();
-        }
+        // check that the end node has the right rank
+        SectionModel ourSection = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId)
+                .get(SectionModel.class);
+        assertEquals(Long.valueOf(20), ourSection.getEndRank());
     }
 
     @Test
     public void splitReadingWithWrongIndexTest() {
-        try (Transaction tx = db.beginTx()) {
+        String root = readingLookup.get("root/17");
 
-            Result result = db.execute("match (w:READING {text:'root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + root + "/split/7")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId()
-                            + "/split/7")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("The index must be smaller than the text length",
+                Util.getValueFromJson(response, "error"));
 
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("The index must be smaller than the text length",
-                    Util.getValueFromJson(response, "error"));
-
-            testNumberOfReadingsAndWitnesses(29);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(29);
     }
 
     @Test
     public void splitReadingWithRelationshipTest() {
-        try (Transaction tx = db.beginTx()) {
+        String root = readingLookup.get("the root/16");
+        // split reading
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter(" ");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + root + "/split/0")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            Result result = db.execute("match (w:READING {text:'the root'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            Node node = nodes.next();
-            assertFalse(nodes.hasNext());
+        assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                response.getStatusInfo().getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals(
+                "A reading to be split cannot be part of any relation",
+                Util.getValueFromJson(response, "error"));
 
-            // split reading
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter(" ");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + node.getId() + "/split/0")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
-
-            assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-                    response.getStatusInfo().getStatusCode());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals(
-                    "A reading to be split cannot be part of any relation",
-                    Util.getValueFromJson(response, "error"));
-
-            testNumberOfReadingsAndWitnesses(29);
-            tx.success();
-        }
+        testNumberOfReadingsAndWitnesses(29);
     }
 
     /**
@@ -1496,7 +1328,7 @@ public class ReadingTest {
             assertNotNull(untoMe);
 
             // find the rank of this reading and the following ones
-            Long thisRank = Long.valueOf(untoMe.getProperty("rank").toString());
+            Object thisRank = untoMe.getProperty("rank");
             HashMap<Long, Long> readingRanks = new HashMap<>();
             for (Relationship r : untoMe.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
                 Node next = r.getEndNode();
@@ -1519,7 +1351,7 @@ public class ReadingTest {
             for (Long nid : readingRanks.keySet()) {
                 Long savedRank = readingRanks.get(nid);
                 Node n = db.getNodeById(nid);
-                if (savedRank == thisRank + 1) {
+                if (savedRank == (Long) thisRank + 1) {
                     assertEquals(savedRank + 1, n.getProperty("rank"));
                 } else
                     assertEquals(savedRank, n.getProperty("rank"));
@@ -1715,6 +1547,17 @@ public class ReadingTest {
         for (List<ReadingModel> cbi : couldBeIdenticalReadings) {
             assertTrue(expectedIdentical.contains(cbi.get(0).getText()));
         }
+
+        // Check that we can ask for them individually
+        List<List<ReadingModel>> mergeableHenrys = jerseyTest.resource()
+                .path("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/2/9")
+                .queryParam("text", "henricus")
+                .get(new GenericType<List<List<ReadingModel>>>() {});
+        assertEquals(1, mergeableHenrys.size());
+        for (List<ReadingModel> mh : mergeableHenrys) {
+            assertEquals("henricus", mh.get(0).getText());
+            assertEquals("henricus", mh.get(1).getText());
+        }
     }
 
     // same as above, but on a different text
@@ -1795,316 +1638,155 @@ public class ReadingTest {
         assertEquals(0, result.size());
     }
 
-    // compress with separate set to 1, but the empty string between words
-    @Test(expected = org.junit.ComparisonFailure.class)
+    // compress with separate set to 1, but the empty string between words TODO what do we want here?
+    @Ignore
+    @Test
     public void compressReadingsNoConcatenatingNoTextTest() {
-        Node showers, sweet;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            showers = nodes.next();
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
 
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            sweet = nodes.next();
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("");
+        ClientResponse res = jerseyTest
+                .resource()
+                .path("/reading/" + showers + "/concatenate/" + sweet)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("");
-            ClientResponse res = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+        // Get the reading and check its properties
+        ReadingModel showerssweet = jerseyTest.resource().path("/reading/" + showers).get(ReadingModel.class);
+        assertEquals("showerssweet", showerssweet.getText());
+        assertEquals(Long.valueOf(5), showerssweet.getRank());
 
-            assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showerssweet", showers.getProperty("text"));
+        // there is one reading less in the tradition and witnesses have not
+        // been changed
+        List<ReadingModel> listOfReadings = testNumberOfReadingsAndWitnesses(28);
+        Collections.sort(listOfReadings);
 
-            result = db.execute("match (w:READING {text:'showerssweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertFalse(nodes.hasNext());
+        // tradition still has all the texts
+        String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
+        List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
+        String text = String.join(" ", words);
+        assertEquals(expectedTest, text);
 
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            // there is one reading less in the tradition and witnesses have not
-            // been changed
-            List<ReadingModel> listOfReadings = testNumberOfReadingsAndWitnesses(28);
-            Collections.sort(listOfReadings);
-
-            // tradition still has all the texts
-            String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-            List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
-            String text = String.join(" ", words);
-            assertEquals(expectedTest, text);
-
-            // no more reading with rank 6
-            int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
-                    11, 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 21 };
-            for (int i = 0; i < listOfReadings.size(); i++) {
-                assertEquals(expectedRanks[i],
-                        (int) (long) listOfReadings.get(i).getRank());
-            }
-            tx.success();
+        // no more reading with rank 6
+        int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
+                11, 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 21 };
+        for (int i = 0; i < listOfReadings.size(); i++) {
+            assertEquals(expectedRanks[i],
+                    (int) (long) listOfReadings.get(i).getRank());
         }
     }
 
     // compress with separate set to 0: no space between words
-    @Test(expected = org.junit.ComparisonFailure.class)
+    @Test
     public void compressReadingsNoConcatenatingWithTextTest() {
-        Node showers, sweet;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            showers = nodes.next();
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
 
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            sweet = nodes.next();
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setSeparate(false);
+        readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
+        ClientResponse res = jerseyTest
+                .resource()
+                .path("/reading/" + showers + "/concatenate/" + sweet)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+        ReadingModel showerssweet = jerseyTest.resource().path("/reading/" + showers).get(ReadingModel.class);
+        assertEquals("showerssweet", showerssweet.getText());
 
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setSeparate(false);
-            readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
-            ClientResponse res = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        // there is one fewer reading in the tradition and witnesses now read slightly differently
+        expectedWitnessA = expectedWitnessA.replace("showers sweet", "showerssweet");
+        expectedWitnessB = expectedWitnessB.replace("showers sweet", "showerssweet");
+        expectedWitnessC = expectedWitnessC.replace("showers sweet", "showerssweet");
 
-            assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showerssweet", showers.getProperty("text"));
-
-            result = db.execute("match (w:READING {text:'showerssweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            // there is one reading less in the tradition and witnesses have not
-            // been changed
-            List<ReadingModel> listOfReadings = testNumberOfReadingsAndWitnesses(28);
-            Collections.sort(listOfReadings);
-
-            // tradition still has all the texts
-            String expectedTest = "#START# when april april with his his showers sweet with fruit fruit the to drought march of march drought has pierced teh to unto me rood-of-the-world the root the root #END#";
-            List<String> words = listOfReadings.stream().map(ReadingModel::getText).collect(Collectors.toList());
-            String text = String.join(" ", words);
-            assertEquals(expectedTest, text);
-
-            // no more reading with rank 6
-            int[] expectedRanks = { 0, 1, 2, 2, 3, 4, 4, 5, 7, 8, 9, 10, 10,
-                    11, 11, 12, 13, 13, 14, 15, 16, 16, 16, 17, 17, 17, 18, 21 };
-            for (int i = 0; i < listOfReadings.size(); i++) {
-                assertEquals(expectedRanks[i], (int) (long) listOfReadings.get(i).getRank());
-            }
-            tx.success();
+        List<ReadingModel> listOfReadings = testNumberOfReadingsAndWitnesses(28);
+        for (ReadingModel rm : listOfReadings) {
+            if (rm.getText().equals("showers")) fail();
+            if (rm.getText().equals("sweet")) fail();
+            // Check that the ranks adjusted
+            if (rm.getIs_end()) assertEquals(Long.valueOf(17), rm.getRank());
+            if (rm.getText().equals("with") && rm.getWitnesses().size() == 3)
+                assertEquals(Long.valueOf(6), rm.getRank());
         }
     }
 
     // compress with text between the readings' texts
     @Test
     public void compressReadingsWithConcatenatingWithConTextTest() {
-        Node showers, sweet;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            showers = nodes.next();
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
 
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            sweet = nodes.next();
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("test");
+        ClientResponse res = jerseyTest
+                .resource()
+                .path("/reading/" + showers + "/concatenate/" + sweet)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("test");
-            ClientResponse res = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 
-            assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showerstestsweet", showers.getProperty("text"));
-
-            result = db.execute("match (w:READING {text:'showerstestsweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            expectedWitnessA = "when april with his showerstestsweet with fruit the drought of march has pierced unto me the root";
-            Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
-            tx.success();
+        expectedWitnessA = expectedWitnessA.replace("showers sweet", "showerstestsweet");
+        expectedWitnessB = expectedWitnessB.replace("showers sweet", "showerstestsweet");
+        expectedWitnessC = expectedWitnessC.replace("showers sweet", "showerstestsweet");
+        List<ReadingModel> listOfReadings = testNumberOfReadingsAndWitnesses(28);
+        for (ReadingModel rm : listOfReadings) {
+            if (rm.getText().equals("showers")) fail();
+            if (rm.getText().equals("sweet")) fail();
+            if (rm.getText().equals(("showerstestsweet"))) assertEquals(Long.valueOf(5), rm.getRank());
+            // Check that the ranks adjusted
+            if (rm.getIs_end()) assertEquals(Long.valueOf(17), rm.getRank());
+            if (rm.getText().equals("with") && rm.getWitnesses().size() == 3)
+                assertEquals(Long.valueOf(6), rm.getRank());
         }
+        expectedWitnessA = "when april with his showerstestsweet with fruit the drought of march has pierced unto me the root";
+        Response resp = new Witness(tradId, "A").getWitnessAsText();
+        assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
     }
 
     // compress with " between the readings' texts
     @Test
     public void compressReadingsWithConcatenatingWithQuotationAsTextTest() {
-        Node showers, sweet;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            showers = nodes.next();
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
 
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            sweet = nodes.next();
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("\"");
+        ClientResponse res = jerseyTest
+                .resource()
+                .path("/reading/" + showers + "/concatenate/" + sweet)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("\"");
-            ClientResponse res = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 
-            assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showers\"sweet", showers.getProperty("text"));
-
-            result = db.execute("match (w:READING {text:'showers\"sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            expectedWitnessA = "when april with his showers\"sweet with fruit the drought of march has pierced unto me the root";
-            Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
-            tx.success();
-        }
+        expectedWitnessA = "when april with his showers\"sweet with fruit the drought of march has pierced unto me the root";
+        Response resp = new Witness(tradId, "A").getWitnessAsText();
+        assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
     }
 
     // compress with / between the readings' texts
     @Test
     public void compressReadingsWithConcatenatingWithSlashAsTextTest() {
-        Node showers, sweet;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            showers = nodes.next();
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
 
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            sweet = nodes.next();
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("/");
+        ClientResponse res = jerseyTest
+                .resource()
+                .path("/reading/" + showers + "/concatenate/" + sweet)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("/");
-            ClientResponse res = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
+        assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
 
-            assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showers/sweet", showers.getProperty("text"));
-
-            result = db.execute("match (w:READING {text:'showers/sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            expectedWitnessB = "when april his showers/sweet with fruit the march of drought has pierced to the root";
-            Response resp = new Witness(tradId, "B").getWitnessAsText();
-            assertEquals(expectedWitnessB, ((WitnessTextModel) resp.getEntity()).getText());
-            tx.success();
-        }
-    }
-
-    // compress with concatenating the two texts without a gap or text
-    @Test
-    public void compressReadingsWithConcatenatingWithoutConTextTest() {
-        Node showers, sweet;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            showers = nodes.next();
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            sweet = nodes.next();
-
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("");
-            ClientResponse res = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + sweet.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
-
-            assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-            assertEquals("showerssweet", showers.getProperty("text"));
-
-            result = db.execute("match (w:READING {text:'showerssweet'}) return w");
-            nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            nodes.next();
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            result = db.execute("match (w:READING {text:'showers'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            expectedWitnessA = "when april with his showerssweet with fruit the drought of march has pierced unto me the root";
-            Response resp = new Witness(tradId, "A").getWitnessAsText();
-            assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
-            tx.success();
-        }
+        expectedWitnessB = "when april his showers/sweet with fruit the march of drought has pierced to the root";
+        Response resp = new Witness(tradId, "B").getWitnessAsText();
+        assertEquals(expectedWitnessB, ((WitnessTextModel) resp.getEntity()).getText());
     }
 
     /**
@@ -2113,39 +1795,23 @@ public class ReadingTest {
      */
     @Test
     public void notNeighborsCompressReadingTest() {
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'showers'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            Node showers = nodes.next();
+        String showers = readingLookup.get("showers/5");
+        String with = readingLookup.get("with/7");
 
-            result = db.execute("match (w:READING {text:'fruit'}) return w");
-            nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            Node fruit = nodes.next();
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
+        ClientResponse response = jerseyTest
+                .resource()
+                .path("/reading/" + showers + "/concatenate/" + with)
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, readingBoundaryModel);
 
-            ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
-            readingBoundaryModel.setCharacter("shouldNotBeDesplayd");
-            ClientResponse response = jerseyTest
-                    .resource()
-                    .path("/reading/" + showers.getId() + "/concatenate/" + fruit.getId())
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, readingBoundaryModel);
-
-            assertEquals(Response.Status.CONFLICT.getStatusCode(),
-                    response.getStatus());
-            assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
-            assertEquals("reading are not contiguous. could not compress",
-                    Util.getValueFromJson(response, "error"));
-
-            result = db.execute("match (w:READING {text:'showers sweet'}) return w");
-            nodes = result.columnAs("w");
-            assertFalse(nodes.hasNext());
-
-            assertEquals("showers", showers.getProperty("text"));
-            assertEquals("fruit", fruit.getProperty("text"));
-            tx.success();
-        }
+        assertEquals(Response.Status.CONFLICT.getStatusCode(),
+                response.getStatus());
+        assertEquals(MediaType.APPLICATION_JSON_TYPE, response.getType());
+        assertEquals("reading are not contiguous. could not compress",
+                Util.getValueFromJson(response, "error"));
+        testNumberOfReadingsAndWitnesses(29);
     }
 
     @Test
@@ -2283,14 +1949,7 @@ public class ReadingTest {
     // tests that the next reading is correctly returned according to witness
     @Test
     public void nextReadingWithTwoWitnessesTest() {
-        long piercedReadId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'pierced'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            piercedReadId = nodes.next().getId();
-            tx.success();
-        }
+        String piercedReadId = readingLookup.get("pierced/14");
 
         ReadingModel actualResponse = jerseyTest
                 .resource()
@@ -2309,11 +1968,7 @@ public class ReadingTest {
     // should return error
     @Test
     public void nextReadingLastNodeTest() {
-        long readId;
-        try (Transaction tx = db.beginTx()) {
-            readId = db.findNode(Nodes.READING, "text", "the root").getId();
-            tx.success();
-        }
+        String readId = readingLookup.get("the root/16");
 
         ClientResponse response = jerseyTest
                 .resource()
@@ -2328,14 +1983,7 @@ public class ReadingTest {
 
     @Test
     public void previousReadingTest() {
-        long readId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'with'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            readId = nodes.next().getId();
-            tx.success();
-        }
+        String readId = readingLookup.get("with/3");
         ReadingModel actualResponse = jerseyTest
                 .resource()
                 .path("/reading/" + readId + "/prior/A")
@@ -2347,14 +1995,7 @@ public class ReadingTest {
     // witness
     @Test
     public void previousReadingTwoWitnessesTest() {
-        long ofId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'of'}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assert (nodes.hasNext());
-            ofId = nodes.next().getId();
-            tx.success();
-        }
+        String ofId = readingLookup.get("of/11");
         ReadingModel actualResponse = jerseyTest
                 .resource()
                 .path("/reading/" + ofId + "/prior/A")
@@ -2372,12 +2013,7 @@ public class ReadingTest {
     // should return error
     @Test
     public void previousReadingFirstNodeTest() {
-        long readId;
-        try (Transaction tx = db.beginTx()) {
-            Node rdg = db.findNode(Nodes.READING, "text", "when");
-            readId = rdg.getId();
-            tx.success();
-        }
+        String readId = readingLookup.get("when/1");
         ClientResponse actualResponse = jerseyTest
                 .resource()
                 .path("/reading/" + readId + "/prior/A")
@@ -2391,14 +2027,14 @@ public class ReadingTest {
 
     @Test
     public void relatedReadingsTest() {
-        long readId;
-        try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'fruit', rank:8}) return w");
-            Iterator<Node> nodes = result.columnAs("w");
-            assertTrue(nodes.hasNext());
-            readId = nodes.next().getId();
-            tx.success();
+        // Find the "fruit/8" of witness A/C
+        String readId = null;
+        for (ReadingModel rm : testNumberOfReadingsAndWitnesses(29)) {
+            if (rm.getText().equals("fruit") && rm.getWitnesses().contains("A"))
+                readId = rm.getId();
         }
+        assertNotNull(readId);
+
         ClientResponse jerseyResponse = jerseyTest.resource().path("/reading/" + readId + "/related")
                 .queryParam("types", "transposition")
                 .queryParam("types", "repetition")

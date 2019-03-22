@@ -247,9 +247,9 @@ public class StemmawebParser {
                                     switch (attr) {
                                         // Tradition node attributes
                                         case "name":
-                                            // TODO is this redundant?
-                                            if (currentNode.hasProperty("label") && currentNode.getProperty("label").equals("TRADITION"))
-                                                break;
+                                            // I don't think this condition is ever met, and not sure why a label property would be set
+                                            // if (currentNode.hasProperty("label") && currentNode.getProperty("label").equals("TRADITION"))
+                                            //     break;
                                             if (currentNode.hasProperty("name")
                                                     && ((String)currentNode.getProperty("name")).length() == 0
                                                     && text.length() > 0) {

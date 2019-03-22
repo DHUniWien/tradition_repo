@@ -28,7 +28,7 @@ public class ReadingService {
      */
     public static void copyReadingProperties(Node oldReading, Node newReading) {
         for (String key : oldReading.getPropertyKeys()) {
-            if (oldReading.hasProperty(key)) {
+            if (oldReading.hasProperty(key) && !key.equals("is_lemma")) {
                 newReading.setProperty(key, oldReading.getProperty(key));
             }
         }

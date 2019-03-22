@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,6 +21,7 @@ import net.stemmaweb.services.RelationService;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
@@ -102,9 +104,13 @@ public class Reading {
                     return errorResponse(Status.INTERNAL_SERVER_ERROR);
                 }
                 // Check that this field actually exists in our model
-                modelToReturn.getClass().getDeclaredField(currentKey);
+                Field ourField = modelToReturn.getClass().getDeclaredField(currentKey);
                 // Then set the property.
-                reading.setProperty(currentKey, keyPropertyModel.getProperty());
+                // Convert types not native to JSON
+                if (ourField.getType().equals(Long.class))
+                    reading.setProperty(currentKey, Long.valueOf(keyPropertyModel.getProperty().toString()));
+                else
+                    reading.setProperty(currentKey, keyPropertyModel.getProperty());
             }
             modelToReturn = new ReadingModel(reading);
             tx.success();
@@ -140,14 +146,18 @@ public class Reading {
         ArrayList<ReadingModel> relatedReadings = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
-            for (Relationship r : reading.getRelationships(ERelations.RELATED)) {
-                if (filterTypes.size() > 0) {
-                    String relType = r.getProperty("type").toString();
-                    if (!filterTypes.contains(relType))
-                        continue;
-                }
-                relatedReadings.add(new ReadingModel(r.getOtherNode(reading)));
-            }
+            RelationService.RelatedReadingsTraverser rt;
+            if (filterTypes == null || filterTypes.size() == 0)
+                // Traverse all relations
+                rt = new RelationService.RelatedReadingsTraverser(reading);
+            else
+                // Traverse only the named relations
+                rt = new RelationService.RelatedReadingsTraverser(reading, x -> filterTypes.contains(x.getName()));
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.RELATED)
+                    .evaluator(rt)
+                    .uniqueness(Uniqueness.NODE_GLOBAL)
+                    .traverse(reading).nodes().forEach(x -> relatedReadings.add(new ReadingModel(x)));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -365,7 +375,8 @@ public class Reading {
      *            : the reading to be duplicated
      * @param addedReading
      *            : the newly duplicated reading
-     * @return a list of the deleted relations
+     * @return a GraphModel containing the new readings, new sequences and deleted relations.
+     *         Note that this does NOT return deleted or modified sequences.
      */
     private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) {
         // copy reading properties to newly added reading
@@ -495,24 +506,26 @@ public class Reading {
      * @return true if readings can be merged, false if not
      */
     private boolean canBeMerged(Node stayingReading, Node deletingReading) throws Exception {
-        /*
-         if (!doContainSameText(stayingReading, deletingReading)) {
-         errorMessage = "Readings to be merged do not contain the same text";
-         return false;
-         }
-         */
+        // Test for non-colo relations.
         if (hasNonColoRelations(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged cannot contain cross-location relations";
             return false;
         }
         // If the two readings are aligned, there is no need to test for cycles.
         boolean aligned = false;
-        for (Relationship rel : stayingReading.getRelationships(ERelations.RELATED)) {
-            if (rel.getEndNode().equals(deletingReading)) {
+        RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
+                stayingReading, RelationTypeModel::getIs_colocation);
+        for (Node n : db.traversalDescription().depthFirst()
+                .relationships(ERelations.RELATED)
+                .evaluator(rt)
+                .uniqueness(Uniqueness.NODE_GLOBAL)
+                .traverse(stayingReading).nodes()) {
+            if (n.equals(deletingReading)) {
                 aligned = true;
                 break;
             }
         }
+        // Test for cycles.
         if (!aligned) {
             if (ReadingService.wouldGetCyclic(stayingReading, deletingReading)) {
                 errorMessage = "Readings to be merged would make the graph cyclic";
@@ -755,7 +768,10 @@ public class Reading {
             // Set the rank here, even though we re-rank above, so that the ReadingModels we produce are right
             Long previousRank = (Long) lastReading.getProperty("rank");
             newReading.setProperty("rank", previousRank + 1);
-            if (!model.getSeparate()) newReading.setProperty("join_prior", true);
+            if (!model.getSeparate()) {
+                newReading.setProperty("join_prior", true);
+                lastReading.setProperty("join_next", true);
+            }
 
             // Copy the witnesses from our outgoing sequence links
             Relationship newSeq = lastReading.createRelationshipTo(newReading, ERelations.SEQUENCE);
@@ -800,11 +816,15 @@ public class Reading {
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.OUTGOING);
-        if (foundNeighbour != null)
+        if (foundNeighbour != null) {
+            ReadingModel result = new ReadingModel(foundNeighbour);
+            if (result.getIs_end()) {
+                errorMessage = "this was the last reading for this witness";
+                return errorResponse(Status.NOT_FOUND);
+            }
             return Response.ok(new ReadingModel(foundNeighbour)).build();
-        Status errorStatus = errorMessage.contains("this was the last")
-                ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR;
-        return errorResponse(errorStatus);
+        }
+        return errorResponse(Status.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -827,11 +847,15 @@ public class Reading {
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.INCOMING);
-        if (foundNeighbour != null)
+        if (foundNeighbour != null) {
+            ReadingModel result = new ReadingModel(foundNeighbour);
+            if (result.getIs_start()) {
+                errorMessage = "this was the first reading for this witness";
+                return errorResponse(Status.NOT_FOUND);
+            }
             return Response.ok(new ReadingModel(foundNeighbour)).build();
-        Status errorStatus = errorMessage.contains("this was the first")
-                ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR;
-        return errorResponse(errorStatus);
+        }
+        return errorResponse(Status.INTERNAL_SERVER_ERROR);
     }
 
     // Gets the neighbour reading in the given direction for the given witness. Returns
@@ -870,14 +894,6 @@ public class Reading {
                         : "There is more than one " + dirdisplay + " reading!";
             } else {
                 neighbour = matching.iterator().next().getOtherNode(read);
-                ReadingModel result = new ReadingModel(neighbour);
-                if (result.getIs_start() && dir == Direction.INCOMING) {
-                    errorMessage = "this was the first reading for this witness";
-                    neighbour = null;
-                } else if (result.getIs_end() && dir == Direction.OUTGOING) {
-                    errorMessage = "this was the last reading for this witness";
-                    neighbour = null;
-                }
             }
             tx.success();
         } catch (Exception e) {
