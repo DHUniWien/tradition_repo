@@ -20,6 +20,7 @@ import javax.ws.rs.core.Response;
 import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
@@ -766,6 +767,7 @@ public class Section {
      * @summary List mergeable readings
      * @param startRank - where to start
      * @param endRank   - where to end
+     * @param limitText      - limit search to readings with the given text
      * @return lists of readings that may be merged.
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -777,7 +779,8 @@ public class Section {
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") long startRank,
-            @PathParam("endRank") long endRank) {
+            @PathParam("endRank") long endRank,
+            @DefaultValue("") @QueryParam("text") String limitText) {
         Node startNode = DatabaseService.getStartNode(sectId, db);
         if (startNode == null) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -787,7 +790,7 @@ public class Section {
         List<List<ReadingModel>> couldBeIdenticalReadings;
         try (Transaction tx = db.beginTx()) {
             List<Node> questionedReadings = getReadingsBetweenRanks(
-                    startRank, endRank, startNode);
+                    startRank, endRank, startNode, limitText);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings);
             tx.success();
@@ -833,16 +836,18 @@ public class Section {
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
-    private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode) throws Exception {
+    private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode, String limitText) throws Exception {
         List<Node> readings;
         PathExpander e = new AlignmentTraverse(startNode);
         try (Transaction tx = db.beginTx()) {
-            readings = db.traversalDescription().depthFirst()
+            Stream<Node> readingStream = db.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().stream()
                     .filter(x -> startRank <= Long.valueOf(x.getProperty("rank").toString()) &&
-                                 endRank >= Long.valueOf(x.getProperty("rank").toString()))
-                    .collect(Collectors.toList());
+                            endRank >= Long.valueOf(x.getProperty("rank").toString()));
+            if (!limitText.equals(""))
+                readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
+            readings = readingStream.collect(Collectors.toList());
             tx.success();
         }
         return readings;
@@ -899,7 +904,7 @@ public class Section {
     private ArrayList<ReadingModel> getAllReadingsFromSectionBetweenRanks(
             Node startNode, long startRank, long endRank) throws Exception {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
-        getReadingsBetweenRanks(startRank, endRank, startNode)
+        getReadingsBetweenRanks(startRank, endRank, startNode, "")
                 .forEach(x -> readingModels.add(new ReadingModel(x)));
         readingModels.sort(Comparator.comparing(ReadingModel::getRank));
         return readingModels;

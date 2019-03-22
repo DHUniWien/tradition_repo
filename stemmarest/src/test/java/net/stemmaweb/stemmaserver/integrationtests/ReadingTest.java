@@ -1547,6 +1547,17 @@ public class ReadingTest {
         for (List<ReadingModel> cbi : couldBeIdenticalReadings) {
             assertTrue(expectedIdentical.contains(cbi.get(0).getText()));
         }
+
+        // Check that we can ask for them individually
+        List<List<ReadingModel>> mergeableHenrys = jerseyTest.resource()
+                .path("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/2/9")
+                .queryParam("text", "henricus")
+                .get(new GenericType<List<List<ReadingModel>>>() {});
+        assertEquals(1, mergeableHenrys.size());
+        for (List<ReadingModel> mh : mergeableHenrys) {
+            assertEquals("henricus", mh.get(0).getText());
+            assertEquals("henricus", mh.get(1).getText());
+        }
     }
 
     // same as above, but on a different text
