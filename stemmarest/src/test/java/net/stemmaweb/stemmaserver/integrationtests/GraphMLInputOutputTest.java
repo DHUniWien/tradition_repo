@@ -225,6 +225,15 @@ public class GraphMLInputOutputTest extends TestCase {
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));
             tx.success();
         }
+
+        // Does the tradition have any relation types defined?
+        List<RelationTypeModel> rtypes = jerseyTest.resource().path("/tradition/" + legendId + "/relationtypes")
+                .get(new GenericType<List<RelationTypeModel>>() {});
+        assertEquals(3, rtypes.size());
+        List<String> rnames = rtypes.stream().map(RelationTypeModel::getName).collect(Collectors.toList());
+        assertTrue(rnames.contains("collated"));
+        assertTrue(rnames.contains("orthographic"));
+        assertTrue(rnames.contains("spelling"));
     }
 
     public void testXMLInputNewSectionWitnesses() {

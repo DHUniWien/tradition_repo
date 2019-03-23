@@ -2,6 +2,7 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
@@ -132,8 +133,10 @@ public class GraphMLParser {
                         .entity("Multiple SECTION nodes but no TRADITION in input").build();
 
 
-            // Next go through all the edges and create them between the nodes.
+            // Next go through all the edges and create them between the nodes. Keep track of the
+            // relation types we have seen.
             NodeList edgeNodes = rootEl.getElementsByTagName("edge");
+            HashSet<String> seenRelationTypes = new HashSet<>();
             for (int i = 0; i < edgeNodes.getLength(); i++) {
                 NamedNodeMap edgeAttrs = edgeNodes.item(i).getAttributes();
                 String sourceXmlId = edgeAttrs.getNamedItem("source").getNodeValue();
@@ -151,6 +154,11 @@ public class GraphMLParser {
                     for (String layer : edgeProperties.keySet()) {
                         sigla.addAll(Arrays.asList((String[]) edgeProperties.get(layer)));
                     }
+                } else if (neolabel.equals("RELATED")) {
+                    if (!edgeProperties.containsKey("type"))
+                        return Response.status(Response.Status.BAD_REQUEST)
+                                .entity("Relation defined without a type").build();
+                    seenRelationTypes.add(edgeProperties.get("type").toString());
                 }
                 Relationship newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
                 edgeProperties.forEach(newRel::setProperty);
@@ -179,6 +187,18 @@ public class GraphMLParser {
             // Ensure that all witnesses we have encountered actually exist.
             for (String sigil : sigla) {
                 Util.findOrCreateExtant(traditionNode, sigil);
+            }
+
+            // Ensure that all the relation types we have encountered actually exist.
+            ArrayList<String> existingTypes = new ArrayList<>();
+            traditionNode.getRelationships(ERelations.HAS_RELATION_TYPE, Direction.OUTGOING)
+                    .forEach(x -> existingTypes.add(x.getEndNode().getProperty("name").toString()));
+            for (String rtype : seenRelationTypes) {
+                if (!existingTypes.contains(rtype)) {
+                    Response rtResult = new RelationType(tradId, rtype).makeDefaultType();
+                    if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                        return rtResult;
+                }
             }
 
             // Sanity check: if we created any relationship-less nodes, delete them again.
