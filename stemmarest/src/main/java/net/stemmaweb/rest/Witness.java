@@ -289,7 +289,7 @@ public class Witness {
                     .entity(jsonerror("No witness path found for this sigil")).build();
         // Construct the text from the node reading models
         String witnessText = ReadingService.textOfReadings(
-                witnessReadings.stream().map(ReadingModel::new).collect(Collectors.toList()), false);
+                witnessReadings.stream().map(ReadingModel::new).collect(Collectors.toList()), false, false);
         WitnessTextModel wtm = new WitnessTextModel(witnessText);
         return Response.ok(wtm).build();
 

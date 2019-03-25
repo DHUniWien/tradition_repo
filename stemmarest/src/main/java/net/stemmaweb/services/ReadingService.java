@@ -253,20 +253,29 @@ public class ReadingService {
         }
     }
 
-    public static String textOfReadings(List<ReadingModel> rml, Boolean normal) {
+    public static String textOfReadings(List<ReadingModel> rml, Boolean normal, Boolean show_gaps) {
         StringBuilder witnessAsText = new StringBuilder();
         Boolean joinNext = false;
+        long lastSeenRank = 0L;
         for (ReadingModel rm : rml) {
             if (rm.getIs_end()) continue;
             if (rm.getIs_lacuna()) continue;
             if (!joinNext && !rm.getJoin_prior()
                     && !witnessAsText.toString().equals("") && !witnessAsText.toString().endsWith(" "))
                 witnessAsText.append(" ");
+            if (show_gaps && lastSeenRank < rm.getRank() - 1) {
+                witnessAsText.append("[...]");
+                if (!rm.getJoin_prior())
+                    witnessAsText.append(" ");
+            }
+            lastSeenRank = rm.getRank();
             joinNext = rm.getJoin_next();
             String joinString = normal ? rm.normalized() : rm.getText();
             // if (joinString == null) joinString = "";
             witnessAsText.append(joinString);
         }
+        if (show_gaps && lastSeenRank < rml.get(rml.size() - 1).getRank() - 1)
+            witnessAsText.append(" [...]");
         return witnessAsText.toString().trim();
     }
 
@@ -426,8 +435,7 @@ public class ReadingService {
         private HashSet<String> includeRelationTypes = new HashSet<>();
 
         // Walk the graph of sequences only
-        @SuppressWarnings("unused")
-        AlignmentTraverse() {}
+        public AlignmentTraverse() {}
 
         // Walk the graph of sequences and colocated relations
         public AlignmentTraverse(Node referenceNode) throws Exception {

@@ -75,9 +75,11 @@ public class Reading {
     }
 
     /**
-     * Changes the properties of an existing reading.
-     * @summary Update an existing reading
+     * Changes the properties of an existing reading. Properties whose change has
+     * potential knock-on effects on other readings, such as "is_lemma", cannot be
+     * set using this method.
      *
+     * @summary Update an existing reading
      * @param changeModels
      *            an array of named key/value property pairs. For example, a request to
      *            change the reading's language to German will look like this:
@@ -109,14 +111,6 @@ public class Reading {
                 }
                 // Check that this field actually exists in our model
                 Field ourField = modelToReturn.getClass().getDeclaredField(currentKey);
-                // Deal with special cases e.g. is_lemma
-                if (currentKey.equals("is_lemma")) {
-                    // Unset the lemma for all other readings at this rank.
-                    Map<String, Object> criteria = new HashMap<>();
-                    criteria.put("section_id", reading.getProperty("section_id"));
-                    criteria.put("rank", reading.getProperty("rank"));
-                    db.findNodes(Nodes.READING, criteria).forEachRemaining(x -> x.removeProperty("is_lemma"));
-                }
                 // Then set the property.
                 // Convert types not native to JSON
                 if (ourField.getType().equals(Long.class))
@@ -140,6 +134,15 @@ public class Reading {
         return Response.status(Response.Status.OK).entity(modelToReturn).build();
     }
 
+    /**
+     * Toggles whether this reading is a lemma. If so, ensures that no other reading at this
+     * rank in this section is a lemma. Returns all readings that were changed.
+     *
+     * @param value - "true" if the reading should be a lemma
+     * @return a list of changed ReadingModels
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
+     */
     @POST
     @Path("setlemma")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")

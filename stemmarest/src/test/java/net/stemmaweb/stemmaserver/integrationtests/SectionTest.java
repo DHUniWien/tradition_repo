@@ -747,9 +747,10 @@ public class SectionTest extends TestCase {
         // First check before any lemma readings are set
         ClientResponse jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
+                .queryParam("final", "true")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        String lemmaText = jerseyResult.getEntity(String.class);
+        String lemmaText = Util.getValueFromJson(jerseyResult, "text");
         assertEquals("", lemmaText);
 
         jerseyResult = jerseyTest.resource()
@@ -803,29 +804,25 @@ public class SectionTest extends TestCase {
             assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
 
         }
-        // Check that we still have no lemma text
+        // Check that we still have no final lemma text
         jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
+                .queryParam("final", "true")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaText = jerseyResult.getEntity(String.class);
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
         assertEquals("", lemmaText);
 
-        // Now make the lemma text
-        jerseyResult = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + newSectId + "/setlemma")
-                .post(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-
-        // Check that we now have a lemma text
+        // but that we can get a provisional lemma text
         jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaText = jerseyResult.getEntity(String.class);
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
-                "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
+                "cultum magis [...] illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
 
+        // ...and all the lemma readings.
         jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmareadings")
                 .get(ClientResponse.class);
@@ -836,6 +833,36 @@ public class SectionTest extends TestCase {
         lemmaReadings.forEach(x -> inLemma.add(x.getId()));
         for (String rdg : lemmatised) {
             assertTrue(inLemma.contains(readingLookup.get(rdg)));
+        }
+
+        // Now set/finalise the lemma text
+        jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + newSectId + "/setlemma")
+                .post(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+
+        // Check that we now have a lemma text
+        jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
+                .queryParam("final", "true")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
+        assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
+                "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
+
+        // Check that we get the right lemma readings back too
+        jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmareadings")
+                .queryParam("final", "true")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        lemmaReadings = jerseyResult.getEntity(new GenericType<List<ReadingModel>>() {});
+        assertEquals(20, lemmaReadings.size());
+        HashSet<String> inFinalLemma = new HashSet<>();
+        lemmaReadings.forEach(x -> inFinalLemma.add(x.getId()));
+        for (String rdg : lemmatised) {
+            assertTrue(inFinalLemma.contains(readingLookup.get(rdg)));
         }
 
         // Add a lemma on the same rank, check that the other one gets unset
@@ -849,15 +876,24 @@ public class SectionTest extends TestCase {
         assertTrue(changed.stream().anyMatch(x -> x.getId().equals(readingLookup.get("iugiter/17")) && x.getIs_lemma()));
         assertTrue(changed.stream().anyMatch(x -> x.getId().equals(readingLookup.get("jugiter/17")) && !x.getIs_lemma()));
 
-        // Lemma text hasn't changed yet
+        // Official lemma text hasn't changed yet
+        jerseyResult = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
+                .queryParam("final", "true")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
+        assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
+                "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
+
+        // ...but we can see our changes in the effective lemma text
         jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaText = jerseyResult.getEntity(String.class);
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
-                "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
-
+                "cultum magis [...] illustrabatur iugiter ac informabatur Sanctus autem.", lemmaText);
 
         // Re-set the lemma text, check that it changes
         jerseyResult = jerseyTest.resource()
@@ -866,9 +902,10 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
+                .queryParam("final", "true")
                 .get(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaText = jerseyResult.getEntity(String.class);
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
                 "cultum magis illustrabatur iugiter ac informabatur Sanctus autem.", lemmaText);
 
