@@ -1,20 +1,20 @@
 package net.stemmaweb.parser;
 
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
 import org.apache.cxf.helpers.IOUtils;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
@@ -97,7 +97,7 @@ public class CollateXJsonParser {
                 }
                 collationTable.add(row);
             }
-        } catch (Exception e) {
+        } catch (JSONException|IOException e) {
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
         }
@@ -129,9 +129,12 @@ public class CollateXJsonParser {
                             rm.getJoin_next().toString(), rm.getJoin_prior().toString());
                     if (lookupKey.equals("nullfalsefalse")) continue;  // Don't add blank readings
                     Node thisReading;
-                    if (createdReadings.containsKey(lookupKey))
+                    if (createdReadings.containsKey(lookupKey)) {
                         thisReading = createdReadings.get(lookupKey);
-                    else {
+                        thisReading.setProperty("extra",
+                                expandExtraField(thisReading.getProperty("extra").toString(),
+                                        witParts, rm.getExtra()));
+                    } else {
                         thisReading = db.createNode(Nodes.READING);
                         thisReading.setProperty("text", rm.getText());
                         thisReading.setProperty("normal_form", rm.getNormal_form());
@@ -141,17 +144,18 @@ public class CollateXJsonParser {
                         thisReading.setProperty("join_next", rm.getJoin_next());
                         if (rm.getAnnotation() != null)
                             thisReading.setProperty("annotation", rm.getAnnotation());
-                        if (rm.getExtra() != null)
-                            thisReading.setProperty("extra", rm.getExtra());
+                        if (rm.getExtra() != null) {
+                            // Wrap the reading's "extra" value in a hash value keyed on the witness.
+                            JSONObject thisExtra = new JSONObject();
+                            thisExtra.put(thisWitness, new JSONObject(rm.getExtra()));
+                            thisReading.setProperty("extra", thisExtra.toString());
+                        }
                         thisReading.setProperty("rank", rank);
                         thisReading.setProperty("section_id", parentNode.getId());
                         createdReadings.put(lookupKey, thisReading);
                     }
                     Node lastReading = lastWitnessReading.get(thisWitness);
-                    Relationship seq = Util.getSequenceIfExists(lastReading, thisReading);
-                    if (seq == null)
-                        seq = lastReading.createRelationshipTo(thisReading, ERelations.SEQUENCE);
-                    addWitnessToRelationship(seq, witParts);
+                    ReadingService.addWitnessLink(lastReading, thisReading, witParts.get(0), witParts.get(1));
                     lastWitnessReading.put(thisWitness, thisReading);
                 }
                 if (createdReadings.size() > 0)
@@ -163,10 +167,7 @@ public class CollateXJsonParser {
             for (String witString : collationWitnesses) {
                 List<String> witParts = parseWitnessSigil(witString);
                 Node lastReading = lastWitnessReading.get(witString);
-                Relationship seq = Util.getSequenceIfExists(lastReading, endNode);
-                if (seq == null)
-                    seq = lastReading.createRelationshipTo(endNode, ERelations.SEQUENCE);
-                addWitnessToRelationship(seq, witParts);
+                ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
             tx.success();
             String response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
@@ -181,37 +182,22 @@ public class CollateXJsonParser {
 
     }
 
-    private static void addWitnessToRelationship (Relationship seq, List<String> witParts) {
-        String propertyName = witParts.size() == 1 ? "witnesses" : witParts.get(1);
-        String sigil = witParts.get(0);
-        boolean setWitness;
-        // First remove any redundant witness designations - i.e. we shouldn't have a sequence path
-        // marked both for witness A and witness A (a.c.)
-        if (propertyName.equals("witnesses")) {
-            // Remove any "extra" designations that may have accumulated
-            setWitness = true;
-            for (String e : seq.getPropertyKeys()) {
-                ArrayList<String> extraWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(e)));
-                extraWits.remove(sigil);
-            }
-        } else if (seq.hasProperty("witnesses")) {
-            // See if setting the "extra" layer would be redundant
-            ArrayList<String> existingWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty("witnesses")));
-            setWitness = !existingWits.contains(sigil);
-        } else
-            setWitness = true;
-
-        // Now set the witness on the relationship if we still need to
-        if (setWitness && seq.hasProperty(propertyName)) {
-            ArrayList<String> existingWits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(propertyName)));
-            if (!existingWits.contains(sigil)) {
-                existingWits.add(sigil);
-                seq.setProperty(propertyName, existingWits.toArray(new String[0]));
-            }
-        } else if (setWitness){
-            String[] existingWits = new String[]{ sigil };
-            seq.setProperty(propertyName, existingWits);
+    private static String expandExtraField (String origJson, List<String> witness, String newJSON) throws JSONException {
+        JSONObject currvalue = new JSONObject(origJson);
+        JSONObject newValue = new JSONObject(newJSON);
+        // Check to see whether we are adding a redundant line
+        String sigil;
+        if (!witness.get(1).equals("witnesses")) {
+            // We are in a witness layer
+            if (currvalue.has(witness.get(0))
+                    && currvalue.getJSONObject(witness.get(0)).toString().equals(newValue.toString()))
+                return currvalue.toString();
+            sigil = String.format("%s (%s)", witness.get(0), witness.get(1));
+        } else { // ...we are assuming for our own sanity that layers are declared after main witnesses.
+            sigil = witness.get(0);
         }
+        currvalue.put(sigil, newValue);
+        return currvalue.toString();
     }
 
     private static List<String> parseWitnessSigil (String sigil) {
@@ -224,8 +210,10 @@ public class CollateXJsonParser {
             base = base.replaceAll("\\s+$", "");
             parts.add(base);
             parts.add(extra);
-        } else
+        } else {
             parts.add(sigil);
+            parts.add("witnesses");
+        }
         return parts;
     }
 

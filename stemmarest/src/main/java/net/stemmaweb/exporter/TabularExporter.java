@@ -47,21 +47,15 @@ public class TabularExporter {
 
 
     public Response exportAsCSV(String tradId, char separator, String conflate, List<String> sectionList) {
-        ArrayList<Node> traditionSections;
         AlignmentModel wholeTradition;
         try {
-            // Get our list of sections
-            traditionSections = getSections(tradId, sectionList);
-            if(traditionSections==null) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
-            // Get the alignment model from exportAsJSON, and then turn that into CSV.
-            wholeTradition = getTraditionAlignment(traditionSections, conflate);
+            wholeTradition = returnFullAlignment(tradId, conflate, sectionList);
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
         }
+        if (wholeTradition == null) return Response.status(Response.Status.NOT_FOUND).build();
 
         // Got this far? Turn it into CSV.
         // The CSV will go into a string that we can return.
@@ -70,7 +64,7 @@ public class TabularExporter {
 
         // First write out the witness list
         writer.writeNext(wholeTradition.getAlignment().stream()
-                .map(WitnessTokensModel::getWitness).toArray(String[]::new));
+                .map(WitnessTokensModel::constructSigil).toArray(String[]::new));
 
         // Now write out the normal_form or text for the reading in each "row"
         for (int i = 0; i < wholeTradition.getLength(); i++) {
@@ -94,14 +88,10 @@ public class TabularExporter {
 
 
     public Response exportAsCharMatrix(String tradId, String conflate, List<String> sectionList) {
-        ArrayList<Node> traditionSections;
         AlignmentModel wholeTradition;
         try {
-            traditionSections = getSections(tradId, sectionList);
-            if(traditionSections==null) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
-            wholeTradition = getTraditionAlignment(traditionSections, conflate);
+            wholeTradition = returnFullAlignment(tradId, conflate, sectionList);
+            if (wholeTradition==null) return Response.status(Response.Status.NOT_FOUND).build();
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
@@ -115,26 +105,45 @@ public class TabularExporter {
         HashMap<String, StringBuilder> witnessRows = new HashMap<>();
         for (String sigil : witnessSigla) witnessRows.put(sigil, new StringBuilder());
         // Go rank by rank through all the lists of tokens, converting them into chars
+        int totalLength = 0;
         for (int i = 0; i < wholeTradition.getLength(); i++) {
             AtomicInteger ai = new AtomicInteger(i);
             List<ReadingModel> row = wholeTradition.getAlignment().stream()
                     .map(x -> x.getTokens().get(ai.get())).collect(Collectors.toList());
             // Make reading-to-character lookup
             HashMap<String, Character> charMap = new HashMap<>();
-            Character curr = 'A';
+            char curr = 'A';
+            boolean row_has_null = false;
+            boolean row_has_lacuna = false;
             for (ReadingModel rm : row) {
-                if (rm == null) continue;
+                if (rm == null) {
+                    row_has_null = true;
+                    continue;
+                } else if (rm.getIs_lacuna()) {
+                    row_has_lacuna = true;
+                    continue;
+                }
                 if (!charMap.containsKey(rm.getId())) {
                     charMap.put(rm.getId(), curr);
                     curr++;
                 }
             }
+            // Skip rows that don't diverge
+            if (curr == 'B' && !row_has_null && !row_has_lacuna)
+                continue;
+            // Check that we aren't over the 8-distinct-character limit
+            if (curr > 'H' || row_has_null && curr > 'G')
+                continue;
+
             // Employ it
+            totalLength++;
             for (int w = 0; w < witnessSigla.size(); w++) {
                 StringBuilder ourRow = witnessRows.get(witnessSigla.get(w));
                 ReadingModel ourReading = row.get(w);
-                if (ourReading == null)
+                if (ourReading == null) {
                     ourRow.append('X');
+                    curr++; // Count this in our maximum of eight characters
+                }
                 else if (ourReading.getIs_lacuna())
                     ourRow.append('?');
                 else
@@ -143,9 +152,9 @@ public class TabularExporter {
         }
         // Now let's build the whole matrix.
         StringBuilder charMatrix = new StringBuilder();
-        charMatrix.append(String.format("%d\5%d\n", wholeTradition.getAlignment().size(), wholeTradition.getLength()));
-        for (String sigil : witnessRows.keySet()) {
-            charMatrix.append(String.format("%-10s", sigil));
+        charMatrix.append(String.format("\t%d\t%d\n", wholeTradition.getAlignment().size(), totalLength));
+        for (String sigil : witnessSigla) {
+            charMatrix.append(String.format("%-10s", shortenSigil(sigil)));
             charMatrix.append(witnessRows.get(sigil));
             charMatrix.append("\n");
         }
@@ -153,6 +162,20 @@ public class TabularExporter {
         return Response.ok(charMatrix.toString()).build();
     }
 
+    private AlignmentModel returnFullAlignment(String tradId, String conflate, List<String> sectionList)
+            throws Exception {
+        ArrayList<Node> traditionSections = getSections(tradId, sectionList);
+        if(traditionSections==null) return null;
+        return getTraditionAlignment(traditionSections, conflate);
+    }
+
+    private static String shortenSigil (String sigil) {
+        String shortened = sigil.replaceAll("\\s+", "_")
+                .replaceAll("\\W+", "");
+        if (shortened.length() > 10)
+            shortened = shortened.substring(0, 10);
+        return shortened;
+    }
 
     private ArrayList<Node> getSections(String tradId, List<String> sectionList)
     throws TabularExporterException {
@@ -184,10 +207,12 @@ public class TabularExporter {
         // seen with a set.
         HashSet<String> allWitnesses = new HashSet<>();
         ArrayList<AlignmentModel> tables = new ArrayList<>();
+        int length = 0;
         for (Node sectionNode : traditionSections) {
             AlignmentModel asJson = new AlignmentModel(sectionNode, collapseRelated);
             // Save the alignment to our tables list
             tables.add(asJson);
+            length += asJson.getLength();
             // Save the witness -> column mapping to our map
             for (WitnessTokensModel witRecord : asJson.getAlignment()) {
                 allWitnesses.add(witRecord.constructSigil());
@@ -217,9 +242,11 @@ public class TabularExporter {
                     thisWitness = aSection.getAlignment().stream()
                             .filter(x -> x.getWitness().equals(parsed[0]) && !x.hasLayer()).findFirst();
                 }
+
                 if (thisWitness.isPresent()) {
                     WitnessTokensModel witcolumn = thisWitness.get();
                     wholeWitness.getTokens().addAll(witcolumn.getTokens());
+                    assert(witcolumn.getTokens().size() == aSection.getLength());
                 } else {
                     // Add a bunch of nulls
                     wholeWitness.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) aSection.getLength(), null)));
@@ -229,7 +256,7 @@ public class TabularExporter {
             wholeTradition.addWitness(wholeWitness);
         }
         // Record the length of the whole alignment
-        wholeTradition.setLength(wholeTradition.getAlignment().get(0).getTokens().size());
+        wholeTradition.setLength(length);
         return wholeTradition;
     }
 

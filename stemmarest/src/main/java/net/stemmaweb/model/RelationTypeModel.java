@@ -2,6 +2,7 @@ package net.stemmaweb.model;
 
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.neo4j.graphdb.*;
 
 import javax.xml.bind.annotation.XmlRootElement;
@@ -244,7 +245,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     }
 
     @Override
-    public int compareTo( RelationTypeModel o) {
+    public int compareTo(@NonNull RelationTypeModel o) {
         return bindlevel - o.getBindlevel();
     }
 }

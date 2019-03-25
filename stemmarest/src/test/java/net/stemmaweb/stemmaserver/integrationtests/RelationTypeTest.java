@@ -325,13 +325,19 @@ public class RelationTypeTest extends TestCase {
 
         HashSet<String> testReadings = new HashSet<>();
 
+        // Re-rank the whole thing according to relations or lack thereof
+        // LATER maybe implement the 'collated' relation
+        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/initRanks")
+                .get(ClientResponse.class);
+        assertEquals("success", Util.getValueFromJson(jerseyResult, "result"));
+
         // First make the same-rank relations
         RelationModel newRel = new RelationModel();
         newRel.setSource(eurisko22);
         newRel.setTarget(euricko22);
         newRel.setScope("local");
         newRel.setType("orthographic");
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, newRel);
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
@@ -362,7 +368,7 @@ public class RelationTypeTest extends TestCase {
         testReadings.add(euricko24);
         testReadings.add(eurecko24);
 
-        // Now join them together, and test that the ranks changed
+        // Now join them together, and test that the appropriate ranks changed
         newRel.setTarget(eurisko22);
         newRel.setType("orthographic");
         jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
@@ -371,7 +377,7 @@ public class RelationTypeTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
         assertEquals(4, result.getRelations().size());
-        assertEquals(2, result.getReadings().size());
+        assertEquals(8, result.getReadings().size());
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {

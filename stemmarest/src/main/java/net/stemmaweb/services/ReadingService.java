@@ -106,6 +106,7 @@ public class ReadingService {
     public static void removeWitnessLink (Node start, Node end, String sigil, String witClass) {
         // If we are removing a base witness link, we need to check whether any layers for
         // that witness end at our start node or start at our end node.
+        // TODO rethink this - it can also cause a.c. layer duplication!
         ArrayList<String> orphans = new ArrayList<>();
         if (witClass.equals("witnesses")) {
             for (Relationship r : start.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
@@ -295,6 +296,7 @@ public class ReadingService {
             // Get the last node on the path, check if its parents are ranked yet, and
             // delete its rank if it is wrong
             Node thisNode = path.endNode();
+            thisNode.setProperty("touched", true);
             Long maxParentRank = maxParentRank(thisNode);
             // If this is the first node in the sequence, then maxParentRank had better not
             // be null. This should also work for the #START# node.
@@ -302,17 +304,12 @@ public class ReadingService {
 
             // If maxParentRank is null, we remove our rank and stop calculating from here
             if (maxParentRank == null) {
-                thisNode.removeProperty("rank");
+                // thisNode.removeProperty("rank");
                 return Evaluation.EXCLUDE_AND_PRUNE;
             }
-            // If we aren't recalculating everything, and this isn't the starting node, and
-            // the rank isn't changing, we can stop
-            if (!recalculateAll && thisNode.hasProperty("rank") && path.lastRelationship() != null
-                    && thisNode.getProperty("rank").equals(maxParentRank + 1))
-                return Evaluation.EXCLUDE_AND_PRUNE;
 
             // Otherwise we set the rank and continue.
-            thisNode.setProperty("rank", maxParentRank + 1);
+            thisNode.setProperty("newrank", maxParentRank + 1);
             return Evaluation.INCLUDE_AND_CONTINUE;
         }
 
@@ -332,9 +329,10 @@ public class ReadingService {
                 n.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)
                         .forEach(x -> parents.add(x.getStartNode()));
                 for (Node p: parents) {
-                    if (!p.hasProperty("rank"))
+                    String rankprop = p.hasProperty("touched") ? "newrank" : "rank";
+                    if (!p.hasProperty(rankprop))
                         return null;
-                    Long thisRank = (Long) p.getProperty("rank");
+                    Long thisRank = (Long) p.getProperty(rankprop);
                     maxRankFound = thisRank > maxRankFound ? thisRank : maxRankFound;
                 }
             }
@@ -355,25 +353,49 @@ public class ReadingService {
         RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll);
         AlignmentTraverse a = new AlignmentTraverse(startNode);
         GraphDatabaseService db = startNode.getGraphDatabase();
-        // If we are recalculating all ranks, we should remove all ranks first
-        if (recalculateAll)
-            db.traversalDescription().depthFirst()
-                    .expand(new AlignmentTraverse())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode).nodes().stream().forEach(x -> x.removeProperty("rank"));
+
+        // Traverse the sequence graph from our start node, putting a mark on
+        // all the nodes we expect to visit
+        db.traversalDescription().depthFirst()
+                .expand(a)
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                .traverse(startNode).nodes().stream().forEach(x -> x.setProperty("touched", true));
 
         // At this point we can start to reassign ranks
-        ResourceIterable<Node> changed = db.traversalDescription().depthFirst()
+        ResourceIterable<Node> touched = db.traversalDescription().depthFirst()
                 .expand(a)
                 .evaluator(e)
                 .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                 .traverse(startNode).nodes();
-        Set<Node> result = changed.stream().collect(Collectors.toSet());
+        // Run the traverser and commit the updated ranks
+        Set<Node> changed = new HashSet<>();
+        for (Node n : touched.stream().collect(Collectors.toSet())) {
+            n.removeProperty("touched");
+            if (!n.hasProperty("newrank"))
+                throw new Exception (String.format("Node %d (%s) traversed but not re-ranked!",
+                        n.getId(), n.getProperty("text")));
+            Long nr = (Long) n.removeProperty("newrank");
+            if (!n.hasProperty("rank") || !n.getProperty("rank").equals(nr)) {
+                changed.add(n);
+                n.setProperty("rank", nr);
+            }
+        }
+
+        // TEMPORARY: Make sure that we did visit all expected nodes
+        Node sectionStart = DatabaseService.getStartNode(startNode.getProperty("section_id").toString(), db);
+        for (Node n : db.traversalDescription().depthFirst()
+                .expand(new AlignmentTraverse())
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                .traverse(sectionStart).nodes()) {
+            if (n.hasProperty("touched"))
+                throw new Exception ("End node not reached during recalculation!");
+        }
+
+
         // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
         String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
         List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db);
-        assert(clusters != null);
         for (Set<Node> cluster : clusters) {
             Long clusterRank = null;
             for (Node n : cluster) {
@@ -381,10 +403,12 @@ public class ReadingService {
                     clusterRank = (Long) n.getProperty("rank");
                 else
                     assert(clusterRank.equals(n.getProperty("rank")));
+                // else if (!clusterRank.equals(n.getProperty("rank")))
+                //     throw new Exception("Ranks diverge in cluster around rank " + clusterRank);
             }
         }
         // END TEMPORARY
-        return result;
+        return changed;
     }
 
     public static Set<Node> recalculateRank (Node startNode) throws Exception {
@@ -402,6 +426,7 @@ public class ReadingService {
         private HashSet<String> includeRelationTypes = new HashSet<>();
 
         // Walk the graph of sequences only
+        @SuppressWarnings("unused")
         AlignmentTraverse() {}
 
         // Walk the graph of sequences and colocated relations
@@ -495,8 +520,10 @@ public class ReadingService {
                 colocatedLookup.get(firstReading.getId()) : new HashSet<>();
         Set<Node> secondCluster = colocatedLookup.containsKey(secondReading.getId()) ?
                 colocatedLookup.get(secondReading.getId()) : new HashSet<>();
-        firstCluster.add(firstReading);
-        secondCluster.add(secondReading);
+        firstCluster.add(firstReading);    // in case there was no existing cluster
+        secondCluster.add(secondReading);  // in case there was no existing cluster
+        // Is it the same cluster set? Then they won't get cyclic
+        if (firstCluster.equals(secondCluster)) return false;
 
         // Find our max rank, as well as whether we need to reverse the search
         boolean reverse = false;
