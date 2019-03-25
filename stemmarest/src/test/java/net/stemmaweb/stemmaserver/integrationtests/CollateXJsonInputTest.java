@@ -24,6 +24,7 @@ import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CollateXJsonInputTest extends TestCase {
 
@@ -65,6 +66,25 @@ public class CollateXJsonInputTest extends TestCase {
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(22, allwits.size());
 
+
+        // Dive into the database and check that there are no redundant witness paths
+        try (Transaction tx = db.beginTx()) {
+            List<Relationship> sequences = DatabaseService.returnTraditionSection(sectId, db).relationships()
+                    .stream().filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
+            for (Relationship r : sequences) {
+                if (r.hasProperty("witnesses")) {
+                    ArrayList<String> mainwits = new ArrayList<>(Arrays.asList((String[]) r.getProperty("witnesses")));
+                    for (String p : r.getPropertyKeys()) {
+                        if (p.equals("witnesses")) continue;
+                        for (String w : (String[]) r.getProperty(p)) {
+                            if (mainwits.contains(w)) fail();
+                        }
+                    }
+                }
+            }
+            tx.success();
+        }
+
         // Check a witness text
         String witExpected = "Դրձեալ ի թվականուես հայոց. ի ն՟է՟. ամին. զօրաժողով լինէր ազգն արապաց. ուռհա և ամ եդեսացւոց " +
                 "աշխարհն ահագին բազմուբ անցեալ ընդ մեծ գետն եփրատ. և եկեալ ի վր ամուր քաղաքին որ կոչի սամուսատ. և " +
@@ -93,9 +113,9 @@ public class CollateXJsonInputTest extends TestCase {
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(77, gReadings.size());
         JSONObject token = new JSONObject(gReadings.get(0).getExtra());
-        assertEquals(firstPage, token.getJSONObject("page").getString("n"));
-        assertEquals(firstLine, token.getJSONObject("line").getString("xml:id"));
-        assertEquals(firstContext, token.getString("context"));
+        assertEquals(firstPage, token.getJSONObject("G").getJSONObject("page").getString("n"));
+        assertEquals(firstLine, token.getJSONObject("G").getJSONObject("line").getString("xml:id"));
+        assertEquals(firstContext, token.getJSONObject("G").getString("context"));
 
         // Check that the display token is used in the .dot output, if it exists
         ClientResponse resp = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/dot")
