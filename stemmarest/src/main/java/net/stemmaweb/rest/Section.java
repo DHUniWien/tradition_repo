@@ -385,9 +385,8 @@ public class Section {
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
                     .nodes();
             tx.success();
-            // Filter out the start and end nodes
             return sectionLemmata.stream().map(ReadingModel::new)
-                    .filter(ReadingModel::getIs_lemma)
+                    .filter(x -> !x.getIs_start() && !x.getIs_end())
                     .collect(Collectors.toList());
         } catch (Exception e) {
             e.printStackTrace();

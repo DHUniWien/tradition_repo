@@ -193,7 +193,7 @@ public class ReadingTest {
         keyModel2.setProperty("hebrew");
         models.add(keyModel2);
         KeyPropertyModel keyModel3 = new KeyPropertyModel();
-        keyModel3.setKey("is_lemma");
+        keyModel3.setKey("is_nonsense");
         keyModel3.setProperty(true);
         models.add(keyModel3);
         chgModel.setProperties(models);
@@ -208,7 +208,7 @@ public class ReadingTest {
         ReadingModel result = response.getEntity(ReadingModel.class);
         assertEquals("snow", result.getText());
         assertEquals("hebrew", result.getLanguage());
-        assertTrue(result.getIs_lemma());
+        assertTrue(result.getIs_nonsense());
         String expectedWitnessA = "when april with his snow sweet with fruit the drought of march has pierced unto me the root";
         Response resp = new Witness(tradId, "A").getWitnessAsText();
         assertEquals(expectedWitnessA, ((WitnessTextModel) resp.getEntity()).getText());
@@ -327,13 +327,9 @@ public class ReadingTest {
                 .get(new GenericType<List<RelationModel>>() {});
 
         // set a lemma
-        KeyPropertyModel kp = new KeyPropertyModel();
-        kp.setKey("is_lemma");
-        kp.setProperty(true);
-        ReadingChangePropertyModel rcp = new ReadingChangePropertyModel();
-        rcp.addProperty(kp);
-        ClientResponse response = jerseyTest.resource().path("/reading/" + firstNodeId)
-                .type(MediaType.APPLICATION_JSON).put(ClientResponse.class, rcp);
+        ClientResponse response = jerseyTest.resource().path("/reading/" + firstNodeId + "/setlemma")
+                .queryParam("value", "true")
+                .post(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
         // duplicate reading

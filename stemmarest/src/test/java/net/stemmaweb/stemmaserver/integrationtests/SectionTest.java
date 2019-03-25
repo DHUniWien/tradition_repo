@@ -768,15 +768,13 @@ public class SectionTest extends TestCase {
             String key = rm.getText() + "/" + rm.getRank().toString();
             readingLookup.put(key, rm.getId());
         }
-        KeyPropertyModel keyModel = new KeyPropertyModel();
-        keyModel.setKey("is_lemma");
-        keyModel.setProperty(true);
         String[] lemmatised = new String[]{"quasi/1", "duobus/2", "magnis/3", "luminaribus/4", "populus/5",
                 "terre/6", "illius/7", "ad/8", "dei/9", "veri/10", "noticiam/11", "et/12", "cultum/13",
                 "magis/14", "illustrabatur/16", "jugiter/17", "ac/18", "informabatur/19", "Sanctus/20", "autem/21"};
         for (String rdg : lemmatised) {
+            // Set normal forms for a few selected readings
             List<KeyPropertyModel> models = new ArrayList<>();
-            models.add(keyModel);
+            // models.add(keyModel);
             if (rdg.contains("autem")) {
                 KeyPropertyModel km = new KeyPropertyModel();
                 km.setKey("normal_form");
@@ -788,13 +786,22 @@ public class SectionTest extends TestCase {
                 km.setProperty("Quasi");
                 models.add(km);
             }
-            ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-            chgModel.setProperties(models);
+            if (models.size() > 0) {
+                ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
+                chgModel.setProperties(models);
 
-            jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get(rdg))
-                    .type(MediaType.APPLICATION_JSON)
-                    .put(ClientResponse.class, chgModel);
+                jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get(rdg))
+                        .type(MediaType.APPLICATION_JSON)
+                        .put(ClientResponse.class, chgModel);
+                assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+            }
+
+            // Now lemmatise the reading, whatever it is
+            jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get(rdg) + "/setlemma")
+                    .queryParam("value", "true")
+                    .post(ClientResponse.class);
             assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+
         }
         // Check that we still have no lemma text
         jerseyResult = jerseyTest.resource()
@@ -831,15 +838,16 @@ public class SectionTest extends TestCase {
             assertTrue(inLemma.contains(readingLookup.get(rdg)));
         }
 
-        // Add a lemma on the same rank, check that we get an error
-        List<KeyPropertyModel> models = new ArrayList<>();
-        models.add(keyModel);
-        ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-        chgModel.setProperties(models);
-        jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get("iugiter/17"))
+        // Add a lemma on the same rank, check that the other one gets unset
+        jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get("iugiter/17") + "/setlemma")
+                .queryParam("value", "true")
                 .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, chgModel);
+                .post(ClientResponse.class);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        List<ReadingModel> changed = jerseyResult.getEntity(new GenericType<List<ReadingModel>>() {});
+        assertEquals(2, changed.size());
+        assertTrue(changed.stream().anyMatch(x -> x.getId().equals(readingLookup.get("iugiter/17")) && x.getIs_lemma()));
+        assertTrue(changed.stream().anyMatch(x -> x.getId().equals(readingLookup.get("jugiter/17")) && !x.getIs_lemma()));
 
         // Lemma text hasn't changed yet
         jerseyResult = jerseyTest.resource()
@@ -850,31 +858,8 @@ public class SectionTest extends TestCase {
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
                 "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
 
-        // Now try to change it
-        jerseyResult = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + newSectId + "/setlemma")
-                .post(ClientResponse.class);
-        assertEquals(ClientResponse.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
 
-        // But the lemma text still hasn't changed
-        jerseyResult = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
-                .get(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaText = jerseyResult.getEntity(String.class);
-        assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
-                "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
-
-        // Remove the bad lemma, change another lemma, check that the text changes
-        keyModel.setProperty(false);
-        jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get("iugiter/17"))
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, chgModel);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get("ac/18"))
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, chgModel);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        // Re-set the lemma text, check that it changes
         jerseyResult = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/section/" + newSectId + "/setlemma")
                 .post(ClientResponse.class);
@@ -885,7 +870,7 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         lemmaText = jerseyResult.getEntity(String.class);
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
-                "cultum magis illustrabatur jugiter informabatur Sanctus autem.", lemmaText);
+                "cultum magis illustrabatur iugiter ac informabatur Sanctus autem.", lemmaText);
 
     }
 

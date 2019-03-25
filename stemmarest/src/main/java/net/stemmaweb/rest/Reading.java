@@ -101,10 +101,22 @@ public class Reading {
                 currentKey = keyPropertyModel.getKey();
                 if (currentKey.equals("id")) {
                     errorMessage = "Reading ID cannot be changed!";
-                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                    return errorResponse(Status.BAD_REQUEST);
+                } else if (currentKey.equals("is_lemma")
+                        && !keyPropertyModel.getProperty().equals(reading.getProperty(currentKey))) {
+                    errorMessage = "Use /setlemma to change the reading's lemmatisation";
+                    return errorResponse(Status.BAD_REQUEST);
                 }
                 // Check that this field actually exists in our model
                 Field ourField = modelToReturn.getClass().getDeclaredField(currentKey);
+                // Deal with special cases e.g. is_lemma
+                if (currentKey.equals("is_lemma")) {
+                    // Unset the lemma for all other readings at this rank.
+                    Map<String, Object> criteria = new HashMap<>();
+                    criteria.put("section_id", reading.getProperty("section_id"));
+                    criteria.put("rank", reading.getProperty("rank"));
+                    db.findNodes(Nodes.READING, criteria).forEachRemaining(x -> x.removeProperty("is_lemma"));
+                }
                 // Then set the property.
                 // Convert types not native to JSON
                 if (ourField.getType().equals(Long.class))
@@ -126,6 +138,40 @@ public class Reading {
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.status(Response.Status.OK).entity(modelToReturn).build();
+    }
+
+    @POST
+    @Path("setlemma")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    public Response setReadingAsLemma(@QueryParam("value") @DefaultValue("false") String value) {
+        List<ReadingModel> changed = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            Node reading = db.getNodeById(readId);
+            if (value.equals("true")) {
+                if (!reading.hasProperty("is_lemma") || !reading.getProperty("is_lemma").equals(true)) {
+                    Map<String, Object> criteria = new HashMap<>();
+                    criteria.put("section_id", reading.getProperty("section_id"));
+                    criteria.put("rank", reading.getProperty("rank"));
+                    criteria.put("is_lemma", true);
+                    db.findNodes(Nodes.READING, criteria).forEachRemaining(x -> {
+                        x.removeProperty("is_lemma");
+                        changed.add(new ReadingModel(x));
+                    });
+                    reading.setProperty("is_lemma", true);
+                    changed.add(new ReadingModel(reading));
+                }
+            } else if (reading.hasProperty("is_lemma")){
+                reading.removeProperty("is_lemma");
+                changed.add(new ReadingModel(reading));
+            } // otherwise it's a no-op
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        }
+        return Response.ok(changed).build();
     }
 
     /**
