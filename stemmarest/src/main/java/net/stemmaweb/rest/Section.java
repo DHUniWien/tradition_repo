@@ -334,9 +334,11 @@ public class Section {
         return Response.ok(result).build();
     }
     /**
-     * Gets the lemma text for the section, if there is any.
+     * Gets the lemma text for the section, if there is any. Returns the text in a JSON object
+     * with key 'text'.
      *
      * @summary Get lemma text
+     * @param followFinal - Whether or not to follow the 'lemma_text' path
      * @return A string that is the lemma text readings
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -344,21 +346,32 @@ public class Section {
      */
     @GET
     @Path("/lemmatext")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
-    @ReturnType("java.lang.String")
-    public Response getLemmaText() {
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("net.stemmaweb.WitnessTextModel")
+    public Response getLemmaText(@QueryParam("final") @DefaultValue("false") String followFinal) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-        List<ReadingModel> sectionLemmata = collectLemmaReadings();
-        if (sectionLemmata == null)
-            return Response.serverError().build();
-        return Response.ok(ReadingService.textOfReadings(sectionLemmata, true)).build();
+        List<ReadingModel> sectionLemmata;
+        try {
+            sectionLemmata = collectLemmaReadings(followFinal.equals("true"));
+            // Add on the end node, so we know whether a lacuna marker is needed.
+            sectionLemmata.add(new ReadingModel(DatabaseService.getEndNode(sectId, db)));
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        WitnessTextModel lm = new WitnessTextModel(
+                ReadingService.textOfReadings(sectionLemmata, true, followFinal.equals("false")));
+        return Response.ok(lm).build();
     }
 
     /**
-     * Gets the list of lemma readings for the section, if there are any.
+     * Gets the list of lemma readings for the section, if there are any. Requesting the "final"
+     * lemma sequence will return what was set by .../setlemma; otherwise all readings marked
+     * as lemmata will be returned, in order of rank, whether or not they are yet on a lemma
+     * path.
      *
-     * @summary Get lemma text
+     * @summary Get sequence of lemma readings
+     * @param followFinal - Whether or not to follow the 'lemma_text' path
      * @return A JSON list of lemma text readings
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -368,31 +381,49 @@ public class Section {
     @Path("/lemmareadings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
-    public Response getLemmaReadings() {
+    public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-        List<ReadingModel> sectionLemmata = collectLemmaReadings();
-        return sectionLemmata == null ? Response.serverError().build() : Response.ok(sectionLemmata).build();
-    }
-
-    private List<ReadingModel> collectLemmaReadings () {
-        try (Transaction tx = db.beginTx()) {
-
-            Node startNode = DatabaseService.getStartNode(sectId, db);
-            ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
-                    .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                    .nodes();
-            tx.success();
-            // Filter out the start and end nodes
-            return sectionLemmata.stream().map(ReadingModel::new)
-                    .filter(ReadingModel::getIs_lemma)
-                    .collect(Collectors.toList());
+        List<ReadingModel> sectionLemmata;
+        try {
+            sectionLemmata = collectLemmaReadings(followFinal.equals("true"));
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
+        return Response.ok(sectionLemmata).build();
+    }
+
+    private List<ReadingModel> collectLemmaReadings(Boolean followFinal) {
+        List<ReadingModel> result;
+        Node startNode = DatabaseService.getStartNode(sectId, db);
+        try (Transaction tx = db.beginTx()) {
+            if (followFinal) {
+                ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
+                        .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
+                        .evaluator(Evaluators.all())
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                        .nodes();
+                // Filter out the start and end nodes
+                result = sectionLemmata.stream().map(ReadingModel::new)
+                        .filter(x -> !x.getIs_start() && !x.getIs_end())
+                        .collect(Collectors.toList());
+            } else {
+                result = db.traversalDescription().depthFirst()
+                        .expand(new AlignmentTraverse())
+                        .uniqueness(Uniqueness.NODE_GLOBAL)
+                        .traverse(startNode).nodes().stream()
+                        .filter(x -> x.hasLabel(Nodes.READING)
+                                && x.hasProperty("is_lemma")
+                                && x.getProperty("is_lemma").equals(true))
+                        .map(ReadingModel::new).sorted().collect(Collectors.toList());
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw(e);
+        }
+        return result;
     }
 
 
@@ -491,7 +522,7 @@ public class Section {
     @POST
     @Path("/splitAtRank/{rankstr}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -947,7 +978,8 @@ public class Section {
      */
     @POST
     @Path("/setlemma")
-    @ReturnType("java.lang.Void")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.String")
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -1002,13 +1034,11 @@ public class Section {
             }
             tx.success();
         } catch (Exception e) {
-            if (e.getMessage().contains("More than one"))
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(jsonerror(e.getMessage())).build();
-            e.printStackTrace();
-            return Response.serverError().build();
+            if (!e.getMessage().contains("More than one"))
+                e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().build();
+        return Response.ok(jsonresp("result", "success")).build();
     }
 
 

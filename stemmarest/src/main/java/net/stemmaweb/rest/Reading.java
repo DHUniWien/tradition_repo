@@ -75,9 +75,11 @@ public class Reading {
     }
 
     /**
-     * Changes the properties of an existing reading.
-     * @summary Update an existing reading
+     * Changes the properties of an existing reading. Properties whose change has
+     * potential knock-on effects on other readings, such as "is_lemma", cannot be
+     * set using this method.
      *
+     * @summary Update an existing reading
      * @param changeModels
      *            an array of named key/value property pairs. For example, a request to
      *            change the reading's language to German will look like this:
@@ -101,7 +103,11 @@ public class Reading {
                 currentKey = keyPropertyModel.getKey();
                 if (currentKey.equals("id")) {
                     errorMessage = "Reading ID cannot be changed!";
-                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                    return errorResponse(Status.BAD_REQUEST);
+                } else if (currentKey.equals("is_lemma")
+                        && !keyPropertyModel.getProperty().equals(reading.getProperty(currentKey))) {
+                    errorMessage = "Use /setlemma to change the reading's lemmatisation";
+                    return errorResponse(Status.BAD_REQUEST);
                 }
                 // Check that this field actually exists in our model
                 Field ourField = modelToReturn.getClass().getDeclaredField(currentKey);
@@ -126,6 +132,49 @@ public class Reading {
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
         return Response.status(Response.Status.OK).entity(modelToReturn).build();
+    }
+
+    /**
+     * Toggles whether this reading is a lemma. If so, ensures that no other reading at this
+     * rank in this section is a lemma. Returns all readings that were changed.
+     *
+     * @param value - "true" if the reading should be a lemma
+     * @return a list of changed ReadingModels
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error, with an error message
+     */
+    @POST
+    @Path("setlemma")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    public Response setReadingAsLemma(@QueryParam("value") @DefaultValue("false") String value) {
+        List<ReadingModel> changed = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            Node reading = db.getNodeById(readId);
+            if (value.equals("true")) {
+                if (!reading.hasProperty("is_lemma") || !reading.getProperty("is_lemma").equals(true)) {
+                    Map<String, Object> criteria = new HashMap<>();
+                    criteria.put("section_id", reading.getProperty("section_id"));
+                    criteria.put("rank", reading.getProperty("rank"));
+                    criteria.put("is_lemma", true);
+                    db.findNodes(Nodes.READING, criteria).forEachRemaining(x -> {
+                        x.removeProperty("is_lemma");
+                        changed.add(new ReadingModel(x));
+                    });
+                    reading.setProperty("is_lemma", true);
+                    changed.add(new ReadingModel(reading));
+                }
+            } else if (reading.hasProperty("is_lemma")){
+                reading.removeProperty("is_lemma");
+                changed.add(new ReadingModel(reading));
+            } // otherwise it's a no-op
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        }
+        return Response.ok(changed).build();
     }
 
     /**
