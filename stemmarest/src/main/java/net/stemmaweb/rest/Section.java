@@ -798,6 +798,7 @@ public class Section {
      * @summary List mergeable readings
      * @param startRank - where to start
      * @param endRank   - where to end
+     * @param threshold - the number of ranks to look ahead/behind
      * @param limitText      - limit search to readings with the given text
      * @return lists of readings that may be merged.
      * @statuscode 200 - on success
@@ -811,6 +812,7 @@ public class Section {
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") long startRank,
             @PathParam("endRank") long endRank,
+            @DefaultValue("10") @QueryParam("threshold") long threshold,
             @DefaultValue("") @QueryParam("text") String limitText) {
         Node startNode = DatabaseService.getStartNode(sectId, db);
         if (startNode == null) {
@@ -823,7 +825,7 @@ public class Section {
             List<Node> questionedReadings = getReadingsBetweenRanks(
                     startRank, endRank, startNode, limitText);
 
-            couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings);
+            couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings, threshold);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -840,7 +842,7 @@ public class Section {
      * @return list of lists of identical readings
      */
     private List<List<ReadingModel>> getCouldBeIdenticalAsList (
-            List<Node> questionedReadings) throws Exception {
+            List<Node> questionedReadings, long threshold) throws Exception {
 
         List<List<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
         HashSet<Long> processed = new HashSet<>();
@@ -848,8 +850,10 @@ public class Section {
         for (Node nodeA : questionedReadings) {
             if (processed.contains(nodeA.getId()))
                 continue;
+            Long aRank = Long.valueOf(nodeA.getProperty("rank").toString());
             List<Node> sameText = questionedReadings.stream().filter(x -> !x.equals(nodeA)
-                && x.getProperty("text").equals(nodeA.getProperty("text")))
+                && x.getProperty("text").equals(nodeA.getProperty("text"))
+                && Math.abs(Long.valueOf(x.getProperty("rank").toString()) - aRank) < threshold)
                     .collect(Collectors.toList());
             for (Node n : sameText) {
                 if (processed.contains(n.getId()))
