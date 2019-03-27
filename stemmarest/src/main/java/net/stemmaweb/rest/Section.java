@@ -4,6 +4,7 @@ import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -1117,7 +1118,73 @@ public class Section {
         return exporter.writeNeo4J(tradId, sectId, dm);
     }
 
-    // TODO Export a list of variants for a section
+    /**
+     * Returns a JSON file that contains the aligned reading data for the tradition.
+     *
+     * @summary Download JSON alignment
+     *
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @return the JSON alignment
+     */
+    @GET
+    @Path("/json")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
+    public Response getJson(@QueryParam("conflate") String toConflate) {
+        List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
+        return new TabularExporter(db).exportAsJSON(tradId, toConflate, thisSection);
+    }
+
+    /**
+     * Returns a CSV file that contains the aligned reading data for the tradition.
+     *
+     * @summary Download CSV alignment
+     *
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @return the CSV alignment as plaintext
+     */
+    @GET
+    @Path("/csv")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
+    public Response getCsv(@QueryParam("conflate") String toConflate) {
+        List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
+        return new TabularExporter(db).exportAsCSV(tradId, ',', toConflate, thisSection);
+    }
+
+    /**
+     * Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.
+     *
+     * @summary Download TSV alignment
+     *
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @return the TSV alignment as plaintext
+     */
+    @GET
+    @Path("/tsv")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
+    public Response getTsv(@QueryParam("conflate") String toConflate) {
+        List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
+        return new TabularExporter(db).exportAsCSV(tradId, '\t', toConflate, thisSection);
+    }
+
+    /**
+     * Returns a character matrix suitable for use with e.g. Phylip Pars.
+     *
+     * @summary Download character matrix for parsimony analysis
+     *
+     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @return the character matrix as plaintext
+     */
+    @GET
+    @Path("/matrix")
+    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @ReturnType("java.lang.Void")
+    public Response getCharMatrix(@QueryParam("conflate") String toConflate) {
+        List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
+        return new TabularExporter(db).exportAsCharMatrix(tradId, toConflate, thisSection);
+    }
 
     // For use in a transaction!
     private void removeFromSequence (Node thisSection) {
