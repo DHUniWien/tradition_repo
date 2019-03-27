@@ -95,12 +95,10 @@ public class SequenceModel {
         this.witnesses = witnesses;
     }
 
-    @SuppressWarnings("unused")
     public Map<String, List<String>> getLayers() {
         return layers;
     }
 
-    @SuppressWarnings("WeakerAccess")
     public void setLayers(Map<String, List<String>> layers) {
         this.layers = layers;
     }

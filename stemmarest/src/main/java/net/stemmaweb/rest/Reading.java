@@ -175,6 +175,63 @@ public class Reading {
         return Response.ok(changed).build();
     }
 
+
+    /**
+     * Inserts a lacuna in the specified witness(es) after a given reading and before the next
+     * reading(s) in the sequence for that witness / those witnesses. Intended to indicate that
+     * empty ranks are not a simple omission.
+     *
+     * @summary Insert a lacuna
+     * @param forWitnesses - one or more witnesses that should have the lacuna marked.
+     * @return a GraphModel containing the lacuna and its associated SEQUENCE links.
+     * @statuscode 200 - on success
+     * @statuscode 400 - if a specified witness does not pass through the given reading
+     * @statuscode 500 - on error
+     */
+    @POST
+    @Path("/lacunaAfter")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("net.stemmaweb.model.GraphModel")
+    public Response addLacuna (@QueryParam("witness") List<String> forWitnesses) {
+        GraphModel result = new GraphModel();
+        try (Transaction tx = db.beginTx()) {
+            // Get a reading model so we can easily check the witnesses
+            Node us = db.getNodeById(readId);
+            ReadingModel thisReading = new ReadingModel(us);
+            // Make our lacuna node
+            Node lacuna = db.createNode(Nodes.READING);
+            lacuna.setProperty("section_id", us.getProperty("section_id"));
+            lacuna.setProperty("is_lacuna", true);
+            ReadingModel lrm = new ReadingModel(lacuna);
+            result.setReadings(Collections.singletonList(lrm));
+            HashSet<SequenceModel> newSeqs = new HashSet<>();
+            for (String sigil : forWitnesses) {
+                // Make sure the witness in question belongs to the given reading
+                if (!thisReading.getWitnesses().contains(sigil)) {
+                    errorMessage = String.format("The requested witness %s does not belong to this reading", sigil);
+                    return errorResponse(Status.BAD_REQUEST);
+                }
+                // Find the witness's following node
+                HashMap<String, String> wit = parseSigil(sigil);
+                Node next = this.getNeighbourReadingInSequence(wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
+                // Thread the lacuna between them
+                ReadingService.removeWitnessLink(us, next, wit.get("sigil"), wit.get("layer"));
+                newSeqs.add(new SequenceModel(ReadingService.addWitnessLink(
+                        us, lacuna, wit.get("sigil"), wit.get("layer"))));
+                newSeqs.add(new SequenceModel(ReadingService.addWitnessLink(
+                        lacuna, next, wit.get("sigil"), wit.get("layer"))));
+            }
+            result.addSequences(newSeqs);
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        }
+        return Response.ok(result).build();
+    }
+
+
     /**
      * Gets all readings related to the given reading.
      * @summary Get related readings

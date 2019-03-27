@@ -17,14 +17,9 @@ public enum Nodes implements Label {
     SECTION,        // is a part of a tradition
     STEMMA,         // is a stemma root node
     RELATION_TYPE,  // is a defined relation type
-    REFERENCE,      // is an entity reference
-    PERSON,
-    PERSONREF,      // ...to a person
-    PLACE,
-    PLACEREF,       // ...to a place
-    DATE,           // is a concrete period of time
-    DATEREF,        // is a reference to a date
-    DATING,         // is a reference in the text to a period of time
+    ANNOTATION,     // is a definition of an annotation label
+    PROPERTIES,  // is the properties that a particular annotation node can have
+    LINKS,       // is the relationships that a particular annotation node can have
     USER,           // is a user node
     __SYSTEM__      // is a __SYSTEM__ node
 }

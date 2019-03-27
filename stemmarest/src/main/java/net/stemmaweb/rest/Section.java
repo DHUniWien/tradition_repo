@@ -546,21 +546,12 @@ public class Section {
             // at the start of the new section too.
             boolean lacunoseWitsPresent = false;
             HashSet<Relationship> linksToSplit = new HashSet<>();
-            ResourceIterable<Relationship> sectionSequences = db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                    .relationships();
-            for (Relationship r : sectionSequences) {
+            for (Relationship r : sequencesCrossingRank(rank, false)) {
                 Node thisStart = r.getStartNode();
-                Node thisEnd = r.getEndNode();
-                Long startRank = (Long) thisStart.getProperty("rank");
-                Long endRank = (Long) thisEnd.getProperty("rank");
-                if (startRank < rank && endRank >= rank) {
-                    linksToSplit.add(r);
-                    if (thisStart.hasProperty("is_lacuna") && thisStart.getProperty("is_lacuna").equals(true)
-                            && endRank > rank) lacunoseWitsPresent = true;
-                }
+                Long endRank = (Long) r.getStartNode().getProperty("rank");
+                linksToSplit.add(r);
+                if (thisStart.hasProperty("is_lacuna") && thisStart.getProperty("is_lacuna").equals(true)
+                        && endRank > rank) lacunoseWitsPresent = true;
             }
 
             // Make sure we have readings at the requested rank in this section
@@ -647,6 +638,25 @@ public class Section {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok().entity(jsonresp("sectionId", newSectionId)).build();
+    }
+
+
+    private List<Relationship> sequencesCrossingRank(Long rank, Boolean leftfencepost) {
+        Node startNode = DatabaseService.getStartNode(sectId, db);
+        return db.traversalDescription().depthFirst()
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                .evaluator(Evaluators.all())
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                .relationships().stream().filter(x -> crossesRank(x, rank, leftfencepost))
+                .collect(Collectors.toList());
+    }
+
+    private static boolean crossesRank (Relationship r, Long rank, boolean leftfencepost) {
+        Long startRank = (Long) r.getStartNode().getProperty("rank");
+        Long endRank = (Long) r.getEndNode().getProperty("rank");
+        boolean startsBefore = startRank < rank || (leftfencepost && startRank.equals(rank));
+        boolean endsAfter = endRank > rank || (!leftfencepost && endRank.equals(rank));
+        return startsBefore && endsAfter;
     }
 
     /**
@@ -1051,6 +1061,46 @@ public class Section {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(jsonresp("result", "success")).build();
+    }
+
+    @POST
+    @Path("/emend")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("net.stemmaweb.model.GraphModel")
+    public Response emendText(ProposedEmendationModel proposal) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonerror("Tradition and/or section not found")).build();
+        GraphModel result = new GraphModel();
+        try (Transaction tx = db.beginTx()) {
+            // Find all the last readings at or prior to the fromRank. Omit any lacunae - we
+            // don't emend a lacunose text.
+            Set<Node> atOrPrior = sequencesCrossingRank(proposal.getFromRank(), true)
+                    .stream().filter(x -> !x.getStartNode().hasProperty("is_lacuna"))
+                    .map(Relationship::getStartNode).collect(Collectors.toSet());
+            // Find all the first readings at or after the toRank.
+            Set<Node> atOrAfter = sequencesCrossingRank(proposal.getToRank(), false)
+                    .stream().map(Relationship::getEndNode).collect(Collectors.toSet());
+            // Make the emendation node
+            Node emendation = db.createNode(Nodes.READING, Nodes.EMENDATION);
+            emendation.setProperty("text", proposal.getText());
+            emendation.setProperty("authority", proposal.getAuthority());
+            emendation.setProperty("rank", proposal.getFromRank() + 1);
+            emendation.setProperty("section_id", sectId);
+            ReadingModel emrm = new ReadingModel(emendation);
+            result.setReadings(Collections.singletonList(emrm));
+            // Connect it in the graph
+            List<SequenceModel> newLinks = new ArrayList<>();
+            for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
+            for (Node n : atOrAfter) newLinks.add(new SequenceModel(emendation.createRelationshipTo(n, ERelations.EMENDED)));
+            result.setSequences(newLinks);
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.ok(result).build();
     }
 
 
