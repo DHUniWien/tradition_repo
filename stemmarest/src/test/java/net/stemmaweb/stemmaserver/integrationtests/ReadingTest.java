@@ -809,6 +809,9 @@ public class ReadingTest {
             Node secondNode = nodes.next();
             assertFalse(nodes.hasNext());
 
+            // Save the model of the reading we'll lose
+            ReadingModel drm = new ReadingModel(secondNode);
+
             // merge readings
             ClientResponse response = jerseyTest
                     .resource()
@@ -818,6 +821,12 @@ public class ReadingTest {
                     .post(ClientResponse.class);
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+
+            for (String sigil : drm.getWitnesses()) {
+                response = jerseyTest.resource().path("/tradition/" + tradId + "/witness/" + sigil + "/text")
+                        .get(ClientResponse.class);
+                assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            }
 
             // should contain one reading less now
             testNumberOfReadingsAndWitnesses(28);

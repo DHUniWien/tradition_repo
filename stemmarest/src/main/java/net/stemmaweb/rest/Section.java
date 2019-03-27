@@ -867,7 +867,14 @@ public class Section {
             }
             processed.add(nodeA.getId());
         }
-        return couldBeIdenticalReadings;
+        return couldBeIdenticalReadings.stream()
+                .sorted(Comparator.comparingLong(this::rankDifference))
+                .collect(Collectors.toList());
+    }
+
+    // Return the difference in ranks between the given pair of readings.
+    private long rankDifference(List<ReadingModel> pair) {
+        return Math.abs(pair.get(1).getRank() - pair.get(0).getRank());
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes

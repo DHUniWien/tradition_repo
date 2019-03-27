@@ -15,9 +15,7 @@ import javax.ws.rs.core.Response.Status;
 
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.*;
 
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
@@ -427,7 +425,7 @@ public class Reading {
      * @return a GraphModel containing the new readings, new sequences and deleted relations.
      *         Note that this does NOT return deleted or modified sequences.
      */
-    private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) {
+    private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) throws Exception {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
         Reading rdgRest = new Reading(String.valueOf(originalReading.getId()));
@@ -438,8 +436,9 @@ public class Reading {
             HashMap<String, String> witness = parseSigil(wit);
             Node prior = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
             Node next = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
-            assert(prior != null);
-            assert(next != null);
+            if (prior == null || next == null) {
+                throw new Exception("No prior / next node found for reading " + originalReading.getId() + "!");
+            }
             try (Transaction tx = db.beginTx()) {
                 // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
                 newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
@@ -512,6 +511,9 @@ public class Reading {
             stayingReading = db.getNodeById(readId);
             deletingReading = db.getNodeById(secondReadId);
 
+            // TEMPORARY sanity check: Find all witnesses of the reading to be merged.
+            ReadingModel drm = new ReadingModel(deletingReading);
+
             if (!canBeMerged(stayingReading, deletingReading)) {
                 return errorResponse(Status.CONFLICT);
             }
@@ -530,6 +532,23 @@ public class Reading {
 
             // Do the deed
             merge(stayingReading, deletingReading);
+
+            // TEMPORARY: Check that all affected witnesses still have paths to the end node
+            for (String sig : drm.getWitnesses()) {
+                HashMap<String, String> parts = parseSigil(sig);
+                Witness w = new Witness(getTraditionId(), stayingReading.getProperty("section_id").toString(), parts.get("sigil"));
+                Response r;
+                if (parts.get("layer").equals("witnesses"))
+                    r = w.getWitnessAsText();
+                else {
+                    ArrayList<String> layers = new ArrayList<>();
+                    layers.add(parts.get("layer"));
+                    r = w.getWitnessAsTextWithLayer(layers, "0", "E");
+                }
+                if (r.getStatus() != Status.OK.getStatusCode()) {
+                    throw new Exception ("Merge broke path for witness " + sig);
+                }
+            }
             // Re-rank nodes if necessary
             if (!samerank) {
                 ReadingService.recalculateRank(aPriorNode);
