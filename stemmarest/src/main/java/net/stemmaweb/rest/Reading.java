@@ -247,7 +247,59 @@ public class Reading {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
-        ArrayList<ReadingModel> relatedReadings = new ArrayList<>();
+        List<Node> relatedReadings = collectRelatedReadings(filterTypes);
+        if (relatedReadings == null) // An error happened
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        return Response.ok(relatedReadings.stream().map(ReadingModel::new).collect(Collectors.toList())).build();
+    }
+
+
+    /**
+     * Propagates this reading's normal form to all other readings related by the given type.
+     *
+     * @summary Propagate normal form along relations
+     * @param onRelationType - the relation type to propagate along
+     * @return a list of changed readings
+     * @statuscode 200 - on success
+     * @statuscode 400 - if the reading has neither normal form nor text
+     * @statuscode 500 - on failure
+     */
+    @POST
+    @Path("normaliseRelated/{reltype}")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    public Response normaliseRelated(@PathParam("reltype") String onRelationType) {
+        List<ReadingModel> changed = new ArrayList<>();
+        List<Node> related = collectRelatedReadings(Collections.singletonList(onRelationType));
+        if (related == null) return errorResponse(Status.INTERNAL_SERVER_ERROR);
+
+        try (Transaction tx = db.beginTx()) {
+            Node us = db.getNodeById(readId);
+            String key = us.hasProperty("normal_form") ? "normal_form" : "text";
+            Object ourNormalForm = db.getNodeById(readId).getProperty(key);
+            // Set the normal form on this reading if it wasn't already there
+            us.setProperty("normal_form", ourNormalForm);
+            for (Node n : related) {
+                if (!n.getProperty("normal_form", "").equals(ourNormalForm)) {
+                    n.setProperty("normal_form", ourNormalForm);
+                    changed.add(new ReadingModel(n));
+                }
+            }
+            tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = "Reading has no normal form or text to propagate";
+            return errorResponse(Status.BAD_REQUEST);
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        }
+        return Response.ok(changed).build();
+    }
+
+
+    private List<Node> collectRelatedReadings(List<String> filterTypes) {
+        List<Node> allRelated = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
             RelationService.RelatedReadingsTraverser rt;
@@ -261,14 +313,14 @@ public class Reading {
                     .relationships(ERelations.RELATED)
                     .evaluator(rt)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(reading).nodes().forEach(x -> relatedReadings.add(new ReadingModel(x)));
+                    .traverse(reading).nodes().forEach(allRelated::add);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
-            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+            return null;
         }
-        return Response.ok(relatedReadings).build();
+        return allRelated;
     }
 
     /**

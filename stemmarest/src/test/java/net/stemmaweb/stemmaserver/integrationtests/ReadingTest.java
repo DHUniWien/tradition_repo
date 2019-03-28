@@ -318,6 +318,111 @@ public class ReadingTest {
     }
 
     @Test
+    public void deleteRelationsOnReadingTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "John", "LR", "1",
+                "src/TestFiles/john.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String newTradId = Util.getValueFromJson(response, "tradId");
+
+        // Get our list of readings to play with
+        List<ReadingModel> allreadings = jerseyTest.resource()
+                .path("/tradition/" + newTradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+
+        // Find a reading with several relations
+        Optional<ReadingModel> ourEn = allreadings.stream().filter(
+                x -> x.getRank().equals(25L) && x.getText().equals("εν") && x.getWitnesses().contains("P66"))
+                .findFirst();
+        assertTrue(ourEn.isPresent());
+        response = jerseyTest.resource().path("/reading/" + ourEn.get().getId() + "/relations")
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<RelationModel> deleted = response.getEntity(new GenericType<List<RelationModel>>() {});
+        assertEquals(2, deleted.size());
+        assertEquals("orthographic", deleted.get(0).getType());
+        assertEquals("orthographic", deleted.get(1).getType());
+
+        // None of the readings at rank 25 should now have any related readings
+        for (ReadingModel rm : allreadings.stream().filter(x -> x.getRank().equals(25L)).collect(Collectors.toList())) {
+            response = jerseyTest.resource().path("/reading/" + rm.getId() + "/related").get(ClientResponse.class);
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+            assertEquals(0, response.getEntity(new GenericType<List<ReadingModel>>() {}).size());
+        }
+
+        // Find a reading in a relation knot, and make sure that only its relations get deleted
+        Optional<ReadingModel> ourEcti = allreadings.stream()
+                .filter(x -> x.getRank().equals(28L) && x.getText().equals("εϲτι¯")).findFirst();
+        assertTrue(ourEcti.isPresent());
+        response = jerseyTest.resource().path("/reading/" + ourEcti.get().getId() + "/relations")
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        deleted = response.getEntity(new GenericType<List<RelationModel>>() {});
+        assertEquals(2, deleted.size());
+        assertEquals("orthographic", deleted.get(0).getType());
+        assertEquals("orthographic", deleted.get(1).getType());
+
+        // We should still have two relations at rank 28, both attached to εϲτιν
+        Optional<ReadingModel> ourEctin = allreadings.stream()
+                .filter(x -> x.getRank().equals(28L) && x.getText().equals("εϲτιν")).findFirst();
+        assertTrue(ourEctin.isPresent());
+        response = jerseyTest.resource().path("/reading/" + ourEctin.get().getId() + "/related").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(2, response.getEntity(new GenericType<List<ReadingModel>>() {}).size());
+
+    }
+
+    @Test
+    public void propagateReadingNormalFormTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "John", "LR", "1",
+                "src/TestFiles/john.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String newTradId = Util.getValueFromJson(response, "tradId");
+
+        // Get our list of readings to play with
+        List<ReadingModel> allreadings = jerseyTest.resource()
+                .path("/tradition/" + newTradId + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+
+        // Find a set of readings to propagate on
+        Optional<ReadingModel> apolusw = allreadings.stream()
+                .filter(x -> x.getRank().equals(46L) && x.getText().equals("ἀπολύσω")).findFirst();
+        assertTrue(apolusw.isPresent());
+        response = jerseyTest.resource().path("/reading/" + apolusw.get().getId() + "/normaliseRelated/orthographic")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<ReadingModel> changed = response.getEntity(new GenericType<List<ReadingModel>>(){});
+        assertEquals(2, changed.size());
+
+        // Now all readings at that rank should have the same normal form
+        allreadings.stream().filter(x -> x.getRank().equals(46L))
+                .map(x -> jerseyTest.resource().path("/reading/" + x.getId()).get(ReadingModel.class))
+                .forEach(r -> assertEquals("ἀπολύσω", r.getNormal_form()));
+
+        // Change the first reading's normal form and try again
+        KeyPropertyModel km = new KeyPropertyModel();
+        km.setKey("normal_form");
+        km.setProperty("Ἀπολύσω");
+        ReadingChangePropertyModel rcpm = new ReadingChangePropertyModel();
+        rcpm.addProperty(km);
+        response = jerseyTest.resource().path("/reading/" + apolusw.get().getId())
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, rcpm);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Re-do the operation and make sure all the normal forms changed
+        response = jerseyTest.resource().path("/reading/" + apolusw.get().getId() + "/normaliseRelated/orthographic")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        changed = response.getEntity(new GenericType<List<ReadingModel>>(){});
+        assertEquals(2, changed.size());
+
+        // Now all readings at that rank should have the same normal form
+        allreadings.stream().filter(x -> x.getRank().equals(46L))
+                .map(x -> jerseyTest.resource().path("/reading/" + x.getId()).get(ReadingModel.class))
+                .forEach(r -> assertEquals("Ἀπολύσω", r.getNormal_form()));
+    }
+
+    @Test
     public void duplicateTest() {
         String firstNodeId = readingLookup.get("showers/5");
         String secondNodeId = readingLookup.get("sweet/6");
