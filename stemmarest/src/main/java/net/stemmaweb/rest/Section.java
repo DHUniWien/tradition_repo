@@ -548,7 +548,7 @@ public class Section {
             HashSet<Relationship> linksToSplit = new HashSet<>();
             for (Relationship r : sequencesCrossingRank(rank, false)) {
                 Node thisStart = r.getStartNode();
-                Long endRank = (Long) r.getStartNode().getProperty("rank");
+                Long endRank = (Long) r.getEndNode().getProperty("rank");
                 linksToSplit.add(r);
                 if (thisStart.hasProperty("is_lacuna") && thisStart.getProperty("is_lacuna").equals(true)
                         && endRank > rank) lacunoseWitsPresent = true;
