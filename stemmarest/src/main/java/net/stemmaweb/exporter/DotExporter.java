@@ -211,8 +211,8 @@ public class DotExporter
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
         // Get the proper node ID
         String nodeDotId = "n" + node.getId();
-        if (node.hasProperty("is_end") && (Boolean) node.getProperty("is_end")) nodeDotId = "__END__";
-        else if (node.hasProperty("is_start") && (Boolean) node.getProperty("is_start")) nodeDotId = "__START__";
+        if (node.getProperty("is_end", false).equals(true)) nodeDotId = "__END__";
+        else if (node.getProperty("is_start", false).equals(true)) nodeDotId = "__START__";
 
         // Get the node label. If there is a 'display' property, strip any leading / trailing angle
         // brackets, because if we are also showing normal forms, we have to wedge more into the
@@ -220,8 +220,12 @@ public class DotExporter
         boolean hasHTML = node.hasProperty("display");
         String nodeLabel = hasHTML ? node.getProperty("display").toString()
                 : node.getProperty("text").toString();
+        if (node.getProperty("is_lacuna", false).equals(true)) {
+            hasHTML = true;
+            nodeLabel = "<B>[ ... ]</B>";
+        }
         if (dm.getShowRank())
-            nodeLabel = String.format("%s (%d)", nodeLabel, (Long) node.getProperty("rank"));
+            nodeLabel = String.format("%s%s(%s)", nodeLabel, hasHTML ? "&nbsp;" : " ", node.getProperty("rank").toString());
         if (dm.getShowNormalForm() && node.hasProperty("normal_form")
             && !node.getProperty("normal_form").toString().equals(node.getProperty("text").toString())) {
             String labelExtra = "<BR/><FONT COLOR=\"grey\">"
@@ -403,7 +407,7 @@ public class DotExporter
     // Helper function to get the correctly-quote sigil for a Witness node.
     private static String sigilDotString(Node witness) {
         String witnessSigil = witness.getProperty("sigil").toString();
-        if (witness.hasProperty("quotesigil") && (Boolean) witness.getProperty("quotesigil"))
+        if (witness.getProperty("quotesigil", false).equals(true))
             witnessSigil = String.format("\"%s\"", witnessSigil);
         return witnessSigil;
     }

@@ -423,6 +423,143 @@ public class ReadingTest {
     }
 
     @Test
+    public void insertLacunaTest() {
+        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "John", "LR", "1",
+                "src/TestFiles/john.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        // String newTradId = Util.getValueFromJson(response, "tradId");
+
+        // Find our target readings
+        String nithia = null;
+        String Legei = null;
+        ReadingModel umin;
+        try (Transaction tx = db.beginTx()) {
+            List<ReadingModel> rank1 = db.findNodes(Nodes.READING, "rank", 1L).stream()
+                    .map(ReadingModel::new).collect(Collectors.toList());
+            for (ReadingModel r : rank1) {
+                if (r.getText().equals("ν̣ηθια")) nithia = r.getId();
+                if (r.getText().equals("Λεγει")) Legei = r.getId();
+            }
+
+            Node uminRdg = db.findNode(Nodes.READING, "rank", 32L);
+            assertNotNull(uminRdg);
+            umin = new ReadingModel(uminRdg);
+            tx.success();
+        }
+        assertNotNull(nithia);
+        assertNotNull(Legei);
+        assertNotNull(umin);
+
+        // -- Simple tests ("ν̣ηθια")
+        // First try setting the lacuna on the wrong witness
+        response = jerseyTest.resource().path("/reading/" + nithia + "/lacunaAfter")
+                .queryParam("witness", "w290")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+
+        // Now try setting it on several witnesses including the right one
+        response = jerseyTest.resource().path("/reading/" + nithia + "/lacunaAfter")
+                .queryParam("witness", "w290")
+                .queryParam("witness", "P60")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+
+        // Now try making the right request.
+        response = jerseyTest.resource().path("/reading/" + nithia + "/lacunaAfter")
+                .queryParam("witness", "P60")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        // Check the answer
+        GraphModel result = response.getEntity(GraphModel.class);
+        assertEquals(1, result.getReadings().size());
+        assertEquals(0, result.getRelations().size());
+        assertEquals(2, result.getSequences().size());
+        String lacunaId = "";
+        for (ReadingModel r : result.getReadings()) {
+            assertTrue(r.getIs_lacuna());
+            assertEquals(Long.valueOf(2), r.getRank());
+            lacunaId = r.getId();
+        }
+        result.getReadings().forEach(x -> assertTrue(x.getIs_lacuna()));
+        String following = "";
+        for (SequenceModel s : result.getSequences()) {
+            if (s.getSource().equals(nithia)) {
+                assertEquals(lacunaId, s.getTarget());
+            } else {
+                assertEquals(lacunaId, s.getSource());
+                following = s.getTarget();
+            }
+        }
+        // Check that the following reading is what we expect and that the rank didn't change
+        ReadingModel followingRdg = jerseyTest.resource().path("/reading/" + following).get(ReadingModel.class);
+        assertEquals(umin.getText(), followingRdg.getText());
+        assertEquals(umin.getRank(), followingRdg.getRank());
+
+        // -- Multiple-path tests (Λεγει)
+        // Make the request
+        response = jerseyTest.resource().path("/reading/" + Legei + "/lacunaAfter")
+                .queryParam("witness", "w37")
+                .queryParam("witness", "w38")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        // Check the answer
+        result = response.getEntity(GraphModel.class);
+        assertEquals(1, result.getReadings().size());
+        assertEquals(0, result.getRelations().size());
+        assertEquals(2, result.getSequences().size());
+
+        for (SequenceModel s : result.getSequences()) {
+            assertEquals(2, s.getWitnesses().size());
+            assertTrue(s.getWitnesses().contains("w37"));
+            assertTrue(s.getWitnesses().contains("w38"));
+            // Find the following reading
+            if (!s.getSource().equals(Legei))
+                following = s.getTarget();
+        }
+        // Check that the following reading has two inbound paths, one with the rest of
+        // the witnesses
+        try (Transaction tx = db.beginTx()) {
+            for (Relationship inbound : db.getNodeById(Long.valueOf(following)).getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
+                if (inbound.getStartNode().getId() == Long.valueOf(Legei)) {
+                    List<String> sigla = Arrays.asList((String []) inbound.getProperty("witnesses"));
+                    assertEquals(5, sigla.size());
+                    assertTrue(sigla.contains("w11"));
+                    assertTrue(sigla.contains("w2"));
+                    assertTrue(sigla.contains("w211"));
+                    assertTrue(sigla.contains("w44"));
+                    assertTrue(sigla.contains("w54"));
+                }
+            }
+            tx.success();
+        }
+
+        // -- No rank gap tests (ὑμῖν)
+        // Make the request
+        response = jerseyTest.resource().path("/reading/" + umin.getId() + "/lacunaAfter")
+                .queryParam("witness", "w44")
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        // Check the answer - lots of readings should have changed rank
+        result = response.getEntity(GraphModel.class);
+        assertEquals(124, result.getReadings().size());
+        assertEquals(0, result.getRelations().size());
+        assertEquals(2, result.getSequences().size());
+        Optional<ReadingModel> newLacuna = result.getReadings().stream().filter(ReadingModel::getIs_lacuna).findFirst();
+        assertTrue(newLacuna.isPresent());
+        assertEquals(Long.valueOf(33), newLacuna.get().getRank());
+
+        // Check that the following node was re-ranked
+        for (SequenceModel s : result.getSequences()) {
+            // Find the following reading
+            if (!s.getSource().equals(umin.getId()))
+                following = s.getTarget();
+        }
+        followingRdg = jerseyTest.resource().path("/reading/" + following).get(ReadingModel.class);
+        assertEquals("Ινα", followingRdg.getText());
+        assertEquals(Long.valueOf(34), followingRdg.getRank());
+    }
+
+    @Test
     public void duplicateTest() {
         String firstNodeId = readingLookup.get("showers/5");
         String secondNodeId = readingLookup.get("sweet/6");

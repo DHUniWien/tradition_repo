@@ -200,11 +200,14 @@ public class Reading {
             ReadingModel thisReading = new ReadingModel(us);
             // Make our lacuna node
             Node lacuna = db.createNode(Nodes.READING);
-            lacuna.setProperty("section_id", us.getProperty("section_id"));
             lacuna.setProperty("is_lacuna", true);
-            ReadingModel lrm = new ReadingModel(lacuna);
-            result.setReadings(Collections.singletonList(lrm));
-            HashSet<SequenceModel> newSeqs = new HashSet<>();
+            lacuna.setProperty("rank", (Long) us.getProperty("rank") + 1);
+            lacuna.setProperty("section_id", us.getProperty("section_id"));
+            lacuna.setProperty("text", "#LACUNA#");
+            HashSet<Relationship> newSeqs = new HashSet<>();
+            HashSet<Node> pushedReadings = new HashSet<>();
+            Set<Node> changedReadings = new HashSet<>();
+            changedReadings.add(lacuna);
             for (String sigil : forWitnesses) {
                 // Make sure the witness in question belongs to the given reading
                 if (!thisReading.getWitnesses().contains(sigil)) {
@@ -214,14 +217,23 @@ public class Reading {
                 // Find the witness's following node
                 HashMap<String, String> wit = parseSigil(sigil);
                 Node next = this.getNeighbourReadingInSequence(wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
+                if (next == null) {
+                    errorMessage = "Witness path " + sigil + " ends after requested reading";
+                    return errorResponse(Status.INTERNAL_SERVER_ERROR);
+                }
+                // Are we going to need to re-rank it?
+                if (next.getProperty("rank", 0L).equals((Long) us.getProperty("rank") + 1))
+                    pushedReadings.add(next);
                 // Thread the lacuna between them
                 ReadingService.removeWitnessLink(us, next, wit.get("sigil"), wit.get("layer"), "none");
-                newSeqs.add(new SequenceModel(ReadingService.addWitnessLink(
-                        us, lacuna, wit.get("sigil"), wit.get("layer"))));
-                newSeqs.add(new SequenceModel(ReadingService.addWitnessLink(
-                        lacuna, next, wit.get("sigil"), wit.get("layer"))));
+                newSeqs.add(ReadingService.addWitnessLink(us, lacuna, wit.get("sigil"), wit.get("layer")));
+                newSeqs.add(ReadingService.addWitnessLink(lacuna, next, wit.get("sigil"), wit.get("layer")));
             }
-            result.addSequences(newSeqs);
+            for (Node pushed : pushedReadings) {
+                changedReadings.addAll(ReadingService.recalculateRank(pushed));
+            }
+            result.setReadings(changedReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
+            result.setSequences(newSeqs.stream().map(SequenceModel::new).collect(Collectors.toList()));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
