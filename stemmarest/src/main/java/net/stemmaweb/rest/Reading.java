@@ -215,7 +215,7 @@ public class Reading {
                 HashMap<String, String> wit = parseSigil(sigil);
                 Node next = this.getNeighbourReadingInSequence(wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
                 // Thread the lacuna between them
-                ReadingService.removeWitnessLink(us, next, wit.get("sigil"), wit.get("layer"));
+                ReadingService.removeWitnessLink(us, next, wit.get("sigil"), wit.get("layer"), "none");
                 newSeqs.add(new SequenceModel(ReadingService.addWitnessLink(
                         us, lacuna, wit.get("sigil"), wit.get("layer"))));
                 newSeqs.add(new SequenceModel(ReadingService.addWitnessLink(
@@ -552,8 +552,8 @@ public class Reading {
                 // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
                 newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
                 newSequences.add(ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer")));
-                ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"));
-                ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"));
+                ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"), "end");
+                ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"), "start");
                 tx.success();
             }
         }

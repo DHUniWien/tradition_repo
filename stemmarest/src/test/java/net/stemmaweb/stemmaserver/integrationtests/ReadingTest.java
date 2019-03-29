@@ -846,6 +846,29 @@ public class ReadingTest {
             assertEquals(1, seq.getLayers().get("a.c.").size());
             assertTrue(seq.getLayers().get("a.c.").contains("Q"));
         }
+
+        // Test three: duplicate a reading right after an a.c. witness has ended
+        // "τῇ", rank 47
+        String entautha = Util.getSpecificReading(jerseyTest, newTradId, florSectId, "ἐνταῦθα", 89L);
+        request = "{\"readings\":[" + entautha + "], \"witnesses\":[\"Q\"]}";
+        response = jerseyTest.resource().path("/reading/" + entautha + "/duplicate")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, request);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        // Check the new sequences
+        changedGraph = response.getEntity(GraphModel.class);
+        assertEquals(1, changedGraph.getReadings().size());
+        assertEquals(2, changedGraph.getSequences().size());
+        for (SequenceModel seq : changedGraph.getSequences()) {
+            assertEquals(1, seq.getWitnesses().size());
+            assertNull(seq.getLayers());
+            assertTrue(seq.getWitnesses().contains("Q"));
+        }
+        // The new 'entautha' has Q, but the old 'entautha' should not
+        ReadingModel origTe = jerseyTest.resource().path("/reading/" + entautha).get(ReadingModel.class);
+        assertFalse(origTe.getWitnesses().contains("Q"));
+        assertFalse(origTe.getWitnesses().contains("Q (a.c.)"));
+
     }
 
     @Test

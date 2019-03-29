@@ -141,7 +141,7 @@ public class Witness {
                     Node start = r.getStartNode();
                     Node end = r.getEndNode();
                     for (String layer : r.getPropertyKeys()) {
-                        ReadingService.removeWitnessLink(start, end, sigil, layer);
+                        ReadingService.removeWitnessLink(start, end, sigil, layer, "none");
                     }
                     // Was this the last outgoing for the start, or the last incoming for the end?
                     if (!start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT).iterator().hasNext())

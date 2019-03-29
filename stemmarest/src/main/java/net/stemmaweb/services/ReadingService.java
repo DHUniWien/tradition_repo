@@ -87,7 +87,7 @@ public class ReadingService {
         if (witClass.equals("witnesses")) {
             for (String wc : link.getPropertyKeys()) {
                 if (wc.equals(witClass)) continue;
-                removeWitnessLink(start, end, sigil, wc);
+                removeWitnessLink(start, end, sigil, wc, "none");
             }
         }
         return link;
@@ -103,22 +103,27 @@ public class ReadingService {
      * @param sigil - the witness sigil
      * @param witClass - the witness layer class to use
      */
-    public static void removeWitnessLink (Node start, Node end, String sigil, String witClass) {
+    public static void removeWitnessLink (Node start, Node end, String sigil, String witClass, String orphanCheck) {
         // If we are removing a base witness link, we need to check whether any layers for
         // that witness end at our start node or start at our end node.
-        // TODO rethink this - it can also cause a.c. layer duplication!
+        boolean ocStart = orphanCheck.equals("start") || orphanCheck.equals("both");
+        boolean ocEnd = orphanCheck.equals("end") || orphanCheck.equals("both");
         ArrayList<String> orphans = new ArrayList<>();
         if (witClass.equals("witnesses")) {
-            for (Relationship r : start.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
-                orphans.addAll(findWitLayers(r, sigil));
+            if (ocStart) {
+                for (Relationship r : start.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
+                    orphans.addAll(findWitLayers(r, sigil));
+                }
             }
-            for (Relationship r : end.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
-                orphans.addAll(findWitLayers(r, sigil));
+            if (ocEnd) {
+                for (Relationship r : end.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+                    orphans.addAll(findWitLayers(r, sigil));
+                }
+                // Any outgoing layers of this witness that arrive via another link are not orphans.
+                for (Relationship r : end.getRelationships(Direction.INCOMING, ERelations.SEQUENCE))
+                    if (!r.getStartNode().equals(start))
+                        orphans.removeAll(findWitLayers(r, sigil));
             }
-            // Any outgoing layers of this witness that arrive via another link are not orphans.
-            for (Relationship r : end.getRelationships(Direction.INCOMING, ERelations.SEQUENCE))
-                if (!r.getStartNode().equals(start))
-                    orphans.removeAll(findWitLayers(r, sigil));
         } // else we are removing a layer explicitly, and needn't worry about orphans.
 
         // Next, go through the outgoing sequences to find the appropriate link. As before, any
@@ -127,7 +132,7 @@ public class ReadingService {
         for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
             if (r.getEndNode().equals(end))
                 link = r;
-            else if (witClass.equals("witnesses")) {
+            else if (witClass.equals("witnesses") && ocStart) {
                 orphans.removeAll(findWitLayers(r, sigil));
             }
         }
