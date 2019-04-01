@@ -193,6 +193,7 @@ public class Section {
             ArrayList<WitnessModel> sectionWits = new ArrayList<>();
             sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
             tx.success();
+            Collections.sort(sectionWits);
             return Response.ok().entity(sectionWits).build();
         } catch (Exception e) {
             e.printStackTrace();

@@ -338,6 +338,7 @@ public class Tradition {
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
+        Collections.sort(witnessList);
         return Response.ok(witnessList).build();
     }
 

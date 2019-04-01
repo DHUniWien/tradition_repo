@@ -4,6 +4,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
@@ -14,7 +15,7 @@ import org.neo4j.graphdb.Transaction;
 
 @XmlRootElement
 @JsonInclude(Include.NON_NULL)
-public class WitnessModel {
+public class WitnessModel implements Comparable<WitnessModel> {
     /**
      * The Neo4J node ID of the witness
      */
@@ -47,4 +48,10 @@ public class WitnessModel {
     public void setSigil(String id) {
         this.sigil = id;
     }
+
+    @Override
+    public int compareTo(@NonNull WitnessModel wm) {
+        return this.sigil.compareTo(wm.sigil);
+    }
+
 }
