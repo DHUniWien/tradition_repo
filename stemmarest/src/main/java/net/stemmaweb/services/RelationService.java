@@ -1,5 +1,6 @@
 package net.stemmaweb.services;
 
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -161,6 +162,43 @@ public class RelationService {
             throw new Exception("Could not detect colocation clusters", e);
         }
         return result;
+    }
+
+    public static Node findRepresentative(List<Node> alternatives) {
+        // Get our database
+        if (alternatives.isEmpty()) return null;
+        GraphDatabaseService db = alternatives.get(0).getGraphDatabase();
+
+        Node representative = null;
+        // Go through the alternatives
+        try (Transaction tx = db.beginTx()) {
+            // First see if one of the alternatives is a lemma
+            Optional<Node> thelemma = alternatives.stream()
+                    .filter(x -> (Boolean) x.getProperty("is_lemma", false)).findFirst();
+            if (thelemma.isPresent())
+                representative = thelemma.get();
+
+            // Next sort through the readings with normal forms
+            else {
+                List<Node> normalised = alternatives.stream().filter(x -> x.hasProperty("normal_form"))
+                        .sorted(RelationService::byWitnessesDescending).collect(Collectors.toList());
+                if (!normalised.isEmpty()) representative = normalised.get(0);
+            }
+
+            // Finally, sort through all readings
+            if (representative == null)
+                representative = alternatives.stream().sorted(RelationService::byWitnessesDescending)
+                        .collect(Collectors.toList()).get(0);
+
+            tx.success();
+        }
+        return representative;
+    }
+
+    private static int byWitnessesDescending (Node a, Node b) {
+        Integer aCount = new ReadingModel(a).getWitnesses().size();
+        Integer bCount = new ReadingModel(b).getWitnesses().size();
+        return bCount.compareTo(aCount);
     }
 
     /**
