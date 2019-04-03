@@ -803,9 +803,10 @@ public class Section {
      */
 
     /**
-     * Returns a list of sets of readings that could potentially be identical - that is, they
+     * Returns a list of pairs of readings that could potentially be identical - that is, they
      * have the same text and same joining properties, and are co-located. This is used to
-     * identify possible inconsistencies in the collation.
+     * identify possible inconsistencies in the collation. The pairs are ordered so that the
+     * reading with more witnesses is listed first.
      *
      * @summary List mergeable readings
      * @param startRank - where to start
@@ -871,9 +872,12 @@ public class Section {
                 if (processed.contains(n.getId()))
                     continue;
                 if (!wouldGetCyclic(nodeA, n)) {
-                    ArrayList<ReadingModel> pair = new ArrayList<>();
-                    pair.add(new ReadingModel(nodeA));
-                    pair.add(new ReadingModel(n));
+                    // Get the reading models
+                    ReadingModel rma = new ReadingModel(nodeA);
+                    ReadingModel rmn = new ReadingModel(n);
+                    // Order them by descending number of witnesses
+                    ArrayList<ReadingModel> pair = new ArrayList<>(Arrays.asList(rma, rmn));
+                    pair.sort((a, b) -> b.getWitnesses().size() - a.getWitnesses().size());
                     couldBeIdenticalReadings.add(pair);
                 }
             }
