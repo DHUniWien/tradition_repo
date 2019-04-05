@@ -27,7 +27,6 @@ import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 
@@ -188,6 +187,12 @@ public class DotExporter
                     // Retrieve reading relations, if requested
                     if (dm.getIncludeRelated()) {
                         for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
+                            // Only include the relations that are on our representative nodes
+                            if (dm.getNormaliseOn() != null) {
+                                if (!representatives.getOrDefault(relatedRel.getStartNode(), relatedRel.getStartNode())
+                                        .equals(relatedRel.getStartNode()))
+                                    continue;
+                            }
                             write("\t" + relatedRel.getStartNode().getId() + "->" +
                                     relatedRel.getEndNode().getId() + " [style=dotted, constraint=false, arrowhead=none, " +
                                     "label=\"" + relatedRel.getProperty("type").toString() + "\", id=\"e" +
@@ -198,7 +203,7 @@ public class DotExporter
 
                 // Write any remaining lemma links
                 for (Node n : lemmaLinks.keySet()) {
-                    write(String.format("\t%d->%d [ id=e%d, color=black:invis:black ];",
+                    write(String.format("\t%d->%d [ id=l%d ];\n",
                             n.getId(), lemmaLinks.get(n).getId(), edgeId++));
                 }
 
@@ -206,9 +211,15 @@ public class DotExporter
                 if (seqLabel.equals(ERelations.NSEQUENCE))
                     db.traversalDescription().breadthFirst()
                             .relationships(seqLabel,Direction.OUTGOING)
-                            .uniqueness(Uniqueness.NODE_GLOBAL)
+                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                             .traverse(sectionStartNode).relationships()
                             .forEach(Relationship::delete);
+
+                // TEMPORARY: Check that we aren't polluting the graph DB
+                if (DatabaseService.returnTraditionSection(sectionId, db).relationships()
+                        .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE)))
+                    return Response.serverError()
+                            .entity("Data consistency error on normalisation of section " + sectionId).build();
             }
 
             write("}\n");
@@ -373,12 +384,12 @@ public class DotExporter
     {
         String text;
         try {
+            String idStr = isLemmaLink ? "l" : "e";
+            idStr += edgeId;
             text = "\t" + sNodeId + "->" + eNodeId + " [label=\"" + label
-                    + "\", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
+                    + "\", id=\"" + idStr + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
-            if (isLemmaLink)
-                text += ", color=\"black:invis:black\"";
             text += "];\n";
         } catch (Exception e) {
             text = null;
