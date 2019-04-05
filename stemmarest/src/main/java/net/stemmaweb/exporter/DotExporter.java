@@ -141,7 +141,7 @@ public class DotExporter
                         .forEach(r -> lemmaLinks.put(representatives.get(r.getStartNode()), representatives.get(r.getEndNode())));
 
                 // Now start writing some dot.
-                for (Node node : representatives.keySet()) {
+                for (Node node : new HashSet<>(representatives.values())) {
 
                     // Write out the node list in dot format
                     // Skip section start nodes, unless they are overall start nodes. These links will be
@@ -152,7 +152,7 @@ public class DotExporter
                         write(nodeSpec(node, dm));
                     }
 
-                    // The section end node should be displayed as a "section" node.
+                    // Intermediate section end nodes should be displayed as a "section" node.
                     if (node.equals(sectionEndNode) && !node.equals(endNode)) {
                         String endLine = nodeSpec(node, dm);
                         write(endLine.replace("END", "SECTION_" + sectionNode.getId()));
@@ -246,11 +246,9 @@ public class DotExporter
             GraphDatabaseService db, String tradId, Node startNode, String normaliseOn)
             throws Exception {
         String sectionId = startNode.getProperty("section_id").toString();
-        TraversalDescription t = db.traversalDescription().breadthFirst()
+        List<Node> sectionNodes = db.traversalDescription().breadthFirst()
                 .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
-                .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
-                .uniqueness(Uniqueness.NODE_GLOBAL);
-        List<Node> sectionNodes = t.traverse(startNode)
+                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
                 .nodes().stream().collect(Collectors.toList());
 
         HashMap<Node, Node> representatives = new HashMap<>();
@@ -263,10 +261,14 @@ public class DotExporter
                 for (Node n : cluster)
                     representatives.put(n, representative);
             }
+            // Include nodes that weren't in clusters
+            sectionNodes.stream().filter(x -> !representatives.containsKey(x)).forEach(x -> representatives.put(x, x));
             // Make the shadow sequences
-            for (Relationship r : t.traverse(startNode).relationships()) {
+            for (Relationship r : db.traversalDescription().breadthFirst()
+                    .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode).relationships()) {
                 Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
-                Node repend = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
+                Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
                 ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
             }
         } else {

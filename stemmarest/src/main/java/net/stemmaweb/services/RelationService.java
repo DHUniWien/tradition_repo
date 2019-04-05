@@ -165,9 +165,13 @@ public class RelationService {
     }
 
     public static Node findRepresentative(Set<Node> alternatives) {
-        // Get our database
+        GraphDatabaseService db;
+        // See if this is trivial
         if (alternatives.isEmpty()) return null;
-        GraphDatabaseService db = alternatives.stream().findAny().get().getGraphDatabase();
+        Node ref = alternatives.stream().findFirst().get();
+        if (alternatives.size() == 1) return ref;
+        // It's not trivial
+        else db = ref.getGraphDatabase();
 
         Node representative = null;
         // Go through the alternatives
@@ -178,14 +182,30 @@ public class RelationService {
             if (thelemma.isPresent())
                 representative = thelemma.get();
 
-            // Next sort through the readings with normal forms
+            // Next sort through the readings with normal forms. If there is a majority
+            // normal form, we want the reading that has this form as its text; failing
+            // that, we want the majority-witness of these readings.
             else {
-                List<Node> normalised = alternatives.stream().filter(x -> x.hasProperty("normal_form"))
-                        .sorted(RelationService::byWitnessesDescending).collect(Collectors.toList());
-                if (!normalised.isEmpty()) representative = normalised.get(0);
+                // Do a frequency count of normal forms
+                HashMap<String, Integer> normals = new HashMap<>();
+                alternatives.stream().filter(x -> x.hasProperty("normal_form"))
+                        .map(x -> x.getProperty("normal_form").toString())
+                        .forEach(x -> normals.put(x, normals.getOrDefault(x, 0) + 1));
+                if (normals.size() > 0) {
+                    String nf = normals.keySet().stream().max(Comparator.comparingInt(normals::get)).get();
+                    Optional<Node> rep = alternatives.stream().filter(x -> x.getProperty("text").equals(nf)).findFirst();
+                    if (rep.isPresent())
+                        representative = rep.get();
+                    else {
+                        rep = alternatives.stream()
+                                .filter(x -> x.getProperty("normal_form", "").equals("nf"))
+                                .min(RelationService::byWitnessesDescending);
+                        if (rep.isPresent()) representative = rep.get();
+                    }
+                }
             }
 
-            // Finally, sort through all readings
+            // If that didn't get us an answer, return the most "popular" reading
             if (representative == null)
                 representative = alternatives.stream().sorted(RelationService::byWitnessesDescending)
                         .collect(Collectors.toList()).get(0);
