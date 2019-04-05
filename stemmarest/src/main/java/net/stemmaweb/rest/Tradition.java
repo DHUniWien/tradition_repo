@@ -646,7 +646,11 @@ public class Tradition {
      *
      * @summary Download GraphViz
      *
-     * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
+     * @param includeRelatedRelationships - Include RELATED edges in the dot, if true
+     * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
+     * @param showRank - Display the rank of readings, if true
+     * @param displayAllSigla - Avoid the 'majority' contraction of long witness labels, if true
+     * @param normalise - A RelationType name to normalise on, if desired
      * @return Plaintext dot format
      */
     @GET
@@ -656,7 +660,7 @@ public class Tradition {
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
-                           @DefaultValue("false") @QueryParam("normalise") Boolean normalise,
+                                                  @QueryParam("normalise") String normalise,
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();

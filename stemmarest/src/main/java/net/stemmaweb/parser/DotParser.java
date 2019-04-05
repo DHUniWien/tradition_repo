@@ -15,7 +15,6 @@ import com.alexmerz.graphviz.Parser;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -148,7 +147,7 @@ public class DotParser {
             for (Node witness : witnessesVisited.keySet()) {
                 ResourceIterator<Node> pathNodes = db.traversalDescription()
                         .depthFirst()
-                        .expand(getExpander(Direction.BOTH, stemmaName))
+                        .expand(Util.getExpander(Direction.BOTH, stemmaName))
                         .uniqueness(Uniqueness.RELATIONSHIP_PATH)
                         .evaluator(Evaluators.all())
                         .traverse(witness).nodes().iterator();
@@ -177,7 +176,7 @@ public class DotParser {
                     if (witnessesVisited.get(witness))
                         continue;
                     ResourceIterable<Node> pathNodes = db.traversalDescription().depthFirst()
-                            .expand(getExpander(Direction.INCOMING, stemmaName))
+                            .expand(Util.getExpander(Direction.INCOMING, stemmaName))
                             .traverse(witness).nodes();
                     Node pathEnd = null;
                     for (Node pNode : pathNodes) {
@@ -213,28 +212,6 @@ public class DotParser {
         }
         messageValue = stemmaName;
         return Status.CREATED;
-    }
-
-    private static PathExpander getExpander (Direction d, String stemmaName) {
-        final String pStemmaName = stemmaName;
-        return new PathExpander() {
-            @Override
-            public java.lang.Iterable expand(Path path, BranchState branchState) {
-                ArrayList<Relationship> goodPaths = new ArrayList<>();
-                for (Relationship link : path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, d)) {
-                    if (link.getProperty("hypothesis").equals(pStemmaName)) {
-                        goodPaths.add(link);
-                    }
-                }
-                return goodPaths;
-            }
-
-            @Override
-            public PathExpander reverse() {
-                return null;
-            }
-        };
     }
 
     private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {

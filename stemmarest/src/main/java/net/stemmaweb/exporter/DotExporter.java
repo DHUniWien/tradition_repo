@@ -8,6 +8,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -19,9 +20,14 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.DatabaseService;
+
+import static net.stemmaweb.parser.Util.getExpander;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
+
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.BranchState;
+import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 
@@ -122,12 +128,20 @@ public class DotExporter
                     subgraphWritten = true;
                 }
 
-                for (Node node :  db.traversalDescription().breadthFirst()
-                        .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                // Find our representative nodes, in case we are producing a normalised form of the graph
+                HashMap<Node, Node> representatives = getRepresentatives(db, tradId, sectionStartNode, dm.getNormaliseOn());
+                RelationshipType seqLabel = dm.getNormaliseOn() == null ? ERelations.SEQUENCE : ERelations.NSEQUENCE;
+
+                // Collect any lemma edge pairs
+                HashMap<Node, Node> lemmaLinks = new HashMap<>();
+                db.traversalDescription().breadthFirst()
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
                         .uniqueness(Uniqueness.NODE_GLOBAL)
-                        .traverse(sectionStartNode)
-                        .nodes()) {
+                        .traverse(sectionStartNode).relationships()
+                        .forEach(r -> lemmaLinks.put(representatives.get(r.getStartNode()), representatives.get(r.getEndNode())));
+
+                // Now start writing some dot.
+                for (Node node : representatives.keySet()) {
 
                     // Write out the node list in dot format
                     // Skip section start nodes, unless they are overall start nodes. These links will be
@@ -147,7 +161,7 @@ public class DotExporter
                         continue;
 
                     // Now get the sequence relationships between nodes.
-                    for (Relationship rel : node.getRelationships(Direction.INCOMING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
+                    for (Relationship rel : node.getRelationships(Direction.INCOMING, seqLabel)) {
                         if (rel == null)
                             continue;
                         Node relStartNode = rel.getStartNode();
@@ -157,12 +171,17 @@ public class DotExporter
                         if (relStartNode.equals(sectionStartNode) && !relStartNode.equals(startNode))
                             relStartNodeId = lastSectionEndId;
 
-                        // LATER consider turning this red instead of labelling it
-                        String label = rel.getType().toString().equals("LEMMA_TEXT") ? "(LEMMA)"
-                                : sequenceLabel(convertProps(rel), numWits, dm);
+                        // Does this edge coincide with a lemma edge?
+                        boolean edge_is_lemma = false;
+                        if (lemmaLinks.containsKey(relStartNode) && lemmaLinks.get(relStartNode).equals(node)) {
+                            edge_is_lemma = true;
+                            lemmaLinks.remove(relStartNode);
+                        }
+                        // Get the label
+                        String label = sequenceLabel(convertProps(rel), numWits, dm);
                         Long rankDiff = (Long) node.getProperty("rank") - (Long) relStartNode.getProperty("rank");
                         write(relshipText(relStartNodeId, node.getId(), label, edgeId++,
-                                calcPenWidth(convertProps(rel)), rankDiff));
+                                calcPenWidth(convertProps(rel)), rankDiff, edge_is_lemma));
 
                     }
 
@@ -176,6 +195,20 @@ public class DotExporter
                         }
                     }
                 }
+
+                // Write any remaining lemma links
+                for (Node n : lemmaLinks.keySet()) {
+                    write(String.format("\t%d->%d [ id=e%d, color=black:invis:black ];",
+                            n.getId(), lemmaLinks.get(n).getId(), edgeId++));
+                }
+
+                // Now that it is all written out, flush the shadow sequences if they were created
+                if (seqLabel.equals(ERelations.NSEQUENCE))
+                    db.traversalDescription().breadthFirst()
+                            .relationships(seqLabel,Direction.OUTGOING)
+                            .uniqueness(Uniqueness.NODE_GLOBAL)
+                            .traverse(sectionStartNode).relationships()
+                            .forEach(Relationship::delete);
             }
 
             write("}\n");
@@ -193,9 +226,10 @@ public class DotExporter
             tx.success();
         } catch (IOException e) {
             e.printStackTrace();
-            return Response.status(Status.INTERNAL_SERVER_ERROR)
-                    .entity("Could not write file for export")
-                    .build();
+            return Response.serverError().entity("Could not write file for export").build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
         }
 
         // Here is where to generate pictures from the file for debugging.
@@ -207,6 +241,41 @@ public class DotExporter
     /*
      * Helper functions for variant graph production
      */
+
+    private static HashMap<Node, Node> getRepresentatives(
+            GraphDatabaseService db, String tradId, Node startNode, String normaliseOn)
+            throws Exception {
+        String sectionId = startNode.getProperty("section_id").toString();
+        TraversalDescription t = db.traversalDescription().breadthFirst()
+                .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
+                .uniqueness(Uniqueness.NODE_GLOBAL);
+        List<Node> sectionNodes = t.traverse(startNode)
+                .nodes().stream().collect(Collectors.toList());
+
+        HashMap<Node, Node> representatives = new HashMap<>();
+        if (normaliseOn != null) {
+            // Cluster the readings
+            for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
+                    tradId, sectionId, db, normaliseOn)) {
+                Node representative = RelationService.findRepresentative(cluster);
+                // Set the representative for all cluster members.
+                for (Node n : cluster)
+                    representatives.put(n, representative);
+            }
+            // Make the shadow sequences
+            for (Relationship r : t.traverse(startNode).relationships()) {
+                Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
+                Node repend = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
+                ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
+            }
+        } else {
+            for (Node n: sectionNodes) {
+                representatives.put(n, n);
+            }
+        }
+        return representatives;
+    }
 
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
         // Get the proper node ID
@@ -298,7 +367,7 @@ public class DotExporter
         return df2.format(0.8 + 0.2 * hits);
     }
 
-    private static String relshipText(Long sNodeId, Long eNodeId, String label, long edgeId, String pWidth, Long rankDiff)
+    private static String relshipText(Long sNodeId, Long eNodeId, String label, long edgeId, String pWidth, Long rankDiff, boolean isLemmaLink)
     {
         String text;
         try {
@@ -306,6 +375,8 @@ public class DotExporter
                     + "\", id=\"e" + edgeId + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
+            if (isLemmaLink)
+                text += ", color=\"black:invis:black\"";
             text += "];\n";
         } catch (Exception e) {
             text = null;
@@ -450,24 +521,7 @@ public class DotExporter
         Direction useDir = stemma.hasProperty("is_contaminated") ? Direction.OUTGOING : Direction.BOTH;
 
         // We need to traverse only those paths that belong to this stemma.
-        PathExpander e = new PathExpander() {
-            @Override
-            public java.lang.Iterable expand(Path path, BranchState branchState) {
-                ArrayList<Relationship> goodPaths = new ArrayList<>();
-                for (Relationship link : path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, useDir)) {
-                    if (link.getProperty("hypothesis").equals(stemmaName)) {
-                        goodPaths.add(link);
-                    }
-                }
-                return goodPaths;
-            }
-
-            @Override
-            public PathExpander reverse() {
-                return null;
-            }
-        };
+        PathExpander e = getExpander(useDir, stemmaName);
         for (Path nodePath: db.traversalDescription().breadthFirst()
                 .expand(e)
                 .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)

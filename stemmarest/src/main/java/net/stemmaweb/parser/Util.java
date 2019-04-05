@@ -4,10 +4,8 @@ import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.BranchState;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -121,5 +119,28 @@ public class Util {
                 rel.removeProperty("colocation");
         }
     }
+
+    public static PathExpander getExpander (Direction d, String stemmaName) {
+        final String pStemmaName = stemmaName;
+        return new PathExpander() {
+            @Override
+            public java.lang.Iterable expand(Path path, BranchState branchState) {
+                ArrayList<Relationship> goodPaths = new ArrayList<>();
+                for (Relationship link : path.endNode()
+                        .getRelationships(ERelations.TRANSMITTED, d)) {
+                    if (link.getProperty("hypothesis").equals(pStemmaName)) {
+                        goodPaths.add(link);
+                    }
+                }
+                return goodPaths;
+            }
+
+            @Override
+            public PathExpander reverse() {
+                return null;
+            }
+        };
+    }
+
 
 }

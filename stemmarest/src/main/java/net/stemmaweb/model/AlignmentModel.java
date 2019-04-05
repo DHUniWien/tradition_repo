@@ -60,7 +60,7 @@ public class AlignmentModel {
             List<Set<Node>> readingClusters = RelationService.getCloselyRelatedClusters(tradId, sectId, db, collapseRelated);
             HashMap<Node, Node> equivalences = new HashMap<>();
             for (Set<Node> cluster : readingClusters) {
-                Node representative = RelationService.findRepresentative(new ArrayList<>(cluster));
+                Node representative = RelationService.findRepresentative(cluster);
                 // Set the representative for all cluster members.
                 for (Node n : cluster)
                     equivalences.put(n, representative);

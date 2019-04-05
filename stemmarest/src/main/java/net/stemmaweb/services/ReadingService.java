@@ -63,13 +63,13 @@ public class ReadingService {
      * @param witClass - the witness layer class to use
      * @return the SEQUENCE Relationship to which the witness was added
      */
-    public static Relationship addWitnessLink (Node start, Node end, String sigil, String witClass) {
+    public static Relationship addWitnessLink (Node start, Node end, String sigil, String witClass, RelationshipType seqType) {
         Relationship link = null;
-        for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
+        for (Relationship r : start.getRelationships(Direction.OUTGOING, seqType))
             if (r.getEndNode().equals(end))
                 link = r;
         if (link == null)
-            link = start.createRelationshipTo(end, ERelations.SEQUENCE);
+            link = start.createRelationshipTo(end, seqType);
         // First see if we need to add this one
         if (witClass.equals("witnesses") || !hasWitness(link, sigil, "witnesses")) {
             // This is either a main witness or a layer witness where the main witness isn't.
@@ -91,6 +91,10 @@ public class ReadingService {
             }
         }
         return link;
+    }
+
+    public static Relationship addWitnessLink (Node start, Node end, String sigil, String witClass) {
+        return addWitnessLink(start, end, sigil, witClass, ERelations.SEQUENCE);
     }
 
     /**
@@ -176,10 +180,14 @@ public class ReadingService {
      * @param end   - the second node to link
      * @param copyFrom  - the SEQUENCE relationship whose witnesses to take over
      */
-    public static void transferWitnesses (Node start, Node end, Relationship copyFrom) {
+    public static void transferWitnesses (Node start, Node end, Relationship copyFrom, RelationshipType seqType) {
         for (String witclass : copyFrom.getPropertyKeys())
             for (String w : (String[]) copyFrom.getProperty(witclass))
-                addWitnessLink(start, end, w, witclass);
+                addWitnessLink(start, end, w, witclass, seqType);
+    }
+
+    public static void transferWitnesses (Node start, Node end, Relationship copyFrom) {
+        transferWitnesses(start, end, copyFrom, ERelations.SEQUENCE);
     }
 
     /**

@@ -164,10 +164,10 @@ public class RelationService {
         return result;
     }
 
-    public static Node findRepresentative(List<Node> alternatives) {
+    public static Node findRepresentative(Set<Node> alternatives) {
         // Get our database
         if (alternatives.isEmpty()) return null;
-        GraphDatabaseService db = alternatives.get(0).getGraphDatabase();
+        GraphDatabaseService db = alternatives.stream().findAny().get().getGraphDatabase();
 
         Node representative = null;
         // Go through the alternatives

@@ -8,14 +8,14 @@ public class DisplayOptionModel {
     private boolean includeRelated;
     private boolean showNormalForm;
     private boolean showRank;
-    private boolean normalise;
+    private String normaliseOn;
     private boolean displayAllSigla;
 
-    public DisplayOptionModel(Boolean ir, Boolean snf, Boolean sr, Boolean n, Boolean das) {
+    public DisplayOptionModel(Boolean ir, Boolean snf, Boolean sr, String n, Boolean das) {
         includeRelated = ir;
         showNormalForm = snf;
         showRank = sr;
-        normalise = n;
+        normaliseOn = n;
         displayAllSigla = das;
     }
 
@@ -31,8 +31,8 @@ public class DisplayOptionModel {
         return showRank;
     }
 
-    public boolean getNormalise() {
-        return normalise;
+    public String getNormaliseOn() {
+        return normaliseOn;
     }
 
     public boolean getDisplayAllSigla() {

@@ -1142,12 +1142,11 @@ public class Section {
      * Returns a GraphViz dot file that describes the specified section and its data.
      *
      * @summary Download GraphViz
-     * @param includeRelatedRelationships - Whether or not to include RELATED edges in the dot
-     * @param displayAllSigla - Whether to always display sigil lists; if false, use 'majority' label
-     * @param showNormalForms - Whether to display the normal (canonical) form of a reading alongside
-     *                        its literal form
-     * @param normalise - Produce a graph based on the normal forms rather than the literal ones;
-     *                  overrides show_normal
+     * @param includeRelatedRelationships - Include RELATED edges in the dot, if true
+     * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
+     * @param showRank - Display the rank of readings, if true
+     * @param displayAllSigla - Avoid the 'majority' contraction of long witness labels, if true
+     * @param normalise - A RelationType name to normalise on, if desired
      * @return Plaintext dot format
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1160,7 +1159,7 @@ public class Section {
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
-                           @DefaultValue("false") @QueryParam("normalise") Boolean normalise,
+                                                  @QueryParam("normalise") String normalise,
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();

@@ -107,6 +107,11 @@ public class ReadingModel implements Comparable<ReadingModel> {
     private List<String> witnesses;
 
     /**
+     * The list of readings that this one is representing in a normalised graph.
+     */
+    private List<ReadingModel> represented;
+
+    /**
      * Generates a model from a Neo4j Node
      * @param node - The node with label READING from which the model should take its values
      */
@@ -324,7 +329,17 @@ public class ReadingModel implements Comparable<ReadingModel> {
 
     public void setOrig_reading(String orig_reading) {  this.orig_reading = orig_reading; }
 
-    public List<String> getWitnesses() { return witnesses; }
+    public List<String> getWitnesses() {
+        List<String> ourWits = this.witnesses;
+        if (represented != null) {
+            // Add the witnesses we are representing.
+            HashSet<String> repWits = new HashSet<>();
+            represented.forEach(x -> repWits.addAll(x.getWitnesses()));
+            ourWits.addAll(repWits);
+            ourWits.sort(String::compareTo);
+        }
+        return ourWits;
+    }
 
     @Override
     public int compareTo(@NonNull ReadingModel readingModel) {
@@ -341,5 +356,12 @@ public class ReadingModel implements Comparable<ReadingModel> {
 
     public void setExtra(String extra) {
         this.extra = extra;
+    }
+
+    public List<ReadingModel> getRepresented() { return represented; }
+
+    public void addRepresented(ReadingModel rm) {
+        if (represented == null) represented = new ArrayList<>();
+        represented.add(rm);
     }
 }
