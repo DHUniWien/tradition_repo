@@ -53,6 +53,7 @@ public class Reading {
      * @summary Get a reading
      * @return The reading information as a JSON structure.
      * @statuscode 200 - on success
+     * @statuscode 204 - if the reading doesn't exist
      * @statuscode 500 - on error, with an error message
     */
     @GET
@@ -124,6 +125,9 @@ public class Reading {
         } catch (ClassCastException e) {
             errorMessage = "Property " + currentKey + " of the wrong type: " + e.getMessage();
             return errorResponse(Status.BAD_REQUEST);
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -167,6 +171,9 @@ public class Reading {
                 changed.add(new ReadingModel(reading));
             } // otherwise it's a no-op
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -235,6 +242,9 @@ public class Reading {
             result.setReadings(changedReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
             result.setSequences(newSeqs.stream().map(SequenceModel::new).collect(Collectors.toList()));
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -259,10 +269,17 @@ public class Reading {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
-        List<Node> relatedReadings = collectRelatedReadings(filterTypes);
-        if (relatedReadings == null) // An error happened
+        try {
+            List<Node> relatedReadings = collectRelatedReadings(filterTypes);
+            return Response.ok(relatedReadings.stream().map(ReadingModel::new).collect(Collectors.toList())).build();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
-        return Response.ok(relatedReadings.stream().map(ReadingModel::new).collect(Collectors.toList())).build();
+        }
     }
 
 
@@ -282,10 +299,8 @@ public class Reading {
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response normaliseRelated(@PathParam("reltype") String onRelationType) {
         List<ReadingModel> changed = new ArrayList<>();
-        List<Node> related = collectRelatedReadings(Collections.singletonList(onRelationType));
-        if (related == null) return errorResponse(Status.INTERNAL_SERVER_ERROR);
-
         try (Transaction tx = db.beginTx()) {
+            List<Node> related = collectRelatedReadings(Collections.singletonList(onRelationType));
             Node us = db.getNodeById(readId);
             String key = us.hasProperty("normal_form") ? "normal_form" : "text";
             Object ourNormalForm = db.getNodeById(readId).getProperty(key);
@@ -299,8 +314,11 @@ public class Reading {
             }
             tx.success();
         } catch (NotFoundException e) {
-            errorMessage = "Reading has no normal form or text to propagate";
-            return errorResponse(Status.BAD_REQUEST);
+            Status ret = Status.NOT_FOUND;    // Maybe it was the reading that wasn't found
+            errorMessage = e.getMessage();
+            if (errorMessage.contains("No such property"))  // or maybe it was the property.
+                ret = Status.BAD_REQUEST;
+            return errorResponse(ret);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -310,7 +328,7 @@ public class Reading {
     }
 
 
-    private List<Node> collectRelatedReadings(List<String> filterTypes) {
+    private List<Node> collectRelatedReadings(List<String> filterTypes) throws Exception {
         List<Node> allRelated = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
@@ -327,10 +345,6 @@ public class Reading {
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(reading).nodes().forEach(allRelated::add);
             tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            errorMessage = e.getMessage();
-            return null;
         }
         return allRelated;
     }
@@ -356,6 +370,9 @@ public class Reading {
                 rel.delete();
             }
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -380,7 +397,12 @@ public class Reading {
     public Response getReadingWitnesses() {
         try {
             return Response.ok(collectWitnesses(false)).build();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
     }
@@ -410,10 +432,6 @@ public class Reading {
                 }
             }
             tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            errorMessage = e.getMessage();
-            throw(e);
         }
         return normalWitnesses;
     }
@@ -479,6 +497,9 @@ public class Reading {
             }
             newSequences.removeAll(tempSequences);
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -676,6 +697,9 @@ public class Reading {
             }
 
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -881,6 +905,9 @@ public class Reading {
             ReadingService.recalculateRank(originalReading, true);
 
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -1013,7 +1040,7 @@ public class Reading {
             }
             return Response.ok(new ReadingModel(foundNeighbour)).build();
         }
-        return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -1044,7 +1071,7 @@ public class Reading {
             }
             return Response.ok(new ReadingModel(foundNeighbour)).build();
         }
-        return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
     }
 
     // Gets the neighbour reading in the given direction for the given witness. Returns
@@ -1085,6 +1112,8 @@ public class Reading {
                 neighbour = matching.iterator().next().getOtherNode(read);
             }
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
@@ -1164,6 +1193,9 @@ public class Reading {
                 return Response.ok().build();
             }
             tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
