@@ -269,7 +269,7 @@ public class RelationTest {
         r.setType("spelling");
         r.setAlters_meaning(1L);
         r.setIs_significant("maybe");
-        r.setScope("document");
+        r.setScope("tradition");
 
         // Add the tradition a second time
         ClientResponse jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Other tradition", "LR", "1",
@@ -351,7 +351,7 @@ public class RelationTest {
         relationshipId2 = ((RelationModel) readingsAndRelationships2.getRelations().toArray()[0]).getId();
 
         // Now try deleting them.
-        relationship.setScope("document");
+        relationship.setScope("tradition");
 
         ClientResponse removalResponse = jerseyTest
                 .resource()
@@ -361,14 +361,8 @@ public class RelationTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            Relationship rel1 = db.getRelationshipById(Long.parseLong(relationshipId1));
-            Relationship rel2 = db.getRelationshipById(Long.parseLong(relationshipId2));
-
-            RelationModel relMod1 = new RelationModel(rel1);
-            assertEquals(rel1, relMod1);
-
-            RelationModel relMod2 = new RelationModel(rel2);
-            assertEquals(rel2, relMod2);
+            db.getRelationshipById(Long.parseLong(relationshipId1));
+            db.getRelationshipById(Long.parseLong(relationshipId2));
             tx.success();
             fail("These relationships should no longer exist");
         }
@@ -435,7 +429,7 @@ public class RelationTest {
                     .getRelationships(ERelations.RELATED)
                     .iterator();
 
-            assertTrue(!rels.hasNext()); // make sure node 28 does not have a relationship now!
+            assertFalse(rels.hasNext()); // make sure node 28 does not have a relationship now!
             tx.success();
         }
     }
@@ -519,7 +513,7 @@ public class RelationTest {
             Node node22 = db.getNodeById(22L);
             Iterator<Relationship> rels = node22.getRelationships(ERelations.RELATED).iterator();
 
-            assertTrue(!rels.hasNext()); // make sure node 21 does not have a relationship now!
+            assertFalse(rels.hasNext()); // make sure node 21 does not have a relationship now!
             tx.success();
         }
     }
@@ -561,12 +555,12 @@ public class RelationTest {
             Node node1 = db.getNodeById(firstNode.getId());
             Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATED).iterator();
 
-            assertTrue(!rels.hasNext()); // make sure node does not have a relationship now!
+            assertFalse(rels.hasNext()); // make sure node does not have a relationship now!
 
             Node node2 = db.getNodeById(secondNode.getId());
             rels = node2.getRelationships(ERelations.RELATED).iterator();
 
-            assertTrue(!rels.hasNext()); // make sure node does not have a relationship now!
+            assertFalse(rels.hasNext()); // make sure node does not have a relationship now!
             tx.success();
         }
     }
@@ -587,7 +581,7 @@ public class RelationTest {
         assertFalse(orthorels.isEmpty());
         RelationModel rel = orthorels.get(0);
         rel.setType("spelling");
-        rel.setScope("document");
+        rel.setScope("tradition");
         response = jerseyTest.resource().path("/tradition/" + newTradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, rel);

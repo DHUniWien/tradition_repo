@@ -61,7 +61,7 @@ public class RelationTypeTest extends TestCase {
         RelationModel newRel = new RelationModel();
         newRel.setSource(legeiAcute);
         newRel.setTarget(legei);
-        newRel.setScope("document");
+        newRel.setScope("tradition");
         newRel.setDisplayform("λέγει");
         newRel.setType("spelling");
         newRel.setIs_significant("no");
@@ -115,7 +115,7 @@ public class RelationTypeTest extends TestCase {
         RelationModel newRel = new RelationModel();
         newRel.setSource(legeiAcute);
         newRel.setTarget(legei);
-        newRel.setScope("document");
+        newRel.setScope("tradition");
         newRel.setDisplayform("λέγει");
         newRel.setType("spelling");
         newRel.setIs_significant("no");
@@ -155,7 +155,7 @@ public class RelationTypeTest extends TestCase {
         RelationModel newRel = new RelationModel();
         newRel.setSource(legeiAcute);
         newRel.setTarget(legei);
-        newRel.setScope("document");
+        newRel.setScope("tradition");
         newRel.setType("important");
 
         jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
@@ -184,7 +184,7 @@ public class RelationTypeTest extends TestCase {
         newRel.setSource(autwi);
         newRel.setTarget(auTw);
         newRel.setType("grammatical");
-        newRel.setScope("document");
+        newRel.setScope("tradition");
         jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, newRel);
@@ -263,7 +263,7 @@ public class RelationTypeTest extends TestCase {
         RelationModel newRel = new RelationModel();
         newRel.setSource(palin);
         newRel.setTarget(Palin);
-        newRel.setScope("document");
+        newRel.setScope("tradition");
         newRel.setType("orthographic");
         expectedLinks.add(String.format("%s -> %s: orthographic", palin, Palin));
         expectedLinks.add(String.format("%s -> %s: orthographic", palin58, Palin58));

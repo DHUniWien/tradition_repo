@@ -134,7 +134,7 @@ public class TabularInputOutputTest extends TestCase {
         relationship.setTarget(target);
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
-        relationship.setScope("document");
+        relationship.setScope("tradition");
         ClientResponse actualResponse = jerseyTest
                 .resource()
                 .path("/tradition/" + tradId + "/relation")

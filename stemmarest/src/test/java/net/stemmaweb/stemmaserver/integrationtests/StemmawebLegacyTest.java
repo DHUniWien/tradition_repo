@@ -310,7 +310,7 @@ public class StemmawebLegacyTest {
         relationship.setSource(n24);
         relationship.setTarget(n23);
         relationship.setType("spelling");
-        relationship.setScope("document");
+        relationship.setScope("tradition");
 
         response = jerseyTest
                 .resource()
@@ -354,7 +354,7 @@ public class StemmawebLegacyTest {
         relationship = new RelationModel();
         relationship.setSource(n12);
         relationship.setTarget(n13);
-        relationship.setScope("document");
+        relationship.setScope("section");
 
         response = jerseyTest
                 .resource()
@@ -399,7 +399,7 @@ public class StemmawebLegacyTest {
         relationship.setSource(n24);
         relationship.setTarget(n23);
         relationship.setType("spelling");
-        relationship.setScope("document");
+        relationship.setScope("tradition");
 
         response = jerseyTest
                 .resource()
@@ -896,7 +896,7 @@ public class StemmawebLegacyTest {
         relationship.setSource(r463_2);
         relationship.setTarget(r463_4);
         relationship.setType("orthographic");
-        relationship.setScope("document");
+        relationship.setScope("tradition");
 //        relationship.setScope("local");
 
         ClientResponse response = jerseyTest

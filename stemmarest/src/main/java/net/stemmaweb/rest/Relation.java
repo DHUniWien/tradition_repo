@@ -20,6 +20,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.rest.Util.jsonerror;
@@ -37,7 +38,8 @@ public class Relation {
     private GraphDatabaseService db;
     private String tradId;
     private static final String SCOPE_LOCAL = "local";
-    private static final String SCOPE_GLOBAL = "document";
+    private static final String SCOPE_SECTION = "section";
+    private static final String SCOPE_TRADITION = "tradition";
 
 
     Relation(String traditionId) {
@@ -68,7 +70,7 @@ public class Relation {
         // Make sure a scope is set
         if (relationModel.getScope() == null) relationModel.setScope(SCOPE_LOCAL);
         String scope = relationModel.getScope();
-        if (scope.equals(SCOPE_GLOBAL) || scope.equals(SCOPE_LOCAL)) {
+        if (scope.equals(SCOPE_TRADITION) || scope.equals(SCOPE_SECTION) || scope.equals(SCOPE_LOCAL)) {
             GraphModel relationChanges = new GraphModel();
 
             Response response = this.create_local(relationModel);
@@ -84,43 +86,47 @@ public class Relation {
                             && x.getSource().equals(relationModel.getSource())).findFirst();
             assert(orm.isPresent());
             String thisRelId = orm.get().getId();
-            if (scope.equals(SCOPE_GLOBAL)) {
+            if (!scope.equals(SCOPE_LOCAL)) {
                 Boolean use_normal = returnRelationType(tradId, relationModel.getType()).getUse_regular();
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
-                    Node thisTradition = DatabaseService.getTraditionNode(tradId, db);
+                    Node startingPoint = DatabaseService.getTraditionNode(tradId, db);
+                    if (scope.equals(SCOPE_SECTION))
+                        startingPoint = db.getNodeById((Long) readingA.getProperty("section_id"));
                     Relationship thisRelation = db.getRelationshipById(Long.valueOf(thisRelId));
 
-                    // Get all the readings that belong to our tradition
-                    ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(thisTradition).nodes();
+                    // Get all the readings that belong to our tradition or section
+                    ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(startingPoint).nodes();
                     // Pick out the ones that share the readingA text
                     Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
                             ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
                     HashSet<Node> ourA = tradReadings.stream()
-                            .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA))
-                                    && !x.getProperty("rank").equals(readingA.getProperty("rank")))
+                            .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA)) && !x.equals(readingA))
                             .collect(Collectors.toCollection(HashSet::new));
-                    HashMap<Long, HashSet<Long>> ranks = new HashMap<>();
+                    HashMap<String, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
                         long node_id = cur_node.getId();
                         long node_rank = (Long) cur_node.getProperty("rank");
+                        String node_section = cur_node.getProperty("section_id").toString();
+                        String key = node_section + "/" + node_rank;
                         HashSet<Long> cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
                         cur_set.add(node_id);
-                        ranks.putIfAbsent(node_rank, cur_set);
+                        ranks.putIfAbsent(key, cur_set);
                     }
 
                     // Pick out the ones that share the readingB text
                     HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
-                            && nodefilter.apply(x).equals(nodefilter.apply(readingB))
-                            && !x.getProperty("rank").equals(readingA.getProperty("rank")))
+                            && nodefilter.apply(x).equals(nodefilter.apply(readingB)) && !x.equals(readingB))
                             .collect(Collectors.toCollection(HashSet::new));
                     RelationModel userel;
                     for (Node cur_node : ourB) {
                         long node_id = cur_node.getId();
                         long node_rank = (Long) cur_node.getProperty("rank");
+                        String node_section = cur_node.getProperty("section_id").toString();
+                        String key = node_section + "/" + node_rank;
 
-                        HashSet cur_set = ranks.get(node_rank);
+                        HashSet cur_set = ranks.get(key);
                         if (cur_set != null) {
                             for (Object id : cur_set) {
                                 userel = new RelationModel(thisRelation);
@@ -128,13 +134,11 @@ public class Relation {
                                 userel.setTarget(Long.toString(node_id));
                                 response = this.create_local(userel);
                                 if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
-                                    if (Status.CREATED.getStatusCode() != response.getStatus()) {
-                                        return response;
-                                    } else {
+                                    if (Status.CREATED.getStatusCode() == response.getStatus()) {
                                         createResult = (GraphModel) response.getEntity();
                                         relationChanges.addReadings(createResult.getReadings());
                                         relationChanges.addRelations(createResult.getRelations());
-                                    }
+                                    }  // This is a best-effort operation, so ignore failures
                                 }
                             }
                         }
@@ -408,72 +412,50 @@ public class Relation {
     public Response delete(RelationModel relationModel) {
         ArrayList<RelationModel> deleted = new ArrayList<>();
 
-        switch (relationModel.getScope()) {
-            case "local":
+        try (Transaction tx = db.beginTx()) {
+            Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
+            Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
 
-                try (Transaction tx = db.beginTx()) {
-
-                    Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
-                    Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
-
-                    Iterable<Relationship> relationships = readingA.getRelationships(ERelations.RELATED);
-
-                    Relationship relationAtoB = null;
-                    for (Relationship relationship : relationships) {
-                        if ((relationship.getStartNode().equals(readingA)
-                                || relationship.getEndNode().equals(readingA))
-                                && relationship.getStartNode().equals(readingB)
-                                || relationship.getEndNode().equals(readingB)) {
-                            relationAtoB = relationship;
-                        }
-                    }
-
-                    if (relationAtoB == null) {
+            switch (relationModel.getScope()) {
+                case SCOPE_LOCAL:
+                    ArrayList<Relationship> findRel = DatabaseService.getRelationshipTo(readingA, readingB, ERelations.RELATED);
+                    if (findRel.isEmpty()) {
                         return Response.status(Status.NOT_FOUND).entity(jsonerror("Relation not found")).build();
                     } else {
-                        RelationModel relInfo = new RelationModel(relationAtoB);
-                        relationAtoB.delete();
+                        Relationship theRel = findRel.get(0);
+                        RelationModel relInfo = new RelationModel(theRel);
+                        theRel.delete();
                         deleted.add(relInfo);
                     }
-                    tx.success();
-                } catch (Exception e) {
-                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
-                }
-                break;
+                    break;
 
-            case "document":
-                Node startNode = DatabaseService.getStartNode(tradId, db);
+                case SCOPE_SECTION:
+                case SCOPE_TRADITION:
+                    Traverser toCheck = relationModel.getScope().equals(SCOPE_SECTION)
+                            ? DatabaseService.returnTraditionSection(readingA.getProperty("section_id").toString(), db)
+                            : DatabaseService.returnEntireTradition(tradId, db);
 
-                try (Transaction tx = db.beginTx()) {
-                    for (Relationship rel : db.traversalDescription().depthFirst()
-                            .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                            .relationships(ERelations.RELATED, Direction.BOTH)
-                            .uniqueness(Uniqueness.NODE_GLOBAL)
-                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                            .traverse(startNode)
-                            .relationships()) {
+                    for (Relationship rel : toCheck.relationships()) {
                         if (rel.getType().name().equals(ERelations.RELATED.name())) {
-                            Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
-                            Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
+                            Node ra = db.getNodeById(Long.parseLong(relationModel.getSource()));
+                            Node rb = db.getNodeById(Long.parseLong(relationModel.getTarget()));
 
-                            if ((rel.getStartNode().getProperty("text").equals(readingA.getProperty("text"))
-                                    || rel.getEndNode().getProperty("text").equals(readingA.getProperty("text")))
-                                    && (rel.getStartNode().getProperty("text").equals(readingB.getProperty("text"))
-                                    || rel.getEndNode().getProperty("text").equals(readingB.getProperty("text")))) {
+                            if ((rel.getStartNode().getProperty("text").equals(ra.getProperty("text"))
+                                    || rel.getEndNode().getProperty("text").equals(ra.getProperty("text")))
+                                    && (rel.getStartNode().getProperty("text").equals(rb.getProperty("text"))
+                                    || rel.getEndNode().getProperty("text").equals(rb.getProperty("text")))) {
                                 RelationModel relInfo = new RelationModel(rel);
                                 rel.delete();
                                 deleted.add(relInfo);
                             }
                         }
                     }
-                    tx.success();
-                } catch (Exception e) {
-                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
-                }
-                break;
+                    break;
 
-            default:
-                return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
+                default:
+                    return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
+            }
+            tx.success();
         }
         return Response.status(Response.Status.OK).entity(deleted).build();
     }
