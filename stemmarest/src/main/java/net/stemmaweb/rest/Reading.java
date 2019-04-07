@@ -147,9 +147,10 @@ public class Reading {
      */
     @POST
     @Path("setlemma")
+    @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
-    public Response setReadingAsLemma(@QueryParam("value") @DefaultValue("false") String value) {
+    public Response setReadingAsLemma(@FormParam("value") @DefaultValue("false") String value) {
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);

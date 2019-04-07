@@ -2,6 +2,8 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.core.util.MultivaluedMapImpl;
+import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
@@ -20,6 +22,8 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
 import java.util.*;
 
 import static org.junit.Assert.assertNotEquals;
@@ -772,6 +776,9 @@ public class SectionTest extends TestCase {
         String[] lemmatised = new String[]{"quasi/1", "duobus/2", "magnis/3", "luminaribus/4", "populus/5",
                 "terre/6", "illius/7", "ad/8", "dei/9", "veri/10", "noticiam/11", "et/12", "cultum/13",
                 "magis/14", "illustrabatur/16", "jugiter/17", "ac/18", "informabatur/19", "Sanctus/20", "autem/21"};
+        // Make the request data for lemmatising
+        MultivaluedMap<String, String> lemmaParam = new MultivaluedMapImpl();
+        lemmaParam.add("value", "true");
         for (String rdg : lemmatised) {
             // Set normal forms for a few selected readings
             List<KeyPropertyModel> models = new ArrayList<>();
@@ -799,8 +806,8 @@ public class SectionTest extends TestCase {
 
             // Now lemmatise the reading, whatever it is
             jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get(rdg) + "/setlemma")
-                    .queryParam("value", "true")
-                    .post(ClientResponse.class);
+                    .type(MediaType.APPLICATION_FORM_URLENCODED)
+                    .post(ClientResponse.class, lemmaParam);
             assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
 
         }
@@ -867,9 +874,8 @@ public class SectionTest extends TestCase {
 
         // Add a lemma on the same rank, check that the other one gets unset
         jerseyResult = jerseyTest.resource().path("/reading/" + readingLookup.get("iugiter/17") + "/setlemma")
-                .queryParam("value", "true")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class);
+                .type(MediaType.APPLICATION_FORM_URLENCODED)
+                .post(ClientResponse.class, lemmaParam);
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         List<ReadingModel> changed = jerseyResult.getEntity(new GenericType<List<ReadingModel>>() {});
         assertEquals(2, changed.size());
