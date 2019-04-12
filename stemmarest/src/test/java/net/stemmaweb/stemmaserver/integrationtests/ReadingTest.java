@@ -242,7 +242,7 @@ public class ReadingTest {
     public void getReadingJsonTest() throws JsonProcessingException {
         String nodeId = readingLookup.get("has/13");
         String expected = String.format("{\"id\":\"%s\",\"is_common\":true,\"is_end\":false,\"is_lacuna\":false," +
-                "\"is_lemma\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false," +
+                "\"is_lemma\":false,\"is_emendation\":false,\"is_nonsense\":false,\"is_ph\":false,\"is_start\":false,\"join_next\":false," +
                 "\"join_prior\":false,\"language\":\"Default\",\"rank\":13,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
 
         ClientResponse resp = jerseyTest.resource()

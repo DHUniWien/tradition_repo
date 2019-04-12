@@ -650,6 +650,7 @@ public class Tradition {
      * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
      * @param showRank - Display the rank of readings, if true
      * @param displayAllSigla - Avoid the 'majority' contraction of long witness labels, if true
+     * @param showEmendations - Show the emendations that have been made to the text
      * @param normalise - A RelationType name to normalise on, if desired
      * @return Plaintext dot format
      */
@@ -660,14 +661,15 @@ public class Tradition {
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
-                                                  @QueryParam("normalise") String normalise,
-                           @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
+                           @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
+                           @DefaultValue("false") @QueryParam("show_emendations") Boolean showEmendations,
+                                                  @QueryParam("normalise") String normalise) {
         if (DatabaseService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         // Put our options into an object
         DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, showRank, normalise, displayAllSigla);
+                includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, showEmendations, normalise);
         DotExporter exporter = new DotExporter(db);
         return exporter.writeNeo4J(traditionId, dm);
     }

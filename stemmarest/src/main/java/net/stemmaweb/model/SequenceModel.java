@@ -17,6 +17,10 @@ import java.util.*;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SequenceModel {
     /**
+     * The relationship type of this sequence: SEQUENCE, LEMMA_TEXT, or EMENDED
+     */
+    private String type;
+    /**
      * The ID of the first reading in the relationship
      */
     private String source;
@@ -48,6 +52,7 @@ public class SequenceModel {
      */
     public SequenceModel(Relationship rel) {
         this();
+        type = rel.getType().toString();
         source = rel.getStartNode().getId() + "";
         target = rel.getEndNode().getId() + "";
         id = Long.toString(rel.getId());
@@ -61,6 +66,14 @@ public class SequenceModel {
                 layers.put(p, Arrays.asList((String[]) rel.getProperty(p)));
             }
         }
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public String getSource() {

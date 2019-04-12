@@ -216,7 +216,7 @@ public class DotExporter
                             .forEach(Relationship::delete);
 
                 // TEMPORARY: Check that we aren't polluting the graph DB
-                if (DatabaseService.returnTraditionSection(sectionId, db).relationships()
+                if (DatabaseService.returnTraditionSection(String.valueOf(sectionNode.getId()), db).relationships()
                         .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE)))
                     return Response.serverError()
                             .entity("Data consistency error on normalisation of section " + sectionId).build();
