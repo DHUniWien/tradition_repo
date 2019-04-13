@@ -260,6 +260,7 @@ public class Section {
             if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
             db.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(ERelations.EMENDED, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
                     .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));

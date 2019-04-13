@@ -137,6 +137,54 @@ public class Reading {
     }
 
     /**
+     * Deletes a reading. This only makes sense if it is a user-addable reading, i.e. an emendation.
+     * If the lemma path goes through the emendation, the lemma path will also be removed.
+     */
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
+    public Response deleteUserReading() {
+        GraphModel deletedElements = new GraphModel();
+        try (Transaction tx = db.beginTx()) {
+            Node reading = db.getNodeById(readId);
+            // Can we delete the reading?
+            if (!reading.hasLabel(Nodes.EMENDATION)) {
+                errorMessage = "Only emendation readings can be deleted";
+                return errorResponse(Status.BAD_REQUEST);
+            }
+
+            // Get all its relationships for deletion
+            boolean onLemmaPath = false;
+            List<SequenceModel> deletedSeqs = new ArrayList<>();
+            for (Relationship r : reading.getRelationships()) {
+                if (r.isType(ERelations.LEMMA_TEXT)) {
+                    onLemmaPath = true;
+                } else {
+                    deletedSeqs.add(new SequenceModel(r));
+                    r.delete();
+                }
+            }
+            if (onLemmaPath) {
+                // The entire lemma sequence text should be deleted; otherwise it will be broken here.
+                db.traversalDescription().depthFirst().relationships(ERelations.LEMMA_TEXT).traverse(reading)
+                        .relationships().forEach(x -> {deletedSeqs.add(new SequenceModel(x)); x.delete();});
+            }
+            deletedElements.setSequences(deletedSeqs);
+            deletedElements.setReadings(Collections.singletonList(new ReadingModel(reading)));
+            reading.delete();
+            tx.success();
+        } catch (NotFoundException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            errorMessage = e.getMessage();
+            return errorResponse(Status.INTERNAL_SERVER_ERROR);
+        }
+        return Response.ok(deletedElements).build();
+    }
+
+    /**
      * Toggles whether this reading is a lemma. If so, ensures that no other reading at this
      * rank in this section is a lemma. Returns all readings that were changed.
      *

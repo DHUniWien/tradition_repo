@@ -4,8 +4,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
+import com.sun.jersey.core.util.MultivaluedMapImpl;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
@@ -368,6 +370,144 @@ public class ReadingTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(2, response.getEntity(new GenericType<List<ReadingModel>>() {}).size());
 
+    }
+
+    @Test
+    public void cannotDeleteReadingTest() {
+        String nodeId = readingLookup.get("showers/5");
+        ClientResponse response = jerseyTest.resource().path("/reading/" + nodeId).delete(ClientResponse.class);
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        String answer = Util.getValueFromJson(response, "error");
+        assertEquals("Only emendation readings can be deleted", answer);
+    }
+
+    @Test
+    public void deleteEmendationTest() {
+        // Get the state of the graph beforehand
+        Set<Node> allNodes = new HashSet<>();
+        Set<Relationship> allLinks = new HashSet<>();
+        try (Transaction tx = db.beginTx()) {
+            allNodes = DatabaseService.returnEntireTradition(tradId, db).nodes().stream().collect(Collectors.toSet());
+            allLinks = DatabaseService.returnEntireTradition(tradId, db).relationships().stream().collect(Collectors.toSet());
+            tx.success();
+        } catch (Exception e) {
+            fail();
+        }
+
+        // Propose an emendation
+        ProposedEmendationModel pem = new ProposedEmendationModel();
+        pem.setAuthority("A. Caesar");
+        pem.setText("fructumque");
+        pem.setFromRank(7L);
+        pem.setToRank(9L);
+        GraphModel emendation = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .type(MediaType.APPLICATION_JSON)
+                .post(GraphModel.class, pem);
+        ReadingModel emended = emendation.getReadings().iterator().next();
+
+        // Now try deleting it
+        ClientResponse resp = jerseyTest.resource().path("/reading/" + emended.getId()).delete(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+        GraphModel deleted = resp.getEntity(GraphModel.class);
+
+        // What was emended should now equal what was deleted.
+        for (ReadingModel rm : emendation.getReadings()) {
+            assertTrue(deleted.getReadings().stream().anyMatch(x -> rm.getId().equals(x.getId())));
+        }
+        for (ReadingModel rm : deleted.getReadings()) {
+            assertTrue(emendation.getReadings().stream().anyMatch(x -> rm.getId().equals(x.getId())));
+        }
+
+        for (SequenceModel sm : emendation.getSequences()) {
+            assertTrue(deleted.getSequences().stream().anyMatch(x -> sm.getId().equals(x.getId())));
+        }
+        for (SequenceModel sm : deleted.getSequences()) {
+            assertTrue(emendation.getSequences().stream().anyMatch(x -> sm.getId().equals(x.getId())));
+        }
+        // Everything else should be as before.
+        try (Transaction tx = db.beginTx()) {
+            for (Node n : DatabaseService.returnEntireTradition(tradId, db).nodes())
+                assertTrue(allNodes.contains(n));
+            for (Relationship r : DatabaseService.returnEntireTradition(tradId, db).relationships())
+                assertTrue(allLinks.contains(r));
+            tx.success();
+        } catch (Exception e) {
+            fail();
+        }
+
+        // Re-add the emendation and lemmatize some text
+        emendation = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .type(MediaType.APPLICATION_JSON)
+                .post(GraphModel.class, pem);
+        emended = emendation.getReadings().iterator().next();
+
+        MultivaluedMap<String, String> lemmaParam = new MultivaluedMapImpl();
+        lemmaParam.add("value", "true");
+        resp = jerseyTest.resource().path("/reading/" + emended.getId() + "/setlemma")
+                .type(MediaType.APPLICATION_FORM_URLENCODED)
+                .post(ClientResponse.class, lemmaParam);
+        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+
+        String[] lemmatised = new String[]{"when/1", "april/2", "showers/5", "sweet/6", "the/9", "drought/10",
+                "of/11", "march/12", "has/13", "pierced/14", "the root/16"};
+        for (String l : lemmatised) {
+            resp = jerseyTest.resource().path("/reading/" + readingLookup.get(l) + "/setlemma")
+                    .type(MediaType.APPLICATION_FORM_URLENCODED)
+                    .post(ClientResponse.class, lemmaParam);
+            assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+        }
+        resp = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/setlemma")
+                .post(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+        assertEquals("when april showers sweet fructumque the drought of march has pierced the root",
+                Util.getValueFromJson(jerseyTest.resource()
+                        .path("/tradition/" + tradId + "/section/" + sectId + "/lemmatext")
+                        .queryParam("final", "true")
+                        .get(ClientResponse.class), "text"));
+
+        // Now delete the emendation again; the lemma links should also be deleted.
+        resp = jerseyTest.resource().path("/reading/" + emended.getId()).delete(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), resp.getStatus());
+        GraphModel lemmadeleted = resp.getEntity(GraphModel.class);
+
+        // What was emended should now be deleted.
+        for (ReadingModel rm : emendation.getReadings()) {
+            assertTrue(lemmadeleted.getReadings().stream().anyMatch(x -> rm.getId().equals(x.getId())));
+        }
+        for (ReadingModel rm : lemmadeleted.getReadings()) {
+            assertTrue(emendation.getReadings().stream().anyMatch(x -> rm.getId().equals(x.getId())));
+        }
+
+        for (SequenceModel sm : emendation.getSequences()) {
+            assertTrue(lemmadeleted.getSequences().stream().anyMatch(x -> sm.getId().equals(x.getId())));
+        }
+        int lemmalinkct = 0;
+        for (SequenceModel sm : lemmadeleted.getSequences()) {
+            if (sm.getType().equals("LEMMA_TEXT"))
+                lemmalinkct++;
+            else
+                assertTrue(emendation.getSequences().stream().anyMatch(x -> sm.getId().equals(x.getId())));
+        }
+        assertEquals(13, lemmalinkct);
+
+        // Check the lemma text again
+        assertEquals("", Util.getValueFromJson(jerseyTest.resource()
+                        .path("/tradition/" + tradId + "/section/" + sectId + "/lemmatext")
+                        .queryParam("final", "true")
+                        .get(ClientResponse.class), "text"));
+
+        // Check that we are back to our original state
+        try (Transaction tx = db.beginTx()) {
+            for (Node n : DatabaseService.returnEntireTradition(tradId, db).nodes())
+                assertTrue(allNodes.contains(n));
+            for (Relationship r : DatabaseService.returnEntireTradition(tradId, db).relationships())
+                assertTrue(allLinks.contains(r));
+            tx.success();
+        } catch (Exception e) {
+            fail();
+        }
     }
 
     @Test
