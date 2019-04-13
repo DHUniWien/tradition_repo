@@ -29,7 +29,7 @@ import java.util.List;
  */
 
 @XmlRootElement
-@JsonInclude(Include.NON_NULL) // TODO consider switching to NON_DEFAULT
+@JsonInclude(Include.NON_DEFAULT)
 public class ReadingModel implements Comparable<ReadingModel> {
 
     /**
@@ -249,9 +249,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return is_emendation;
     }
 
-    public void setIs_emendation(Boolean is_emendation) {
-        this.is_emendation = is_emendation;
-    }
+    @SuppressWarnings("WeakerAccess")
+    public void setIs_emendation(Boolean is_emendation) { this.is_emendation = is_emendation; }
 
     public Boolean getIs_nonsense() {
         return is_nonsense;
@@ -384,6 +383,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return authority;
     }
 
+    @SuppressWarnings("WeakerAccess")
     public void setAuthority(String authority) {
         this.authority = authority;
     }
