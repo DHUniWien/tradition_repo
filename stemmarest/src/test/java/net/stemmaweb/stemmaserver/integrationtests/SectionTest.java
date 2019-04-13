@@ -3,7 +3,6 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.core.util.MultivaluedMapImpl;
-import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
@@ -22,8 +21,8 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
 import java.util.*;
 
 import static org.junit.Assert.assertNotEquals;
@@ -665,6 +664,81 @@ public class SectionTest extends TestCase {
                 cnt++;
         }
         return cnt;
+    }
+
+    public void testEmendation() {
+        // Get the section ID
+        List<SectionModel> tradSections = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String sectId = tradSections.get(0).getId();
+
+        // Propose an emendation for the wrong ranks
+        ProposedEmendationModel pem = new ProposedEmendationModel();
+        pem.setAuthority("H. Granger");
+        pem.setText("alohomora");
+        pem.setFromRank(10L);
+        pem.setToRank(12L);
+
+        // Try to set it
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, pem);
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+
+        // Now for the right ranks
+        pem.setFromRank(4L);
+        pem.setToRank(6L);
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, pem);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        // Check the reading itself
+        GraphModel result = response.getEntity(GraphModel.class);
+        assertEquals(1, result.getReadings().size());
+        assertTrue(result.getRelations().isEmpty());
+        ReadingModel emendation = result.getReadings().iterator().next();
+        String emendId = emendation.getId();
+        assertEquals("alohomora", emendation.getText());
+        assertEquals("H. Granger", emendation.getAuthority());
+        assertTrue(emendation.getIs_emendation());
+        // Check its links
+        assertEquals(12, result.getSequences().size());
+        assertEquals(7, result.getSequences().stream().filter(x -> x.getTarget().equals(emendId)).count());
+        assertEquals(5, result.getSequences().stream().filter(x -> x.getSource().equals(emendId)).count());
+        for (SequenceModel link : result.getSequences()) {
+            assertEquals("EMENDED", link.getType());
+        }
+
+        // Now set a new emendation that is zero-width
+        pem.setText("Petrificus totalus");
+        pem.setFromRank(10L);
+        pem.setToRank(10L);
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, pem);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        result = response.getEntity(GraphModel.class);
+        assertEquals(1, result.getReadings().size());
+        emendation = result.getReadings().iterator().next();
+        assertTrue(result.getRelations().isEmpty());
+        assertEquals(2, result.getSequences().size());
+        for (SequenceModel link : result.getSequences()) {
+            ReadingModel otherReading;
+            if (link.getSource().equals(emendation.getId())) {
+                otherReading = jerseyTest.resource().path("/reading/" + link.getTarget()).get(ReadingModel.class);
+                assertTrue(otherReading.getIs_end());
+                assertEquals(Long.valueOf(10), otherReading.getRank());
+            } else {
+                otherReading = jerseyTest.resource().path("/reading/" + link.getSource()).get(ReadingModel.class);
+                assertFalse(otherReading.getIs_end());
+                assertEquals(Long.valueOf(9), otherReading.getRank());
+                assertEquals("oriundus", otherReading.getText());
+            }
+        }
     }
 
     public void testRelatedClusters() {

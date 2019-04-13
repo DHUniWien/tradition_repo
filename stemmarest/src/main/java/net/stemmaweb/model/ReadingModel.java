@@ -2,6 +2,7 @@ package net.stemmaweb.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import javax.xml.bind.annotation.XmlRootElement;
 
@@ -28,7 +29,7 @@ import java.util.List;
  */
 
 @XmlRootElement
-@JsonInclude(Include.NON_NULL)
+@JsonInclude(Include.NON_DEFAULT)
 public class ReadingModel implements Comparable<ReadingModel> {
 
     /**
@@ -51,6 +52,10 @@ public class ReadingModel implements Comparable<ReadingModel> {
      * True if the reading has been set as canonical / lemma text for editorial purposes
      */
     private Boolean is_lemma = false;        // dn5
+    /**
+     * True if the reading is an emendation
+     */
+    private Boolean is_emendation = false;
     /**
      * True if the reading text is nonsensical
      */
@@ -99,6 +104,10 @@ public class ReadingModel implements Comparable<ReadingModel> {
      * Any additional user-supplied JSON data for this reading
      */
     private String extra;
+    /**
+     * The authority for an emendation reading
+     */
+    private String authority;
 
     /* === Calculated read-only values === */
     /**
@@ -162,6 +171,11 @@ public class ReadingModel implements Comparable<ReadingModel> {
                     // Emit a warning, but carry on
                     System.err.println("Invalid JSON string in reading extra parameter: " + jsonData);
                 }
+            }
+            if (node.hasLabel(Nodes.EMENDATION)) {
+                this.setIs_emendation(true);
+                // We don't check whether this property exists, because it darn well should
+                this.setAuthority(node.getProperty("authority").toString());
             }
             HashSet<String> collectedWits = new HashSet<>();
             for (Relationship r : node.getRelationships(ERelations.SEQUENCE, Direction.BOTH)) {
@@ -230,6 +244,13 @@ public class ReadingModel implements Comparable<ReadingModel> {
     public void setIs_lemma(Boolean is_lemma) {
         this.is_lemma = is_lemma;
     }
+
+    public Boolean getIs_emendation() {
+        return is_emendation;
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public void setIs_emendation(Boolean is_emendation) { this.is_emendation = is_emendation; }
 
     public Boolean getIs_nonsense() {
         return is_nonsense;
@@ -356,6 +377,15 @@ public class ReadingModel implements Comparable<ReadingModel> {
 
     public void setExtra(String extra) {
         this.extra = extra;
+    }
+
+    public String getAuthority() {
+        return authority;
+    }
+
+    @SuppressWarnings("WeakerAccess")
+    public void setAuthority(String authority) {
+        this.authority = authority;
     }
 
     public List<ReadingModel> getRepresented() { return represented; }

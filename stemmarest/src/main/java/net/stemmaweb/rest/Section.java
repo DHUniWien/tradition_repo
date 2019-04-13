@@ -1068,6 +1068,18 @@ public class Section {
         return Response.ok(jsonresp("result", "success")).build();
     }
 
+    /**
+     * Propose an emendation (that is, an edit not supported by any witness) to the text.
+     * An emendation is a special type of reading, which requires an authority (i.e. the
+     * identity of the proposer) to be named.
+     *
+     * @param proposal - A ProposedEmendationModel with the information
+     * @return a GraphModel containing the new reading and its links to the rest of the text
+     * @statuscode 200 - on success
+     * @statuscode 400 - on bad request
+     * @statuscode 404 - if the tradition and/or section doesn't exist
+     * @statuscode 500 - on error
+     */
     @POST
     @Path("/emend")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -1079,14 +1091,21 @@ public class Section {
                     .entity(jsonerror("Tradition and/or section not found")).build();
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
-            // Find all the last readings at or prior to the fromRank. Omit any lacunae - we
-            // don't emend a lacunose text.
-            Set<Node> atOrPrior = sequencesCrossingRank(proposal.getFromRank(), true)
-                    .stream().filter(x -> !x.getStartNode().hasProperty("is_lacuna"))
+            // Find all the last readings at or prior to the fromRank. Omit any lacunae that
+            // span the range - we don't emend a lacunose text.
+            Set<Node> atOrPrior = sequencesCrossingRank(proposal.getFromRank(), false)
+                    .stream().filter(x -> !(x.getStartNode().hasProperty("is_lacuna")
+                                && (Long) x.getEndNode().getProperty("rank", 0) >= proposal.getToRank()))
                     .map(Relationship::getStartNode).collect(Collectors.toSet());
-            // Find all the first readings at or after the toRank.
+            // Find all the first readings at or after the toRank. Again omit the lacunae.
             Set<Node> atOrAfter = sequencesCrossingRank(proposal.getToRank(), false)
-                    .stream().map(Relationship::getEndNode).collect(Collectors.toSet());
+                    .stream().filter(x -> !(x.getStartNode().hasProperty("is_lacuna")
+                                && (Long) x.getStartNode().getProperty("rank", 0) < proposal.getFromRank()))
+                            .map(Relationship::getEndNode).collect(Collectors.toSet());
+            // Make sure we actually have readings on either side
+            if (atOrPrior.isEmpty() || atOrAfter.isEmpty())
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(jsonerror("Invalid rank range specified for emendation")).build();
             // Make the emendation node
             Node emendation = db.createNode(Nodes.READING, Nodes.EMENDATION);
             emendation.setProperty("text", proposal.getText());
@@ -1146,6 +1165,7 @@ public class Section {
      * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
      * @param showRank - Display the rank of readings, if true
      * @param displayAllSigla - Avoid the 'majority' contraction of long witness labels, if true
+     * @param showEmendations - Show the emendations that have been made to the text
      * @param normalise - A RelationType name to normalise on, if desired
      * @return Plaintext dot format
      * @statuscode 200 - on success
@@ -1159,14 +1179,15 @@ public class Section {
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
-                                                  @QueryParam("normalise") String normalise,
-                           @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla) {
+                           @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
+                           @DefaultValue("false") @QueryParam("show_emendations") Boolean showEmendations,
+                                                  @QueryParam("normalise") String normalise) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
 
         // Put our options into an object
         DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, showRank, normalise, displayAllSigla);
+                includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, showEmendations, normalise);
         // Make the dot.
         DotExporter exporter = new DotExporter(db);
         return exporter.writeNeo4J(tradId, sectId, dm);
