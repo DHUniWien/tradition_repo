@@ -91,6 +91,8 @@ public class Tradition {
     @Path("/relationtype/{name}")
     public RelationType getRelationType(@PathParam("name") String name) { return new RelationType(traditionId, name); }
 
+    @Path("/annotationlabel/{name}")
+    public AnnotationLabel getAnnotationType(@PathParam("name") String name) { return new AnnotationLabel(traditionId, name); }
     /*
      * Resource creation calls
      */
