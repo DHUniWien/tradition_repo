@@ -2,6 +2,7 @@ package net.stemmaweb.model;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
@@ -51,7 +52,7 @@ public class GraphModel {
         this.readings.addAll(readings);
     }
 
-    public void addReadings(HashSet<ReadingModel> readings) { this.readings.addAll(readings); }
+    public void addReadings(Set<ReadingModel> readings) { this.readings.addAll(readings); }
 
     public HashSet<RelationModel> getRelations() {
         return relations;
@@ -62,7 +63,7 @@ public class GraphModel {
         this.relations.addAll(relations);
     }
 
-    public void addRelations(HashSet<RelationModel> relations) { this.relations.addAll(relations); }
+    public void addRelations(Set<RelationModel> relations) { this.relations.addAll(relations); }
 
     public HashSet<SequenceModel> getSequences() {
         return sequences;
@@ -73,5 +74,5 @@ public class GraphModel {
         this.sequences.addAll(sequences);
     }
 
-    public void addSequences(HashSet<SequenceModel> sequences) { this.sequences.addAll(sequences); }
+    public void addSequences(Set<SequenceModel> sequences) { this.sequences.addAll(sequences); }
 }

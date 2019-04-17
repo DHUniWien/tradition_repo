@@ -22,6 +22,7 @@ import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
@@ -67,7 +68,7 @@ public class Section {
      * Get the metadata for a section.
      *
      * @summary Get section
-     * @return  JSON data for the requested section
+     * @return  a SectionModel for the requested section
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
@@ -94,7 +95,7 @@ public class Section {
      *
      * @summary Update section
      * @param newInfo - A JSON specification of the section update
-     * @return  JSON data for the updated section
+     * @return  a SectionModel for the updated section
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
@@ -122,7 +123,7 @@ public class Section {
 
     /**
      * Delete the specified section, and update the tradition's sequence of sections to
-     * account for any resulting gap.
+     * account for any resulting gap. Returns a JSON response on error with key 'error'.
      *
      * @summary Delete section
      * @statuscode 200 - on success
@@ -316,6 +317,14 @@ public class Section {
     }
 
 
+    /**
+     * Gets a list of all clusters of readings that are related via colocation links.
+     *
+     * @summary Get colocated clusters of readings
+     * @return a list of clusters
+     * @statuscode 200 - on success
+     * @statuscode 500 - on error
+     */
     @GET
     @Path("/colocated")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -342,7 +351,7 @@ public class Section {
      *
      * @summary Get lemma text
      * @param followFinal - Whether or not to follow the 'lemma_text' path
-     * @return A string that is the lemma text readings
+     * @return a WitnessTextModel containing the requested lemma text
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
      * @statuscode 500 - on failure, with an error message
@@ -350,7 +359,7 @@ public class Section {
     @GET
     @Path("/lemmatext")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("net.stemmaweb.WitnessTextModel")
+    @ReturnType(clazz = WitnessTextModel.class)
     public Response getLemmaText(@QueryParam("final") @DefaultValue("false") String followFinal) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -375,7 +384,7 @@ public class Section {
      *
      * @summary Get sequence of lemma readings
      * @param followFinal - Whether or not to follow the 'lemma_text' path
-     * @return A JSON list of lemma text readings
+     * @return A JSON list of lemma text ReadingModels
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
      * @statuscode 500 - on failure, with an error message
@@ -435,7 +444,8 @@ public class Section {
      */
 
     /**
-     * Move this section to a new place in the section sequence.
+     * Move this section to a new place in the section sequence. Upon error, returns a JSON response
+     * with key 'error'.
      *
      * @summary Reorder section
      * @param priorSectID - the ID of the section that should precede this one; "none" if this section should be first.
@@ -514,9 +524,11 @@ public class Section {
     /**
      * Split a section into two at the given graph rank, and adjust the tradition's section order accordingly.
      * Returns a JSON response of the form {@code {"sectionId": <ID>}}, containing the ID of the new section.
+     * Upon error, returns an error message with key 'error'.
      *
      * @summary Reorder section
      * @param rankstr - the rank at which the section should be split
+     * @return  JSON response with key 'sectionId' or key 'error'
      * @statuscode 200 - on success
      * @statuscode 400 - if the section doesn't contain the specified rank
      * @statuscode 404 - if no such tradition or section exists
@@ -525,7 +537,7 @@ public class Section {
     @POST
     @Path("/splitAtRank/{rankstr}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.String")
+    // @ReturnType("java.lang.String")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -643,6 +655,7 @@ public class Section {
     }
 
 
+    @SuppressWarnings("SameParameterValue")
     private List<Relationship> sequencesCrossingRank(Long rank, Boolean leftfencepost) {
         Node startNode = DatabaseService.getStartNode(sectId, db);
         return db.traversalDescription().depthFirst()
@@ -814,7 +827,7 @@ public class Section {
      * @param endRank   - where to end
      * @param threshold - the number of ranks to look ahead/behind
      * @param limitText      - limit search to readings with the given text
-     * @return lists of readings that may be merged.
+     * @return a list of lists of readings that may be merged.
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
@@ -996,9 +1009,11 @@ public class Section {
     }
 
     /**
-     * Chain through the readings marked as lemmata and construct the LEMMA_TEXT link.
+     * Chain through the readings marked as lemmata and construct the LEMMA_TEXT link. Returns a
+     * short
      *
      * @summary Set the lemma text
+     * @return  JSON value with key 'result' (== 'success') or 'error'
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 409 - on detection of conflicting lemma readings
@@ -1007,7 +1022,7 @@ public class Section {
     @POST
     @Path("/setlemma")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.String")
+    // @ReturnType("java.lang.String")
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -1085,7 +1100,7 @@ public class Section {
     @Path("/emend")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("net.stemmaweb.model.GraphModel")
+    @ReturnType(clazz = GraphModel.class)
     public Response emendText(ProposedEmendationModel proposal) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND)
@@ -1133,11 +1148,54 @@ public class Section {
      * Export
      */
 
+    /**
+     * Returns a JSON GraphModel (readings, relations, sequences incl. lemma & emendation) for the section.
+     *
+     * @summary Download JSON description of graph nodes & edges
+     * @return GraphModel of the section subgraph, excluding annotations
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition or section exists
+     * @statuscode 500 - on failure, with an error message
+     */
+    @GET
+    @Path("/graph")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
+    public Response getGraphModel() {
+        // TODO does this check make sense, or does the not-found happen already in Tradition.java?
+        if (DatabaseService.getTraditionNode(tradId, db) == null)
+            return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
+                    .entity("No such tradition found").build();
+
+        GraphModel thisSection = new GraphModel();
+        try (Transaction tx = db.beginTx()) {
+            // Add the readings
+            thisSection.addReadings(StreamSupport.stream(DatabaseService.returnTraditionSection(sectId, db)
+                    .nodes().spliterator(), false).filter(x -> x.hasLabel(Nodes.READING))
+                    .map(ReadingModel::new).collect(Collectors.toSet()));
+            // Add the relations
+            thisSection.addRelations(StreamSupport.stream(DatabaseService.returnTraditionSection(sectId, db)
+                    .relationships().spliterator(), false).filter(x -> x.isType(ERelations.RELATED))
+                    .map(RelationModel::new).collect(Collectors.toSet()));
+            // Add the sequences
+            thisSection.addSequences(StreamSupport.stream(DatabaseService.returnTraditionSection(sectId, db)
+                    .relationships().spliterator(), false)
+                    .filter(x -> x.isType(ERelations.SEQUENCE) || x.isType(ERelations.LEMMA_TEXT) || x.isType(ERelations.EMENDED))
+                    .map(SequenceModel::new).collect(Collectors.toSet()));
+
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.ok(thisSection).build();
+    }
+
     // Export the dot / SVG for a particular section
     /**
-     * Returns a GraphML file that describes the specified section and its data.
+     * Returns a GraphML file that describes the specified section and its data, including annotations.
      *
-     * @summary Download GraphML
+     * @summary Download GraphML XML description of section
      * @param includeWitnesses - Whether or not to include witness information in the XML
      * @return GraphML description of the section subgraph
      * @statuscode 200 - on success
@@ -1147,7 +1205,7 @@ public class Section {
     @GET
     @Path("/graphml")
     @Produces(MediaType.APPLICATION_XML + "; charset=utf-8")
-    @ReturnType("java.lang.String")
+    @ReturnType("java.lang.Void")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
@@ -1176,7 +1234,7 @@ public class Section {
     @GET
     @Path("/dot")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
-    @ReturnType("java.lang.String")
+    @ReturnType(clazz = String.class)
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
@@ -1195,7 +1253,7 @@ public class Section {
     }
 
     /**
-     * Returns a JSON file that contains the aligned reading data for the tradition.
+     * Returns an alignment table for the section in JSON format.
      *
      * @summary Download JSON alignment
      *
@@ -1205,7 +1263,7 @@ public class Section {
     @GET
     @Path("/json")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = AlignmentModel.class)
     public Response getJson(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
         return new TabularExporter(db).exportAsJSON(tradId, toConflate, thisSection);
@@ -1239,7 +1297,7 @@ public class Section {
     @GET
     @Path("/tsv")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = String.class)
     public Response getTsv(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
         return new TabularExporter(db).exportAsCSV(tradId, '\t', toConflate, thisSection);
@@ -1256,7 +1314,7 @@ public class Section {
     @GET
     @Path("/matrix")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = String.class)
     public Response getCharMatrix(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
         return new TabularExporter(db).exportAsCharMatrix(tradId, toConflate, thisSection);
