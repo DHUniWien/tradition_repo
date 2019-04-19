@@ -87,7 +87,7 @@ public class ReadingService {
         if (witClass.equals("witnesses")) {
             for (String wc : link.getPropertyKeys()) {
                 if (wc.equals(witClass)) continue;
-                removeWitnessLink(start, end, sigil, wc, "none");
+                removeWitnessLink(start, end, sigil, wc, "none", seqType);
             }
         }
         return link;
@@ -108,6 +108,10 @@ public class ReadingService {
      * @param witClass - the witness layer class to use
      */
     public static void removeWitnessLink (Node start, Node end, String sigil, String witClass, String orphanCheck) {
+        removeWitnessLink(start, end, sigil, witClass, orphanCheck, ERelations.SEQUENCE);
+    }
+
+    private static void removeWitnessLink (Node start, Node end, String sigil, String witClass, String orphanCheck, RelationshipType seqType) {
         // If we are removing a base witness link, we need to check whether any layers for
         // that witness end at our start node or start at our end node.
         boolean ocStart = orphanCheck.equals("start") || orphanCheck.equals("both");
@@ -133,7 +137,7 @@ public class ReadingService {
         // Next, go through the outgoing sequences to find the appropriate link. As before, any
         // incoming orphans that leave through a different link aren't really orphans.
         Relationship link = null;
-        for (Relationship r : start.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
+        for (Relationship r : start.getRelationships(Direction.OUTGOING, seqType)) {
             if (r.getEndNode().equals(end))
                 link = r;
             else if (witClass.equals("witnesses") && ocStart) {
