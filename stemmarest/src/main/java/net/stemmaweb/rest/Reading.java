@@ -160,7 +160,8 @@ public class Reading {
                 if (r.isType(ERelations.LEMMA_TEXT)) {
                     onLemmaPath = true;
                 } else {
-                    deletedSeqs.add(new SequenceModel(r));
+                    if (!r.isType(ERelations.HAS_EMENDATION))
+                        deletedSeqs.add(new SequenceModel(r));
                     r.delete();
                 }
             }

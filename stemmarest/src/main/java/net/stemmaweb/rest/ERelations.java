@@ -24,6 +24,7 @@ public enum ERelations implements RelationshipType {
     HAS_ARCHETYPE,  // used to point from the stemma node to its archetype
     TRANSMITTED,    // links witnesses in the stemma to each other
     HAS_RELATION_TYPE,  // specifies what reading relations occur in a tradition
+    HAS_EMENDATION, // links a section to all the emendations it contains
     EMENDED,        // a SEQUENCE-like link that anchors an emendation into the text
     HAS_ANNOTATION, // links a tradition (or section?) to its textual annotations
     HAS_ANNOTATION_TYPE,    // links a user to his/her defined annotation types

@@ -488,7 +488,7 @@ public class ReadingService {
             ArrayList<Relationship> relevantRelations = new ArrayList<>();
             // Get the sequence relationships
             for (Relationship relationship : path.endNode()
-                    .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT))
+                    .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED))
                 relevantRelations.add(relationship);
             // Get the alignment relationships and filter them
             for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {

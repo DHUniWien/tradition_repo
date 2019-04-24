@@ -696,19 +696,19 @@ public class SectionTest extends TestCase {
                 .post(ClientResponse.class, pem);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         // Check the reading itself
-        GraphModel result = response.getEntity(GraphModel.class);
-        assertEquals(1, result.getReadings().size());
-        assertTrue(result.getRelations().isEmpty());
-        ReadingModel emendation = result.getReadings().iterator().next();
+        GraphModel firstResult = response.getEntity(GraphModel.class);
+        assertEquals(1, firstResult.getReadings().size());
+        assertTrue(firstResult.getRelations().isEmpty());
+        ReadingModel emendation = firstResult.getReadings().iterator().next();
         String emendId = emendation.getId();
         assertEquals("alohomora", emendation.getText());
         assertEquals("H. Granger", emendation.getAuthority());
         assertTrue(emendation.getIs_emendation());
         // Check its links
-        assertEquals(12, result.getSequences().size());
-        assertEquals(7, result.getSequences().stream().filter(x -> x.getTarget().equals(emendId)).count());
-        assertEquals(5, result.getSequences().stream().filter(x -> x.getSource().equals(emendId)).count());
-        for (SequenceModel link : result.getSequences()) {
+        assertEquals(12, firstResult.getSequences().size());
+        assertEquals(7, firstResult.getSequences().stream().filter(x -> x.getTarget().equals(emendId)).count());
+        assertEquals(5, firstResult.getSequences().stream().filter(x -> x.getSource().equals(emendId)).count());
+        for (SequenceModel link : firstResult.getSequences()) {
             assertEquals("EMENDED", link.getType());
         }
 
@@ -721,12 +721,12 @@ public class SectionTest extends TestCase {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, pem);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        result = response.getEntity(GraphModel.class);
-        assertEquals(1, result.getReadings().size());
-        emendation = result.getReadings().iterator().next();
-        assertTrue(result.getRelations().isEmpty());
-        assertEquals(2, result.getSequences().size());
-        for (SequenceModel link : result.getSequences()) {
+        GraphModel secondResult = response.getEntity(GraphModel.class);
+        assertEquals(1, secondResult.getReadings().size());
+        emendation = secondResult.getReadings().iterator().next();
+        assertTrue(secondResult.getRelations().isEmpty());
+        assertEquals(2, secondResult.getSequences().size());
+        for (SequenceModel link : secondResult.getSequences()) {
             ReadingModel otherReading;
             if (link.getSource().equals(emendation.getId())) {
                 otherReading = jerseyTest.resource().path("/reading/" + link.getTarget()).get(ReadingModel.class);
@@ -739,6 +739,47 @@ public class SectionTest extends TestCase {
                 assertEquals("oriundus", otherReading.getText());
             }
         }
+
+        // Check that we can retrieve these emendations
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/emendations")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        GraphModel allEmendations = response.getEntity(GraphModel.class);
+        // The contents of firstResult and secondResult should both be in here
+        assertTrue(allEmendations.getReadings().stream().anyMatch(
+                x -> x.getId().equals(firstResult.getReadings().iterator().next().getId())));
+        assertTrue(allEmendations.getReadings().stream().anyMatch(
+                x -> x.getId().equals(secondResult.getReadings().iterator().next().getId())));
+        for (SequenceModel sm : firstResult.getSequences()) {
+            assertTrue(allEmendations.getSequences().stream().anyMatch(
+                    x -> x.getId().equals(sm.getId())
+            ));
+        }
+
+        // Split the section and check that we can still retrieve each emendation
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/splitAtRank/8")
+                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String newSection = Util.getValueFromJson(response, "sectionId");
+        GraphModel oldResult = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/emendations")
+                .type(MediaType.APPLICATION_JSON).get(GraphModel.class);
+        assertEquals(1, oldResult.getReadings().size());
+        assertEquals(firstResult.getReadings().iterator().next().getId(), oldResult.getReadings().iterator().next().getId());
+        assertEquals(firstResult.getSequences().size(), oldResult.getSequences().size());
+        GraphModel newResult = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSection + "/emendations")
+                .type(MediaType.APPLICATION_JSON).get(GraphModel.class);
+        assertEquals(1, newResult.getReadings().size());
+        assertEquals(secondResult.getReadings().iterator().next().getId(), newResult.getReadings().iterator().next().getId());
+        assertEquals(secondResult.getSequences().size(), newResult.getSequences().size());
+
+        // Re-join the section and check that we can still retrieve each emendation
+        response = jerseyTest.resource().path(("/tradition/" + tradId + "/section/" + sectId + "/merge/" + newSection))
+                .type(MediaType.APPLICATION_JSON).post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        newResult = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/emendations")
+                .type(MediaType.APPLICATION_JSON).get(GraphModel.class);
+        assertEquals(2, newResult.getReadings().size());
     }
 
     public void testRelatedClusters() {

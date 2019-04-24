@@ -633,9 +633,15 @@ public class Section {
             db.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
                     .stream().forEach(x -> {
-                        x.setProperty("section_id", newId);
-                        if (!x.equals(newStart))
-                            x.setProperty("rank", Long.valueOf(x.getProperty("rank").toString()) - rank + 1);
+                        if (x.hasLabel(Nodes.EMENDATION)) {
+                            x.getSingleRelationship(ERelations.HAS_EMENDATION, Direction.INCOMING).delete();
+                            newSection.createRelationshipTo(x, ERelations.HAS_EMENDATION);
+                        }
+                        if (x.hasLabel(Nodes.READING)) {
+                            x.setProperty("section_id", newId);
+                            if (!x.equals(newStart))
+                                x.setProperty("rank", Long.valueOf(x.getProperty("rank").toString()) - rank + 1);
+                        }
                     }
             );
 
@@ -725,7 +731,13 @@ public class Section {
             final Long keptId = firstSection.getId();
             db.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes()
-                    .stream().forEach(x -> x.setProperty("section_id", keptId));
+                    .stream().filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
+
+            for (Relationship r : secondSection.getRelationships(ERelations.HAS_EMENDATION)) {
+                Node e = r.getEndNode();
+                r.delete();
+                firstSection.createRelationshipTo(e, ERelations.HAS_EMENDATION);
+            }
 
             // Collect the last readings from the first section, for later rank recalculation
             List<Node> firstSectionEnd = new ArrayList<>();
@@ -1084,6 +1096,37 @@ public class Section {
         return Response.ok(jsonresp("result", "success")).build();
     }
 
+    @GET
+    @Path("/emendations")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
+    public Response getEmendations() {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(jsonerror("Tradition and/or section not found")).build();
+        GraphModel result = new GraphModel();
+        try (Transaction tx = db.beginTx()) {
+            // Crawl the section looking for all emendations
+            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            List<Node> emended = new ArrayList<>();
+            for (Relationship r : sectionNode.getRelationships(ERelations.HAS_EMENDATION, Direction.OUTGOING))
+                emended.add(r.getEndNode());
+            result.setReadings(emended.stream().map(ReadingModel::new).collect(Collectors.toList()));
+            List<SequenceModel> emendSeqs = new ArrayList<>();
+            for (Node n : emended) {
+                for (Relationship r : n.getRelationships(ERelations.EMENDED)) {
+                    emendSeqs.add(new SequenceModel(r));
+                }
+            }
+            result.setSequences(emendSeqs);
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.ok(result).build();
+    }
+
     /**
      * Propose an emendation (that is, an edit not supported by any witness) to the text.
      * An emendation is a special type of reading, which requires an authority (i.e. the
@@ -1131,6 +1174,8 @@ public class Section {
             ReadingModel emrm = new ReadingModel(emendation);
             result.setReadings(Collections.singletonList(emrm));
             // Connect it in the graph
+            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            sectionNode.createRelationshipTo(emendation, ERelations.HAS_EMENDATION);
             List<SequenceModel> newLinks = new ArrayList<>();
             for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
             for (Node n : atOrAfter) newLinks.add(new SequenceModel(emendation.createRelationshipTo(n, ERelations.EMENDED)));
