@@ -704,6 +704,7 @@ public class SectionTest extends TestCase {
         assertEquals("alohomora", emendation.getText());
         assertEquals("H. Granger", emendation.getAuthority());
         assertTrue(emendation.getIs_emendation());
+        assertEquals(Long.valueOf(4), emendation.getRank());
         // Check its links
         assertEquals(12, firstResult.getSequences().size());
         assertEquals(7, firstResult.getSequences().stream().filter(x -> x.getTarget().equals(emendId)).count());
@@ -724,6 +725,7 @@ public class SectionTest extends TestCase {
         GraphModel secondResult = response.getEntity(GraphModel.class);
         assertEquals(1, secondResult.getReadings().size());
         emendation = secondResult.getReadings().iterator().next();
+        assertEquals(Long.valueOf(10), emendation.getRank());
         assertTrue(secondResult.getRelations().isEmpty());
         assertEquals(2, secondResult.getSequences().size());
         for (SequenceModel link : secondResult.getSequences()) {
@@ -731,7 +733,7 @@ public class SectionTest extends TestCase {
             if (link.getSource().equals(emendation.getId())) {
                 otherReading = jerseyTest.resource().path("/reading/" + link.getTarget()).get(ReadingModel.class);
                 assertTrue(otherReading.getIs_end());
-                assertEquals(Long.valueOf(10), otherReading.getRank());
+                assertEquals(Long.valueOf(11), otherReading.getRank());
             } else {
                 otherReading = jerseyTest.resource().path("/reading/" + link.getSource()).get(ReadingModel.class);
                 assertFalse(otherReading.getIs_end());

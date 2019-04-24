@@ -354,6 +354,8 @@ public class ReadingService {
                 ArrayList<Node> parents = new ArrayList<>();
                 n.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)
                         .forEach(x -> parents.add(x.getStartNode()));
+                n.getRelationships(ERelations.EMENDED, Direction.INCOMING)
+                        .forEach(x -> parents.add(x.getStartNode()));
                 for (Node p: parents) {
                     String rankprop = p.hasProperty("touched") ? "newrank" : "rank";
                     if (!p.hasProperty(rankprop))
@@ -568,6 +570,7 @@ public class ReadingService {
                     .depthFirst()
                     .evaluator(rankEvaluator)
                     .expand(alignmentEvaluator).traverse(lower).relationships()) {
+                // TODO does this need to include EMENDED links?
                 if (r.getType().name().equals(ERelations.SEQUENCE.name()))
                     followed_sequence = true;
                 if ((reverse ? firstCluster : secondCluster).contains(r.getEndNode()) && followed_sequence)

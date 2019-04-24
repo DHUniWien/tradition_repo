@@ -1169,8 +1169,8 @@ public class Section {
             Node emendation = db.createNode(Nodes.READING, Nodes.EMENDATION);
             emendation.setProperty("text", proposal.getText());
             emendation.setProperty("authority", proposal.getAuthority());
-            emendation.setProperty("rank", proposal.getFromRank() + 1);
-            emendation.setProperty("section_id", sectId);
+            emendation.setProperty("rank", proposal.getFromRank());
+            emendation.setProperty("section_id", Long.valueOf(sectId));
             ReadingModel emrm = new ReadingModel(emendation);
             result.setReadings(Collections.singletonList(emrm));
             // Connect it in the graph
@@ -1180,6 +1180,8 @@ public class Section {
             for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
             for (Node n : atOrAfter) newLinks.add(new SequenceModel(emendation.createRelationshipTo(n, ERelations.EMENDED)));
             result.setSequences(newLinks);
+            // If it is a zero-width emendation, re-rank the graph
+            ReadingService.recalculateRank(emendation);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
