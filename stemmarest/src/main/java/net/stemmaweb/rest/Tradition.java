@@ -737,6 +737,8 @@ public class Tradition {
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param maxVars      - Maximum number of variants per location, above which that location will be discarded.
+     *                       Default is 8, for compatibility with Phylip Pars.
      * @return the character matrix as plaintext
      */
     @GET
@@ -744,8 +746,9 @@ public class Tradition {
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
-                                  @QueryParam("section") List<String> sectionList) {
-        return new TabularExporter(db).exportAsCharMatrix(traditionId, toConflate, sectionList);
+                                  @QueryParam("section") List<String> sectionList,
+                                  @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
+        return new TabularExporter(db).exportAsCharMatrix(traditionId, maxVars, toConflate, sectionList);
     }
 
 }

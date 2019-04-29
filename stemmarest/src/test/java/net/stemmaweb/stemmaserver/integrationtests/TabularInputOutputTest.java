@@ -814,7 +814,26 @@ public class TabularInputOutputTest extends TestCase {
                 .path("/tradition/" + traditionId + "/matrix")
                 .get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        // TODO finish testing this for real
+        // Look at the actual output - it should have 3 witnesses and 10 positions
+        String matrix = result.getEntity(String.class);
+        String[] matrixLines = matrix.split("\\n");
+        assertEquals("\t3\t10", matrixLines[0]);
+        assertEquals("A         AAAXAAAAAA", matrixLines[1]);
+        assertEquals("B         XXXAABBBAA", matrixLines[2]);
+        assertEquals("C         XXXABAACBX", matrixLines[3]);
+
+        // Now restrict the maximum number of divergences to two
+        result = jerseyTest.resource().path("/tradition/" + traditionId + "/matrix")
+                .queryParam("maxVars", "2")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        // Look at the actual output - it should have 3 witnesses but now only 9 positions
+        matrix = result.getEntity(String.class);
+        matrixLines = matrix.split("\\n");
+        assertEquals("\t3\t9", matrixLines[0]);
+        assertEquals("A         AAAXAAAAA", matrixLines[1]);
+        assertEquals("B         XXXAABBAA", matrixLines[2]);
+        assertEquals("C         XXXABAABX", matrixLines[3]);
     }
 
     public void tearDown() throws Exception {

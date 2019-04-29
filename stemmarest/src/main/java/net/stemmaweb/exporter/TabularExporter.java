@@ -87,7 +87,7 @@ public class TabularExporter {
     }
 
 
-    public Response exportAsCharMatrix(String tradId, String conflate, List<String> sectionList) {
+    public Response exportAsCharMatrix(String tradId, int maxVars, String conflate, List<String> sectionList) {
         AlignmentModel wholeTradition;
         try {
             wholeTradition = returnFullAlignment(tradId, conflate, sectionList);
@@ -131,8 +131,8 @@ public class TabularExporter {
             // Skip rows that don't diverge
             if (curr == 'B' && !row_has_null && !row_has_lacuna)
                 continue;
-            // Check that we aren't over the 8-distinct-character limit
-            if (curr > 'H' || row_has_null && curr > 'G')
+            // Check that we aren't over the max-character limit
+            if (curr > 'A' + maxVars || row_has_null && curr > 'A' + (maxVars - 1))
                 continue;
 
             // Employ it

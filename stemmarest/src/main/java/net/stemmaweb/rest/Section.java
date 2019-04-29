@@ -1356,15 +1356,18 @@ public class Section {
      * @summary Download character matrix for parsimony analysis
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param maxVars      - Maximum number of variants per location, above which that location will be discarded.
+     *                       Default is 8, for compatibility with Phylip Pars.
      * @return the character matrix as plaintext
      */
     @GET
     @Path("/matrix")
     @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
     @ReturnType(clazz = String.class)
-    public Response getCharMatrix(@QueryParam("conflate") String toConflate) {
+    public Response getCharMatrix(@QueryParam("conflate") String toConflate,
+                                  @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        return new TabularExporter(db).exportAsCharMatrix(tradId, toConflate, thisSection);
+        return new TabularExporter(db).exportAsCharMatrix(tradId, maxVars, toConflate, thisSection);
     }
 
     // For use in a transaction!
