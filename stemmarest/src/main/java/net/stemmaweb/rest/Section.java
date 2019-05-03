@@ -55,6 +55,7 @@ public class Section {
 
     /**
      * @param sigil - The sigil of the requested witness
+     * @return the Witness REST module initialised for that sigil
      */
     @Path("/witness/{sigil}")
     public Witness getWitnessFromSection(@PathParam("sigil") String sigil) {

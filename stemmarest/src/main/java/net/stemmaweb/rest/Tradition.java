@@ -93,6 +93,18 @@ public class Tradition {
 
     @Path("/annotationlabel/{name}")
     public AnnotationLabel getAnnotationType(@PathParam("name") String name) { return new AnnotationLabel(traditionId, name); }
+
+    /**
+     * @param annoid - the ID of the requested annotation
+     * @return the Annotation REST module initialised for that annotation
+     */
+    @Path("/annotation/{annoid}")
+    public Annotation getAnnotationOnSection(@PathParam("annoid") String annoid) {
+        return new Annotation(traditionId, annoid);
+    }
+
+
+
     /*
      * Resource creation calls
      */
@@ -253,6 +265,31 @@ public class Tradition {
         }
 
         return result;
+    }
+
+    @POST
+    @Path("/annotation")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = AnnotationModel.class)
+    public Response addAnnotation(AnnotationModel am) {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Response result;
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        try (Transaction tx = db.beginTx()) {
+            Node anno = db.createNode();
+            Annotation annoRest = new Annotation(traditionId, String.valueOf(anno.getId()));
+            result = annoRest.updateAnnotation(am);
+            if (result.getStatus() != Status.OK.getStatusCode())
+                // Abort the operation and return the non-OK result
+                return result;
+            // Otherwise, commit it
+            tx.success();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.status(Status.CREATED).entity(result.getEntity()).build();
     }
 
     /**
@@ -470,6 +507,28 @@ public class Tradition {
 
         }
         return Response.ok(readingModels).build();
+    }
+
+    @GET
+    @Path("/annotations")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    public Response getAllAnnotations() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND)
+                    .entity(jsonerror("There is no tradition with this id")).build();
+
+        ArrayList<AnnotationModel> result = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            traditionNode.getRelationships(ERelations.HAS_ANNOTATION, Direction.OUTGOING)
+                    .forEach(x -> result.add(new AnnotationModel(x.getEndNode())));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+        return Response.ok(result).build();
     }
 
     // TODO add method to find identical and mergeable readings across the whole tradition

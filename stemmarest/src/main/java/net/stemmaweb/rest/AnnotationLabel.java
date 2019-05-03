@@ -17,12 +17,18 @@ import java.util.stream.Collectors;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
+/**
+ * Comprises the API calls having to do with specifying the annotation types that are allowed on
+ * the given tradition. See {@link net.stemmaweb.model.AnnotationLabelModel AnnotationLabelModel} for
+ * more information on how these types are specified.
+ */
+
 public class AnnotationLabel {
     private GraphDatabaseService db;
     private String tradId;
     private String name;
 
-    public AnnotationLabel(String tradId, String name) {
+    AnnotationLabel(String tradId, String name) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         this.tradId = tradId;
@@ -112,8 +118,8 @@ public class AnnotationLabel {
             if (!alm.getProperties().isEmpty()) {
                 Node pnode = db.createNode(Nodes.PROPERTIES);
                 ourNode.createRelationshipTo(pnode, ERelations.HAS_PROPERTIES);
-                ArrayList<String> allowedValues = new ArrayList<>(Arrays.asList("boolean", "long", "double",
-                        "char", "String", "Point", "LocalDate", "OffsetTime", "LocalTime", "ZonedDateTime",
+                ArrayList<String> allowedValues = new ArrayList<>(Arrays.asList("Boolean", "Long", "Double",
+                        "Character", "String", "LocalDate", "OffsetTime", "LocalTime", "ZonedDateTime",
                         "LocalDateTime", "TemporalAmount"));
                 for (String key : alm.getProperties().keySet()) {
                     // Validate the value - it needs to be a data type allowed by Neo4J.
@@ -148,12 +154,29 @@ public class AnnotationLabel {
                 .entity(new AnnotationLabelModel(ourNode)).build();
     }
 
+    /**
+     * Deletes the specified annotation label specification from the tradition. Returns an error
+     * if there are any annotations still using this type.
+     *
+     * @summary Delete annotation label
+     *
+     * @statuscode 200 on success
+     * @statuscode 409 if the annotation label is still in use
+     * @statuscode 500 on failure, with an error report in JSON format
+     */
     @DELETE
     public Response deleteAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
+        AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
         if (ourNode == null) return Response.status(Response.Status.NOT_FOUND).build();
+        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
-            // LATER Check for annotations on this tradition using this label, before we delete it
+            // Check for annotations on this tradition using this label, before we delete it
+            for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION))
+                if (annoNode.hasLabel(Label.label(ourModel.getName())))
+                    return Response.status(Response.Status.CONFLICT).entity(jsonerror(
+                            "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getId()))
+                            .build();
 
             // Delete the label and its properties/links
             for (Relationship r : ourNode.getRelationships(Direction.OUTGOING)) {
