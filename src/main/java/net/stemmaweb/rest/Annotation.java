@@ -24,6 +24,8 @@ import static net.stemmaweb.rest.Util.jsonerror;
 /**
  * Comprises the API calls having to do with modifying an existing annotation. Annotations can be
  * created from the {@link net.stemmaweb.rest.Tradition Tradition} API.
+ *
+ * @author tla
  */
 
 public class Annotation {
@@ -153,15 +155,17 @@ public class Annotation {
     }
 
     /**
-     * Delete an annotation specified by ID.
+     * Delete an annotation specified by ID. This method will also locate and delete other annotations
+     * that are effectively orphaned (i.e. have no outbound links) by this deletion.
      *
+     * @return A list of annotations that were deleted
      * @statuscode 200 - on success
      * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
      * @statuscode 500 - on error
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response deleteAnnotation() {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
         List<AnnotationModel> deleted;
@@ -213,7 +217,7 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @ReturnType("java.lang.Void")
     public Response addAnnotationLink(AnnotationLinkModel alm) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
         try (Transaction tx = db.beginTx()) {
@@ -265,7 +269,7 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @ReturnType("java.lang.Void")
     public Response deleteAnnotationLink(AnnotationLinkModel alm) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
         try (Transaction tx = db.beginTx()) {

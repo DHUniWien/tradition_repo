@@ -55,6 +55,7 @@ public class Tradition {
      */
 
     /**
+     * Delegates to {@link net.stemmaweb.rest.Section Section} module
      * @param sectionId - the ID of the requested tradition section
      */
     @Path("/section/{sectionId}")
@@ -68,6 +69,7 @@ public class Tradition {
     }
 
     /**
+     * Delegates to {@link net.stemmaweb.rest.Witness Witness} module
      * @param sigil - the sigil of the requested witness
      */
     @Path("/witness/{sigil}")
@@ -76,6 +78,7 @@ public class Tradition {
     }
 
     /**
+     * Delegates to {@link net.stemmaweb.rest.Stemma Stemma} module
      * @param name - the name of the requested stemma
      */
     @Path("/stemma/{name}")
@@ -83,20 +86,32 @@ public class Tradition {
         return new Stemma(traditionId, name);
     }
 
+    /**
+     * Delegates to {@link net.stemmaweb.rest.Relation Relation} module
+     */
     @Path("/relation")
     public Relation getRelation() {
         return new Relation(traditionId);
     }
 
+    /**
+     * Delegates to {@link net.stemmaweb.rest.RelationType RelationType} module
+     * @param name - the name of the requested RelationType
+     */
     @Path("/relationtype/{name}")
     public RelationType getRelationType(@PathParam("name") String name) { return new RelationType(traditionId, name); }
 
+    /**
+     * Delegates to {@link net.stemmaweb.rest.AnnotationLabel AnnotationLabel} module
+     * @param name
+     * @return
+     */
     @Path("/annotationlabel/{name}")
     public AnnotationLabel getAnnotationType(@PathParam("name") String name) { return new AnnotationLabel(traditionId, name); }
 
     /**
+     * Delegates to {@link net.stemmaweb.rest.Annotation Annotation} module
      * @param annoid - the ID of the requested annotation
-     * @return the Annotation REST module initialised for that annotation
      */
     @Path("/annotation/{annoid}")
     public Annotation getAnnotationOnSection(@PathParam("annoid") String annoid) {
@@ -266,6 +281,16 @@ public class Tradition {
 
         return result;
     }
+
+    /**
+     * Create a new annotation on this tradition.
+     * @param am - an AnnotationModel specifying the annotation to create
+     * @return the created AnnotationModel
+     * @statuscode 201 - on success
+     * @statuscode 403 - if the AnnotationModel is invalid
+     * @statuscode 404 - if tradition doesn't exist
+     * @statuscode 500 - on error
+     */
 
     @POST
     @Path("/annotation")
@@ -509,6 +534,14 @@ public class Tradition {
         return Response.ok(readingModels).build();
     }
 
+    /**
+     * Return a list of the annotations that have been made on this tradition.
+     *
+     * @return a list of AnnotationModels
+     * @statuscode 200 - on success
+     * @statuscode 400 - if tradition doesn't exist
+     * @statuscode 500 - on error
+     */
     @GET
     @Path("/annotations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")

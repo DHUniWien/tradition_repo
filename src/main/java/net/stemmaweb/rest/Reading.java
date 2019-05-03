@@ -139,6 +139,13 @@ public class Reading {
     /**
      * Deletes a reading. This only makes sense if it is a user-addable reading, i.e. an emendation.
      * If the lemma path goes through the emendation, the lemma path will also be removed.
+     *
+     * @summary Delete a user-addable reading
+     * @return  A GraphModel containing the deleted content (readings and sequences)
+     * @statuscode 200 - on success
+     * @statuscode 403 - if deletion of a non-user reading is requested
+     * @statuscode 404 - if the reading doesn't exist
+     * @statuscode 500 - on error
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")

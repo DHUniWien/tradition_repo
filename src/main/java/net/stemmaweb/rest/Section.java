@@ -1097,6 +1097,14 @@ public class Section {
         return Response.ok(jsonresp("result", "success")).build();
     }
 
+    /**
+     * Return a list of emendations on this section.
+     *
+     * @return a GraphModel containing the emendations that have been made on this section
+     * @statuscode 200 - on success
+     * @statuscode 404 - if specified section or specified tradition doesn't exist
+     * @statuscode 500 - on error
+     */
     @GET
     @Path("/emendations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")

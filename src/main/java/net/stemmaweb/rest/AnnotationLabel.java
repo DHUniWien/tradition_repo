@@ -21,6 +21,8 @@ import static net.stemmaweb.rest.Util.jsonerror;
  * Comprises the API calls having to do with specifying the annotation types that are allowed on
  * the given tradition. See {@link net.stemmaweb.model.AnnotationLabelModel AnnotationLabelModel} for
  * more information on how these types are specified.
+ *
+ * @author tla
  */
 
 public class AnnotationLabel {
@@ -165,6 +167,7 @@ public class AnnotationLabel {
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @DELETE
+    @ReturnType("java.lang.Void")
     public Response deleteAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
         AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);

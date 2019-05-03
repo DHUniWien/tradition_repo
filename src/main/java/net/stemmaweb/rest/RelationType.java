@@ -15,6 +15,13 @@ import java.util.Map;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
+/**
+ * Module to handle the specification and definition of relation types that may exist on
+ * this tradition.
+ *
+ * @author tla
+ */
+
 public class RelationType {
     private GraphDatabaseService db;
     /**

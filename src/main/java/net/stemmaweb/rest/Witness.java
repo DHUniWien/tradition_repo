@@ -119,6 +119,7 @@ public class Witness {
 
     /**
      * Deletes the requested witness.
+     *
      * @summary Delete a witness
      * @statuscode 200 - on success
      * @statuscode 404 - if the tradition, section, or witness text doesn't exist
@@ -126,7 +127,7 @@ public class Witness {
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = WitnessModel.class)
+    @ReturnType("java.lang.Void")
     public Response deleteWitness() {
         if (sectId != null)
             return Response.status(Status.BAD_REQUEST).entity("Cannot delete a witness from a single section").build();
