@@ -23,6 +23,8 @@ public class AnnotationLinkModel {
      */
     private Long target;
 
+    public AnnotationLinkModel() {}
+
     public AnnotationLinkModel(Relationship r) {
         GraphDatabaseService db = r.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {

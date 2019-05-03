@@ -3,6 +3,7 @@ package net.stemmaweb.model;
 import org.neo4j.graphdb.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,7 +15,6 @@ import java.util.Map;
 
  */
 
-@SuppressWarnings("WeakerAccess")
 public class AnnotationModel {
     /**
      * The ID of the annotation
@@ -33,6 +33,11 @@ public class AnnotationModel {
      */
     private List<AnnotationLinkModel> links;
 
+    public AnnotationModel() {
+        this.properties = new HashMap<>();
+        this.links = new ArrayList<>();
+    }
+
     public AnnotationModel(Node annNode) {
         GraphDatabaseService db = annNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
@@ -40,6 +45,7 @@ public class AnnotationModel {
             // We assume there is only one label
             this.setLabel(annNode.getLabels().iterator().next().name());
             this.setProperties(annNode.getAllProperties());
+            this.links = new ArrayList<>();
             for (Relationship r : annNode.getRelationships(Direction.OUTGOING))
                 this.addLink(new AnnotationLinkModel(r));
             tx.success();
@@ -50,7 +56,7 @@ public class AnnotationModel {
         return id;
     }
 
-    public void setId(String id) {
+    private void setId(String id) {
         this.id = id;
     }
 
@@ -70,6 +76,10 @@ public class AnnotationModel {
         this.properties = properties;
     }
 
+    public void addProperty(String key, Object val) {
+        this.properties.put(key, val);
+    }
+
     public List<AnnotationLinkModel> getLinks() {
         return links;
     }
@@ -79,7 +89,6 @@ public class AnnotationModel {
     }
 
     public void addLink(AnnotationLinkModel l) {
-        if (this.links == null) this.links = new ArrayList<>();
         this.links.add(l);
     }
 }

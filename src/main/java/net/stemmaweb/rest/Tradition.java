@@ -103,8 +103,7 @@ public class Tradition {
 
     /**
      * Delegates to {@link net.stemmaweb.rest.AnnotationLabel AnnotationLabel} module
-     * @param name
-     * @return
+     * @param name - the name of the requested annotation label
      */
     @Path("/annotationlabel/{name}")
     public AnnotationLabel getAnnotationType(@PathParam("name") String name) { return new AnnotationLabel(traditionId, name); }
@@ -304,6 +303,7 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
         try (Transaction tx = db.beginTx()) {
             Node anno = db.createNode();
+            traditionNode.createRelationshipTo(anno, ERelations.HAS_ANNOTATION);
             Annotation annoRest = new Annotation(traditionId, String.valueOf(anno.getId()));
             result = annoRest.updateAnnotation(am);
             if (result.getStatus() != Status.OK.getStatusCode())

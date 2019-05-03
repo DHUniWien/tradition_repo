@@ -96,10 +96,14 @@ public class Annotation {
 
             // Get our annotation node
             Node aNode = db.getNodeById(Long.valueOf(annoId));
-            // Set its label if necessary
-            Label aLabel = aNode.getLabels().iterator().next();
-            if (!aLabel.name().equals(newAnno.getLabel())) {
-                aNode.removeLabel(aLabel);
+            // Set the label if it has changed, removing any old label if necessary
+            if (aNode.getLabels().iterator().hasNext()) {
+                Label aLabel = aNode.getLabels().iterator().next();
+                if (!aLabel.name().equals(newAnno.getLabel())) {
+                    aNode.removeLabel(aLabel);
+                    aNode.addLabel(Label.label(newAnno.getLabel()));
+                }
+            } else {
                 aNode.addLabel(Label.label(newAnno.getLabel()));
             }
 
@@ -243,7 +247,8 @@ public class Annotation {
 
             // Set the proposed link
             Relationship link = aNode.createRelationshipTo(target, RelationshipType.withName(alm.getType()));
-            link.setProperty("follow", alm.getFollow());
+            if (alm.getFollow() != null)
+                link.setProperty("follow", alm.getFollow());
             tx.success();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -297,14 +302,14 @@ public class Annotation {
     }
 
     private boolean annotationNotFound() {
-        boolean answer;
+        boolean found;
         try (Transaction tx = db.beginTx()) {
             Node a = db.getNodeById(Long.parseLong(annoId));
             Relationship r = a.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING);
             Node t = r.getStartNode();
-            answer = t.hasLabel(Nodes.TRADITION) && t.getProperty("id", "NONE").equals(tradId);
+            found = t.hasLabel(Nodes.TRADITION) && t.getProperty("id", "NONE").equals(tradId);
             tx.success();
         }
-        return answer;
+        return !found;
     }
 }

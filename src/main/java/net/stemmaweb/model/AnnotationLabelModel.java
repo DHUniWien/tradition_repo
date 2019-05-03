@@ -31,6 +31,14 @@ public class AnnotationLabelModel {
     private Map<String, String> links;
 
     /**
+     * Initialize a new model
+     */
+    public AnnotationLabelModel() {
+        this.properties = new HashMap<>();
+        this.links = new HashMap<>();
+    }
+
+    /**
      * Initialize from a Neo4J node
      * @param alNode - the node to init from
      */
@@ -71,7 +79,7 @@ public class AnnotationLabelModel {
             if (prel != null) {
                 Node pnode = prel.getEndNode();
                 for (String key : pnode.getPropertyKeys()) {
-                    properties.put(key, pnode.getProperty("key").toString());
+                    properties.put(key, pnode.getProperty(key).toString());
                 }
             }
 
@@ -81,7 +89,7 @@ public class AnnotationLabelModel {
             if (lrel != null) {
                 Node lnode = lrel.getEndNode();
                 for (String key : lnode.getPropertyKeys()) {
-                    properties.put(key, lnode.getProperty("key").toString());
+                    links.put(key, lnode.getProperty(key).toString());
                 }
             }
             tx.success();
@@ -104,11 +112,19 @@ public class AnnotationLabelModel {
         this.properties = properties;
     }
 
+    public void addProperty(String key, String dtype) {
+        this.properties.put(key, dtype);
+    }
+
     public Map<String, String> getLinks() {
         return links;
     }
 
     public void setLinks(Map<String, String> links) {
         this.links = links;
+    }
+
+    public void addLink(String label, String types) {
+        this.links.put(label, types);
     }
 }

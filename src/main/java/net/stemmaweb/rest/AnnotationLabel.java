@@ -67,6 +67,7 @@ public class AnnotationLabel {
      * @statuscode 200 on update of existing label
      * @statuscode 201 on creation of new label
      * @statuscode 400 if there is an error in the annotation type specification
+     * @statuscode 409 if the requested name is already in use
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
@@ -79,8 +80,8 @@ public class AnnotationLabel {
         boolean isNew = false;
         try (Transaction tx = db.beginTx()) {
             // Get the existing list of annotation labels associated with this tradition
-            List<String> existingLabels = getExistingLabelsForTradition().stream()
-                    .map(x -> x.getProperty("name").toString()).collect(Collectors.toList());
+            List<String> reservedWords = Arrays.asList("USER", "ROOT", "__SYSTEM__");
+            List<String> existingLabels = getValidTargetsForTradition(reservedWords);
 
             if (ourNode == null) {
                 isNew = true;
@@ -88,6 +89,10 @@ public class AnnotationLabel {
                 if (!alm.getName().equals(name))
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity(jsonerror("Name mismatch in annotation label creation request")).build();
+                // The label can't already exist in the NODES enum
+                if (existingLabels.contains(alm.getName()) || reservedWords.contains(alm.getName()))
+                    return Response.status(Response.Status.CONFLICT)
+                            .entity(jsonerror("Requested label " + alm.getName() + " already in use")).build();
                 // Create the label and its properties and links
                 ourNode = db.createNode(Nodes.ANNOTATIONLABEL);
                 tradNode.createRelationshipTo(ourNode, ERelations.HAS_ANNOTATION_TYPE);
@@ -97,10 +102,9 @@ public class AnnotationLabel {
                 // We are updating an existing label, so we should delete its existing properties and links.
                 // First check to make sure that, if we have changed the name, there is not already
                 // another annotation label with this name
-                if (!alm.getName().equals(name) && existingLabels.contains(alm.getName())) {
-                    return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
-                            "An annotation label with name " + alm.getName() + " already exists")).build();
-                }
+                if (!alm.getName().equals(name) && (existingLabels.contains(alm.getName()) || reservedWords.contains(alm.getName())))
+                    return Response.status(Response.Status.CONFLICT).entity(jsonerror(
+                            "Requested label name " + alm.getName() + " already in use")).build();
 
                 // LATER Sanity check that the properties / links being deleted (and not restored) aren't in use
                 Relationship p = ourNode.getSingleRelationship(ERelations.HAS_PROPERTIES, Direction.OUTGOING);
@@ -139,17 +143,16 @@ public class AnnotationLabel {
                 Node lnode = db.createNode(Nodes.LINKS);
                 ourNode.createRelationshipTo(lnode, ERelations.HAS_LINKS);
                 for (String key : alm.getLinks().keySet()) {
-                    // Validate the value - the annotation label that the link points to
-                    // has to exist for this tradition.
-                    String val = alm.getLinks().get(key);
-                    if (existingLabels.contains(val)) lnode.setProperty(key, val);
-                    else
-                        return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
-                                "Linked annotation label " + val + " not found in this tradition")).build();
+                    // Validate the value - the node label that is specified as the target for this link
+                    // has to exist, either as another annotation label or as a primary node.
+                    if (existingLabels.contains(key)) lnode.setProperty(key, alm.getLinks().get(key));
+                    else return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(
+                            "Linked node label " + key + " not found in this tradition")).build();
                 }
             }
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.status(isNew ? Response.Status.CREATED : Response.Status.OK)
@@ -170,8 +173,8 @@ public class AnnotationLabel {
     @ReturnType("java.lang.Void")
     public Response deleteAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
-        AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
         if (ourNode == null) return Response.status(Response.Status.NOT_FOUND).build();
+        AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
         Node tradNode = DatabaseService.getTraditionNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
             // Check for annotations on this tradition using this label, before we delete it
@@ -223,5 +226,21 @@ public class AnnotationLabel {
             tx.success();
             return answer;
         }
+    }
+
+    private List<String> getValidTargetsForTradition(List<String> reservedWords) {
+        List<String> answer;
+        // Get the existing labels
+        try (Transaction tx = db.beginTx()) {
+            answer = getExistingLabelsForTradition().stream()
+                    .map(x -> x.getProperty("name").toString()).collect(Collectors.toList());
+            tx.success();
+        }
+        // Get the primary objects that can also be annotated
+        for (Nodes x : Nodes.values()) {
+            if (!reservedWords.contains(x.name()))
+                answer.add(x.name());
+        }
+        return answer;
     }
 }
