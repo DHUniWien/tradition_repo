@@ -18,14 +18,13 @@ Alternatively, if you wish to build from source, you can clone this repository a
 
 Stemmarest needs to be built using [Maven](http://maven.apache.org/run-maven/index.html#Quick_Start). This can be done either in a suitable Java IDE, or at the command line after the Maven tools have been installed:
 
-    cd stemmarest
     mvn package  # note that this will also run the tests
 
 A WAR file will be produced, in `stemmarest/target/stemmarest.war`, that can then be deployed to the Tomcat server of your choice.
 
-#### Note for Mac users
+#### NoClassDefFoundError?
 
-At present, building Stemmarest on a Mac can lead to a runtime error like the following:
+At present, building Stemmarest on some platforms can lead to a runtime error like the following:
 
     java.lang.NoClassDefFoundError: javax/ws/rs/core/Link
    	  at org.apache.cxf.jaxrs.impl.RuntimeDelegateImpl.<init>(RuntimeDelegateImpl.java:53)
@@ -33,14 +32,13 @@ At present, building Stemmarest on a Mac can lead to a runtime error like the fo
    	  at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
    	  at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
    	  at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
-	  
+
 If you are having this problem, copy the provided `pom.xml.macosx` to `pom.xml` and try the build again.
 
-##Running
+## Running
 
-The application has been tested on Tomcat version 8.0.XX; to deploy it, copy the WAR file into the `webapps` directory of your Tomcat server.
+The application has been tested on Tomcat version 9 with JDK 8; to deploy it, copy the WAR file into the `webapps` directory of your Tomcat server.
 
 Stemmarest requires a location for its data storage; by default this is `/var/lib/stemmarest`, but can be changed by setting the environment variable `STEMMAREST_HOME`. The directory specified must have its permissions set so that the Tomcat user can write to it.
 
 Note that if, at any time, you wish to inspect the database visually, you may shut down the Stemmarest server and start an instance of Neo4J at the database directory location. **Make sure that your version of Neo4J matches the version specified in `pom.xml`!**
-

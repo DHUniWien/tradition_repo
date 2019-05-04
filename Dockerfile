@@ -1,10 +1,26 @@
-FROM tomcat:8.0-jre8
-MAINTAINER Tara L Andrews <tla@mit.edu>
-RUN apt-get update && apt-get install -y tomcat8 graphviz vim less pwgen
-RUN mkdir /var/lib/stemmarest && chown -R tomcat8. /var/lib/stemmarest && chmod -R g+w /var/lib/stemmarest && chmod -R +2000 /var/lib/stemmarest
-ADD target/stemmarest.war /usr/local/tomcat/webapps/
+FROM tomcat:9-jre8
+LABEL vendor=DHUniWien
 
-ADD build/server.xml /usr/local/tomcat/conf/
-# create inital tomcat groups/users and set random password
-ADD build/tomcat-users.xml /usr/local/tomcat/conf/
-RUN sed -i s/CHANGE_THIS/`pwgen 32`/ /usr/local/tomcat/conf/tomcat-users.xml
+# Update packages, install Graphviz
+RUN apt-get update \
+    && apt-get -y upgrade \
+    && apt-get install -y graphviz \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Make the data directories
+RUN mkdir -p /var/lib/stemmarest/conf \
+    && chmod -R g+w /var/lib/stemmarest \
+    && chmod -R +2000 /var/lib/stemmarest
+
+# Copy the software and config
+COPY stemmarest.war /usr/local/tomcat/webapps/
+COPY server.xml /usr/local/tomcat/conf/
+COPY tomcat-users.xml /usr/local/tomcat/conf/
+
+# Set the appropriate environment variable
+ENV STEMMAREST_HOME /var/lib/stemmarest
+
+# Run the server
+EXPOSE 8080
+CMD ["catalina.sh", "run"]
