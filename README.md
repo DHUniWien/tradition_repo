@@ -20,7 +20,7 @@ Stemmarest needs to be built using [Maven](http://maven.apache.org/run-maven/ind
 
     mvn package  # note that this will also run the tests
 
-A WAR file will be produced, in `stemmarest/target/stemmarest.war`, that can then be deployed to the Tomcat server of your choice.
+A WAR file will be produced, in `target/stemmarest.war`, that can then be deployed to the Tomcat server of your choice.
 
 #### NoClassDefFoundError?
 
