@@ -1,9 +1,9 @@
 # Stemmarest
 ### a graph-based data storage solution for Stemmaweb
 
-Stemmarest is a [Neo4j](http://neo4j.com/)-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). The repository is accessed via a REST API, to date still incompletely documented.
+Stemmarest is a [Neo4j](http://neo4j.com/)-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). The repository is accessed via a REST API, documentation for which [can be found here](https://dhuniwien.github.io/tradition_repo/).
 
-Development of Stemmarest was begun by a team of software engineering students at Uni Bern, and since 2016 has been continued by the Digital Humanities group at Uni Wien.
+Development of Stemmarest was begun by a team of software engineering students at the University of Bern, and since 2016 has been continued by the Digital Humanities group at the University of Vienna.
 
 ## Downloading
 
