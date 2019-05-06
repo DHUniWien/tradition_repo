@@ -1280,8 +1280,8 @@ public class Section {
      * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
      * @param showRank - Display the rank of readings, if true
      * @param displayAllSigla - Avoid the 'majority' contraction of long witness labels, if true
-     * @param showEmendations - Show the emendations that have been made to the text
      * @param normalise - A RelationType name to normalise on, if desired
+     * @param excWitnesses - Exclude the given witness from the dot output. Can be specified multiple times
      * @return Plaintext dot format
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1295,14 +1295,14 @@ public class Section {
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
-                           @DefaultValue("false") @QueryParam("show_emendations") Boolean showEmendations,
-                                                  @QueryParam("normalise") String normalise) {
+                                                  @QueryParam("normalise") String normalise,
+                                                  @QueryParam("exclude_witness") List<String> excWitnesses) {
         if (DatabaseService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
 
         // Put our options into an object
         DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, showEmendations, normalise);
+                includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);
         // Make the dot.
         DotExporter exporter = new DotExporter(db);
         return exporter.writeNeo4J(tradId, sectId, dm);

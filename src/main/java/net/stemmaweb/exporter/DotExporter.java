@@ -105,22 +105,29 @@ public class DotExporter
             Long lastSectionEndId = null;
             boolean subgraphWritten = false;
 
+            // Keep track of which nodes were written out (modulo witness filter) and which
+            // relations should therefore be written out
+            HashSet<Node> writtenNodes = new HashSet<>();
+            ArrayList<Relationship> relsToWrite = new ArrayList<>();
+
             for (Node sectionNode: sections) {
                 // Get the number of witnesses we have
                 ArrayList<Node> sectionWits = new Section(tradId, String.valueOf(sectionNode.getId()))
                         .collectSectionWitnesses();
                 int numWits = sectionWits.size();
-
+                if (dm.getExcludeWitnesses().size() > 0) {
+                    numWits -= dm.getExcludeWitnesses().size();
+                }
                 Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
                 Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
                 // If we have requested a section, then that section's start and end are "the" start and end
-                // for the whole graph.z
+                // for the whole graph.
                 if (sectionId != null) {
                     startNode = sectionStartNode;
                     endNode = sectionEndNode;
                 }
-                // HACK - now that we know which node is functioning as the start node, set the subgraph and
-                // the silent node that keeps the graph straight. Make sure we only do this once.
+                // HACK - now that we know which nodes are functioning as the start and end nodes, set the
+                // subgraph and the silent node that keeps the graph straight. Make sure we only do this once.
                 if (!subgraphWritten) {
                     write("\tsubgraph { rank=same " + startNode.getId() + " \"#SILENT#\" }\n");
                     write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
@@ -144,28 +151,40 @@ public class DotExporter
                 for (Node node : new HashSet<>(representatives.values())) {
 
                     // Write out the node list in dot format
-                    // Skip section start nodes, unless they are overall start nodes. These links will be
-                    // tied to "section" i.e. section end nodes instead.
-                    if ((!node.equals(sectionStartNode) && !node.equals(sectionEndNode))
-                            || node.equals(startNode)
-                            || node.equals(endNode)) {
-                        write(nodeSpec(node, dm));
-                    }
+                    String nodeSpec = nodeSpec(node, dm);
 
+                    // Skip section start/end nodes, unless they are overall start/end nodes. These links
+                    // will be tied to "section" i.e. section end nodes instead.
                     // Intermediate section end nodes should be displayed as a "section" node.
                     if (node.equals(sectionEndNode) && !node.equals(endNode)) {
-                        String endLine = nodeSpec(node, dm);
-                        write(endLine.replace("END", "SECTION_" + sectionNode.getId()));
-                        lastSectionEndId = node.getId();
-                    } else if (node.equals(sectionStartNode))
+                        nodeSpec = nodeSpec(node, dm).replace("END", "SECTION_" + sectionNode.getId());
+                    } else if (node.equals(sectionStartNode) && !node.equals(startNode))
                         continue;
 
                     // Now get the sequence relationships between nodes.
+                    ArrayList<String> seqSpecs = new ArrayList<>();
+                    // This node is automatically in a requested witness if it is the start node, or if there
+                    // is no witness filter.
+                    boolean inRequestedWitness = node.equals(sectionStartNode) || dm.getExcludeWitnesses().size() == 0;
                     for (Relationship rel : node.getRelationships(Direction.INCOMING, seqLabel)) {
                         if (rel == null)
                             continue;
                         Node relStartNode = rel.getStartNode();
                         Long relStartNodeId = relStartNode.getId();
+
+                        boolean witnessLink = false; // Does the witness filter need this sequence?
+                        if (node.equals(sectionStartNode) || dm.getExcludeWitnesses().size() == 0)
+                            witnessLink = true;
+                        else
+                            for (Object v : rel.getAllProperties().values())
+                                for (String s : (String[]) v)
+                                    if (!dm.getExcludeWitnesses().contains(s))
+                                        witnessLink = true;
+
+                        if (witnessLink)
+                            inRequestedWitness = true;
+                        else
+                            continue;
 
                         // Section-boundary sequence handling
                         if (relStartNode.equals(sectionStartNode) && !relStartNode.equals(startNode))
@@ -180,27 +199,47 @@ public class DotExporter
                         // Get the label
                         String label = sequenceLabel(convertProps(rel), numWits, dm);
                         Long rankDiff = (Long) node.getProperty("rank") - (Long) relStartNode.getProperty("rank");
-                        write(relshipText(relStartNodeId, node.getId(), label, edgeId++,
+                        seqSpecs.add(relshipText(relStartNodeId, node.getId(), label, edgeId++,
                                 calcPenWidth(convertProps(rel)), rankDiff, edge_is_lemma));
 
                     }
 
-                    // Retrieve reading relations, if requested
-                    if (dm.getIncludeRelated()) {
-                        for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
-                            // Only include the relations that are on our representative nodes
-                            if (dm.getNormaliseOn() != null) {
-                                if (!representatives.getOrDefault(relatedRel.getStartNode(), relatedRel.getStartNode())
-                                        .equals(relatedRel.getStartNode()))
-                                    continue;
+                    // Write out the node & sequence specifications we have gathered
+                    if (inRequestedWitness) {
+                        writtenNodes.add(node);
+                        write(nodeSpec);
+                        for (String seqSpec : seqSpecs) {
+                            write(seqSpec);
+                        }
+
+                        // Retrieve reading relations, if requested
+                        if (dm.getIncludeRelated()) {
+                            for (Relationship relatedRel : node.getRelationships(Direction.INCOMING, ERelations.RELATED)) {
+                                // Only include the relations that are on our representative nodes
+                                if (dm.getNormaliseOn() != null) {
+                                    if (!representatives.getOrDefault(relatedRel.getStartNode(), relatedRel.getStartNode())
+                                            .equals(relatedRel.getStartNode()))
+                                        continue;
+                                }
+                                relsToWrite.add(relatedRel);
                             }
+                        }
+                    }
+                }
+
+                // Now that all the nodes are processed, set this section's end node as the last one seen
+                lastSectionEndId = sectionEndNode.getId();
+
+                // Write out reading relationships that survived the node filter
+                if (dm.getIncludeRelated())
+                    for (Relationship relatedRel : relsToWrite) {
+                        if (writtenNodes.contains(relatedRel.getStartNode())
+                                && writtenNodes.contains(relatedRel.getEndNode()))
                             write("\t" + relatedRel.getStartNode().getId() + "->" +
                                     relatedRel.getEndNode().getId() + " [style=dotted, constraint=false, arrowhead=none, " +
                                     "label=\"" + relatedRel.getProperty("type").toString() + "\", id=\"e" +
                                     edgeId++ + "\"];\n");
-                        }
                     }
-                }
 
                 // Write any remaining lemma links
                 for (Node n : lemmaLinks.keySet()) {
@@ -343,7 +382,9 @@ public class DotExporter
         }
         // Join up the list of witnesses if the label should not be 'majority'
         if (dm.getDisplayAllSigla() || numWits < 7 || witnesses.length <= (numWits / 2)) {
-            Iterator<String> it = Arrays.asList(witnesses).iterator();
+            Iterator<String> it = Arrays.stream(witnesses)
+                    .filter(x -> !dm.getExcludeWitnesses().contains(x))
+                    .iterator();
             while (it.hasNext()) {
                 lex_str.append(it.next());
                 if (it.hasNext()) {

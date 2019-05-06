@@ -24,6 +24,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertNotEquals;
 
@@ -859,6 +860,41 @@ public class SectionTest extends TestCase {
         assertTrue(dotStr.contains("#START#"));
         assertTrue(dotStr.contains("#END#"));
         assertTrue(dotStr.contains("<ὄ&psi;&quot;&iota;&nu;,<BR/><FONT COLOR=\"grey\">ὄ&psi;&iota;&nu;</FONT>>"));
+
+        getSectionDot = "/tradition/" + florId + "/section/" + florIds.get(1) + "/dot";
+        jerseyResult = jerseyTest.resource().path(getSectionDot)
+                .queryParam("exclude_witness", "A")
+                .queryParam("exclude_witness", "B")
+                .queryParam("exclude_witness", "F")
+                .queryParam("exclude_witness", "G")
+                .queryParam("exclude_witness", "Q")
+                .queryParam("exclude_witness", "T")
+                .type(MediaType.TEXT_PLAIN)
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        dotStr = jerseyResult.getEntity(String.class);
+        dotLines = dotStr.split("\n");
+        assertEquals(123, dotLines.length);
+        assertFalse(dotStr.contains("νείλου"));
+        assertTrue(dotStr.contains(xWord));
+        // There should only be one link out from the start
+        Optional<String> startNode = Arrays.stream(dotLines).filter(x -> x.contains("__START__")).findFirst();
+        assertTrue(startNode.isPresent());
+        Long startId = getNodeFromDot(startNode.get());
+        assertEquals(1, Arrays.stream(dotLines).filter(x -> x.contains("\t" + startId + "->")).count());
+        List<String> gars = Arrays.stream(dotLines).filter(x -> x.contains("γὰρ")).collect(Collectors.toList());
+        assertEquals(1, gars.size());
+        Long garId = getNodeFromDot(gars.get(0));
+        List<String> garLink = Arrays.stream(dotLines).filter(x -> x.contains("\t" + garId + "->"))
+                .collect(Collectors.toList());
+        assertEquals(2, garLink.size());
+        for (String l : garLink) {
+            assertFalse(l.contains("F"));
+        }
+    }
+
+    private Long getNodeFromDot(String dotLine) {
+        return Long.valueOf(dotLine.replaceAll("\\s+", "").split("\\[")[0]);
     }
 
     public void testLemmaText() {
