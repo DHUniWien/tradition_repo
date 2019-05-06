@@ -124,6 +124,7 @@ public class DotExporter
                 if (!subgraphWritten) {
                     write("\tsubgraph { rank=same " + startNode.getId() + " \"#SILENT#\" }\n");
                     write("\t\"#SILENT#\" [shape=diamond,color=white,penwidth=0,label=\"\"];\n");
+                    write("\t" + endNode.getId() + "->\"#SILENT#\" [color=white,penwidth=0];\n");
                     subgraphWritten = true;
                 }
 

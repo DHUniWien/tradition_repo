@@ -808,7 +808,7 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         // Do a basic sanity check of the dot file - does it have the right number of lines?
         String[] dotLines = jerseyResult.getEntity(String.class).split("\n");
-        assertEquals(650, dotLines.length);
+        assertEquals(651, dotLines.length);
 
         String wWord = "Μαξίμου";
         String xWord = "βλασφημεῖται";
@@ -851,7 +851,7 @@ public class SectionTest extends TestCase {
         assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
         dotStr = jerseyResult.getEntity(String.class);
         dotLines = dotStr.split("\n");
-        assertEquals(120, dotLines.length);
+        assertEquals(121, dotLines.length);
         assertFalse(dotStr.contains(wWord));
         assertFalse(dotStr.contains(xWord));
         assertFalse(dotStr.contains(yWord));
