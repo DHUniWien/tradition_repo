@@ -37,6 +37,10 @@ public class ReadingModel implements Comparable<ReadingModel> {
      */
     private String id;              // dn1
     /**
+     * The ID of the section to which this reading belongs
+     */
+    private String section;
+    /**
      * True if the reading appears in all witnesses
      */
     private Boolean is_common = false;       // dn2
@@ -129,6 +133,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
             if (node.hasProperty("grammar_invalid"))
                 this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
             this.setId(String.valueOf(node.getId()));
+            this.setSection(node.getProperty("section_id").toString());
             if (node.hasProperty("is_common"))
                 this.setIs_common((Boolean) node.getProperty("is_common"));
             if (node.hasProperty("is_end"))
@@ -211,6 +216,14 @@ public class ReadingModel implements Comparable<ReadingModel> {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getSection() {
+        return section;
+    }
+
+    public void setSection(String section) {
+        this.section = section;
     }
 
     public Boolean getIs_common() {

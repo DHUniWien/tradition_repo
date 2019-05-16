@@ -243,8 +243,8 @@ public class ReadingTest {
     @Test
     public void getReadingJsonTest() throws JsonProcessingException {
         String nodeId = readingLookup.get("has/13");
-        String expected = String.format("{\"id\":\"%s\",\"is_common\":true,\"language\":\"Default\"," +
-                "\"rank\":13,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId);
+        String expected = String.format("{\"id\":\"%s\",\"section\":\"%s\",\"is_common\":true,\"language\":\"Default\"," +
+                "\"rank\":13,\"text\":\"has\",\"witnesses\":[\"A\",\"B\",\"C\"]}", nodeId, sectId);
 
         ClientResponse resp = jerseyTest.resource()
                 .path("/reading/" + nodeId)
