@@ -24,6 +24,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
@@ -537,6 +538,9 @@ public class Tradition {
     /**
      * Return a list of the annotations that have been made on this tradition.
      *
+     * @summary Get annotations on tradition
+     *
+     * @param filterLabels Return only annotations with the given label. May be specified multiple times.
      * @return a list of AnnotationModels
      * @statuscode 200 - on success
      * @statuscode 400 - if tradition doesn't exist
@@ -546,16 +550,22 @@ public class Tradition {
     @Path("/annotations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
-    public Response getAllAnnotations() {
+    public Response getAllAnnotations(@QueryParam("label") List<String> filterLabels) {
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("There is no tradition with this id")).build();
 
-        ArrayList<AnnotationModel> result = new ArrayList<>();
+        List<AnnotationModel> result;
         try (Transaction tx = db.beginTx()) {
+            ArrayList<AnnotationModel> allAnnotations = new ArrayList<>();
             traditionNode.getRelationships(ERelations.HAS_ANNOTATION, Direction.OUTGOING)
-                    .forEach(x -> result.add(new AnnotationModel(x.getEndNode())));
+                    .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode())));
+            if (filterLabels.size() > 0)
+                result = allAnnotations.stream().filter(x -> filterLabels.contains(x.getLabel()))
+                        .collect(Collectors.toList());
+            else
+                result = allAnnotations;
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

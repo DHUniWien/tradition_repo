@@ -2,6 +2,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.AnnotationLabelModel;
@@ -401,14 +402,20 @@ public class AnnotationTest extends TestCase {
                 .post(ClientResponse.class, prb);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
-        // Count up our annotations
-        response = jerseyTest.resource().path("/tradition/" + tradId + "/annotations")
-                .get(ClientResponse.class);
+        // Count up our annotations, testing annotation filtering along the way
+        WebResource baseQuery = jerseyTest.resource().path("/tradition/" + tradId + "/annotations");
+        response = baseQuery.get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         List<AnnotationModel> anns = response.getEntity(new GenericType<List<AnnotationModel>>() {});
         assertEquals(3, anns.size());
-        assertEquals(2, anns.stream().filter(x -> x.getLabel().equals("PERSONREF")).count());
-        assertEquals(1, anns.stream().filter(x -> x.getLabel().equals("PERSON")).count());
+        response = baseQuery.queryParam("label", "PERSONREF").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        anns = response.getEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(2, anns.size());
+        response = baseQuery.queryParam("label", "PERSON").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        anns = response.getEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(1, anns.size());
 
         // See if the structure makes sense
         for (AnnotationModel am : anns) {
