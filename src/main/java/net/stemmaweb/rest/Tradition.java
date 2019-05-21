@@ -574,6 +574,39 @@ public class Tradition {
         return Response.ok(result).build();
     }
 
+    /**
+     * Return a list of the annotation labels that have been defined for this tradition.
+     *
+     * @summary Get annotation labels for tradition
+     *
+     * @return a list of AnnotationLabelModels
+     * @statuscode 200 - on success
+     * @statuscode 400 - if tradition doesn't exist
+     * @statuscode 500 - on error
+     */
+    @GET
+    @Path("/annotationlabels")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationLabelModel>")
+    public Response getDefinedAnnotationLabels() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND)
+                    .entity(jsonerror("There is no tradition with this id")).build();
+
+        List<AnnotationLabelModel> result = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            traditionNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING)
+                    .forEach(x -> result.add(new AnnotationLabelModel(x.getEndNode())));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+        return Response.ok(result).build();
+    }
+
+
     // TODO add method to find identical and mergeable readings across the whole tradition
     /*
      * Tradition-specific calls

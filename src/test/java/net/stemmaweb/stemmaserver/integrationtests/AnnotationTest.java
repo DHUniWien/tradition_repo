@@ -9,6 +9,7 @@ import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.rest.AnnotationLabel;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.*;
@@ -299,6 +300,11 @@ public class AnnotationTest extends TestCase {
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, alm);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        // There should now be two BEGIN links
+        am = response.getEntity(AnnotationModel.class);
+        assertEquals(3, am.getLinks().size());
+        assertEquals(2, am.getLinks().stream().filter(x -> x.getType().equals("BEGIN")).count());
+
 
         // Try it again - we should get a not-modified
         response = jerseyTest.resource()
@@ -313,6 +319,10 @@ public class AnnotationTest extends TestCase {
                 .type(MediaType.APPLICATION_JSON)
                 .delete(ClientResponse.class, alm);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        am = response.getEntity(AnnotationModel.class);
+        // The link shouldn't be there anymore
+        assertEquals(2, am.getLinks().size());
+        assertEquals(1, am.getLinks().stream().filter(x -> x.getType().equals("BEGIN")).count());
     }
 
     public void testAddComplexAnnotation() {
@@ -342,6 +352,14 @@ public class AnnotationTest extends TestCase {
                 .type(MediaType.APPLICATION_JSON)
                 .put(ClientResponse.class, person);
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+
+        // Check that we can retrieve all the labels we made
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/annotationlabels").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<AnnotationLabelModel> allLabels = response.getEntity(new GenericType<List<AnnotationLabelModel>>() {});
+        assertEquals(2, allLabels.size());
+        assertTrue(allLabels.stream().anyMatch(x -> x.getName().equals("PERSON")));
+        assertTrue(allLabels.stream().anyMatch(x -> x.getName().equals("PERSONREF")));
 
         // Now use them
         AnnotationModel ref1 = new AnnotationModel();

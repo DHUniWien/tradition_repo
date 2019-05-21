@@ -207,7 +207,8 @@ public class Annotation {
 
     /**
      * Add an outbound link from this annotation node. Type and target are specified via an
-     * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}.
+     * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}. Returns the annotation
+     * including the new link.
      *
      * @param alm - the AnnotationLinkModel representing the link that should be added
      * @statuscode 200 - on success
@@ -221,9 +222,10 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = AnnotationModel.class)
     public Response addAnnotationLink(AnnotationLinkModel alm) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
+        AnnotationModel updated;
         try (Transaction tx = db.beginTx()) {
             Node aNode = db.getNodeById(Long.valueOf(annoId));
             // See if the link already exists
@@ -249,6 +251,7 @@ public class Annotation {
             Relationship link = aNode.createRelationshipTo(target, RelationshipType.withName(alm.getType()));
             if (alm.getFollow() != null)
                 link.setProperty("follow", alm.getFollow());
+            updated = new AnnotationModel(aNode);
             tx.success();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -257,12 +260,13 @@ public class Annotation {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().build();
+        return Response.ok(updated).build();
     }
 
     /**
      * Delete an outbound link from this annotation node. Type and target are specified via an
-     * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}.
+     * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}. Returns the annotation
+     * with the link deleted.
      *
      * @param alm - the AnnotationLinkModel representing the link that should be added
      * @statuscode 200 - on success
@@ -274,20 +278,23 @@ public class Annotation {
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = AnnotationModel.class)
     public Response deleteAnnotationLink(AnnotationLinkModel alm) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
+        AnnotationModel updated;
         try (Transaction tx = db.beginTx()) {
             Relationship r = findExistingLink(alm);
             if (r == null)
                 return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Specified link not found")).build();
+            Node aNode = r.getStartNode();
             r.delete();
+            updated = new AnnotationModel(aNode);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().build();
+        return Response.ok(updated).build();
     }
 
     // Used inside a transaction
