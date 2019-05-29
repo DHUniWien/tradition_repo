@@ -145,7 +145,12 @@ public class DotExporter
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
                         .uniqueness(Uniqueness.NODE_GLOBAL)
                         .traverse(sectionStartNode).relationships()
-                        .forEach(r -> lemmaLinks.put(representatives.get(r.getStartNode()), representatives.get(r.getEndNode())));
+                        .forEach(r -> {
+                            // We don't display lemma edges to emendations, for now; emendations are not in
+                            // the representatives list.
+                            if (representatives.containsKey(r.getStartNode()) && representatives.containsKey(r.getEndNode()))
+                                lemmaLinks.put(representatives.get(r.getStartNode()), representatives.get(r.getEndNode()));
+                        });
 
                 // Now start writing some dot.
                 for (Node node : new HashSet<>(representatives.values())) {

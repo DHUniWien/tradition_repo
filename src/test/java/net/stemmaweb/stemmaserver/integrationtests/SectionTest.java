@@ -785,6 +785,61 @@ public class SectionTest extends TestCase {
         assertEquals(2, newResult.getReadings().size());
     }
 
+    public void testEmendedLemmatisedDot() {
+        // Get the section ID
+        List<SectionModel> tradSections = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        String sectId = tradSections.get(0).getId();
+
+        // Propose an emendation and set it
+        ProposedEmendationModel pem = new ProposedEmendationModel();
+        pem.setAuthority("H. Granger");
+        pem.setText("alohomora");
+        pem.setFromRank(4L);
+        pem.setToRank(6L);
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/emend")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, pem);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        GraphModel newEmendation = response.getEntity(GraphModel.class);
+        assertEquals(1, newEmendation.getReadings().size());
+        ReadingModel eReading = newEmendation.getReadings().iterator().next();
+
+        // Lemmatise the emendation
+        MultivaluedMap<String, String> lemmaParam = new MultivaluedMapImpl();
+        lemmaParam.add("value", "true");
+        response = jerseyTest.resource().path("/reading/" + eReading.getId() + "/setlemma")
+                .type(MediaType.APPLICATION_FORM_URLENCODED)
+                .post(ClientResponse.class, lemmaParam);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Check that we can request the section dot
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/dot")
+                .queryParam("show_normal", "true")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String sectionDot = response.getEntity(String.class);
+        assertTrue(sectionDot.startsWith("digraph"));
+
+        // Now set the section lemma
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + sectId + "/setlemma")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Check that we can still request the section dot
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/dot")
+                .queryParam("show_normal", "true")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        sectionDot = response.getEntity(String.class);
+        assertTrue(sectionDot.startsWith("digraph"));
+
+    }
+
     public void testRelatedClusters() {
         List<SectionModel> tradSections = jerseyTest.resource()
                 .path("/tradition/" + tradId + "/sections")
