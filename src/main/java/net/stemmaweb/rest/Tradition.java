@@ -719,6 +719,38 @@ public class Tradition {
         return Response.ok().build();
     }
 
+    /**
+     * Deletes any annotations on this tradition that lack referents, unless the annotation is marked as "primary".
+     * Returns a list of the deleted annotations.
+     *
+     * @summary Clean up dangling annotations
+     * @return a list of AnnotationModels representing deleted annotations
+     */
+    @POST
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    public Response pruneAnnotations() {
+        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
+        List<AnnotationModel> deleted = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION)) {
+                boolean isPrimary = a.getProperty("primary", false).equals(true);
+                if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
+                    deleted.add(new AnnotationModel(a));
+                    a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
+                    a.delete();
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.ok(deleted).build();
+    }
+
     /*
      * Tradition export API
      *

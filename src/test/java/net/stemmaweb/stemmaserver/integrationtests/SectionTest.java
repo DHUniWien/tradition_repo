@@ -1125,6 +1125,182 @@ public class SectionTest extends TestCase {
 
     }
 
+    public void testFetchSectionAnnotations() {
+        // Set up some annotations across sections
+        HashMap<String,String> stuffCreated = setupComplexAnnotation();
+
+        // Now request the annotations for each section
+        // Request only the immediate annotations on section 1
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + stuffCreated.get("section1") + "/annotations")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<AnnotationModel> sectAnn = response.getEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(1, sectAnn.size());
+        assertTrue(sectAnn.stream().anyMatch(x -> x.getLabel().equals("PLACEREF")
+                && x.getId().equals(stuffCreated.get("ref1"))));
+
+        // Request the whole tree on section 2
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + stuffCreated.get("section2") + "/annotations")
+                .queryParam("recursive", "true")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        sectAnn = response.getEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(2, sectAnn.size());
+        assertTrue(sectAnn.stream().anyMatch(x -> x.getLabel().equals("PLACEREF")
+                && x.getId().equals(stuffCreated.get("ref2"))));
+        assertTrue(sectAnn.stream().anyMatch(x -> x.getLabel().equals("PLACE")
+                && x.getId().equals(stuffCreated.get("place"))));
+    }
+
+    public void testDeleteSectionWithAnnotations() {
+        // Set up some annotations across sections
+        HashMap<String,String> stuffCreated = setupComplexAnnotation();
+
+        // Count the readings we have in section 2 now
+        List<ReadingModel> s2Readings = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + stuffCreated.get("section2") + "/readings")
+                .get(new GenericType<List<ReadingModel>>() {});
+
+        // Now try to delete section 1
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + stuffCreated.get("section1"))
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Section 2 should be unaffected
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/section/" + stuffCreated.get("section2") + "/readings")
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<ReadingModel> remaining = response.getEntity(new GenericType<List<ReadingModel>>() {});
+        assertEquals(s2Readings.size(), remaining.size());
+        assertEquals(s2Readings.stream().map(ReadingModel::getId).sorted().collect(Collectors.toList()),
+                remaining.stream().map(ReadingModel::getId).sorted().collect(Collectors.toList()));
+
+        // Section 1 annotation shouldn't exist anymore
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotation/" + stuffCreated.get("ref1"))
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
+
+        // All readings and annotations for section 2 should still exist
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotation/" + stuffCreated.get("ref2"))
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotation/" + stuffCreated.get("place"))
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+    }
+
+    private HashMap<String, String> setupComplexAnnotation() {
+        HashMap<String, String> data = new HashMap<>();
+        // Add the second section
+        Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2");
+        // Get both section IDs
+        List<SectionModel> ourSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+                .get(new GenericType<List<SectionModel>>() {});
+        data.put("section1", ourSections.get(0).getId());
+        data.put("section2", ourSections.get(1).getId());
+        // Make some reading lookups
+        HashMap<String, String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+
+        // Set up the annotation structure
+        // Make a PLACEREF annotation label
+        AnnotationLabelModel pref = new AnnotationLabelModel();
+        pref.setName("PLACEREF");
+        pref.addLink("READING", "BEGIN,END");
+        ClientResponse response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotationlabel/" + pref.getName())
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, pref);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+
+        // Make a PLACE annotation label
+        AnnotationLabelModel place = new AnnotationLabelModel();
+        place.setName("PLACE");
+        place.addLink("PLACEREF", "NAMED");
+        place.addProperty("href", "String");
+        place.addProperty("locatable", "Boolean");
+
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotationlabel/" + place.getName())
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, place);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+
+        // Annotate some text
+        AnnotationModel ref1 = new AnnotationModel();
+        ref1.setLabel("PLACEREF");
+        AnnotationLinkModel prb = new AnnotationLinkModel();
+        prb.setType("BEGIN");
+        prb.setTarget(Long.valueOf(readingLookup.get("suecia/2")));
+        AnnotationLinkModel pre = new AnnotationLinkModel();
+        pre.setType("END");
+        pre.setTarget(Long.valueOf(readingLookup.get("suecia/2")));
+        ref1.addLink(prb);
+        ref1.addLink(pre);
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotation/")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, ref1);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        ref1 = response.getEntity(AnnotationModel.class);
+        data.put("ref1", ref1.getId());
+
+        AnnotationModel suecia = new AnnotationModel();
+        suecia.setLabel("PLACE");
+        HashMap<String, Object> sprops = new HashMap<>();
+        sprops.put("locatable", true);
+        sprops.put("href", "https://en.wikipedia.org/wiki/Sweden");
+        suecia.setProperties(sprops);
+        AnnotationLinkModel slinks = new AnnotationLinkModel();
+        slinks.setType("NAMED");
+        slinks.setTarget(Long.valueOf(ref1.getId()));
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotation/")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, suecia);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        suecia = response.getEntity(AnnotationModel.class);
+        data.put("place", suecia.getId());
+
+        // Make a reference in other section
+        AnnotationModel ref2 = new AnnotationModel();
+        ref2.setLabel("PLACEREF");
+        prb = new AnnotationLinkModel();
+        prb.setType("BEGIN");
+        prb.setTarget(Long.valueOf(readingLookup.get("magisque/15")));
+        pre = new AnnotationLinkModel();
+        pre.setType("END");
+        pre.setTarget(Long.valueOf(readingLookup.get("magisque/15")));
+        ref2.addLink(prb);
+        ref2.addLink(pre);
+        response = jerseyTest.resource()
+                .path("/tradition/" + tradId + "/annotation/")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, ref2);
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        ref2 = response.getEntity(AnnotationModel.class);
+        data.put("ref2", ref2.getId());
+
+        // Link the new reference to the existing place
+        AnnotationLinkModel newLink = new AnnotationLinkModel();
+        newLink.setTarget(Long.valueOf(ref2.getId()));
+        newLink.setType("NAMED");
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/annotation/" + suecia.getId() + "/link")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newLink);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        return data;
+    }
+
     @After
     public void tearDown() throws Exception {
         db.shutdown();

@@ -154,6 +154,12 @@ public class Section {
                 // Remove said nodes and relationships.
                 removableRelations.forEach(Relationship::delete);
                 removableNodes.forEach(Node::delete);
+                // Clean up any annotations that need it.
+                Tradition tService = new Tradition(tradId);
+                Response pruned = tService.pruneAnnotations();
+                if (pruned.getStatus() > 299) {
+                    return pruned;
+                }
             }
             tx.success();
         } catch (Exception e) {
@@ -439,6 +445,42 @@ public class Section {
         return result;
     }
 
+
+    @GET
+    @Path("/annotations")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    public Response getAnnotationsOnSection(@QueryParam("label") List<String> filterLabels,
+                                            @QueryParam("recursive") @DefaultValue("false") String recurse) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+        List<AnnotationModel> result = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            // We want to find all annotation nodes that are linked both to the tradition node
+            // and to some node in this section.
+            HashSet<Node> foundAnns = new HashSet<>();
+            for (Node n : DatabaseService.returnTraditionSection(sectId, db).nodes()) {
+                StreamSupport.stream(n.getRelationships(Direction.INCOMING).spliterator(), false)
+                        .filter(x -> x.getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
+                        .map(Relationship::getStartNode).forEach(foundAnns::add);
+            }
+            // If we've been asked for referents too, add them to the model
+            if (recurse.equals("true")) {
+                for (Node n : new ArrayList<>(foundAnns)) {
+                    Annotation aService = new Annotation(tradId, String.valueOf(n.getId()));
+                    foundAnns.addAll(aService.collectReferents(true));
+                }
+            }
+            foundAnns.forEach(x -> result.add(new AnnotationModel(x)));
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+
+
+        return Response.ok(result).build();
+    }
 
     /*
      * Manipulation

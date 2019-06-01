@@ -25,6 +25,10 @@ public class AnnotationModel {
      */
     private String label;
     /**
+     * Whether this annotation is a primary object, and should be kept even without referents
+     */
+    private Boolean isPrimary;
+    /**
      * A map of property keys to values
      */
     private Map<String, Object> properties;
@@ -34,6 +38,7 @@ public class AnnotationModel {
     private List<AnnotationLinkModel> links;
 
     public AnnotationModel() {
+        this.isPrimary = false;
         this.properties = new HashMap<>();
         this.links = new ArrayList<>();
     }
@@ -44,7 +49,10 @@ public class AnnotationModel {
             this.setId(String.valueOf(annNode.getId()));
             // We assume there is only one label
             this.setLabel(annNode.getLabels().iterator().next().name());
-            this.setProperties(annNode.getAllProperties());
+            this.setPrimary(annNode.getProperty("__primary", false).equals(true));
+            Map<String,Object> props = annNode.getAllProperties();
+            props.remove("__primary");
+            this.setProperties(props);
             this.links = new ArrayList<>();
             for (Relationship r : annNode.getRelationships(Direction.OUTGOING))
                 this.addLink(new AnnotationLinkModel(r));
@@ -66,6 +74,14 @@ public class AnnotationModel {
 
     public void setLabel(String label) {
         this.label = label;
+    }
+
+    public Boolean getPrimary() {
+        return isPrimary;
+    }
+
+    public void setPrimary(Boolean primary) {
+        isPrimary = primary;
     }
 
     public Map<String, Object> getProperties() {

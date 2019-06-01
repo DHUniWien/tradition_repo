@@ -297,13 +297,14 @@ public class DatabaseService {
         return Evaluation.EXCLUDE_AND_CONTINUE;
     };
 
-    private static Traverser returnTraverser (Node startNode, Evaluator e) {
+    private static Traverser returnTraverser (Node startNode, Evaluator ev, PathExpander ex) {
         Traverser tv;
         GraphDatabaseService db = startNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             tv = db.traversalDescription()
                     .depthFirst()
-                    .evaluator(e)
+                    .expand(ex)
+                    .evaluator(ev)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(startNode);
             tx.success();
@@ -317,7 +318,7 @@ public class DatabaseService {
     }
 
     public static Traverser returnEntireTradition(Node traditionNode) {
-        return returnTraverser(traditionNode, traditionCrawler);
+        return returnTraverser(traditionNode, traditionCrawler, PathExpanders.forDirection(Direction.OUTGOING));
     }
 
     public static Traverser returnTraditionSection(String sectionId, GraphDatabaseService db) {
@@ -331,10 +332,10 @@ public class DatabaseService {
     }
 
     public static Traverser returnTraditionRelations(Node traditionNode) {
-        return returnTraverser(traditionNode, traditionRelations);
+        return returnTraverser(traditionNode, traditionRelations, PathExpanders.allTypesAndDirections());
     }
 
     public static Traverser returnTraditionSection(Node sectionNode) {
-        return returnTraverser(sectionNode, sectionCrawler);
+        return returnTraverser(sectionNode, sectionCrawler, PathExpanders.forDirection(Direction.OUTGOING));
     }
 }

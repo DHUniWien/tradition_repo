@@ -9,7 +9,6 @@ import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.AnnotationLabel;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.*;
@@ -382,6 +381,7 @@ public class AnnotationTest extends TestCase {
         // Now try to link the PERSONREF to the right PERSON
         AnnotationModel henry = new AnnotationModel();
         henry.setLabel("PERSON");
+        henry.setPrimary(true);
         henry.addProperty("href", "https://en.wikipedia.org/Saint_Henry");
         prb = new AnnotationLinkModel();
         prb.setTarget(Long.valueOf(ref1.getId()));
@@ -459,7 +459,8 @@ public class AnnotationTest extends TestCase {
             }
         }
 
-        // Now delete each of the references and see if the person gets deleted
+        // Now delete each of the references and make sure the PERSON didn't get deleted,
+        // since it is a primary object
         response = jerseyTest.resource().path("/tradition/" + tradId + "/annotation/" + ref1.getId())
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
@@ -475,9 +476,20 @@ public class AnnotationTest extends TestCase {
                 .delete(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         deleted = response.getEntity(new GenericType<List<AnnotationModel>>() {});
-        assertEquals(2, deleted.size());
+        assertEquals(1, deleted.size());
         assertEquals(ref2.getId(), deleted.get(0).getId());
-        assertEquals(henry.getId(), deleted.get(1).getId());
+
+        anns = jerseyTest.resource().path("/tradition/" + tradId + "/annotations")
+                .get(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(1, anns.size());
+
+        // Now delete the PERSON explicitly, which should work
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/annotation/" + henry.getId())
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        deleted = response.getEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(1, deleted.size());
+        assertEquals(henry.getId(), deleted.get(0).getId());
 
         anns = jerseyTest.resource().path("/tradition/" + tradId + "/annotations")
                 .get(new GenericType<List<AnnotationModel>>() {});

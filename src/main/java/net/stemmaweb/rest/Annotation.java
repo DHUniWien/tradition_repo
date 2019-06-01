@@ -8,6 +8,9 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
@@ -18,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 
@@ -136,6 +141,8 @@ public class Annotation {
                 }
                 aNode.setProperty(pkey, pval);
             }
+            // With that done, set the "primary" property
+            aNode.setProperty("__primary", newAnno.getPrimary());
 
             // If this is a new annotation, set any given links. Otherwise leave it alone.
             if (!aNode.hasRelationship(Direction.OUTGOING)) {
@@ -177,7 +184,9 @@ public class Annotation {
             Node a = db.getNodeById(Long.parseLong(annoId));
             // Delete all outgoing relationships, which makes this a dangling annotation
             a.getRelationships(Direction.OUTGOING).forEach(Relationship::delete);
-            // Delete the annotation and any others that it leaves dangling
+            // Make this node no longer a primary, since we are deleting it explicitly
+            a.removeProperty("__primary");
+            // Delete the annotation and any other non-primary annotations that it leaves dangling
             deleted = deleteIfDangling(a);
             tx.success();
         } catch (Exception e) {
@@ -194,7 +203,7 @@ public class Annotation {
         if (a.hasLabel(Nodes.TRADITION)) return result;
 
         // Delete the node if it has no remaining outgoing relations
-        if (!a.hasRelationship(Direction.OUTGOING)) {
+        if (!a.hasRelationship(Direction.OUTGOING) && a.getProperty("__primary", false).equals(false)) {
             result.add(new AnnotationModel(a));
             ArrayList<Node> parents = new ArrayList<>();
             a.getRelationships(Direction.INCOMING).forEach(x -> {parents.add(x.getStartNode()); x.delete();});
@@ -297,6 +306,44 @@ public class Annotation {
         return Response.ok(updated).build();
     }
 
+    @GET
+    @Path("/referents")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel")
+    public Response getReferents(@QueryParam("recursive") @DefaultValue("false") String recurse) {
+        if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
+        List<AnnotationModel> result;
+        try {
+            result = collectReferents(recurse.equals("true")).stream()
+                    .map(AnnotationModel::new).collect(Collectors.toList());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+
+        return Response.ok(result).build();
+    }
+
+    List<Node> collectReferents(boolean recurse) {
+        List<Node> result;
+        try (Transaction tx = db.beginTx()) {
+            Node aNode = db.getNodeById(Long.valueOf(annoId));
+            if (recurse) {
+                result = new ArrayList<>();
+                db.traversalDescription().depthFirst()
+                        .evaluator(crawlReferents)
+                        .uniqueness(Uniqueness.NODE_GLOBAL)
+                        .traverse(aNode).nodes().forEach(result::add);
+            } else {
+                result = StreamSupport.stream(aNode.getRelationships(Direction.INCOMING).spliterator(), false)
+                        .filter(x -> !x.getType().equals(ERelations.HAS_ANNOTATION))
+                        .map(Relationship::getStartNode).collect(Collectors.toList());
+            }
+            tx.success();
+        }
+        return result;
+    }
+
     // Used inside a transaction
     private Relationship findExistingLink(AnnotationLinkModel alm) {
         Node aNode = db.getNodeById(Long.valueOf(annoId));
@@ -308,6 +355,20 @@ public class Annotation {
         return null;
     }
 
+    // Evaluator to walk the annotation structure
+    private static Evaluator crawlReferents = path -> {
+        if (path.length() == 0)
+            return Evaluation.EXCLUDE_AND_CONTINUE;
+        // Incoming direction only
+        if (path.endNode().equals(path.lastRelationship().getEndNode()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        // Stop when we get to the top of the annotation tree
+        if (path.lastRelationship().getType().toString().equals(ERelations.HAS_ANNOTATION.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        return Evaluation.INCLUDE_AND_CONTINUE;
+    };
+
+    // Check here whether we need to return a 404
     private boolean annotationNotFound() {
         boolean found;
         try (Transaction tx = db.beginTx()) {
@@ -316,6 +377,8 @@ public class Annotation {
             Node t = r.getStartNode();
             found = t.hasLabel(Nodes.TRADITION) && t.getProperty("id", "NONE").equals(tradId);
             tx.success();
+        } catch (NotFoundException e) {
+            return true;
         }
         return !found;
     }

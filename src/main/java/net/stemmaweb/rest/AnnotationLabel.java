@@ -128,6 +128,10 @@ public class AnnotationLabel {
                         "Character", "String", "LocalDate", "OffsetTime", "LocalTime", "ZonedDateTime",
                         "LocalDateTime", "TemporalAmount"));
                 for (String key : alm.getProperties().keySet()) {
+                    // Reject any property names with a reserved prefix
+                    if (key.startsWith("__"))
+                        return Response.status(Response.Status.BAD_REQUEST)
+                                .entity(jsonerror("Property names with prefix __ are reserved to the system")).build();
                     // Validate the value - it needs to be a data type allowed by Neo4J.
                     String val = alm.getProperties().get(key);
                     if (allowedValues.contains(val) ||
