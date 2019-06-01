@@ -226,7 +226,7 @@
         -->
         <neo4j-version>3.5.2</neo4j-version>
         <neo4j-algo-version>3.5.3.1</neo4j-algo-version>
-        <jackson-version>2.9.8</jackson-version>
+        <jackson-version>2.9.9</jackson-version>
         <jersey-version>1.19</jersey-version>
         <jersey-group>com.sun.jersey</jersey-group>
 
