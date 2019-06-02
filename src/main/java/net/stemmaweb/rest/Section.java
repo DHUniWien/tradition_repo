@@ -445,7 +445,19 @@ public class Section {
         return result;
     }
 
-
+    /**
+     * Return a list of annotations that refer to a node belonging to this section. The 'label'
+     * query parameter can be specified one or more times to restrict the output to the selected
+     * annotation types. If the 'recursive' query parameter has a value of 'true', then the
+     * results will include the ancestors of the (selected) section annotations.
+     *
+     * @param filterLabels - one or more annotation labels to restrict the query to
+     * @param recurse - return the ancestors of the selected annotations as well
+     * @return A list of AnnotationModels representing the requested annotations on the section
+     * @statuscode 200 - on success
+     * @statuscode 404 - if no such tradition exists
+     * @statuscode 500 - on failure, with an error message
+     */
     @GET
     @Path("/annotations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
@@ -464,6 +476,17 @@ public class Section {
                         .filter(x -> x.getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
                         .map(Relationship::getStartNode).forEach(foundAnns::add);
             }
+            // Filter the annotations if we have been asked to
+            if (filterLabels.size() > 0) {
+                for (Node a : new ArrayList<>(foundAnns)) {
+                    boolean foundLabel = false;
+                    for (Label l : a.getLabels()) {
+                        foundLabel = filterLabels.contains(l.name()) || foundLabel;
+                    }
+                    if (!foundLabel) foundAnns.remove(a);
+                }
+            }
+
             // If we've been asked for referents too, add them to the model
             if (recurse.equals("true")) {
                 for (Node n : new ArrayList<>(foundAnns)) {

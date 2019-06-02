@@ -225,6 +225,7 @@ public class Annotation {
      * @statuscode 403 - if the AnnotationLinkModel is invalid
      * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
      * @statuscode 500 - on error
+     * @return an AnnotationModel for the annotation with its new link
      */
 
     @POST
@@ -277,10 +278,12 @@ public class Annotation {
      * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}. Returns the annotation
      * with the link deleted.
      *
+     * @summary Delete an outbound link on this annotation
      * @param alm - the AnnotationLinkModel representing the link that should be added
      * @statuscode 200 - on success
      * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
      * @statuscode 500 - on error
+     * @return an AnnotationModel for the annotation whose link was deleted
      */
 
     @DELETE
@@ -305,6 +308,19 @@ public class Annotation {
         }
         return Response.ok(updated).build();
     }
+
+    /**
+     * Return a list of annotations that point to this one. If the 'recursive' parameter is
+     * set to 'true', then the call will return all ancestor annotations; otherwise it will
+     * be limited to direct parents.
+     *
+     * @summary Return annotation's referents (parents)
+     * @param recurse - Include all ancestors in response
+     * @return a list of parent / ancestor AnnotationModels
+     * @statuscode 200 - on success
+     * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
+     * @statuscode 500 - on error
+     */
 
     @GET
     @Path("/referents")
