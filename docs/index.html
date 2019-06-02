@@ -389,9 +389,40 @@
                     <a ng-click="setGlobalCollapsedState(false)">expand</a>&nbsp;/&nbsp;<a
                         ng-click="setGlobalCollapsedState(true)">collapse</a>&nbsp;all
                 </div>
-                <div id="intro" ng-show="view=='interfaces'"><h2>REST API documentation for Stemmarest</h2>
+                <div id="intro" ng-show="view=='interfaces'"><h1>REST API documentation</h1>
 
-<p>This is going to be an introductory paragraph for something or other.</p>
+<p>Stemmarest is a Neo4j-based repository for variant text traditions (i.e. texts that have been transmitted in multiple manuscripts). For an introduction to its conceptual structure, read on; to dive into specific API calls, see the menu to the right. Within the documentation, click on any title to get an expanded description of the call.</p>
+
+<h3>Definition of terms</h3>
+
+What follows is a definition of the concepts that occur within Stemmarest; understanding these terms will be helpful for understanding the API documentation. Note that most of these entities are defined with respect to (therefore, under) the <strong>/tradition/{tradId}</strong> heading in the API; readings, although defined as root objects, always belong to one and only one tradition section.
+
+<h2>Tradition</h2>
+<p>This is the central object in the database. A <em>tradition</em> represents the structure of our information about the text, from its witnesses to its sections to its readings and relations.</p>
+
+<h2>Witness</h2>
+<p>A <em>witness</em> represents a document that carries some version of the text. Witnesses generally have <em>sigla</em> to identify them, and they can be assembled into one or more <em>stemma</em> hypotheses. The witness sigla are used to identify individual textual versions within the sections; there, witnesses may also have <em>layers</em> to represent changes made to the text in the document.</p>
+
+<h2>Stemma</h2>
+<p>A <em>stemma</em> (in this context more properly a <em>stemma hypothesis</em>) is a graph that asserts a particular set of copying relationships between <em>witnesses</em>. The witnesses in a stemma can be extant (meaning that their text appears in the tradition) or hypothetical (meaning that their text does not appear, and their existence is only conjectured based on the evidence of the copying history.) The stemma objects in the database can have a <em>root</em> (or archetype), or not. The identity of the archetype can be changed by the user.</p>
+
+<h2>Section</h2>
+<p>The text of a tradition is divided into one or more <em>sections</em>, largely for manageability of the textual data. A section includes the set of <em>readings</em> from each <em>witness</em>, usually knitted together into a collation graph. Every section has a start node and an end node, and every witness (or, more precisely, every layer of every witness) takes a single path from the start to the end through a subset of the section's <em>readings</em>.</p>
+
+<h2>Reading</h2>
+<p>A <em>reading</em> is the base unit of the text. Most often this is equivalent to a word, but depending on context and on the needs of the editor, it may be a partial word, or it may be several words joined together. Readings are the nodes that are joined together by witness paths (a.k.a. sequences), and can be correlated by named <em>relations</em>. Two or more readings that are <em>colocated</em> in the collation (that is, they occupy the same place in the text, in different witnesses) are also known as <em>variants</em>.</p>
+
+<h2>Relation</h2>
+<p>It is often useful for an editor to be able to classify the types (or even the existence) of variation that occurs across witness texts. This is done via the <em>relation</em>, which (depending on its type; see below) usually also signals that the readings are <em>colocated</em>. They can also indicate correspondences such as <em>transposition</em> (when the same reading occurs in different places across different witnesses).</p>
+
+<h2>Relation type</h2>
+<p>The user can define a set of <em>relation types</em> per tradition; these can be given unique names and arranged in a loose hierarchy. See the documentation for RelationType for more details.</p>
+
+<h2>Annotation</h2>
+<p>Arbitrary structured information can be added to any node in the tradition via the <em>annotation</em> framework. An annotation is a node that has user-defined properties, and user-defined outbound links (i.e. relationships) to specific sorts of nodes. An annotation framework is defined by means of <em>annotation labels</em> on the tradition.</p>
+
+<h2>Annotation label</h2>
+<p>The <em>annotation label</em> defines a sort of annotation that may appear on the tradition, the properties it may contain, and the types of entities (i.e. nodes) that it may link to.</p>
 </div>
                 <div ng-view></div>
                 <div id="contentContent">

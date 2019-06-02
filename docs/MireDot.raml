@@ -720,6 +720,9 @@ schemas:
                     "type" : {
                       "type" : "string"
                     },
+                    "wildcardSubtype" : {
+                      "type" : "boolean"
+                    },
                     "parameters" : {
                       "type" : "object",
                       "patternProperties" : {
@@ -728,14 +731,11 @@ schemas:
                         }
                       }
                     },
-                    "wildcardSubtype" : {
-                      "type" : "boolean"
-                    },
                     "wildcardType" : {
                       "type" : "boolean"
                     }
                   },
-                  "required" : [ "subtype", "type", "parameters", "wildcardSubtype", "wildcardType" ],
+                  "required" : [ "subtype", "type", "wildcardSubtype", "parameters", "wildcardType" ],
                   "id" : "http://miredot.com/-727402703/MediaType"
                 }
     - 
@@ -874,12 +874,12 @@ schemas:
                       "description" : "True if the reading text is nonsensical",
                       "type" : "boolean"
                     },
-                    "language" : {
-                      "description" : "The language of the reading text",
-                      "type" : "string"
-                    },
                     "section" : {
                       "description" : "The ID of the section to which this reading belongs",
+                      "type" : "string"
+                    },
+                    "language" : {
+                      "description" : "The language of the reading text",
                       "type" : "string"
                     },
                     "is_emendation" : {
@@ -936,7 +936,7 @@ schemas:
                       "type" : "boolean"
                     }
                   },
-                  "required" : [ "annotation", "is_start", "join_next", "is_common", "display", "is_end", "is_nonsense", "language", "section", "is_emendation", "join_prior", "is_ph", "lexemes", "orig_reading", "normal_form", "is_lacuna", "is_lemma", "extra", "authority", "rank", "id", "text", "grammar_invalid" ],
+                  "required" : [ "annotation", "is_start", "join_next", "is_common", "display", "is_end", "is_nonsense", "section", "language", "is_emendation", "join_prior", "is_ph", "lexemes", "orig_reading", "normal_form", "is_lacuna", "is_lemma", "extra", "authority", "rank", "id", "text", "grammar_invalid" ],
                   "id" : "http://miredot.com/-166520153/ReadingModel"
                 }
     - 
@@ -954,12 +954,12 @@ schemas:
                       "description" : "True if the reading text is nonsensical",
                       "type" : "boolean"
                     },
-                    "language" : {
-                      "description" : "The language of the reading text",
-                      "type" : "string"
-                    },
                     "section" : {
                       "description" : "The ID of the section to which this reading belongs",
+                      "type" : "string"
+                    },
+                    "language" : {
+                      "description" : "The language of the reading text",
                       "type" : "string"
                     },
                     "is_ph" : {
@@ -1049,7 +1049,7 @@ schemas:
                       "type" : "boolean"
                     }
                   },
-                  "required" : [ "is_common", "is_nonsense", "language", "section", "is_ph", "is_lemma", "extra", "rank", "represented", "id", "text", "witnesses", "annotation", "is_start", "join_next", "display", "is_end", "is_emendation", "join_prior", "lexemes", "orig_reading", "normal_form", "is_lacuna", "authority", "grammar_invalid" ],
+                  "required" : [ "is_common", "is_nonsense", "section", "language", "is_ph", "is_lemma", "extra", "rank", "represented", "id", "text", "witnesses", "annotation", "is_start", "join_next", "display", "is_end", "is_emendation", "join_prior", "lexemes", "orig_reading", "normal_form", "is_lacuna", "authority", "grammar_invalid" ],
                   "id" : "http://miredot.com/-867151348/ReadingModel"
                 }
     - 
@@ -1059,12 +1059,12 @@ schemas:
                   "title" : "AnnotationLinkModel",
                   "type" : "object",
                   "properties" : {
-                    "type" : {
-                      "description" : "The relationship type for the link",
-                      "type" : "string"
-                    },
                     "follow" : {
                       "description" : "The specification of what path should be followed, if this is a reading-path-based annotation",
+                      "type" : "string"
+                    },
+                    "type" : {
+                      "description" : "The relationship type for the link",
                       "type" : "string"
                     },
                     "target" : {
@@ -1072,7 +1072,7 @@ schemas:
                       "type" : "number"
                     }
                   },
-                  "required" : [ "type", "follow", "target" ],
+                  "required" : [ "follow", "type", "target" ],
                   "id" : "http://miredot.com/-2043254044/AnnotationLinkModel"
                 }
     - 
@@ -1082,12 +1082,12 @@ schemas:
                   "title" : "AnnotationLinkModel",
                   "type" : "object",
                   "properties" : {
-                    "type" : {
-                      "description" : "The relationship type for the link",
-                      "type" : "string"
-                    },
                     "follow" : {
                       "description" : "The specification of what path should be followed, if this is a reading-path-based annotation",
+                      "type" : "string"
+                    },
+                    "type" : {
+                      "description" : "The relationship type for the link",
                       "type" : "string"
                     },
                     "target" : {
@@ -1095,7 +1095,7 @@ schemas:
                       "type" : "number"
                     }
                   },
-                  "required" : [ "type", "follow", "target" ],
+                  "required" : [ "follow", "type", "target" ],
                   "id" : "http://miredot.com/1083640175/AnnotationLinkModel"
                 }
     - 
@@ -1219,20 +1219,16 @@ schemas:
                         }
                       }
                     },
-                    "source" : {
-                      "description" : "The ID of the first reading in the relationship",
-                      "type" : "string"
-                    },
                     "id" : {
                       "description" : "The internal database ID of this relationship",
                       "type" : "string"
                     },
-                    "type" : {
-                      "description" : "The relationship type of this sequence: SEQUENCE, LEMMA_TEXT, or EMENDED",
+                    "source" : {
+                      "description" : "The ID of the first reading in the relationship",
                       "type" : "string"
                     },
-                    "target" : {
-                      "description" : "The ID of the second reading in the relationship",
+                    "type" : {
+                      "description" : "The relationship type of this sequence: SEQUENCE, LEMMA_TEXT, or EMENDED",
                       "type" : "string"
                     },
                     "witnesses" : {
@@ -1241,9 +1237,13 @@ schemas:
                       "items" : {
                         "type" : "string"
                       }
+                    },
+                    "target" : {
+                      "description" : "The ID of the second reading in the relationship",
+                      "type" : "string"
                     }
                   },
-                  "required" : [ "layers", "source", "id", "type", "target", "witnesses" ],
+                  "required" : [ "layers", "id", "source", "type", "witnesses", "target" ],
                   "id" : "http://miredot.com/282790620/SequenceModel"
                 }
     - 
@@ -1277,19 +1277,19 @@ schemas:
                       "description" : "The relationship type of this sequence: SEQUENCE, LEMMA_TEXT, or EMENDED",
                       "type" : "string"
                     },
-                    "target" : {
-                      "description" : "The ID of the second reading in the relationship",
-                      "type" : "string"
-                    },
                     "witnesses" : {
                       "description" : "The list of \"main\" witnesses along this sequence route",
                       "type" : "array",
                       "items" : {
                         "type" : "string"
                       }
+                    },
+                    "target" : {
+                      "description" : "The ID of the second reading in the relationship",
+                      "type" : "string"
                     }
                   },
-                  "required" : [ "layers", "id", "source", "type", "target", "witnesses" ],
+                  "required" : [ "layers", "id", "source", "type", "witnesses", "target" ],
                   "id" : "http://miredot.com/176580727/SequenceModel"
                 }
     - 
@@ -1655,22 +1655,22 @@ schemas:
                         "$ref" : "http://miredot.com/-166520153/ReadingModel"
                       }
                     },
-                    "relations" : {
-                      "description" : "A set of reading relations that make up a portion of a variant graph",
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "http://miredot.com/1484923415/RelationModel"
-                      }
-                    },
                     "sequences" : {
                       "description" : "A set of sequence links that make up a portion of a variant graph",
                       "type" : "array",
                       "items" : {
                         "$ref" : "http://miredot.com/282790620/SequenceModel"
                       }
+                    },
+                    "relations" : {
+                      "description" : "A set of reading relations that make up a portion of a variant graph",
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "http://miredot.com/1484923415/RelationModel"
+                      }
                     }
                   },
-                  "required" : [ "readings", "relations", "sequences" ],
+                  "required" : [ "readings", "sequences", "relations" ],
                   "id" : "http://miredot.com/-1198609559/GraphModel"
                 }
     - 
@@ -1687,22 +1687,22 @@ schemas:
                         "$ref" : "http://miredot.com/-867151348/ReadingModel"
                       }
                     },
-                    "relations" : {
-                      "description" : "A set of reading relations that make up a portion of a variant graph",
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "http://miredot.com/-1212008292/RelationModel"
-                      }
-                    },
                     "sequences" : {
                       "description" : "A set of sequence links that make up a portion of a variant graph",
                       "type" : "array",
                       "items" : {
                         "$ref" : "http://miredot.com/176580727/SequenceModel"
                       }
+                    },
+                    "relations" : {
+                      "description" : "A set of reading relations that make up a portion of a variant graph",
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "http://miredot.com/-1212008292/RelationModel"
+                      }
                     }
                   },
-                  "required" : [ "readings", "relations", "sequences" ],
+                  "required" : [ "readings", "sequences", "relations" ],
                   "id" : "http://miredot.com/1497815434/GraphModel"
                 }
     - 
@@ -1850,6 +1850,60 @@ schemas:
                   "id" : "http://miredot.com/269908813/Stemma"
                 }
     - 
+        ProposedEmendationModel_-1522998333: |
+                {
+                  "$schema" : "http://json-schema.org/draft-04/schema#",
+                  "title" : "ProposedEmendationModel",
+                  "type" : "object",
+                  "properties" : {
+                    "toRank" : {
+                      "description" : "The rank (exclusive) at which the emendation should end",
+                      "type" : "number"
+                    },
+                    "authority" : {
+                      "description" : "The identity of the proposer",
+                      "type" : "string"
+                    },
+                    "fromRank" : {
+                      "description" : "The rank (inclusive) at which the emendation should start",
+                      "type" : "number"
+                    },
+                    "text" : {
+                      "description" : "The reading that is being proposed for this point in the text",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "toRank", "authority", "fromRank", "text" ],
+                  "id" : "http://miredot.com/-1522998333/ProposedEmendationModel"
+                }
+    - 
+        ProposedEmendationModel_31698032: |
+                {
+                  "$schema" : "http://json-schema.org/draft-04/schema#",
+                  "title" : "ProposedEmendationModel",
+                  "type" : "object",
+                  "properties" : {
+                    "toRank" : {
+                      "description" : "The rank (exclusive) at which the emendation should end",
+                      "type" : "number"
+                    },
+                    "authority" : {
+                      "description" : "The identity of the proposer",
+                      "type" : "string"
+                    },
+                    "fromRank" : {
+                      "description" : "The rank (inclusive) at which the emendation should start",
+                      "type" : "number"
+                    },
+                    "text" : {
+                      "description" : "The reading that is being proposed for this point in the text",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "toRank", "authority", "fromRank", "text" ],
+                  "id" : "http://miredot.com/31698032/ProposedEmendationModel"
+                }
+    - 
         AnnotationLabelModel_-1160967136: |
                 {
                   "$schema" : "http://json-schema.org/draft-04/schema#",
@@ -1916,60 +1970,6 @@ schemas:
                   "id" : "http://miredot.com/-1630236749/AnnotationLabelModel"
                 }
     - 
-        ProposedEmendationModel_-1522998333: |
-                {
-                  "$schema" : "http://json-schema.org/draft-04/schema#",
-                  "title" : "ProposedEmendationModel",
-                  "type" : "object",
-                  "properties" : {
-                    "toRank" : {
-                      "description" : "The rank (exclusive) at which the emendation should end",
-                      "type" : "number"
-                    },
-                    "authority" : {
-                      "description" : "The identity of the proposer",
-                      "type" : "string"
-                    },
-                    "fromRank" : {
-                      "description" : "The rank (inclusive) at which the emendation should start",
-                      "type" : "number"
-                    },
-                    "text" : {
-                      "description" : "The reading that is being proposed for this point in the text",
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "toRank", "authority", "fromRank", "text" ],
-                  "id" : "http://miredot.com/-1522998333/ProposedEmendationModel"
-                }
-    - 
-        ProposedEmendationModel_31698032: |
-                {
-                  "$schema" : "http://json-schema.org/draft-04/schema#",
-                  "title" : "ProposedEmendationModel",
-                  "type" : "object",
-                  "properties" : {
-                    "toRank" : {
-                      "description" : "The rank (exclusive) at which the emendation should end",
-                      "type" : "number"
-                    },
-                    "authority" : {
-                      "description" : "The identity of the proposer",
-                      "type" : "string"
-                    },
-                    "fromRank" : {
-                      "description" : "The rank (inclusive) at which the emendation should start",
-                      "type" : "number"
-                    },
-                    "text" : {
-                      "description" : "The reading that is being proposed for this point in the text",
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "toRank", "authority", "fromRank", "text" ],
-                  "id" : "http://miredot.com/31698032/ProposedEmendationModel"
-                }
-    - 
         Link_1010657518: |
                 {
                   "$schema" : "http://json-schema.org/draft-04/schema#",
@@ -1991,6 +1991,9 @@ schemas:
                     "type" : {
                       "type" : "string"
                     },
+                    "title" : {
+                      "type" : "string"
+                    },
                     "params" : {
                       "type" : "object",
                       "patternProperties" : {
@@ -1998,9 +2001,6 @@ schemas:
                           "type" : "string"
                         }
                       }
-                    },
-                    "title" : {
-                      "type" : "string"
                     },
                     "uri" : { },
                     "uriBuilder" : {
@@ -2013,7 +2013,7 @@ schemas:
                       }
                     }
                   },
-                  "required" : [ "rel", "type", "params", "title", "uri", "uriBuilder", "rels" ],
+                  "required" : [ "rel", "type", "title", "params", "uri", "uriBuilder", "rels" ],
                   "id" : "http://miredot.com/1265618085/Link"
                 }
 /tradition: 
@@ -2312,16 +2312,38 @@ schemas:
                                 application/json; charset=utf-8: 
                 /referents: 
                     get: 
-                        description: ""
+                        description: |
+                            Return a list of annotations that point to this one. If the 'recursive' parameter is
+                             set to 'true', then the call will return all ancestor annotations; otherwise it will
+                             be limited to direct parents.
                         queryParameters: 
                             recursive: 
                                 displayName: recursive
+                                description: "- Include all ancestors in response"
                                 type: string
                                 required: false
                                 repeat: false
                                 default: "false"
                         responses: 
                             "200": 
+                                description: a list of parent / ancestor AnnotationModels
+                                body: 
+                                    application/json; charset=utf-8: 
+                                        schema: |
+                                            {
+                                              "$schema" : "http://json-schema.org/draft-04/schema#",
+                                              "title" : "AnnotationModel",
+                                              "type" : "array",
+                                              "items" : {
+                                                "$ref" : "http://miredot.com/1827696841/AnnotationModel"
+                                              }
+                                            }
+                            "404": 
+                                description: "- if the annotation doesn't exist, or doesn't belong to this tradition"
+                                body: 
+                                    application/json; charset=utf-8: 
+                            "500": 
+                                description: "- on error"
                                 body: 
                                     application/json; charset=utf-8: 
                 /link: 
@@ -2335,7 +2357,7 @@ schemas:
                                 schema: AnnotationLinkModel_-2043254044
                         responses: 
                             "200": 
-                                description: "- on success"
+                                description: an AnnotationModel for the annotation whose link was deleted
                                 body: 
                                     application/json; charset=utf-8: 
                                         schema: AnnotationModel_1827696841
@@ -2357,7 +2379,7 @@ schemas:
                                 schema: AnnotationLinkModel_-2043254044
                         responses: 
                             "200": 
-                                description: "- on success"
+                                description: an AnnotationModel for the annotation with its new link
                                 body: 
                                     application/json; charset=utf-8: 
                                         schema: AnnotationModel_1827696841
@@ -2955,21 +2977,45 @@ schemas:
                                     text/plain; charset=utf-8: 
                 /annotations: 
                     get: 
-                        description: ""
+                        description: |
+                            Return a list of annotations that refer to a node belonging to this section. The 'label'
+                             query parameter can be specified one or more times to restrict the output to the selected
+                             annotation types. If the 'recursive' query parameter has a value of 'true', then the
+                             results will include the ancestors of the (selected) section annotations.
                         queryParameters: 
                             label: 
                                 displayName: label
+                                description: "- one or more annotation labels to restrict the query to"
                                 type: string
                                 required: false
                                 repeat: false
                             recursive: 
                                 displayName: recursive
+                                description: "- return the ancestors of the selected annotations as well"
                                 type: string
                                 required: false
                                 repeat: false
                                 default: "false"
                         responses: 
                             "200": 
+                                description: A list of AnnotationModels representing the requested annotations on the section
+                                body: 
+                                    application/json; charset=utf-8: 
+                                        schema: |
+                                            {
+                                              "$schema" : "http://json-schema.org/draft-04/schema#",
+                                              "title" : "AnnotationModel",
+                                              "type" : "array",
+                                              "items" : {
+                                                "$ref" : "http://miredot.com/1827696841/AnnotationModel"
+                                              }
+                                            }
+                            "404": 
+                                description: "- if no such tradition exists"
+                                body: 
+                                    application/json; charset=utf-8: 
+                            "500": 
+                                description: "- on failure, with an error message"
                                 body: 
                                     application/json; charset=utf-8: 
                 /merge: 
