@@ -93,8 +93,9 @@ public class TraditionModel {
             DatabaseService.getRelated(node, ERelations.HAS_WITNESS).forEach(
                     x -> witnesses.add(x.getProperty("sigil").toString()));
             // For now this is hard-coded
-            reltypes = new ArrayList<>(Arrays.asList("grammatical", "spelling", "other", "punctuation",
-                    "lexical", "orthographic", "uncertain"));
+            // reltypes = new ArrayList<>(Arrays.asList("polarisation", "grammatical", "spelling", "other", "punctuation",
+            //         "lexical", "orthographic", "uncertain"));
+            reltypes = new ArrayList<>(Arrays.asList("polarisation"));
 
             tx.success();
         }
