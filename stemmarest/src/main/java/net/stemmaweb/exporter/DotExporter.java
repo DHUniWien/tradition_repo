@@ -223,7 +223,7 @@ public class DotExporter
             result = new String(encDot, Charset.forName("utf-8"));
 
             // Remove the following line, if you want to keep the created file
-            Files.deleteIfExists(output.toPath());
+            //Files.deleteIfExists(output.toPath());
 
             tx.success();
         } catch (IOException e) {
@@ -234,7 +234,7 @@ public class DotExporter
         }
 
         // Here is where to generate pictures from the file for debugging.
-        //writeFromDot(result);
+        writeFromDot(result);
 
         return Response.ok().entity(result).build();
     }
