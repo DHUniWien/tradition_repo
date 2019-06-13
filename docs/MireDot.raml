@@ -338,34 +338,6 @@ schemas:
                   "id" : "http://miredot.com/678630469/WitnessTokensModel"
                 }
     - 
-        WitnessTextModel_454245409: |
-                {
-                  "$schema" : "http://json-schema.org/draft-04/schema#",
-                  "title" : "WitnessTextModel",
-                  "type" : "object",
-                  "properties" : {
-                    "text" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "text" ],
-                  "id" : "http://miredot.com/454245409/WitnessTextModel"
-                }
-    - 
-        WitnessTextModel_1196711890: |
-                {
-                  "$schema" : "http://json-schema.org/draft-04/schema#",
-                  "title" : "WitnessTextModel",
-                  "type" : "object",
-                  "properties" : {
-                    "text" : {
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "text" ],
-                  "id" : "http://miredot.com/1196711890/WitnessTextModel"
-                }
-    - 
         RelationModel_1484923415: |
                 {
                   "$schema" : "http://json-schema.org/draft-04/schema#",
@@ -412,12 +384,12 @@ schemas:
                       "description" : "True if the target reading could be guessed by a scribe who saw the source reading in an exemplar",
                       "type" : "boolean"
                     },
-                    "scope" : {
-                      "description" : "The extent to which this relationship should be applied more widely",
-                      "type" : "string"
-                    },
                     "extra" : {
                       "description" : "I don't remember this either",
+                      "type" : "string"
+                    },
+                    "scope" : {
+                      "description" : "The extent to which this relationship should be applied more widely",
                       "type" : "string"
                     },
                     "id" : {
@@ -425,7 +397,7 @@ schemas:
                       "type" : "string"
                     }
                   },
-                  "required" : [ "a_derivable_from_b", "annotation", "non_independent", "is_significant", "source", "type", "alters_meaning", "target", "displayform", "b_derivable_from_a", "scope", "extra", "id" ],
+                  "required" : [ "a_derivable_from_b", "annotation", "non_independent", "is_significant", "source", "type", "alters_meaning", "target", "displayform", "b_derivable_from_a", "extra", "scope", "id" ],
                   "id" : "http://miredot.com/1484923415/RelationModel"
                 }
     - 
@@ -475,12 +447,12 @@ schemas:
                       "description" : "True if the target reading could be guessed by a scribe who saw the source reading in an exemplar",
                       "type" : "boolean"
                     },
-                    "scope" : {
-                      "description" : "The extent to which this relationship should be applied more widely",
-                      "type" : "string"
-                    },
                     "extra" : {
                       "description" : "I don't remember this either",
+                      "type" : "string"
+                    },
+                    "scope" : {
+                      "description" : "The extent to which this relationship should be applied more widely",
                       "type" : "string"
                     },
                     "id" : {
@@ -488,7 +460,7 @@ schemas:
                       "type" : "string"
                     }
                   },
-                  "required" : [ "annotation", "a_derivable_from_b", "non_independent", "is_significant", "source", "type", "alters_meaning", "target", "displayform", "b_derivable_from_a", "scope", "extra", "id" ],
+                  "required" : [ "annotation", "a_derivable_from_b", "non_independent", "is_significant", "source", "type", "alters_meaning", "target", "displayform", "b_derivable_from_a", "extra", "scope", "id" ],
                   "id" : "http://miredot.com/-1212008292/RelationModel"
                 }
     - 
@@ -665,10 +637,10 @@ schemas:
                   "title" : "FormDataContentDisposition",
                   "type" : "object",
                   "properties" : {
-                    "fileName" : {
+                    "modificationDate" : {
                       "type" : "string"
                     },
-                    "modificationDate" : {
+                    "fileName" : {
                       "type" : "string"
                     },
                     "size" : {
@@ -680,10 +652,10 @@ schemas:
                     "name" : {
                       "type" : "string"
                     },
-                    "type" : {
+                    "creationDate" : {
                       "type" : "string"
                     },
-                    "creationDate" : {
+                    "type" : {
                       "type" : "string"
                     },
                     "parameters" : {
@@ -695,7 +667,7 @@ schemas:
                       }
                     }
                   },
-                  "required" : [ "fileName", "modificationDate", "size", "readDate", "name", "type", "creationDate", "parameters" ],
+                  "required" : [ "modificationDate", "fileName", "size", "readDate", "name", "creationDate", "type", "parameters" ],
                   "id" : "http://miredot.com/-924075413/FormDataContentDisposition"
                 }
     - 
@@ -851,20 +823,20 @@ schemas:
                       "description" : "The user-supplied annotation or comment for this reading",
                       "type" : "string"
                     },
-                    "is_start" : {
-                      "description" : "True if the reading is a collation start node",
-                      "type" : "boolean"
-                    },
                     "join_next" : {
                       "description" : "True if the reading is a partial word that should be joined directly to the next reading",
                       "type" : "boolean"
                     },
-                    "is_common" : {
-                      "description" : "True if the reading appears in all witnesses",
+                    "is_start" : {
+                      "description" : "True if the reading is a collation start node",
                       "type" : "boolean"
                     },
                     "display" : {
                       "type" : "string"
+                    },
+                    "is_common" : {
+                      "description" : "True if the reading appears in all witnesses",
+                      "type" : "boolean"
                     },
                     "is_end" : {
                       "description" : "True if the reading is a collation end node",
@@ -874,12 +846,12 @@ schemas:
                       "description" : "True if the reading text is nonsensical",
                       "type" : "boolean"
                     },
-                    "section" : {
-                      "description" : "The ID of the section to which this reading belongs",
-                      "type" : "string"
-                    },
                     "language" : {
                       "description" : "The language of the reading text",
+                      "type" : "string"
+                    },
+                    "section" : {
+                      "description" : "The ID of the section to which this reading belongs",
                       "type" : "string"
                     },
                     "is_emendation" : {
@@ -896,11 +868,11 @@ schemas:
                     "lexemes" : {
                       "type" : "string"
                     },
-                    "orig_reading" : {
-                      "type" : "string"
-                    },
                     "normal_form" : {
                       "description" : "The canonically-spelled form of the reading text",
+                      "type" : "string"
+                    },
+                    "orig_reading" : {
                       "type" : "string"
                     },
                     "is_lacuna" : {
@@ -936,7 +908,7 @@ schemas:
                       "type" : "boolean"
                     }
                   },
-                  "required" : [ "annotation", "is_start", "join_next", "is_common", "display", "is_end", "is_nonsense", "section", "language", "is_emendation", "join_prior", "is_ph", "lexemes", "orig_reading", "normal_form", "is_lacuna", "is_lemma", "extra", "authority", "rank", "id", "text", "grammar_invalid" ],
+                  "required" : [ "annotation", "join_next", "is_start", "display", "is_common", "is_end", "is_nonsense", "language", "section", "is_emendation", "join_prior", "is_ph", "lexemes", "normal_form", "orig_reading", "is_lacuna", "is_lemma", "extra", "authority", "rank", "id", "text", "grammar_invalid" ],
                   "id" : "http://miredot.com/-166520153/ReadingModel"
                 }
     - 
@@ -954,12 +926,12 @@ schemas:
                       "description" : "True if the reading text is nonsensical",
                       "type" : "boolean"
                     },
-                    "section" : {
-                      "description" : "The ID of the section to which this reading belongs",
-                      "type" : "string"
-                    },
                     "language" : {
                       "description" : "The language of the reading text",
+                      "type" : "string"
+                    },
+                    "section" : {
+                      "description" : "The ID of the section to which this reading belongs",
                       "type" : "string"
                     },
                     "is_ph" : {
@@ -1003,12 +975,12 @@ schemas:
                       "description" : "The user-supplied annotation or comment for this reading",
                       "type" : "string"
                     },
-                    "is_start" : {
-                      "description" : "True if the reading is a collation start node",
-                      "type" : "boolean"
-                    },
                     "join_next" : {
                       "description" : "True if the reading is a partial word that should be joined directly to the next reading",
+                      "type" : "boolean"
+                    },
+                    "is_start" : {
+                      "description" : "True if the reading is a collation start node",
                       "type" : "boolean"
                     },
                     "display" : {
@@ -1029,11 +1001,11 @@ schemas:
                     "lexemes" : {
                       "type" : "string"
                     },
-                    "orig_reading" : {
-                      "type" : "string"
-                    },
                     "normal_form" : {
                       "description" : "The canonically-spelled form of the reading text",
+                      "type" : "string"
+                    },
+                    "orig_reading" : {
                       "type" : "string"
                     },
                     "is_lacuna" : {
@@ -1049,7 +1021,7 @@ schemas:
                       "type" : "boolean"
                     }
                   },
-                  "required" : [ "is_common", "is_nonsense", "section", "language", "is_ph", "is_lemma", "extra", "rank", "represented", "id", "text", "witnesses", "annotation", "is_start", "join_next", "display", "is_end", "is_emendation", "join_prior", "lexemes", "orig_reading", "normal_form", "is_lacuna", "authority", "grammar_invalid" ],
+                  "required" : [ "is_common", "is_nonsense", "language", "section", "is_ph", "is_lemma", "extra", "rank", "represented", "id", "text", "witnesses", "annotation", "join_next", "is_start", "display", "is_end", "is_emendation", "join_prior", "lexemes", "normal_form", "orig_reading", "is_lacuna", "authority", "grammar_invalid" ],
                   "id" : "http://miredot.com/-867151348/ReadingModel"
                 }
     - 
@@ -1231,19 +1203,19 @@ schemas:
                       "description" : "The relationship type of this sequence: SEQUENCE, LEMMA_TEXT, or EMENDED",
                       "type" : "string"
                     },
+                    "target" : {
+                      "description" : "The ID of the second reading in the relationship",
+                      "type" : "string"
+                    },
                     "witnesses" : {
                       "description" : "The list of \"main\" witnesses along this sequence route",
                       "type" : "array",
                       "items" : {
                         "type" : "string"
                       }
-                    },
-                    "target" : {
-                      "description" : "The ID of the second reading in the relationship",
-                      "type" : "string"
                     }
                   },
-                  "required" : [ "layers", "id", "source", "type", "witnesses", "target" ],
+                  "required" : [ "layers", "id", "source", "type", "target", "witnesses" ],
                   "id" : "http://miredot.com/282790620/SequenceModel"
                 }
     - 
@@ -1277,19 +1249,19 @@ schemas:
                       "description" : "The relationship type of this sequence: SEQUENCE, LEMMA_TEXT, or EMENDED",
                       "type" : "string"
                     },
+                    "target" : {
+                      "description" : "The ID of the second reading in the relationship",
+                      "type" : "string"
+                    },
                     "witnesses" : {
                       "description" : "The list of \"main\" witnesses along this sequence route",
                       "type" : "array",
                       "items" : {
                         "type" : "string"
                       }
-                    },
-                    "target" : {
-                      "description" : "The ID of the second reading in the relationship",
-                      "type" : "string"
                     }
                   },
-                  "required" : [ "layers", "id", "source", "type", "witnesses", "target" ],
+                  "required" : [ "layers", "id", "source", "type", "target", "witnesses" ],
                   "id" : "http://miredot.com/176580727/SequenceModel"
                 }
     - 
@@ -1364,12 +1336,12 @@ schemas:
                         "$ref" : "http://miredot.com/1083640175/AnnotationLinkModel"
                       }
                     },
-                    "id" : {
-                      "description" : "The ID of the annotation",
-                      "type" : "string"
-                    },
                     "label" : {
                       "description" : "The annotation's label - there should be only one",
+                      "type" : "string"
+                    },
+                    "id" : {
+                      "description" : "The ID of the annotation",
                       "type" : "string"
                     },
                     "properties" : {
@@ -1385,7 +1357,7 @@ schemas:
                       "type" : "boolean"
                     }
                   },
-                  "required" : [ "links", "id", "label", "properties", "primary" ],
+                  "required" : [ "links", "label", "id", "properties", "primary" ],
                   "id" : "http://miredot.com/1827696841/AnnotationModel"
                 }
     - 
@@ -1543,6 +1515,34 @@ schemas:
                   "id" : "http://miredot.com/-227379171/StatusType"
                 }
     - 
+        TextSequenceModel_-646669783: |
+                {
+                  "$schema" : "http://json-schema.org/draft-04/schema#",
+                  "title" : "TextSequenceModel",
+                  "type" : "object",
+                  "properties" : {
+                    "text" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "text" ],
+                  "id" : "http://miredot.com/-646669783/TextSequenceModel"
+                }
+    - 
+        TextSequenceModel_1428079306: |
+                {
+                  "$schema" : "http://json-schema.org/draft-04/schema#",
+                  "title" : "TextSequenceModel",
+                  "type" : "object",
+                  "properties" : {
+                    "text" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "text" ],
+                  "id" : "http://miredot.com/1428079306/TextSequenceModel"
+                }
+    - 
         Response_-1934132921: |
                 {
                   "$schema" : "http://json-schema.org/draft-04/schema#",
@@ -1600,10 +1600,10 @@ schemas:
                     "length" : {
                       "type" : "number"
                     },
-                    "language" : { },
                     "mediaType" : {
                       "$ref" : "http://miredot.com/-727402703/MediaType"
                     },
+                    "language" : { },
                     "entityTag" : {
                       "$ref" : "http://miredot.com/972236330/EntityTag"
                     },
@@ -1638,7 +1638,7 @@ schemas:
                       "type" : "number"
                     }
                   },
-                  "required" : [ "date", "headers", "metadata", "statusInfo", "stringHeaders", "length", "language", "mediaType", "entityTag", "cookies", "location", "links", "allowedMethods", "lastModified", "entity", "status" ],
+                  "required" : [ "date", "headers", "metadata", "statusInfo", "stringHeaders", "length", "mediaType", "language", "entityTag", "cookies", "location", "links", "allowedMethods", "lastModified", "entity", "status" ],
                   "id" : "http://miredot.com/171427692/Response"
                 }
     - 
@@ -1850,60 +1850,6 @@ schemas:
                   "id" : "http://miredot.com/269908813/Stemma"
                 }
     - 
-        ProposedEmendationModel_-1522998333: |
-                {
-                  "$schema" : "http://json-schema.org/draft-04/schema#",
-                  "title" : "ProposedEmendationModel",
-                  "type" : "object",
-                  "properties" : {
-                    "toRank" : {
-                      "description" : "The rank (exclusive) at which the emendation should end",
-                      "type" : "number"
-                    },
-                    "authority" : {
-                      "description" : "The identity of the proposer",
-                      "type" : "string"
-                    },
-                    "fromRank" : {
-                      "description" : "The rank (inclusive) at which the emendation should start",
-                      "type" : "number"
-                    },
-                    "text" : {
-                      "description" : "The reading that is being proposed for this point in the text",
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "toRank", "authority", "fromRank", "text" ],
-                  "id" : "http://miredot.com/-1522998333/ProposedEmendationModel"
-                }
-    - 
-        ProposedEmendationModel_31698032: |
-                {
-                  "$schema" : "http://json-schema.org/draft-04/schema#",
-                  "title" : "ProposedEmendationModel",
-                  "type" : "object",
-                  "properties" : {
-                    "toRank" : {
-                      "description" : "The rank (exclusive) at which the emendation should end",
-                      "type" : "number"
-                    },
-                    "authority" : {
-                      "description" : "The identity of the proposer",
-                      "type" : "string"
-                    },
-                    "fromRank" : {
-                      "description" : "The rank (inclusive) at which the emendation should start",
-                      "type" : "number"
-                    },
-                    "text" : {
-                      "description" : "The reading that is being proposed for this point in the text",
-                      "type" : "string"
-                    }
-                  },
-                  "required" : [ "toRank", "authority", "fromRank", "text" ],
-                  "id" : "http://miredot.com/31698032/ProposedEmendationModel"
-                }
-    - 
         AnnotationLabelModel_-1160967136: |
                 {
                   "$schema" : "http://json-schema.org/draft-04/schema#",
@@ -1970,6 +1916,60 @@ schemas:
                   "id" : "http://miredot.com/-1630236749/AnnotationLabelModel"
                 }
     - 
+        ProposedEmendationModel_-1522998333: |
+                {
+                  "$schema" : "http://json-schema.org/draft-04/schema#",
+                  "title" : "ProposedEmendationModel",
+                  "type" : "object",
+                  "properties" : {
+                    "toRank" : {
+                      "description" : "The rank (exclusive) at which the emendation should end",
+                      "type" : "number"
+                    },
+                    "authority" : {
+                      "description" : "The identity of the proposer",
+                      "type" : "string"
+                    },
+                    "fromRank" : {
+                      "description" : "The rank (inclusive) at which the emendation should start",
+                      "type" : "number"
+                    },
+                    "text" : {
+                      "description" : "The reading that is being proposed for this point in the text",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "toRank", "authority", "fromRank", "text" ],
+                  "id" : "http://miredot.com/-1522998333/ProposedEmendationModel"
+                }
+    - 
+        ProposedEmendationModel_31698032: |
+                {
+                  "$schema" : "http://json-schema.org/draft-04/schema#",
+                  "title" : "ProposedEmendationModel",
+                  "type" : "object",
+                  "properties" : {
+                    "toRank" : {
+                      "description" : "The rank (exclusive) at which the emendation should end",
+                      "type" : "number"
+                    },
+                    "authority" : {
+                      "description" : "The identity of the proposer",
+                      "type" : "string"
+                    },
+                    "fromRank" : {
+                      "description" : "The rank (inclusive) at which the emendation should start",
+                      "type" : "number"
+                    },
+                    "text" : {
+                      "description" : "The reading that is being proposed for this point in the text",
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "toRank", "authority", "fromRank", "text" ],
+                  "id" : "http://miredot.com/31698032/ProposedEmendationModel"
+                }
+    - 
         Link_1010657518: |
                 {
                   "$schema" : "http://json-schema.org/draft-04/schema#",
@@ -1988,12 +1988,6 @@ schemas:
                     "rel" : {
                       "type" : "string"
                     },
-                    "type" : {
-                      "type" : "string"
-                    },
-                    "title" : {
-                      "type" : "string"
-                    },
                     "params" : {
                       "type" : "object",
                       "patternProperties" : {
@@ -2001,6 +1995,12 @@ schemas:
                           "type" : "string"
                         }
                       }
+                    },
+                    "type" : {
+                      "type" : "string"
+                    },
+                    "title" : {
+                      "type" : "string"
                     },
                     "uri" : { },
                     "uriBuilder" : {
@@ -2013,7 +2013,7 @@ schemas:
                       }
                     }
                   },
-                  "required" : [ "rel", "type", "title", "params", "uri", "uriBuilder", "rels" ],
+                  "required" : [ "rel", "params", "type", "title", "uri", "uriBuilder", "rels" ],
                   "id" : "http://miredot.com/1265618085/Link"
                 }
 /tradition: 
@@ -2494,43 +2494,6 @@ schemas:
                             description: "- on failure, with an error message"
                             body: 
                                 application/json; charset=utf-8: 
-                /lemmareadings: 
-                    get: 
-                        description: |
-                            Gets the list of lemma readings for the section, if there are any. Requesting the "final"
-                             lemma sequence will return what was set by .../setlemma; otherwise all readings marked
-                             as lemmata will be returned, in order of rank, whether or not they are yet on a lemma
-                             path.
-                        queryParameters: 
-                            final: 
-                                displayName: final
-                                description: "- Whether or not to follow the 'lemma_text' path"
-                                type: string
-                                required: false
-                                repeat: false
-                                default: "false"
-                        responses: 
-                            "200": 
-                                description: A JSON list of lemma text ReadingModels
-                                body: 
-                                    application/json; charset=utf-8: 
-                                        schema: |
-                                            {
-                                              "$schema" : "http://json-schema.org/draft-04/schema#",
-                                              "title" : "ReadingModel",
-                                              "type" : "array",
-                                              "items" : {
-                                                "$ref" : "http://miredot.com/-867151348/ReadingModel"
-                                              }
-                                            }
-                            "404": 
-                                description: "- if no such tradition exists"
-                                body: 
-                                    application/json; charset=utf-8: 
-                            "500": 
-                                description: "- on failure, with an error message"
-                                body: 
-                                    application/json; charset=utf-8: 
                 /emend: 
                     post: 
                         description: |
@@ -2747,7 +2710,7 @@ schemas:
                                         description: The witness text as a string.
                                         body: 
                                             application/json; charset=utf-8: 
-                                                schema: WitnessTextModel_1196711890
+                                                schema: TextSequenceModel_1428079306
                                     "400": 
                                         description: "- if a start or end rank is specified on the tradition-wide call, or if the start rank and end rank match"
                                         body: 
@@ -2800,6 +2763,69 @@ schemas:
                                             }
                             "404": 
                                 description: "- if no such tradition or section exists"
+                                body: 
+                                    application/json; charset=utf-8: 
+                            "500": 
+                                description: "- on failure, with an error message"
+                                body: 
+                                    application/json; charset=utf-8: 
+                /lemmareadings: 
+                    get: 
+                        description: |
+                            Gets the list of lemma readings for the section, if there are any. Requesting the "final"
+                             lemma sequence will return what was set by .../setlemma; otherwise all readings marked
+                             as lemmata will be returned, in order of rank, whether or not they are yet on a lemma
+                             path.
+                        queryParameters: 
+                            final: 
+                                displayName: final
+                                description: "- Whether or not to follow the 'lemma_text' path"
+                                type: string
+                                required: false
+                                repeat: false
+                                default: "false"
+                            startRank: 
+                                displayName: startRank
+                                description: "- Return a substring of the lemma text starting at the given rank"
+                                type: string
+                                required: false
+                                repeat: false
+                                default: "1"
+                            endRank: 
+                                displayName: endRank
+                                description: "- Return a substring of the lemma text ending at the given rank"
+                                type: string
+                                required: false
+                                repeat: false
+                                default: E
+                            startRdg: 
+                                displayName: startRdg
+                                description: "- Return a substring of the lemma text starting with the given reading. Overrides startRank."
+                                type: string
+                                required: false
+                                repeat: false
+                            endRdg: 
+                                displayName: endRdg
+                                description: "- Return a substring of the lemma text ending at the given reading. Overrides endRank."
+                                type: string
+                                required: false
+                                repeat: false
+                        responses: 
+                            "200": 
+                                description: A JSON list of lemma text ReadingModels
+                                body: 
+                                    application/json; charset=utf-8: 
+                                        schema: |
+                                            {
+                                              "$schema" : "http://json-schema.org/draft-04/schema#",
+                                              "title" : "ReadingModel",
+                                              "type" : "array",
+                                              "items" : {
+                                                "$ref" : "http://miredot.com/-867151348/ReadingModel"
+                                              }
+                                            }
+                            "404": 
+                                description: "- if no such tradition exists"
                                 body: 
                                     application/json; charset=utf-8: 
                             "500": 
@@ -2889,33 +2915,6 @@ schemas:
                         responses: 
                             "200": 
                                 description: the JSON alignment
-                                body: 
-                                    application/json; charset=utf-8: 
-                /lemmatext: 
-                    get: 
-                        description: |
-                            Gets the lemma text for the section, if there is any. Returns the text in a JSON object
-                             with key 'text'.
-                        queryParameters: 
-                            final: 
-                                displayName: final
-                                description: "- Whether or not to follow the 'lemma_text' path"
-                                type: string
-                                required: false
-                                repeat: false
-                                default: "false"
-                        responses: 
-                            "200": 
-                                description: a WitnessTextModel containing the requested lemma text
-                                body: 
-                                    application/json; charset=utf-8: 
-                                        schema: WitnessTextModel_1196711890
-                            "404": 
-                                description: "- if no such tradition exists"
-                                body: 
-                                    application/json; charset=utf-8: 
-                            "500": 
-                                description: "- on failure, with an error message"
                                 body: 
                                     application/json; charset=utf-8: 
                 /dot: 
@@ -3089,6 +3088,59 @@ schemas:
                                     application/json; charset=utf-8: 
                             "409": 
                                 description: "- on detection of conflicting lemma readings"
+                                body: 
+                                    application/json; charset=utf-8: 
+                            "500": 
+                                description: "- on failure, with an error message"
+                                body: 
+                                    application/json; charset=utf-8: 
+                /lemmatext: 
+                    get: 
+                        description: |
+                            Gets the lemma text for the section, if there is any. Returns the text in a JSON object
+                             with key 'text'.
+                        queryParameters: 
+                            final: 
+                                displayName: final
+                                description: "- Whether or not to follow the 'lemma_text' path"
+                                type: string
+                                required: false
+                                repeat: false
+                                default: "false"
+                            startRank: 
+                                displayName: startRank
+                                description: "- Return a substring of the lemma text starting at the given rank"
+                                type: string
+                                required: false
+                                repeat: false
+                                default: "1"
+                            endRank: 
+                                displayName: endRank
+                                description: "- Return a substring of the lemma text ending at the given rank"
+                                type: string
+                                required: false
+                                repeat: false
+                                default: E
+                            startRdg: 
+                                displayName: startRdg
+                                description: "- Return a substring of the lemma text starting with the given reading. Overrides startRank."
+                                type: string
+                                required: false
+                                repeat: false
+                            endRdg: 
+                                displayName: endRdg
+                                description: "- Return a substring of the lemma text ending at the given reading. Overrides endRank."
+                                type: string
+                                required: false
+                                repeat: false
+                        responses: 
+                            "200": 
+                                description: a TextSequenceModel containing the requested lemma text
+                                body: 
+                                    application/json; charset=utf-8: 
+                                        schema: TextSequenceModel_1428079306
+                            "404": 
+                                description: "- if no such tradition exists"
                                 body: 
                                     application/json; charset=utf-8: 
                             "500": 
@@ -3753,7 +3805,7 @@ schemas:
                                 description: The witness text as a string.
                                 body: 
                                     application/json; charset=utf-8: 
-                                        schema: WitnessTextModel_1196711890
+                                        schema: TextSequenceModel_1428079306
                             "400": 
                                 description: "- if a start or end rank is specified on the tradition-wide call, or if the start rank and end rank match"
                                 body: 
