@@ -48,7 +48,7 @@ public class CollateXInputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "W2");
-        WitnessTextModel response = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        TextSequenceModel response = (TextSequenceModel) witness.getWitnessAsText().getEntity();
         assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
 
         result = tradition.getAllReadings();
@@ -71,7 +71,7 @@ public class CollateXInputTest extends TestCase {
 
         String tradId = Util.getValueFromJson(cResult, "tradId");
         Witness witness = new Witness(tradId, "w1");
-        WitnessTextModel response = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        TextSequenceModel response = (TextSequenceModel) witness.getWitnessAsText().getEntity();
         assertEquals("the quick brown fox jumped over the lazy dogs .", response.getText());
     }
 
@@ -137,7 +137,7 @@ public class CollateXInputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "W2");
-        WitnessTextModel response = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        TextSequenceModel response = (TextSequenceModel) witness.getWitnessAsText().getEntity();
         assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
 
         result = tradition.getAllReadings();

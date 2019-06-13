@@ -358,7 +358,7 @@ public class Section {
      *
      * @summary Get lemma text
      * @param followFinal - Whether or not to follow the 'lemma_text' path
-     * @return a WitnessTextModel containing the requested lemma text
+     * @return a TextSequenceModel containing the requested lemma text
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
      * @statuscode 500 - on failure, with an error message
@@ -366,7 +366,7 @@ public class Section {
     @GET
     @Path("/lemmatext")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = WitnessTextModel.class)
+    @ReturnType(clazz = TextSequenceModel.class)
     public Response getLemmaText(@QueryParam("final") @DefaultValue("false") String followFinal) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -378,7 +378,7 @@ public class Section {
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        WitnessTextModel lm = new WitnessTextModel(
+        TextSequenceModel lm = new TextSequenceModel(
                 ReadingService.textOfReadings(sectionLemmata, true, followFinal.equals("false")));
         return Response.ok(lm).build();
     }

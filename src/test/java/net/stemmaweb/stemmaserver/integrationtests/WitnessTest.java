@@ -8,8 +8,8 @@ import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.model.WitnessTextModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -80,7 +80,7 @@ public class WitnessTest {
         String expectedText = "when april with his showers sweet with "
                 + "fruit the drought of march has pierced unto the root";
         Response resp = new Witness(tradId, "A").getWitnessAsText();
-        assertEquals(expectedText, ((WitnessTextModel) resp.getEntity()).getText());
+        assertEquals(expectedText, ((TextSequenceModel) resp.getEntity()).getText());
 
         String returnedText = jerseyTest
                 .resource()
@@ -105,7 +105,7 @@ public class WitnessTest {
         String expectedText = "when showers sweet with april fruit the march "
                 + "of drought has pierced to the root";
         Response resp = new Witness(tradId, "B").getWitnessAsText();
-        assertEquals(expectedText, ((WitnessTextModel) resp.getEntity()).getText());
+        assertEquals(expectedText, ((TextSequenceModel) resp.getEntity()).getText());
 
         String returnedText = jerseyTest
                 .resource()
@@ -125,7 +125,7 @@ public class WitnessTest {
         } catch (Exception e) {
             fail();
         }
-        WitnessTextModel returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        TextSequenceModel returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertNotEquals(expectedText, returnedText.getText());
 
         // Find the reading that is the period
@@ -136,7 +136,7 @@ public class WitnessTest {
             period.setProperty("join_prior", true);
             tx.success();
         }
-        returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
 
         // Now find its predecessors and mark them as join_next
@@ -147,14 +147,14 @@ public class WitnessTest {
             }
             tx.success();
         }
-        returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
 
         try (Transaction tx = db.beginTx()) {
             period.removeProperty("join_prior");
             tx.success();
         }
-        returnedText = (WitnessTextModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
+        returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
     }
 

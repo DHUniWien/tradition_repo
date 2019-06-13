@@ -14,7 +14,7 @@ import javax.ws.rs.core.Response.Status;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.model.WitnessTextModel;
+import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
@@ -218,7 +218,7 @@ public class Witness {
     @GET
     @Path("/text")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = WitnessTextModel.class)
+    @ReturnType(clazz = TextSequenceModel.class)
     public Response getWitnessAsTextWithLayer(
             @QueryParam("layer") @DefaultValue("") List<String> layer,
             @QueryParam("start") @DefaultValue("0") String start,
@@ -291,7 +291,7 @@ public class Witness {
         // Construct the text from the node reading models
         String witnessText = ReadingService.textOfReadings(
                 witnessReadings.stream().map(ReadingModel::new).collect(Collectors.toList()), false, false);
-        WitnessTextModel wtm = new WitnessTextModel(witnessText);
+        TextSequenceModel wtm = new TextSequenceModel(witnessText);
         return Response.ok(wtm).build();
 
     }
