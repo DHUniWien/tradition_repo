@@ -358,7 +358,11 @@ public class Section {
      *
      * @summary Get lemma text
      * @param followFinal - Whether or not to follow the 'lemma_text' path
-     * @return a WitnessTextModel containing the requested lemma text
+     * @param startRank - Return a substring of the lemma text starting at the given rank
+     * @param endRank - Return a substring of the lemma text ending at the given rank
+     * @param startRdg - Return a substring of the lemma text starting with the given reading. Overrides startRank.
+     * @param endRdg - Return a substring of the lemma text ending at the given reading. Overrides endRank.
+     * @return a TextSequenceModel containing the requested lemma text
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
      * @statuscode 500 - on failure, with an error message
@@ -366,19 +370,25 @@ public class Section {
     @GET
     @Path("/lemmatext")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = WitnessTextModel.class)
-    public Response getLemmaText(@QueryParam("final") @DefaultValue("false") String followFinal) {
+    @ReturnType(clazz = TextSequenceModel.class)
+    public Response getLemmaText(@QueryParam("final")     @DefaultValue("false") String followFinal,
+                                 @QueryParam("startRank") @DefaultValue("1") String startRank,
+                                 @QueryParam("endRank")   @DefaultValue("E") String endRank,
+                                 @QueryParam("startRdg") String startRdg,
+                                 @QueryParam("endRdg")   String endRdg) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         List<ReadingModel> sectionLemmata;
         try {
-            sectionLemmata = collectLemmaReadings(followFinal.equals("true"));
+            if (startRdg != null) startRank = rankForReading(startRdg);
+            if (endRdg != null) endRank = rankForReading(endRdg);
+            sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank);
             // Add on the end node, so we know whether a lacuna marker is needed.
             sectionLemmata.add(new ReadingModel(DatabaseService.getEndNode(sectId, db)));
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        WitnessTextModel lm = new WitnessTextModel(
+        TextSequenceModel lm = new TextSequenceModel(
                 ReadingService.textOfReadings(sectionLemmata, true, followFinal.equals("false")));
         return Response.ok(lm).build();
     }
@@ -391,6 +401,10 @@ public class Section {
      *
      * @summary Get sequence of lemma readings
      * @param followFinal - Whether or not to follow the 'lemma_text' path
+     * @param startRank - Return a substring of the lemma text starting at the given rank
+     * @param endRank - Return a substring of the lemma text ending at the given rank
+     * @param startRdg - Return a substring of the lemma text starting with the given reading. Overrides startRank.
+     * @param endRdg - Return a substring of the lemma text ending at the given reading. Overrides endRank.
      * @return A JSON list of lemma text ReadingModels
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -400,12 +414,18 @@ public class Section {
     @Path("/lemmareadings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
-    public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal) {
+    public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal,
+                                     @QueryParam("startRank") @DefaultValue("1") String startRank,
+                                     @QueryParam("endRank")   @DefaultValue("E") String endRank,
+                                     @QueryParam("startRdg") String startRdg,
+                                     @QueryParam("endRdg")   String endRdg) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         List<ReadingModel> sectionLemmata;
         try {
-            sectionLemmata = collectLemmaReadings(followFinal.equals("true"));
+            if (startRdg != null) startRank = rankForReading(startRdg);
+            if (endRdg != null) endRank = rankForReading(endRdg);
+            sectionLemmata = collectLemmaReadings(followFinal.equals("true"), startRank, endRank);
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -413,28 +433,35 @@ public class Section {
         return Response.ok(sectionLemmata).build();
     }
 
-    private List<ReadingModel> collectLemmaReadings(Boolean followFinal) {
+    private List<ReadingModel> collectLemmaReadings(Boolean followFinal, String startFrom, String endAt) {
         List<ReadingModel> result;
-        Node startNode = DatabaseService.getStartNode(sectId, db);
+        Node sectionStart = DatabaseService.getStartNode(sectId, db);
+        Node sectionEnd = DatabaseService.getEndNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
+            long startRank = Long.valueOf(startFrom);
+            long endRank = endAt.equals("E")
+                    ? Long.valueOf(sectionEnd.getProperty("rank").toString()) - 1
+                    : Long.valueOf(endAt);
             if (followFinal) {
                 ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
                         .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
                         .evaluator(Evaluators.all())
-                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                        .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart)
                         .nodes();
-                // Filter out the start and end nodes
+                // Limit to the requested rank range
                 result = sectionLemmata.stream().map(ReadingModel::new)
-                        .filter(x -> !x.getIs_start() && !x.getIs_end())
+                        .filter(x -> x.getRank() >= startRank && x.getRank() <= endRank)
                         .collect(Collectors.toList());
             } else {
                 result = db.traversalDescription().depthFirst()
                         .expand(new AlignmentTraverse())
                         .uniqueness(Uniqueness.NODE_GLOBAL)
-                        .traverse(startNode).nodes().stream()
+                        .traverse(sectionStart).nodes().stream()
                         .filter(x -> x.hasLabel(Nodes.READING)
                                 && x.hasProperty("is_lemma")
-                                && x.getProperty("is_lemma").equals(true))
+                                && x.getProperty("is_lemma").equals(true)
+                                && (Long) x.getProperty("rank") >= startRank
+                                && (Long) x.getProperty("rank") <= endRank)
                         .map(ReadingModel::new).sorted().collect(Collectors.toList());
             }
             tx.success();
@@ -443,6 +470,16 @@ public class Section {
             throw(e);
         }
         return result;
+    }
+
+    private String rankForReading(String rdgId) {
+        String answer;
+        try (Transaction tx = db.beginTx()) {
+            Node rdgNode = db.getNodeById(Long.valueOf(rdgId));
+            answer = rdgNode.getProperty("rank").toString();
+            tx.success();
+        }
+        return answer;
     }
 
     /**

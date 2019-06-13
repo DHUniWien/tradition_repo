@@ -1049,6 +1049,18 @@ public class SectionTest extends TestCase {
         for (String rdg : lemmatised) {
             assertTrue(inLemma.contains(readingLookup.get(rdg)));
         }
+        // and a subset thereof
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/lemmareadings")
+                .queryParam("startRank", "11")
+                .queryParam("endRank", "13")
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        lemmaReadings = jerseyResult.getEntity(new GenericType<List<ReadingModel>>() {});
+        assertEquals(3, lemmaReadings.size());
+        for (String rdg : new String[] {"noticiam/11", "et/12", "cultum/13"}) {
+            String rdgid = readingLookup.get(rdg);
+            assertTrue(lemmaReadings.stream().anyMatch(x -> x.getId().equals(rdgid)));
+        }
 
         // Now set/finalise the lemma text
         jerseyResult = jerseyTest.resource()
@@ -1099,6 +1111,16 @@ public class SectionTest extends TestCase {
         lemmaText = Util.getValueFromJson(jerseyResult, "text");
         assertEquals("Quasi duobus magnis luminaribus populus terre illius ad dei veri noticiam et " +
                 "cultum magis illustrabatur jugiter ac informabatur Sanctus autem.", lemmaText);
+        // nor the subset containing the change
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")
+                .queryParam("final", "true")
+                .queryParam("startRdg", readingLookup.get("magis/14"))
+                .queryParam("endRdg", readingLookup.get("informabatur/19"))
+                .get(ClientResponse.class);
+        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        lemmaText = Util.getValueFromJson(jerseyResult, "text");
+        assertEquals("magis illustrabatur jugiter ac informabatur", lemmaText);
+
 
         // ...but we can see our changes in the effective lemma text
         jerseyResult = jerseyTest.resource()

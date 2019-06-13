@@ -64,7 +64,7 @@ public class TabularInputOutputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "K");
-        WitnessTextModel resp = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        TextSequenceModel resp = (TextSequenceModel) witness.getWitnessAsText().getEntity();
         System.out.println(resp.getText());
 
         result = tradition.getAllReadings();
@@ -90,10 +90,10 @@ public class TabularInputOutputTest extends TestCase {
 
         // Get a witness text
         Witness witness = new Witness(tradId, "E");
-        WitnessTextModel tm = (WitnessTextModel) witness.getWitnessAsText().getEntity();
+        TextSequenceModel tm = (TextSequenceModel) witness.getWitnessAsText().getEntity();
         List<String> layers = new ArrayList<>();
         layers.add("a.c.");
-        WitnessTextModel ltm = (WitnessTextModel) witness.getWitnessAsTextWithLayer(
+        TextSequenceModel ltm = (TextSequenceModel) witness.getWitnessAsTextWithLayer(
                 layers, "0", "E").getEntity();
         System.out.println(tm.getText());
         System.out.println(ltm.getText());

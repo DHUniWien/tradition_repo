@@ -9,7 +9,7 @@ import javax.ws.rs.core.Response;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.WitnessTextModel;
+import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -226,12 +226,12 @@ public class RelationTest {
             assertFalse(rels.iterator().hasNext());
             String expectedText = "when april with his showers sweet with " +
                     "fruit the drought of march has pierced unto the root";
-            WitnessTextModel resp = (WitnessTextModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
+            TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "A").getWitnessAsText().getEntity();
             assertEquals(expectedText, resp.getText());
 
             expectedText = "when showers sweet with april fruit the march " +
                     "of drought has pierced to the root";
-            resp = (WitnessTextModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
+            resp = (TextSequenceModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
             assertEquals(expectedText, resp.getText());
 
             tx.success();

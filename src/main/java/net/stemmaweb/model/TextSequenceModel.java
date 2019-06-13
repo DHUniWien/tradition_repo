@@ -3,10 +3,10 @@ package net.stemmaweb.model;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
-public class WitnessTextModel {
+public class TextSequenceModel {
     private String text;
 
-    public WitnessTextModel(String theText) {
+    public TextSequenceModel(String theText) {
         this.text = theText;
     }
 
