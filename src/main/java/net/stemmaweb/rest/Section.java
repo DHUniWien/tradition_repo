@@ -518,6 +518,103 @@ public class Section {
         return Response.ok(result).build();
     }
 
+    /**
+     * Return a list of variant groupings suitable for stemmatic analysis.
+     *
+     * @param significant - Restrict the variant groups to the given significance level or above
+     * @param conflate - The name of a relation type that should be conflated
+     *
+     * @return A list of lists of reading models
+     */
+
+    @GET
+    @Path("/variants")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.VariantLocationModel>")
+    public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
+                                                         @QueryParam("conflate") String conflate) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+
+        ArrayList<VariantLocationModel> vlocs = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            // Get our relation clusters
+            List<Set<Node>> clusters = RelationService.getClusters(tradId, sectId, db);
+
+            // Get our rank alignment, taking into account any conflation that was requested
+            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            AlignmentModel rankAlignment = new AlignmentModel(sectionNode, conflate);
+
+            // Get a map of node -> ReadingModel, applying any conflation that was requested
+            Map<Node, ReadingModel> modelmap = new HashMap<>();
+            if (conflate != null) {
+                for (Set<Node> equivalent : RelationService.getCloselyRelatedClusters(tradId, sectId, db, conflate)) {
+                    Node rep = RelationService.findRepresentative(equivalent);
+                    if (rep != null) {
+                        ReadingModel rm = new ReadingModel(rep);
+                        equivalent.stream().filter(x -> !x.equals(rep)).forEach(x -> rm.addRepresented(new ReadingModel(x)));
+                        equivalent.forEach(x -> modelmap.put(x, rm));
+                    }
+                }
+            } else {
+                // Each reading is represented by itself.
+                clusters.forEach(cluster -> cluster.forEach(x -> modelmap.put(x, new ReadingModel(x))));
+            }
+
+            // Now make the variant locations
+            Set<VariantLocationModel> discard = new HashSet<>();
+            for (Set<Node> cluster : clusters) {
+                VariantLocationModel vloc = new VariantLocationModel();
+                // Collect our relations
+                HashSet<RelationModel> vlocRels = new HashSet<>();
+                for (Node r : cluster) {
+                    r.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(x -> vlocRels.add(new RelationModel(x)));
+                }
+                // Filter by significance if requested
+                boolean keep = true;
+                if (significant.equals("maybe"))
+                    keep = vlocRels.stream().anyMatch(x -> !x.getIs_significant().equals("no"));
+                else if (significant.equals("yes"))
+                    keep = vlocRels.stream().anyMatch(x -> x.getIs_significant().equals("yes"));
+                if (!keep) discard.add(vloc);
+
+                // Collect our reading models
+                HashSet<ReadingModel> vlocReadings = new HashSet<>();
+                cluster.forEach(x -> vlocReadings.add(modelmap.get(x)));
+
+                // Filter the relations according to which reading models we have
+                if (conflate != null) {
+                    Set<String> rids = vlocReadings.stream().map(ReadingModel::getId).collect(Collectors.toSet());
+                    vloc.setRelations(vlocRels.stream()
+                            .filter(x -> rids.contains(x.getSource()) && rids.contains(x.getTarget()))
+                            .collect(Collectors.toList()));
+                } else
+                    vloc.setRelations(new ArrayList<>(vlocRels));
+
+                // Find the reference rank index
+                vlocReadings.stream()
+                        .collect(Collectors.groupingBy(ReadingModel::getRank, Collectors.counting()))
+                        .entrySet().stream().max(Comparator.comparing(Map.Entry::getValue))
+                        .ifPresent(x -> vloc.setRankIndex(x.getKey()));
+
+                // Add it to the list
+                if (keep) vlocs.add(vloc);
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+        // Sort the list by rank index
+        vlocs.sort(Comparator.comparingLong(VariantLocationModel::getRankIndex));
+        // Combine variant locations that are ranked the same, looking through our discard pile in case we need it
+        //
+
+
+        return Response.ok(vlocs).build();
+    }
+
+
     /*
      * Manipulation
      */
