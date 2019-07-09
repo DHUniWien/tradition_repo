@@ -4,23 +4,25 @@ import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.multipart.FormDataBodyPart;
-import com.sun.jersey.multipart.FormDataMultiPart;
-import com.sun.jersey.test.framework.JerseyTest;
+
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import org.apache.commons.io.IOUtils;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+import org.glassfish.jersey.client.ClientResponse;
+import org.glassfish.jersey.media.multipart.FormDataBodyPart;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
+import org.glassfish.jersey.test.JerseyTest;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.*;
@@ -142,7 +144,7 @@ public class Util {
 
     public static String getValueFromJson (ClientResponse r, String key) {
         String value = null;
-        InputStream response = r.getEntityInputStream();
+        InputStream response = r.getEntityStream();
         try {
             JSONObject content = new JSONObject(IOUtils.toString(response, "UTF-8"));
             if (content.has(key))
@@ -154,7 +156,9 @@ public class Util {
     }
 
     public static String getSpecificReading(JerseyTest jerseyTest, String tradId, String sectId, String reading, Long rank) {
-        List<ReadingModel> allReadings = jerseyTest.resource().path("/tradition/" + tradId + "/section/" + sectId + "/readings")
+        List<ReadingModel> allReadings = jerseyTest
+                .target("/tradition/" + tradId + "/section/" + sectId + "/readings")
+                .request()
                 .get(new GenericType<List<ReadingModel>>() {});
         for (ReadingModel r : allReadings) {
             if (r.getText().equals(reading) && r.getRank().equals(rank))
@@ -176,17 +180,17 @@ public class Util {
             tx.success();
         }
     }
-
+/*
     public static JerseyTest setupJersey() throws Exception {
         Root webResource = new Root();
         JerseyTest jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(webResource).
                 .create();
         jerseyTest.setUp();
         return jerseyTest;
     }
-
-    public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,
+*/
+    public static Response createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,
                                                                  String userId, String fName, String fType) {
         FormDataMultiPart form = new FormDataMultiPart();
         if (fType != null) form.field("filetype", fType);
@@ -201,13 +205,13 @@ public class Util {
                     MediaType.APPLICATION_OCTET_STREAM_TYPE);
             form.bodyPart(fdp);
         }
-        return  jerseyTest.resource()
-                .path("/tradition")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .post(ClientResponse.class, form);
+        return  jerseyTest
+                .target("/tradition")
+                .request(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .post(Entity.entity(form, form.getMediaType()));
     }
 
-    public static ClientResponse addSectionToTradition(JerseyTest jerseyTest, String traditionId, String fileName,
+    public static Response addSectionToTradition(JerseyTest jerseyTest, String traditionId, String fileName,
                                                         String fileType, String sectionName) {
         FormDataMultiPart form = new FormDataMultiPart();
         form.field("filetype", fileType);
@@ -216,10 +220,9 @@ public class Util {
         FormDataBodyPart fdp = new FormDataBodyPart("file", input,
                 MediaType.APPLICATION_OCTET_STREAM_TYPE);
         form.bodyPart(fdp);
-        return jerseyTest.resource()
-                .path("/tradition/" + traditionId + "/section")
-                .type(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .post(ClientResponse.class, form);
+        return jerseyTest.target("/tradition/" + traditionId + "/section")
+                .request(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .post(Entity.entity(form, form.getMediaType()));
     }
 
     private static InputStream getFileOrStringContent(String content) {
@@ -234,7 +237,9 @@ public class Util {
 
     public static HashMap<String, String> makeReadingLookup (JerseyTest jerseyTest, String tradId) {
         HashMap<String, String> result = new HashMap<>();
-        List<ReadingModel> readings = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+        List<ReadingModel> readings = jerseyTest
+                .target("/tradition/" + tradId + "/readings")
+                .request()
                 .get(new GenericType<List<ReadingModel>>() {});
         for (ReadingModel r : readings) {
             String key = String.format("%s/%d", r.getText(), r.getRank());

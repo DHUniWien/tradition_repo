@@ -19,6 +19,8 @@ Alternatively, if you wish to build from source, you can clone this repository a
 Stemmarest needs to be built using [Maven](http://maven.apache.org/run-maven/index.html#Quick_Start). This can be done either in a suitable Java IDE, or at the command line after the Maven tools have been installed:
 
     mvn package  # note that this will also run the tests
+    
+Make sure, that the package graphviz is installed on your computer. If not, some tests will fail.     
 
 A WAR file will be produced, in `target/stemmarest.war`, that can then be deployed to the Tomcat server of your choice.
 
