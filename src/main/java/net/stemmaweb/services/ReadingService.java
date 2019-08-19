@@ -423,7 +423,7 @@ public class ReadingService {
         // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
         String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
-        List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db);
+        List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db, true);
         for (Set<Node> cluster : clusters) {
             Long clusterRank = null;
             for (Node n : cluster) {
@@ -584,7 +584,7 @@ public class ReadingService {
     private static Map<Long, Set<Node>> buildColocationLookup (String tradId, String sectionId, GraphDatabaseService db)
             throws Exception {
         Map<Long, Set<Node>> result = new HashMap<>();
-        List<Set<Node>> clusters = RelationService.getClusters(tradId, sectionId, db);
+        List<Set<Node>> clusters = RelationService.getClusters(tradId, sectionId, db, true);
         for (Set<Node> cluster : clusters)
             for (Node n : cluster)
                 result.put(n.getId(), cluster);

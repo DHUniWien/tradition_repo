@@ -339,7 +339,7 @@ public class Section {
     public Response getColocatedClusters() {
         List<Set<Node>> clusterList;
         try {
-            clusterList = RelationService.getClusters(tradId, sectId, db);
+            clusterList = RelationService.getClusters(tradId, sectId, db, true);
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
         }
@@ -522,9 +522,12 @@ public class Section {
      * Return a list of variant groupings suitable for stemmatic analysis.
      *
      * @param significant - Restrict the variant groups to the given significance level or above
+     * @param exclude_type1 - Exclude type 1 (i.e. singleton) variants from the groupings
      * @param conflate - The name of a relation type that should be conflated
      *
-     * @return A list of lists of reading models
+     * @return A list of VariantLocationModels, each of which has a rank designation and a list
+     * of readings and relations between them. There will be separate VLMs to express transpositions
+     * and repetitions.
      */
 
     @GET
@@ -532,74 +535,146 @@ public class Section {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.VariantLocationModel>")
     public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
+                                     @DefaultValue("no") @QueryParam("exclude_type1") String exclude_type1,
                                                          @QueryParam("conflate") String conflate) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
 
         ArrayList<VariantLocationModel> vlocs = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            // Get our relation clusters
-            List<Set<Node>> clusters = RelationService.getClusters(tradId, sectId, db);
 
+            // Start by collecting the transpositions, as they will be handled separately from the alignment
+            // and we need to prevent duplicate entries.
+            List<Set<Node>> ncClusters = RelationService.getClusters(tradId, sectId, db, false);
+            // We also need to get the conflated clusters, in case something is both transposed and related to
+            // a colocated equivalent.
+            // This map will hold a key for each node that has been subsumed to another one, and the value
+            // will be the "representative" node for that cluster.
+            Map<Node, Node> conflated = new HashMap<>();
+            if (conflate != null) {
+                List<Set<Node>> crClusters = RelationService.getCloselyRelatedClusters(tradId, sectId, db, conflate);
+                for (Set<Node> crc : crClusters) {
+                    Node representative = RelationService.findRepresentative(crc);
+                    for (Node n : crc) {
+                        if (n.equals(representative)) continue;
+                        conflated.put(n, representative);
+                    }
+                }
+            }
+            // Now that that is done, we can make a list of displaced nodes.
+            Set<Node> displaced = new HashSet<>();
+            for (Set<Node> cluster : ncClusters) {
+                // Get our list of ReadingModels
+                List<ReadingModel> clusterReadings = cluster.stream().map(ReadingModel::new).collect(Collectors.toList());
+
+                // Decide what rank this belongs at and mark the readings at other ranks as displaced
+                Comparator<ReadingModel> majority = Comparator.comparingInt(x -> x.getWitnesses().size());
+                Optional<ReadingModel> biggest = clusterReadings.stream().max(majority);
+                assert(biggest.isPresent());
+                Long useRank = biggest.get().getRank();
+                for (Node n : cluster) {
+                    if (n.getProperty("rank") != useRank)
+                        displaced.add(conflated.getOrDefault(n, n));
+                }
+
+                // Check that non-type1 criteria are satisfied
+                if (exclude_type1.equals("true")) {
+                    int multis = 0;
+                    for (ReadingModel rm : clusterReadings)
+                        if (rm.getWitnesses().size() > 1)
+                            multis++;
+                    if (multis < 2) continue;
+                }
+
+                // Collect our relations
+                List<RelationModel> clusterRels = collectRelationsInCluster(db, cluster);
+                // Check that significance criteria are satisfied
+                if (significant.equals("maybe")) {
+                    if (clusterRels.stream().allMatch(x -> x.getIs_significant().equals("no"))) continue;
+                } else if (significant.equals("yes")) {
+                    if (clusterRels.stream().noneMatch(x -> x.getIs_significant().equals("yes"))) continue;
+                }
+
+                // Make the variant location and add it to the list
+                VariantLocationModel vlm = new VariantLocationModel();
+                vlm.setRankIndex(biggest.get().getRank());
+                vlm.setReadings(clusterReadings);
+                vlm.setRelations(clusterRels);
+                vlm.setDisplacement(true);
+                vlocs.add(vlm);
+            }
+
+            // Now do the colocated variants.
             // Get our rank alignment, taking into account any conflation that was requested
             Node sectionNode = db.getNodeById(Long.valueOf(sectId));
             AlignmentModel rankAlignment = new AlignmentModel(sectionNode, conflate);
 
-            // Get a map of node -> ReadingModel, applying any conflation that was requested
-            Map<Node, ReadingModel> modelmap = new HashMap<>();
-            if (conflate != null) {
-                for (Set<Node> equivalent : RelationService.getCloselyRelatedClusters(tradId, sectId, db, conflate)) {
-                    Node rep = RelationService.findRepresentative(equivalent);
-                    if (rep != null) {
-                        ReadingModel rm = new ReadingModel(rep);
-                        equivalent.stream().filter(x -> !x.equals(rep)).forEach(x -> rm.addRepresented(new ReadingModel(x)));
-                        equivalent.forEach(x -> modelmap.put(x, rm));
+            // Get a map of ranks to colocation clusters, for ease of noting relations
+            Map<Long, Set<Node>> clusterForRank = new HashMap<>();
+            for (Set<Node> cluster : RelationService.getClusters(tradId, sectId, db, true)) {
+                // Find the rank of any arbitrary reading in the cluster
+                Optional<Node> rep = cluster.stream().findFirst();
+                if (rep.isPresent()) {
+                    Long rank = (Long) rep.get().getProperty("rank");
+                    clusterForRank.put(rank, cluster);
+                }
+            }
+
+            // Now go rank by rank through the alignment, making the variant locations.
+            // Ranks start at 1, but the WTM index starts at 0.
+            for (long rank = 1; rank <= rankAlignment.getLength(); rank++) {
+                List<String> lacunose = new ArrayList<>();
+                List<String> missing = new ArrayList<>();
+                Set<ReadingModel> rdgsAtRank = new HashSet<>();
+                for (WitnessTokensModel wtm : rankAlignment.getAlignment()) {
+                    ReadingModel rdg = wtm.getTokens().get((int) rank - 1);
+                    long rdgId = Long.valueOf(rdg.getId());
+                    if (rdg == null) addIfNeeded(missing, wtm.getWitness(), wtm.getLayer());
+                    else if (rdg.getIs_lacuna()) addIfNeeded(lacunose, wtm.getWitness(), wtm.getLayer());
+                    else if (rdgsAtRank.stream().noneMatch(x -> x.getId().equals(rdg.getId()))
+                             && displaced.stream().noneMatch(x -> x.getId() == rdgId)) {
+                        rdgsAtRank.add(rdg);
                     }
                 }
-            } else {
-                // Each reading is represented by itself.
-                clusters.forEach(cluster -> cluster.forEach(x -> modelmap.put(x, new ReadingModel(x))));
-            }
+                // We now have a list of readings, plus missing and lacunose witnesses.
+                // Move on if there is no variation.
+                if (rdgsAtRank.size() == 1 && missing.size() == 0)
+                    continue;
 
-            // Now make the variant locations
-            Set<VariantLocationModel> discard = new HashSet<>();
-            for (Set<Node> cluster : clusters) {
-                VariantLocationModel vloc = new VariantLocationModel();
-                // Collect our relations
-                HashSet<RelationModel> vlocRels = new HashSet<>();
-                for (Node r : cluster) {
-                    r.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(x -> vlocRels.add(new RelationModel(x)));
+                // If we are omitting type 1 variation, check that there are at least two readings
+                // (incl. 'missing') with at least two witnesses, before we go on.
+                if (exclude_type1.equals("true")) {
+                    int multis = 0;
+                    for (ReadingModel rdg : rdgsAtRank)
+                        if (rdg.getWitnesses().size() > 1)
+                            multis++;
+                    if (missing.size() > 1)
+                        multis++;
+                    if (multis < 2) continue;
                 }
-                // Filter by significance if requested
-                boolean keep = true;
-                if (significant.equals("maybe"))
-                    keep = vlocRels.stream().anyMatch(x -> !x.getIs_significant().equals("no"));
-                else if (significant.equals("yes"))
-                    keep = vlocRels.stream().anyMatch(x -> x.getIs_significant().equals("yes"));
-                if (!keep) discard.add(vloc);
 
-                // Collect our reading models
-                HashSet<ReadingModel> vlocReadings = new HashSet<>();
-                cluster.forEach(x -> vlocReadings.add(modelmap.get(x)));
+                // Make a variant location model
+                VariantLocationModel vlm = new VariantLocationModel();
+                // Set the rank
+                vlm.setRankIndex(rank);
+                // Set the readings
+                vlm.setReadings(new ArrayList<>(rdgsAtRank));
+                // Set the relations, if any
+                if (clusterForRank.containsKey(rank))
+                    vlm.setRelations(collectRelationsInCluster(db, clusterForRank.get(rank)));
 
-                // Filter the relations according to which reading models we have
-                if (conflate != null) {
-                    Set<String> rids = vlocReadings.stream().map(ReadingModel::getId).collect(Collectors.toSet());
-                    vloc.setRelations(vlocRels.stream()
-                            .filter(x -> rids.contains(x.getSource()) && rids.contains(x.getTarget()))
-                            .collect(Collectors.toList()));
-                } else
-                    vloc.setRelations(new ArrayList<>(vlocRels));
+                // If we are omitting variant locations based on insignificance, do that here.
+                if (significant.equals("maybe")) {
+                    if (vlm.getRelations().stream().allMatch(x -> x.getIs_significant().equals("no"))) continue;
+                } else if (significant.equals("yes")) {
+                    if (vlm.getRelations().stream().noneMatch(x -> x.getIs_significant().equals("yes"))) continue;
+                }
 
-                // Find the reference rank index
-                vlocReadings.stream()
-                        .collect(Collectors.groupingBy(ReadingModel::getRank, Collectors.counting()))
-                        .entrySet().stream().max(Comparator.comparing(Map.Entry::getValue))
-                        .ifPresent(x -> vloc.setRankIndex(x.getKey()));
-
-                // Add it to the list
-                if (keep) vlocs.add(vloc);
+                // Add the variant location to our list
+                vlocs.add(vlm);
             }
+
+            // Now add non-colocated variation
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -607,11 +682,26 @@ public class Section {
         }
         // Sort the list by rank index
         vlocs.sort(Comparator.comparingLong(VariantLocationModel::getRankIndex));
-        // Combine variant locations that are ranked the same, looking through our discard pile in case we need it
-        //
-
 
         return Response.ok(vlocs).build();
+    }
+
+    private static void addIfNeeded(List<String> sigla, String witness, String layer) {
+        if (layer == null) sigla.add(witness);
+        else if (!sigla.contains(witness)) sigla.add(String.format("%s (%s)", witness, layer));
+    }
+
+    private static List<RelationModel> collectRelationsInCluster(GraphDatabaseService db, Set<Node> cluster) {
+        List<RelationModel> relations = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            for (Node n : cluster) {
+                for (Relationship rel : n.getRelationships(ERelations.RELATED, Direction.OUTGOING))
+                    if (cluster.contains(rel.getEndNode()))
+                        relations.add(new RelationModel(rel));
+            }
+            tx.success();
+        }
+        return relations;
     }
 
 

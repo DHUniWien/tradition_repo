@@ -8,11 +8,13 @@ public class VariantLocationModel {
     private Long rankIndex;
     private List<ReadingModel> readings;
     private List<RelationModel> relations;
+    private Boolean displacement;
 
     public VariantLocationModel() {
         this.rankIndex = 0L;
         this.readings = new ArrayList<>();
         this.relations = new ArrayList<>();
+        this.displacement = false;
     }
 
     public Long getRankIndex() {
@@ -47,4 +49,11 @@ public class VariantLocationModel {
         this.relations.add(rm);
     }
 
+    public Boolean getDisplacement() {
+        return displacement;
+    }
+
+    public void setDisplacement(Boolean displacement) {
+        this.displacement = displacement;
+    }
 }

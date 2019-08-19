@@ -91,28 +91,39 @@ public class RelationService {
     }
 
     /**
-     * Retrieve clusters of colocated readings from the given section of the given tradition.
+     * Retrieve clusters of readings, either colocated or non-, from the given section of the given tradition.
      *
      * @param tradId - the UUID of the relevant tradition
      * @param sectionId - the ID (as a string) of the relevant section
      * @param db - the GraphDatabaseService to use
+     * @param colocations - whether we are retrieving colocated clusters or non-colocated ones
      * @return - a list of sets, where each set represents a group of colocated readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong in the algorithm.
      */
     public static List<Set<Node>> getClusters(
-            String tradId, String sectionId, GraphDatabaseService db)
+            String tradId, String sectionId, GraphDatabaseService db, Boolean colocations)
             throws Exception {
         // Get the tradition node and find the relevant relation types
-        HashSet<String> colocatedRels = new HashSet<>();
+        HashSet<String> useRelationTypes = new HashSet<>();
         Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
         for (RelationTypeModel rtm : ourRelationTypes(traditionNode))
-            if (rtm.getIs_colocation())
-                colocatedRels.add(String.format("\"%s\"", rtm.getName()));
+            if (rtm.getIs_colocation() == colocations)
+                useRelationTypes.add(String.format("\"%s\"", rtm.getName()));
 
         // Now run the unionFind algorithm on the relevant subset of relation types
-        return collectSpecifiedClusters(sectionId, db, colocatedRels);
+        return collectSpecifiedClusters(sectionId, db, useRelationTypes);
     }
 
+    /**
+     * Retrieve clusters of readings that should be conflated according to the given threshold RelationType.
+     *
+     * @param tradId - the UUID of the relevant tradition
+     * @param sectionId - the ID (as a string) of the relevant section
+     * @param db - the GraphDatabaseService to use
+     * @param thresholdName - the name of a RelationType; all of these relations and ones more closely bound will be clustered.
+     * @return - a list of sets, where each set represents a group of closely related readings
+     * @throws Exception - if the relation types can't be collected, or if something goes wrong with the algorithm
+     */
     public static List<Set<Node>> getCloselyRelatedClusters(
             String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
             throws Exception {
