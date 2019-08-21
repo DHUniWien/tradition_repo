@@ -733,6 +733,23 @@ public class RelationTest {
         for (RelationModel rel : relationships) {
             assertEquals("local", rel.getScope());
             assertEquals("transposition", rel.getType());
+            assertNull(rel.getSource_reading());
+            assertNull(rel.getTarget_reading());
+        }
+
+        // Now get the relation including reading information
+        response = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+                .queryParam("include_readings", "true")
+                .get(ClientResponse.class);
+        assertEquals(Status.OK.getStatusCode(), response.getStatus());
+        relationships = response.getEntity(new GenericType<List<RelationModel>>() {});
+        assertEquals(3, relationships.size());
+        for (RelationModel rel : relationships) {
+            assertEquals("local", rel.getScope());
+            assertEquals("transposition", rel.getType());
+            assertNotNull(rel.getSource_reading());
+            assertNotNull(rel.getTarget_reading());
+            assertEquals(rel.getSource_reading().getText(), rel.getTarget_reading().getText());
         }
     }
 

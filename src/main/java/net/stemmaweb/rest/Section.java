@@ -284,6 +284,7 @@ public class Section {
      * Gets a list of all relations defined within the given section.
      *
      * @summary Get relations
+     * @param includeReadings - Include the ReadingModel information for the source and target
      * @return A list of relation metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -293,8 +294,8 @@ public class Section {
     @Path("/relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
-    public Response getAllRelationships() {
-        ArrayList<RelationModel> relList = sectionRelations();
+    public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
+        ArrayList<RelationModel> relList = sectionRelations(includeReadings.equals("true"));
 
         if (relList == null) {
             return Response.serverError().entity(jsonerror("No relations found in section")).build();
@@ -303,6 +304,10 @@ public class Section {
     }
 
     ArrayList<RelationModel> sectionRelations() {
+        return sectionRelations(false);
+    }
+
+    ArrayList<RelationModel> sectionRelations(Boolean includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
 
         Node startNode = DatabaseService.getStartNode(sectId, db);
@@ -312,7 +317,7 @@ public class Section {
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().forEach(
                     n -> n.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(
-                            r -> relList.add(new RelationModel(r)))
+                            r -> relList.add(new RelationModel(r, includeReadings)))
             );
 
             tx.success();

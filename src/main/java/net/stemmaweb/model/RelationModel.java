@@ -29,6 +29,14 @@ public class RelationModel {
      */
     private String target;              // target
     /**
+     * The ReadingModel object for the source reading (only if requested)
+     */
+    private ReadingModel source_reading;
+    /**
+     * The ReadingModel object for the target reading (only if requested)
+     */
+    private ReadingModel target_reading;
+    /**
      * The internal database ID of this relationship
      */
     private String id;                  // id
@@ -77,13 +85,22 @@ public class RelationModel {
 
     }
 
+    public RelationModel(Relationship rel) {
+        this(rel, false);
+    }
+
     /**
      * Creates a relationshipModel directly from a Relationship from Neo4J db
      * @param rel - The relationship node to initialize from
+     * @param includeReadings - Whether to set the source_reading and target_reading fields
      */
-    public RelationModel(Relationship rel){
+    public RelationModel(Relationship rel, Boolean includeReadings){
         source = rel.getStartNode().getId() + "";
         target = rel.getEndNode().getId() + "";
+        if (includeReadings) {
+            source_reading = new ReadingModel(rel.getStartNode());
+            target_reading = new ReadingModel(rel.getEndNode());
+        }
 
         Iterable<String> properties = rel.getPropertyKeys();
         id = Long.toString(rel.getId());
@@ -141,6 +158,14 @@ public class RelationModel {
 
     public void setTarget(String target) {
         this.target = target;
+    }
+
+    public ReadingModel getSource_reading() {
+        return source_reading;
+    }
+
+    public ReadingModel getTarget_reading() {
+        return target_reading;
     }
 
     public String getId() {
