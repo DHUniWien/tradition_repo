@@ -443,6 +443,7 @@ public class Tradition {
      * Gets a list of all relationships defined within the given tradition.
      *
      * @summary Get relationships
+     * @param includeReadings - Include the ReadingModel information for the source and target
      * @return A list of relationship metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -452,7 +453,7 @@ public class Tradition {
     @Path("/relations")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
-    public Response getAllRelationships() {
+    public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
         Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -462,7 +463,7 @@ public class Tradition {
             return Response.serverError().entity(jsonerror("section lookup failed")).build();
         for (SectionModel s : ourSections) {
             Section sectRest = new Section(traditionId, s.getId());
-            ArrayList<RelationModel> sectRels = sectRest.sectionRelations();
+            ArrayList<RelationModel> sectRels = sectRest.sectionRelations(includeReadings.equals("true"));
             if (sectRels == null)
                 return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
             relList.addAll(sectRels);
