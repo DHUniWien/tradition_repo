@@ -14,9 +14,9 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
 import net.stemmaweb.rest.RelationType;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 
 /**
@@ -56,7 +56,7 @@ public class StemmawebParser {
                     .build();
         }
         // The information on the relevant tradition
-        Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode, db);
         String tradId;
 
         // Some variables to collect information
@@ -179,8 +179,6 @@ public class StemmawebParser {
                                     String keytype = keytypes.get(attr);
                                     String val = reader.getElementText();
                                     switch (attr) {
-                                        case "id":
-                                            break;
                                         case "a_derivable_from_b":
                                             if (val.equals("1"))
                                                 currentRelModel.setA_derivable_from_b(true);
@@ -203,7 +201,7 @@ public class StemmawebParser {
                                             currentRelModel.setDisplayform(val);
                                             break;
                                         case "extra":
-  //                                          assert currentRel.isType(ERelations.SEQUENCE);
+                                            // assert currentRel.isType(ERelations.SEQUENCE);
                                             // If the key type is a Boolean, the witness class is always a.c.;
                                             // otherwise it is the value of val.
                                             if (keytype.equals("boolean"))
@@ -212,6 +210,7 @@ public class StemmawebParser {
                                                 witnessClass = val;
                                             break;
                                         case "relationship":
+                                        case "type":
                                             // This is the relationship type, a.k.a. "type" in this system.
                                             // Backwards compatibility for legacy XML
                                             currentRelModel.setType(val);
@@ -228,15 +227,12 @@ public class StemmawebParser {
                                         case "scope":
                                             currentRelModel.setScope(val);
                                             break;
-                                        case "type":
-                                            currentRelModel.setType(val);
-                                            break;
                                         case "witness":
                                             edgeWitness = val;
                                             // Store the existence of this witness
                                             witnesses.put(val, true);
                                             break;
-                                        default:
+                                        default: // case "id"
                                             break;
                                     }
                                 } else if (currentNode != null) {
@@ -351,7 +347,7 @@ public class StemmawebParser {
             }
 
             // Re-rank the entire tradition
-            Node sectionStart = DatabaseService.getStartNode(String.valueOf(parentNode.getId()), db);
+            Node sectionStart = VariantGraphService.getStartNode(String.valueOf(parentNode.getId()), db);
             ReadingService.recalculateRank(sectionStart, true);
 
             // Create the witness nodes.

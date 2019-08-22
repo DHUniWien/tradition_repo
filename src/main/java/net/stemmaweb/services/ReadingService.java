@@ -410,7 +410,7 @@ public class ReadingService {
         }
 
         // TEMPORARY: Make sure that we did visit all expected nodes
-        Node sectionStart = DatabaseService.getStartNode(startNode.getProperty("section_id").toString(), db);
+        Node sectionStart = VariantGraphService.getStartNode(startNode.getProperty("section_id").toString(), db);
         for (Node n : db.traversalDescription().depthFirst()
                 .expand(new AlignmentTraverse())
                 .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
@@ -422,7 +422,7 @@ public class ReadingService {
 
         // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
-        String tradId = DatabaseService.getTraditionNode(ourSection, db).getProperty("id").toString();
+        String tradId = VariantGraphService.getTraditionNode(ourSection, db).getProperty("id").toString();
         List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db);
         for (Set<Node> cluster : clusters) {
             Long clusterRank = null;
@@ -538,7 +538,7 @@ public class ReadingService {
         GraphDatabaseService db = firstReading.getGraphDatabase();
         // Get our list of colocations
         Node sectionNode = db.getNodeById(Long.valueOf(firstReading.getProperty("section_id").toString()));
-        Node traditionNode = DatabaseService.getTraditionNode(sectionNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
         Map<Long, Set<Node>> colocatedLookup = buildColocationLookup(
                 traditionNode.getProperty("id").toString(), String.valueOf(sectionNode.getId()), db);
 

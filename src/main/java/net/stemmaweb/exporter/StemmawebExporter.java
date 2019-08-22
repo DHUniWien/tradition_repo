@@ -20,8 +20,8 @@ import javax.xml.transform.stream.StreamResult;
 
 import net.stemmaweb.rest.ERelations;
 
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -120,10 +120,10 @@ public class StemmawebExporter {
         int edgeCountGraph2 = 0;
         int nodeCountGraph2 = 0;
 
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if(traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity("No tradition found for this ID").build();
-        Node traditionStartNode = DatabaseService.getStartNode(tradId, db);
+        Node traditionStartNode = VariantGraphService.getStartNode(tradId, db);
         if(traditionStartNode == null)
             return Response.status(Status.NOT_FOUND).entity("No graph found for this tradition.").build();
 

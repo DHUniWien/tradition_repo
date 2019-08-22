@@ -2,7 +2,7 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import org.apache.cxf.helpers.IOUtils;
@@ -103,7 +103,7 @@ public class CollateXJsonParser {
         }
 
         // Now we have the data in good old Java classes; proceed.
-        Node traditionNode = DatabaseService.getTraditionNode(parentNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode, db);
         try (Transaction tx = db.beginTx()) {
             // Check that we have all the witnesses
             for (String witString : collationWitnesses) {

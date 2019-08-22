@@ -6,6 +6,7 @@ import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.traversal.Evaluation;
@@ -88,7 +89,7 @@ public class Annotation {
     public Response updateAnnotation(AnnotationModel newAnno) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
         AnnotationModel result = null;
-        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+        Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
             // Find the relevant annotation label
             Optional<Node> al = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)

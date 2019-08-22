@@ -14,6 +14,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
 import net.stemmaweb.stemmaserver.Util;
@@ -149,7 +150,7 @@ public class TraditionParseTest {
 
             // Number of sequence edges
             // Do this with a traversal.
-            Node startNode = DatabaseService.getStartNode(tm.getId(), db);
+            Node startNode = VariantGraphService.getStartNode(tm.getId(), db);
             assertNotNull(startNode);
             AtomicInteger foundEdges = new AtomicInteger(0);
             try (Transaction tx = db.beginTx()) {

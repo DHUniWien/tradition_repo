@@ -17,8 +17,8 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -370,7 +370,7 @@ public class TraditionTest {
         try (Transaction tx = db.beginTx()) {
             result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
-            assertTrue(!tradIterator.hasNext());
+            assertFalse(tradIterator.hasNext());
 
             tx.success();
         }
@@ -510,7 +510,7 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
 
-        Node startNode = DatabaseService.getStartNode(tradId, db);
+        Node startNode = VariantGraphService.getStartNode(tradId, db);
 
         assertNull(startNode);
     }

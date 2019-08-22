@@ -6,6 +6,7 @@ import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.GenericType;
+import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataBodyPart;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.jersey.test.framework.JerseyTest;
@@ -184,6 +185,23 @@ public class Util {
                 .create();
         jerseyTest.setUp();
         return jerseyTest;
+    }
+
+    public static Response createTraditionDirectly(String tName, String tDir,
+                                                   String userId, String fName, String fType) {
+        Root appRest = new Root();
+        InputStream input = null;
+        FormDataContentDisposition fdcd = null;
+        String empty = "true";
+        if (fName != null) {
+            empty = null;
+            input = getFileOrStringContent(fName);
+            fdcd = new FormDataBodyPart("file", input,
+                    MediaType.APPLICATION_OCTET_STREAM_TYPE).getFormDataContentDisposition();
+        }
+
+        return appRest.importGraphMl(tName, userId, "false", "Default",
+                tDir, empty, fType, input, fdcd);
     }
 
     public static ClientResponse createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,

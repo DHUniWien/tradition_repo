@@ -14,8 +14,8 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.exporter.StemmawebExporter;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -184,7 +184,7 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of sequence paths. Do this with a traversal.
         AtomicInteger sequenceCount = new AtomicInteger(0);
-        Node startNode = DatabaseService.getStartNode(traditionId, db);
+        Node startNode = VariantGraphService.getStartNode(traditionId, db);
         assertNotNull(startNode);
         try (Transaction tx = db.beginTx()) {
             db.traversalDescription().depthFirst()
@@ -375,7 +375,7 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of sequence paths. Do this with a traversal.
         AtomicInteger sequenceCount = new AtomicInteger(0);
-        Node startNode = DatabaseService.getStartNode(traditionId, db);
+        Node startNode = VariantGraphService.getStartNode(traditionId, db);
         assertNotNull(startNode);
         try (Transaction tx = db.beginTx()) {
             db.traversalDescription().depthFirst()

@@ -19,6 +19,7 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -91,13 +92,13 @@ public class Relation {
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
                     Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
-                    Node startingPoint = DatabaseService.getTraditionNode(tradId, db);
+                    Node startingPoint = VariantGraphService.getTraditionNode(tradId, db);
                     if (scope.equals(SCOPE_SECTION))
                         startingPoint = db.getNodeById((Long) readingA.getProperty("section_id"));
                     Relationship thisRelation = db.getRelationshipById(Long.valueOf(thisRelId));
 
                     // Get all the readings that belong to our tradition or section
-                    ResourceIterable<Node> tradReadings = DatabaseService.returnEntireTradition(startingPoint).nodes();
+                    ResourceIterable<Node> tradReadings = VariantGraphService.returnEntireTradition(startingPoint).nodes();
                     // Pick out the ones that share the readingA text
                     Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
                             ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
@@ -432,8 +433,8 @@ public class Relation {
                 case SCOPE_SECTION:
                 case SCOPE_TRADITION:
                     Traverser toCheck = relationModel.getScope().equals(SCOPE_SECTION)
-                            ? DatabaseService.returnTraditionSection(readingA.getProperty("section_id").toString(), db)
-                            : DatabaseService.returnEntireTradition(tradId, db);
+                            ? VariantGraphService.returnTraditionSection(readingA.getProperty("section_id").toString(), db)
+                            : VariantGraphService.returnEntireTradition(tradId, db);
 
                     for (Relationship rel : toCheck.relationships()) {
                         if (rel.getType().name().equals(ERelations.RELATED.name())) {

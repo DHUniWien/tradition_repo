@@ -6,8 +6,8 @@ import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -115,7 +115,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .get(new GenericType<List<SectionModel>>() {})
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
-            List<Node> ourReadings = DatabaseService.returnEntireTradition(tradId, db).nodes().stream()
+            List<Node> ourReadings = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
@@ -219,7 +219,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .get(new GenericType<List<SectionModel>>() {})
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
-            List<Node> ourReadings = DatabaseService.returnEntireTradition(legendId, db).nodes().stream()
+            List<Node> ourReadings = VariantGraphService.returnEntireTradition(legendId, db).nodes().stream()
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));

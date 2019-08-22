@@ -15,6 +15,7 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -55,7 +56,7 @@ public class StemmaTest {
         Util.setupTestDB(db, "1");
 
         /*
-         * Create a JersyTestServer serving the Resource under test
+         * Create a JerseyTestServer serving the Resource under test
          */
         Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
@@ -170,7 +171,7 @@ public class StemmaTest {
     @Test
     public void setStemmaTest() {
 
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
         assertEquals(2, stemmata.size());
 
@@ -503,7 +504,7 @@ public class StemmaTest {
 
     @Test
     public void replaceStemmaTest() {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
         assertEquals(2, stemmata.size());
 
@@ -527,7 +528,7 @@ public class StemmaTest {
 
     @Test
     public void replaceStemmaWithDudTest() {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
         assertEquals(2, stemmata.size());
 
@@ -555,7 +556,7 @@ public class StemmaTest {
 
     @Test
     public void replaceStemmaNameMismatchTest() {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
         assertEquals(2, stemmata.size());
 

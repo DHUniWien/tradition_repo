@@ -4,6 +4,7 @@ import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.w3c.dom.Document;
@@ -112,7 +113,7 @@ public class Util {
         }
 
         // Traverse the tradition looking for these types
-        for (Relationship rel : DatabaseService.returnTraditionRelations(traditionNode).relationships()) {
+        for (Relationship rel : VariantGraphService.returnTraditionRelations(traditionNode).relationships()) {
             if (colocatedTypes.contains(rel.getProperty("type").toString()))
                 rel.setProperty("colocation", true);
             else if (rel.hasProperty("colocation"))

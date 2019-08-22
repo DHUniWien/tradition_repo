@@ -12,6 +12,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
@@ -387,8 +388,8 @@ public class ReadingTest {
         Set<Node> allNodes = new HashSet<>();
         Set<Relationship> allLinks = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
-            allNodes = DatabaseService.returnEntireTradition(tradId, db).nodes().stream().collect(Collectors.toSet());
-            allLinks = DatabaseService.returnEntireTradition(tradId, db).relationships().stream().collect(Collectors.toSet());
+            allNodes = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream().collect(Collectors.toSet());
+            allLinks = VariantGraphService.returnEntireTradition(tradId, db).relationships().stream().collect(Collectors.toSet());
             tx.success();
         } catch (Exception e) {
             fail();
@@ -427,9 +428,9 @@ public class ReadingTest {
         }
         // Everything else should be as before.
         try (Transaction tx = db.beginTx()) {
-            for (Node n : DatabaseService.returnEntireTradition(tradId, db).nodes())
+            for (Node n : VariantGraphService.returnEntireTradition(tradId, db).nodes())
                 assertTrue(allNodes.contains(n));
-            for (Relationship r : DatabaseService.returnEntireTradition(tradId, db).relationships())
+            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
                 assertTrue(allLinks.contains(r));
             tx.success();
         } catch (Exception e) {
@@ -500,9 +501,9 @@ public class ReadingTest {
 
         // Check that we are back to our original state
         try (Transaction tx = db.beginTx()) {
-            for (Node n : DatabaseService.returnEntireTradition(tradId, db).nodes())
+            for (Node n : VariantGraphService.returnEntireTradition(tradId, db).nodes())
                 assertTrue(allNodes.contains(n));
-            for (Relationship r : DatabaseService.returnEntireTradition(tradId, db).relationships())
+            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
                 assertTrue(allLinks.contains(r));
             tx.success();
         } catch (Exception e) {

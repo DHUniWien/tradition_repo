@@ -2,8 +2,8 @@ package net.stemmaweb.rest;
 
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.*;
@@ -51,7 +51,7 @@ public class RelationType {
     @ReturnType("net.stemmaweb.model.RelationTypeModel")
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
-        Node foundRelType = rtModel.lookup(DatabaseService.getTraditionNode(traditionId, db));
+        Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, db));
         if (foundRelType == null) {
             return Response.noContent().build();
         }
@@ -75,7 +75,7 @@ public class RelationType {
     @ReturnType(clazz = RelationTypeModel.class)
     public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         Node extantRelType = rtModel.lookup(traditionNode);
 
         if (extantRelType != null) {
@@ -105,14 +105,14 @@ public class RelationType {
     @ReturnType(clazz = RelationTypeModel.class)
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
-        Node tradition = DatabaseService.getTraditionNode(traditionId, db);
+        Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
         Node foundRelType = rtModel.lookup(tradition);
         if (foundRelType == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         try (Transaction tx = db.beginTx()) {
             // Do we have any relations that use this type?
-            if (DatabaseService.returnTraditionRelations(tradition).relationships().stream()
+            if (VariantGraphService.returnTraditionRelations(tradition).relationships().stream()
                     .anyMatch(x -> x.getProperty("type", "").equals(typeName)))
                 return Response.status(Response.Status.CONFLICT)
                         .entity(jsonerror("Relations of this type still exist; please alter them then try again.")).build();
@@ -155,7 +155,7 @@ public class RelationType {
             put("repetition", "This is a reading that was repeated in one or more witnesses.");
         }};
 
-        Node tradNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node tradNode = VariantGraphService.getTraditionNode(traditionId, db);
         RelationTypeModel relType = new RelationTypeModel(typeName);
         // Does this already exist?
         Node extantRelType = relType.lookup(tradNode);
