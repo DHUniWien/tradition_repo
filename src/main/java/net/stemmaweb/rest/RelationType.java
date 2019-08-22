@@ -91,6 +91,45 @@ public class RelationType {
     }
 
     /**
+     * Deletes the named relation type.
+     *
+     * @summary Delete a relation type
+     * @return A JSON RelationTypeModel of the deleted type
+     * @statuscode 200 on success
+     * @statuscode 404 if the specified type doesn't exist
+     * @statuscode 409 if relations of the type still exist in the tradition
+     * @statuscode 500 on failure, with an error report in JSON format
+     */
+    @DELETE
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = RelationTypeModel.class)
+    public Response delete() {
+        RelationTypeModel rtModel = new RelationTypeModel(typeName);
+        Node tradition = DatabaseService.getTraditionNode(traditionId, db);
+        Node foundRelType = rtModel.lookup(tradition);
+        if (foundRelType == null) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        try (Transaction tx = db.beginTx()) {
+            // Do we have any relations that use this type?
+            if (DatabaseService.returnTraditionRelations(tradition).relationships().stream()
+                    .anyMatch(x -> x.getProperty("type", "").equals(typeName)))
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(jsonerror("Relations of this type still exist; please alter them then try again.")).build();
+
+            // Then I guess we can delete it.
+            foundRelType.getSingleRelationship(ERelations.HAS_RELATION_TYPE, Direction.INCOMING).delete();
+            foundRelType.delete();
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        // Return the thing we deleted.
+        return Response.ok(rtModel).build();
+    }
+
+    /**
      * Creates a relation type with the given name according to default values.
      * Method for use internally, logic intended for Stemmaweb backwards compatibility.
      *
