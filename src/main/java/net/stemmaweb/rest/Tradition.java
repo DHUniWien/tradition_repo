@@ -9,10 +9,7 @@ import net.stemmaweb.exporter.StemmawebExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.*;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
@@ -61,7 +58,7 @@ public class Tradition {
      */
     @Path("/section/{sectionId}")
     public Section getSection(@PathParam("sectionId") String sectionId) {
-        ArrayList<SectionModel> tradSections = produceSectionList(DatabaseService.getTraditionNode(traditionId, db));
+        ArrayList<SectionModel> tradSections = produceSectionList(VariantGraphService.getTraditionNode(traditionId, db));
         if (tradSections != null)
             for (SectionModel s : tradSections)
                 if (s.getId().equals(sectionId))
@@ -219,7 +216,7 @@ public class Tradition {
         // Make a new section node to connect to the tradition in question. But if we are
         // parsing our own GraphML, the section node(s) should be created according to the
         // XML data therein, and not here.
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
         Node sectionNode = traditionNode;
         if (!filetype.equals("graphml")) {
@@ -298,7 +295,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response addAnnotation(AnnotationModel am) {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         Response result;
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
@@ -329,7 +326,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON)
     @MireDotIgnore
     public Response initRanks() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
         List<SectionModel> smlist = produceSectionList(traditionNode);
@@ -338,7 +335,7 @@ public class Tradition {
 
         try (Transaction tx = db.beginTx()) {
             for (SectionModel sm : smlist) {
-                ReadingService.recalculateRank(DatabaseService.getStartNode(sm.getId(), db), true);
+                ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), db), true);
             }
             tx.success();
         } catch (Exception e) {
@@ -366,7 +363,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.SectionModel>")
     public Response getAllSections() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
@@ -391,7 +388,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnesses() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
@@ -421,7 +418,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.StemmaModel>")
     public Response getAllStemmata() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 
@@ -455,7 +452,7 @@ public class Tradition {
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
         ArrayList<SectionModel> ourSections = produceSectionList(traditionNode);
@@ -486,7 +483,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationTypeModel>")
     public Response getAllRelationTypes() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         List<RelationTypeModel> relTypeList;
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
@@ -514,7 +511,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("There is no tradition with this id")).build();
@@ -552,7 +549,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response getAllAnnotations(@QueryParam("label") List<String> filterLabels) {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("There is no tradition with this id")).build();
@@ -590,7 +587,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationLabelModel>")
     public Response getDefinedAnnotationLabels() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("There is no tradition with this id")).build();
@@ -686,7 +683,7 @@ public class Tradition {
     @DELETE
     @ReturnType("java.lang.Void")
     public Response deleteTraditionById() {
-        Node foundTradition = DatabaseService.getTraditionNode(traditionId, db);
+        Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db);
         if (foundTradition != null) {
             try (Transaction tx = db.beginTx()) {
                 /*
@@ -694,7 +691,7 @@ public class Tradition {
                  */
                 Set<Relationship> removableRelations = new HashSet<>();
                 Set<Node> removableNodes = new HashSet<>();
-                DatabaseService.returnEntireTradition(foundTradition)
+                VariantGraphService.returnEntireTradition(foundTradition)
                         .nodes().forEach(x -> {
                     x.getRelationships().forEach(removableRelations::add);
                     removableNodes.add(x);
@@ -731,7 +728,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response pruneAnnotations() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
         List<AnnotationModel> deleted = new ArrayList<>();
@@ -769,7 +766,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = TraditionModel.class)
     public Response getTraditionInfo() {
-        Node traditionNode = DatabaseService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 
@@ -788,7 +785,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_XML)
     @ReturnType("java.lang.Void")
     public Response getGraphML() {
-        if (DatabaseService.getTraditionNode(traditionId, db) == null)
+        if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
         GraphMLExporter exporter = new GraphMLExporter();
         return exporter.writeNeo4J(traditionId);
@@ -805,7 +802,7 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_XML)
     @ReturnType("java.lang.Void")
     public Response getGraphMLStemmaweb() {
-        if (DatabaseService.getTraditionNode(traditionId, db) == null)
+        if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
         StemmawebExporter parser = new StemmawebExporter();
         return parser.writeNeo4J(traditionId);
@@ -834,7 +831,7 @@ public class Tradition {
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
                                                   @QueryParam("normalise") String normalise,
                                                   @QueryParam("include_witness") List<String> excWitnesses) {
-        if (DatabaseService.getTraditionNode(traditionId, db) == null)
+        if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
 
         // Put our options into an object

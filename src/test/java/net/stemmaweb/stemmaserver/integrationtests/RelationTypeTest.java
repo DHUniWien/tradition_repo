@@ -413,6 +413,62 @@ public class RelationTypeTest extends TestCase {
         }
     }
 
+    public void testRelTypeDelete() {
+        String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
+        String legei = readingLookup.getOrDefault("λεγει/1", "17");
+
+        // Make a relationship type of our own
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("accents");
+        rtm.setDescription("Readings are the same but for diacriticals");
+        rtm.setIs_colocation(true);
+        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/accents")
+                .type(MediaType.APPLICATION_JSON)
+                .put(ClientResponse.class, rtm);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+
+        // Now use it
+        RelationModel newRel = new RelationModel();
+        newRel.setSource(legeiAcute);
+        newRel.setTarget(legei);
+        newRel.setScope("tradition");
+        newRel.setDisplayform("λέγει");
+        newRel.setType("accents");
+        newRel.setIs_significant("no");
+
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                .type(MediaType.APPLICATION_JSON)
+                .post(ClientResponse.class, newRel);
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        assertEquals(2, result.getRelations().size());
+
+        // Now try to delete the relation type, even though relations exist
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/accents")
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
+
+        // Delete the relations in question
+        for (RelationModel rm : result.getRelations()) {
+            jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
+                    .type(MediaType.APPLICATION_JSON)
+                    .delete(ClientResponse.class, rm);
+            assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        }
+
+        // Try again to delete the relation type, which should work
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/accents")
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+        RelationTypeModel deletedRt = jerseyResult.getEntity(RelationTypeModel.class);
+        assertEquals(rtm.getName(), deletedRt.getName());
+
+        // Now, for fun, try to delete a nonexistent relation type
+        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/diacriticals")
+                .delete(ClientResponse.class);
+        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), jerseyResult.getStatus());
+    }
+
     public void tearDown() throws Exception {
         db.shutdown();
         jerseyTest.tearDown();

@@ -11,6 +11,7 @@ import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 import org.codehaus.jettison.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -69,7 +70,7 @@ public class CollateXJsonInputTest extends TestCase {
 
         // Dive into the database and check that there are no redundant witness paths
         try (Transaction tx = db.beginTx()) {
-            List<Relationship> sequences = DatabaseService.returnTraditionSection(sectId, db).relationships()
+            List<Relationship> sequences = VariantGraphService.returnTraditionSection(sectId, db).relationships()
                     .stream().filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
             for (Relationship r : sequences) {
                 if (r.hasProperty("witnesses")) {
@@ -141,7 +142,7 @@ public class CollateXJsonInputTest extends TestCase {
     }
 
     public void testNoRedundantWitnesses() {
-        Traverser sTrav = DatabaseService.returnTraditionSection(sectId, db);
+        Traverser sTrav = VariantGraphService.returnTraditionSection(sectId, db);
         try (Transaction tx = db.beginTx()) {
             for (Relationship r : sTrav.relationships())
                 if (r.getType().equals(ERelations.SEQUENCE) && r.hasProperty("witnesses")) {

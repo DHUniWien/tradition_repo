@@ -72,10 +72,10 @@ public class RelationService {
             if (referenceNode.hasLabel(Nodes.TRADITION))
                 traditionNode = referenceNode;
             else if (referenceNode.hasLabel(Nodes.SECTION))
-                traditionNode = DatabaseService.getTraditionNode(referenceNode, db);
+                traditionNode = VariantGraphService.getTraditionNode(referenceNode, db);
             else if (referenceNode.hasLabel(Nodes.READING)) {
                 Node sectionNode = db.getNodeById(Long.valueOf(referenceNode.getProperty("section_id").toString()));
-                traditionNode = DatabaseService.getTraditionNode(sectionNode, db);
+                traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
             }
             assert(traditionNode != null);
             // ...and query its relation types.
@@ -105,7 +105,7 @@ public class RelationService {
             throws Exception {
         // Get the tradition node and find the relevant relation types
         HashSet<String> useRelationTypes = new HashSet<>();
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         for (RelationTypeModel rtm : ourRelationTypes(traditionNode))
             if (rtm.getIs_colocation() == colocations)
                 useRelationTypes.add(String.format("\"%s\"", rtm.getName()));
@@ -128,7 +128,7 @@ public class RelationService {
             String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
             throws Exception {
         HashSet<String> closeRelations = new HashSet<>();
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode);
         int bindlevel = 0;
         Optional<RelationTypeModel> thresholdModel = rtmlist.stream().filter(x -> x.getName().equals(thresholdName)).findFirst();

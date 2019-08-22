@@ -1,12 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.ArrayList;
-
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
@@ -14,28 +8,22 @@ import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.Response;
 
 import static org.junit.Assert.*;
 
-/**
- * 
- * @author PSE FS 2015 Team2
- *
- */
-public class DatabaseServiceTest {
-
+public class VariantGraphServiceTest {
     private GraphDatabaseService db;
     private String traditionId;
-    private String userId;
 
     @Before
     public void setUp() throws Exception {
 
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        userId = "simon";
+        String userId = "simon";
         Util.setupTestDB(db, userId);
 
         /*
@@ -51,16 +39,25 @@ public class DatabaseServiceTest {
     }
 
     @Test
-    public void getRelatedTest() {
-        Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
-        ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS);
-        assertEquals(3, witnesses.size());
+    public void getStartNodeTest() {
+        try (Transaction tx = db.beginTx()) {
+            assertEquals("#START#", VariantGraphService
+                    .getStartNode(traditionId, db)
+                    .getProperty("text")
+                    .toString());
+            tx.success();
+        } catch (NullPointerException e) {
+            fail();
+        }
     }
 
     @Test
-    public void userExistsTest() {
-        assertTrue(DatabaseService.userExists(userId, db));
+    public void getTraditionNodeTest() {
+        Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db);
+        assertNotNull(foundTradition);
     }
+
+    // TODO lots more things to test meanwhile!
 
     /*
      * Shut down the database
@@ -69,4 +66,5 @@ public class DatabaseServiceTest {
     public void tearDown() {
         db.shutdown();
     }
+
 }

@@ -8,8 +8,8 @@ import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.After;
@@ -80,8 +80,8 @@ public class SectionTest extends TestCase {
 
     public void testAddSection() {
         // Get the existing start and end nodes
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        Node endNode = DatabaseService.getEndNode(tradId, db);
+        Node startNode = VariantGraphService.getStartNode(tradId, db);
+        Node endNode = VariantGraphService.getEndNode(tradId, db);
 
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2"), "parentId");
@@ -103,9 +103,9 @@ public class SectionTest extends TestCase {
         assertEquals(aText, witFragment);
 
         try (Transaction tx = db.beginTx()) {
-            assertEquals(startNode.getId(), DatabaseService.getStartNode(tradId, db).getId());
-            assertNotEquals(endNode.getId(), DatabaseService.getEndNode(tradId, db).getId());
-            assertEquals(DatabaseService.getEndNode(newSectId, db).getId(), DatabaseService.getEndNode(tradId, db).getId());
+            assertEquals(startNode.getId(), VariantGraphService.getStartNode(tradId, db).getId());
+            assertNotEquals(endNode.getId(), VariantGraphService.getEndNode(tradId, db).getId());
+            assertEquals(VariantGraphService.getEndNode(newSectId, db).getId(), VariantGraphService.getEndNode(tradId, db).getId());
             tx.success();
         }
     }

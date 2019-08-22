@@ -17,7 +17,7 @@ com.qmino.miredot.restApiSource = {
 	"hideSidebar":false,
 	"hideLogoOnTop":false,
 	"initialCollapseLevel":3,
-	"dateOfGeneration":"2019-06-02 23:13:54",
+	"dateOfGeneration":"2019-06-13 23:33:31",
 	"validLicense":true,
 	"licenseErrorMessage":[
 		
@@ -126,18 +126,6 @@ com.qmino.miredot.restApiSource.tos = {
 	"net_stemmaweb_model_WitnessTokensModel_out":{
 		"type":"complex",
 		"name":"net_stemmaweb_model_WitnessTokensModel_out",
-		"content":[
-		],
-	},
-	"net_stemmaweb_model_WitnessTextModel_in":{
-		"type":"complex",
-		"name":"net_stemmaweb_model_WitnessTextModel_in",
-		"content":[
-		],
-	},
-	"net_stemmaweb_model_WitnessTextModel_out":{
-		"type":"complex",
-		"name":"net_stemmaweb_model_WitnessTextModel_out",
 		"content":[
 		],
 	},
@@ -393,6 +381,18 @@ com.qmino.miredot.restApiSource.tos = {
 		"content":[
 		],
 	},
+	"net_stemmaweb_model_TextSequenceModel_in":{
+		"type":"complex",
+		"name":"net_stemmaweb_model_TextSequenceModel_in",
+		"content":[
+		],
+	},
+	"net_stemmaweb_model_TextSequenceModel_out":{
+		"type":"complex",
+		"name":"net_stemmaweb_model_TextSequenceModel_out",
+		"content":[
+		],
+	},
 	"javax_ws_rs_core_Response_in":{
 		"type":"complex",
 		"name":"javax_ws_rs_core_Response_in",
@@ -465,18 +465,6 @@ com.qmino.miredot.restApiSource.tos = {
 		"content":[
 		],
 	},
-	"net_stemmaweb_model_ProposedEmendationModel_in":{
-		"type":"complex",
-		"name":"net_stemmaweb_model_ProposedEmendationModel_in",
-		"content":[
-		],
-	},
-	"net_stemmaweb_model_ProposedEmendationModel_out":{
-		"type":"complex",
-		"name":"net_stemmaweb_model_ProposedEmendationModel_out",
-		"content":[
-		],
-	},
 	"net_stemmaweb_model_AnnotationLabelModel_in":{
 		"type":"complex",
 		"name":"net_stemmaweb_model_AnnotationLabelModel_in",
@@ -486,6 +474,18 @@ com.qmino.miredot.restApiSource.tos = {
 	"net_stemmaweb_model_AnnotationLabelModel_out":{
 		"type":"complex",
 		"name":"net_stemmaweb_model_AnnotationLabelModel_out",
+		"content":[
+		],
+	},
+	"net_stemmaweb_model_ProposedEmendationModel_in":{
+		"type":"complex",
+		"name":"net_stemmaweb_model_ProposedEmendationModel_in",
+		"content":[
+		],
+	},
+	"net_stemmaweb_model_ProposedEmendationModel_out":{
+		"type":"complex",
+		"name":"net_stemmaweb_model_ProposedEmendationModel_out",
 		"content":[
 		],
 	},
@@ -620,9 +620,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessModel_in"].order
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessModel_in"].comment = "This model holds a witness";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessModel_out"].content = [
 	{
-		"name":"id",
-		"comment":"The Neo4J node ID of the witness",
-		"fullComment":"The Neo4J node ID of the witness",
+		"name":"sigil",
+		"comment":"The sigil of the witness",
+		"fullComment":"The sigil of the witness",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -632,9 +632,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessModel_out"].cont
 		"required":false,
 	},
 	{
-		"name":"sigil",
-		"comment":"The sigil of the witness",
-		"fullComment":"The sigil of the witness",
+		"name":"id",
+		"comment":"The Neo4J node ID of the witness",
+		"fullComment":"The Neo4J node ID of the witness",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -648,18 +648,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessModel_out"].orde
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessModel_out"].comment = "This model holds a witness";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TraditionModel_in"].content = [
 	{
-		"name":"name",
-		"comment":"Name of the tradition",
-		"fullComment":"Name of the tradition",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"language",
 		"comment":"Language of the tradition",
 		"fullComment":"Language of the tradition",
@@ -672,9 +660,21 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TraditionModel_in"].con
 		"required":false,
 	},
 	{
-		"name":"direction",
-		"comment":"Direction of the tradition (LR, RL, or BI)",
-		"fullComment":"Direction of the tradition (LR, RL, or BI)",
+		"name":"name",
+		"comment":"Name of the tradition",
+		"fullComment":"Name of the tradition",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"id",
+		"comment":"ID of the tradition",
+		"fullComment":"ID of the tradition",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -708,9 +708,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TraditionModel_in"].con
 		"required":false,
 	},
 	{
-		"name":"id",
-		"comment":"ID of the tradition",
-		"fullComment":"ID of the tradition",
+		"name":"direction",
+		"comment":"Direction of the tradition (LR, RL, or BI)",
+		"fullComment":"Direction of the tradition (LR, RL, or BI)",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -760,24 +760,24 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TraditionModel_out"].co
 		"required":false,
 	},
 	{
-		"name":"direction",
-		"comment":"Direction of the tradition (LR, RL, or BI)",
-		"fullComment":"Direction of the tradition (LR, RL, or BI)",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"is_public",
 		"comment":"Whether the tradition should be viewable by other users",
 		"fullComment":"Whether the tradition should be viewable by other users",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"direction",
+		"comment":"Direction of the tradition (LR, RL, or BI)",
+		"fullComment":"Direction of the tradition (LR, RL, or BI)",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -875,9 +875,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_StemmaModel_in"].ordere
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_StemmaModel_in"].comment = "A model for the stemma object and its representation";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_StemmaModel_out"].content = [
 	{
-		"name":"identifier",
-		"comment":"The name (identifier) of the stemma",
-		"fullComment":"The name (identifier) of the stemma. Must be unique within a tradition.",
+		"name":"dot",
+		"comment":"A string that holds the dot specification of the stemma or tree topology",
+		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -887,12 +887,12 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_StemmaModel_out"].conte
 		"required":false,
 	},
 	{
-		"name":"dot",
-		"comment":"A string that holds the dot specification of the stemma or tree topology",
+		"name":"is_contaminated",
+		"comment":"True if the stemma indicates witness contamination / conflation",
 		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
-			"typeValue":"string",
+			"typeValue":"boolean",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -911,12 +911,12 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_StemmaModel_out"].conte
 		"required":false,
 	},
 	{
-		"name":"is_contaminated",
-		"comment":"True if the stemma indicates witness contamination / conflation",
-		"fullComment":null,
+		"name":"identifier",
+		"comment":"The name (identifier) of the stemma",
+		"fullComment":"The name (identifier) of the stemma. Must be unique within a tradition.",
 		"typeValue":{
 			"type":"simple",
-			"typeValue":"boolean",
+			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -970,18 +970,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_RelationType_out"].order
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_RelationType_out"].comment = "Module to handle the specification and definition of relation types that may exist on this tradition";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_in"].content = [
 	{
-		"name":"witness",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"layer",
 		"comment":null,
 		"fullComment":null,
@@ -1005,12 +993,8 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_in"]
 		"nameless":false,
 		"required":false,
 	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_in"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_in"].comment = null;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"].content = [
 	{
-		"name":"layer",
+		"name":"witness",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
@@ -1021,6 +1005,10 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"
 		"nameless":false,
 		"required":false,
 	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_in"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_in"].comment = null;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"].content = [
 	{
 		"name":"witness",
 		"comment":null,
@@ -1045,42 +1033,34 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"
 		"nameless":false,
 		"required":false,
 	},
+	{
+		"name":"layer",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
 ];
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"].comment = null;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_in"].content = [
-	{
-		"name":"text",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_in"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_in"].comment = null;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_out"].content = [
-	{
-		"name":"text",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_out"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_out"].comment = null;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_in"].content = [
+	{
+		"name":"extra",
+		"comment":"I don't remember this either",
+		"fullComment":"I don't remember this either",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
 	{
 		"name":"target",
 		"comment":"The ID of the second reading in the relationship",
@@ -1097,6 +1077,30 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_in"].cont
 		"name":"type",
 		"comment":"The type of relationship (e.g",
 		"fullComment":"The type of relationship (e.g. <code>spelling</code>, <code>transposition</code>, <code>grammatical</code>",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"id",
+		"comment":"The internal database ID of this relationship",
+		"fullComment":"The internal database ID of this relationship",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"scope",
+		"comment":"The extent to which this relationship should be applied more widely",
+		"fullComment":"The extent to which this relationship should be applied more widely. Currently valid values are <code>local</code> and <code>document</code>.",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -1190,45 +1194,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_in"].cont
 		"required":false,
 	},
 	{
-		"name":"id",
-		"comment":"The internal database ID of this relationship",
-		"fullComment":"The internal database ID of this relationship",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"scope",
-		"comment":"The extent to which this relationship should be applied more widely",
-		"fullComment":"The extent to which this relationship should be applied more widely. Currently valid values are <code>local</code> and <code>document</code>.",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"source",
 		"comment":"The ID of the first reading in the relationship",
 		"fullComment":"The ID of the first reading in the relationship",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"extra",
-		"comment":"I don't remember this either",
-		"fullComment":"I don't remember this either",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -1242,6 +1210,18 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_in"].orde
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_in"].comment = "Provides a model for a relationship outside of the database";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_out"].content = [
 	{
+		"name":"extra",
+		"comment":"I don't remember this either",
+		"fullComment":"I don't remember this either",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
 		"name":"annotation",
 		"comment":"User supplied annotation or comment on the relatinoship",
 		"fullComment":"User supplied annotation or comment on the relatinoship",
@@ -1293,6 +1273,18 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_out"].con
 		"name":"source",
 		"comment":"The ID of the first reading in the relationship",
 		"fullComment":"The ID of the first reading in the relationship",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"scope",
+		"comment":"The extent to which this relationship should be applied more widely",
+		"fullComment":"The extent to which this relationship should be applied more widely. Currently valid values are <code>local</code> and <code>document</code>.",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -1368,30 +1360,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_out"].con
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"scope",
-		"comment":"The extent to which this relationship should be applied more widely",
-		"fullComment":"The extent to which this relationship should be applied more widely. Currently valid values are <code>local</code> and <code>document</code>.",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"extra",
-		"comment":"I don't remember this either",
-		"fullComment":"I don't remember this either",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -1442,18 +1410,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingBoundaryModel_in
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingBoundaryModel_in"].comment = "Provides a model for single character that can be parsed into JSON";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingBoundaryModel_out"].content = [
 	{
-		"name":"isRegex",
-		"comment":"Whether the separation criterion (i.e",
-		"fullComment":"Whether the separation criterion (i.e. <code>character</code>) is by regular expression.",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"character",
 		"comment":"The character / criterion that separates readings / words",
 		"fullComment":"The character / criterion that separates readings / words. Defaults to a single space.",
@@ -1477,6 +1433,18 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingBoundaryModel_ou
 		"nameless":false,
 		"required":false,
 	},
+	{
+		"name":"isRegex",
+		"comment":"Whether the separation criterion (i.e",
+		"fullComment":"Whether the separation criterion (i.e. <code>character</code>) is by regular expression.",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
 ];
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingBoundaryModel_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingBoundaryModel_out"].comment = "Provides a model for single character that can be parsed into JSON";
@@ -1485,18 +1453,6 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_NewCookie_in"].content = [
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_NewCookie_in"].ordered = false;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_NewCookie_in"].comment = null;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_NewCookie_out"].content = [
-	{
-		"name":"domain",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
 	{
 		"name":"name",
 		"comment":null,
@@ -1540,6 +1496,18 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_NewCookie_out"].content = 
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"number",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"domain",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -1696,6 +1664,42 @@ com.qmino.miredot.restApiSource.tos["com_sun_jersey_core_header_FormDataContentD
 com.qmino.miredot.restApiSource.tos["com_sun_jersey_core_header_FormDataContentDisposition_in"].comment = null;
 com.qmino.miredot.restApiSource.tos["com_sun_jersey_core_header_FormDataContentDisposition_out"].content = [
 	{
+		"name":"creationDate",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"date string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"modificationDate",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"date string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"readDate",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"date string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
 		"name":"type",
 		"comment":null,
 		"fullComment":null,
@@ -1745,42 +1749,6 @@ com.qmino.miredot.restApiSource.tos["com_sun_jersey_core_header_FormDataContentD
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"creationDate",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"date string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"modificationDate",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"date string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"readDate",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"date string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -1910,9 +1878,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingChangePropertyMo
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingChangePropertyModel_out"].comment = "This model consists of a list of keypropertymodels";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SectionModel_in"].content = [
 	{
-		"name":"name",
-		"comment":"The name of the section",
-		"fullComment":"The name of the section",
+		"name":"language",
+		"comment":"The language of the section's text",
+		"fullComment":"The language of the section's text",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -1922,9 +1890,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SectionModel_in"].conte
 		"required":false,
 	},
 	{
-		"name":"language",
-		"comment":"The language of the section's text",
-		"fullComment":"The language of the section's text",
+		"name":"name",
+		"comment":"The name of the section",
+		"fullComment":"The name of the section",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -2010,177 +1978,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_Relation_out"].ordered =
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_Relation_out"].comment = "Comprises all the api calls related to a relation";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].content = [
 	{
-		"name":"rank",
-		"comment":"The graph rank of this reading, in its collation",
-		"fullComment":"The graph rank of this reading, in its collation",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"number",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_ph",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"grammar_invalid",
-		"comment":"True if the reading's grammatical form does not make sense in context",
-		"fullComment":"True if the reading's grammatical form does not make sense in context",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"section",
-		"comment":"The ID of the section to which this reading belongs",
-		"fullComment":"The ID of the section to which this reading belongs",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_common",
-		"comment":"True if the reading appears in all witnesses",
-		"fullComment":"True if the reading appears in all witnesses",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_end",
-		"comment":"True if the reading is a collation end node",
-		"fullComment":"True if the reading is a collation end node",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_lacuna",
-		"comment":"True if the reading is a 'lacuna' node, representing missing text",
-		"fullComment":"True if the reading is a 'lacuna' node, representing missing text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_lemma",
-		"comment":"True if the reading has been set as canonical / lemma text for editorial purposes",
-		"fullComment":"True if the reading has been set as canonical / lemma text for editorial purposes",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_emendation",
-		"comment":"True if the reading is an emendation",
-		"fullComment":"True if the reading is an emendation",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_nonsense",
-		"comment":"True if the reading text is nonsensical",
-		"fullComment":"True if the reading text is nonsensical",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_start",
-		"comment":"True if the reading is a collation start node",
-		"fullComment":"True if the reading is a collation start node",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"lexemes",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"orig_reading",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"language",
 		"comment":"The language of the reading text",
 		"fullComment":"The language of the reading text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"annotation",
-		"comment":"The user-supplied annotation or comment for this reading",
-		"fullComment":"The user-supplied annotation or comment for this reading",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -2238,30 +2038,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].conte
 		"required":false,
 	},
 	{
-		"name":"id",
-		"comment":"The internal ID of the reading",
-		"fullComment":"The internal ID of the reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"text",
-		"comment":"The text of the reading",
-		"fullComment":"The text of the reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"extra",
 		"comment":"Any additional user-supplied JSON data for this reading",
 		"fullComment":"Any additional user-supplied JSON data for this reading",
@@ -2274,55 +2050,12 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].conte
 		"required":false,
 	},
 	{
-		"name":"authority",
-		"comment":"The authority for an emendation reading",
-		"fullComment":"The authority for an emendation reading",
+		"name":"id",
+		"comment":"The internal ID of the reading",
+		"fullComment":"The internal ID of the reading",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].comment = "Provides a model for a reading outside of the database";
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"].content = [
-	{
-		"name":"is_ph",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_lacuna",
-		"comment":"True if the reading is a 'lacuna' node, representing missing text",
-		"fullComment":"True if the reading is a 'lacuna' node, representing missing text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"witnesses",
-		"comment":"The list of witnesses to which this reading belongs",
-		"fullComment":"The list of witnesses to which this reading belongs. Read-only.",
-		"typeValue":{
-			"type":"collection",
-			"typeValue":{
-				"type":"simple",
-				"typeValue":"string",
-			},
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -2371,6 +2104,361 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"].cont
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"annotation",
+		"comment":"The user-supplied annotation or comment for this reading",
+		"fullComment":"The user-supplied annotation or comment for this reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_lacuna",
+		"comment":"True if the reading is a 'lacuna' node, representing missing text",
+		"fullComment":"True if the reading is a 'lacuna' node, representing missing text",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_lemma",
+		"comment":"True if the reading has been set as canonical / lemma text for editorial purposes",
+		"fullComment":"True if the reading has been set as canonical / lemma text for editorial purposes",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_emendation",
+		"comment":"True if the reading is an emendation",
+		"fullComment":"True if the reading is an emendation",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_nonsense",
+		"comment":"True if the reading text is nonsensical",
+		"fullComment":"True if the reading text is nonsensical",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_ph",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_start",
+		"comment":"True if the reading is a collation start node",
+		"fullComment":"True if the reading is a collation start node",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"lexemes",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"rank",
+		"comment":"The graph rank of this reading, in its collation",
+		"fullComment":"The graph rank of this reading, in its collation",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"number",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"orig_reading",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"authority",
+		"comment":"The authority for an emendation reading",
+		"fullComment":"The authority for an emendation reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"text",
+		"comment":"The text of the reading",
+		"fullComment":"The text of the reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"].comment = "Provides a model for a reading outside of the database";
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"].content = [
+	{
+		"name":"rank",
+		"comment":"The graph rank of this reading, in its collation",
+		"fullComment":"The graph rank of this reading, in its collation",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"number",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"normal_form",
+		"comment":"The canonically-spelled form of the reading text",
+		"fullComment":"The canonically-spelled form of the reading text",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"display",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"join_next",
+		"comment":"True if the reading is a partial word that should be joined directly to the next reading",
+		"fullComment":"True if the reading is a partial word that should be joined directly to the next reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"join_prior",
+		"comment":"True if the reading is a partial word that should be joined directly to the prior reading",
+		"fullComment":"True if the reading is a partial word that should be joined directly to the prior reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"extra",
+		"comment":"Any additional user-supplied JSON data for this reading",
+		"fullComment":"Any additional user-supplied JSON data for this reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"language",
+		"comment":"The language of the reading text",
+		"fullComment":"The language of the reading text",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"annotation",
+		"comment":"The user-supplied annotation or comment for this reading",
+		"fullComment":"The user-supplied annotation or comment for this reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"id",
+		"comment":"The internal ID of the reading",
+		"fullComment":"The internal ID of the reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"authority",
+		"comment":"The authority for an emendation reading",
+		"fullComment":"The authority for an emendation reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"grammar_invalid",
+		"comment":"True if the reading's grammatical form does not make sense in context",
+		"fullComment":"True if the reading's grammatical form does not make sense in context",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"section",
+		"comment":"The ID of the section to which this reading belongs",
+		"fullComment":"The ID of the section to which this reading belongs",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_common",
+		"comment":"True if the reading appears in all witnesses",
+		"fullComment":"True if the reading appears in all witnesses",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_end",
+		"comment":"True if the reading is a collation end node",
+		"fullComment":"True if the reading is a collation end node",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"is_ph",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"text",
+		"comment":"The text of the reading",
+		"fullComment":"The text of the reading",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"witnesses",
+		"comment":"The list of witnesses to which this reading belongs",
+		"fullComment":"The list of witnesses to which this reading belongs. Read-only.",
+		"typeValue":{
+			"type":"collection",
+			"typeValue":{
+				"type":"simple",
+				"typeValue":"string",
+			},
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -2461,132 +2549,12 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"].cont
 		"required":false,
 	},
 	{
-		"name":"language",
-		"comment":"The language of the reading text",
-		"fullComment":"The language of the reading text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"annotation",
-		"comment":"The user-supplied annotation or comment for this reading",
-		"fullComment":"The user-supplied annotation or comment for this reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"id",
-		"comment":"The internal ID of the reading",
-		"fullComment":"The internal ID of the reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"authority",
-		"comment":"The authority for an emendation reading",
-		"fullComment":"The authority for an emendation reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"text",
-		"comment":"The text of the reading",
-		"fullComment":"The text of the reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"normal_form",
-		"comment":"The canonically-spelled form of the reading text",
-		"fullComment":"The canonically-spelled form of the reading text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"display",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"join_next",
-		"comment":"True if the reading is a partial word that should be joined directly to the next reading",
-		"fullComment":"True if the reading is a partial word that should be joined directly to the next reading",
+		"name":"is_lacuna",
+		"comment":"True if the reading is a 'lacuna' node, representing missing text",
+		"fullComment":"True if the reading is a 'lacuna' node, representing missing text",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"join_prior",
-		"comment":"True if the reading is a partial word that should be joined directly to the prior reading",
-		"fullComment":"True if the reading is a partial word that should be joined directly to the prior reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"rank",
-		"comment":"The graph rank of this reading, in its collation",
-		"fullComment":"The graph rank of this reading, in its collation",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"number",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"extra",
-		"comment":"Any additional user-supplied JSON data for this reading",
-		"fullComment":"Any additional user-supplied JSON data for this reading",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -2685,6 +2653,30 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_UriBuilder_out"].ordered =
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_UriBuilder_out"].comment = null;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_in"].content = [
 	{
+		"name":"name",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"description",
+		"comment":"A short description of what this relationship type signifies",
+		"fullComment":"A short description of what this relationship type signifies",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
 		"name":"bindlevel",
 		"comment":"How tightly the relationship binds",
 		"fullComment":"How tightly the relationship binds. A lower number indicates a closer binding. If A and B are related at bindlevel 0, and B and C at bindlevel 1, it implies that A and C have the same relationship as B and C do.",
@@ -2751,30 +2743,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_in"].
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"name",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"description",
-		"comment":"A short description of what this relationship type signifies",
-		"fullComment":"A short description of what this relationship type signifies",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -2785,6 +2753,42 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_in"].
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_in"].comment = "This model describes the properties of a particular relationship type";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_out"].content = [
 	{
+		"name":"is_colocation",
+		"comment":"Whether this relationship implies that the readings in question occur in the same \"place\" in the text",
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"name",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"description",
+		"comment":"A short description of what this relationship type signifies",
+		"fullComment":"A short description of what this relationship type signifies",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
 		"name":"bindlevel",
 		"comment":"How tightly the relationship binds",
 		"fullComment":"How tightly the relationship binds. A lower number indicates a closer binding. If A and B are related at bindlevel 0, and B and C at bindlevel 1, it implies that A and C have the same relationship as B and C do.",
@@ -2835,42 +2839,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_out"]
 	{
 		"name":"use_regular",
 		"comment":"Whether, when a relationship has a non-local scope, the search for other relatable pairs should be made on the regularized form of the reading",
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"name",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"description",
-		"comment":"A short description of what this relationship type signifies",
-		"fullComment":"A short description of what this relationship type signifies",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"is_colocation",
-		"comment":"Whether this relationship implies that the readings in question occur in the same \"place\" in the text",
 		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
@@ -2884,21 +2852,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_out"]
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationTypeModel_out"].comment = "This model describes the properties of a particular relationship type";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SequenceModel_in"].content = [
-	{
-		"name":"witnesses",
-		"comment":"The list of \"main\" witnesses along this sequence route",
-		"fullComment":"The list of \"main\" witnesses along this sequence route",
-		"typeValue":{
-			"type":"collection",
-			"typeValue":{
-				"type":"simple",
-				"typeValue":"string",
-			},
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
 	{
 		"name":"layers",
 		"comment":"Any layer witnesses that travel along this sequence route",
@@ -2952,6 +2905,21 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SequenceModel_in"].cont
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"witnesses",
+		"comment":"The list of \"main\" witnesses along this sequence route",
+		"fullComment":"The list of \"main\" witnesses along this sequence route",
+		"typeValue":{
+			"type":"collection",
+			"typeValue":{
+				"type":"simple",
+				"typeValue":"string",
+			},
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -2974,21 +2942,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SequenceModel_in"].orde
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SequenceModel_in"].comment = "Provides a model for a reading sequence link outside of the database";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SequenceModel_out"].content = [
 	{
-		"name":"witnesses",
-		"comment":"The list of \"main\" witnesses along this sequence route",
-		"fullComment":"The list of \"main\" witnesses along this sequence route",
-		"typeValue":{
-			"type":"collection",
-			"typeValue":{
-				"type":"simple",
-				"typeValue":"string",
-			},
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"layers",
 		"comment":"Any layer witnesses that travel along this sequence route",
 		"fullComment":"Any layer witnesses that travel along this sequence route",
@@ -3053,6 +3006,21 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_SequenceModel_out"].con
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"witnesses",
+		"comment":"The list of \"main\" witnesses along this sequence route",
+		"fullComment":"The list of \"main\" witnesses along this sequence route",
+		"typeValue":{
+			"type":"collection",
+			"typeValue":{
+				"type":"simple",
+				"typeValue":"string",
+			},
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3099,6 +3067,18 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_in"].co
 		"required":false,
 	},
 	{
+		"name":"links",
+		"comment":"A list of outbound links carried by this annotation",
+		"fullComment":"A list of outbound links carried by this annotation",
+		"typeValue":{
+			"type":"collection",
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationLinkModel_in"],
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
 		"name":"label",
 		"comment":"The annotation's label - there should be only one",
 		"fullComment":"The annotation's label - there should be only one",
@@ -3122,22 +3102,22 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_in"].co
 		"nameless":false,
 		"required":false,
 	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_in"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_in"].comment = "This is the data model for an annotation";
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_out"].content = [
 	{
-		"name":"links",
-		"comment":"A list of outbound links carried by this annotation",
-		"fullComment":"A list of outbound links carried by this annotation",
+		"name":"label",
+		"comment":"The annotation's label - there should be only one",
+		"fullComment":"The annotation's label - there should be only one",
 		"typeValue":{
-			"type":"collection",
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationLinkModel_in"],
+			"type":"simple",
+			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
 		"required":false,
 	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_in"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_in"].comment = "This is the data model for an annotation";
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_out"].content = [
 	{
 		"name":"properties",
 		"comment":"A map of property keys to values",
@@ -3161,18 +3141,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationModel_out"].c
 		"name":"id",
 		"comment":"The ID of the annotation",
 		"fullComment":"The ID of the annotation",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"label",
-		"comment":"The annotation's label - there should be only one",
-		"fullComment":"The annotation's label - there should be only one",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -3226,24 +3194,24 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AlignmentModel_in"].ord
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AlignmentModel_in"].comment = "JSON-aware data model for exporting an alignment in tabular format";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AlignmentModel_out"].content = [
 	{
-		"name":"alignment",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"collection",
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"],
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"length",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"number",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"alignment",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"collection",
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTokensModel_out"],
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3365,24 +3333,24 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_EntityTag_in"].ordered = f
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_EntityTag_in"].comment = null;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_EntityTag_out"].content = [
 	{
-		"name":"weak",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"boolean",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"value",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"weak",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3432,13 +3400,45 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response$StatusType_out"].
 ];
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response$StatusType_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response$StatusType_out"].comment = null;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_in"].content = [
+	{
+		"name":"text",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_in"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_in"].comment = null;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_out"].content = [
+	{
+		"name":"text",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_out"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_out"].comment = null;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_in"].content = [
 ];
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_in"].ordered = false;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_in"].comment = null;
 com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_out"].content = [
 	{
-		"name":"length",
+		"name":"status",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
@@ -3450,24 +3450,12 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_out"].content = [
 		"required":false,
 	},
 	{
-		"name":"language",
+		"name":"entity",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
-			"typeValue":"java.util.Locale",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"location",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"java.net.URI",
+			"typeValue":"object",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3554,19 +3542,7 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_out"].content = [
 		"required":false,
 	},
 	{
-		"name":"entity",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"object",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"status",
+		"name":"length",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
@@ -3578,12 +3554,24 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_out"].content = [
 		"required":false,
 	},
 	{
-		"name":"links",
+		"name":"language",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
-			"type":"collection",
-			"typeValue":com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_out"],
+			"type":"simple",
+			"typeValue":"java.util.Locale",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"location",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"java.net.URI",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3606,6 +3594,18 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Response_out"].content = [
 					"typeValue":"object",
 				},
 			},
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"links",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"collection",
+			"typeValue":com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_out"],
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3674,24 +3674,24 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_GraphModel_in"].content
 		"required":false,
 	},
 	{
-		"name":"readings",
-		"comment":"A set of readings that make up a portion of a variant graph",
-		"fullComment":null,
-		"typeValue":{
-			"type":"collection",
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"],
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"relations",
 		"comment":"A set of reading relations that make up a portion of a variant graph",
 		"fullComment":null,
 		"typeValue":{
 			"type":"collection",
 			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_RelationModel_in"],
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"readings",
+		"comment":"A set of readings that make up a portion of a variant graph",
+		"fullComment":null,
+		"typeValue":{
+			"type":"collection",
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_in"],
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3714,18 +3714,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_GraphModel_out"].conten
 		"required":false,
 	},
 	{
-		"name":"readings",
-		"comment":"A set of readings that make up a portion of a variant graph",
-		"fullComment":null,
-		"typeValue":{
-			"type":"collection",
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"],
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"relations",
 		"comment":"A set of reading relations that make up a portion of a variant graph",
 		"fullComment":null,
@@ -3737,14 +3725,26 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_GraphModel_out"].conten
 		"nameless":false,
 		"required":false,
 	},
+	{
+		"name":"readings",
+		"comment":"A set of readings that make up a portion of a variant graph",
+		"fullComment":null,
+		"typeValue":{
+			"type":"collection",
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"],
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
 ];
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_GraphModel_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_GraphModel_out"].comment = "This model contains a graph or subgraph returned from the Neo4j db";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_UserModel_in"].content = [
 	{
-		"name":"role",
-		"comment":"Role of the user in question",
-		"fullComment":"Role of the user in question. Valid values are 'user' and 'admin'.",
+		"name":"email",
+		"comment":"Email address of the user in the database",
+		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -3766,9 +3766,9 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_UserModel_in"].content 
 		"required":false,
 	},
 	{
-		"name":"email",
-		"comment":"Email address of the user in the database",
-		"fullComment":null,
+		"name":"role",
+		"comment":"Role of the user in question",
+		"fullComment":"Role of the user in question. Valid values are 'user' and 'admin'.",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -3806,12 +3806,12 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_UserModel_in"].ordered 
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_UserModel_in"].comment = "Provides a model for a user outside of the database";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_UserModel_out"].content = [
 	{
-		"name":"active",
-		"comment":"True if the user is active in the database and may be assigned new traditions",
+		"name":"email",
+		"comment":"Email address of the user in the database",
 		"fullComment":null,
 		"typeValue":{
 			"type":"simple",
-			"typeValue":"boolean",
+			"typeValue":"string",
 		},
 		"deprecated":false,
 		"nameless":false,
@@ -3830,33 +3830,33 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_UserModel_out"].content
 		"required":false,
 	},
 	{
-		"name":"role",
-		"comment":"Role of the user in question",
-		"fullComment":"Role of the user in question. Valid values are 'user' and 'admin'.",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"email",
-		"comment":"Email address of the user in the database",
-		"fullComment":null,
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
 		"name":"passphrase",
 		"comment":"Passphrase hash of the user in question",
 		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"active",
+		"comment":"True if the user is active in the database and may be assigned new traditions",
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"boolean",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"role",
+		"comment":"Role of the user in question",
+		"fullComment":"Role of the user in question. Valid values are 'user' and 'admin'.",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -3940,110 +3940,6 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_Stemma_out"].content = [
 ];
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_Stemma_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_rest_Stemma_out"].comment = "Comprises all the api calls related to a stemma";
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_in"].content = [
-	{
-		"name":"text",
-		"comment":"The reading that is being proposed for this point in the text",
-		"fullComment":"The reading that is being proposed for this point in the text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"authority",
-		"comment":"The identity of the proposer",
-		"fullComment":"The identity of the proposer",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"fromRank",
-		"comment":"The rank (inclusive) at which the emendation should start",
-		"fullComment":"The rank (inclusive) at which the emendation should start",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"number",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"toRank",
-		"comment":"The rank (exclusive) at which the emendation should end",
-		"fullComment":"The rank (exclusive) at which the emendation should end",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"number",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_in"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_in"].comment = "Provides a model for proposing an emendation, and where in the text it should go";
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_out"].content = [
-	{
-		"name":"authority",
-		"comment":"The identity of the proposer",
-		"fullComment":"The identity of the proposer",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"text",
-		"comment":"The reading that is being proposed for this point in the text",
-		"fullComment":"The reading that is being proposed for this point in the text",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"string",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"fromRank",
-		"comment":"The rank (inclusive) at which the emendation should start",
-		"fullComment":"The rank (inclusive) at which the emendation should start",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"number",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-	{
-		"name":"toRank",
-		"comment":"The rank (exclusive) at which the emendation should end",
-		"fullComment":"The rank (exclusive) at which the emendation should end",
-		"typeValue":{
-			"type":"simple",
-			"typeValue":"number",
-		},
-		"deprecated":false,
-		"nameless":false,
-		"required":false,
-	},
-];
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_out"].ordered = false;
-com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_out"].comment = "Provides a model for proposing an emendation, and where in the text it should go";
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationLabelModel_in"].content = [
 	{
 		"name":"properties",
@@ -4152,36 +4048,35 @@ com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationLabelModel_ou
 ];
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationLabelModel_out"].ordered = false;
 com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_AnnotationLabelModel_out"].comment = "This is the model to specify a valid annotation label for a given text tradition";
-com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_in"].content = [
-];
-com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_in"].ordered = false;
-com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_in"].comment = null;
-com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_out"].content = [
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_in"].content = [
 	{
-		"name":"uri",
-		"comment":null,
-		"fullComment":null,
+		"name":"fromRank",
+		"comment":"The rank (inclusive) at which the emendation should start",
+		"fullComment":"The rank (inclusive) at which the emendation should start",
 		"typeValue":{
 			"type":"simple",
-			"typeValue":"java.net.URI",
+			"typeValue":"number",
 		},
 		"deprecated":false,
 		"nameless":false,
 		"required":false,
 	},
 	{
-		"name":"uriBuilder",
-		"comment":null,
-		"fullComment":null,
-		"typeValue":com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_UriBuilder_out"],
+		"name":"toRank",
+		"comment":"The rank (exclusive) at which the emendation should end",
+		"fullComment":"The rank (exclusive) at which the emendation should end",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"number",
+		},
 		"deprecated":false,
 		"nameless":false,
 		"required":false,
 	},
 	{
-		"name":"rel",
-		"comment":null,
-		"fullComment":null,
+		"name":"authority",
+		"comment":"The identity of the proposer",
+		"fullComment":"The identity of the proposer",
 		"typeValue":{
 			"type":"simple",
 			"typeValue":"string",
@@ -4191,11 +4086,87 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_out"].content = [
 		"required":false,
 	},
 	{
-		"name":"rels",
+		"name":"text",
+		"comment":"The reading that is being proposed for this point in the text",
+		"fullComment":"The reading that is being proposed for this point in the text",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_in"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_in"].comment = "Provides a model for proposing an emendation, and where in the text it should go";
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_out"].content = [
+	{
+		"name":"authority",
+		"comment":"The identity of the proposer",
+		"fullComment":"The identity of the proposer",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"text",
+		"comment":"The reading that is being proposed for this point in the text",
+		"fullComment":"The reading that is being proposed for this point in the text",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"fromRank",
+		"comment":"The rank (inclusive) at which the emendation should start",
+		"fullComment":"The rank (inclusive) at which the emendation should start",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"number",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"toRank",
+		"comment":"The rank (exclusive) at which the emendation should end",
+		"fullComment":"The rank (exclusive) at which the emendation should end",
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"number",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+];
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_out"].ordered = false;
+com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ProposedEmendationModel_out"].comment = "Provides a model for proposing an emendation, and where in the text it should go";
+com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_in"].content = [
+];
+com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_in"].ordered = false;
+com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_in"].comment = null;
+com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_out"].content = [
+	{
+		"name":"params",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
-			"type":"collection",
+			"type":"map",
+			"typeKey":{
+				"type":"simple",
+				"typeValue":"string",
+			},
 			"typeValue":{
 				"type":"simple",
 				"typeValue":"string",
@@ -4230,20 +4201,49 @@ com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_Link_out"].content = [
 		"required":false,
 	},
 	{
-		"name":"params",
+		"name":"uri",
 		"comment":null,
 		"fullComment":null,
 		"typeValue":{
-			"type":"map",
-			"typeKey":{
-				"type":"simple",
-				"typeValue":"string",
-			},
+			"type":"simple",
+			"typeValue":"java.net.URI",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"rel",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"simple",
+			"typeValue":"string",
+		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"rels",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":{
+			"type":"collection",
 			"typeValue":{
 				"type":"simple",
 				"typeValue":"string",
 			},
 		},
+		"deprecated":false,
+		"nameless":false,
+		"required":false,
+	},
+	{
+		"name":"uriBuilder",
+		"comment":null,
+		"fullComment":null,
+		"typeValue":com.qmino.miredot.restApiSource.tos["javax_ws_rs_core_UriBuilder_out"],
 		"deprecated":false,
 		"nameless":false,
 		"required":false,
@@ -4454,102 +4454,6 @@ com.qmino.miredot.restApiSource.interfaces = [
 						"typeValue":"string",
 					},
 					"comment":"- Include all ancestors in response",
-					"jaxrs":"QUERY",
-				},
-			],
-			"BODY":[
-			],
-			"HEADER":[
-			],
-			"COOKIE":[
-			],
-			"FORM":[
-			],
-			"MATRIX":[
-			],
-		},
-	},
-	{
-		"beschrijving":"Gets the list of lemma readings for the section, if there are any. Requesting the \"final\" lemma sequence will return what was set by .../setlemma; otherwise all readings marked as lemmata will be returned, in order of rank, whether or not they are yet on a lemma path.",
-		"url":"/tradition/{tradId}/section/{sectionId}/lemmareadings",
-		"http":"GET",
-		"title":"Get sequence of lemma readings",
-		"tags":[
-			
-		],
-		"authors":[
-			"tla",
-
-		],
-		"compressed":false,
-		"deprecated":false,
-		"consumes":[
-		],
-		"produces":[
-			"application/json; charset=utf-8",
-		],
-		"roles":[
-		],
-		"rolesAllowed":null,
-		"permitAll":false,
-		"output":{
-			"typeValue":{
-				"type":"collection",
-				"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"],
-			},
-			"comment":"A JSON list of lemma text ReadingModels",
-		},
-		"statusCodes":[
-			{
-				"httpCode":200,
-				"comment":"- on success",
-			},
-			{
-				"httpCode":404,
-				"comment":"- if no such tradition exists",
-			},
-			{
-				"httpCode":500,
-				"comment":"- on failure, with an error message",
-			},
-		],
-		"hash":"2141903954",
-		"responseHeaders":{
-			"headers":[
-			],
-			"customHeaders":[
-			],
-		},
-		"inputs":{
-			"PATH":[
-				{
-					"name":"tradId",
-					"typeValue":{
-						"type":"simple",
-						"typeValue":"string",
-					},
-					"comment":"- the ID of the tradition being queried",
-					"jaxrs":"PATH",
-				},
-				{
-					"name":"sectionId",
-					"typeValue":{
-						"type":"simple",
-						"typeValue":"string",
-					},
-					"comment":"- the ID of the requested tradition section",
-					"jaxrs":"PATH",
-				},
-			],
-			"QUERY":[
-				{
-					"name":"final",
-					"defaultValue":"false",
-					"typeValue":{
-						"type":"simple",
-						"typeValue":"string",
-					},
-					"comment":"- Whether or not to follow the 'lemma_text' path",
 					"jaxrs":"QUERY",
 				},
 			],
@@ -7179,6 +7083,140 @@ com.qmino.miredot.restApiSource.interfaces = [
 		},
 	},
 	{
+		"beschrijving":"Gets the list of lemma readings for the section, if there are any. Requesting the \"final\" lemma sequence will return what was set by .../setlemma; otherwise all readings marked as lemmata will be returned, in order of rank, whether or not they are yet on a lemma path.",
+		"url":"/tradition/{tradId}/section/{sectionId}/lemmareadings",
+		"http":"GET",
+		"title":"Get sequence of lemma readings",
+		"tags":[
+			
+		],
+		"authors":[
+			"tla",
+
+		],
+		"compressed":false,
+		"deprecated":false,
+		"consumes":[
+		],
+		"produces":[
+			"application/json; charset=utf-8",
+		],
+		"roles":[
+		],
+		"rolesAllowed":null,
+		"permitAll":false,
+		"output":{
+			"typeValue":{
+				"type":"collection",
+				"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_ReadingModel_out"],
+			},
+			"comment":"A JSON list of lemma text ReadingModels",
+		},
+		"statusCodes":[
+			{
+				"httpCode":200,
+				"comment":"- on success",
+			},
+			{
+				"httpCode":404,
+				"comment":"- if no such tradition exists",
+			},
+			{
+				"httpCode":500,
+				"comment":"- on failure, with an error message",
+			},
+		],
+		"hash":"-377277978",
+		"responseHeaders":{
+			"headers":[
+			],
+			"customHeaders":[
+			],
+		},
+		"inputs":{
+			"PATH":[
+				{
+					"name":"tradId",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- the ID of the tradition being queried",
+					"jaxrs":"PATH",
+				},
+				{
+					"name":"sectionId",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- the ID of the requested tradition section",
+					"jaxrs":"PATH",
+				},
+			],
+			"QUERY":[
+				{
+					"name":"final",
+					"defaultValue":"false",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Whether or not to follow the 'lemma_text' path",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"startRank",
+					"defaultValue":"1",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text starting at the given rank",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"endRank",
+					"defaultValue":"E",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text ending at the given rank",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"startRdg",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text starting with the given reading. Overrides startRank.",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"endRdg",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text ending at the given reading. Overrides endRank.",
+					"jaxrs":"QUERY",
+				},
+			],
+			"BODY":[
+			],
+			"HEADER":[
+			],
+			"COOKIE":[
+			],
+			"FORM":[
+			],
+			"MATRIX":[
+			],
+		},
+	},
+	{
 		"beschrijving":"Removes a relation by internal ID.",
 		"url":"/tradition/{tradId}/relation/{relationId}",
 		"http":"DELETE",
@@ -8345,99 +8383,6 @@ com.qmino.miredot.restApiSource.interfaces = [
 		},
 	},
 	{
-		"beschrijving":"Gets the lemma text for the section, if there is any. Returns the text in a JSON object with key 'text'.",
-		"url":"/tradition/{tradId}/section/{sectionId}/lemmatext",
-		"http":"GET",
-		"title":"Get lemma text",
-		"tags":[
-			
-		],
-		"authors":[
-			"tla",
-
-		],
-		"compressed":false,
-		"deprecated":false,
-		"consumes":[
-		],
-		"produces":[
-			"application/json; charset=utf-8",
-		],
-		"roles":[
-		],
-		"rolesAllowed":null,
-		"permitAll":false,
-		"output":{
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_out"],
-			"comment":"a WitnessTextModel containing the requested lemma text",
-		},
-		"statusCodes":[
-			{
-				"httpCode":200,
-				"comment":"- on success",
-			},
-			{
-				"httpCode":404,
-				"comment":"- if no such tradition exists",
-			},
-			{
-				"httpCode":500,
-				"comment":"- on failure, with an error message",
-			},
-		],
-		"hash":"469986456",
-		"responseHeaders":{
-			"headers":[
-			],
-			"customHeaders":[
-			],
-		},
-		"inputs":{
-			"PATH":[
-				{
-					"name":"tradId",
-					"typeValue":{
-						"type":"simple",
-						"typeValue":"string",
-					},
-					"comment":"- the ID of the tradition being queried",
-					"jaxrs":"PATH",
-				},
-				{
-					"name":"sectionId",
-					"typeValue":{
-						"type":"simple",
-						"typeValue":"string",
-					},
-					"comment":"- the ID of the requested tradition section",
-					"jaxrs":"PATH",
-				},
-			],
-			"QUERY":[
-				{
-					"name":"final",
-					"defaultValue":"false",
-					"typeValue":{
-						"type":"simple",
-						"typeValue":"string",
-					},
-					"comment":"- Whether or not to follow the 'lemma_text' path",
-					"jaxrs":"QUERY",
-				},
-			],
-			"BODY":[
-			],
-			"HEADER":[
-			],
-			"COOKIE":[
-			],
-			"FORM":[
-			],
-			"MATRIX":[
-			],
-		},
-	},
-	{
 		"beschrijving":"Inserts a lacuna in the specified witness(es) after a given reading and before the next reading(s) in the sequence for that witness / those witnesses. Intended to indicate that empty ranks are not a simple omission.",
 		"url":"/reading/{readingId}/lacunaAfter",
 		"http":"POST",
@@ -9099,7 +9044,7 @@ com.qmino.miredot.restApiSource.interfaces = [
 		"rolesAllowed":null,
 		"permitAll":false,
 		"output":{
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_out"],
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_out"],
 			"comment":"The witness text as a string.",
 		},
 		"statusCodes":[
@@ -10000,6 +9945,137 @@ com.qmino.miredot.restApiSource.interfaces = [
 		},
 	},
 	{
+		"beschrijving":"Gets the lemma text for the section, if there is any. Returns the text in a JSON object with key 'text'.",
+		"url":"/tradition/{tradId}/section/{sectionId}/lemmatext",
+		"http":"GET",
+		"title":"Get lemma text",
+		"tags":[
+			
+		],
+		"authors":[
+			"tla",
+
+		],
+		"compressed":false,
+		"deprecated":false,
+		"consumes":[
+		],
+		"produces":[
+			"application/json; charset=utf-8",
+		],
+		"roles":[
+		],
+		"rolesAllowed":null,
+		"permitAll":false,
+		"output":{
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_out"],
+			"comment":"a TextSequenceModel containing the requested lemma text",
+		},
+		"statusCodes":[
+			{
+				"httpCode":200,
+				"comment":"- on success",
+			},
+			{
+				"httpCode":404,
+				"comment":"- if no such tradition exists",
+			},
+			{
+				"httpCode":500,
+				"comment":"- on failure, with an error message",
+			},
+		],
+		"hash":"-1145662932",
+		"responseHeaders":{
+			"headers":[
+			],
+			"customHeaders":[
+			],
+		},
+		"inputs":{
+			"PATH":[
+				{
+					"name":"tradId",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- the ID of the tradition being queried",
+					"jaxrs":"PATH",
+				},
+				{
+					"name":"sectionId",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- the ID of the requested tradition section",
+					"jaxrs":"PATH",
+				},
+			],
+			"QUERY":[
+				{
+					"name":"final",
+					"defaultValue":"false",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Whether or not to follow the 'lemma_text' path",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"startRank",
+					"defaultValue":"1",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text starting at the given rank",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"endRank",
+					"defaultValue":"E",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text ending at the given rank",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"startRdg",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text starting with the given reading. Overrides startRank.",
+					"jaxrs":"QUERY",
+				},
+				{
+					"name":"endRdg",
+					"typeValue":{
+						"type":"simple",
+						"typeValue":"string",
+					},
+					"comment":"- Return a substring of the lemma text ending at the given reading. Overrides endRank.",
+					"jaxrs":"QUERY",
+				},
+			],
+			"BODY":[
+			],
+			"HEADER":[
+			],
+			"COOKIE":[
+			],
+			"FORM":[
+			],
+			"MATRIX":[
+			],
+		},
+	},
+	{
 		"beschrijving":"finds a witness in the database and returns it as a string; if start and end are specified, a substring of the full witness text between those ranks inclusive is returned. if end-rank is too high or start-rank too low will return up to the end / from the start of the witness. If one or more witness layers are specified, return the text composed of those layers.",
 		"url":"/tradition/{tradId}/witness/{sigil}/text",
 		"http":"GET",
@@ -10023,7 +10099,7 @@ com.qmino.miredot.restApiSource.interfaces = [
 		"rolesAllowed":null,
 		"permitAll":false,
 		"output":{
-			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_WitnessTextModel_out"],
+			"typeValue":com.qmino.miredot.restApiSource.tos["net_stemmaweb_model_TextSequenceModel_out"],
 			"comment":"The witness text as a string.",
 		},
 		"statusCodes":[

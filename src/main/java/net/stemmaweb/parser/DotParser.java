@@ -13,6 +13,7 @@ import net.stemmaweb.rest.Nodes;
 import com.alexmerz.graphviz.Parser;
 
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.Evaluators;
@@ -69,7 +70,7 @@ public class DotParser {
 
     private Status saveToNeo(Graph stemma, String tradId) {
         // Check for the existence of the tradition
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null)
             return Status.NOT_FOUND;
 

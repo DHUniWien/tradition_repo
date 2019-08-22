@@ -11,8 +11,8 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import net.stemmaweb.rest.Section;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
@@ -127,7 +127,7 @@ public class GraphMLExporter {
 
     public Response writeNeo4J(String tradId, String sectionId, Boolean includeWitnesses) {
         // Get the tradition node
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).build();
 
@@ -141,11 +141,11 @@ public class GraphMLExporter {
             return Response.serverError().build();
         }
         ResourceIterable<Node> traditionNodes = sectionId == null ?
-                DatabaseService.returnEntireTradition(traditionNode).nodes() :
-                DatabaseService.returnTraditionSection(sectionId, db).nodes();
+                VariantGraphService.returnEntireTradition(traditionNode).nodes() :
+                VariantGraphService.returnTraditionSection(sectionId, db).nodes();
         ResourceIterable<Relationship> traditionEdges = sectionId == null ?
-                DatabaseService.returnEntireTradition(traditionNode).relationships() :
-                DatabaseService.returnTraditionSection(sectionId, db).relationships();
+                VariantGraphService.returnEntireTradition(traditionNode).relationships() :
+                VariantGraphService.returnTraditionSection(sectionId, db).relationships();
 
         // Collect any extra nodes that should go into the list for whatever reason.
         ArrayList<Node> extraNodes = new ArrayList<>();

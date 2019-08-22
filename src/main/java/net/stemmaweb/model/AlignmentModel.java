@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
@@ -40,10 +41,10 @@ public class AlignmentModel {
 
         try (Transaction tx = db.beginTx()) {
             String sectId = String.valueOf(sectionNode.getId());
-            Node traditionNode = DatabaseService.getTraditionNode(sectionNode, db);
+            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
             String tradId = traditionNode.getProperty("id").toString();
-            Node startNode = DatabaseService.getStartNode(sectId, db);
-            Node endNode = DatabaseService.getEndNode(sectId, db);
+            Node startNode = VariantGraphService.getStartNode(sectId, db);
+            Node endNode = VariantGraphService.getEndNode(sectId, db);
 
             // First get the length, that's the easy part.
             length = (long) endNode.getProperty("rank") - 1;

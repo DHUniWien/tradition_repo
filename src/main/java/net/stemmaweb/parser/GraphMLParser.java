@@ -3,8 +3,8 @@ package net.stemmaweb.parser;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.w3c.dom.*;
@@ -168,7 +168,7 @@ public class GraphMLParser {
             // if this is a section-only upload.
             if (parentLabel.equals("section")) {
                 Node newSection = sectionNodes.get(0);
-                ArrayList<Node> existingSections = DatabaseService.getSectionNodes(tradId, db);
+                ArrayList<Node> existingSections = VariantGraphService.getSectionNodes(tradId, db);
                 assert (existingSections != null); // We should have already errored if this will be null.
                 if (existingSections.size() > 0) {
                     Node lastExisting = existingSections.get(existingSections.size() - 1);

@@ -15,11 +15,8 @@ import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.*;
 
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -64,7 +61,7 @@ public class Witness {
 
     private String getWitnessById(Long nodeId) {
         String foundSigil = null;
-        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+        Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
             Node found = null;
             for (Relationship r : tradNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
@@ -79,7 +76,7 @@ public class Witness {
     }
 
     private Node getWitnessBySigil() {
-        Node tradNode = DatabaseService.getTraditionNode(tradId, db);
+        Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
         Node found = null;
         try (Transaction tx = db.beginTx()) {
             for (Relationship r : tradNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
@@ -137,7 +134,7 @@ public class Witness {
             if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
             // Find all references to the witness throughout the tradition, and delete them
             HashSet<Node> orphanReadings = new HashSet<>();
-            for (Relationship r : DatabaseService.returnEntireTradition(tradId, db).relationships()) {
+            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships()) {
                 if (r.isType(ERelations.SEQUENCE)) {
                     Node start = r.getStartNode();
                     Node end = r.getEndNode();
@@ -268,7 +265,7 @@ public class Witness {
                 endRank = tempRank;
             }
 
-            Node startNode = DatabaseService.getStartNode(String.valueOf(currentSection.getId()), db);
+            Node startNode = VariantGraphService.getStartNode(String.valueOf(currentSection.getId()), db);
             try (Transaction tx = db.beginTx()) {
                 final long sr = startRank;
                 final long er = endRank;
@@ -323,7 +320,7 @@ public class Witness {
 
         for (Node currentSection: iterationList) {
             try (Transaction tx = db.beginTx()) {
-                Node startNode = DatabaseService.getStartNode(String.valueOf(currentSection.getId()), db);
+                Node startNode = VariantGraphService.getStartNode(String.valueOf(currentSection.getId()), db);
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 // Remove the meta node from the list
                 if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getText().equals("#END#"))
@@ -368,7 +365,7 @@ public class Witness {
     }
 
     private ArrayList<Node> sectionsRequested() {
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null) {
             errorMessage = "Requested tradition does not exist";
             return null;
@@ -376,9 +373,9 @@ public class Witness {
 
         ArrayList<Node> iterationList = new ArrayList<>();
         if (this.sectId == null) {
-            iterationList = DatabaseService.getSectionNodes(tradId, db);
+            iterationList = VariantGraphService.getSectionNodes(tradId, db);
         } else {
-            if (!DatabaseService.sectionInTradition(tradId, sectId, db)) {
+            if (!VariantGraphService.sectionInTradition(tradId, sectId, db)) {
                 errorMessage = "Requested section does not exist in this tradition";
                 return null;
             }

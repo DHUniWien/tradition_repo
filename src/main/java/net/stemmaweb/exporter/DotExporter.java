@@ -19,13 +19,14 @@ import net.stemmaweb.rest.ERelations;
 
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
-import net.stemmaweb.services.DatabaseService;
 
 import static net.stemmaweb.parser.Util.getExpander;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
 
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -54,15 +55,15 @@ public class DotExporter
     public Response writeNeo4J(String tradId, String sectionId, DisplayOptionModel dm)
     {
         // Get the start and end node of the whole tradition
-        Node traditionNode = DatabaseService.getTraditionNode(tradId, db);
-        Node startNode = DatabaseService.getStartNode(tradId, db);
-        Node endNode = DatabaseService.getEndNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        Node startNode = VariantGraphService.getStartNode(tradId, db);
+        Node endNode = VariantGraphService.getEndNode(tradId, db);
         if(startNode==null || endNode==null) {
             return Response.status(Status.NOT_FOUND).build();
         }
 
         // Get the list of section nodes
-        ArrayList<Node> sections = DatabaseService.getSectionNodes(tradId, db);
+        ArrayList<Node> sections = VariantGraphService.getSectionNodes(tradId, db);
         if (sections == null) {
             return Response.status(Status.NOT_FOUND).build();
         }
@@ -118,8 +119,8 @@ public class DotExporter
                 if (dm.getExcludeWitnesses().size() > 0) {
                     numWits -= dm.getExcludeWitnesses().size();
                 }
-                Node sectionStartNode = DatabaseService.getStartNode(String.valueOf(sectionNode.getId()), db);
-                Node sectionEndNode = DatabaseService.getEndNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionStartNode = VariantGraphService.getStartNode(String.valueOf(sectionNode.getId()), db);
+                Node sectionEndNode = VariantGraphService.getEndNode(String.valueOf(sectionNode.getId()), db);
                 // If we have requested a section, then that section's start and end are "the" start and end
                 // for the whole graph.
                 if (sectionId != null) {
@@ -261,7 +262,7 @@ public class DotExporter
                             .forEach(Relationship::delete);
 
                 // TEMPORARY: Check that we aren't polluting the graph DB
-                if (DatabaseService.returnTraditionSection(sectionNode).relationships()
+                if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
                         .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE)))
                     return Response.serverError()
                             .entity("Data consistency error on normalisation of section " + sectionId).build();

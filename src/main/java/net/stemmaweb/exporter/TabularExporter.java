@@ -4,7 +4,7 @@ import com.opencsv.CSVWriter;
 import net.stemmaweb.model.AlignmentModel;
 import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
@@ -179,7 +179,7 @@ public class TabularExporter {
 
     private ArrayList<Node> getSections(String tradId, List<String> sectionList)
     throws TabularExporterException {
-        ArrayList<Node> traditionSections = DatabaseService.getSectionNodes(tradId, db);
+        ArrayList<Node> traditionSections = VariantGraphService.getSectionNodes(tradId, db);
         // Does the tradition exist in the first place?
         if (traditionSections == null) return null;
 
