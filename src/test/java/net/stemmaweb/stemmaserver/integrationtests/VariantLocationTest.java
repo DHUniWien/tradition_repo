@@ -20,10 +20,11 @@ import java.util.Optional;
 public class VariantLocationTest extends TestCase {
 
     private JerseyTest jerseyTest;
+    private GraphDatabaseService db;
 
     public void setUp() throws Exception {
         super.setUp();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -112,6 +113,7 @@ public class VariantLocationTest extends TestCase {
         rbm.setCharacter(" ");
         ClientResponse rsp = jerseyTest.resource()
                 .path("/reading/" + readingLookup.get("with/3") + "/concatenate/" + readingLookup.get("his/4"))
+                .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, rbm);
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
 
@@ -119,14 +121,14 @@ public class VariantLocationTest extends TestCase {
         relm.setSource(readingLookup.get("the/17"));
         relm.setTarget(readingLookup.get("teh/16"));
         relm.setType("spelling");
-        relm.setScope("document");
+        relm.setScope("tradition");
         rsp = jerseyTest.resource().path("/tradition/" + textinfo.get("tradId") + "/relation")
                 .type(MediaType.APPLICATION_JSON)
                 .post(ClientResponse.class, relm);
         assertEquals(Response.Status.CREATED.getStatusCode(), rsp.getStatus());
         // This should have made two relations
-        List<RelationModel> rels = rsp.getEntity(new GenericType<List<RelationModel>>() {});
-        assertEquals(2, rels.size());
+        GraphModel result = rsp.getEntity(GraphModel.class);
+        assertEquals(2, result.getRelations().size());
 
         relm.setSource(readingLookup.get("to/16"));
         relm.setTarget(readingLookup.get("unto/16"));
@@ -138,12 +140,18 @@ public class VariantLocationTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), rsp.getStatus());
 
         // Now we can test variant lists
-        rsp = jerseyTest.resource().path(restPath + "/variants").get(ClientResponse.class);
+        rsp = jerseyTest.resource().path(restPath + "variants").get(ClientResponse.class);
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         List<VariantLocationModel> vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(7, vlocs.size());
         assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
 
+    }
+
+    public void tearDown() throws Exception {
+        db.shutdown();
+        jerseyTest.tearDown();
+        super.tearDown();
     }
 
 }
