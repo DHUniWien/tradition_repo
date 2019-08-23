@@ -51,6 +51,13 @@
             <groupId>org.apache.cxf</groupId>
             <artifactId>cxf-bundle-jaxrs</artifactId>
             <version>2.7.7</version>
+            <!-- javax.ws.rs is JAX-RS 2; we (and jersey 1.x) run version 1 (aka jsr311) only -->
+           <exclusions>
+               <exclusion>
+                   <groupId>javax.ws.rs</groupId>
+                    <artifactId>*</artifactId>
+               </exclusion>
+           </exclusions>
         </dependency>
         <!-- Jackson 2.x Core -->
         <dependency>
@@ -68,7 +75,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
+            <version>${jackson-version}.3</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
