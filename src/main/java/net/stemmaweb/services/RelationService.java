@@ -184,9 +184,9 @@ public class RelationService {
         if (alternatives.isEmpty()) return null;
         Node ref = alternatives.stream().findFirst().get();
         if (alternatives.size() == 1) return ref;
-        // It's not trivial
-        else db = ref.getGraphDatabase();
 
+        // It's not trivial
+        db = ref.getGraphDatabase();
         Node representative = null;
         // Go through the alternatives
         try (Transaction tx = db.beginTx()) {

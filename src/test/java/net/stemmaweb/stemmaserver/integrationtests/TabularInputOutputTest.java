@@ -368,7 +368,44 @@ public class TabularInputOutputTest extends TestCase {
         }
         assertEquals(1, readingsAt9.size());
 
-        // TODO set some spelling & orthographic relations and make sure conflation still works
+        // Make some spelling relations for the conflation
+        HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, traditionId);
+        RelationModel rm = new RelationModel();
+        rm.setType("spelling");
+        rm.setScope("local");
+        rm.setSource(readingLookup.get("Läckämme/7"));
+        String[] equivalent = new String[] {"läckömme/7", "Lähkämme/7", "läckämme/7", "Lächkämme/7"};
+        for (String r : equivalent) {
+            rm.setTarget(readingLookup.get(r));
+            response = jerseyTest.resource().path("/tradition/" + traditionId + "/relation")
+                    .type(MediaType.APPLICATION_JSON)
+                    .post(ClientResponse.class, rm);
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
+
+        // Now conflate according to spelling and get the object as an AlignmentModel
+        result = jerseyTest.resource().path("/tradition/" + traditionId + "/json")
+                .queryParam("conflate", "spelling")
+                .type(MediaType.APPLICATION_JSON)
+                .get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        // Turn the answer into an AlignmentModel
+        AlignmentModel am = result.getEntity(AlignmentModel.class);
+        assertEquals(10, am.getLength());
+        assertEquals(33, am.getAlignment().size());
+        // There should be three readings at rank 7
+        assertEquals(3, am.getAlignment().stream().map(x -> x.getTokens().get(6).getId()).distinct().count());
+        // The reading at rank 7 of witness A should look right
+        ReadingModel testRdg = am.getAlignment().get(0).getTokens().get(6);
+        assertEquals("Läckämme", testRdg.getText());
+        assertEquals(Long.valueOf(7), testRdg.getRank());
+        // It should contain *all* the witnesses of all the normalized readings too
+        assertEquals(30, testRdg.getWitnesses().size());
+        // ...and it should contain models for the readings it represents.
+        assertEquals(4, testRdg.getRepresented().size());
+        Set<String> representedIds = testRdg.getRepresented().stream().map(ReadingModel::getId).collect(Collectors.toSet());
+        Set<String> relatedIds = Arrays.stream(equivalent).map(readingLookup::get).collect(Collectors.toSet());
+        assertTrue(relatedIds.containsAll(representedIds));
     }
 
     public void testCSVExport() throws Exception {

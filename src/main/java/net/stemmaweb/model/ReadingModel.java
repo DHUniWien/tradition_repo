@@ -182,6 +182,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
                 // We don't check whether this property exists, because it darn well should
                 this.setAuthority(node.getProperty("authority").toString());
             }
+            // Get the witnesses
             HashSet<String> collectedWits = new HashSet<>();
             List<Relationship> seq = new ArrayList<>();
             // If we are operating under normalization, we need to look at the NSEQUENCE links rather than
@@ -201,6 +202,10 @@ public class ReadingModel implements Comparable<ReadingModel> {
             }
             this.witnesses = new ArrayList<>(collectedWits);
             this.witnesses.sort(String::compareTo);
+            // Get any represented readings
+            for (Relationship r : node.getRelationships(ERelations.REPRESENTS, Direction.OUTGOING)) {
+                this.addRepresented(new ReadingModel(r.getEndNode()));
+            }
             tx.success();
         }
     }
@@ -367,18 +372,12 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return orig_reading;
     }
 
-    public void setOrig_reading(String orig_reading) {  this.orig_reading = orig_reading; }
+    public void setOrig_reading(String orig_reading) {
+        this.orig_reading = orig_reading;
+    }
 
     public List<String> getWitnesses() {
-        List<String> ourWits = this.witnesses;
-        if (represented != null) {
-            // Add the witnesses we are representing.
-            HashSet<String> repWits = new HashSet<>();
-            represented.forEach(x -> repWits.addAll(x.getWitnesses()));
-            ourWits.addAll(repWits);
-            ourWits.sort(String::compareTo);
-        }
-        return ourWits;
+        return this.witnesses;
     }
 
     @Override
@@ -402,14 +401,13 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return authority;
     }
 
-    @SuppressWarnings("WeakerAccess")
     public void setAuthority(String authority) {
         this.authority = authority;
     }
 
     public List<ReadingModel> getRepresented() { return represented; }
 
-    public void addRepresented(ReadingModel rm) {
+    private void addRepresented(ReadingModel rm) {
         if (represented == null) represented = new ArrayList<>();
         represented.add(rm);
     }

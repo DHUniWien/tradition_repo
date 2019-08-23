@@ -165,8 +165,9 @@ public class VariantGraphService {
      */
 
     /**
-     * Make a graph normalization sequence on the given section according to the given relation type, and
-     * return a map of each section nodes to its representative node.
+     * Make a graph normalization sequence on the given section according to the given relation type,
+     * creating NSEQUENCE and REPRESENTS relationships between readings where appropriate, and return
+     * a map of each section node to its representative node.
      *
      * @param sectionNode     The section to be normalized
      * @param normalizeType   The (string) name of the type on which we are normalizing
@@ -196,17 +197,30 @@ public class VariantGraphService {
             String sectionId = String.valueOf(sectionNode.getId());
             for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
                     tradId, sectionId, db, normalizeType)) {
+                if (cluster.size() == 0) continue;
                 Node representative = RelationService.findRepresentative(cluster);
+                if (representative == null)
+                    throw new Exception("No representative found for cluster");
                 // Set the representative for all cluster members.
                 for (Node n : cluster) {
                     representatives.put(n, representative);
+                    if (!n.equals(representative))
+                        representative.createRelationshipTo(n, ERelations.REPRESENTS);
                     if (!sectionNodes.remove(n))
-                        throw new Exception("Tried to equivalence a node (" + n.getId() + ") that was not in sectionNodes");
+                        throw new Exception("Tried to make equivalence for node (" + n.getId()
+                                + ": " + n.getAllProperties().toString()
+                                + ") that was not in sectionNodes");
                 }
             }
 
             // All remaining un-clustered readings are represented by themselves
             sectionNodes.forEach(x -> representatives.put(x, x));
+
+            // Make sure we didn't have any accidental recursion in representation
+            for (Node n : representatives.values()) {
+                if (n.hasRelationship(ERelations.REPRESENTS, Direction.INCOMING))
+                    throw new Exception("Recursive representation was created on node " + n.getId() + ": " + n.getAllProperties().toString());
+            }
 
             // Now that we have done this, make the shadow sequence
             for (Relationship r : db.traversalDescription().breadthFirst()
@@ -224,7 +238,7 @@ public class VariantGraphService {
     }
 
     /**
-     * Clean up after performing normalizeGraph.
+     * Clean up after performing normalizeGraph. Removes all NSEQUENCE and REPRESENTS relationships within a section.
      *
      * @param sectionNode  the section to clean up
      * @throws             Exception, if anything was missed
@@ -234,17 +248,17 @@ public class VariantGraphService {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             Node sectionStartNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
-            // Now that it is all written out, flush the shadow sequences if they were created
             db.traversalDescription().breadthFirst()
                     .relationships(ERelations.NSEQUENCE,Direction.OUTGOING)
+                    .relationships(ERelations.REPRESENTS, Direction.OUTGOING)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(sectionStartNode).relationships()
                     .forEach(Relationship::delete);
 
             // TEMPORARY: Check that we aren't polluting the graph DB
             if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
-                    .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE)))
-                throw new Exception("Data consistency error on normalisation of section " + sectionNode.getId());
+                    .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE) || x.isType(ERelations.REPRESENTS)))
+                throw new Exception("Data consistency error on normalization cleanup of section " + sectionNode.getId());
             tx.success();
         }
     }
