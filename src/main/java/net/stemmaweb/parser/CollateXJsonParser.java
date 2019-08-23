@@ -103,7 +103,7 @@ public class CollateXJsonParser {
         }
 
         // Now we have the data in good old Java classes; proceed.
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         try (Transaction tx = db.beginTx()) {
             // Check that we have all the witnesses
             for (String witString : collationWitnesses) {

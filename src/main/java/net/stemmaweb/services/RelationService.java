@@ -72,10 +72,10 @@ public class RelationService {
             if (referenceNode.hasLabel(Nodes.TRADITION))
                 traditionNode = referenceNode;
             else if (referenceNode.hasLabel(Nodes.SECTION))
-                traditionNode = VariantGraphService.getTraditionNode(referenceNode, db);
+                traditionNode = VariantGraphService.getTraditionNode(referenceNode);
             else if (referenceNode.hasLabel(Nodes.READING)) {
                 Node sectionNode = db.getNodeById(Long.valueOf(referenceNode.getProperty("section_id").toString()));
-                traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
+                traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             }
             assert(traditionNode != null);
             // ...and query its relation types.

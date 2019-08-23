@@ -56,7 +56,7 @@ public class StemmawebParser {
                     .build();
         }
         // The information on the relevant tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         String tradId;
 
         // Some variables to collect information

@@ -41,7 +41,7 @@ public class AlignmentModel {
 
         try (Transaction tx = db.beginTx()) {
             String sectId = String.valueOf(sectionNode.getId());
-            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
+            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             String tradId = traditionNode.getProperty("id").toString();
             Node startNode = VariantGraphService.getStartNode(sectId, db);
             Node endNode = VariantGraphService.getEndNode(sectId, db);

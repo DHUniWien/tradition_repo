@@ -786,7 +786,7 @@ public class Section {
                 if (priorSection == null) {
                     return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
                 }
-                Node pnTradition = VariantGraphService.getTraditionNode(priorSection, db);
+                Node pnTradition = VariantGraphService.getTraditionNode(priorSection);
                 if (!pnTradition.getProperty("id").equals(tradId))
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
@@ -867,7 +867,7 @@ public class Section {
 
             // Make a new section node and insert it into the sequence
             Node newSection = db.createNode(Nodes.SECTION);
-            VariantGraphService.getTraditionNode(thisSection, db).createRelationshipTo(newSection, ERelations.PART);
+            VariantGraphService.getTraditionNode(thisSection).createRelationshipTo(newSection, ERelations.PART);
             newSection.setProperty("name", thisSection.getProperty("name") + " split");
             newSectionId = newSection.getId();
             Section newSectionRest = new Section(tradId, String.valueOf(newSection.getId()));

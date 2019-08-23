@@ -148,13 +148,12 @@ public class VariantGraphService {
      *
      * @param section
      *            the section node whose tradition we're hunting
-     * @param db
-     *            the GraphDatabaseService where the tradition is stored
      * @return
      *            the relevant tradition node
      */
-    public static Node getTraditionNode(Node section, GraphDatabaseService db) {
+    public static Node getTraditionNode(Node section) {
         Node tradition;
+        GraphDatabaseService db = section.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             tradition = section.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
             tx.success();
@@ -182,7 +181,7 @@ public class VariantGraphService {
         HashMap<Node,Node> representatives = new HashMap<>();
         GraphDatabaseService db = sectionNode.getGraphDatabase();
         // Make sure the relation type exists
-        Node tradition = getTraditionNode(sectionNode, db);
+        Node tradition = getTraditionNode(sectionNode);
         Node relType = new RelationTypeModel(normalizeType).lookup(tradition);
         if (relType == null)
             throw new Exception("Relation type " + normalizeType + " does not exist in this tradition");
