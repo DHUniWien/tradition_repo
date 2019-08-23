@@ -183,7 +183,13 @@ public class ReadingModel implements Comparable<ReadingModel> {
                 this.setAuthority(node.getProperty("authority").toString());
             }
             HashSet<String> collectedWits = new HashSet<>();
-            for (Relationship r : node.getRelationships(ERelations.SEQUENCE, Direction.BOTH)) {
+            List<Relationship> seq = new ArrayList<>();
+            // If we are operating under normalization, we need to look at the NSEQUENCE links rather than
+            // the SEQUENCE links, but in this case the SEQUENCE links will be redundant so there is no
+            // harm in looking at them anyway.
+            node.getRelationships(ERelations.SEQUENCE, Direction.BOTH).forEach(seq::add);
+            node.getRelationships(ERelations.NSEQUENCE, Direction.BOTH).forEach(seq::add);
+            for (Relationship r : seq) {
                 for (String prop : r.getPropertyKeys()) {
                     String[] sigla = (String[]) r.getProperty(prop);
                     if (prop.equals("witnesses")) {

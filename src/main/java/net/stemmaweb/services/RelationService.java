@@ -127,6 +127,9 @@ public class RelationService {
     public static List<Set<Node>> getCloselyRelatedClusters(
             String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
             throws Exception {
+        // Is it a no-op?
+        if (thresholdName == null) return new ArrayList<>();
+        // Then we have some work to do.
         HashSet<String> closeRelations = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode);

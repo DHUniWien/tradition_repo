@@ -633,7 +633,9 @@ public class Section {
             // Now do the colocated variants.
             // Get our rank alignment, taking into account any conflation that was requested
             Node sectionNode = db.getNodeById(Long.valueOf(sectId));
-            AlignmentModel rankAlignment = new AlignmentModel(sectionNode, conflate);
+            if (conflate != null) VariantGraphService.normalizeGraph(sectionNode, conflate);
+            AlignmentModel rankAlignment = new AlignmentModel(sectionNode);
+            if (conflate != null) VariantGraphService.removeNormalization(sectionNode);
 
             // Get a map of ranks to colocation clusters, for ease of noting relations
             Map<Long, Set<Node>> clusterForRank = new HashMap<>();
