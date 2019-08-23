@@ -7,11 +7,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.core.Response;
+
+import java.util.ArrayList;
 
 import static org.junit.Assert.*;
 
@@ -38,16 +41,38 @@ public class VariantGraphServiceTest {
         traditionId = Util.getValueFromJson(result, "tradId");
     }
 
+    // public void sectionInTraditionTest()
+
     @Test
     public void getStartNodeTest() {
         try (Transaction tx = db.beginTx()) {
-            assertEquals("#START#", VariantGraphService
-                    .getStartNode(traditionId, db)
-                    .getProperty("text")
-                    .toString());
+            Node startNode = VariantGraphService.getStartNode(traditionId, db);
+            assertNotNull(startNode);
+            assertEquals("#START#", startNode.getProperty("text"));
+            assertEquals(true, startNode.getProperty("is_start"));
             tx.success();
-        } catch (NullPointerException e) {
-            fail();
+        }
+    }
+
+    @Test
+    public void getEndNodeTest() {
+        try (Transaction tx = db.beginTx()) {
+            Node endNode = VariantGraphService.getEndNode(traditionId, db);
+            assertNotNull(endNode);
+            assertEquals("#END#", endNode.getProperty("text"));
+            assertEquals(true, endNode.getProperty("is_end"));
+            tx.success();
+        }
+    }
+
+    @Test
+    public void getSectionNodesTest() {
+        ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(traditionId, db);
+        assertNotNull(sectionNodes);
+        assertEquals(1, sectionNodes.size());
+        try (Transaction tx = db.beginTx()) {
+            assertTrue(sectionNodes.get(0).hasLabel(Label.label("SECTION")));
+            tx.success();
         }
     }
 
@@ -55,9 +80,22 @@ public class VariantGraphServiceTest {
     public void getTraditionNodeTest() {
         Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db);
         assertNotNull(foundTradition);
+        // Now by section node
+        ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(traditionId, db);
+        assertNotNull(sectionNodes);
+        assertEquals(1, sectionNodes.size());
+        assertEquals(foundTradition, VariantGraphService.getTraditionNode(sectionNodes.get(0)));
     }
 
-    // TODO lots more things to test meanwhile!
+    // normalizeGraphTest()
+
+    // removeNormalizationTest()
+
+    // returnEntireTraditionTest()
+
+    // returnTraditionSectionTest()
+
+    // returnTraditionRelationsTest()
 
     /*
      * Shut down the database

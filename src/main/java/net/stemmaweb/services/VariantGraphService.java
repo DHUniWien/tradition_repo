@@ -39,6 +39,7 @@ public class VariantGraphService {
     }
 
     /**
+     * Get the start node of a section, or the first section in a tradition
      *
      * @param nodeId the ID of the tradition or section whose start node should be returned
      * @param db  the GraphDatabaseService where the tradition is stored
@@ -50,6 +51,7 @@ public class VariantGraphService {
     }
 
     /**
+     * Get the end node of a section, or the last section in a tradition
      *
      * @param nodeId the ID of the tradition or section whose end node should be returned
      * @param db  the GraphDatabaseService where the tradition is stored
@@ -127,13 +129,11 @@ public class VariantGraphService {
     }
 
     /**
+     * Get the node of the specified tradition
      *
-     * @param tradId
-     *            the string ID of the tradition we're hunting
-     * @param db
-     *            the GraphDatabaseService where the tradition is stored
-     * @return
-     *            the relevant tradition node
+     * @param tradId  the string ID of the tradition we're hunting
+     * @param db      the GraphDatabaseService where the tradition is stored
+     * @return        the relevant tradition node
      */
     public static Node getTraditionNode(String tradId, GraphDatabaseService db) {
         Node tradition;
@@ -145,11 +145,10 @@ public class VariantGraphService {
     }
 
     /**
+     * Get the tradition node that the specified section belongs to
      *
-     * @param section
-     *            the section node whose tradition we're hunting
-     * @return
-     *            the relevant tradition node
+     * @param section  the section node whose tradition we're hunting
+     * @return         the relevant tradition node
      */
     public static Node getTraditionNode(Node section) {
         Node tradition;
@@ -169,12 +168,12 @@ public class VariantGraphService {
      * Make a graph normalization sequence on the given section according to the given relation type, and
      * return a map of each section nodes to its representative node.
      *
-     * @param sectionNode - The section to be normalized
-     * @param normalizeType - The (string) name of the type on which we are normalizing
-     * @return A HashMap of nodes to their representatives
+     * @param sectionNode     The section to be normalized
+     * @param normalizeType   The (string) name of the type on which we are normalizing
+     * @return                A HashMap of nodes to their representatives
      *
-     * @throws Exception, if clusters cannot be got, if the requested relation type doesn't exist, or if
-     * something goes wrong with the transaction
+     * @throws                Exception, if clusters cannot be got, if the requested relation type doesn't
+     *                        exist, or if something goes wrong with the transaction
      */
 
     public static HashMap<Node,Node> normalizeGraph(Node sectionNode, String normalizeType) throws Exception {
@@ -224,6 +223,12 @@ public class VariantGraphService {
 
     }
 
+    /**
+     * Clean up after performing normalizeGraph.
+     *
+     * @param sectionNode  the section to clean up
+     * @throws             Exception, if anything was missed
+     */
 
     public static void removeNormalization(Node sectionNode) throws Exception {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
@@ -244,7 +249,7 @@ public class VariantGraphService {
         }
     }
 
-    /**
+    /*
      * Tradition and section crawlers, respectively
      */
 
@@ -290,15 +295,34 @@ public class VariantGraphService {
         return tv;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Return a traverser that includes all nodes and relationships for everything in a tradition.
+     *
+     * @param tradId  the string ID of the tradition to crawl
+     * @param db      the relevant GraphDatabaseService
+     * @return        an org.neo4j.graphdb.traversal.Traverser object for the whole tradition
+     */
     public static Traverser returnEntireTradition(String tradId, GraphDatabaseService db) {
         return returnEntireTradition(getTraditionNode(tradId, db));
     }
 
+    /**
+     * Return a traverser that includes all nodes and relationships for everything in a tradition.
+     *
+     * @param traditionNode   the Node object of the tradition to crawl
+     * @return                an org.neo4j.graphdb.traversal.Traverser object for the whole tradition
+     */
     public static Traverser returnEntireTradition(Node traditionNode) {
         return returnTraverser(traditionNode, traditionCrawler, PathExpanders.forDirection(Direction.OUTGOING));
     }
 
+    /**
+     * Return a traverser that includes all nodes and relationships for a particular section.
+     *
+     * @param sectionId  the string ID of the section to crawl
+     * @param db         the relevant GraphDatabaseService
+     * @return           an org.neo4j.graphdb.traversal.Traverser object for the section
+     */
     public static Traverser returnTraditionSection(String sectionId, GraphDatabaseService db) {
         Traverser tv;
         try (Transaction tx = db.beginTx()) {
@@ -309,11 +333,23 @@ public class VariantGraphService {
         return tv;
     }
 
-    public static Traverser returnTraditionRelations(Node traditionNode) {
-        return returnTraverser(traditionNode, traditionRelations, PathExpanders.allTypesAndDirections());
-    }
-
+    /**
+     * Return a traverser that includes all nodes and relationships for a particular section.
+     *
+     * @param sectionNode  the Node object of the section to crawl
+     * @return             an org.neo4j.graphdb.traversal.Traverser object for the section
+     */
     public static Traverser returnTraditionSection(Node sectionNode) {
         return returnTraverser(sectionNode, sectionCrawler, PathExpanders.forDirection(Direction.OUTGOING));
+    }
+
+    /**
+     * Return a traverser that includes all RELATED relationships in a tradition.
+     *
+     * @param traditionNode the Node object of the tradition to crawl
+     * @return             an org.neo4j.graphdb.traversal.Traverser object containing the relations
+     */
+    public static Traverser returnTraditionRelations(Node traditionNode) {
+        return returnTraverser(traditionNode, traditionRelations, PathExpanders.allTypesAndDirections());
     }
 }
