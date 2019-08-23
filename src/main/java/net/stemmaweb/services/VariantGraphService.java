@@ -1,11 +1,15 @@
 package net.stemmaweb.services;
 
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class VariantGraphService {
 
@@ -156,6 +160,89 @@ public class VariantGraphService {
             tx.success();
         }
         return tradition;
+    }
+
+    /*
+     * Methods for calcuating and removing shadow graphs - normalization and majority text
+     */
+
+    /**
+     * Make a graph normalization sequence on the given section according to the given relation type, and
+     * return a map of each section nodes to its representative node.
+     *
+     * @param sectionNode - The section to be normalized
+     * @param normalizeType - The (string) name of the type on which we are normalizing
+     * @return A HashMap of nodes to their representatives
+     *
+     * @throws Exception, if clusters cannot be got, if the requested relation type doesn't exist, or if
+     * something goes wrong with the transaction
+     */
+
+    public static HashMap<Node,Node> normalizeGraph(Node sectionNode, String normalizeType) throws Exception {
+        HashMap<Node,Node> representatives = new HashMap<>();
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        // Make sure the relation type exists
+        Node tradition = getTraditionNode(sectionNode, db);
+        Node relType = new RelationTypeModel(normalizeType).lookup(tradition);
+        if (relType == null)
+            throw new Exception("Relation type " + normalizeType + " does not exist in this tradition");
+
+        try (Transaction tx = db.beginTx()) {
+            Node sectionStart = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
+            // Get the list of all readings in this section
+            Set<Node> sectionNodes = returnTraditionSection(sectionNode).nodes().stream()
+                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
+
+            // Find the normalisation clusters and nominate a representative for each
+            String tradId = tradition.getProperty("id").toString();
+            String sectionId = String.valueOf(sectionNode.getId());
+            for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
+                    tradId, sectionId, db, normalizeType)) {
+                Node representative = RelationService.findRepresentative(cluster);
+                // Set the representative for all cluster members.
+                for (Node n : cluster) {
+                    representatives.put(n, representative);
+                    if (!sectionNodes.remove(n))
+                        throw new Exception("Tried to equivalence a node (" + n.getId() + ") that was not in sectionNodes");
+                }
+            }
+
+            // All remaining un-clustered readings are represented by themselves
+            sectionNodes.forEach(x -> representatives.put(x, x));
+
+            // Now that we have done this, make the shadow sequence
+            for (Relationship r : db.traversalDescription().breadthFirst()
+                    .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart).relationships()) {
+                Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
+                Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
+                ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
+            }
+            tx.success();
+        }
+
+        return representatives;
+
+    }
+
+
+    public static void removeNormalization(Node sectionNode) throws Exception {
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            Node sectionStartNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
+            // Now that it is all written out, flush the shadow sequences if they were created
+            db.traversalDescription().breadthFirst()
+                    .relationships(ERelations.NSEQUENCE,Direction.OUTGOING)
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+                    .traverse(sectionStartNode).relationships()
+                    .forEach(Relationship::delete);
+
+            // TEMPORARY: Check that we aren't polluting the graph DB
+            if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
+                    .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE)))
+                throw new Exception("Data consistency error on normalisation of section " + sectionNode.getId());
+            tx.success();
+        }
     }
 
     /**

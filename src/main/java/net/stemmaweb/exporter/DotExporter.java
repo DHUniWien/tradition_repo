@@ -24,8 +24,6 @@ import static net.stemmaweb.parser.Util.getExpander;
 import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
 
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -137,7 +135,7 @@ public class DotExporter
                 }
 
                 // Find our representative nodes, in case we are producing a normalised form of the graph
-                HashMap<Node, Node> representatives = getRepresentatives(db, tradId, sectionStartNode, dm.getNormaliseOn());
+                HashMap<Node, Node> representatives = getRepresentatives(sectionNode, dm.getNormaliseOn());
                 RelationshipType seqLabel = dm.getNormaliseOn() == null ? ERelations.SEQUENCE : ERelations.NSEQUENCE;
 
                 // Collect any lemma edge pairs
@@ -253,19 +251,9 @@ public class DotExporter
                             n.getId(), lemmaLinks.get(n).getId(), edgeId++));
                 }
 
-                // Now that it is all written out, flush the shadow sequences if they were created
+                // Clean up after ourselves
                 if (seqLabel.equals(ERelations.NSEQUENCE))
-                    db.traversalDescription().breadthFirst()
-                            .relationships(seqLabel,Direction.OUTGOING)
-                            .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                            .traverse(sectionStartNode).relationships()
-                            .forEach(Relationship::delete);
-
-                // TEMPORARY: Check that we aren't polluting the graph DB
-                if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
-                        .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE)))
-                    return Response.serverError()
-                            .entity("Data consistency error on normalisation of section " + sectionId).build();
+                    VariantGraphService.removeNormalization(sectionNode);
             }
 
             write("}\n");
@@ -299,41 +287,19 @@ public class DotExporter
      * Helper functions for variant graph production
      */
 
-    private static HashMap<Node, Node> getRepresentatives(
-            GraphDatabaseService db, String tradId, Node startNode, String normaliseOn)
+    private static HashMap<Node, Node> getRepresentatives(Node sectionNode, String normaliseOn)
             throws Exception {
-        String sectionId = startNode.getProperty("section_id").toString();
-        List<Node> sectionNodes = db.traversalDescription().breadthFirst()
-                .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
-                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-                .nodes().stream().collect(Collectors.toList());
-
-        HashMap<Node, Node> representatives = new HashMap<>();
-        if (normaliseOn != null) {
-            // Cluster the readings
-            for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
-                    tradId, sectionId, db, normaliseOn)) {
-                Node representative = RelationService.findRepresentative(cluster);
-                // Set the representative for all cluster members.
-                for (Node n : cluster)
-                    representatives.put(n, representative);
-            }
-            // Include nodes that weren't in clusters
-            sectionNodes.stream().filter(x -> !representatives.containsKey(x)).forEach(x -> representatives.put(x, x));
-            // Make the shadow sequences
-            for (Relationship r : db.traversalDescription().breadthFirst()
-                    .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode).relationships()) {
-                Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
-                Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
-                ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
-            }
-        } else {
+        if (normaliseOn == null) {
+            HashMap<Node, Node> representatives = new HashMap<>();
+            List<Node> sectionNodes = VariantGraphService.returnTraditionSection(sectionNode).nodes().stream()
+                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toList());
             for (Node n: sectionNodes) {
                 representatives.put(n, n);
             }
+            return representatives;
+        } else {
+            return VariantGraphService.normalizeGraph(sectionNode, normaliseOn);
         }
-        return representatives;
     }
 
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
