@@ -1,14 +1,15 @@
 package net.stemmaweb.services;
 
+import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class VariantGraphService {
@@ -244,7 +245,7 @@ public class VariantGraphService {
      * @throws             Exception, if anything was missed
      */
 
-    public static void removeNormalization(Node sectionNode) throws Exception {
+    public static void clearNormalization(Node sectionNode) throws Exception {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             Node sectionStartNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
@@ -259,6 +260,57 @@ public class VariantGraphService {
             if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
                     .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE) || x.isType(ERelations.REPRESENTS)))
                 throw new Exception("Data consistency error on normalization cleanup of section " + sectionNode.getId());
+            tx.success();
+        }
+    }
+
+    public static void calculateMajorityText(Node sectionNode) throws Exception {
+        // Get the IDs of our majority readings by going through the alignment table rank by rank
+        AlignmentModel am = new AlignmentModel(sectionNode);
+        ArrayList<Long> majorityReadings = new ArrayList<>();
+        for (int rank = 1; rank <= am.getLength(); rank++) {
+            int numNulls = 0;
+            ArrayList<ReadingModel> rankReadings = new ArrayList<>();
+            for (WitnessTokensModel wtm : am.getAlignment()) {
+                ReadingModel rdgAtRank = wtm.getTokens().get(rank - 1);
+                if (rdgAtRank == null)
+                    numNulls++;
+                else
+                    rankReadings.add(rdgAtRank);
+            }
+            // Now find the winner
+            Optional<ReadingModel> winner = rankReadings.stream().max(Comparator.comparingInt(x -> x.getWitnesses().size()));
+            if (winner.isPresent() && winner.get().getWitnesses().size() >= numNulls) {
+                majorityReadings.add(Long.valueOf(winner.get().getId()));
+            }
+        }
+
+        // Now make the relations between them
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            // Go through the alignment model rank by rank, finding the majority reading for each rank
+            String sectionId = String.valueOf(sectionNode.getId());
+            Node prior = getStartNode(sectionId, db);
+            while(!majorityReadings.isEmpty()) {
+                Node next = db.getNodeById(majorityReadings.remove(0));
+                prior.createRelationshipTo(next, ERelations.MAJORITY);
+                prior = next;
+            }
+            // Now prior is the last node that was in majorityReadings; connect it to the end
+            prior.createRelationshipTo(getEndNode(sectionId, db), ERelations.MAJORITY);
+            tx.success();
+        }
+    }
+
+    public static void clearMajorityText(Node sectionNode) {
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            Node startNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
+            db.traversalDescription().depthFirst()
+                    .relationships(ERelations.MAJORITY, Direction.OUTGOING)
+                    .evaluator(Evaluators.all())
+                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
+                    .relationships().forEach(Relationship::delete);
             tx.success();
         }
     }
