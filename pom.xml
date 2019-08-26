@@ -24,26 +24,35 @@
 	</build>
 	<dependencies>
 		<dependency>
+			<groupId>org.glassfish.jersey.containers</groupId>
+			<artifactId>jersey-container-servlet-core</artifactId>
+			<version>2.29</version>
+		</dependency>
+		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
 			<artifactId>jersey-server</artifactId>
-			<version>2.29</version>
+			<version>${jersey-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
 			<artifactId>jersey-client</artifactId>
-			<version>2.29</version>
+			<version>${jersey-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jersey.core</groupId>
 			<artifactId>jersey-common</artifactId>
-			<version>2.29</version>
+			<version>${jersey-version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jersey.media</groupId>
 			<artifactId>jersey-media-multipart</artifactId>
-			<version>2.29</version>
+			<version>${jersey-version}</version>
 		</dependency>
-
+		<dependency>
+			<groupId>org.glassfish.jersey.media</groupId>
+			<artifactId>jersey-media-json-jackson</artifactId>
+			<version>${jersey-version}</version>
+		</dependency>
 
 
 		<!-- <dependency> <groupId>${jersey-group}</groupId> <artifactId>jersey-server</artifactId> 
@@ -158,17 +167,17 @@
 			<version>2.29</version>
 			<scope>test</scope>
 		</dependency>
-<dependency>
-    <groupId>org.glassfish.jersey.test-framework.providers</groupId>
-    <artifactId>jersey-test-framework-provider-grizzly2</artifactId>
-    <version>2.29</version>
-    <scope>test</scope>
-</dependency>
-<dependency>
-    <groupId>org.glassfish.jersey.inject</groupId>
-    <artifactId>jersey-hk2</artifactId>
-    <version>2.29</version>
-</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.test-framework.providers</groupId>
+			<artifactId>jersey-test-framework-provider-grizzly2</artifactId>
+			<version>2.29</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.jersey.inject</groupId>
+			<artifactId>jersey-hk2</artifactId>
+			<version>2.29</version>
+		</dependency>
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
@@ -243,7 +252,7 @@
 		<neo4j-version>3.5.2</neo4j-version>
 		<neo4j-algo-version>3.5.3.1</neo4j-algo-version>
 		<jackson-version>2.9.9</jackson-version>
-		<jersey-version>1.19</jersey-version>
+		<jersey-version>2.29</jersey-version>
 		<jersey-group>com.sun.jersey</jersey-group>
 
 	</properties>
