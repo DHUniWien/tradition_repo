@@ -44,9 +44,9 @@ public class Benchmark1kNodes extends BenchmarkTests {
                 new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         // Create the Jersey test server
-        webResource = new Root();
+        //webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(Root.class)
                 .create();
         try {
             jerseyTest.setUp();

@@ -2,8 +2,6 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.util.ArrayList;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
@@ -11,6 +9,8 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,18 +41,18 @@ public class DatabaseServiceTest {
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
         userId = "simon";
         Util.setupTestDB(db, userId);
-        Root webResource = new Root();
+
 
         /*
          * load a tradition to the test DB
          */
         jerseyTest = JerseyTestServerFactory
                 .newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(Root.class)
                 .create();
         jerseyTest.setUp();
 
-        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", userId,
+        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", userId,
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         /*

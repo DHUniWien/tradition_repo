@@ -1,25 +1,27 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import com.opencsv.CSVReader;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.test.framework.JerseyTest;
+
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
-import org.codehaus.jettison.json.JSONArray;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+
+import org.glassfish.jersey.test.JerseyTest;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.StringReader;
@@ -44,15 +46,15 @@ public class TabularInputOutputTest extends TestCase {
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
-        Root webResource = new Root();
+
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(Root.class)
                 .create();
         jerseyTest.setUp();
     }
 
     public void testParseCSV() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium_simple.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -78,7 +80,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testParseCsvLayers() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -110,7 +112,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testSetRelationship() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");
         String tradId = Util.getValueFromJson(response, "tradId");
         Tradition tradition = new Tradition(tradId);
@@ -135,24 +137,23 @@ public class TabularInputOutputTest extends TestCase {
         relationship.setType("grammatical");
         relationship.setAlters_meaning(0L);
         relationship.setScope("tradition");
-        ClientResponse actualResponse = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
+        Response actualResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request()
+                .post(Entity.json(relationship));
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
-        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
         assertEquals(0, readingsAndRelationships.getReadings().size());
         assertEquals(1, readingsAndRelationships.getRelations().size());
     }
 
     public void testParseExcel() {
         // Test a bad file
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
                 "src/TestFiles/armexample_bad.xlsx", "xlsx");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
-        assertTrue(response.getEntity(String.class).contains("has too many columns!"));
+        assertTrue(response.readEntity(String.class).contains("has too many columns!"));
 
 
         // Test a good XLS file
@@ -208,20 +209,19 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() throws Exception {
         // Set up some data
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         // Get it back out
-        ClientResponse result = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/json")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+        Response result = jerseyTest
+                .target("/tradition/" + traditionId + "/json")
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Get the JSON out
-        JSONObject table = result.getEntity(JSONObject.class);
+        JSONObject table = result.readEntity(JSONObject.class);
         assertTrue(table.has("alignment"));
         assertTrue(table.has("length"));
         assertEquals(18, table.getInt("length"));
@@ -237,14 +237,15 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testExportSelectedSections() throws Exception {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
                 "1", "src/TestFiles/florilegium_w.csv", "csv");
-        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
 
         ArrayList<String> tradSections = new ArrayList<>();
         // Get the existing single section ID
-        SectionModel firstSection = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+        SectionModel firstSection = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request()
                 .get(new GenericType<List<SectionModel>>() {}).get(0);
         assertNotNull(firstSection);
         tradSections.add(firstSection.getId());
@@ -261,91 +262,84 @@ public class TabularInputOutputTest extends TestCase {
 
         // Request all sections
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/json")
-                 .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .target("/tradition/" + tradId + "/json")
+                .request(MediaType.APPLICATION_JSON)
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        JSONObject table = response.getEntity(JSONObject.class);
+        JSONObject table = response.readEntity(JSONObject.class);
         assertEquals(272, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
         // Request section 4
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/json")
+                .target("/tradition/" + tradId + "/json")
                 .queryParam("section", tradSections.get(3))
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        table = response.getEntity(JSONObject.class);
+        table = response.readEntity(JSONObject.class);
         assertEquals(53, table.getInt("length"));
         assertEquals(5, table.getJSONArray("alignment").length());
 
         // Request sections up to 2
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/json")
+                .target("/tradition/" + tradId + "/json")
                 .queryParam("section", tradSections.get(0))
                 .queryParam("section", tradSections.get(1))
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        table = response.getEntity(JSONObject.class);
+        table = response.readEntity(JSONObject.class);
         assertEquals(155, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
         // Request section 3
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/json")
+                .target("/tradition/" + tradId + "/json")
                 .queryParam("section", tradSections.get(2))
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        table = response.getEntity(JSONObject.class);
+        table = response.readEntity(JSONObject.class);
         assertEquals(64, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
 
         // Request sections 3-bad
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/tsv")
+                .target("/tradition/" + tradId + "/tsv")
                 .queryParam("section", tradSections.get(2))
                 .queryParam("section", "123456")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("Section 123456 not found in tradition", response.getEntity(String.class));
+        assertEquals("Section 123456 not found in tradition", response.readEntity(String.class));
 
         // Request sections on nonexistent tradition
         response = jerseyTest
-                .resource()
-                .path("/tradition/tradId/json")
+                .target("/tradition/tradId/json")
                 .queryParam("section", tradSections.get(1))
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 
     }
 
     public void testConflatedJSONExport () throws Exception {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/globalrel_test.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
         assertNotNull(traditionId);
         // Get it back out
-        ClientResponse result = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/json")
+        Response result = jerseyTest
+                .target("/tradition/" + traditionId + "/json")
                 .queryParam("conflate", "collated")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Get the JSON out
-        JSONObject table = result.getEntity(JSONObject.class);
+        JSONObject table = result.readEntity(JSONObject.class);
         assertTrue(table.has("alignment"));
         assertTrue(table.has("length"));
         assertEquals(10, table.getInt("length"));
@@ -372,7 +366,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testCSVExport() throws Exception {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -397,18 +391,18 @@ public class TabularInputOutputTest extends TestCase {
         spellingrel.setTarget(pz);
         spellingrel.setType("spelling");
         spellingrel.setScope("local");
-        ClientResponse result = jerseyTest.resource().path("/tradition/" + traditionId + "/relation/")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, spellingrel);
+        Response result = jerseyTest.target("/tradition/" + traditionId + "/relation/")
+                .request()
+                .post(Entity.json(spellingrel));
         assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
 
 
         // Get CSV without conflation
-        result = jerseyTest.resource().path("/tradition/" + traditionId + "/csv")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+        result = jerseyTest.target("/tradition/" + traditionId + "/csv")
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        CSVReader rdr = new CSVReader(new StringReader(result.getEntity(String.class)));
+        CSVReader rdr = new CSVReader(new StringReader(result.readEntity(String.class)));
         // See that we have our witnesses
         String[] wits = rdr.readNext();
         assertEquals(3, wits.length);
@@ -425,13 +419,12 @@ public class TabularInputOutputTest extends TestCase {
 
         // Now with conflation, and exercise the tab-sep functionality at the same time
         result = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/tsv")
+                .target("/tradition/" + traditionId + "/tsv")
                 .queryParam("conflate", "spelling")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        rdr = new CSVReader(new StringReader(result.getEntity(String.class)), '\t');
+        rdr = new CSVReader(new StringReader(result.readEntity(String.class)), '\t');
         // See that we have our witnesses
         wits = rdr.readNext();
         assertEquals(3, wits.length);
@@ -446,17 +439,17 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testExportMultiSection() throws Exception {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
                 "src/TestFiles/lf2.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
         assertNotNull(traditionId);
 
         // Get the CSV and check the witness length
-        response = jerseyTest.resource().path("/tradition/" + traditionId + "/csv")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-        CSVReader rdr = new CSVReader(new StringReader(response.getEntity(String.class)));
+        response = jerseyTest.target("/tradition/" + traditionId + "/csv")
+                .request()
+                .get();
+        CSVReader rdr = new CSVReader(new StringReader(response.readEntity(String.class)));
         // See that we have our witnesses
         String[] wits = rdr.readNext();
         assertEquals(34, wits.length);
@@ -467,10 +460,10 @@ public class TabularInputOutputTest extends TestCase {
                 "stemmaweb", "section 2");
 
         // Export the whole thing to JSON and check the readings
-        response = jerseyTest.resource().path("/tradition/" + traditionId + "/json")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-        JSONObject table = response.getEntity(JSONObject.class);
+        response = jerseyTest.target("/tradition/" + traditionId + "/json")
+                .request()
+                .get();
+        JSONObject table = response.readEntity(JSONObject.class);
         assertTrue(table.has("alignment"));
         assertTrue(table.has("length"));
         assertEquals(30, table.getInt("length"));
@@ -484,10 +477,10 @@ public class TabularInputOutputTest extends TestCase {
 
 
         // Now export the whole thing to CSV
-        response = jerseyTest.resource().path("/tradition/" + traditionId + "/csv")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-        rdr = new CSVReader(new StringReader(response.getEntity(String.class)));
+        response = jerseyTest.target("/tradition/" + traditionId + "/csv")
+                .request()
+                .get();
+        rdr = new CSVReader(new StringReader(response.readEntity(String.class)));
         // See that we have our witnesses
         wits = rdr.readNext();
         assertEquals(37, wits.length);
@@ -496,7 +489,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testExportWithLayers() throws Exception {
         // Take the uncorrected MoE section
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
                 "src/TestFiles/Matthew-401.json", "cxjson");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -507,10 +500,10 @@ public class TabularInputOutputTest extends TestCase {
                 "cxjson", "AM 407");
 
         // Export it to JSON
-        response = jerseyTest.resource().path("/tradition/" + traditionId + "/json")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
-        JSONObject table = response.getEntity(JSONObject.class);
+        response = jerseyTest.target("/tradition/" + traditionId + "/json")
+                .request()
+                .get();
+        JSONObject table = response.readEntity(JSONObject.class);
         assertEquals(239, table.getInt("length"));
         JSONArray alignment = table.getJSONArray("alignment");
         // There should be a.c. columns for these witnesses
@@ -547,43 +540,44 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testComplexLayerExport() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium_tei_ps.xml", "teips");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
 
         // Split this into multiple sections - ranks 38, 156, 228
-        List<SectionModel> allSections = jerseyTest.resource().path("/tradition/" + tradId + "/sections/")
+        List<SectionModel> allSections = jerseyTest.target("/tradition/" + tradId + "/sections/")
+                .request()
                 .get(new GenericType<List<SectionModel>>() {});
         String section1 = allSections.get(0).getId();
-        ClientResponse jerseyResponse = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/228")
-                .post(ClientResponse.class);
+        Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/228")
+                .request()
+                .post(Entity.json(null));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         String section4 = Util.getValueFromJson(jerseyResponse, "sectionId");
-        jerseyResponse = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/156")
-                .post(ClientResponse.class);
+        jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/156")
+                .request()
+                .post(Entity.json(null));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         // String section3 = Util.getValueFromJson(jerseyResponse, "sectionId");
-        jerseyResponse = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/38")
-                .post(ClientResponse.class);
+        jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/38")
+                .request()
+                .post(Entity.json(null));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         // String section2 = Util.getValueFromJson(jerseyResponse, "sectionId");
 
         // Section 1 should be missing witnesses B and G
         // Section 4 should be missing all witnesses except A/B/C/P/S
-        List<WitnessModel> section1Wits = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + section1 + "/witnesses")
+        List<WitnessModel> section1Wits = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(11, section1Wits.size());
         for (WitnessModel wm : section1Wits) {
             assertNotEquals("G", wm.getSigil());
             assertNotEquals("B", wm.getSigil());
         }
-        List<WitnessModel> section4Wits = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/section/" + section4 + "/witnesses")
+        List<WitnessModel> section4Wits = jerseyTest.target("/tradition/" + tradId + "/section/" + section4 + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(5, section4Wits.size());
         List<String> expectedWits = Arrays.asList("A", "B", "C", "P", "S");
@@ -591,12 +585,12 @@ public class TabularInputOutputTest extends TestCase {
             assertTrue(expectedWits.contains(wm.getSigil()));
 
         // Now we are ready to export tabular and see what we get.
-        jerseyResponse = jerseyTest.resource().path("/tradition/" + tradId + "/json")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+        jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/json")
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         // Ensure we have all our witnesses
-        AlignmentModel alignment = jerseyResponse.getEntity(AlignmentModel.class);
+        AlignmentModel alignment = jerseyResponse.readEntity(AlignmentModel.class);
         assertEquals(280, alignment.getLength());
         List<WitnessTokensModel> table = alignment.getAlignment();
         assertEquals(21, table.size());
@@ -620,12 +614,11 @@ public class TabularInputOutputTest extends TestCase {
         // Ensure that each text is correct
         for (WitnessTokensModel wtm : table) {
             assertEquals(alignment.getLength(), wtm.getTokens().size());
-            WebResource request = jerseyTest.resource()
-                    .path("/tradition/" + tradId + "/witness/" + wtm.getWitness() + "/readings");
+            WebTarget req = jerseyTest.target("/tradition/" + tradId + "/witness/" + wtm.getWitness() + "/readings");
             if (wtm.hasLayer()) {
-                request = request.queryParam("layer", wtm.getLayer());
+                req = req.queryParam("layer", wtm.getLayer());
             }
-            List<ReadingModel> witReadings = request.get(new GenericType<List<ReadingModel>>() {});
+            List<ReadingModel> witReadings = req.request().get(new GenericType<List<ReadingModel>>() {});
             // Save the specific columns we will need later
             switch (wtm.constructSigil()) {
                 case "Q (a.c.)":
@@ -803,19 +796,19 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testCharMatrixOutput () {
         // Set up some data
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
 
         // Get it back out
-        ClientResponse result = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/matrix")
-                .get(ClientResponse.class);
+        Response result = jerseyTest
+                .target("/tradition/" + traditionId + "/matrix")
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Look at the actual output - it should have 3 witnesses and 10 positions
-        String matrix = result.getEntity(String.class);
+        String matrix = result.readEntity(String.class);
         String[] matrixLines = matrix.split("\\n");
         assertEquals("\t3\t10", matrixLines[0]);
         assertEquals("A         AAAXAAAAAA", matrixLines[1]);
@@ -823,12 +816,13 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals("C         XXXABAACBX", matrixLines[3]);
 
         // Now restrict the maximum number of divergences to two
-        result = jerseyTest.resource().path("/tradition/" + traditionId + "/matrix")
+        result = jerseyTest.target("/tradition/" + traditionId + "/matrix")
                 .queryParam("maxVars", "2")
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Look at the actual output - it should have 3 witnesses but now only 9 positions
-        matrix = result.getEntity(String.class);
+        matrix = result.readEntity(String.class);
         matrixLines = matrix.split("\\n");
         assertEquals("\t3\t9", matrixLines[0]);
         assertEquals("A         AAAXAAAAA", matrixLines[1]);

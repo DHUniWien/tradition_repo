@@ -1,14 +1,13 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -19,6 +18,7 @@ import org.xml.sax.InputSource;
 
 import javax.ws.rs.core.Response;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -47,7 +47,7 @@ public class GraphMLInputOutputTest extends TestCase {
         // Create a JerseyTestServer for the necessary REST API calls
         jerseyTest = Util.setupJersey();
 
-        ClientResponse r = Util.createTraditionFromFileOrString(jerseyTest, "Tradition",
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Tradition",
                     "BI", "me@example.org", "src/TestFiles/testTradition.xml", "stemmaweb");
         tradId = Util.getValueFromJson(r, "tradId");
 
@@ -61,57 +61,60 @@ public class GraphMLInputOutputTest extends TestCase {
 
     public void testXMLOutput() {
         // Just request the tradition and make sure that we get XML back out
-        ClientResponse r = jerseyTest.resource().path("/tradition/" + tradId + "/graphml")
-                .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), r.getStatus());
-        assertTrue(r.getEntity(String.class)
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml")
+                .request(MediaType.APPLICATION_XML_TYPE).get();
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        assertTrue(r.readEntity(String.class)
                 .contains("<key attr.name=\"neolabel\" attr.type=\"string\" for=\"node\" id=\"dn0\"/>"));
     }
 
     public void testXMLInputExistingTradition() {
-        ClientResponse r = jerseyTest.resource().path("/tradition/" + tradId + "/graphml")
-                .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
-        String graphML = r.getEntity(String.class);
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml")
+                .request(MediaType.APPLICATION_XML_TYPE).get();
+        String graphML = r.readEntity(String.class);
 
         r = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
                 "me@example.org", graphML, "graphml");
-        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), r.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         assertNotEquals(tradId, Util.getValueFromJson(r, "tradId"));
     }
 
     public void testXMLInput() {
         // Now we have to be able to parse back in what we spat out.
-        ClientResponse r = jerseyTest.resource().path("/tradition/" + tradId + "/graphml")
-                .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
-        String graphML = r.getEntity(String.class);
+        Response r = jerseyTest.target("/tradition/" + tradId + "/graphml")
+                .request(MediaType.APPLICATION_XML_TYPE).get();
+        String graphML = r.readEntity(String.class);
 
-        r = jerseyTest.resource().path("/tradition/" + tradId).delete(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), r.getStatus());
+        r = jerseyTest.target("/tradition/" + tradId).request().delete();
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
         r = Util.createTraditionFromFileOrString(jerseyTest, "New-name tradition", "LR",
                 "me@example.org", graphML, "graphml");
-        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), r.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
 
         // Does it have the right tradition ID?
         assertEquals(tradId, Util.getValueFromJson(r, "tradId"));
 
         // Did it ignore the passed tradition attributes in favor of the XML ones?
-        TraditionModel t = jerseyTest.resource().path("/tradition/" + tradId).get(TraditionModel.class);
+        TraditionModel t = jerseyTest.target("/tradition/" + tradId).request().get(TraditionModel.class);
         assertEquals("BI", t.getDirection());
         assertEquals("Tradition", t.getName());
 
         // Does the tradition have the right number of sections?
-        ArrayList<SectionModel> s = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
-                .get(new GenericType<ArrayList<SectionModel>>(){});
+        ArrayList<SectionModel> s = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request()
+                .get(new GenericType<ArrayList<SectionModel>>() {});
         assertEquals(1, s.size());
         assertEquals("DEFAULT", s.get(0).getName());
 
         // Does the tradition have the right number of readings?
-        ArrayList<ReadingModel> rdgs = jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+        ArrayList<ReadingModel> rdgs = jerseyTest.target("/tradition/" + tradId + "/readings")
+                .request()
                 .get(new GenericType<ArrayList<ReadingModel>>(){});
         assertEquals(26, rdgs.size());
 
         // Do the readings claim to belong to the new sections and not the old?
-        Set<String> sections = jerseyTest.resource().path("/tradition/" + tradId + "/sections")
+        Set<String> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request()
                 .get(new GenericType<List<SectionModel>>() {})
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
@@ -123,16 +126,17 @@ public class GraphMLInputOutputTest extends TestCase {
         }
 
         // Do the witness texts match?
-        ArrayList<WitnessModel> wits = jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+        ArrayList<WitnessModel> wits = jerseyTest.target("/tradition/" + tradId + "/witnesses")
+                .request()
                 .get(new GenericType<ArrayList<WitnessModel>>(){});
         assertEquals(3, wits.size());
         String textA = "when april with his showers sweet with fruit the drought of march has pierced unto the root";
         String textB = "when showers sweet with april fruit the march of drought has pierced to the root";
         String textC = "when showers sweet with april fruit teh drought of march has pierced teh rood";
         String restPath = "/tradition/" + tradId + "/witness/%s/text";
-        assertEquals(textA, Util.getValueFromJson(jerseyTest.resource().path(String.format(restPath, "A")).get(ClientResponse.class), "text"));
-        assertEquals(textB, Util.getValueFromJson(jerseyTest.resource().path(String.format(restPath, "B")).get(ClientResponse.class), "text"));
-        assertEquals(textC, Util.getValueFromJson(jerseyTest.resource().path(String.format(restPath, "C")).get(ClientResponse.class), "text"));
+        assertEquals(textA, Util.getValueFromJson(jerseyTest.target(String.format(restPath, "A")).request().get(), "text"));
+        assertEquals(textB, Util.getValueFromJson(jerseyTest.target(String.format(restPath, "B")).request().get(), "text"));
+        assertEquals(textC, Util.getValueFromJson(jerseyTest.target().path(String.format(restPath, "C")).request().get(), "text"));
 
         // Do the stemmas match?
         String directedStemma = "digraph \"stemma\" {  0 [ class=hypothetical ];  A [ class=extant ];  " +
@@ -140,7 +144,8 @@ public class GraphMLInputOutputTest extends TestCase {
         String undirectedStemma = "graph \"Semstem 1402333041_0\" {  0 [ class=hypothetical ];  A [ class=extant ];  " +
                 "B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  B -- C;}";
 
-        ArrayList<StemmaModel> stemmata = jerseyTest.resource().path("/tradition/" + tradId + "/stemmata")
+        ArrayList<StemmaModel> stemmata = jerseyTest.target("/tradition/" + tradId + "/stemmata")
+                .request()
                 .get(new GenericType<ArrayList<StemmaModel>>(){});
         assertEquals(2, stemmata.size());
         if (stemmata.get(0).getIs_undirected()) {
@@ -154,14 +159,14 @@ public class GraphMLInputOutputTest extends TestCase {
 
     public void testXMLOutputSingleSection() {
         // Start with a multi-section tradition and get the section IDs
-        List<SectionModel> sections = jerseyTest.resource().path("/tradition/" + multiTradId + "/sections")
-                .type(MediaType.APPLICATION_JSON_TYPE).get(new GenericType<List<SectionModel>>() {});
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + multiTradId + "/sections")
+                .request(MediaType.APPLICATION_JSON_TYPE).get(new GenericType<List<SectionModel>>() {});
         // Get the GraphML output, make sure it has correct # of nodes & edges
-        ClientResponse r = jerseyTest.resource().path("/tradition/" + multiTradId + "/section/"
+        Response r = jerseyTest.target("/tradition/" + multiTradId + "/section/"
                 + sections.get(0).getId() + "/graphml")
-                .type(MediaType.APPLICATION_XML_TYPE).get(ClientResponse.class);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), r.getStatus());
-        String xmlresp = r.getEntity(String.class);
+                .request(MediaType.APPLICATION_XML_TYPE).get();
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        String xmlresp = r.readEntity(String.class);
         assertTrue(xmlresp.contains("<key attr.name=\"neolabel\" attr.type=\"string\" for=\"node\" id=\"dn0\"/>"));
 
         InputSource is = new InputSource();
@@ -177,10 +182,10 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(31, nodes.getLength());
 
         // Get the GraphML output with witnesses included, make sure it is correct
-        xmlresp = jerseyTest.resource().path("/tradition/" + multiTradId + "/section/"
+        xmlresp = jerseyTest.target("/tradition/" + multiTradId + "/section/"
                 + sections.get(1).getId() + "/graphml")
                 .queryParam("include_witnesses", "true")
-                .type(MediaType.APPLICATION_XML_TYPE).get(String.class);
+                .request(MediaType.APPLICATION_XML_TYPE).get(String.class);
 
         is = new InputSource();
         is.setCharacterStream(new StringReader(xmlresp));
@@ -196,26 +201,30 @@ public class GraphMLInputOutputTest extends TestCase {
     }
 
     public void testXMLInputCreateFromSection() {
-        List<SectionModel> ms = jerseyTest.resource().path("/tradition/" + multiTradId + "/sections")
+        List<SectionModel> ms = jerseyTest.target("/tradition/" + multiTradId + "/sections")
+                .request()
                 .get(new GenericType<List<SectionModel>>() {});
-        String sectxml = jerseyTest.resource()
-                .path("/tradition/" + multiTradId + "/section/" + ms.get(1).getId() + "/graphml")
+        String sectxml = jerseyTest
+                .target("/tradition/" + multiTradId + "/section/" + ms.get(1).getId() + "/graphml")
+                .request()
                 .get(String.class);
         assertTrue(sectxml.contains("graphdrawing"));
 
         // Try to create a new tradition with only a section download
-        ClientResponse r = Util.createTraditionFromFileOrString(jerseyTest, "legend", "LR",
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "legend", "LR",
                 "me@example.org", sectxml, "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         String legendId = Util.getValueFromJson(r, "tradId");
-        String aWitnessText = Util.getValueFromJson(jerseyTest.resource().path("/tradition/" + legendId + "/witness/B/text")
-                .get(ClientResponse.class), "text");
+        String aWitnessText = Util.getValueFromJson(jerseyTest.target("/tradition/" + legendId + "/witness/B/text")
+                .request()
+                .get(), "text");
         assertEquals("quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magisque illustrabatur iugiter ac informabatur Sanctus autem", aWitnessText);
-        WitnessModel aWitness = jerseyTest.resource().path("/tradition/" + legendId + "/witness/B").get(WitnessModel.class);
+        WitnessModel aWitness = jerseyTest.target("/tradition/" + legendId + "/witness/B").request().get(WitnessModel.class);
         assertEquals("B", aWitness.getSigil());
 
         // Do the readings have the right section ID set?
-        Set<String> newSections = jerseyTest.resource().path("/tradition/" + legendId + "/sections")
+        Set<String> newSections = jerseyTest.target("/tradition/" + legendId + "/sections")
+                .request()
                 .get(new GenericType<List<SectionModel>>() {})
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
@@ -227,7 +236,8 @@ public class GraphMLInputOutputTest extends TestCase {
         }
 
         // Does the tradition have any relation types defined?
-        List<RelationTypeModel> rtypes = jerseyTest.resource().path("/tradition/" + legendId + "/relationtypes")
+        List<RelationTypeModel> rtypes = jerseyTest.target("/tradition/" + legendId + "/relationtypes")
+                .request()
                 .get(new GenericType<List<RelationTypeModel>>() {});
         assertEquals(3, rtypes.size());
         List<String> rnames = rtypes.stream().map(RelationTypeModel::getName).collect(Collectors.toList());
@@ -240,18 +250,20 @@ public class GraphMLInputOutputTest extends TestCase {
         String florId = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Florilegium",
                 "LR", "me@example.org", "src/TestFiles/florilegium_z.csv", "csv"), "tradId");
         // Get the single-section XML
-        String chryxml = jerseyTest.resource().path("/tradition/" + florId + "/graphml").get(String.class);
+        String chryxml = jerseyTest.target("/tradition/" + florId + "/graphml").request().get(String.class);
         assertTrue(chryxml.contains("graphdrawing"));
 
         // Add a second section so we can export it
         String florSect2 = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, florId,
                 "src/TestFiles/florilegium_y.csv", "csv", "Chrysostom"), "parentId");
-        String womenxml = jerseyTest.resource().path("/tradition/" + florId + "/section/" + florSect2 + "/graphml")
+        String womenxml = jerseyTest.target("/tradition/" + florId + "/section/" + florSect2 + "/graphml")
+                .request()
                 .get(String.class);
         assertTrue(womenxml.contains("graphdrawing"));
 
         // Check that all our witnesses are there
-        List<WitnessModel> wits = jerseyTest.resource().path("/tradition/" + florId + "/witnesses")
+        List<WitnessModel> wits = jerseyTest.target("/tradition/" + florId + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, wits.size());
 
@@ -259,14 +271,16 @@ public class GraphMLInputOutputTest extends TestCase {
         String flor2Id = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Floritwo",
                 "LR", "me@example.org", chryxml, "graphml"), "tradId");
         // Count the witnesses
-        wits = jerseyTest.resource().path("/tradition/" + flor2Id + "/witnesses")
+        wits = jerseyTest.target("/tradition/" + flor2Id + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(5, wits.size());
         // Add the second section
-        ClientResponse r = Util.addSectionToTradition(jerseyTest, flor2Id, womenxml, "graphml", "Appearance of women");
+        Response r = Util.addSectionToTradition(jerseyTest, flor2Id, womenxml, "graphml", "Appearance of women");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         // Count the witnesses
-        wits = jerseyTest.resource().path("/tradition/" + flor2Id + "/witnesses")
+        wits = jerseyTest.target("/tradition/" + flor2Id + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, wits.size());
     }

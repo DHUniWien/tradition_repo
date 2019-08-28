@@ -133,7 +133,7 @@ public class Util {
     public static String getValueFromJson (Response r, String key) {
         String value = null;
         try {
-            JSONObject content = new JSONObject((String) r.getEntity());
+            JSONObject content = new JSONObject(r.readEntity(String.class));
             if (content.has(key))
                 value = String.valueOf(content.get(key));
         } catch (JSONException e) {
@@ -180,16 +180,16 @@ public class Util {
             tx.success();
         }
     }
-/*
+
     public static JerseyTest setupJersey() throws Exception {
-        Root webResource = new Root();
+//        Root webResource = new Root();
         JerseyTest jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource).
+                .addResource(Root.class)
                 .create();
         jerseyTest.setUp();
         return jerseyTest;
     }
-*/
+
     public static Response createTraditionFromFileOrString(JerseyTest jerseyTest, String tName, String tDir,
                                                                  String userId, String fName, String fType) {
         FormDataMultiPart form = new FormDataMultiPart();
@@ -207,7 +207,7 @@ public class Util {
         }
         return  jerseyTest
                 .target("/tradition")
-                .request(MediaType.MULTIPART_FORM_DATA_TYPE)
+                .request()
                 .post(Entity.entity(form, form.getMediaType()));
     }
 

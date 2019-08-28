@@ -1,18 +1,19 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
@@ -36,7 +37,7 @@ public class RelationTypeTest extends TestCase {
         // Create a JerseyTestServer for the necessary REST API calls
         jerseyTest = Util.setupJersey();
 
-        ClientResponse jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/john.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
@@ -45,10 +46,11 @@ public class RelationTypeTest extends TestCase {
 
     public void testNoRelationTypes() {
         // Initially, no relationship types should be defined.
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtypes")
-                .get(ClientResponse.class);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<RelationTypeModel> allRelTypes = jerseyResult.getEntity(new GenericType<List<RelationTypeModel>>() {});
+        List<RelationTypeModel> allRelTypes = jerseyResult.readEntity(new GenericType<List<RelationTypeModel>>() {});
         assertEquals(0, allRelTypes.size());
     }
 
@@ -66,15 +68,16 @@ public class RelationTypeTest extends TestCase {
         newRel.setType("spelling");
         newRel.setIs_significant("no");
 
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(2, result.getRelations().size());
 
         // Now check that the spelling relation type has been created
-        List<RelationTypeModel> allRelTypes = jerseyTest.resource().path("/tradition/" + tradId + "/relationtypes")
+        List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
+                .request()
                 .get(new GenericType<List<RelationTypeModel>>() {});
         assertEquals(1, allRelTypes.size());
         assertEquals("spelling", allRelTypes.get(0).getName());
@@ -106,9 +109,9 @@ public class RelationTypeTest extends TestCase {
         rtm.setName("spelling");
         rtm.setDescription("A weaker version of the spelling relationship");
         rtm.setIs_colocation(true);
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/spelling")
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, rtm);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rtm));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         // Now use it
@@ -120,15 +123,16 @@ public class RelationTypeTest extends TestCase {
         newRel.setType("spelling");
         newRel.setIs_significant("no");
 
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(2, result.getRelations().size());
 
         // Check that our relation type hasn't changed
-        List<RelationTypeModel> allRelTypes = jerseyTest.resource().path("/tradition/" + tradId + "/relationtypes")
+        List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
+                .request()
                 .get(new GenericType<List<RelationTypeModel>>() {});
         assertEquals(1, allRelTypes.size());
         assertEquals("spelling", allRelTypes.get(0).getName());
@@ -146,9 +150,9 @@ public class RelationTypeTest extends TestCase {
         rtm.setDescription("Something we care about for our own reasons");
         rtm.setIs_colocation(true);
         rtm.setIs_generalizable(false);
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/important")
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, rtm);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/important")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rtm));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         // Now use it
@@ -158,9 +162,9 @@ public class RelationTypeTest extends TestCase {
         newRel.setScope("tradition");
         newRel.setType("important");
 
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
     }
 
@@ -174,9 +178,9 @@ public class RelationTypeTest extends TestCase {
         kp.setProperty("αυτῶ");
         ReadingChangePropertyModel newNormal = new ReadingChangePropertyModel();
         newNormal.addProperty(kp);
-        ClientResponse jerseyResult = jerseyTest.resource().path("/reading/" + auTw)
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, newNormal);
+        Response jerseyResult = jerseyTest.target("/reading/" + auTw)
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(newNormal));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
 
         // Now make the relation
@@ -185,18 +189,19 @@ public class RelationTypeTest extends TestCase {
         newRel.setTarget(auTw);
         newRel.setType("grammatical");
         newRel.setScope("tradition");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         // and check that the normal form αυτῶ was found at rank 28.
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(2, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         for (RelationModel rm : result.getRelations()) {
             if (rm.getSource().equals(autwi)) continue;
-            ReadingModel otherRankReading = jerseyTest.resource().path("/reading/" + rm.getTarget())
+            ReadingModel otherRankReading = jerseyTest.target("/reading/" + rm.getTarget())
+                    .request()
                     .get(new GenericType<ReadingModel>() {});
             assertEquals("αυτῶ", otherRankReading.getText());
         }
@@ -219,22 +224,22 @@ public class RelationTypeTest extends TestCase {
         newRel.setType("spelling");
         expectedLinks.add(String.format("%s -> %s: spelling", legei, Legei));
 
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(1, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         result.getRelations().forEach(x -> createdRels.add(x.getId()));
 
         // Set the second link
         newRel.setTarget(legeiAcute);
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(2, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         result.getRelations().forEach(x -> createdRels.add(x.getId()));
@@ -268,11 +273,11 @@ public class RelationTypeTest extends TestCase {
         expectedLinks.add(String.format("%s -> %s: orthographic", palin, Palin));
         expectedLinks.add(String.format("%s -> %s: orthographic", palin58, Palin58));
 
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(2, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         result.getRelations().forEach(x -> createdRels.add(x.getId()));
@@ -280,11 +285,11 @@ public class RelationTypeTest extends TestCase {
         // Set the second link, should result in one extra per rank
         newRel.setTarget(pali_);
         newRel.setType("spelling");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(4, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         result.getRelations().forEach(x -> createdRels.add(x.getId()));
@@ -297,11 +302,11 @@ public class RelationTypeTest extends TestCase {
         newRel.setSource(Palin);
         newRel.setTarget(palinac);
         newRel.setType("orthographic");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(6, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         result.getRelations().forEach(x -> createdRels.add(x.getId()));
@@ -327,8 +332,9 @@ public class RelationTypeTest extends TestCase {
 
         // Re-rank the whole thing according to relations or lack thereof
         // LATER maybe implement the 'collated' relation
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/initRanks")
-                .get(ClientResponse.class);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/initRanks")
+                .request()
+                .get();
         assertEquals("success", Util.getValueFromJson(jerseyResult, "result"));
 
         // First make the same-rank relations
@@ -337,11 +343,11 @@ public class RelationTypeTest extends TestCase {
         newRel.setTarget(euricko22);
         newRel.setScope("local");
         newRel.setType("orthographic");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(1, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         testReadings.add(eurisko22);
@@ -358,11 +364,11 @@ public class RelationTypeTest extends TestCase {
         newRel.setSource(euricko24);
         newRel.setTarget(eurecko24);
         newRel.setType("spelling");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(1, result.getRelations().size());
         assertEquals(0, result.getReadings().size());
         testReadings.add(euricko24);
@@ -371,11 +377,11 @@ public class RelationTypeTest extends TestCase {
         // Now join them together, and test that the appropriate ranks changed
         newRel.setTarget(eurisko22);
         newRel.setType("orthographic");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(4, result.getRelations().size());
         assertEquals(8, result.getReadings().size());
 
@@ -390,11 +396,11 @@ public class RelationTypeTest extends TestCase {
         // Now add in an "other" relation, which is *not* transitive, to make sure the ranks still update.
         newRel.setTarget(ricko25);
         newRel.setType("other");
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(1, result.getRelations().size());
         // This will affect readings all the way to the end node.
         assertTrue(result.getReadings().size() > 100);

@@ -77,7 +77,7 @@ public class TraditionParseTest extends JerseyTest{
         }
 
         // Create the Jersey test server
-        Root webResource = new Root();
+//        Root webResource = new Root();
 
     }
 

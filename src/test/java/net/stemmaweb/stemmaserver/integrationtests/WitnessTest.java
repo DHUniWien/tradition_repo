@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.ReadingModel;
@@ -15,15 +16,14 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.*;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.test.framework.JerseyTest;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import static org.junit.Assert.*;
@@ -52,9 +52,9 @@ public class WitnessTest {
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
-        Root webResource = new Root();
+
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(Root.class)
                 .create();
         jerseyTest.setUp();
 
@@ -64,7 +64,7 @@ public class WitnessTest {
 
     private String createTraditionFromFile(String tName, String fName) {
 
-        ClientResponse jerseyResult = null;
+        Response jerseyResult = null;
         try {
             jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, tName, "LR", "1", fName, "stemmaweb");
         } catch (Exception e) {
@@ -83,18 +83,18 @@ public class WitnessTest {
         assertEquals(expectedText, ((TextSequenceModel) resp.getEntity()).getText());
 
         String returnedText = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+                .target("/tradition/" + tradId + "/witness/A/text")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(expectedText), returnedText);
     }
 
     @Test
     public void witnessAsTextNotExistingTest() {
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/D/text")
-                .get(ClientResponse.class);
+        Response response = jerseyTest
+                .target("/tradition/" + tradId + "/witness/D/text")
+                .request()
+                .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(),
                 response.getStatus());
         assertEquals("No witness path found for this sigil", Util.getValueFromJson(response, "error"));
@@ -108,8 +108,8 @@ public class WitnessTest {
         assertEquals(expectedText, ((TextSequenceModel) resp.getEntity()).getText());
 
         String returnedText = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/B/text")
+                .target("/tradition/" + tradId + "/witness/B/text")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(expectedText), returnedText);
     }
@@ -164,8 +164,8 @@ public class WitnessTest {
                 "with", "fruit", "the", "drought", "of", "march", "has",
                 "pierced", "unto", "the", "root" };
         List<ReadingModel> listOfReadings = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/A/readings")
+                .target("/tradition/" + tradId + "/witness/A/readings")
+                .request()
                 .get(new GenericType<List<ReadingModel>>() {
                 });
         assertEquals(texts.length, listOfReadings.size());
@@ -176,10 +176,10 @@ public class WitnessTest {
 
     @Test
     public void witnessAsListNotExistingTest() {
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/D/readings")
-                .get(ClientResponse.class);
+        Response response = jerseyTest
+                .target("/tradition/" + tradId + "/witness/D/readings")
+                .request()
+                .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
         assertEquals("No witness path found for this sigil", Util.getValueFromJson(response, "error"));
     }
@@ -188,10 +188,10 @@ public class WitnessTest {
     public void witnessBetweenRanksTest() {
 
         String expectedText = constructResult("april with his showers");
-        String response = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+        String response = jerseyTest.target("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "2")
                 .queryParam("end", "5")
+                .request()
                 .get(String.class);
         assertEquals(expectedText, response);
     }
@@ -199,7 +199,8 @@ public class WitnessTest {
     @Test
     public void getWitnessTest() {
         // Get a witness
-        WitnessModel witnessA = jerseyTest.resource().path("/tradition/" + tradId + "/witness/A")
+        WitnessModel witnessA = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
                 .get(WitnessModel.class);
         assertEquals("A", witnessA.getSigil());
         assertNotNull(witnessA.getId());
@@ -215,46 +216,47 @@ public class WitnessTest {
         assertNotNull(secondTradId);
 
         // Now try getting our same witness again
-        ClientResponse jerseyResponse = jerseyTest.resource().path("/tradition/" + tradId + "/witness/A")
-                .get(ClientResponse.class);
+        Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
-        WitnessModel alsoA = jerseyResponse.getEntity(WitnessModel.class);
+        WitnessModel alsoA = jerseyResponse.readEntity(WitnessModel.class);
         assertEquals(witnessA.getId(), alsoA.getId());
     }
 
     @Test
     public void lookupWitnessById() {
         // Try it with a good ID
-        WitnessModel witnessA = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/A")
+        WitnessModel witnessA = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
                 .get(WitnessModel.class);
         String aId = witnessA.getId();
-        WitnessModel aById = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/" + aId)
+        WitnessModel aById = jerseyTest.target("/tradition/" + tradId + "/witness/" + aId)
+                .request()
                 .get(WitnessModel.class);
         assertEquals(witnessA.getSigil(), aById.getSigil());
         assertEquals(witnessA.getId(), aById.getId());
 
         // Now try it with a bad ID
-        ClientResponse response = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/ABCD")
-                .get(ClientResponse.class);
+        Response response = jerseyTest.target("/tradition/" + tradId + "/witness/ABCD")
+                .request()
+                .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 
         // Now try it with a bad numeric ID
-        response = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/12345")
-                .get(ClientResponse.class);
+        response = jerseyTest.target("/tradition/" + tradId + "/witness/12345")
+                .request()
+                .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 
         // Now try it with a numeric ID of a node that is not a witness node
-        List<SectionModel> ourSections = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/sections")
+        List<SectionModel> ourSections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request()
                 .get(new GenericType<List<SectionModel>>() {});
         String sectId = ourSections.get(0).getId();
-        response = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/" + sectId)
-                .get(ClientResponse.class);
+        response = jerseyTest.target("/tradition/" + tradId + "/witness/" + sectId)
+                .request()
+                .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
     }
 
@@ -262,21 +264,26 @@ public class WitnessTest {
     public void deleteAWitness() {
         // Get all the readings we have
         HashSet<String> remaining = new HashSet<>();
-        remaining.addAll(jerseyTest.resource().path("/tradition/" + tradId + "/witness/B/readings")
+        remaining.addAll(jerseyTest.target("/tradition/" + tradId + "/witness/B/readings")
+                .request()
                 .get(new GenericType<List<ReadingModel>>() {})
                 .stream().map(ReadingModel::getId).collect(Collectors.toList()));
-        remaining.addAll(jerseyTest.resource().path("/tradition/" + tradId + "/witness/C/readings")
+        remaining.addAll(jerseyTest.target("/tradition/" + tradId + "/witness/C/readings")
+                .request()
                 .get(new GenericType<List<ReadingModel>>() {})
                 .stream().map(ReadingModel::getId).collect(Collectors.toList()));
         // Try deleting witness A
-        ClientResponse result = jerseyTest.resource()
-                .path("/tradition/" + tradId + "/witness/A").delete(ClientResponse.class);
+        Response result = jerseyTest.target("/tradition/" + tradId + "/witness/A")
+                .request()
+                .delete();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Check that it is no longer in the witness list
-        assertTrue(jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+        assertTrue(jerseyTest.target("/tradition/" + tradId + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>(){}).stream().noneMatch(x -> x.getSigil().equals("A")));
         // Check that all the remaining readings are in our pre-collected set
-        for (ReadingModel rm : jerseyTest.resource().path("/tradition/" + tradId + "/readings")
+        for (ReadingModel rm : jerseyTest.target("/tradition/" + tradId + "/readings")
+                .request()
                 .get(new GenericType<List<ReadingModel>>() {}))
             if (!rm.getIs_end() && !rm.getIs_start())
                 assertTrue(remaining.contains(rm.getId()));
@@ -294,21 +301,24 @@ public class WitnessTest {
             tx.success();
         }
         assertNotNull(bogusId);
-        assertEquals(3, jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+        assertEquals(3, jerseyTest.target("/tradition/" + tradId + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>(){}).size());
-        result = jerseyTest.resource()
-                .path(String.format("/tradition/%s/witness/%d", tradId, bogusId))
-                .delete(ClientResponse.class);
+        result = jerseyTest.target(String.format("/tradition/%s/witness/%d", tradId, bogusId))
+                .request()
+                .delete();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        assertEquals(2, jerseyTest.resource().path("/tradition/" + tradId + "/witnesses")
+        assertEquals(2, jerseyTest.target("/tradition/" + tradId + "/witnesses")
+                .request()
                 .get(new GenericType<List<WitnessModel>>(){}).size());
 
 
         // Now add another tradition with overlapping sigla and try to delete its witness B
         String secondTradId = createTraditionFromFile("Chaucer", "src/TestFiles/Collatex-16.xml");
         assertNotNull(secondTradId);
-        result = jerseyTest.resource().path(String.format("/tradition/%s/witness/B", secondTradId))
-                .delete(ClientResponse.class);
+        result = jerseyTest.target(String.format("/tradition/%s/witness/B", secondTradId))
+                .request()
+                .delete();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
     }
 
@@ -320,10 +330,10 @@ public class WitnessTest {
 
     @Test
     public void createWitnessInvalidSigil() {
-        ClientResponse r = Util.createTraditionFromFileOrString(jerseyTest, "592th", "LR", "1",
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "592th", "LR", "1",
                 "src/TestFiles/592th.xml", "graphml");
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
-        String error = r.getEntity(String.class);
+        String error = r.readEntity(String.class);
         assertEquals("The character \" may not appear in a sigil name.", error);
     }
 
@@ -334,10 +344,10 @@ public class WitnessTest {
     public void witnessBetweenRanksWrongWayTest() {
         String expectedText = constructResult("april with his showers");
         String response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+                .target("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "5")
                 .queryParam("end", "2")
+                .request()
                 .get(String.class);
         assertEquals(expectedText, response);
     }
@@ -347,12 +357,12 @@ public class WitnessTest {
      */
     @Test
     public void witnessBetweenRanksSameRanksTest() {
-        ClientResponse response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+        Response response = jerseyTest
+                .target("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "5")
                 .queryParam("end", "5")
-                .get(ClientResponse.class);
+                .request()
+                .get();
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
         assertEquals("end-rank is equal to start-rank", Util.getValueFromJson(response, "error"));
     }
@@ -362,10 +372,10 @@ public class WitnessTest {
     public void witnessBetweenRanksTooHighEndRankTest() {
         String expectedText = constructResult("showers sweet with fruit the drought of march has pierced unto the root");
         String response = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/witness/A/text")
+                .target("/tradition/" + tradId + "/witness/A/text")
                 .queryParam("start", "5")
                 .queryParam("end", "30")
+                .request()
                 .get(String.class);
         assertEquals(expectedText, response);
     }
@@ -410,38 +420,38 @@ public class WitnessTest {
         String newId = createTraditionFromFile("Florilegium", "src/TestFiles/florilegium_graphml.xml");
         // Now get the witness text for each of our complex sigla.
         String response = jerseyTest
-                .resource()
-                .path("/tradition/" + newId + "/witness/Q/text")
+                .target("/tradition/" + newId + "/witness/Q/text")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(qText), response);
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + newId + "/witness/E/text")
+                .target("/tradition/" + newId + "/witness/E/text")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(eText), response);
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + newId + "/witness/T/text")
+                .target("/tradition/" + newId + "/witness/T/text")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(tText), response);
 
         // Now try to get the uncorrected text.
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + newId + "/witness/Q/text")
+                .target("/tradition/" + newId + "/witness/Q/text")
                 .queryParam("layer", "a.c.")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(qacText), response);
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + newId + "/witness/E/text")
+                .target("/tradition/" + newId + "/witness/E/text")
                 .queryParam("layer", "a.c.")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(eacText), response);
         response = jerseyTest
-                .resource()
-                .path("/tradition/" + newId + "/witness/T/text")
+                .target("/tradition/" + newId + "/witness/T/text")
                 .queryParam("layer", "a.c.")
+                .request()
                 .get(String.class);
         assertEquals(constructResult(tacText), response);
 
