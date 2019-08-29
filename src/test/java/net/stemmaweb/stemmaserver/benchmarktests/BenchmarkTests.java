@@ -99,7 +99,7 @@ public abstract class BenchmarkTests {
 
         Response ownerChangeResponse = jerseyTest
                 .target("/tradition/1001")
-                .request(MediaType.APPLICATION_JSON)
+                .request()
                 .put(Entity.json(textInfo));
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
 
@@ -111,7 +111,7 @@ public abstract class BenchmarkTests {
 
         ownerChangeResponse = jerseyTest
                 .target("/tradition/1001")
-                .request(MediaType.APPLICATION_JSON)
+                .request()
                 .put(Entity.json(textInfo));
         assertEquals(Response.Status.OK.getStatusCode(), ownerChangeResponse.getStatus());
     }
@@ -251,7 +251,7 @@ public abstract class BenchmarkTests {
         Response actualResponse = jerseyTest
                 .target("/tradition/1001/witness/W0/readings")
                 .request()
-                .get(Response.class);
+                .get();
         assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
     }
 
@@ -353,7 +353,7 @@ public abstract class BenchmarkTests {
 
         Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
-                .request(MediaType.APPLICATION_JSON)
+                .request()
                 .post(Entity.json(relationship));
         GraphModel readingsAndRelationships =
                 actualResponse.readEntity(new GenericType<GraphModel>() {});
@@ -403,7 +403,7 @@ public abstract class BenchmarkTests {
         String jsonPayload = "{\"role\":\"user\",\"id\":1337}";
         Response response = jerseyTest
                 .target("/user/1337")
-                .request(MediaType.APPLICATION_JSON)
+                .request()
                 .put(Entity.json(jsonPayload));
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 

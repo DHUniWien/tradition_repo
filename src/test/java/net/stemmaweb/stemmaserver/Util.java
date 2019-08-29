@@ -208,7 +208,7 @@ public class Util {
         return  jerseyTest
                 .target("/tradition")
                 .request()
-                .post(Entity.entity(form, form.getMediaType()));
+                .post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA));
     }
 
     public static Response addSectionToTradition(JerseyTest jerseyTest, String traditionId, String fileName,
@@ -221,8 +221,8 @@ public class Util {
                 MediaType.APPLICATION_OCTET_STREAM_TYPE);
         form.bodyPart(fdp);
         return jerseyTest.target("/tradition/" + traditionId + "/section")
-                .request(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .post(Entity.entity(form, form.getMediaType()));
+                .request()
+                .post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA_TYPE));
     }
 
     private static InputStream getFileOrStringContent(String content) {

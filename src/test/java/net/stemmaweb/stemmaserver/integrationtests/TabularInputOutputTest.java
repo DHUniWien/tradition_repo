@@ -221,7 +221,7 @@ public class TabularInputOutputTest extends TestCase {
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Get the JSON out
-        JSONObject table = result.readEntity(JSONObject.class);
+        JSONObject table = new JSONObject(result.readEntity(String.class));
         assertTrue(table.has("alignment"));
         assertTrue(table.has("length"));
         assertEquals(18, table.getInt("length"));
@@ -266,7 +266,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request(MediaType.APPLICATION_JSON)
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        JSONObject table = response.readEntity(JSONObject.class);
+        JSONObject table = new JSONObject(response.readEntity(String.class));
         assertEquals(272, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
@@ -277,7 +277,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        table = response.readEntity(JSONObject.class);
+        table = new JSONObject(response.readEntity(String.class));
         assertEquals(53, table.getInt("length"));
         assertEquals(5, table.getJSONArray("alignment").length());
 
@@ -289,7 +289,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        table = response.readEntity(JSONObject.class);
+        table = new JSONObject(response.readEntity(String.class));
         assertEquals(155, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
@@ -300,7 +300,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        table = response.readEntity(JSONObject.class);
+        table = new JSONObject(response.readEntity(String.class));
         assertEquals(64, table.getInt("length"));
         assertEquals(13, table.getJSONArray("alignment").length());
 
@@ -339,7 +339,7 @@ public class TabularInputOutputTest extends TestCase {
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Get the JSON out
-        JSONObject table = result.readEntity(JSONObject.class);
+        JSONObject table = new JSONObject(result.readEntity(String.class));
         assertTrue(table.has("alignment"));
         assertTrue(table.has("length"));
         assertEquals(10, table.getInt("length"));
@@ -463,14 +463,14 @@ public class TabularInputOutputTest extends TestCase {
         response = jerseyTest.target("/tradition/" + traditionId + "/json")
                 .request()
                 .get();
-        JSONObject table = response.readEntity(JSONObject.class);
+        JSONObject table = new JSONObject(response.readEntity(String.class));
         assertTrue(table.has("alignment"));
         assertTrue(table.has("length"));
         assertEquals(30, table.getInt("length"));
         JSONObject witN = table.getJSONArray("alignment").getJSONObject(24);
         assertEquals("N", witN.getString("witness"));
         for (int i=0; i < 21; i++) {
-            assertEquals("null", witN.getJSONArray("tokens").getString(i));
+            assertEquals("null", "" + witN.getJSONArray("tokens").get(i));
         }
         JSONObject firstN = witN.getJSONArray("tokens").getJSONObject(21);
         assertEquals("in", firstN.getString("text"));
@@ -503,7 +503,7 @@ public class TabularInputOutputTest extends TestCase {
         response = jerseyTest.target("/tradition/" + traditionId + "/json")
                 .request()
                 .get();
-        JSONObject table = response.readEntity(JSONObject.class);
+        JSONObject table = new JSONObject(response.readEntity(String.class));
         assertEquals(239, table.getInt("length"));
         JSONArray alignment = table.getJSONArray("alignment");
         // There should be a.c. columns for these witnesses
@@ -533,7 +533,7 @@ public class TabularInputOutputTest extends TestCase {
                 assertEquals(cTokens.getJSONObject(i).getString("text"),
                         cAcTokens.getJSONObject(i).getString("text"));
             } catch (JSONException e) {
-                assertEquals(cTokens.getString(i), cAcTokens.getString(i));
+                assertEquals(cTokens.get(i), cAcTokens.get(i));
             }
         }
 

@@ -9,7 +9,6 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.client.ClientResponse;
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -18,7 +17,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
-//import org.neo4j.graphdb.*;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.client.Entity;
@@ -435,6 +433,7 @@ public class AnnotationTest extends TestCase {
         ref2.setLabel("PERSONREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
+        String str = readingLookup.get("luminaribus/4");
         prb.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
         pre = new AnnotationLinkModel();
         pre.setType("END");

@@ -180,9 +180,9 @@ public class CollateXJsonInputTest extends TestCase {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
                 "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "parentId");
         Response response = jerseyTest
-                .target("/tradition/" + tradId + "/section/" + sectId + "/orderAfter/")
+                .target("/tradition/" + tradId + "/section/" + sectId + "/orderAfter/" + newSectId)
                 .request()
-                .put(Entity.text(newSectId));
+                .put(Entity.text(""));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         List<SectionModel> ourSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections/")

@@ -333,8 +333,8 @@ public class SectionTest extends TestCase {
     private String _section_reorder_sequence(String traditionId, String reorderPath) {
         Response jerseyResult = jerseyTest
                 .target("/tradition/" + traditionId + reorderPath)
-                .request(MediaType.APPLICATION_JSON)
-                .put(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .request()
+                .put(Entity.json(""));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         jerseyResult = jerseyTest
                 .target("/tradition/" + traditionId + "/witness/B/text")
@@ -363,7 +363,7 @@ public class SectionTest extends TestCase {
         Response jerseyResult = jerseyTest
                 .target("/tradition/" + florId + "/section/" + tryReorder + "/orderAfter/" + tryReorder)
                 .request()
-                .put(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .put(Entity.text(""));
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
         String errMsg = jerseyResult.readEntity(String.class);
         assertEquals("Cannot reorder a section after itself", errMsg);
@@ -843,8 +843,8 @@ public class SectionTest extends TestCase {
 
         // Re-join the section and check that we can still retrieve each emendation
         response = jerseyTest.target(("/tradition/" + tradId + "/section/" + sectId + "/merge/" + newSection))
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .request()
+                .post(Entity.json(""));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         newResult = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/emendations")
                 .request(MediaType.APPLICATION_JSON)
@@ -879,8 +879,8 @@ public class SectionTest extends TestCase {
         MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<String,String>();
         lemmaParam.add("value", "true");
         response = jerseyTest.target("/reading/" + eReading.getId() + "/setlemma")
-                .request(MediaType.APPLICATION_FORM_URLENCODED)
-                .post(Entity.json(lemmaParam));
+                .request()
+                .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
         // Check that we can request the section dot
@@ -1089,8 +1089,8 @@ public class SectionTest extends TestCase {
 
             // Now lemmatise the reading, whatever it is
             jerseyResult = jerseyTest.target("/reading/" + readingLookup.get(rdg) + "/setlemma")
-                    .request(MediaType.APPLICATION_FORM_URLENCODED)
-                    .post(Entity.json(lemmaParam));
+                    .request()
+                    .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
             assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
 
         }
@@ -1176,8 +1176,8 @@ public class SectionTest extends TestCase {
 
         // Add a lemma on the same rank, check that the other one gets unset
         jerseyResult = jerseyTest.target("/reading/" + readingLookup.get("iugiter/17") + "/setlemma")
-                .request(MediaType.APPLICATION_FORM_URLENCODED)
-                .post(Entity.json(lemmaParam));
+                .request()
+                .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         List<ReadingModel> changed = jerseyResult.readEntity(new GenericType<List<ReadingModel>>() {});
         assertEquals(2, changed.size());
