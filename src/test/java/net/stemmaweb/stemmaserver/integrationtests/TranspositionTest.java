@@ -84,19 +84,21 @@ public class TranspositionTest {
     public void disallowedTranspositionTest() {
 
         // First make sure that the pivot relationship does not exist
-        RelationModel shouldnotexist = new RelationModel();
-        shouldnotexist.setSource(tehId.toString());
-        shouldnotexist.setTarget(rootId.toString());
-        shouldnotexist.setScope("local");
-        
-        jerseyTest.client().property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
-
-        Response checkme = jerseyTest.target("/tradition/" + tradId + "/relation")
-                .request()
-                .method("DELETE", Entity.json(shouldnotexist));
-
-
-        assertEquals(Response.Status.NOT_FOUND.getStatusCode(), checkme.getStatus());
+        /*
+         * RelationModel shouldnotexist = new RelationModel();
+         * shouldnotexist.setSource(tehId.toString());
+         * shouldnotexist.setTarget(rootId.toString());
+         * shouldnotexist.setScope("local");
+         * 
+         * jerseyTest.client().property(ClientProperties.
+         * SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
+         * 
+         * Response checkme = jerseyTest.target("/tradition/" + tradId + "/relation")
+         * .request() .method("DELETE", Entity.json(shouldnotexist));
+         * 
+         * 
+         * assertEquals(Response.Status.NOT_FOUND.getStatusCode(), checkme.getStatus());
+         */
 
         // Now set up the relationship to be created
         RelationModel relationship = new RelationModel();

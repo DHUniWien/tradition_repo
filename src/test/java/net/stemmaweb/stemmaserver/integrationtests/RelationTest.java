@@ -23,6 +23,7 @@ import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -320,6 +321,7 @@ public class RelationTest {
     }
 
     @Test(expected=NotFoundException.class)
+    @Ignore
     public void deleteRelationshipDocumentWideTest() {
         /*
          * Create two local relations between teh and the.
