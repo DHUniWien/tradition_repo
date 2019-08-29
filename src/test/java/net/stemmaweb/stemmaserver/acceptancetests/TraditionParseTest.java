@@ -16,7 +16,6 @@ import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -24,12 +23,14 @@ import org.junit.Test;
 
 import javax.ws.rs.client.Entity;
 
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.core.Application;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -50,14 +51,12 @@ import static org.junit.Assume.assumeTrue;
  * Try parsing all the traditions from the live database.
  * Created by tla on 11/08/15.
  */
-public class TraditionParseTest extends JerseyTest{
+public class TraditionParseTest{
 
     private GraphDatabaseService db;
+    
+    private JerseyTest jerseyTest;
 
-    @Override
-    protected Application configure() {
-        return new ResourceConfig(this.getClass());
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -77,7 +76,11 @@ public class TraditionParseTest extends JerseyTest{
         }
 
         // Create the Jersey test server
-//        Root webResource = new Root();
+
+        jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
+                .addResource(Root.class)
+                .create();
+        jerseyTest.setUp();
 
     }
 
@@ -85,7 +88,7 @@ public class TraditionParseTest extends JerseyTest{
     public void loadAllTraditionsTest() {
         // import all production traditions into the db
         // TODO make this a benchmark test...?
-        File testdir = new File("src/TestFiles");
+        File testdir = new File("src/TestProductionFiles");
         assumeTrue(testdir.exists() && testdir.isDirectory());
 
         HashMap<String, TraditionXMLParser> traditionNames = new HashMap<>();
@@ -119,9 +122,9 @@ public class TraditionParseTest extends JerseyTest{
                             MediaType.APPLICATION_OCTET_STREAM_TYPE);
                     form.bodyPart(fdp);
 
-                    Response jerseyResult = target("/tradition")
-                            .request(MediaType.MULTIPART_FORM_DATA_TYPE)
-                            .post(Entity.entity(form, form.getMediaType()));
+                    Response jerseyResult = jerseyTest.target("/tradition")
+                            .request()
+                            .post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA_TYPE));
                     assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
                     tradId = Util.getValueFromJson(jerseyResult, "tradId");
                 } catch (FileNotFoundException f) {
@@ -138,7 +141,7 @@ public class TraditionParseTest extends JerseyTest{
 
         // Now go through each tradition and make sure that the data that
         // we parsed is reflected in the DB.
-        for (TraditionModel tm : target("/traditions")
+        for (TraditionModel tm : jerseyTest.target("/traditions")
                 .request()
                 .get(new GenericType<List<TraditionModel>>() {})) {
 
@@ -148,7 +151,7 @@ public class TraditionParseTest extends JerseyTest{
             assertEquals(tm.getName(), handler.traditionName);
 
             // Number of nodes
-            ArrayList<ReadingModel> dbReadings = target("/tradition/" + tm.getId() + "/readings")
+            ArrayList<ReadingModel> dbReadings = jerseyTest.target("/tradition/" + tm.getId() + "/readings")
                     .request()
                     .get(new GenericType<ArrayList<ReadingModel>>() {});
             assertEquals(handler.numNodes, dbReadings.size());
@@ -169,13 +172,13 @@ public class TraditionParseTest extends JerseyTest{
             assertEquals(handler.numEdges, foundEdges.get());
 
             // Number of relationships
-            ArrayList<RelationModel> dbRelations = target("/tradition/" + tm.getId() + "/relationships")
+            ArrayList<RelationModel> dbRelations = jerseyTest.target("/tradition/" + tm.getId() + "/relationships")
                     .request()
                     .get(new GenericType<ArrayList<RelationModel>>() {});
             assertEquals(handler.numRelationships, dbRelations.size());
 
             // Number of witnesses
-            ArrayList<WitnessModel> dbWitnesses = target("/tradition/" + tm.getId() + "/witnesses")
+            ArrayList<WitnessModel> dbWitnesses = jerseyTest.target("/tradition/" + tm.getId() + "/witnesses")
                     .request()
                     .get(new GenericType<ArrayList<WitnessModel>>() {});
             assertEquals(handler.numWitnesses, dbWitnesses.size());
@@ -198,7 +201,8 @@ public class TraditionParseTest extends JerseyTest{
 
     @After
     public void tearDown() throws Exception {
+
         db.shutdown();
-        tearDown();
+
     }
 }
