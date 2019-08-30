@@ -20,6 +20,7 @@ import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -198,7 +199,8 @@ public class StemmawebLegacyTest {
 
     // ######## Relationship tests
 
-    //@Test
+    @Test
+    @Ignore
     public void testRelationshipAddRemove() {
         /*
         ## NOW - test that local and non-local relationship addition and deletion works
