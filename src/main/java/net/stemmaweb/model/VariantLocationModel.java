@@ -6,15 +6,15 @@ import java.util.List;
 public class VariantLocationModel {
 
     private Long rankIndex;
-    private List<ReadingModel> readings;
+    private List<ReadingModel> base;
+    private List<VariantModel> variants;
     private List<RelationModel> relations;
-    private Boolean displacement;
 
     public VariantLocationModel() {
         this.rankIndex = 0L;
-        this.readings = new ArrayList<>();
+        this.base = new ArrayList<>();
+        this.variants = new ArrayList<>();
         this.relations = new ArrayList<>();
-        this.displacement = false;
     }
 
     public Long getRankIndex() {
@@ -25,20 +25,28 @@ public class VariantLocationModel {
         this.rankIndex = rankIndex;
     }
 
-    public List<ReadingModel> getReadings() {
-        return readings;
+    public List<ReadingModel> getBase() {
+        return base;
     }
 
-    public void setReadings(List<ReadingModel> readings) {
-        this.readings = readings;
-    }
-
-    public void addReading(ReadingModel rm) {
-        this.readings.add(rm);
+    public void setBase(List<ReadingModel> readings) {
+        this.base = readings;
     }
 
     public List<RelationModel> getRelations() {
         return relations;
+    }
+
+    public List<VariantModel> getVariants() {
+        return variants;
+    }
+
+    public void setVariants(List<VariantModel> variants) {
+        this.variants = variants;
+    }
+
+    public void addVariant(VariantModel variant) {
+        this.variants.add(variant);
     }
 
     public void setRelations(List<RelationModel> relations) {
@@ -49,11 +57,4 @@ public class VariantLocationModel {
         this.relations.add(rm);
     }
 
-    public Boolean getDisplacement() {
-        return displacement;
-    }
-
-    public void setDisplacement(Boolean displacement) {
-        this.displacement = displacement;
-    }
 }

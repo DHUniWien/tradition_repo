@@ -146,6 +146,19 @@ public class VariantLocationTest extends TestCase {
         assertEquals(7, vlocs.size());
         assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
 
+        rsp = jerseyTest.resource().path(restPath + "/variants")
+                .queryParam("conflate", "spelling").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
+        vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        assertEquals(5, vlocs.size());
+        assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
+
+        rsp = jerseyTest.resource().path(restPath + "/variants")
+                .queryParam("significant", "yes").get(ClientResponse.class);
+        assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
+        vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        assertEquals(7, vlocs.size());
+        assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
     }
 
     public void tearDown() throws Exception {
