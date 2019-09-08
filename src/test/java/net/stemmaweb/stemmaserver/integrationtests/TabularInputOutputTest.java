@@ -1,7 +1,10 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 
+import com.opencsv.CSVReaderBuilder;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
@@ -207,7 +210,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     // testOutputJSON
-    public void testJSONExport() throws Exception {
+    public void testJSONExport() {
         // Set up some data
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
@@ -236,7 +239,7 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(3, i);
     }
 
-    public void testExportSelectedSections() throws Exception {
+    public void testExportSelectedSections() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
                 "1", "src/TestFiles/florilegium_w.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
@@ -325,7 +328,7 @@ public class TabularInputOutputTest extends TestCase {
 
     }
 
-    public void testConflatedJSONExport () throws Exception {
+    public void testConflatedJSONExport() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/globalrel_test.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
@@ -424,7 +427,10 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
-        rdr = new CSVReader(new StringReader(result.readEntity(String.class)), '\t');
+        final CSVParser parser = new CSVParserBuilder().withSeparator('\t').build();
+        rdr = new CSVReaderBuilder(new StringReader(result.readEntity(String.class)))
+                .withCSVParser(parser)
+                .build();
         // See that we have our witnesses
         wits = rdr.readNext();
         assertEquals(3, wits.length);
@@ -487,7 +493,7 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals("Ab", wits[1]);
     }
 
-    public void testExportWithLayers() throws Exception {
+    public void testExportWithLayers() {
         // Take the uncorrected MoE section
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
                 "src/TestFiles/Matthew-401.json", "cxjson");

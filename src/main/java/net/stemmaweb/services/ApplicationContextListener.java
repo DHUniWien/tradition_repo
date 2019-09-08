@@ -22,6 +22,7 @@ public class ApplicationContextListener implements ServletContextListener {
     private static final String DB_ENV = System.getenv("STEMMAREST_HOME");
     private static final String DB_PATH = DB_ENV == null ? "/var/lib/stemmarest" : DB_ENV;
     // final static Logger logger = Logger.getLogger(ApplicationContextListener.class);
+    @SuppressWarnings("unused")
     private ServletContext context = null;
 
     public void contextDestroyed(ServletContextEvent event) {

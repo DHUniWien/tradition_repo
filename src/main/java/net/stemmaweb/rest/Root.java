@@ -44,7 +44,7 @@ public class Root {
      * Delegated API calls
      */
 
-    public static final String CLICHED_MESSAGE = "Hello World!";
+    private static final String CLICHED_MESSAGE = "Hello World!";
 
     @GET
     @Produces("text/plain")

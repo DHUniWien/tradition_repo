@@ -21,7 +21,7 @@ import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
 
 import static net.stemmaweb.parser.Util.getExpander;
-import static org.apache.commons.lang3.StringEscapeUtils.escapeHtml4;
+import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
 
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.ReadingService;
