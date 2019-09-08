@@ -1,7 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.test.framework.JerseyTest;
+
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.model.WitnessModel;
@@ -10,6 +9,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 import org.junit.Before;
+import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -37,9 +37,8 @@ public class TEIParallelSegInputTest {
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
-        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(Root.class)
                 .create();
         jerseyTest.setUp();
     }
@@ -89,7 +88,7 @@ public class TEIParallelSegInputTest {
                 "Φεῦγε συντυχίας γυναικῶν ἐὰν θέλῃς σωφρονεῖν, καὶ μὴ δῷς αὐταῖς παρρησίαν θαρρῆσαι σοί ποτε. Θάλλει " +
                 "βοτάνη ἐστῶσα παρ᾽ ὕδατι, καὶ πάθος ἀκολασίας, ἐν συντυχίαις γυναικῶν.";
 
-        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium_tei_ps.xml", "teips");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 

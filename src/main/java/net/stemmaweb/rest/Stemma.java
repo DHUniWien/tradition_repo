@@ -15,7 +15,7 @@ import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
-import org.codehaus.jettison.json.JSONObject;
+import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import static net.stemmaweb.rest.Util.jsonerror;
