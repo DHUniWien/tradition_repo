@@ -398,7 +398,7 @@ public class Relation {
     /**
      * Remove the relation specified. There should be only one.
      *
-     * @summary Delete relation
+     * @summary Delete a relation specifed by JSON data.
      * @param relationModel - the JSON specification of the relationship(s) to delete
      * @return A list of all relationships that were removed.
      * @statuscode 200 - on success
@@ -406,11 +406,12 @@ public class Relation {
      * @statuscode 404 - if no matching relationship was found
      * @statuscode 500 - on failure, with JSON error message
      */
-    @DELETE
+    @POST
+    @Path("/remove")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
-    public Response delete(RelationModel relationModel) {
+    public Response deleteByData(RelationModel relationModel) {
         ArrayList<RelationModel> deleted = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {

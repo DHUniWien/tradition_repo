@@ -449,7 +449,7 @@ public class ReadingTest {
                 .post(Entity.json(pem), GraphModel.class);
         emended = emendation.getReadings().iterator().next();
 
-        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<String, String>();
+        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
         lemmaParam.add("value", "true");
         resp = jerseyTest
                 .target("/reading/" + emended.getId() + "/setlemma")

@@ -14,13 +14,11 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import net.stemmaweb.stemmaserver.Util;
 
-import org.checkerframework.framework.qual.Unused;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -200,7 +198,6 @@ public class StemmawebLegacyTest {
     // ######## Relationship tests
 
     @Test
-    @Ignore
     public void testRelationshipAddRemove() {
         /*
         ## NOW - test that local and non-local relationship addition and deletion works
@@ -343,9 +340,9 @@ public class StemmawebLegacyTest {
         jerseyTest.client().property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
 
         response = jerseyTest
-                .target("/tradition/" + tradId + "/relation")
+                .target("/tradition/" + tradId + "/relation/remove")
                 .request()
-                .method("DELETE", Entity.json(relationship));
+                .post(Entity.json(relationship));
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(1, response.readEntity(new GenericType<ArrayList<RelationModel>>(){}).size());
@@ -366,9 +363,9 @@ public class StemmawebLegacyTest {
         relationship.setScope("section");
 
         response = jerseyTest
-                .target("/tradition/" + tradId + "/relation")
+                .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .method("DELETE", Entity.json(relationship));
+                .post(Entity.json(relationship));
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(2, response.readEntity(new GenericType<ArrayList<RelationModel>>(){}).size());
@@ -389,9 +386,9 @@ public class StemmawebLegacyTest {
         relationship.setScope("local");
 
         response = jerseyTest
-                .target("/tradition/" + tradId + "/relation")
+                .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .method("DELETE", Entity.json(relationship));
+                .post(Entity.json(relationship));
 
         assertEquals(Status.NOT_FOUND.getStatusCode(), response.getStatus());
         existingRels = jerseyTest.target("/tradition/" + tradId + "/relations")
@@ -436,9 +433,9 @@ public class StemmawebLegacyTest {
         relationship.setScope("local");
 
         response = jerseyTest
-                .target("/tradition/" + tradId + "/relation")
+                .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .method("DELETE", Entity.json(relationship));
+                .post(Entity.json(relationship));
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.readEntity(new GenericType<ArrayList<RelationModel>>(){}).size(), 1);

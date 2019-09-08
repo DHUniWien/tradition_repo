@@ -131,9 +131,19 @@ public class Util {
     }
 
     public static String getValueFromJson (Response r, String key) {
+        // First get the string, which may be from two different types of response
+        String jsonstr;
+        try {
+            // If it is an inbound response, we read the entity
+            jsonstr = r.readEntity(String.class);
+        } catch (IllegalStateException e) {
+            // If it is an outbound response, we get the entity
+            jsonstr = r.getEntity().toString();
+        }
+        // Now decode it
         String value = null;
         try {
-            JSONObject content = new JSONObject(r.readEntity(String.class));
+            JSONObject content = new JSONObject(jsonstr);
             if (content.has(key))
                 value = String.valueOf(content.get(key));
         } catch (JSONException e) {

@@ -428,9 +428,9 @@ public class RelationTypeTest extends TestCase {
         rtm.setName("accents");
         rtm.setDescription("Readings are the same but for diacriticals");
         rtm.setIs_colocation(true);
-        ClientResponse jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/accents")
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, rtm);
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rtm));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
 
         // Now use it
@@ -442,36 +442,36 @@ public class RelationTypeTest extends TestCase {
         newRel.setType("accents");
         newRel.setIs_significant("no");
 
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newRel);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newRel));
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        GraphModel result = jerseyResult.getEntity(new GenericType<GraphModel>() {});
+        GraphModel result = jerseyResult.readEntity(new GenericType<GraphModel>() {});
         assertEquals(2, result.getRelations().size());
 
         // Now try to delete the relation type, even though relations exist
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/accents")
-                .delete(ClientResponse.class);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request().delete();
         assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
 
         // Delete the relations in question
         for (RelationModel rm : result.getRelations()) {
-            jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relation")
-                    .type(MediaType.APPLICATION_JSON)
-                    .delete(ClientResponse.class, rm);
+            jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relation/remove")
+                    .request(MediaType.APPLICATION_JSON)
+                    .post(Entity.json(rm));
             assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         }
 
         // Try again to delete the relation type, which should work
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/accents")
-                .delete(ClientResponse.class);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/accents")
+                .request().delete();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        RelationTypeModel deletedRt = jerseyResult.getEntity(RelationTypeModel.class);
+        RelationTypeModel deletedRt = jerseyResult.readEntity(RelationTypeModel.class);
         assertEquals(rtm.getName(), deletedRt.getName());
 
         // Now, for fun, try to delete a nonexistent relation type
-        jerseyResult = jerseyTest.resource().path("/tradition/" + tradId + "/relationtype/diacriticals")
-                .delete(ClientResponse.class);
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/diacriticals")
+                .request().delete();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), jerseyResult.getStatus());
     }
 

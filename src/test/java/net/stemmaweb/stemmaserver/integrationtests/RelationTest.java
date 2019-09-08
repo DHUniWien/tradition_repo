@@ -23,7 +23,6 @@ import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -321,7 +320,6 @@ public class RelationTest {
     }
 
     @Test(expected=NotFoundException.class)
-    @Ignore
     public void deleteRelationshipDocumentWideTest() {
         /*
          * Create two local relations between teh and the.
@@ -364,9 +362,9 @@ public class RelationTest {
         jerseyTest.client().property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
 
         Response removalResponse = jerseyTest
-                .target("/tradition/" + tradId + "/relation")
+                .target("/tradition/" + tradId + "/relation/remove")
                 .request(MediaType.APPLICATION_JSON)
-                .method("DELETE", Entity.json(relationship));
+                .post(Entity.json(relationship));
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
@@ -748,11 +746,11 @@ public class RelationTest {
         }
 
         // Now get the relation including reading information
-        response = jerseyTest.resource().path("/tradition/" + tradId + "/relations")
+        response = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .queryParam("include_readings", "true")
-                .get(ClientResponse.class);
+                .request().get();
         assertEquals(Status.OK.getStatusCode(), response.getStatus());
-        relationships = response.getEntity(new GenericType<List<RelationModel>>() {});
+        relationships = response.readEntity(new GenericType<List<RelationModel>>() {});
         assertEquals(3, relationships.size());
         for (RelationModel rel : relationships) {
             assertEquals("local", rel.getScope());
