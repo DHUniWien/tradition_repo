@@ -662,7 +662,7 @@ public class Section {
             while(variantEnd.getDegree(follow, Direction.OUTGOING) > 1 && !variantEnd.equals(end)) {
                 variantEnd = sequence.get(++vIndex);
             }
-            List<Node> baseChain = sequence.subList(currIndex, vIndex);
+            List<Node> baseChain = sequence.subList(currIndex, vIndex+1);
             // Now find all paths between these two nodes.
             for (org.neo4j.graphdb.Path variantPath : db.traversalDescription()
                     .depthFirst()
@@ -694,7 +694,7 @@ public class Section {
                         HashSet<String> pathSigla = new HashSet<>();
                         // Our list of sigla for this variant path is the intersection of all sigla that
                         // occur along it.
-                        for (Relationship r : variantLinks.subList(i, departure)) {
+                        for (Relationship r : variantLinks.subList(departure, i)) {
                             if (pathSigla.size() > 0)
                                 pathSigla.retainAll(collectSigla(r));
                             else
@@ -705,13 +705,13 @@ public class Section {
                         Map<String, List<String>> vWits = new HashMap<>();
                         for (String sig : pathSigla) {
                             String[] split = sig.split("\\|");
-                            String whatever = split[1];
-                            if (vWits.containsKey(whatever))
-                                vWits.get(whatever).add(split[0]);
+                            String witlayer = split[1];
+                            if (vWits.containsKey(witlayer))
+                                vWits.get(witlayer).add(split[0]);
                             else {
                                 List<String> wl = new ArrayList<>();
                                 wl.add(split[0]);
-                                vWits.put(whatever, wl);
+                                vWits.put(witlayer, wl);
                             }
                         }
                         // Now that we have the map of witnesses, make the VariantModel and add it.
@@ -771,7 +771,7 @@ public class Section {
         List<String> collected = new ArrayList<>();
         for (String layer : r.getPropertyKeys())
             for (String sig : (String[]) r.getProperty(layer))
-                collected.add(layer.equals("witnesses") ? sig : String.format("%s (%s)", sig, layer));
+                collected.add(String.format("%s|%s", sig, layer));
         return collected;
     }
 
