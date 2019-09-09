@@ -41,7 +41,7 @@ public class VariantModel {
         ArrayList<String> sigList = new ArrayList<>();
         for (String l : this.witnesses.keySet())
             for (String s : this.witnesses.get(l))
-                sigList.add(String.format("%s (%s)", s, l));
+                sigList.add(l.equals("witnesses") ? s : String.format("%s (%s)", s, l));
         Collections.sort(sigList);
         return sigList;
     }
@@ -65,6 +65,7 @@ public class VariantModel {
     @Override
     public String toString() {
         String vText = ReadingService.textOfReadings(this.readings, this.normal, true);
-        return String.format("%s] %s", vText, String.join(" ", this.getWitnessList()));
+        if (vText.equals("")) vText = "om.";
+        return String.format("%s: %s", vText, String.join(" ", this.getWitnessList()));
     }
 }

@@ -1,7 +1,10 @@
 package net.stemmaweb.model;
 
+import net.stemmaweb.services.ReadingService;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class VariantLocationModel {
 
@@ -64,5 +67,11 @@ public class VariantLocationModel {
 
     public void setDisplacement(boolean has_displacement) {
         this.has_displacement = has_displacement;
+    }
+
+    @Override
+    public String toString() {
+        String base = ReadingService.textOfReadings(this.getBase(), true, false);
+        return String.format("%s] %s", base, this.getVariants().stream().map(VariantModel::toString).collect(Collectors.joining("; ")));
     }
 }

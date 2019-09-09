@@ -142,6 +142,7 @@ public class VariantLocationTest extends TestCase {
         rsp = jerseyTest.target(restPath + "variants").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         List<VariantLocationModel> vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
+        String t = vlocs.get(1).getVariants().get(0).toString();
         assertEquals(7, vlocs.size());
         assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 

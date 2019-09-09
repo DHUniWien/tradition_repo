@@ -271,6 +271,7 @@ public class ReadingService {
     }
 
     public static String textOfReadings(List<ReadingModel> rml, Boolean normal, Boolean show_gaps) {
+        if (rml.size() == 0) return "";
         StringBuilder witnessAsText = new StringBuilder();
         Boolean joinNext = false;
         long lastSeenRank = 0L;
