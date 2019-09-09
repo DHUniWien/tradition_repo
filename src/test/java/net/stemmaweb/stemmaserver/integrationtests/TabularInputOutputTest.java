@@ -374,20 +374,19 @@ public class TabularInputOutputTest extends TestCase {
         String[] equivalent = new String[] {"läckömme/7", "Lähkämme/7", "läckämme/7", "Lächkämme/7"};
         for (String r : equivalent) {
             rm.setTarget(readingLookup.get(r));
-            response = jerseyTest.resource().path("/tradition/" + traditionId + "/relation")
-                    .type(MediaType.APPLICATION_JSON)
-                    .post(ClientResponse.class, rm);
+            response = jerseyTest.target("/tradition/" + traditionId + "/relation")
+                    .request(MediaType.APPLICATION_JSON)
+                    .post(Entity.json(rm));
             assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         }
 
         // Now conflate according to spelling and get the object as an AlignmentModel
-        result = jerseyTest.resource().path("/tradition/" + traditionId + "/json")
+        result = jerseyTest.target("/tradition/" + traditionId + "/json")
                 .queryParam("conflate", "spelling")
-                .type(MediaType.APPLICATION_JSON)
-                .get(ClientResponse.class);
+                .request(MediaType.APPLICATION_JSON).get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
         // Turn the answer into an AlignmentModel
-        AlignmentModel am = result.getEntity(AlignmentModel.class);
+        AlignmentModel am = result.readEntity(AlignmentModel.class);
         assertEquals(10, am.getLength());
         assertEquals(33, am.getAlignment().size());
         // There should be three readings at rank 7

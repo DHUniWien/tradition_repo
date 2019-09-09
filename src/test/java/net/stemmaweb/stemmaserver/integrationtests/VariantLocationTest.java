@@ -1,15 +1,15 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
+import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.HashMap;
@@ -33,13 +33,13 @@ public class VariantLocationTest extends TestCase {
 
     private Map<String,String> setupText(String filename, String filetype) {
         // Make the tradition and get its ID
-        ClientResponse rsp = Util.createTraditionFromFileOrString(jerseyTest, filename, "LR", "1", String.format("src/TestFiles/%s", filename), filetype);
+        Response rsp = Util.createTraditionFromFileOrString(jerseyTest, filename, "LR", "1", String.format("src/TestFiles/%s", filename), filetype);
         assertEquals(Response.Status.CREATED.getStatusCode(), rsp.getStatus());
         String tradId = Util.getValueFromJson(rsp, "tradId");
         // Get the section ID
-        rsp = jerseyTest.resource().path("/tradition/" + tradId + "/sections").get(ClientResponse.class);
+        rsp = jerseyTest.target("/tradition/" + tradId + "/sections").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        List<SectionModel> sm = rsp.getEntity(new GenericType<List<SectionModel>>() {});
+        List<SectionModel> sm = rsp.readEntity(new GenericType<List<SectionModel>>() {});
         assertEquals(1, sm.size());
         String sectId = sm.get(0).getId();
 
@@ -56,13 +56,14 @@ public class VariantLocationTest extends TestCase {
         String restPath = String.format("/tradition/%s/section/%s/", textinfo.get("tradId"), textinfo.get("sectId"));
 
         // First with no modifications
-        ClientResponse rsp = jerseyTest.resource().path(restPath + "variants").get(ClientResponse.class);
+        Response rsp = jerseyTest.target(restPath + "variants").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        List<VariantLocationModel> vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        List<VariantLocationModel> vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(2, vlocs.size());
-        Optional<VariantLocationModel> found = vlocs.stream().filter(VariantLocationModel::getDisplacement).findFirst();
+        Optional<VariantLocationModel> found = vlocs.stream().filter(VariantLocationModel::hasDisplacement).findFirst();
         assertTrue(found.isPresent());
-        for (ReadingModel rm : found.get().getReadings()) {
+        VariantLocationModel toTest = found.get();
+        for (ReadingModel rm : toTest.getBase()) {
             if (rm.getRank().equals(1L))
                 assertEquals("Ich ... auch hier", rm.getDisplay());
             else
@@ -78,28 +79,27 @@ public class VariantLocationTest extends TestCase {
         rm.setIs_significant("yes");
         rm.setScope("local");
         rsp = jerseyTest
-                .resource()
-                .path("/tradition/" + textinfo.get("tradId") + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, rm);
+                .target("/tradition/" + textinfo.get("tradId") + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(rm));
         assertEquals(Response.Status.CREATED.getStatusCode(), rsp.getStatus());
 
-        rsp = jerseyTest.resource().path(restPath + "variants")
+        rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("conflate", "spelling")
-                .get(ClientResponse.class);
+                .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(1, vlocs.size());
-        assertEquals(1, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
+        assertEquals(1, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
         // Then with a significance filter
-        rsp = jerseyTest.resource().path(restPath + "variants")
+        rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("significant", "maybe")
-                .get(ClientResponse.class);
+                .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(1, vlocs.size());
-        assertEquals(0, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
+        assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
     }
 
     public void testChaucer() {
@@ -111,10 +111,9 @@ public class VariantLocationTest extends TestCase {
         ReadingBoundaryModel rbm = new ReadingBoundaryModel();
         rbm.setSeparate(true);
         rbm.setCharacter(" ");
-        ClientResponse rsp = jerseyTest.resource()
-                .path("/reading/" + readingLookup.get("with/3") + "/concatenate/" + readingLookup.get("his/4"))
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, rbm);
+        Response rsp = jerseyTest.target("/reading/" + readingLookup.get("with/3") + "/concatenate/" + readingLookup.get("his/4"))
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(rbm));
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
 
         RelationModel relm = new RelationModel();
@@ -122,43 +121,43 @@ public class VariantLocationTest extends TestCase {
         relm.setTarget(readingLookup.get("teh/16"));
         relm.setType("spelling");
         relm.setScope("tradition");
-        rsp = jerseyTest.resource().path("/tradition/" + textinfo.get("tradId") + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relm);
+        rsp = jerseyTest.target("/tradition/" + textinfo.get("tradId") + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relm));
         assertEquals(Response.Status.CREATED.getStatusCode(), rsp.getStatus());
         // This should have made two relations
-        GraphModel result = rsp.getEntity(GraphModel.class);
+        GraphModel result = rsp.readEntity(GraphModel.class);
         assertEquals(2, result.getRelations().size());
 
         relm.setSource(readingLookup.get("to/16"));
         relm.setTarget(readingLookup.get("unto/16"));
         relm.setType("grammatical");
         relm.setIs_significant("yes");
-        rsp = jerseyTest.resource().path("/tradition/" + textinfo.get("tradId") + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relm);
+        rsp = jerseyTest.target("/tradition/" + textinfo.get("tradId") + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relm));
         assertEquals(Response.Status.CREATED.getStatusCode(), rsp.getStatus());
 
         // Now we can test variant lists
-        rsp = jerseyTest.resource().path(restPath + "variants").get(ClientResponse.class);
+        rsp = jerseyTest.target(restPath + "variants").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        List<VariantLocationModel> vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        List<VariantLocationModel> vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(7, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
+        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
-        rsp = jerseyTest.resource().path(restPath + "/variants")
-                .queryParam("conflate", "spelling").get(ClientResponse.class);
+        rsp = jerseyTest.target(restPath + "/variants")
+                .queryParam("conflate", "spelling").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(5, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
+        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
-        rsp = jerseyTest.resource().path(restPath + "/variants")
-                .queryParam("significant", "yes").get(ClientResponse.class);
+        rsp = jerseyTest.target(restPath + "/variants")
+                .queryParam("significant", "yes").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
-        vlocs = rsp.getEntity(new GenericType<List<VariantLocationModel>>() {});
+        vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
         assertEquals(7, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::getDisplacement).count());
+        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
     }
 
     public void tearDown() throws Exception {

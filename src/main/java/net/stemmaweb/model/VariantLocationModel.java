@@ -9,6 +9,7 @@ public class VariantLocationModel {
     private List<ReadingModel> base;
     private List<VariantModel> variants;
     private List<RelationModel> relations;
+    private boolean has_displacement;
 
     public VariantLocationModel() {
         this.rankIndex = 0L;
@@ -57,4 +58,11 @@ public class VariantLocationModel {
         this.relations.add(rm);
     }
 
+    public boolean hasDisplacement() {
+        return has_displacement;
+    }
+
+    public void setDisplacement(boolean has_displacement) {
+        this.has_displacement = has_displacement;
+    }
 }
