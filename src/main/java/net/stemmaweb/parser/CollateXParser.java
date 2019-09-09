@@ -132,6 +132,8 @@ public class CollateXParser {
 
 
             }
+            // Calculate the common readings
+            VariantGraphService.calculateCommon(parentNode);
             // Create all the witnesses
             seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x));
 

@@ -35,7 +35,7 @@ public class AlignmentModel {
     public AlignmentModel() {}
 
     // Get an alignment table
-    public AlignmentModel(Node sectionNode) throws Exception {
+    public AlignmentModel(Node sectionNode) {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {

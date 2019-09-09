@@ -28,7 +28,8 @@ public class CollateXJsonParser {
         ArrayList<String> collationWitnesses = new ArrayList<>();
         ArrayList<ArrayList<ReadingModel>> collationTable = new ArrayList<>();
 
-        // JSON parsing block; it needs its own try/catch for JSON exceptions
+        // JSON parsing block; turn CollateX JSON into our model classes.
+        // Needs its own try/catch for JSON exceptions
         try {
             JSONObject table = new JSONObject(IOUtils.toString(filestream, "utf-8"));
             // get the witness list from the clunky JSON interface
@@ -102,7 +103,7 @@ public class CollateXJsonParser {
             return Response.serverError().entity(e.getMessage()).build();
         }
 
-        // Now we have the data in good old Java classes; proceed.
+        // Now we have the data in our own model classes; proceed.
         Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         try (Transaction tx = db.beginTx()) {
             // Check that we have all the witnesses
@@ -121,13 +122,17 @@ public class CollateXJsonParser {
             long rank = 1L;
             for (ArrayList<ReadingModel> row : collationTable) {
                 HashMap<String, Node> createdReadings = new HashMap<>();
+                int distinct = 0;
                 for (int w = 0; w < row.size(); w++) {
                     ReadingModel rm = row.get(w);
                     String thisWitness = collationWitnesses.get(w);
                     List<String> witParts = parseWitnessSigil(thisWitness);
                     String lookupKey = String.join(rm.getText(), rm.getNormal_form(), rm.getDisplay(),
                             rm.getJoin_next().toString(), rm.getJoin_prior().toString());
-                    if (lookupKey.equals("nullfalsefalse")) continue;  // Don't add blank readings
+                    if (lookupKey.equals("nullfalsefalse")) {
+                        distinct++;
+                        continue;  // Don't add blank readings
+                    }
                     Node thisReading;
                     if (createdReadings.containsKey(lookupKey)) {
                         thisReading = createdReadings.get(lookupKey);
@@ -153,13 +158,19 @@ public class CollateXJsonParser {
                         thisReading.setProperty("rank", rank);
                         thisReading.setProperty("section_id", parentNode.getId());
                         createdReadings.put(lookupKey, thisReading);
+                        distinct++;
                     }
                     Node lastReading = lastWitnessReading.get(thisWitness);
                     ReadingService.addWitnessLink(lastReading, thisReading, witParts.get(0), witParts.get(1));
                     lastWitnessReading.put(thisWitness, thisReading);
                 }
-                if (createdReadings.size() > 0)
+                if (createdReadings.size() > 0) {
+                    // Increment the rank
                     rank++;
+                    // Set commonality attribute on all readings created
+                    boolean common = distinct == 1;
+                    createdReadings.values().forEach(x -> x.setProperty("is_common", common));
+                }
             }
 
             Node endNode = Util.createEndNode(parentNode);

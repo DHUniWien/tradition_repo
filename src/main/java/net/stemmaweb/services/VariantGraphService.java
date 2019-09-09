@@ -10,6 +10,7 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class VariantGraphService {
@@ -161,6 +162,39 @@ public class VariantGraphService {
         return tradition;
     }
 
+    /**
+     * Calculate the common readings within a section, either in normalized view or not
+     *
+     * @param sectionNode - The section for which to perform the calculation
+     */
+    public static void calculateCommon(Node sectionNode) {
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        // Get an AlignmentModel for the given section, and go rank by rank to find
+        // the common nodes.
+        AlignmentModel am = new AlignmentModel(sectionNode);
+        Node startNode = VariantGraphService.getStartNode(String.valueOf(sectionNode.getId()), db);
+        try (Transaction tx = db.beginTx()) {
+            // See which kind of flag we are setting
+            String propName = startNode.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING) ? "ncommon" : "is_common";
+            // Go through the table rank by rank - if a given rank has only a single reading
+            // apart from lacunae, and no gaps, it is common
+            for (AtomicInteger i = new AtomicInteger(0); i.get() < am.getLength(); i.getAndIncrement()) {
+                List<ReadingModel> readingsAtRank = am.getAlignment().stream()
+                        .map(x -> x.getTokens().get(i.get())).collect(Collectors.toList());
+                HashSet<Long> distinct = new HashSet<>();
+                for (ReadingModel rm : readingsAtRank) {
+                    if (rm == null) distinct.add(0L);
+                    else if (!rm.getIs_lacuna()) distinct.add(Long.valueOf(rm.getId()));
+                }
+                // Set the commonality property. It is true if the size of the 'distinct' set is 1.
+                distinct.stream().filter(x -> x > 0)
+                        .forEach(x -> db.getNodeById(x).setProperty(propName, distinct.size() == 1));
+            }
+            tx.success();
+        }
+    }
+
+
     /*
      * Methods for calcuating and removing shadow graphs - normalization and majority text
      */
@@ -231,6 +265,8 @@ public class VariantGraphService {
                 Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
                 ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
             }
+            // and calculate the common readings.
+            calculateCommon(sectionNode);
             tx.success();
         }
 
@@ -249,12 +285,16 @@ public class VariantGraphService {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             Node sectionStartNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
+            sectionStartNode.removeProperty("ncommon");
             db.traversalDescription().breadthFirst()
                     .relationships(ERelations.NSEQUENCE,Direction.OUTGOING)
                     .relationships(ERelations.REPRESENTS, Direction.OUTGOING)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(sectionStartNode).relationships()
-                    .forEach(Relationship::delete);
+                    .forEach(x -> {
+                        x.getEndNode().removeProperty("ncommon");
+                        x.delete();
+                    });
 
             // TEMPORARY: Check that we aren't polluting the graph DB
             if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
@@ -264,7 +304,7 @@ public class VariantGraphService {
         }
     }
 
-    public static void calculateMajorityText(Node sectionNode) throws Exception {
+    public static void calculateMajorityText(Node sectionNode) {
         // Get the IDs of our majority readings by going through the alignment table rank by rank
         AlignmentModel am = new AlignmentModel(sectionNode);
         ArrayList<Long> majorityReadings = new ArrayList<>();
