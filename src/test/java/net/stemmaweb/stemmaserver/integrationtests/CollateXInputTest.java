@@ -1,16 +1,18 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.test.framework.JerseyTest;
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.client.ClientResponse;
+import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -34,7 +36,7 @@ public class CollateXInputTest extends TestCase {
     }
 
     public void testParseCollateX() {
-        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
@@ -65,7 +67,7 @@ public class CollateXInputTest extends TestCase {
     public void testParseCollateXFromPlaintext() {
         // To check that we deal as sensibly as possible with extraneous spaces in the
         // CollateX default string tokenisation
-        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Quick foxes", "LR", "1",
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Quick foxes", "LR", "1",
                 "src/TestFiles/quick_brown_fox.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
@@ -77,7 +79,7 @@ public class CollateXInputTest extends TestCase {
 
     public void testAddRelationship() {
         // Parse the file
-        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
@@ -104,14 +106,13 @@ public class CollateXInputTest extends TestCase {
         relation.setTarget(target);
         relation.setType("spelling");
         relation.setScope("local");
-        ClientResponse actualResponse = jerseyTest
-                .resource()
-                .path("/tradition/" + tradId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relation);
+        Response actualResponse = jerseyTest
+                .target("/tradition/" + tradId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relation));
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
-        GraphModel readingsAndRelationships = actualResponse.getEntity(new GenericType<GraphModel>(){});
+        GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
         assertEquals(0, readingsAndRelationships.getReadings().size());
         assertEquals(1, readingsAndRelationships.getRelations().size());
 
@@ -119,7 +120,7 @@ public class CollateXInputTest extends TestCase {
     }
 
     public void testParseCollateXJersey() {
-        ClientResponse cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
+        Response cResult = Util.createTraditionFromFileOrString(jerseyTest, "Auch hier", "LR", "1",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
         String tradId = Util.getValueFromJson(cResult, "tradId");

@@ -1,6 +1,7 @@
 package net.stemmaweb.exporter;
 
-import com.opencsv.CSVWriter;
+import com.opencsv.CSVWriterBuilder;
+import com.opencsv.ICSVWriter;
 import net.stemmaweb.model.AlignmentModel;
 import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.model.ReadingModel;
@@ -60,7 +61,9 @@ public class TabularExporter {
         // Got this far? Turn it into CSV.
         // The CSV will go into a string that we can return.
         StringWriter sw = new StringWriter();
-        CSVWriter writer = new CSVWriter(sw, separator);
+        ICSVWriter writer = new CSVWriterBuilder(sw)
+                .withSeparator(separator)
+                .build();
 
         // First write out the witness list
         writer.writeNext(wholeTradition.getAlignment().stream()

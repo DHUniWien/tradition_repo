@@ -2,7 +2,6 @@ package net.stemmaweb.rest;
 
 import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
-import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
@@ -10,7 +9,9 @@ import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
 import net.stemmaweb.services.*;
-import org.codehaus.jettison.json.JSONObject;
+import org.json.JSONObject;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.json.JSONException;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
@@ -145,7 +146,7 @@ public class Tradition {
                 // Read the stemma name and return the stemma that was created
                 JSONObject newStemma = new JSONObject(result.getEntity().toString());
                 restStemma = new Stemma(traditionId, newStemma.getString("name"), true);
-            } catch (org.codehaus.jettison.json.JSONException e) {
+            } catch (JSONException e) {
                 return Response.serverError().entity(jsonerror("Error reading JSON response on creation")).build();
             }
             return restStemma.getStemma();

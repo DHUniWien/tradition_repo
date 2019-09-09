@@ -1,6 +1,9 @@
 package net.stemmaweb.parser;
 
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
@@ -37,7 +40,10 @@ public class TabularParser {
         // Parse the CSV file
         ArrayList<String[]> csvRows = new ArrayList<>();
         try {
-            CSVReader reader = new CSVReader(new InputStreamReader(fileData), sepChar);
+            final CSVParser parser = new CSVParserBuilder().withSeparator(sepChar).build();
+            final CSVReader reader = new CSVReaderBuilder(new InputStreamReader(fileData))
+                    .withCSVParser(parser)
+                    .build();
             String[] nextLine;
             while ((nextLine = reader.readNext()) != null)
                 csvRows.add(nextLine);

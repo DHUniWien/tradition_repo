@@ -3,12 +3,12 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import java.util.ArrayList;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

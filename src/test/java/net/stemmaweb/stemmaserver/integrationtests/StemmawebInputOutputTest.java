@@ -4,12 +4,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.test.framework.JerseyTest;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -20,10 +19,17 @@ import net.stemmaweb.exporter.StemmawebExporter;
 
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Result;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.test.TestGraphDatabaseFactory;
@@ -51,9 +57,8 @@ public class StemmawebInputOutputTest {
         exportStemmawebResource = new StemmawebExporter();
 
         // Create a JerseyTestServer for the necessary REST API calls
-        Root webResource = new Root();
         jerseyTest = JerseyTestServerFactory.newJerseyTestServer()
-                .addResource(webResource)
+                .addResource(Root.class)
                 .create();
         jerseyTest.setUp();
     }
@@ -63,7 +68,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLImportNonexistentFileTest() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaFileNotExisting.xml", "stemmaweb");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertFalse(traditionNodeExists());
@@ -74,7 +79,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLImportXMLStreamErrorTest() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/SapientiaWithError.xml", "stemmaweb");
         assertNotNull(response);
         assertEquals(Response.status(Response.Status.INTERNAL_SERVER_ERROR).build().getStatus(),
@@ -87,7 +92,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLImportSuccessTest() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                     "src/TestFiles/besoin.xml", "stemmaweb");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
@@ -123,7 +128,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void graphMLExportSuccessTest(){
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
             "src/TestFiles/testTradition.xml", "stemmaweb");
         String traditionId = Util.getValueFromJson(response, "tradId");
 
@@ -142,7 +147,7 @@ public class StemmawebInputOutputTest {
      */
     @Test
     public void unicodeSigilTest() {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/john.xml", "stemmaweb");
         assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
                 response.getStatus());
@@ -166,7 +171,7 @@ public class StemmawebInputOutputTest {
 
     @Test
     public void importFlorilegiumTest () {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
 
         // Check for success and get the tradition id
@@ -176,9 +181,8 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/readings")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/readings")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(319, readings.size()); // really 319
 
@@ -199,17 +203,15 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of witnesses
         List<WitnessModel> witnesses = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/witnesses")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/witnesses")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, witnesses.size());  // should be 13
 
         // Check for the correct number of relationships
         List<RelationModel> relations = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/relations")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/relations")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<RelationModel>>() {});
         assertEquals(7, relations.size());
 
@@ -232,7 +234,7 @@ public class StemmawebInputOutputTest {
 
     @Test
     public void exportFlorilegiumTest () {
-        ClientResponse response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
                 "src/TestFiles/florilegium_graphml.xml", "stemmaweb");
 
         // Check for success and get the tradition id
@@ -242,20 +244,18 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of reading nodes
         List<ReadingModel> origReadings = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/readings")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/readings")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(319, origReadings.size());
 
         // Set the language
         String jsonPayload = "{\"language\":\"Greek\"}";
-        ClientResponse jerseyResponse = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId)
-                .type(MediaType.APPLICATION_JSON)
-                .put(ClientResponse.class, jsonPayload);
-        assertEquals(ClientResponse.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+        Response jerseyResponse = jerseyTest
+                .target("/tradition/" + traditionId)
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(jsonPayload));
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
         assertEquals("Greek", Util.getValueFromJson(jerseyResponse, "language"));
 
         // Add a stemma
@@ -303,11 +303,10 @@ public class StemmawebInputOutputTest {
                 "    7 -> G;\n" +
                 "}\n";
         jerseyResponse = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/stemma")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, newStemma);
-        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
+                .target("/tradition/" + traditionId + "/stemma")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(newStemma));
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // Merge a couple of nodes
         Node blasphemias;
@@ -328,10 +327,9 @@ public class StemmawebInputOutputTest {
 
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel(); // take all the defaults
         jerseyResponse = jerseyTest
-                .resource()
-                .path("/reading/" + blasphemias.getId() + "/concatenate/" + aporia.getId())
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, readingBoundaryModel);
+                .target("/reading/" + blasphemias.getId() + "/concatenate/" + aporia.getId())
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(readingBoundaryModel));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         try(Transaction tx = db.beginTx()) {
             assertEquals("βλασφημίας ἀπορία", blasphemias.getProperty("text"));
@@ -347,11 +345,10 @@ public class StemmawebInputOutputTest {
         relationship.setIs_significant("yes");
 
         jerseyResponse = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/relation")
-                .type(MediaType.APPLICATION_JSON)
-                .post(ClientResponse.class, relationship);
-        assertEquals(ClientResponse.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
+                .target("/tradition/" + traditionId + "/relation")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(relationship));
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatus());
 
         // Export the GraphML in Stemmaweb form
         Response parseResponse = exportStemmawebResource.writeNeo4J(traditionId);
@@ -367,9 +364,8 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of reading nodes
         List<ReadingModel> readings = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/readings")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/readings")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(318, readings.size());
 
@@ -390,25 +386,23 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of witnesses
         List<WitnessModel> witnesses = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/witnesses")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/witnesses")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, witnesses.size());
 
         // Check for the correct number of relationships
         List<RelationModel> relations = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/relations")
-                .type(MediaType.APPLICATION_JSON)
+                .target("/tradition/" + traditionId + "/relations")
+                .request(MediaType.APPLICATION_JSON)
                 .get(new GenericType<List<RelationModel>>() {
                 });
         assertEquals(8, relations.size());
 
         // Check for the existence of the stemma
         List<StemmaModel> stemmata = jerseyTest
-                .resource()
-                .path("/tradition/" + traditionId + "/stemmata")
+                .target("/tradition/" + traditionId + "/stemmata")
+                .request()
                 .get(new GenericType<List<StemmaModel>>() {
                 });
         assertEquals(1, stemmata.size());

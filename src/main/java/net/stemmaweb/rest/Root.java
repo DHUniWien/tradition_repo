@@ -4,16 +4,17 @@ package net.stemmaweb.rest;
 //import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 //import org.glassfish.jersey.media.multipart.FormDataParam;
 
-import com.qmino.miredot.annotations.MireDotIgnore;
+
 import com.qmino.miredot.annotations.ReturnType;
-import com.sun.jersey.core.header.FormDataContentDisposition;
-import com.sun.jersey.multipart.FormDataParam;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
+
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.*;
@@ -42,6 +43,15 @@ public class Root {
     /*
      * Delegated API calls
      */
+
+    private static final String CLICHED_MESSAGE = "Hello World!";
+
+    @GET
+    @Produces("text/plain")
+    public String getHello() {
+        return CLICHED_MESSAGE;
+    }
+
 
     /**
      * @param tradId - the ID of the tradition being queried
