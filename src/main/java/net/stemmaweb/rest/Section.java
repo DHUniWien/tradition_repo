@@ -769,14 +769,16 @@ public class Section {
             hm.put(vEnd, vlm);
             vlocs.put(vStart, hm);
         }
-        // Initialize the VLModel if it is new. Start and end are included in the base chain
-        // in case the variants are additions.
-        if (vlm.getBase().size() == 0) {
+        // Initialize the VLModel if it is new.
+        if (vlm.getRankIndex() == 0) {
             List<ReadingModel> baseReadings = baseChain
                     .subList(baseChain.indexOf(vStart), baseChain.indexOf(vEnd)+1)
                     .stream().map(ReadingModel::new).collect(Collectors.toList());
+            vlm.setBefore(baseReadings.remove(0));
+            vlm.setAfter(baseReadings.remove(baseReadings.size() - 1));
             vlm.setBase(baseReadings);
             vlm.setRankIndex(baseReadings.get(0).getRank());
+            vlm.setNormalised(vStart.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
         }
         return vlm;
     }
