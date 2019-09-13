@@ -323,7 +323,7 @@ public class Witness {
                 Node startNode = VariantGraphService.getStartNode(String.valueOf(currentSection.getId()), db);
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 // Remove the meta node from the list
-                if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getText().equals("#END#"))
+                if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getIs_end())
                     readingModels.remove(readingModels.size() - 1);
                 tx.success();
             } catch (Exception e) {
