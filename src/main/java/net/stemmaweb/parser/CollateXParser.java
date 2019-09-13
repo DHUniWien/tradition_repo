@@ -132,10 +132,10 @@ public class CollateXParser {
 
 
             }
-            // Calculate the common readings
-            VariantGraphService.calculateCommon(parentNode);
             // Create all the witnesses
             seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x));
+            // Calculate the common readings
+            VariantGraphService.calculateCommon(parentNode);
 
             // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {
