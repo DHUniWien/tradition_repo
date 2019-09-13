@@ -1,7 +1,9 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Relation;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
@@ -148,9 +150,11 @@ public class VariantGraphServiceTest {
             // We should be able to crawl along from the start node and get the text
             Node current = startNode;
             ArrayList<String> words = new ArrayList<>();
-            while (!current.hasProperty("is_end")) {
+            Node endNode = VariantGraphService.getEndNode(sectId, db);
+            while (current.hasRelationship(ERelations.MAJORITY, Direction.OUTGOING)) {
                 Node next = current.getSingleRelationship(ERelations.MAJORITY, Direction.OUTGOING).getEndNode();
-                words.add(next.getProperty("text").toString());
+                if (!next.equals(endNode))
+                    words.add(next.getProperty("text").toString());
                 current = next;
             }
             assertEquals(expectedMajority, String.join(" ", words));
@@ -169,18 +173,31 @@ public class VariantGraphServiceTest {
         }
 
         // Now lemmatize some smaller readings, normalize, and make sure the majority text adjusts
-        expectedMajority = "sanoi herra Heinärickus Erjkillen weliellensä Läckämme tavastjan maallen";
+        expectedMajority = "sanoi herra Heinäricki Erjkillen weliellensä Läckämme Hämehen maallen";
         try (Transaction tx = db.beginTx()) {
+            // Lemmatise a minority reading
             Node n = db.findNode(Nodes.READING, "text", "weliellensä");
             assertNotNull(n);
-            n.setProperty("is_lemma", "true");
+            n.setProperty("is_lemma", true);
+            // Collate two readings so that together they outweigh the otherwise-majority
+            Node n1 = db.findNode(Nodes.READING, "text", "Heinäricki");
+            Node n2 = db.findNode(Nodes.READING, "text", "Henärickus");
+            RelationModel rm = new RelationModel();
+            rm.setSource(String.valueOf(n1.getId()));
+            rm.setTarget(String.valueOf(n2.getId()));
+            rm.setType("collated");
+            rm.setScope("local");
+            Relation relRest = new Relation(newTradId);
+            Response r = relRest.create(rm);
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
             VariantGraphService.normalizeGraph(sections.get(0), "collated");
             VariantGraphService.calculateMajorityText(sections.get(0));
             Node current = startNode;
             ArrayList<String> words = new ArrayList<>();
-            while (!current.hasProperty("is_end")) {
+            while (current.hasRelationship(ERelations.MAJORITY, Direction.OUTGOING)) {
                 Node next = current.getSingleRelationship(ERelations.MAJORITY, Direction.OUTGOING).getEndNode();
-                words.add(next.getProperty("text").toString());
+                if (next.getProperty("is_end", false).equals(false))
+                    words.add(next.getProperty("text").toString());
                 current = next;
             }
             assertEquals(expectedMajority, String.join(" ", words));
