@@ -333,7 +333,7 @@ public class WitnessTest {
         Response r = Util.createTraditionFromFileOrString(jerseyTest, "592th", "LR", "1",
                 "src/TestFiles/592th.xml", "graphml");
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
-        String error = r.readEntity(String.class);
+        String error = Util.getValueFromJson(r, "error");
         assertEquals("The character \" may not appear in a sigil name.", error);
     }
 
