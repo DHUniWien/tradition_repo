@@ -64,7 +64,7 @@ public class DotParser {
         // Return our answer.
         String returnKey = result == Status.CREATED ? "name" : "error";
         return Response.status(result)
-                .entity(simpleJSON(returnKey, messageValue))
+                .entity(Util.jsonresp(returnKey, messageValue))
                 .build();
     }
 
@@ -223,9 +223,4 @@ public class DotParser {
         }
         return sigil;
     }
-
-    private static String simpleJSON (String key, String value) {
-        return String.format("{\"%s\":\"%s\"}", key, value );
-    }
-
 }

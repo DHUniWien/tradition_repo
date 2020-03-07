@@ -100,7 +100,7 @@ public class CollateXJsonParser {
             }
         } catch (JSONException|IOException e) {
             e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(Util.jsonerror(e.getMessage())).build();
         }
 
         // Now we have the data in our own model classes; proceed.
@@ -181,14 +181,12 @@ public class CollateXJsonParser {
                 ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
             tx.success();
-            String response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
-            return Response.status(Response.Status.CREATED).entity(response).build();
+            return Response.status(Response.Status.CREATED).entity(Util.jsonresp("parentId", parentNode.getId())).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
-            String error = String.format("{\"error\": \"%s\"}", e.getMessage());
-            return Response.serverError().entity(error).build();
+            return Response.serverError().entity(Util.jsonerror(e.getMessage())).build();
         }
 
     }

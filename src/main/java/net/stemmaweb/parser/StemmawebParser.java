@@ -52,7 +52,7 @@ public class StemmawebParser {
         } catch (XMLStreamException e) {
             e.printStackTrace();
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Error: Parsing of tradition file failed!")
+                    .entity(Util.jsonerror("Error: Parsing of tradition file failed!"))
                     .build();
         }
         // The information on the relevant tradition
@@ -108,9 +108,9 @@ public class StemmawebParser {
                                             // If a RELATED link already exists, we have a problem.
                                             if (relKind.equals(ERelations.RELATED))
                                                 return Response.status(Response.Status.BAD_REQUEST)
-                                                        .entity("Error: Tradition specifies the reading relation " +
+                                                        .entity(Util.jsonerror("Error: Tradition specifies the reading relation " +
                                                                 currentRelModel.getScope() + " -- " + currentRelModel.getTarget() +
-                                                                "twice")
+                                                                "twice"))
                                                         .build();
                                             // It's a SEQUENCE link, so we are good.
                                             relship = qr;
@@ -358,12 +358,12 @@ public class StemmawebParser {
             Util.setColocationFlags(traditionNode);
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
         } catch(Exception e) {
             e.printStackTrace();
 
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error: Tradition could not be imported!")
+                    .entity(Util.jsonerror("Error: Tradition could not be imported!"))
                     .build();
         }
 
@@ -377,7 +377,7 @@ public class StemmawebParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(String.format("{\"parentId\":\"%d\"}", parentNode.getId()))
+                .entity(Util.jsonresp("parentId", parentNode.getId()))
                 .build();
     }
 

@@ -37,7 +37,7 @@ public class GraphMLParser {
         // We will use a DOM parser for this
         Document doc = Util.openFileStream(filestream);
         if (doc == null)
-            return Response.serverError().entity("No document found").build();
+            return Response.serverError().entity(Util.jsonerror("No document found")).build();
 
         Element rootEl = doc.getDocumentElement();
         rootEl.normalize();
@@ -72,7 +72,7 @@ public class GraphMLParser {
                 NodeList dataNodes = ((Element) entityXML).getElementsByTagName("data");
                 HashMap<String, Object> nodeProperties = returnProperties(dataNodes, dataKeys);
                 if (!nodeProperties.containsKey("neolabel"))
-                    return Response.status(Response.Status.BAD_REQUEST).entity("Node without label found").build();
+                    return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror("Node without label found")).build();
                 String neolabel = nodeProperties.remove("neolabel").toString();
                 String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
 
@@ -86,7 +86,7 @@ public class GraphMLParser {
                         // entityMap.values().forEach(Node::delete);
                         // tx.success();
                         return Response.status(Response.Status.BAD_REQUEST)
-                                .entity("Multiple TRADITION nodes in input").build();
+                                .entity(Util.jsonerror("Multiple TRADITION nodes in input")).build();
                     }
 
                     String fileTraditionId = nodeProperties.get("id").toString();
@@ -123,14 +123,14 @@ public class GraphMLParser {
             if (parentLabel == null) // i.e. if it hasn't been set to "tradition"
                 if (sectionNodes.size() == 0)
                     return Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Neither TRADITION nor SECTION found in input").build();
+                            .entity(Util.jsonerror("Neither TRADITION nor SECTION found in input")).build();
                 else
                     parentLabel = "section";
 
             // If we have seen multiple sections but no tradition, error out.
             if (sectionNodes.size() > 1 && parentLabel.equals("section"))
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Multiple SECTION nodes but no TRADITION in input").build();
+                        .entity(Util.jsonerror("Multiple SECTION nodes but no TRADITION in input")).build();
 
 
             // Next go through all the edges and create them between the nodes. Keep track of the
@@ -146,7 +146,7 @@ public class GraphMLParser {
                 NodeList dataNodes = ((Element) edgeNodes.item(i)).getElementsByTagName("data");
                 HashMap<String, Object> edgeProperties = returnProperties(dataNodes, dataKeys);
                 if (!edgeProperties.containsKey("neolabel"))
-                    return Response.serverError().entity("Node without label found").build();
+                    return Response.serverError().entity(Util.jsonerror("Node without label found")).build();
                 String neolabel = edgeProperties.remove("neolabel").toString();
                 // If this is a SEQUENCE relation, track the sigla so we can be sure the witnesses
                 // exist (they are not exported for sections.)
@@ -157,7 +157,7 @@ public class GraphMLParser {
                 } else if (neolabel.equals("RELATED")) {
                     if (!edgeProperties.containsKey("type"))
                         return Response.status(Response.Status.BAD_REQUEST)
-                                .entity("Relation defined without a type").build();
+                                .entity(Util.jsonerror("Relation defined without a type")).build();
                     seenRelationTypes.add(edgeProperties.get("type").toString());
                 }
                 Relationship newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
@@ -206,7 +206,7 @@ public class GraphMLParser {
 
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();

@@ -13,6 +13,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.core.Response;
@@ -49,7 +50,7 @@ public class TabularParser {
                 csvRows.add(nextLine);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
+                .entity(Util.jsonerror(e.getMessage())).build();
         }
         return parseTableToCollation(csvRows, sectionNode);
     }
@@ -75,7 +76,7 @@ public class TabularParser {
             excelRows = getTableFromWorkbook(workbook);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(String.format("{\"error\":\"%s\"", e.getMessage())).build();
+                    .entity(Util.jsonerror(e.getMessage())).build();
         }
         return parseTableToCollation(excelRows, sectionNode);
     }
@@ -128,7 +129,7 @@ public class TabularParser {
                     layerWitnesses.put(sigil, sigilParts);
                 else   // what is this i don't even
                     return Response.status(Response.Status.BAD_REQUEST)
-                        .entity("Malformed sigil " + sigil).build();
+                        .entity(Util.jsonerror("Malformed sigil " + sigil)).build();
 
                 lastReading.put(sigil, startNode);
             }
@@ -226,15 +227,15 @@ public class TabularParser {
 
             // We are done!
             result = Response.Status.CREATED;
-            response = String.format("{\"parentId\":\"%d\"}", parentNode.getId());
+            response = Util.jsonresp("parentId", parentNode.getId());
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             if (result.equals(Response.Status.OK))
                 result = Response.Status.INTERNAL_SERVER_ERROR;
-            response = String.format("{\"error\":\"%s\"}", e.getMessage());
+            response = Util.jsonerror(e.getMessage());
         }
 
         return Response.status(result).entity(response).build();
