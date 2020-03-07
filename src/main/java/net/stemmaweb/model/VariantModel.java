@@ -1,10 +1,14 @@
 package net.stemmaweb.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.services.ReadingService;
 
+import javax.xml.bind.annotation.XmlRootElement;
 import java.util.*;
 
+@XmlRootElement
+@JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class VariantModel {
     /**
      * Expresses a variant, which is made up of a sequence of readings and a set of witness sigla.
@@ -12,8 +16,8 @@ public class VariantModel {
 
     private List<ReadingModel> readings;
     private Map<String,List<String>> witnesses;
-    private Boolean normal;
-    private Boolean displaced;
+    private Boolean normal = false;
+    private Boolean displaced = false;
 
     public VariantModel() {
         readings = new ArrayList<>();

@@ -1,11 +1,17 @@
 package net.stemmaweb.model;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import net.stemmaweb.services.ReadingService;
 
+import javax.xml.bind.annotation.XmlRootElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@XmlRootElement
+@JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class VariantLocationModel {
 
     private Long rankIndex;
@@ -14,8 +20,8 @@ public class VariantLocationModel {
     private List<ReadingModel> base;
     private List<VariantModel> variants;
     private List<RelationModel> relations;
-    private boolean has_displacement;
-    private boolean normalised;
+    private boolean has_displacement = false;
+    private boolean normalised = false;
 
     public VariantLocationModel() {
         this.rankIndex = 0L;
@@ -64,10 +70,12 @@ public class VariantLocationModel {
         this.relations.add(rm);
     }
 
+    @JsonGetter("has_displacement")
     public boolean hasDisplacement() {
         return has_displacement;
     }
 
+    @JsonSetter("has_displacement")
     public void setDisplacement(boolean has_displacement) {
         this.has_displacement = has_displacement;
     }

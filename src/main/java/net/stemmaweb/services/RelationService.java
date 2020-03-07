@@ -90,6 +90,15 @@ public class RelationService {
         return result;
     }
 
+    public static List<Relationship> getDislocations(Node r) throws Exception {
+        GraphDatabaseService db = r.getGraphDatabase();
+        List<RelationTypeModel> dislocationTypes = ourRelationTypes(r).stream()
+                .filter(x -> !x.getIs_colocation()).collect(Collectors.toList());
+        try (Transaction tx = db.beginTx()) {
+
+        }
+    }
+
     /**
      * Retrieve clusters of readings, either colocated or non-, from the given section of the given tradition.
      *
@@ -124,7 +133,7 @@ public class RelationService {
      * @return - a list of sets, where each set represents a group of closely related readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong with the algorithm
      */
-    public static List<Set<Node>> getCloselyRelatedClusters(
+    static List<Set<Node>> getCloselyRelatedClusters(
             String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
             throws Exception {
         // Is it a no-op?
@@ -178,7 +187,7 @@ public class RelationService {
         return result;
     }
 
-    public static Node findRepresentative(Set<Node> alternatives) {
+    static Node findRepresentative(Set<Node> alternatives) {
         GraphDatabaseService db;
         // See if this is trivial
         if (alternatives.isEmpty()) return null;

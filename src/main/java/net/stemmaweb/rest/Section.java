@@ -24,11 +24,8 @@ import java.util.stream.StreamSupport;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
-import static net.stemmaweb.services.ReadingService.AlignmentTraverse;
-import static net.stemmaweb.services.ReadingService.addWitnessLink;
-import static net.stemmaweb.services.ReadingService.recalculateRank;
-import static net.stemmaweb.services.ReadingService.removePlaceholder;
-import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
+import static net.stemmaweb.services.ReadingService.*;
+import static net.stemmaweb.services.RelationService.returnRelationType;
 
 /**
  * Comprises all the API calls related to a tradition section.
@@ -554,6 +551,8 @@ public class Section {
      *
      * @param significant - Restrict the variant groups to the given significance level or above
      * @param exclude_type1 - If true, exclude type 1 (i.e. singleton) variants from the groupings
+     * @param combine - If true, attempt to combine non-colocated variants (e.g. transpositions) into
+     *                the VariantLocationModel of the corresponding base
      * @param baseWitness  - Use the path of the given witness as the base path.
      * @param conflate - The name of a relation type that should be used for normalization
      *
@@ -566,7 +565,8 @@ public class Section {
     @ReturnType("java.util.List<net.stemmaweb.model.VariantLocationModel>")
     public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
                                      @DefaultValue("no") @QueryParam("exclude_type1") String exclude_type1,
-                                                         @QueryParam("base") String baseWitness,
+                                     @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
+                                                         @QueryParam("base_witness") String baseWitness,
                                                          @QueryParam("normalize") String conflate) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -595,14 +595,11 @@ public class Section {
             List<Node> baseText = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
 
             // Walk the base text looking for diversions
-            vlocs = findVariants(baseText, conflate != null ? ERelations.NSEQUENCE : ERelations.SEQUENCE);
+            vlocs = findVariants(baseText, conflate != null ? ERelations.NSEQUENCE : ERelations.SEQUENCE, combine.equals("true"));
 
             // Filter for type1 variants
             if (exclude_type1.equals("true"))
                 vlocs = vlocs.stream().filter(x -> !isTypeOne(x)).collect(Collectors.toList());
-
-            // Identify and consolidate dislocations
-            identifyDislocations(db, vlocs);
 
             // Filter for significant variants
             if (!significant.equals("no"))
@@ -619,6 +616,13 @@ public class Section {
         return Response.ok(vlocs).build();
     }
 
+    /**
+     * Checks whether a VariantLocationModel is "type 1", i.e. none of the variants appear in more than
+     * a single witness.
+     *
+     * @param vloc - The VariantLocationModel to check
+     * @return true or false
+     */
     private static boolean isTypeOne(VariantLocationModel vloc) {
         boolean is_type1 = true;
         for (VariantModel vm : vloc.getVariants()) {
@@ -627,20 +631,36 @@ public class Section {
         return is_type1;
     }
 
+    /**
+     * Tests whether the variant location in question meets a significance test. The test succeeds
+     * if any of the relations between the base and the variant(s) meet the given threshold.
+     *
+     * @param vloc - The variant location to test
+     * @param significance - The minimum significance to pass the threshold
+     * @return true or false
+     */
     private static boolean meetsSignificance (VariantLocationModel vloc, String significance) {
-        boolean meets = true;
+        // If there are no relations associated with the variant, it can't be significant.
+        boolean meets = false;
         for (RelationModel rm : vloc.getRelations())
             if (significance.equals("maybe"))
-                meets = meets && !rm.getIs_significant().equals("no");
+                meets = meets || !rm.getIs_significant().equals("no");
             else if (significance.equals("yes"))
-                meets = meets && rm.getIs_significant().equals("yes");
+                meets = meets || rm.getIs_significant().equals("yes");
         return meets;
     }
 
-    private static List<VariantLocationModel> findVariants(List<Node> sequence, RelationshipType follow) {
-        Node curr = sequence.get(0);
-        Node end = sequence.get(sequence.size() - 1);
-        GraphDatabaseService db = curr.getGraphDatabase();
+    /**
+     * The core logic for variant detection.
+     *
+     * @param sequence - The base text sequence off of which the variants are based.
+     * @param follow - The type of sequence relationship we are following, i.e. whether we are in normalized mode.
+     * @param combine - Whether to combine dislocations into the associated variants
+     * @return A list of VariantLocationModels for the whole sequence.
+     */
+    private List<VariantLocationModel> findVariants(List<Node> sequence, RelationshipType follow, boolean combine) {
+        Node curr = sequence.get(0); // this should be a START node
+        Node end = sequence.get(sequence.size() - 1); // this should be an END node
         // We might come up with an arbitrary number of overlapping variant locations, depending
         // on how the graph branches and rejoins between the two common points. These need to be
         // indexed both by start and end.
@@ -651,7 +671,7 @@ public class Section {
             if (curr.getDegree(follow, Direction.OUTGOING) == 1) {
                 Node next = curr.getSingleRelationship(follow, Direction.OUTGOING).getEndNode();
                 // next should be the next node in the base sequence.
-                if (is_common(next, follow)) {
+                if (is_common(next, follow, combine)) {
                     curr = next;
                     currIndex++;
                     continue;
@@ -663,11 +683,10 @@ public class Section {
             int vIndex = currIndex;
             do {
                 variantEnd = sequence.get(++vIndex);
-            } while (!is_common(variantEnd, follow) && !variantEnd.equals(end));
+            } while (!is_common(variantEnd, follow, combine) && !variantEnd.equals(end));
             List<Node> baseChain = sequence.subList(currIndex, vIndex+1);
 
             // Now find all paths between these two nodes.
-            int pathno = 0;
             for (org.neo4j.graphdb.Path variantPath : db.traversalDescription()
                     .breadthFirst()
                     .relationships(follow, Direction.OUTGOING)
@@ -677,7 +696,6 @@ public class Section {
                 // Only pay attention if we reached the end
                 // if (!variantPath.endNode().equals(variantEnd)) continue;
                 // Skip it if it is the base path.
-                System.out.println(String.format("Found %d path(s): %s", ++pathno, variantPath.toString()));
                 ArrayList<Node> variantChain = new ArrayList<>();
                 variantPath.nodes().forEach(variantChain::add);
                 if (variantChain.equals(baseChain))
@@ -685,6 +703,8 @@ public class Section {
 
                 // This isn't the base path, so see where this path rejoins the base path.
                 // If it rejoins and branches again, we have to treat each branch as a separate variant.
+                // The intersections array will hold a list of indices to variantChain whose readings also
+                // exist in baseChain.
                 ArrayList<Integer> intersections = new ArrayList<>();
                 for (int i = 1; i < variantChain.size(); i++) {
                     if (baseChain.contains(variantChain.get(i)))
@@ -693,44 +713,70 @@ public class Section {
                 ArrayList<Relationship> variantLinks = new ArrayList<>();
                 variantPath.relationships().forEach(variantLinks::add);
                 int departure = 0;
-                // Get the chain of relationships between the point of departure and the next
-                // intersection, and make a VariantModel out of that sub-path.
+                // Get the chain of relationships between the point of departure (i.e. the last intersection)
+                // and the next intersection, and make a VariantModel out of that sub-path.
                 for (int i : intersections) {
-                    VariantLocationModel vlm = getVLM(vlocs, baseChain, variantChain.get(departure), variantChain.get(i));
-                    // Add this variant to that VLModel
-                    HashSet<String> pathSigla = new HashSet<>();
-                    // Our list of sigla for this variant path is the intersection of all sigla that
-                    // occur along it.
-                    for (Relationship r : variantLinks.subList(departure, i)) {
-                        if (pathSigla.size() > 0)
-                            pathSigla.retainAll(collectSigla(r));
-                        else
-                            pathSigla.addAll(collectSigla(r));
+                    // If the next intersection is only one step along from the point of departure, then
+                    // either we have an omission at this location, or this location is simply following
+                    // the base chain. We need to see which case we have.
+                    boolean skip = false;
+                    if (i - departure == 1) {
+                        int bIdx = baseChain.indexOf(variantChain.get(departure));
+                        skip = baseChain.get(bIdx+1).equals(variantChain.get(i));
                     }
-                    // If we are out of sigla, then this path doesn't comprise a variant.
-                    if (pathSigla.isEmpty()) continue;
-                    Map<String, List<String>> vWits = new HashMap<>();
-                    for (String sig : pathSigla) {
-                        String[] split = sig.split("\\|");
-                        String witlayer = split[1];
-                        if (vWits.containsKey(witlayer))
-                            vWits.get(witlayer).add(split[0]);
-                        else {
-                            List<String> wl = new ArrayList<>();
-                            wl.add(split[0]);
-                            vWits.put(witlayer, wl);
+                    // It seems we have a real variant. Proceed.
+                    if (!skip) {
+                        VariantLocationModel vlm = getVLM(vlocs, baseChain, variantChain.get(departure), variantChain.get(i));
+                        // Add this variant to that VLModel
+                        HashSet<String> pathSigla = new HashSet<>();
+                        // Our list of sigla for this variant path is the intersection of all sigla that
+                        // occur along it.
+                        for (Relationship r : variantLinks.subList(departure, i)) {
+                            if (pathSigla.size() > 0)
+                                pathSigla.retainAll(collectSigla(r));
+                            else
+                                pathSigla.addAll(collectSigla(r));
                         }
+                        // If we are out of sigla, then this path doesn't comprise a variant.
+                        if (pathSigla.isEmpty()) continue;
+                        Map<String, List<String>> vWits = new HashMap<>();
+                        for (String sig : pathSigla) {
+                            String[] split = sig.split("\\|");
+                            String witlayer = split[1];
+                            if (vWits.containsKey(witlayer))
+                                vWits.get(witlayer).add(split[0]);
+                            else {
+                                List<String> wl = new ArrayList<>();
+                                wl.add(split[0]);
+                                vWits.put(witlayer, wl);
+                            }
+                        }
+                        // Now that we have the map of witnesses, make the VariantModel and add it.
+                        VariantModel vm = new VariantModel();
+                        List<Node> variantReadings = variantChain.subList(departure+1, i);
+                        vm.setReadings(variantReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
+                        vm.setWitnesses(vWits);
+                        vm.setNormal(follow.equals(ERelations.NSEQUENCE));
+                        // Do any of these variant readings have a non-colocated relation that points somewhere else?
+                        /* List<String> ourBase = vlm.getBase().stream().map(ReadingModel::getId).collect(Collectors.toList());
+                        for (Node vr : variantReadings) {
+                            for (Relationship vrel : vr.getRelationships(ERelations.RELATED)) {
+                                RelationTypeModel vreltype = returnRelationType(tradId, vrel.getProperty("type").toString());
+                                if (!vreltype.getIs_colocation() &&
+                                        !ourBase.contains(String.valueOf(vrel.getOtherNode(vr).getId())))
+                                    vm.setDisplaced(true);
+                            }
+                        } */
+                        vlm.addVariant(vm);
+                        // vlm.setDisplacement(vlm.hasDisplacement() || vm.getDisplaced());
                     }
-                    // Now that we have the map of witnesses, make the VariantModel and add it.
-                    VariantModel vm = new VariantModel();
-                    vm.setReadings(variantChain.subList(departure+1, i).stream().map(ReadingModel::new).collect(Collectors.toList()));
-                    vm.setWitnesses(vWits);
-                    vm.setNormal(follow.equals(ERelations.NSEQUENCE));
-                    vlm.addVariant(vm);
                     // The intersection we dealt with is now our new point of departure.
                     departure = i;
                 }
             }
+            // If we are in "combine dislocations" mode, there might not have been any variant paths;
+            // we have to check for
+
             // Move on.
             curr = variantEnd;
             currIndex = vIndex;
@@ -740,19 +786,46 @@ public class Section {
         for (Map<Node,VariantLocationModel> hm : vlocs.values()) {
             result.addAll(hm.values());
         }
-        // Add relation information to each of them
+        // Add relation information to each of them. This will also notice displaced variants.
         for (VariantLocationModel vlm : result)
-            collectRelationsInLocation(db, vlm);
+            collectRelationsInLocation(vlm);
+        // Sort the result by rank index and return
+        result.sort(Comparator.comparingLong(VariantLocationModel::getRankIndex));
         return result;
     }
 
-    private static boolean is_common(Node n, RelationshipType follow) {
+    /**
+     * Utility method to check whether a node is common in the given context.
+     *
+     * @param n - The node to check
+     * @param follow - The RelationshipType we are following, i.e. whether we are in normalized mode
+     * @return true or false
+     */
+    private boolean is_common(Node n, RelationshipType follow, boolean combine) {
         if (n.getProperty("is_start", false).equals(true)) return true;
         if (n.getProperty("is_end", false).equals(true)) return true;
         String propName = follow.equals(ERelations.NSEQUENCE) ? "ncommon" : "is_common";
-        return n.getProperty(propName, false).equals(true);
+        boolean propIsCommon = n.getProperty(propName, false).equals(true);
+        if (combine && propIsCommon) {
+            // Check for dislocations
+            for (Relationship r : n.getRelationships(ERelations.RELATED)) {
+                RelationTypeModel rtm = returnRelationType(tradId, r.getProperty("type").toString());
+                propIsCommon = propIsCommon && rtm.getIs_colocation();
+            }
+        }
+        return propIsCommon;
     }
 
+    /**
+     * Returns (initializing, if necessary) the VariantLocationModel for the given start and end
+     * readings, using the given base.
+     *
+     * @param vlocs - The existing map of start node -> end node -> initialized model
+     * @param baseChain - The relevant chain of base readings
+     * @param vStart - The "before" node for the required VLM
+     * @param vEnd - The "after" node for the required VLM
+     * @return The VLM that was requested
+     */
     private static VariantLocationModel getVLM(Map<Node, Map<Node,VariantLocationModel>> vlocs,
                                                List<Node> baseChain,
                                                Node vStart,
@@ -777,12 +850,21 @@ public class Section {
             vlm.setBefore(baseReadings.remove(0));
             vlm.setAfter(baseReadings.remove(baseReadings.size() - 1));
             vlm.setBase(baseReadings);
-            vlm.setRankIndex(baseReadings.get(0).getRank());
+            if (baseReadings.size() > 0)
+                vlm.setRankIndex(baseReadings.get(0).getRank());
+            else
+                vlm.setRankIndex(vlm.getBefore().getRank() + 1);
             vlm.setNormalised(vStart.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
         }
         return vlm;
     }
 
+    /**
+     * Collects and returns the sigla along a given sequence link.
+     *
+     * @param r the SEQUENCE or NSEQUENCE relationship to collect from
+     * @return a list of sigla in "sigil|layer" format
+     */
     private static List<String> collectSigla (Relationship r) {
         List<String> collected = new ArrayList<>();
         for (String layer : r.getPropertyKeys())
@@ -791,20 +873,42 @@ public class Section {
         return collected;
     }
 
-    private static void collectRelationsInLocation(GraphDatabaseService db, VariantLocationModel vlm) {
+    /**
+     * Looks for all RELATED links between nodes involved in a VariantLocationModel, and adds the
+     * corresponding RelationModels to the VariantLocationModel in question.
+     *
+     * @param vlm - the VariantLocationModel to analyze
+     */
+    private void collectRelationsInLocation(VariantLocationModel vlm) {
         Set<Relationship> relations = new HashSet<>();
         // Gather all the nodes we need
         Set<Node> clusterNodes = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
             for (ReadingModel rm : vlm.getBase())
                 clusterNodes.add(db.getNodeById(Long.valueOf(rm.getId())));
+            HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
             for (VariantModel vm : vlm.getVariants())
-                for (ReadingModel rm : vm.getReadings())
-                    clusterNodes.add(db.getNodeById(Long.valueOf(rm.getId())));
+                for (ReadingModel rm : vm.getReadings()) {
+                    Node vrdg = db.getNodeById(Long.valueOf(rm.getId()));
+                    clusterNodes.add(vrdg);
+                    // As long as we're here, make a map of variant node -> VariantModel
+                    vModelForReading.put(vrdg, vm);
+                }
             for (Node n : clusterNodes) {
                 for (Relationship rel : n.getRelationships(ERelations.RELATED, Direction.OUTGOING))
+                    // Add any relation we find that links to another node in this variant location
                     if (clusterNodes.contains(rel.getEndNode()))
                         relations.add(rel);
+                    // Add the relation anyway, if it signifies a displaced variant reading.
+                    // Also mark the variant and its location as being displaced / having a displacement.
+                    else if (vModelForReading.containsKey(n)){
+                        RelationTypeModel rtm = returnRelationType(tradId, rel.getProperty("type").toString());
+                        if (!rtm.getIs_colocation()) {
+                            relations.add(rel);
+                            vModelForReading.get(n).setDisplaced(true);
+                            vlm.setDisplacement(true);
+                        }
+                    }
             }
             List<RelationModel> rml = relations.stream().map(RelationModel::new).collect(Collectors.toList());
             vlm.setRelations(rml);
@@ -813,13 +917,21 @@ public class Section {
     }
 
     // Deal with non-colocated variants
-    private static void identifyDislocations(GraphDatabaseService db, List<VariantLocationModel> vlmlist) {
+    private static void combineDisplacements(List<VariantLocationModel> vlmlist) {
         // - Get the list of transpositions
-        // - Filter them for significance
-        // - Find the variant location that corresponds to each of the addition + omission
-        // - Alter the addition bzw. omission to be a displaced variant
-        // - Remove any now-empty variant locations
-        // - If it is a symmetrical transposition, make a new variant location to indicate this!
+        for (VariantLocationModel vlm : vlmlist.stream()
+                .filter(VariantLocationModel::hasDisplacement).collect(Collectors.toList())) {
+            // - Find the variant location that corresponds to each of the addition + omission
+            // Which variant(s) is dislocated?
+            for (VariantModel vm : vlm.getVariants().stream()
+                    .filter(VariantModel::getDisplaced).collect(Collectors.toList())) {
+
+            }
+            // - Alter the addition bzw. omission to be a displaced variant
+            // - Remove any now-empty variant locations
+            // - If it is a symmetrical transposition, make a new variant location to indicate this!
+
+        }
     }
 
 
