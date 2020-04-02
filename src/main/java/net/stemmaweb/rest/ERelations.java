@@ -35,4 +35,5 @@ public enum ERelations implements RelationshipType {
 
     // Undirected types
     RELATED,        // this type is used to show relations between readings (undirected)
+    COLLATED,       // collation link between words
 }

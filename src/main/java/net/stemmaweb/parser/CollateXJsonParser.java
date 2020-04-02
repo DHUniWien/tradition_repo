@@ -2,6 +2,7 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
@@ -123,6 +124,7 @@ public class CollateXJsonParser {
             for (ArrayList<ReadingModel> row : collationTable) {
                 HashMap<String, Node> createdReadings = new HashMap<>();
                 int distinct = 0;
+                Node lastCollated = null;
                 for (int w = 0; w < row.size(); w++) {
                     ReadingModel rm = row.get(w);
                     String thisWitness = collationWitnesses.get(w);
@@ -159,6 +161,9 @@ public class CollateXJsonParser {
                         thisReading.setProperty("section_id", parentNode.getId());
                         createdReadings.put(lookupKey, thisReading);
                         distinct++;
+                        if (lastCollated != null)
+                            lastCollated.createRelationshipTo(thisReading, ERelations.COLLATED);
+                        lastCollated = thisReading;
                     }
                     Node lastReading = lastWitnessReading.get(thisWitness);
                     ReadingService.addWitnessLink(lastReading, thisReading, witParts.get(0), witParts.get(1));
