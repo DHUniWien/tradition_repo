@@ -389,6 +389,11 @@ public class DotExporter
                 }
             }
             label = lex_str.toString();
+            if (label.length() > 64) {
+                Integer splitPoint = label.length() / 2;
+                splitPoint = label.indexOf(",", splitPoint) + 1; // go to next comma
+                label = label.substring(0, splitPoint) + "\n" + label.substring(splitPoint, label.length());
+            }
         }
         // Add on the layer witnesses where applicable
         lex_str = new StringBuilder();
