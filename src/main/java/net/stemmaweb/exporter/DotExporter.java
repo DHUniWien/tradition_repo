@@ -416,7 +416,7 @@ public class DotExporter
         int hits = 0;
         for (String prop : witnessInfo.keySet())
             hits += (witnessInfo.get(prop)).length;
-        return df2.format(0.8 + 0.2 * hits);
+        return df2.format(Math.max(1, Math.log(0.8 + 0.2 * hits)));
     }
 
     private static String relshipText(Long sNodeId, Long eNodeId, String label, long edgeId, String pWidth, Long rankDiff, boolean isLemmaLink)
