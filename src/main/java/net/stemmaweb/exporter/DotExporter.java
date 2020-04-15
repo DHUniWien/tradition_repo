@@ -134,6 +134,31 @@ public class DotExporter
                     subgraphWritten = true;
                 }
 
+                // Add specific relation ('token-normal-form') for collated readings sharing the same normal_form
+                for (Node node :  db.traversalDescription().breadthFirst()
+                        .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                        .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
+                        .uniqueness(Uniqueness.NODE_GLOBAL)
+                        .traverse(sectionStartNode)
+                        .nodes()) {
+                            for (Node collatedNode :  db.traversalDescription().breadthFirst()
+                              .relationships(ERelations.COLLATED)
+                              .uniqueness(Uniqueness.NODE_GLOBAL)
+                              .traverse(node)
+                              .nodes()) {
+                                  if ((node == collatedNode) ||
+                                      (! node.hasRelationship(ERelations.COLLATED)) ||
+                                      (node.getId() > collatedNode.getId())) { // avoid double
+                                      continue;
+                                  }
+                                  if (node.getProperty("normal_form").equals(collatedNode.getProperty("normal_form"))) {
+                                      Relationship newRelation = node.createRelationshipTo(collatedNode, ERelations.RELATED);
+                                      newRelation.setProperty("type", "token-normal-form");
+                                  }
+                            }
+                }
+                tx.success();
+
                 // Find our representative nodes, in case we are producing a normalised form of the graph
                 HashMap<Node, Node> representatives = getRepresentatives(sectionNode, dm.getNormaliseOn());
                 RelationshipType seqLabel = dm.getNormaliseOn() == null ? ERelations.SEQUENCE : ERelations.NSEQUENCE;
