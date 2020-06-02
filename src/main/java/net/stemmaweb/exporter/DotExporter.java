@@ -367,6 +367,20 @@ public class DotExporter
         return("\t" + node.getId() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
     }
 
+    private static String multiline(String inputStr, int maxLineSize, String separator) {
+        if ( inputStr.length() < maxLineSize ) {
+            return inputStr;
+        }
+        int splitPoint = inputStr.lastIndexOf(",", maxLineSize) + 1; // go to previous comma
+        if ( splitPoint == 0 ) {
+            splitPoint = inputStr.indexOf(",", maxLineSize) + 1; // go to next comma
+        }
+        if ( splitPoint == 0 ) {
+            return inputStr;
+        }
+        return inputStr.substring(0, splitPoint) + separator + multiline(inputStr.substring(splitPoint + 1), maxLineSize, separator);
+    }
+
     private static String sequenceLabel(Map<String, String[]> witnessInfo, int numWits, DisplayOptionModel dm) {
         String[] witnesses = {""};
         StringBuilder lex_str = new StringBuilder();
@@ -388,12 +402,7 @@ public class DotExporter
                     lex_str.append(", ");
                 }
             }
-            label = lex_str.toString();
-            if (label.length() > 64) {
-                Integer splitPoint = label.length() / 2;
-                splitPoint = label.indexOf(",", splitPoint) + 1; // go to next comma
-                label = label.substring(0, splitPoint) + "\n" + label.substring(splitPoint, label.length());
-            }
+            label = multiline(lex_str.toString(), 120, "<BR />");
         }
         // Add on the layer witnesses where applicable
         lex_str = new StringBuilder();
@@ -430,8 +439,8 @@ public class DotExporter
         try {
             String idStr = isLemmaLink ? "l" : "e";
             idStr += edgeId;
-            text = "\t" + sNodeId + "->" + eNodeId + " [label=\"" + label
-                    + "\", id=\"" + idStr + "\", penwidth=\"" + pWidth + "\"";
+            text = "\t" + sNodeId + "->" + eNodeId + " [label=<" + label
+                    + ">, id=\"" + idStr + "\", penwidth=\"" + pWidth + "\"";
             if (rankDiff > 1)
                 text += ", minlen=\"" + rankDiff + "\"";
             text += "];\n";
