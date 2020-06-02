@@ -363,6 +363,14 @@ public class DotExporter
             // Escape double quotes since we are wrapping in double quotes
             nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
 
+        if ( nodeLabel.startsWith("<") ) {
+            // preserve linebreaks and tabs; left-justify
+            nodeLabel = nodeLabel.replace("\n", "<BR ALIGN=\"LEFT\"/>");
+            nodeLabel = nodeLabel.replace("\t", "     ");
+            nodeLabel = nodeLabel.substring(0, nodeLabel.length() - 1) + "<BR ALIGN=\"LEFT\"/>" + nodeLabel.substring(nodeLabel.length() - 1);
+            // to justify the last line too
+        }
+
         // Put it all together
         return("\t" + node.getId() + " [id=\"" + nodeDotId + "\", label=" + nodeLabel + "];\n");
     }
