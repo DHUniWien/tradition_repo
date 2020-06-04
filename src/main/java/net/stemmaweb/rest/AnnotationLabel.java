@@ -49,7 +49,7 @@ public class AnnotationLabel {
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationLabelModel.class)
     public Response getAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
@@ -73,7 +73,7 @@ public class AnnotationLabel {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationLabelModel.class)
     public Response createOrUpdateAnnotationLabel(AnnotationLabelModel alm) {
         Node ourNode = lookupAnnotationLabel();
@@ -189,13 +189,14 @@ public class AnnotationLabel {
                             "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getId()))
                             .build();
 
-            // Delete the label and its properties/links
+            // Delete the label's properties and links
             for (Relationship r : ourNode.getRelationships(Direction.OUTGOING)) {
                 r.getEndNode().delete();
                 r.delete();
             }
             // Delete any reference to the label in any other label's linkset
             for (Node n : getExistingLabelsForTradition()) {
+                if (n.equals(ourNode)) continue;
                 Relationship l = n.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
                 if (l != null) {
                     for (String lname : l.getEndNode().getPropertyKeys()) {
@@ -204,8 +205,12 @@ public class AnnotationLabel {
                     }
                 }
             }
+            // Finally, delete the label
+            ourNode.getSingleRelationship(ERelations.HAS_ANNOTATION_TYPE, Direction.INCOMING).delete();
+            ourNode.delete();
             tx.success();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok().build();

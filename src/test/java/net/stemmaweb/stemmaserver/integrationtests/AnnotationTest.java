@@ -106,7 +106,7 @@ public class AnnotationTest extends TestCase {
                 .get();
         assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
 
-        // Look up a label that belongs to a primary object
+        // Look up a label that belongs to an internal object
         response = jerseyTest
                 .target("/tradition/" + tradId + "/annotationlabel/" + "SECTION")
                 .request()
@@ -231,7 +231,7 @@ public class AnnotationTest extends TestCase {
 
         // Check that the graph looks right
         try (Transaction tx = db.beginTx()) {
-            Node annoNode = db.getNodeById(Long.valueOf(am.getId()));
+            Node annoNode = db.getNodeById(Long.parseLong(am.getId()));
             assertTrue(annoNode.hasLabel(Label.label("TRANSLATION")));
             assertEquals(am.getProperties().get("text"), annoNode.getProperty("text"));
             assertEquals(am.getProperties().get("lang"), annoNode.getProperty("lang"));
@@ -313,6 +313,13 @@ public class AnnotationTest extends TestCase {
                 .request(MediaType.APPLICATION_JSON)
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Check that the label is really gone
+        List<AnnotationLabelModel> labels = jerseyTest
+                .target("/tradition/" + tradId + "/annotationlabels")
+                .request(MediaType.APPLICATION_JSON)
+                .get(new GenericType<List<AnnotationLabelModel>>() {});
+        assertEquals(0, labels.size());
     }
 
     public void testAddDeleteAnnotationLink() {
@@ -484,7 +491,7 @@ public class AnnotationTest extends TestCase {
                     found.put(alm.getTarget(), true);
                 }
                 assertEquals(2, found.size());
-                assertFalse(found.values().contains(false));
+                assertFalse(found.containsValue(false));
             } else {
                 for (AnnotationLinkModel alm : am.getLinks()) {
                     ReadingModel target = jerseyTest
