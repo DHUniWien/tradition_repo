@@ -347,7 +347,7 @@ public class DotExporter
             nodeLabel = String.format("%s%s(%s)", nodeLabel, hasHTML ? "&nbsp;" : " ", node.getProperty("rank").toString());
         if (dm.getShowNormalForm() && node.hasProperty("normal_form")
             && !node.getProperty("normal_form").toString().equals(node.getProperty("text").toString())) {
-            String labelExtra = "<BR/><FONT COLOR=\"grey\">"
+            String labelExtra = "<BR ALIGN=\"LEFT\"/><FONT COLOR=\"grey\">"
                     + escapeHtml4(node.getProperty("normal_form").toString()) + "</FONT>";
             if (hasHTML)
                 // We have to glom the normal_form HTML onto the existing HTML label
