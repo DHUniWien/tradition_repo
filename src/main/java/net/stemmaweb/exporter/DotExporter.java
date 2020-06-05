@@ -364,11 +364,20 @@ public class DotExporter
             nodeLabel = "\"" + nodeLabel.replace("\"", "\\\"") + "\"";
 
         if ( nodeLabel.startsWith("<") ) {
+            // first, delete extra tabs on last line of token before normal form
+            int tokenEndPos = nodeLabel.lastIndexOf("<BR");
+            if ( tokenEndPos > 0 ) { // we have a normal form
+                int lineStartPos = nodeLabel.lastIndexOf("\n", tokenEndPos);
+                if ( lineStartPos > 0 ) {
+                    String newLine = nodeLabel.substring(lineStartPos, tokenEndPos).replaceAll("\t", "");
+                    nodeLabel = nodeLabel.substring(0, lineStartPos) + newLine + nodeLabel.substring(tokenEndPos);
+                }
+            }
             // preserve linebreaks and tabs; left-justify
-            nodeLabel = nodeLabel.replace("\n", "<BR ALIGN=\"LEFT\"/>");
-            nodeLabel = nodeLabel.replace("\t", "     ");
+            nodeLabel = nodeLabel.replaceAll("\n", "<BR ALIGN=\"LEFT\"/>");
+            nodeLabel = nodeLabel.replaceAll("\t", "  ");
+            // add final alignement option to justify the last line too
             nodeLabel = nodeLabel.substring(0, nodeLabel.length() - 1) + "<BR ALIGN=\"LEFT\"/>" + nodeLabel.substring(nodeLabel.length() - 1);
-            // to justify the last line too
         }
 
         // Put it all together
