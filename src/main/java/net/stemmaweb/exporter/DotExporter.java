@@ -410,7 +410,7 @@ public class DotExporter
                     lex_str.append(", ");
                 }
             }
-            label = multiline(lex_str.toString(), 120, "<BR />");
+            label = multiline(lex_str.toString(), 60, "<BR />");
         }
         // Add on the layer witnesses where applicable
         lex_str = new StringBuilder();
