@@ -584,10 +584,9 @@ public class Section {
             TraversalDescription baseWalker = db.traversalDescription().depthFirst();
             List<Relationship> baseText;
             if (baseWitness != null) {
-                // We use the requested witness text, which is connected with SEQUENCE or NSEQUENCE
+                // We use the requested witness text, which is connected via SEQUENCE or NSEQUENCE
                 // links and so unproblematic.
-                // TODO make the witness walker work with NSEQUENCE!
-                baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness).getEvalForWitness());
+                baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
                 baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
             } else {
                 // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the base text.

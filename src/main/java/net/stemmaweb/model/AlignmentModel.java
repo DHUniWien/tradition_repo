@@ -91,7 +91,7 @@ public class AlignmentModel {
                     // Get the witness readings for the given layer
                     ArrayList<String> alternatives = new ArrayList<>();
                     if (!layer.equals("base")) alternatives.add(layer);
-                    Evaluator e = new WitnessPath(sigil, alternatives).getEvalForWitness();
+                    Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
                     ReadingModel filler;
                     for (Node r : db.traversalDescription().depthFirst()
                             .relationships(seqType, Direction.OUTGOING)
