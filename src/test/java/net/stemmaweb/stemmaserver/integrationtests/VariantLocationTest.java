@@ -169,7 +169,7 @@ public class VariantLocationTest extends TestCase {
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         List<VariantLocationModel> vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
-        assertEquals(238, vlocs.size());
+        assertEquals(235, vlocs.size());
     }
 
     public void tearDown() throws Exception {

@@ -8,10 +8,7 @@ import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluator;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.traversal.*;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
@@ -627,8 +624,6 @@ public class Section {
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
         }
-        // Sort the list by rank index
-        vlocs.sort(Comparator.comparingLong(VariantLocationModel::getRankIndex));
 
         return Response.ok(vlocs).build();
     }
@@ -675,7 +670,8 @@ public class Section {
      * @param combine - Whether to combine dislocations into the associated variants
      * @return A list of VariantLocationModels for the whole sequence.
      */
-    private List<VariantLocationModel> findVariants(List<Relationship> sequence, RelationshipType follow, boolean combine) {
+    private List<VariantLocationModel> findVariants(List<Relationship> sequence, RelationshipType follow,
+                                                    boolean combine) throws Exception {
         // Create the evaluator we need
         Evaluator vle = new VariantListing(sequence).variantListEvaluator();
         // Set up the traversal for the path segments we want
@@ -687,35 +683,22 @@ public class Section {
         List<Node> baseChain = sequence.stream().map(Relationship::getEndNode).collect(Collectors.toList());
         baseChain.add(0, sequence.get(0).getStartNode());
         // We have to run the traverser from each node in the base chain, to get any variants that start there.
-        List<VariantModel> variants = new ArrayList<>();
+        Map<String,VariantLocationModel> vlocs = new HashMap<>();
         for (Node n : baseChain) {
-            traverser.traverse(n).forEach(x -> variants.add(modelFromSegment(x)));
-        }
-        // Set the "normal" property appropriately
-        variants.forEach(x -> x.setNormal(follow.equals(ERelations.NSEQUENCE)));
-
-        // Now assign each of these variants to VariantLocationModels. Each location
-        // is keyed on the ID (as a string) of its first and last reading.
-        Map<String, Map<String, VariantLocationModel>> vlocs = new HashMap<>();
-        for (VariantModel vm : variants) {
-            // Remove the first and last reading from the variant model, since these are the common
-            // readings that bracket the actual variant. Use the IDs of those readings to find or create
-            // the location model.
-            List<ReadingModel> readings = vm.getReadings();
-            ReadingModel vlStart = readings.remove(0);
-            ReadingModel vlEnd = readings.remove(readings.size() - 1);
-            vm.setReadings(readings);
-            // Find or initialize the variant location model that corresponds to this start and end.
-            VariantLocationModel vlm = getVLM(vlocs, baseChain, vlStart.getId(), vlEnd.getId());
-            if (vlm != null)
-                vlm.addVariant(vm);
+            for (org.neo4j.graphdb.Path v : traverser.traverse(n)) {
+                VariantModel vm = modelFromSegment(v);
+                // Sanity check
+                if (!baseChain.contains(v.startNode()) || !baseChain.contains(v.endNode()))
+                    throw new Exception("Variant chain disconnected from base chain");
+                if (vm != null) {
+                    VariantLocationModel vloc = getVLM(vlocs, baseChain, v.startNode(), v.endNode());
+                    vloc.addVariant(vm);
+                }
+            }
         }
 
         // Add relation information to each variant location. This will also notice displaced variants.
-        List<VariantLocationModel> result = new ArrayList<>();
-        for (String start : vlocs.keySet()) {
-            result.addAll(vlocs.get(start).values());
-        }
+        List<VariantLocationModel> result = new ArrayList<>(vlocs.values());
         for (VariantLocationModel vlm : result)
             collectRelationsInLocation(vlm);
         // Sort the result by rank index and return
@@ -724,7 +707,8 @@ public class Section {
     }
 
     /**
-     * Utility method to turn a Neo4J path into a variant model
+     * Utility method to turn a Neo4J path into a variant model. If the model would be empty of
+     * witnesses, this method returns null.
      */
     private static VariantModel modelFromSegment (org.neo4j.graphdb.Path p) {
         VariantModel vm = new VariantModel();
@@ -732,7 +716,13 @@ public class Section {
         // Get the readings
         List<ReadingModel> vReadings = new ArrayList<>();
         p.nodes().forEach(x -> vReadings.add(new ReadingModel(x)));
+        // Remove the first and last (common) readings
+        vReadings.remove(0);
+        vReadings.remove(vReadings.size()-1);
         vm.setReadings(vReadings);
+
+        // Set the "normal" flag appropriately
+        vm.setNormal(p.startNode().hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
 
         // Get the witnesses that belong to the whole path
         Map<String, Set<String>> vWits = new HashMap<>();
@@ -763,7 +753,7 @@ public class Section {
             endWitnesses.put(layer, sigla);
         }
         vm.setWitnesses(endWitnesses);
-        return vm;
+        return endWitnesses.size() > 0 ? vm : null;
     }
 
     /**
@@ -776,42 +766,34 @@ public class Section {
      * @param vEnd - The "after" node for the required VLM
      * @return The VLM that was requested
      */
-    private static VariantLocationModel getVLM(Map<String, Map<String,VariantLocationModel>> vlocs,
+    private static VariantLocationModel getVLM(Map<String,VariantLocationModel> vlocs,
                                                List<Node> baseChain,
-                                               String vStart,
-                                               String vEnd) {
+                                               Node vStart,
+                                               Node vEnd) {
         // Retrieve any existing VariantLocationModel, or create a new one
         VariantLocationModel vlm = new VariantLocationModel();
-        if (vlocs.containsKey(vStart)) {
-            if (vlocs.get(vStart).containsKey(vEnd))
-                vlm = vlocs.get(vStart).get(vEnd);
-            else
-                vlocs.get(vStart).put(vEnd, vlm);
+        String key = String.format("%d -- %d", vStart.getId(), vEnd.getId());
+        if (vlocs.containsKey(key)) {
+            vlm = vlocs.get(key);
         } else {
-            HashMap<String,VariantLocationModel> hm = new HashMap<>();
-            hm.put(vEnd, vlm);
-            vlocs.put(vStart, hm);
+            vlocs.put(key, vlm);
         }
         // Initialize the VLModel if it is new.
         if (vlm.getRankIndex() == 0) {
-            // Find the start and end nodes corresponding to the given IDs
-            Optional<Node> vStartNode = baseChain.stream().filter(x -> Long.valueOf(vStart).equals(x.getId())).findFirst();
-            if (!vStartNode.isPresent())
-                return null; // TODO exception handle these a bit better
-            Optional<Node> vEndNode = baseChain.stream().filter(x -> Long.valueOf(vEnd).equals(x.getId())).findFirst();
-            if (!vEndNode.isPresent())
-                return null;
+            // Turn our sub-chain into reading models
             List<ReadingModel> baseReadings = baseChain
-                    .subList(baseChain.indexOf(vStartNode.get()), baseChain.indexOf(vEndNode.get())+1)
+                    .subList(baseChain.indexOf(vStart), baseChain.indexOf(vEnd)+1)
                     .stream().map(ReadingModel::new).collect(Collectors.toList());
+            // Set the reading models in place in the VLM
             vlm.setBefore(baseReadings.remove(0));
             vlm.setAfter(baseReadings.remove(baseReadings.size() - 1));
             vlm.setBase(baseReadings);
+            // Set the rank index to the rank of the first base reading
             if (baseReadings.size() > 0)
                 vlm.setRankIndex(baseReadings.get(0).getRank());
             else
                 vlm.setRankIndex(vlm.getBefore().getRank() + 1);
-            vlm.setNormalised(vStartNode.get().hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
+            vlm.setNormalised(vStart.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
         }
         return vlm;
     }
