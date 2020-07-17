@@ -85,13 +85,13 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
-			<version>${jackson-version}.3</version>
+			<version>${jackson-version}</version>
 		</dependency>
-		 <dependency>
-        <groupId>com.fasterxml.jackson.jaxrs</groupId>
-        <artifactId>jackson-jaxrs-json-provider</artifactId>
-        <version>2.2.3</version>
-   </dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.jaxrs</groupId>
+			<artifactId>jackson-jaxrs-json-provider</artifactId>
+			<version>2.2.3</version>
+   		</dependency>
 		<!-- Excel sheet parsing -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
@@ -235,9 +235,9 @@
 	</dependencies>
 	<properties>
 		<powermock.version>1.6.1</powermock.version>
-		<neo4j-version>3.5.9</neo4j-version>
+		<neo4j-version>3.5.20</neo4j-version>
 		<neo4j-algo-version>3.5.4.0</neo4j-algo-version>
-		<jackson-version>2.9.9</jackson-version>
+		<jackson-version>2.11.1</jackson-version>
 		<jersey-version>2.29</jersey-version>
 
 	</properties>
