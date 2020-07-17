@@ -387,6 +387,18 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return (int) (this.rank - compareRank);
     }
 
+    @Override
+    public String toString() {
+        if (is_start || is_end || is_lacuna) {
+            String fstr = is_start ? "#START#" : (is_end ? "#END#" : "#LACUNA");
+            return String.format("%s: " + fstr + " | %d", id, rank);
+        }
+        if (normal_form == null || normal_form.equals(text))
+            return String.format("%s: %s | %d", id, text, rank);
+        else
+            return String.format("%s: %s (%s) | %d", id, text, normal_form, rank);
+    }
+
     @JsonIgnore
     public String normalized() { return normal_form == null ? text : normal_form; }
 
