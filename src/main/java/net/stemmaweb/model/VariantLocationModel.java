@@ -150,7 +150,7 @@ public class VariantLocationModel {
             String witnessList = String.join(" ", vm.getWitnessList());
             String varText = ReadingService.textOfReadings(vm.getReadings(), this.isNormalised(), false);
             if (interp)
-                varText += "(interp.)";
+                varText += " (interp.)";
             else if (varText.equals(""))
                 varText = "(om.)";
             apparatusEntry.append(String.format("\t%s: %s\n", varText, witnessList));

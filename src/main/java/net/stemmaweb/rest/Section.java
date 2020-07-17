@@ -584,20 +584,25 @@ public class Section {
             TraversalDescription baseWalker = db.traversalDescription().depthFirst();
             List<Relationship> baseText;
             if (baseWitness != null) {
-                // We use the requested witness text.
+                // We use the requested witness text, which is connected with SEQUENCE or NSEQUENCE
+                // links and so unproblematic.
+                // TODO make the witness walker work with NSEQUENCE!
                 baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness).getEvalForWitness());
                 baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
-            } else if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING)) {
-                // We use the lemma text.
-                baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
-                baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
             } else {
-                // We calculate and use the majority text, and then directly add whichever relevant relations
-                // connect them, without using the traverser.
-                List<Node> majorityReadings = VariantGraphService.calculateMajorityText(sectionNode);
+                // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the base text.
+                List<Node> baseReadings;
+                if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING)) {
+                    // We traverse the lemma text
+                    baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
+                    baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
+                } else {
+                    // We calculate and use the majority text
+                    baseReadings = VariantGraphService.calculateMajorityText(sectionNode);
+                }
                 baseText = new ArrayList<>();
-                Node prior = majorityReadings.remove(0);
-                for (Node curr : majorityReadings) {
+                Node prior = baseReadings.remove(0);
+                for (Node curr : baseReadings) {
                     prior.getRelationships(follow, Direction.OUTGOING).forEach(x -> {
                         if (x.getEndNode().equals(curr)) baseText.add(x);});
                     prior = curr;
