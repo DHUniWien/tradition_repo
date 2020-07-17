@@ -37,11 +37,11 @@ import static net.stemmaweb.rest.Util.jsonresp;
  */
 
 public class Tradition {
-    private GraphDatabaseService db;
+    private final GraphDatabaseService db;
     /**
      * This is where the tradition ID should go
      */
-    private String traditionId;
+    private final String traditionId;
 
     public Tradition(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -135,7 +135,7 @@ public class Tradition {
     @POST  // a new stemma
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("net.stemmaweb.model.StemmaModel")
     public Response newStemma(String dot) {
         DotParser parser = new DotParser(db);
@@ -209,7 +209,7 @@ public class Tradition {
     @POST
     @Path("/section")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
@@ -268,7 +268,7 @@ public class Tradition {
             if (existingSections != null && existingSections.size() > 0) {
                 SectionModel ls = existingSections.get(existingSections.size() - 1);
                 try (Transaction tx = db.beginTx()) {
-                    Node lastSection = db.getNodeById(Long.valueOf(ls.getId()));
+                    Node lastSection = db.getNodeById(Long.parseLong(ls.getId()));
                     lastSection.createRelationshipTo(sectionNode, ERelations.NEXT);
                     tx.success();
                 } catch (Exception e) {
@@ -293,7 +293,7 @@ public class Tradition {
     @POST
     @Path("/annotation")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response addAnnotation(AnnotationModel am) {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -361,7 +361,7 @@ public class Tradition {
      */
     @GET
     @Path("/sections")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.SectionModel>")
     public Response getAllSections() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -386,7 +386,7 @@ public class Tradition {
      */
     @GET
     @Path("/witnesses")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnesses() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -416,7 +416,7 @@ public class Tradition {
      */
     @GET
     @Path("/stemmata")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.StemmaModel>")
     public Response getAllStemmata() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -449,7 +449,7 @@ public class Tradition {
      */
     @GET
     @Path("/relations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
@@ -481,7 +481,7 @@ public class Tradition {
      */
     @GET
     @Path("/relationtypes")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationTypeModel>")
     public Response getAllRelationTypes() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -509,7 +509,7 @@ public class Tradition {
      */
     @GET
     @Path("/readings")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -547,7 +547,7 @@ public class Tradition {
      */
     @GET
     @Path("/annotations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response getAllAnnotations(@QueryParam("label") List<String> filterLabels) {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -585,7 +585,7 @@ public class Tradition {
      */
     @GET
     @Path("/annotationlabels")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationLabelModel>")
     public Response getDefinedAnnotationLabels() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -624,7 +624,7 @@ public class Tradition {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = TraditionModel.class)
     public Response changeTraditionMetadata(TraditionModel tradition) {
 
@@ -726,7 +726,7 @@ public class Tradition {
      * @return a list of AnnotationModels representing deleted annotations
      */
     @POST
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response pruneAnnotations() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -764,7 +764,7 @@ public class Tradition {
      * @statuscode 500 - on error, with an error message
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = TraditionModel.class)
     public Response getTraditionInfo() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -824,7 +824,7 @@ public class Tradition {
      */
     @GET
     @Path("/dot")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
@@ -853,8 +853,8 @@ public class Tradition {
      */
     @GET
     @Path("/json")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @Produces("application/json; charset=utf-8")
+    @ReturnType(clazz = AlignmentModel.class)
     public Response getJson(@QueryParam("conflate") String toConflate,
                             @QueryParam("section") List<String> sectionList) {
         return new TabularExporter(db).exportAsJSON(traditionId, toConflate, sectionList);
@@ -871,7 +871,7 @@ public class Tradition {
      */
     @GET
     @Path("/csv")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getCsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList) {
@@ -889,7 +889,7 @@ public class Tradition {
      */
     @GET
     @Path("/tsv")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getTsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList) {
@@ -909,7 +909,7 @@ public class Tradition {
      */
     @GET
     @Path("/matrix")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @QueryParam("section") List<String> sectionList,
