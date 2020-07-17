@@ -92,11 +92,17 @@ public class RelationService {
 
     public static List<Relationship> getDislocations(Node r) throws Exception {
         GraphDatabaseService db = r.getGraphDatabase();
+        List<Relationship> result = new ArrayList<>();
         List<RelationTypeModel> dislocationTypes = ourRelationTypes(r).stream()
                 .filter(x -> !x.getIs_colocation()).collect(Collectors.toList());
         try (Transaction tx = db.beginTx()) {
-
+            // what is this supposed to do?
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("Could not collect dislocations", e);
         }
+        return result;
     }
 
     /**

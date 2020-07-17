@@ -31,7 +31,7 @@ public class VariantGraphService {
         boolean found = false;
         try (Transaction tx = db.beginTx()) {
             for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
-                if (s.getId() == Long.valueOf(aSectionId)) {
+                if (s.getId() == Long.parseLong(aSectionId)) {
                     found = true;
                 }
             }
@@ -81,7 +81,7 @@ public class VariantGraphService {
         // Were we asked for a nonexistent tradition node (i.e. a non-Long that corresponds to no tradition)?
         long nodeIndex;
         try {
-            nodeIndex = Long.valueOf(nodeId);
+            nodeIndex = Long.parseLong(nodeId);
         } catch (NumberFormatException e) {
             return null;
         }
@@ -304,7 +304,13 @@ public class VariantGraphService {
         }
     }
 
-    public static void calculateMajorityText(Node sectionNode) {
+    /**
+     * Return a list of nodes which constitutes the majority text for a section.
+     *
+     * @param  sectionNode - The section to calculate
+     * @return an ordered List of READING nodes that make up the majority text
+     */
+    public static List<Node> calculateMajorityText(Node sectionNode) {
         // Get the IDs of our majority readings by going through the alignment table rank by rank
         AlignmentModel am = new AlignmentModel(sectionNode);
         ArrayList<Long> majorityReadings = new ArrayList<>();
@@ -327,39 +333,23 @@ public class VariantGraphService {
 
         // Now make the relations between them
         GraphDatabaseService db = sectionNode.getGraphDatabase();
+        ArrayList<Node> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             // Go through the alignment model rank by rank, finding the majority reading for each rank
             String sectionId = String.valueOf(sectionNode.getId());
-            Node prior = getStartNode(sectionId, db);
-            while(!majorityReadings.isEmpty()) {
-                Node next = db.getNodeById(majorityReadings.remove(0));
-                prior.createRelationshipTo(next, ERelations.MAJORITY);
-                prior = next;
-            }
-            // Now prior is the last node that was in majorityReadings; connect it to the end
-            prior.createRelationshipTo(getEndNode(sectionId, db), ERelations.MAJORITY);
+            result.add(getStartNode(sectionId, db));
+            majorityReadings.forEach(x -> result.add(db.getNodeById(x)));
+            result.add(getEndNode(sectionId, db));
             tx.success();
         }
-    }
-
-    public static void clearMajorityText(Node sectionNode) {
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
-        try (Transaction tx = db.beginTx()) {
-            Node startNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
-            db.traversalDescription().depthFirst()
-                    .relationships(ERelations.MAJORITY, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                    .relationships().forEach(Relationship::delete);
-            tx.success();
-        }
+        return result;
     }
 
     /*
      * Tradition and section crawlers, respectively
      */
 
-    private static Evaluator traditionCrawler = path -> {
+    private static final Evaluator traditionCrawler = path -> {
         if (path.length() == 0)
             return Evaluation.INCLUDE_AND_CONTINUE;
         if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
@@ -367,7 +357,7 @@ public class VariantGraphService {
         return Evaluation.INCLUDE_AND_CONTINUE;
     };
 
-    private static Evaluator sectionCrawler = path -> {
+    private static final Evaluator sectionCrawler = path -> {
         if (path.length() == 0)
             return Evaluation.INCLUDE_AND_CONTINUE;
         String type = path.lastRelationship().getType().name();
@@ -376,7 +366,7 @@ public class VariantGraphService {
         return Evaluation.INCLUDE_AND_CONTINUE;
     };
 
-    private static Evaluator traditionRelations = path -> {
+    private static final Evaluator traditionRelations = path -> {
         if (path.length() == 0)
             return Evaluation.INCLUDE_AND_CONTINUE;
         if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
@@ -386,6 +376,7 @@ public class VariantGraphService {
         return Evaluation.EXCLUDE_AND_CONTINUE;
     };
 
+    @SuppressWarnings("rawtypes")
     private static Traverser returnTraverser (Node startNode, Evaluator ev, PathExpander ex) {
         Traverser tv;
         GraphDatabaseService db = startNode.getGraphDatabase();
@@ -432,7 +423,7 @@ public class VariantGraphService {
     public static Traverser returnTraditionSection(String sectionId, GraphDatabaseService db) {
         Traverser tv;
         try (Transaction tx = db.beginTx()) {
-            Node sectionNode = db.getNodeById(Long.valueOf(sectionId));
+            Node sectionNode = db.getNodeById(Long.parseLong(sectionId));
             tv = returnTraditionSection(sectionNode);
             tx.success();
         }

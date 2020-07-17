@@ -14,13 +14,37 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class VariantLocationModel {
 
+    /**
+     * the rank where this variant location starts
+     */
     private Long rankIndex;
+    /**
+     * the ReadingModel that is the last common point before the variant starts
+     */
     private ReadingModel before;
+    /**
+     * the ReadingModel that is the first common point after the variant ends
+     */
     private ReadingModel after;
+    /**
+     * the list of readings that constitutes the lemma for this location
+     */
     private List<ReadingModel> base;
+    /**
+     * the list of VariantModels that constitute the variants for this location
+     */
     private List<VariantModel> variants;
+    /**
+     * the list of relations that exist between readings in the base and readings in th variants
+     */
     private List<RelationModel> relations;
+    /**
+     * whether any of the above-mentioned relations is a displacement type, e.g. transposition
+     */
     private boolean has_displacement = false;
+    /**
+     * whether we are working with a normalised text
+     */
     private boolean normalised = false;
 
     public VariantLocationModel() {

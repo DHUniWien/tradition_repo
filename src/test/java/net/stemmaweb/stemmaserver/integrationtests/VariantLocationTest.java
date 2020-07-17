@@ -5,7 +5,6 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 import org.glassfish.jersey.test.JerseyTest;
-import org.junit.Ignore;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
@@ -16,7 +15,6 @@ import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class VariantLocationTest extends TestCase {
 
@@ -146,19 +144,32 @@ public class VariantLocationTest extends TestCase {
         assertEquals(7, vlocs.size());
         assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
-        rsp = jerseyTest.target(restPath + "/variants")
-                .queryParam("conflate", "spelling").request().get();
+        rsp = jerseyTest.target(restPath + "variants")
+                .queryParam("normalize", "spelling").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
-        assertEquals(5, vlocs.size());
+        assertEquals(6, vlocs.size());
         assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
-        rsp = jerseyTest.target(restPath + "/variants")
+        rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("significant", "yes").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
-        assertEquals(7, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+        assertEquals(1, vlocs.size());
+        assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+    }
+
+    public void testMatthew() {
+        Map<String,String> textinfo = setupText("milestone-401-related.xml", "graphml");
+        String restPath = String.format("/tradition/%s/section/%s/", textinfo.get("tradId"), textinfo.get("sectId"));
+
+        // First with no options
+        Response rsp = jerseyTest.target(restPath + "variants")
+                .queryParam("normalize", "spelling")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
+        List<VariantLocationModel> vlocs = rsp.readEntity(new GenericType<List<VariantLocationModel>>() {});
+        assertEquals(238, vlocs.size());
     }
 
     public void tearDown() throws Exception {

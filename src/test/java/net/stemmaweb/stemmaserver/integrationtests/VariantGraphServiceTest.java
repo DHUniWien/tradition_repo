@@ -17,6 +17,8 @@ import javax.ws.rs.core.Response;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.*;
 
@@ -142,31 +144,14 @@ public class VariantGraphServiceTest {
         );
         ArrayList<Node> sections = VariantGraphService.getSectionNodes(newTradId, db);
         assertNotNull(sections);
-        String sectId = String.valueOf(sections.get(0).getId());
-        Node startNode = VariantGraphService.getStartNode(sectId, db);
         String expectedMajority = "sanoi herra Heinärickus Erjkillen weljellensä Läckämme Hämehen maallen";
         try (Transaction tx = db.beginTx()) {
-            VariantGraphService.calculateMajorityText(sections.get(0));
-            // We should be able to crawl along from the start node and get the text
-            Node current = startNode;
-            ArrayList<String> words = new ArrayList<>();
-            Node endNode = VariantGraphService.getEndNode(sectId, db);
-            while (current.hasRelationship(ERelations.MAJORITY, Direction.OUTGOING)) {
-                Node next = current.getSingleRelationship(ERelations.MAJORITY, Direction.OUTGOING).getEndNode();
-                if (!next.equals(endNode))
-                    words.add(next.getProperty("text").toString());
-                current = next;
-            }
+            List<Node> majorityReadings = VariantGraphService.calculateMajorityText(sections.get(0));
+            List<String> words = majorityReadings.stream()
+                    .filter(x -> !x.hasProperty("is_start") && !x.hasProperty("is_end"))
+                    .map(x -> x.getProperty("text").toString())
+                    .collect(Collectors.toList());
             assertEquals(expectedMajority, String.join(" ", words));
-            tx.success();
-        } catch (Exception e) {
-            fail();
-        }
-
-        // Clear the majority text and make sure it really went
-        try (Transaction tx = db.beginTx()) {
-            VariantGraphService.clearMajorityText(sections.get(0));
-            assertTrue(db.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.MAJORITY)));
             tx.success();
         } catch (Exception e) {
             fail();
@@ -190,16 +175,12 @@ public class VariantGraphServiceTest {
             Relation relRest = new Relation(newTradId);
             Response r = relRest.create(rm);
             assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
-            VariantGraphService.normalizeGraph(sections.get(0), "collated");
-            VariantGraphService.calculateMajorityText(sections.get(0));
-            Node current = startNode;
-            ArrayList<String> words = new ArrayList<>();
-            while (current.hasRelationship(ERelations.MAJORITY, Direction.OUTGOING)) {
-                Node next = current.getSingleRelationship(ERelations.MAJORITY, Direction.OUTGOING).getEndNode();
-                if (next.getProperty("is_end", false).equals(false))
-                    words.add(next.getProperty("text").toString());
-                current = next;
-            }
+            VariantGraphService.normalizeGraph(sections.get(0), "collated"); // TODO not sure this has an effect??
+            List<Node> majorityReadings = VariantGraphService.calculateMajorityText(sections.get(0));
+            List<String> words = majorityReadings.stream()
+                    .filter(x -> !x.hasProperty("is_start") && !x.hasProperty("is_end"))
+                    .map(x -> x.getProperty("text").toString())
+                    .collect(Collectors.toList());
             assertEquals(expectedMajority, String.join(" ", words));
             tx.success();
         } catch (Exception e) {

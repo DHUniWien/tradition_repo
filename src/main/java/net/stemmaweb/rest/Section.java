@@ -8,6 +8,7 @@ import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
@@ -33,9 +34,9 @@ import static net.stemmaweb.services.RelationService.returnRelationType;
  * @author tla
  */
 public class Section {
-    private GraphDatabaseService db;
-    private String tradId;
-    private String sectId;
+    private final GraphDatabaseService db;
+    private final String tradId;
+    private final String sectId;
 
     public Section(String traditionId, String sectionId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -70,14 +71,14 @@ public class Section {
      * @statuscode 500 - on failure, with an error message
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = SectionModel.class)
     public Response getSectionInfo() {
         SectionModel result;
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            result = new SectionModel(db.getNodeById(Long.valueOf(sectId)));
+            result = new SectionModel(db.getNodeById(Long.parseLong(sectId)));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -98,13 +99,13 @@ public class Section {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = SectionModel.class)
     public Response updateSectionInfo(SectionModel newInfo) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
             if (newInfo.getName() != null)
                 thisSection.setProperty("name", newInfo.getName());
             if (newInfo.getLanguage() != null)
@@ -133,7 +134,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
                     .entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node foundSection = db.getNodeById(Long.valueOf(sectId));
+            Node foundSection = db.getNodeById(Long.parseLong(sectId));
             if (foundSection != null) {
                 // Find the section either side of this one and connect them if necessary.
                 removeFromSequence(foundSection);
@@ -181,7 +182,7 @@ public class Section {
      */
     @GET
     @Path("/witnesses")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnessInSection() {
         if (!sectionInTradition())
@@ -244,7 +245,7 @@ public class Section {
      */
     @GET
     @Path("/readings")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
         if (!sectionInTradition())
@@ -287,7 +288,7 @@ public class Section {
      */
     @GET
     @Path("/relations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = sectionRelations(includeReadings.equals("true"));
@@ -334,7 +335,7 @@ public class Section {
      */
     @GET
     @Path("/colocated")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getColocatedClusters() {
         List<Set<Node>> clusterList;
@@ -369,7 +370,7 @@ public class Section {
      */
     @GET
     @Path("/lemmatext")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = TextSequenceModel.class)
     public Response getLemmaText(@QueryParam("final")     @DefaultValue("false") String followFinal,
                                  @QueryParam("startRank") @DefaultValue("1") String startRank,
@@ -412,7 +413,7 @@ public class Section {
      */
     @GET
     @Path("/lemmareadings")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal,
                                      @QueryParam("startRank") @DefaultValue("1") String startRank,
@@ -438,10 +439,10 @@ public class Section {
         Node sectionStart = VariantGraphService.getStartNode(sectId, db);
         Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
-            long startRank = Long.valueOf(startFrom);
+            long startRank = Long.parseLong(startFrom);
             long endRank = endAt.equals("E")
-                    ? Long.valueOf(sectionEnd.getProperty("rank").toString()) - 1
-                    : Long.valueOf(endAt);
+                    ? Long.parseLong(sectionEnd.getProperty("rank").toString()) - 1
+                    : Long.parseLong(endAt);
             if (followFinal) {
                 ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
                         .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
@@ -475,7 +476,7 @@ public class Section {
     private String rankForReading(String rdgId) {
         String answer;
         try (Transaction tx = db.beginTx()) {
-            Node rdgNode = db.getNodeById(Long.valueOf(rdgId));
+            Node rdgNode = db.getNodeById(Long.parseLong(rdgId));
             answer = rdgNode.getProperty("rank").toString();
             tx.success();
         }
@@ -497,7 +498,7 @@ public class Section {
      */
     @GET
     @Path("/annotations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response getAnnotationsOnSection(@QueryParam("label") List<String> filterLabels,
                                             @QueryParam("recursive") @DefaultValue("false") String recurse) {
@@ -561,7 +562,7 @@ public class Section {
 
     @GET
     @Path("/variants")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.VariantLocationModel>")
     public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
                                      @DefaultValue("no") @QueryParam("exclude_type1") String exclude_type1,
@@ -573,29 +574,41 @@ public class Section {
 
         List<VariantLocationModel> vlocs;
         try (Transaction tx = db.beginTx()) {
-            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
             // Normalize the graph if we have been asked to
-            if (conflate != null)
+            RelationshipType follow = ERelations.SEQUENCE;
+            if (conflate != null) {
                 VariantGraphService.normalizeGraph(sectionNode, conflate);
+                follow = ERelations.NSEQUENCE;
+            }
 
             // See which list of readings will serve as our base text
             Node startNode = VariantGraphService.getStartNode(sectId, db);
             TraversalDescription baseWalker = db.traversalDescription().depthFirst();
-            if (baseWitness != null)
+            List<Relationship> baseText;
+            if (baseWitness != null) {
                 // We use the requested witness text.
                 baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness).getEvalForWitness());
-            else if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING))
+                baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
+            } else if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING)) {
                 // We use the lemma text.
                 baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
-            else {
-                // We calculate and use the majority text.
-                VariantGraphService.calculateMajorityText(sectionNode);
-                baseWalker = baseWalker.relationships(ERelations.MAJORITY);
+                baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
+            } else {
+                // We calculate and use the majority text, and then directly add whichever relevant relations
+                // connect them, without using the traverser.
+                List<Node> majorityReadings = VariantGraphService.calculateMajorityText(sectionNode);
+                baseText = new ArrayList<>();
+                Node prior = majorityReadings.remove(0);
+                for (Node curr : majorityReadings) {
+                    prior.getRelationships(follow, Direction.OUTGOING).forEach(x -> {
+                        if (x.getEndNode().equals(curr)) baseText.add(x);});
+                    prior = curr;
+                }
             }
-            List<Node> baseText = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
 
             // Walk the base text looking for diversions
-            vlocs = findVariants(baseText, conflate != null ? ERelations.NSEQUENCE : ERelations.SEQUENCE, combine.equals("true"));
+            vlocs = findVariants(baseText, follow, combine.equals("true"));
 
             // Filter for type1 variants
             if (exclude_type1.equals("true"))
@@ -604,6 +617,10 @@ public class Section {
             // Filter for significant variants
             if (!significant.equals("no"))
                 vlocs = vlocs.stream().filter(x -> meetsSignificance(x, significant)).collect(Collectors.toList());
+
+            // Clean up if we normalised
+            if (conflate != null)
+                VariantGraphService.clearNormalization(sectionNode);
 
             tx.success();
         } catch (Exception e) {
@@ -658,135 +675,47 @@ public class Section {
      * @param combine - Whether to combine dislocations into the associated variants
      * @return A list of VariantLocationModels for the whole sequence.
      */
-    private List<VariantLocationModel> findVariants(List<Node> sequence, RelationshipType follow, boolean combine) {
-        Node curr = sequence.get(0); // this should be a START node
-        Node end = sequence.get(sequence.size() - 1); // this should be an END node
-        // We might come up with an arbitrary number of overlapping variant locations, depending
-        // on how the graph branches and rejoins between the two common points. These need to be
-        // indexed both by start and end.
-        Map<Node, Map<Node,VariantLocationModel>> vlocs = new HashMap<>();
-        int currIndex = 0;
-        while(!curr.equals(end)) {
-            // Skip ahead until that curr is the last common node before a branch.
-            if (curr.getDegree(follow, Direction.OUTGOING) == 1) {
-                Node next = curr.getSingleRelationship(follow, Direction.OUTGOING).getEndNode();
-                // next should be the next node in the base sequence.
-                if (is_common(next, follow, combine)) {
-                    curr = next;
-                    currIndex++;
-                    continue;
-                }
-            }
-            // We have a fork ahead of us. Find where the fork ends and get the chain of
-            // base readings.
-            Node variantEnd;
-            int vIndex = currIndex;
-            do {
-                variantEnd = sequence.get(++vIndex);
-            } while (!is_common(variantEnd, follow, combine) && !variantEnd.equals(end));
-            List<Node> baseChain = sequence.subList(currIndex, vIndex+1);
-
-            // Now find all paths between these two nodes.
-            for (org.neo4j.graphdb.Path variantPath : db.traversalDescription()
-                    .breadthFirst()
-                    .relationships(follow, Direction.OUTGOING)
-                    .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                    .evaluator(Evaluators.includeWhereEndNodeIs(variantEnd))
-                    .traverse(curr)) {
-                // Only pay attention if we reached the end
-                // if (!variantPath.endNode().equals(variantEnd)) continue;
-                // Skip it if it is the base path.
-                ArrayList<Node> variantChain = new ArrayList<>();
-                variantPath.nodes().forEach(variantChain::add);
-                if (variantChain.equals(baseChain))
-                    continue;
-
-                // This isn't the base path, so see where this path rejoins the base path.
-                // If it rejoins and branches again, we have to treat each branch as a separate variant.
-                // The intersections array will hold a list of indices to variantChain whose readings also
-                // exist in baseChain.
-                ArrayList<Integer> intersections = new ArrayList<>();
-                for (int i = 1; i < variantChain.size(); i++) {
-                    if (baseChain.contains(variantChain.get(i)))
-                        intersections.add(i);
-                }
-                ArrayList<Relationship> variantLinks = new ArrayList<>();
-                variantPath.relationships().forEach(variantLinks::add);
-                int departure = 0;
-                // Get the chain of relationships between the point of departure (i.e. the last intersection)
-                // and the next intersection, and make a VariantModel out of that sub-path.
-                for (int i : intersections) {
-                    // If the next intersection is only one step along from the point of departure, then
-                    // either we have an omission at this location, or this location is simply following
-                    // the base chain. We need to see which case we have.
-                    boolean skip = false;
-                    if (i - departure == 1) {
-                        int bIdx = baseChain.indexOf(variantChain.get(departure));
-                        skip = baseChain.get(bIdx+1).equals(variantChain.get(i));
-                    }
-                    // It seems we have a real variant. Proceed.
-                    if (!skip) {
-                        VariantLocationModel vlm = getVLM(vlocs, baseChain, variantChain.get(departure), variantChain.get(i));
-                        // Add this variant to that VLModel
-                        HashSet<String> pathSigla = new HashSet<>();
-                        // Our list of sigla for this variant path is the intersection of all sigla that
-                        // occur along it.
-                        for (Relationship r : variantLinks.subList(departure, i)) {
-                            if (pathSigla.size() > 0)
-                                pathSigla.retainAll(collectSigla(r));
-                            else
-                                pathSigla.addAll(collectSigla(r));
-                        }
-                        // If we are out of sigla, then this path doesn't comprise a variant.
-                        if (pathSigla.isEmpty()) continue;
-                        Map<String, List<String>> vWits = new HashMap<>();
-                        for (String sig : pathSigla) {
-                            String[] split = sig.split("\\|");
-                            String witlayer = split[1];
-                            if (vWits.containsKey(witlayer))
-                                vWits.get(witlayer).add(split[0]);
-                            else {
-                                List<String> wl = new ArrayList<>();
-                                wl.add(split[0]);
-                                vWits.put(witlayer, wl);
-                            }
-                        }
-                        // Now that we have the map of witnesses, make the VariantModel and add it.
-                        VariantModel vm = new VariantModel();
-                        List<Node> variantReadings = variantChain.subList(departure+1, i);
-                        vm.setReadings(variantReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
-                        vm.setWitnesses(vWits);
-                        vm.setNormal(follow.equals(ERelations.NSEQUENCE));
-                        // Do any of these variant readings have a non-colocated relation that points somewhere else?
-                        /* List<String> ourBase = vlm.getBase().stream().map(ReadingModel::getId).collect(Collectors.toList());
-                        for (Node vr : variantReadings) {
-                            for (Relationship vrel : vr.getRelationships(ERelations.RELATED)) {
-                                RelationTypeModel vreltype = returnRelationType(tradId, vrel.getProperty("type").toString());
-                                if (!vreltype.getIs_colocation() &&
-                                        !ourBase.contains(String.valueOf(vrel.getOtherNode(vr).getId())))
-                                    vm.setDisplaced(true);
-                            }
-                        } */
-                        vlm.addVariant(vm);
-                        // vlm.setDisplacement(vlm.hasDisplacement() || vm.getDisplaced());
-                    }
-                    // The intersection we dealt with is now our new point of departure.
-                    departure = i;
-                }
-            }
-            // If we are in "combine dislocations" mode, there might not have been any variant paths;
-            // we have to check for
-
-            // Move on.
-            curr = variantEnd;
-            currIndex = vIndex;
+    private List<VariantLocationModel> findVariants(List<Relationship> sequence, RelationshipType follow, boolean combine) {
+        // Create the evaluator we need
+        Evaluator vle = new VariantListing(sequence).variantListEvaluator();
+        // Set up the traversal for the path segments we want
+        TraversalDescription traverser = db.traversalDescription().depthFirst()
+                .relationships(follow, Direction.OUTGOING)
+                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                .evaluator(vle);
+        // Get our base chain of nodes
+        List<Node> baseChain = sequence.stream().map(Relationship::getEndNode).collect(Collectors.toList());
+        baseChain.add(0, sequence.get(0).getStartNode());
+        // We have to run the traverser from each node in the base chain, to get any variants that start there.
+        List<VariantModel> variants = new ArrayList<>();
+        for (Node n : baseChain) {
+            traverser.traverse(n).forEach(x -> variants.add(modelFromSegment(x)));
         }
-        // Collect the VariantLocationModels we made
+        // Set the "normal" property appropriately
+        variants.forEach(x -> x.setNormal(follow.equals(ERelations.NSEQUENCE)));
+
+        // Now assign each of these variants to VariantLocationModels. Each location
+        // is keyed on the ID (as a string) of its first and last reading.
+        Map<String, Map<String, VariantLocationModel>> vlocs = new HashMap<>();
+        for (VariantModel vm : variants) {
+            // Remove the first and last reading from the variant model, since these are the common
+            // readings that bracket the actual variant. Use the IDs of those readings to find or create
+            // the location model.
+            List<ReadingModel> readings = vm.getReadings();
+            ReadingModel vlStart = readings.remove(0);
+            ReadingModel vlEnd = readings.remove(readings.size() - 1);
+            vm.setReadings(readings);
+            // Find or initialize the variant location model that corresponds to this start and end.
+            VariantLocationModel vlm = getVLM(vlocs, baseChain, vlStart.getId(), vlEnd.getId());
+            if (vlm != null)
+                vlm.addVariant(vm);
+        }
+
+        // Add relation information to each variant location. This will also notice displaced variants.
         List<VariantLocationModel> result = new ArrayList<>();
-        for (Map<Node,VariantLocationModel> hm : vlocs.values()) {
-            result.addAll(hm.values());
+        for (String start : vlocs.keySet()) {
+            result.addAll(vlocs.get(start).values());
         }
-        // Add relation information to each of them. This will also notice displaced variants.
         for (VariantLocationModel vlm : result)
             collectRelationsInLocation(vlm);
         // Sort the result by rank index and return
@@ -795,25 +724,46 @@ public class Section {
     }
 
     /**
-     * Utility method to check whether a node is common in the given context.
-     *
-     * @param n - The node to check
-     * @param follow - The RelationshipType we are following, i.e. whether we are in normalized mode
-     * @return true or false
+     * Utility method to turn a Neo4J path into a variant model
      */
-    private boolean is_common(Node n, RelationshipType follow, boolean combine) {
-        if (n.getProperty("is_start", false).equals(true)) return true;
-        if (n.getProperty("is_end", false).equals(true)) return true;
-        String propName = follow.equals(ERelations.NSEQUENCE) ? "ncommon" : "is_common";
-        boolean propIsCommon = n.getProperty(propName, false).equals(true);
-        if (combine && propIsCommon) {
-            // Check for dislocations
-            for (Relationship r : n.getRelationships(ERelations.RELATED)) {
-                RelationTypeModel rtm = returnRelationType(tradId, r.getProperty("type").toString());
-                propIsCommon = propIsCommon && rtm.getIs_colocation();
+    private static VariantModel modelFromSegment (org.neo4j.graphdb.Path p) {
+        VariantModel vm = new VariantModel();
+
+        // Get the readings
+        List<ReadingModel> vReadings = new ArrayList<>();
+        p.nodes().forEach(x -> vReadings.add(new ReadingModel(x)));
+        vm.setReadings(vReadings);
+
+        // Get the witnesses that belong to the whole path
+        Map<String, Set<String>> vWits = new HashMap<>();
+        boolean first = true;
+        for (Relationship r: p.relationships()) {
+            for (String layer: r.getPropertyKeys()) {
+                // If this is the first relationship we look at, take in all witnesses and their layers
+                if (first) {
+                    vWits.put(layer, new HashSet<>(Arrays.asList((String[]) r.getProperty(layer))));
+                // Otherwise we have to remove witnesses and layers that don't follow this path entirely
+                } else {
+                    if (vWits.containsKey(layer)) {
+                        Set<String> currWits = vWits.get(layer);
+                        currWits.retainAll(Arrays.asList((String[]) r.getProperty(layer)));
+                        if (currWits.size() == 0)
+                            vWits.remove(layer);
+                    }
+                }
             }
+            first = false;
         }
-        return propIsCommon;
+        // Now add whatever witnesses / layers are left; these are the ones that contain
+        // this particular sequence of readings.
+        Map<String, List<String>> endWitnesses = new HashMap<>();
+        for (String layer : vWits.keySet()) {
+            List<String> sigla = new ArrayList<>(vWits.get(layer));
+            Collections.sort(sigla);
+            endWitnesses.put(layer, sigla);
+        }
+        vm.setWitnesses(endWitnesses);
+        return vm;
     }
 
     /**
@@ -821,15 +771,15 @@ public class Section {
      * readings, using the given base.
      *
      * @param vlocs - The existing map of start node -> end node -> initialized model
-     * @param baseChain - The relevant chain of base readings
+     * @param baseChain - The entire chain of base readings from #START# to #END#
      * @param vStart - The "before" node for the required VLM
      * @param vEnd - The "after" node for the required VLM
      * @return The VLM that was requested
      */
-    private static VariantLocationModel getVLM(Map<Node, Map<Node,VariantLocationModel>> vlocs,
+    private static VariantLocationModel getVLM(Map<String, Map<String,VariantLocationModel>> vlocs,
                                                List<Node> baseChain,
-                                               Node vStart,
-                                               Node vEnd) {
+                                               String vStart,
+                                               String vEnd) {
         // Retrieve any existing VariantLocationModel, or create a new one
         VariantLocationModel vlm = new VariantLocationModel();
         if (vlocs.containsKey(vStart)) {
@@ -838,14 +788,21 @@ public class Section {
             else
                 vlocs.get(vStart).put(vEnd, vlm);
         } else {
-            HashMap<Node,VariantLocationModel> hm = new HashMap<>();
+            HashMap<String,VariantLocationModel> hm = new HashMap<>();
             hm.put(vEnd, vlm);
             vlocs.put(vStart, hm);
         }
         // Initialize the VLModel if it is new.
         if (vlm.getRankIndex() == 0) {
+            // Find the start and end nodes corresponding to the given IDs
+            Optional<Node> vStartNode = baseChain.stream().filter(x -> Long.valueOf(vStart).equals(x.getId())).findFirst();
+            if (!vStartNode.isPresent())
+                return null; // TODO exception handle these a bit better
+            Optional<Node> vEndNode = baseChain.stream().filter(x -> Long.valueOf(vEnd).equals(x.getId())).findFirst();
+            if (!vEndNode.isPresent())
+                return null;
             List<ReadingModel> baseReadings = baseChain
-                    .subList(baseChain.indexOf(vStart), baseChain.indexOf(vEnd)+1)
+                    .subList(baseChain.indexOf(vStartNode.get()), baseChain.indexOf(vEndNode.get())+1)
                     .stream().map(ReadingModel::new).collect(Collectors.toList());
             vlm.setBefore(baseReadings.remove(0));
             vlm.setAfter(baseReadings.remove(baseReadings.size() - 1));
@@ -854,23 +811,9 @@ public class Section {
                 vlm.setRankIndex(baseReadings.get(0).getRank());
             else
                 vlm.setRankIndex(vlm.getBefore().getRank() + 1);
-            vlm.setNormalised(vStart.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
+            vlm.setNormalised(vStartNode.get().hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
         }
         return vlm;
-    }
-
-    /**
-     * Collects and returns the sigla along a given sequence link.
-     *
-     * @param r the SEQUENCE or NSEQUENCE relationship to collect from
-     * @return a list of sigla in "sigil|layer" format
-     */
-    private static List<String> collectSigla (Relationship r) {
-        List<String> collected = new ArrayList<>();
-        for (String layer : r.getPropertyKeys())
-            for (String sig : (String[]) r.getProperty(layer))
-                collected.add(String.format("%s|%s", sig, layer));
-        return collected;
     }
 
     /**
@@ -885,11 +828,11 @@ public class Section {
         Set<Node> clusterNodes = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
             for (ReadingModel rm : vlm.getBase())
-                clusterNodes.add(db.getNodeById(Long.valueOf(rm.getId())));
+                clusterNodes.add(db.getNodeById(Long.parseLong(rm.getId())));
             HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
             for (VariantModel vm : vlm.getVariants())
                 for (ReadingModel rm : vm.getReadings()) {
-                    Node vrdg = db.getNodeById(Long.valueOf(rm.getId()));
+                    Node vrdg = db.getNodeById(Long.parseLong(rm.getId()));
                     clusterNodes.add(vrdg);
                     // As long as we're here, make a map of variant node -> VariantModel
                     vModelForReading.put(vrdg, vm);
@@ -963,7 +906,7 @@ public class Section {
             if (priorSectID.equals(sectId))
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
 
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
 
             // Check that the requested prior section also exists and is part of the tradition
             Node priorSection = null;   // the requested prior section
@@ -986,7 +929,7 @@ public class Section {
                 else if (latterSection.equals(thisSection))
                     return Response.ok().build();
             } else {
-                priorSection = db.getNodeById(Long.valueOf(priorSectID));
+                priorSection = db.getNodeById(Long.parseLong(priorSectID));
                 if (priorSection == null) {
                     return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
                 }
@@ -1030,9 +973,10 @@ public class Section {
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
      */
+    @SuppressWarnings("RedundantCast")
     @POST
     @Path("/splitAtRank/{rankstr}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     // @ReturnType("java.lang.String")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
         if (!sectionInTradition())
@@ -1042,10 +986,10 @@ public class Section {
         // Get the reading(s) at the given rank, and at the prior rank
         Node startNode = VariantGraphService.getStartNode(sectId, db);
         Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
-        Long newSectionId;
+        long newSectionId;
 
         try (Transaction tx = db.beginTx()) {
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
 
             // Make sure we aren't just trying to split off the end node
             if (rank.equals(sectionEnd.getProperty("rank")))
@@ -1136,7 +1080,7 @@ public class Section {
                         if (x.hasLabel(Nodes.READING)) {
                             x.setProperty("section_id", newId);
                             if (!x.equals(newStart))
-                                x.setProperty("rank", Long.valueOf(x.getProperty("rank").toString()) - rank + 1);
+                                x.setProperty("rank", Long.parseLong(x.getProperty("rank").toString()) - rank + 1);
                         }
                     }
             );
@@ -1199,7 +1143,7 @@ public class Section {
 
         try (Transaction tx = db.beginTx()) {
             // Get this node, and see which direction we're merging
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
             Node firstSection = null;
             Node secondSection = null;
             for (Relationship r : thisSection.getRelationships(ERelations.NEXT)) {
@@ -1342,7 +1286,7 @@ public class Section {
      */
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") long startRank,
@@ -1385,10 +1329,10 @@ public class Section {
         for (Node nodeA : questionedReadings) {
             if (processed.contains(nodeA.getId()))
                 continue;
-            Long aRank = Long.valueOf(nodeA.getProperty("rank").toString());
+            long aRank = Long.parseLong(nodeA.getProperty("rank").toString());
             List<Node> sameText = questionedReadings.stream().filter(x -> !x.equals(nodeA)
                 && x.getProperty("text").equals(nodeA.getProperty("text"))
-                && Math.abs(Long.valueOf(x.getProperty("rank").toString()) - aRank) < threshold)
+                && Math.abs(Long.parseLong(x.getProperty("rank").toString()) - aRank) < threshold)
                     .collect(Collectors.toList());
             for (Node n : sameText) {
                 if (processed.contains(n.getId()))
@@ -1416,6 +1360,7 @@ public class Section {
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
+    @SuppressWarnings("rawtypes")
     private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode, String limitText) throws Exception {
         List<Node> readings;
         PathExpander e = new AlignmentTraverse(startNode);
@@ -1423,8 +1368,8 @@ public class Section {
             Stream<Node> readingStream = db.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().stream()
-                    .filter(x -> startRank <= Long.valueOf(x.getProperty("rank").toString()) &&
-                            endRank >= Long.valueOf(x.getProperty("rank").toString()));
+                    .filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
+                            endRank >= Long.parseLong(x.getProperty("rank").toString()));
             if (!limitText.equals(""))
                 readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
             readings = readingStream.collect(Collectors.toList());
@@ -1448,7 +1393,7 @@ public class Section {
     // TODO refactor all these traversals somewhere!
     @GET
     @Path("/identicalreadings/{startRank}/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getIdenticalReadings(@PathParam("startRank") long startRank,
                                          @PathParam("endRank") long endRank) {
@@ -1529,7 +1474,7 @@ public class Section {
      */
     @POST
     @Path("/setlemma")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     // @ReturnType("java.lang.String")
     public Response setLemmaText() {
         if (!sectionInTradition())
@@ -1553,7 +1498,7 @@ public class Section {
             // Recreate links, checking for branching
             Node priorLemma = startNode;
             for (ReadingModel tl : sectionLemmata) {
-                Node thisLemma = db.getNodeById(Long.valueOf(tl.getId()));
+                Node thisLemma = db.getNodeById(Long.parseLong(tl.getId()));
                 ReadingModel pl = new ReadingModel(priorLemma);
                 // Check that we don't have same-rank readings
                 if (priorLemma.getProperty("rank").equals(thisLemma.getProperty("rank")))
@@ -1602,7 +1547,7 @@ public class Section {
      */
     @GET
     @Path("/emendations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response getEmendations() {
         if (!sectionInTradition())
@@ -1611,7 +1556,7 @@ public class Section {
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             // Crawl the section looking for all emendations
-            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
             List<Node> emended = new ArrayList<>();
             for (Relationship r : sectionNode.getRelationships(ERelations.HAS_EMENDATION, Direction.OUTGOING))
                 emended.add(r.getEndNode());
@@ -1643,10 +1588,11 @@ public class Section {
      * @statuscode 404 - if the tradition and/or section doesn't exist
      * @statuscode 500 - on error
      */
+    @SuppressWarnings("RedundantCast")
     @POST
     @Path("/emend")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response emendText(ProposedEmendationModel proposal) {
         if (!sectionInTradition())
@@ -1678,7 +1624,7 @@ public class Section {
             ReadingModel emrm = new ReadingModel(emendation);
             result.setReadings(Collections.singletonList(emrm));
             // Connect it in the graph
-            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
             sectionNode.createRelationshipTo(emendation, ERelations.HAS_EMENDATION);
             List<SequenceModel> newLinks = new ArrayList<>();
             for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
@@ -1710,7 +1656,7 @@ public class Section {
      */
     @GET
     @Path("/graph")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response getGraphModel() {
         // TODO does this check make sense, or does the not-found happen already in Tradition.java?
@@ -1755,7 +1701,7 @@ public class Section {
      */
     @GET
     @Path("/graphml")
-    @Produces(MediaType.APPLICATION_XML + "; charset=utf-8")
+    @Produces("application/xml; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (VariantGraphService.getTraditionNode(tradId, db) == null)
@@ -1784,7 +1730,7 @@ public class Section {
      */
     @GET
     @Path("/dot")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
@@ -1813,7 +1759,7 @@ public class Section {
      */
     @GET
     @Path("/json")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AlignmentModel.class)
     public Response getJson(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1830,7 +1776,7 @@ public class Section {
      */
     @GET
     @Path("/csv")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getCsv(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1847,7 +1793,7 @@ public class Section {
      */
     @GET
     @Path("/tsv")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getTsv(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1866,7 +1812,7 @@ public class Section {
      */
     @GET
     @Path("/matrix")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
