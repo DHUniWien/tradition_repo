@@ -11,6 +11,7 @@ import javax.servlet.ServletContextListener;
 
 //import org.apache.log4j.Logger;
 
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 
 /**
@@ -21,6 +22,7 @@ public class ApplicationContextListener implements ServletContextListener {
 
     private static final String DB_ENV = System.getenv("STEMMAREST_HOME");
     private static final String DB_PATH = DB_ENV == null ? "/var/lib/stemmarest" : DB_ENV;
+    private static final String DB_NAME = "stemmarest";
     // final static Logger logger = Logger.getLogger(ApplicationContextListener.class);
     @SuppressWarnings("unused")
     private ServletContext context = null;
@@ -28,8 +30,8 @@ public class ApplicationContextListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent event) {
         //Output a simple message to the server's console
         try {
-            GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-            db.shutdown();
+            DatabaseManagementService ms = new GraphDatabaseServiceProvider().getManagementService();
+            ms.shutdown();
             // logger.debug("This is debug: db shut down properly");
         } catch (Exception e) {
             // logger.debug("This is debug: shut down error");
@@ -44,7 +46,7 @@ public class ApplicationContextListener implements ServletContextListener {
         //Output a simple message to the server's console
         // logger.debug("This is debug - Listener: context initialized");
         try {
-            GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
+            GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH, DB_NAME).getDatabase();
             DatabaseService.createRootNode(db);
         } catch (Exception e) {
             e.printStackTrace();

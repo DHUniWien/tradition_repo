@@ -235,7 +235,7 @@
 	</dependencies>
 	<properties>
 		<powermock.version>1.6.1</powermock.version>
-		<neo4j-version>3.5.9</neo4j-version>
+		<neo4j-version>4.0.0</neo4j-version>
 		<neo4j-algo-version>3.5.4.0</neo4j-algo-version>
 		<jackson-version>2.9.9</jackson-version>
 		<jersey-version>2.29</jersey-version>

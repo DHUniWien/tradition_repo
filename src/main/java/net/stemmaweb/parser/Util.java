@@ -4,6 +4,7 @@ import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
@@ -23,13 +24,17 @@ public class Util {
 
     // Start and end node creation
     static Node createStartNode(Node parentNode) {
-        GraphDatabaseService db = parentNode.getGraphDatabase();
-        Node startNode = db.createNode(Nodes.READING);
-        startNode.setProperty("is_start", true);
-        startNode.setProperty("section_id", parentNode.getId());
-        startNode.setProperty("rank", 0L);
-        startNode.setProperty("text", "#START#");
-        parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        Node startNode;
+        try (Transaction tx = db.beginTx()) {
+            startNode = tx.createNode(Nodes.READING);
+            startNode.setProperty("is_start", true);
+            startNode.setProperty("section_id", parentNode.getId());
+            startNode.setProperty("rank", 0L);
+            startNode.setProperty("text", "#START#");
+            parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
+            tx.commit();
+        }
         return startNode;
     }
 

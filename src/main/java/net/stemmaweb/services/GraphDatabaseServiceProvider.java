@@ -1,13 +1,12 @@
 package net.stemmaweb.services;
 
 
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
+import org.neo4j.exceptions.KernelException;
 import org.neo4j.graphalgo.UnionFindProc;
-import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.internal.kernel.api.exceptions.KernelException;
-import org.neo4j.kernel.impl.proc.Procedures;
+import org.neo4j.kernel.api.procedure.GlobalProcedures;
 import org.neo4j.kernel.internal.GraphDatabaseAPI;
 
 import java.io.File;
@@ -20,6 +19,7 @@ import java.io.File;
  */
 public class GraphDatabaseServiceProvider {
 
+    private static DatabaseManagementService managementService;
     private static GraphDatabaseService db;
 
     // Get the database that has been initialized for the app
@@ -27,15 +27,16 @@ public class GraphDatabaseServiceProvider {
     }
 
     // Connect to a DB at a particular path
-    public GraphDatabaseServiceProvider(String db_location) throws KernelException {
-
-        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data"));
+    public GraphDatabaseServiceProvider(String db_location, String db_name) throws KernelException {
         File config = new File(db_location + "/conf/neo4j.conf");
+        File dbdata = new File(db_location + "/data");
+
         if (config.exists())
-            db = dbbuilder.loadPropertiesFromFile(config.toString()).newGraphDatabase();
+            managementService = new DatabaseManagementServiceBuilder(dbdata)
+                    .loadPropertiesFromFile(config.getAbsolutePath()).build();
         else
-            db = dbbuilder.newGraphDatabase();
+            managementService = new DatabaseManagementServiceBuilder(dbdata).build();
+        db = managementService.database(db_name);
         registerExtensions();
 
     }
@@ -46,6 +47,8 @@ public class GraphDatabaseServiceProvider {
         registerExtensions();
     }
 
+    public DatabaseManagementService getManagementService() { return managementService; }
+
     public GraphDatabaseService getDatabase(){
         return db;
     }
@@ -55,7 +58,7 @@ public class GraphDatabaseServiceProvider {
         GraphDatabaseAPI api = (GraphDatabaseAPI) db;
         // See if our procedure is already registered
         api.getDependencyResolver()
-                .resolveDependency(Procedures.class, DependencyResolver.SelectionStrategy.ONLY)
+                .resolveDependency(GlobalProcedures.class)
                 .registerProcedure(UnionFindProc.class, true);
     }
 
