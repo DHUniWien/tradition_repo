@@ -8,11 +8,11 @@ import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class VariantListing {
+public class VariantCrawler {
     private final Set<String> lemmaLinks;
     private final Set<Long> lemmaNodes;
 
-    public VariantListing(List<Relationship> lp) {
+    public VariantCrawler(List<Relationship> lp) {
         this.lemmaLinks = lp.stream().map(Relationship::toString).collect(Collectors.toSet());
         this.lemmaNodes = lp.stream().map(x -> x.getEndNode().getId()).collect(Collectors.toSet());
     }

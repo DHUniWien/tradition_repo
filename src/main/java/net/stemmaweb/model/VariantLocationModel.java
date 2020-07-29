@@ -1,14 +1,21 @@
 package net.stemmaweb.model;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
+import org.neo4j.graphdb.*;
 
 import javax.xml.bind.annotation.XmlRootElement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static net.stemmaweb.services.RelationService.returnRelationType;
 
 @XmlRootElement
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
@@ -46,6 +53,10 @@ public class VariantLocationModel {
      * whether we are working with a normalised text
      */
     private boolean normalised = false;
+    /**
+     * whether this is (or has become) an empty variant location
+     */
+    private boolean isEmpty = true;
 
     public VariantLocationModel() {
         this.rankIndex = 0L;
@@ -53,6 +64,130 @@ public class VariantLocationModel {
         this.variants = new ArrayList<>();
         this.relations = new ArrayList<>();
     }
+
+    /**
+     * Looks for all RELATED links between nodes involved in a VariantLocationModel, and adds the
+     * corresponding RelationModels to the VariantLocationModel in question.
+     *
+     * @param db - the GraphDatabaseService we are using
+     * @param dislocationTypes - the list of relation types that are non-colocated in this tradition
+     */
+    void collectRelationsInLocation(GraphDatabaseService db, List<String> dislocationTypes) {
+        Set<Relationship> relations = new HashSet<>();
+        // Gather all the nodes we need
+        Set<Node> clusterNodes = new HashSet<>();
+        try (Transaction tx = db.beginTx()) {
+            for (ReadingModel rm : this.getBase())
+                clusterNodes.add(db.getNodeById(Long.parseLong(rm.getId())));
+            HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
+            for (VariantModel vm : this.getVariants())
+                for (ReadingModel rm : vm.getReadings()) {
+                    Node vrdg = db.getNodeById(Long.parseLong(rm.getId()));
+                    clusterNodes.add(vrdg);
+                    // As long as we're here, make a map of variant node -> VariantModel
+                    vModelForReading.put(vrdg, vm);
+                }
+            for (Node n : clusterNodes) {
+                for (Relationship rel : n.getRelationships(ERelations.RELATED, Direction.OUTGOING))
+                    // Add any relation we find that links to another node in this variant location
+                    if (clusterNodes.contains(rel.getEndNode()))
+                        relations.add(rel);
+                        // Add the relation anyway, if it signifies a displaced variant reading.
+                        // Also mark the variant and its location as being displaced / having a displacement.
+                    else if (vModelForReading.containsKey(n)){
+                        if (dislocationTypes.contains(rel.getProperty("type").toString())) {
+                            relations.add(rel);
+                            vModelForReading.get(n).setDisplaced(true);
+                            this.setDisplacement(true);
+                        }
+                    }
+            }
+            List<RelationModel> rml = relations.stream().map(RelationModel::new).collect(Collectors.toList());
+            this.setRelations(rml);
+            this.isEmpty = false;
+            tx.success();
+        }
+    }
+
+    /**
+     * Filter the readings in the variant location on the given criteria.
+     * @param filterRegex - The regular expression string to filter out
+     * @param filterNonsense - Whether we should filter out readings marked is_nonsense
+     */
+    public void filterReadings (String filterRegex, boolean filterNonsense) {
+        Pattern p = Pattern.compile(filterRegex);
+        // If all base readings match the pattern, empty out the base text.
+        // If only some base readings match the pattern, keep any "filtered" readings
+        // that are not the first or the last reading, so that the base text matches
+        // the lemma text for apparatus legibility purposes.
+        List<ReadingModel> filteredBase = new ArrayList<>();
+        List<ReadingModel> heldOver = new ArrayList<>();
+        for (ReadingModel rm : this.getBase()) {
+            String toTest = this.isNormalised() ? rm.normalized() : rm.getText();
+            Matcher m = p.matcher(toTest);
+            if (!m.matches() || (filterNonsense && rm.getIs_nonsense())) {
+                // Do we have any intermediate readings being held?
+                filteredBase.addAll(heldOver);
+                heldOver.clear();
+                filteredBase.add(rm);
+            } else if (!filteredBase.isEmpty()) {
+                // If we have started a base chain, hold this reading in case we have to include it
+                // in the middle of the base sequence.
+                heldOver.add(rm);
+            }
+        }
+        if (filteredBase.size() != this.getBase().size()) {
+            this.setBase(filteredBase);
+            // Reset the rank index just in case
+            this.setRankIndex(filteredBase.size() > 0 ? filteredBase.get(0).getRank() : this.getBefore().getRank() + 1);
+        }
+
+        // For each variant, remove all readings that match the pattern
+        for (VariantModel vm : this.getVariants()) {
+            List<ReadingModel> filteredVariants = new ArrayList<>();
+            for (ReadingModel rm : vm.getReadings()) {
+                String toTest = this.isNormalised() ? rm.normalized() : rm.getText();
+                Matcher m = p.matcher(toTest);
+                if (!m.matches() || (filterNonsense && rm.getIs_nonsense())) filteredVariants.add(rm);
+            }
+            if (!filteredVariants.containsAll(vm.getReadings()))
+                vm.setReadings(filteredVariants);
+        }
+        // Empty out and re-add all variants, which will merge any that are now identical
+        List<VariantModel> existing = this.getVariants();
+        this.variants = new ArrayList<>();
+        existing.forEach(this::addVariant);
+
+        // Now treat the special case where we have an emptied-out base and emptied-out variants
+        if (this.getBase().size() == 0)
+            this.setVariants(this.getVariants().stream().filter(x -> x.getReadings().size() > 0).collect(Collectors.toList()));
+
+        // If the location has no variants left, mark it as empty
+        if (this.getVariants().size() == 0)
+            this.isEmpty = true;
+    }
+
+    /**
+     * Return true if the other location model has the same chain of base readings, the same before and after point,
+     * and the same value for normalisation
+     * @param otherVLM
+     */
+    public boolean sameAs(VariantLocationModel otherVLM) {
+        String ourText = ReadingService.textOfReadings(this.getBase(), this.isNormalised(), true);
+        String theirText = ReadingService.textOfReadings(otherVLM.getBase(), this.isNormalised(), true);
+        if (!ourText.equals(theirText)) return false;
+        if (!this.getBefore().getId().equals(otherVLM.getBefore().getId())) return false;
+        if (!this.getAfter().getId().equals(otherVLM.getAfter().getId())) return false;
+        return this.isNormalised() == otherVLM.isNormalised();
+    }
+
+    String lookupKey() {
+        return String.format("%s -- %s", this.getBefore().getId(), this.getAfter().getId());
+    }
+
+    /*
+     * Accessor methods
+     */
 
     public Long getRankIndex() {
         return rankIndex;
@@ -83,7 +218,17 @@ public class VariantLocationModel {
     }
 
     public void addVariant(VariantModel variant) {
-        this.variants.add(variant);
+        // Is there already a variant with this identical set of properties, apart from the witnesses?
+        // If so, merge it
+        boolean merged = false;
+        for (VariantModel vm : this.getVariants()) {
+            if (vm.sameAs(variant))
+                merged = vm.mergeVariant(variant);
+        }
+        if (!merged) this.variants.add(variant);
+        // Any time we add a variant we should update the list of relations pertaining to this VLM
+        // Keep the variant list sorted
+        this.variants.sort(Comparator.comparingInt(x -> x.getReadings().size()));
     }
 
     public void setRelations(List<RelationModel> relations) {
@@ -128,6 +273,15 @@ public class VariantLocationModel {
         this.normalised = normalised;
     }
 
+    /**
+     * Empty in this contexts means that the location has no VariantModels.
+     * @return boolean
+     */
+    @JsonIgnore
+    public boolean isEmpty() {
+        return this.isEmpty;
+    }
+
     @Override
     public String toString() {
         StringBuilder apparatusEntry = new StringBuilder();
@@ -153,7 +307,23 @@ public class VariantLocationModel {
                 varText += " (interp.)";
             else if (varText.equals(""))
                 varText = "(om.)";
-            apparatusEntry.append(String.format("\t%s: %s\n", varText, witnessList));
+            else if (vm.getDisplaced()) {
+                ReadingModel anchor = vm.getAnchor();
+                if (varText.equals(base))
+                    varText = "transp. ";
+                else
+                    varText += " transp. ";
+                if (anchor != null && anchor.getRank() > vm.getReadings().get(0).getRank())
+                    varText += "prae ";
+                else
+                    varText += "post ";
+                if (anchor == null)
+                    varText += "(NULL)";
+                else
+                    varText += ReadingService.textOfReadings(Collections.singletonList(anchor),
+                            this.isNormalised(), false);
+            }
+            apparatusEntry.append(String.format("\t%s: %s; ", varText, witnessList));
         }
         return apparatusEntry.toString();
     }
