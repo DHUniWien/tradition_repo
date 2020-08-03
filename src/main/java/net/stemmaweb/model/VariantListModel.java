@@ -26,7 +26,7 @@ public class VariantListModel {
     /**
      * whether we are moving dislocated (e.g. transposed) variants to their matching base
      */
-    private boolean dislocationsCombined = false;
+    private boolean dislocationCombined = false;
     /**
      * whether this list has excluded type-1 (singleton) variants
      */
@@ -58,7 +58,7 @@ public class VariantListModel {
 
     public VariantListModel() {
         variantlist = new ArrayList<>();
-        suppressedReadingsRegex = "NONE";
+        suppressedReadingsRegex = "^$";
         conflateOnRelation = "";
     }
 
@@ -68,20 +68,30 @@ public class VariantListModel {
      * @param sectionNode - the section to generate the list for
      * @param baseWitness - the witness sigil to indicate the base text, if any
      * @param conflate    - the name of a relation that should be the basis for text normalisation, if any
+     * @param suppress    - a regular expression of readings that should be excluded from the variant list
+     * @param filterNonsense - whether to exclude readings marked as nonsense readings
      * @param filterTypeOne - whether to filter out so-called "type 1" variants
      * @param significant - whether to filter out variants with significance less than indicated. Possible
      *                    values are "no", "maybe" and "yes".
      * @param combine     - whether to move variants marked as dislocations to the variant location of
      *                    their corresponding base readings
      */
-    public VariantListModel(Node sectionNode, String baseWitness, String conflate,
+    public VariantListModel(Node sectionNode, String baseWitness, String conflate, String suppress, Boolean filterNonsense,
                             Boolean filterTypeOne, String significant, Boolean combine) throws Exception {
         // Initialize our instance properties
-        this.setVariantlist(new ArrayList<>());
-        this.setConflateOnRelation(conflate);
+        this.variantlist = new ArrayList<>();
+        this.conflateOnRelation = conflate;
+        // Set the right regex for our 'suppress' value
+        if (suppress.equals("punct"))
+            this.suppressedReadingsRegex = "^(\\p{IsPunctuation}+)$";
+        else if (suppress.equals("NONE") || suppress.equals("none"))
+            this.suppressedReadingsRegex = "^$";
+        else
+            this.suppressedReadingsRegex = suppress;
+        this.nonsenseSuppressed = filterNonsense;
         this.filterTypeOne = filterTypeOne;
         this.significant = RelationModel.Significance.valueOf(significant);
-        this.dislocationsCombined = combine;
+        this.dislocationCombined = combine;
         if (conflate == null) conflate = "";
         GraphDatabaseService db = sectionNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
@@ -132,6 +142,8 @@ public class VariantListModel {
 
             this.findVariants(db, baseText, follow);
 
+            // Filter readings by regex / nonsense flag as needed
+            this.filterReadings();
 
             // Filter for type1 variants
             if (filterTypeOne)
@@ -254,21 +266,16 @@ public class VariantListModel {
     }
 
 
-    public void filterReadings(String filterRegex, boolean filterNonsense) {
-        this.setSuppressedReadingsRegex(filterRegex);
-        // If we're asked to do no filtering, just return
-        if (filterRegex == null || filterRegex.equals("none"))
-            return;
-        // If we're asked to filter punctuation, put in the appropriate regex
-        if (filterRegex.equals("punct"))
-            filterRegex = "^(\\p{IsPunctuation}+)$";
-        // Otherwise, use the literal regex we were given
-
+    private void filterReadings() {
         // For each VLM in our list, filter it
         for (VariantLocationModel vlm : this.getVariantlist())
-            vlm.filterReadings(filterRegex, filterNonsense);
+            vlm.filterReadings(this.suppressedReadingsRegex, this.nonsenseSuppressed);
 
-        // Then look for duplicate VLMs and combine them
+        // Then re-add all VLMs, which will control for duplicates
+        List<VariantLocationModel> existing = this.getVariantlist().stream().filter(x -> !x.isEmpty())
+                .collect(Collectors.toList());
+        this.variantlist = new ArrayList<>();
+        for (VariantLocationModel vlm : existing) this.addVLM(vlm);
 
     }
 
@@ -309,7 +316,7 @@ public class VariantListModel {
 
         });
         // - Remove any now-empty variant locations
-        this.setVariantlist(vlmlist.stream().filter(x -> x.getVariants().size() > 0).collect(Collectors.toList()));
+        this.variantlist = vlmlist.stream().filter(x -> x.getVariants().size() > 0).collect(Collectors.toList());
 
         // - TODO condense symmetrical transpositions
     }
@@ -351,54 +358,50 @@ public class VariantListModel {
         return lemmaIndex.getOrDefault(baseKey, null);
     }
 
+    /**
+     * Adds a new variant location model to the list, ensuring no duplication
+     * @param newVLM the VLM to add, or to merge with an existing identical one
+     */
+    private void addVLM(VariantLocationModel newVLM) {
+        Optional<VariantLocationModel> existing = this.getVariantlist().stream()
+                .filter(x -> newVLM.lookupKey().equals(x.lookupKey())).findFirst();
+        boolean merged = false;
+        if (existing.isPresent()) {
+            VariantLocationModel oldVLM = existing.get();
+            if (oldVLM.sameAs(newVLM)) {
+                for (VariantModel vm : newVLM.getVariants())
+                    oldVLM.addVariant(vm);
+                merged = true;
+            }
+        }
+        if (!merged) this.variantlist.add(newVLM);
+
+    }
+
     /* Access methods */
 
     public List<VariantLocationModel> getVariantlist() {
         return variantlist;
     }
 
-    public void setVariantlist(List<VariantLocationModel> variantlist) {
-        this.variantlist = variantlist;
-    }
-
-    public boolean isDislocationsCombined() {
-        return dislocationsCombined;
-    }
-
-    public void setDislocationsCombined(boolean dislocationsCombined) {
-        this.dislocationsCombined = dislocationsCombined;
+    public boolean isDislocationCombined() {
+        return dislocationCombined;
     }
 
     public boolean isNonsenseSuppressed() {
         return nonsenseSuppressed;
     }
 
-    public void setNonsenseSuppressed(boolean nonsenseSuppressed) {
-        this.nonsenseSuppressed = nonsenseSuppressed;
-    }
-
     public String getSuppressedReadingsRegex() {
         return suppressedReadingsRegex;
-    }
-
-    public void setSuppressedReadingsRegex(String suppressedReadingsRegex) {
-        this.suppressedReadingsRegex = suppressedReadingsRegex;
     }
 
     public String getBasisText() {
         return basisText;
     }
 
-    public void setBasisText(String basisText) {
-        this.basisText = basisText;
-    }
-
     public String getConflateOnRelation() {
         return conflateOnRelation;
-    }
-
-    public void setConflateOnRelation(String conflateOnRelation) {
-        this.conflateOnRelation = conflateOnRelation;
     }
 
     public boolean isFilterTypeOne() {
@@ -409,15 +412,8 @@ public class VariantListModel {
         return significant;
     }
 
-    public void setSignificant(RelationModel.Significance significant) {
-        this.significant = significant;
-    }
-
     public List<String> getDislocationTypes() {
         return dislocationTypes;
     }
 
-    public void setDislocationTypes(List<String> dislocationTypes) {
-        this.dislocationTypes = dislocationTypes;
-    }
 }

@@ -23,7 +23,6 @@ import java.util.stream.StreamSupport;
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
 import static net.stemmaweb.services.ReadingService.*;
-import static net.stemmaweb.services.RelationService.returnRelationType;
 
 /**
  * Comprises all the API calls related to a tradition section.
@@ -548,11 +547,12 @@ public class Section {
      *  - Otherwise, the majority text will be calculated and used as the base.
      *
      * @param significant - Restrict the variant groups to the given significance level or above
-     * @param exclude_type1 - If true, exclude type 1 (i.e. singleton) variants from the groupings
+     * @param excludeType1 - If true, exclude type 1 (i.e. singleton) variants from the groupings
      * @param combine - If true, attempt to combine non-colocated variants (e.g. transpositions) into
      *                the VariantLocationModel of the corresponding base
-     * @param suppress - A regular expression to match readings that should be disregarded in the
+     * @param suppressMatching - A regular expression to match readings that should be disregarded in the
      *                 variant list. Defaults to punctuation-only readings.
+     * @param excludeNonsense - Whether
      * @param baseWitness  - Use the path of the given witness as the base path.
      * @param conflate - The name of a relation type that should be used for normalization
      *
@@ -564,9 +564,10 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = VariantListModel.class)
     public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
-                                     @DefaultValue("no") @QueryParam("exclude_type1") String exclude_type1,
+                                     @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
+                                     @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
                                      @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
-                                     @DefaultValue("punct") @QueryParam("suppress") String suppress,
+                                     @DefaultValue("punct") @QueryParam("suppress_matching") String suppressMatching,
                                                          @QueryParam("base_witness") String baseWitness,
                                                          @QueryParam("normalize") String conflate) {
         if (!sectionInTradition())
@@ -575,8 +576,8 @@ public class Section {
 
         try (Transaction tx = db.beginTx()) {
             Node sectionNode = db.getNodeById(Long.parseLong(sectId));
-            VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, conflate,
-                    !exclude_type1.equals("no"), significant, !combine.equals("no"));
+            VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, conflate, suppressMatching,
+                    !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
             tx.success();
             return Response.ok(vlocs).build();
         } catch (Exception e) {

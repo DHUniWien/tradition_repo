@@ -114,7 +114,7 @@ public class VariantLocationModel {
      * @param filterRegex - The regular expression string to filter out
      * @param filterNonsense - Whether we should filter out readings marked is_nonsense
      */
-    public void filterReadings (String filterRegex, boolean filterNonsense) {
+    void filterReadings (String filterRegex, boolean filterNonsense) {
         Pattern p = Pattern.compile(filterRegex);
         // If all base readings match the pattern, empty out the base text.
         // If only some base readings match the pattern, keep any "filtered" readings
@@ -158,7 +158,7 @@ public class VariantLocationModel {
         this.variants = new ArrayList<>();
         existing.forEach(this::addVariant);
 
-        // Now treat the special case where we have an emptied-out base and emptied-out variants
+        // Now treat the special case where we have an emptied-out base and some emptied-out variants
         if (this.getBase().size() == 0)
             this.setVariants(this.getVariants().stream().filter(x -> x.getReadings().size() > 0).collect(Collectors.toList()));
 

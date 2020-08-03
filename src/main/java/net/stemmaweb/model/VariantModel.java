@@ -150,7 +150,7 @@ public class VariantModel {
         ArrayList<String> deletedLayers = new ArrayList<>();
         for (String layer : witnesses.keySet()) {
             if (layer.equals("witnesses")) continue;
-            List<String> mainWits = witnesses.get("witnesses");
+            List<String> mainWits = witnesses.getOrDefault("witnesses", new ArrayList<>());
             List<String> layerWits = witnesses.get(layer);
             List<String> toRemove = new ArrayList<>();
             for (String sigil : layerWits) {

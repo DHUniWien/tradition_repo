@@ -187,7 +187,7 @@ public class VariantLocationTest extends TestCase {
         // First normalized, no suppression, no combination
         Response rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("normalize", "spelling")
-                .queryParam("suppress", "none")
+                .queryParam("suppress_matching", "none")
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         VariantListModel vlist = rsp.readEntity(VariantListModel.class);
