@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import org.neo4j.graphdb.*;
 
@@ -93,12 +92,12 @@ public class VariantLocationModel {
                     if (clusterNodes.contains(rel.getEndNode()))
                         relations.add(rel);
                         // Add the relation anyway, if it signifies a displaced variant reading.
-                        // Also mark the variant and its location as being displaced / having a displacement.
+                        // Also mark the variant as being displaced.
                     else if (vModelForReading.containsKey(n)){
                         if (dislocationTypes.contains(rel.getProperty("type").toString())) {
                             relations.add(rel);
                             vModelForReading.get(n).setDisplaced(true);
-                            this.setDisplacement(true);
+                            // this.setDisplacement(true);
                         }
                     }
             }
@@ -114,7 +113,7 @@ public class VariantLocationModel {
      * @param filterRegex - The regular expression string to filter out
      * @param filterNonsense - Whether we should filter out readings marked is_nonsense
      */
-    void filterReadings (String filterRegex, boolean filterNonsense) {
+    void filterReadings (String filterRegex, boolean filterNonsense, List<ReadingModel> baseText) {
         Pattern p = Pattern.compile(filterRegex);
         // If all base readings match the pattern, empty out the base text.
         // If only some base readings match the pattern, keep any "filtered" readings
@@ -123,9 +122,7 @@ public class VariantLocationModel {
         List<ReadingModel> filteredBase = new ArrayList<>();
         List<ReadingModel> heldOver = new ArrayList<>();
         for (ReadingModel rm : this.getBase()) {
-            String toTest = this.isNormalised() ? rm.normalized() : rm.getText();
-            Matcher m = p.matcher(toTest);
-            if (!m.matches() || (filterNonsense && rm.getIs_nonsense())) {
+            if (!shouldBeFiltered(rm, p, filterNonsense)) {
                 // Do we have any intermediate readings being held?
                 filteredBase.addAll(heldOver);
                 heldOver.clear();
@@ -142,13 +139,38 @@ public class VariantLocationModel {
             this.setRankIndex(filteredBase.size() > 0 ? filteredBase.get(0).getRank() : this.getBefore().getRank() + 1);
         }
 
+        // Do we have to change the before/after settings?
+        if (shouldBeFiltered(this.getBefore(), p, filterNonsense)) {
+            Optional<ReadingModel> orm = baseText.stream().filter(x -> x.getId().equals(this.getBefore().getId())).findFirst();
+            if (orm.isPresent()) { // always true
+                for (int i = baseText.indexOf(orm.get()); i > 0; i--) {
+                    ReadingModel prior = baseText.get(i-1);
+                    if (!shouldBeFiltered(prior, p, filterNonsense)) {
+                        this.setBefore(prior);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (shouldBeFiltered(this.getAfter(), p, filterNonsense)) {
+            Optional<ReadingModel> orm = baseText.stream().filter(x -> x.getId().equals(this.getAfter().getId())).findFirst();
+            if (orm.isPresent()) { // always true
+                for (int i = baseText.indexOf(orm.get()); i < baseText.size() - 1; i++) {
+                    ReadingModel next = baseText.get(i + 1);
+                    if (!shouldBeFiltered(next, p, filterNonsense)) {
+                        this.setAfter(next);
+                        break;
+                    }
+                }
+            }
+        }
+
         // For each variant, remove all readings that match the pattern
         for (VariantModel vm : this.getVariants()) {
             List<ReadingModel> filteredVariants = new ArrayList<>();
             for (ReadingModel rm : vm.getReadings()) {
-                String toTest = this.isNormalised() ? rm.normalized() : rm.getText();
-                Matcher m = p.matcher(toTest);
-                if (!m.matches() || (filterNonsense && rm.getIs_nonsense())) filteredVariants.add(rm);
+                if (!shouldBeFiltered(rm, p, filterNonsense)) filteredVariants.add(rm);
             }
             if (!filteredVariants.containsAll(vm.getReadings()))
                 vm.setReadings(filteredVariants);
@@ -165,6 +187,12 @@ public class VariantLocationModel {
         // If the location has no variants left, mark it as empty
         if (this.getVariants().size() == 0)
             this.isEmpty = true;
+    }
+
+    private boolean shouldBeFiltered (ReadingModel rm, Pattern p, boolean filterNonsense) {
+        String toTest = this.isNormalised() ? rm.normalized() : rm.getText();
+        Matcher m = p.matcher(toTest);
+        return m.matches() || (filterNonsense && rm.getIs_nonsense());
     }
 
     /**
@@ -307,7 +335,7 @@ public class VariantLocationModel {
                 varText += " (interp.)";
             else if (varText.equals(""))
                 varText = "(om.)";
-            else if (vm.getDisplaced()) {
+            else if (vm.getDisplaced() && this.hasDisplacement()) {
                 ReadingModel anchor = vm.getAnchor();
                 if (varText.equals(base))
                     varText = "transp. ";

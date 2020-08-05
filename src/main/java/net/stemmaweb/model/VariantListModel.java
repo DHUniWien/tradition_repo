@@ -142,8 +142,11 @@ public class VariantListModel {
 
             this.findVariants(db, baseText, follow);
 
-            // Filter readings by regex / nonsense flag as needed
-            this.filterReadings();
+            // Filter readings by regex / nonsense flag as needed. Pass the base text in case
+            // any before/after reading settings need to be altered.
+            List<ReadingModel> baseChain = baseText.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
+            baseChain.add(0, new ReadingModel(baseText.get(0).getStartNode()));
+            this.filterReadings(baseChain);
 
             // Filter for type1 variants
             if (filterTypeOne)
@@ -266,10 +269,10 @@ public class VariantListModel {
     }
 
 
-    private void filterReadings() {
+    private void filterReadings(List<ReadingModel> baseText) {
         // For each VLM in our list, filter it
         for (VariantLocationModel vlm : this.getVariantlist())
-            vlm.filterReadings(this.suppressedReadingsRegex, this.nonsenseSuppressed);
+            vlm.filterReadings(this.suppressedReadingsRegex, this.nonsenseSuppressed, baseText);
 
         // Then re-add all VLMs, which will control for duplicates
         List<VariantLocationModel> existing = this.getVariantlist().stream().filter(x -> !x.isEmpty())

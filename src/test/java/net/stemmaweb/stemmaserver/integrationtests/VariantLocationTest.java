@@ -194,14 +194,15 @@ public class VariantLocationTest extends TestCase {
         List<VariantLocationModel> vlocs = vlist.getVariantlist();
         assertEquals(122, vlocs.size());
 
-        // Now normalized, suppress punctuation, no combination
+        // Now normalized, suppress punctuation and nonsense readings, no combination
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("normalize", "spelling")
+                .queryParam("exclude_nonsense", "true")
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
-        assertEquals(88, vlocs.size());
+        assertEquals(82, vlocs.size());
         // TODO Check on some that should have been altered
         // 26: յաշխարհն] 	աշխարհն: C D I J K M1775 M2899 M8232 O V W Y Z;
 
@@ -212,19 +213,20 @@ public class VariantLocationTest extends TestCase {
         // 128: և] 	(om.): Bz644 W246 X;
         // 139: զառաւել] 	զառաւելն: E F G M2855 M3380 M8232 V W243 W246 Y; (only one)
         // 151: անողորմ արձակեալ] 	յարձակեալ: A; 	յանողորմ յարձակեալ: V Y; ի վերայ իրերաց (interp.): Bz644 K;
-        // there is no 152
-        // 174: անասնոց] 	անասնցն: E F G M2855 M3380 M8232 W243 W246 Y; 	աւանաց և գիւղից transp. post (NULL): Bz644 K;
+        // there is no 152 <== actually there is, this is a different sort of variant
+        // 174: անասնոց] 	անասնցն: E F G M2855 M3380 M8232 W243 W246 Y; 	աւանաց և գիւղից: Bz644 K;
         // 194: ժամանակի] 	ժամանակին: D I J M1775 M2855 M8232 O W;
 
-        // Now normalized, suppress punctuation, collapse dislocations
+        // Now normalized, suppress punctuation & nonsense readings, collapse dislocations
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("normalize", "spelling")
+                .queryParam("exclude_nonsense", "true")
                 .queryParam("combine_dislocations", "true")
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
-        assertEquals(85, vlocs.size());
+        assertEquals(78, vlocs.size());
 
         // 16 should compress
         // 99 should compress
