@@ -41,8 +41,7 @@ public class SequenceModel {
      */
     private Map<String, List<String>> layers;
 
-    @SuppressWarnings("WeakerAccess")
-    public SequenceModel() {
+    private SequenceModel() {
         super();
         this.witnesses = new ArrayList<>();
     }

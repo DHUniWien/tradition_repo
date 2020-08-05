@@ -14,8 +14,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static net.stemmaweb.services.RelationService.returnRelationType;
-
 @XmlRootElement
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class VariantLocationModel {
@@ -57,7 +55,7 @@ public class VariantLocationModel {
      */
     private boolean isEmpty = true;
 
-    public VariantLocationModel() {
+    VariantLocationModel() {
         this.rankIndex = 0L;
         this.base = new ArrayList<>();
         this.variants = new ArrayList<>();
@@ -198,9 +196,9 @@ public class VariantLocationModel {
     /**
      * Return true if the other location model has the same chain of base readings, the same before and after point,
      * and the same value for normalisation
-     * @param otherVLM
+     * @param otherVLM the VLM to compare to
      */
-    public boolean sameAs(VariantLocationModel otherVLM) {
+    boolean sameAs(VariantLocationModel otherVLM) {
         String ourText = ReadingService.textOfReadings(this.getBase(), this.isNormalised(), true);
         String theirText = ReadingService.textOfReadings(otherVLM.getBase(), this.isNormalised(), true);
         if (!ourText.equals(theirText)) return false;
@@ -245,7 +243,7 @@ public class VariantLocationModel {
         this.variants = variants;
     }
 
-    public void addVariant(VariantModel variant) {
+    void addVariant(VariantModel variant) {
         // Is there already a variant with this identical set of properties, apart from the witnesses?
         // If so, merge it
         boolean merged = false;

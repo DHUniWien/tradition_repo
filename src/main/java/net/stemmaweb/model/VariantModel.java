@@ -26,7 +26,8 @@ public class VariantModel {
     private Boolean isEmpty = true;
     private ReadingModel anchor;
 
-    public VariantModel() {
+    @SuppressWarnings("unused")     // It's used by response.readEntity(VariantListModel.class)
+    VariantModel() {
         readings = new ArrayList<>();
         witnesses = new HashMap<>();
     }
@@ -35,7 +36,7 @@ public class VariantModel {
      * Initialize a variant model from a given Neo4J path, assumed to be a valid variant path.
      * @param p - the Neo4J path to initialize from
      */
-    public VariantModel (Path p) {
+    VariantModel (Path p) {
         // Get the readings
         List<ReadingModel> vReadings = new ArrayList<>();
         p.nodes().forEach(x -> vReadings.add(new ReadingModel(x)));

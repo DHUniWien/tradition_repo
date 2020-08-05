@@ -56,6 +56,7 @@ public class VariantListModel {
      */
     private List<String> dislocationTypes;
 
+    @SuppressWarnings("unused")     // It's used by response.readEntity(VariantListModel.class)
     public VariantListModel() {
         variantlist = new ArrayList<>();
         suppressedReadingsRegex = "^$";
