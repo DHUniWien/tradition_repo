@@ -36,7 +36,7 @@ public class VariantModel {
      * Initialize a variant model from a given Neo4J path, assumed to be a valid variant path.
      * @param p - the Neo4J path to initialize from
      */
-    VariantModel (Path p) {
+    VariantModel (Path p, Map<String,Set<String>> vWits) {
         // Get the readings
         List<ReadingModel> vReadings = new ArrayList<>();
         p.nodes().forEach(x -> vReadings.add(new ReadingModel(x)));
@@ -48,28 +48,7 @@ public class VariantModel {
         // Set the "normal" flag appropriately
         this.setNormal(p.startNode().hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
 
-        // Get the witnesses that belong to the whole path
-        Map<String, Set<String>> vWits = new HashMap<>();
-        boolean first = true;
-        for (Relationship r: p.relationships()) {
-            for (String layer: r.getPropertyKeys()) {
-                // If this is the first relationship we look at, take in all witnesses and their layers
-                if (first) {
-                    vWits.put(layer, new HashSet<>(Arrays.asList((String[]) r.getProperty(layer))));
-                    // Otherwise we have to remove witnesses and layers that don't follow this path entirely
-                } else {
-                    if (vWits.containsKey(layer)) {
-                        Set<String> currWits = vWits.get(layer);
-                        currWits.retainAll(Arrays.asList((String[]) r.getProperty(layer)));
-                        if (currWits.size() == 0)
-                            vWits.remove(layer);
-                    }
-                }
-            }
-            first = false;
-        }
-        // Now add whatever witnesses / layers are left; these are the ones that contain
-        // this particular sequence of readings.
+        // Now add the witnesses / layers that belong to the path, making sure to keep the sigla sorted.
         Map<String, List<String>> endWitnesses = new HashMap<>();
         for (String layer : vWits.keySet()) {
             List<String> sigla = new ArrayList<>(vWits.get(layer));

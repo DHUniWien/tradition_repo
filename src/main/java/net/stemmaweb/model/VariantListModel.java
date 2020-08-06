@@ -7,7 +7,6 @@ import net.stemmaweb.services.VariantCrawler;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.TraversalDescription;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
@@ -170,20 +169,20 @@ public class VariantListModel {
 
     private void findVariants (GraphDatabaseService db, List<Relationship> sequence, RelationshipType follow) {
         // Create the evaluator we need
-        Evaluator vle = new VariantCrawler(sequence).variantListEvaluator();
+        VariantCrawler crawler = new VariantCrawler(sequence, follow);
         // Set up the traversal for the path segments we want
         try (Transaction tx = db.beginTx()) {
             TraversalDescription traverser = db.traversalDescription().depthFirst()
-                    .relationships(follow, Direction.OUTGOING)
                     .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                    .evaluator(vle);
+                    .expand(crawler.variantListExpander())
+                    .evaluator(crawler.variantListEvaluator());
             // Get our base chain of nodes
             List<Node> baseChain = sequence.stream().map(Relationship::getEndNode).collect(Collectors.toList());
             baseChain.add(0, sequence.get(0).getStartNode());
             // We have to run the traverser from each node in the base chain, to get any variants that start there.
             for (Node n : baseChain) {
                 for (org.neo4j.graphdb.Path v : traverser.traverse(n)) {
-                    VariantModel vm = new VariantModel(v);
+                    VariantModel vm = new VariantModel(v, crawler.getWitnessesForPath(v));
                     // Sanity check
                     // if (!baseChain.contains(v.startNode()) || !baseChain.contains(v.endNode()))
                     //     throw new Exception("Variant chain disconnected from base chain");
