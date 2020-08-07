@@ -247,11 +247,27 @@ public class VariantLocationModel {
         // Is there already a variant with this identical set of properties, apart from the witnesses?
         // If so, merge it
         boolean merged = false;
+        VariantModel toRemove = null;
         for (VariantModel vm : this.getVariants()) {
+            // Is it the same as another variant?
             if (vm.sameAs(variant))
                 merged = vm.mergeVariant(variant);
+            else {
+                // Are the witnesses of the new variant included in an existing variant?
+                String overlappingWits = vm.containsWitnesses(variant.getWitnesses());
+                if (vm.getReadings().isEmpty() && overlappingWits.equals("yes")) {
+                    // This is only okay in the cases where the new variant is a transposition and we are an
+                    // omission of those witnesses, or vice versa. In that case, remove the omission variant.
+                    toRemove = vm;
+                } else if (!overlappingWits.equals("no")) {
+                    throw new RuntimeException(String.format(
+                            "Tried to add variant %s, overlapping with %s, to this location", variant, vm));
+                }
+            }
         }
         if (!merged) this.variants.add(variant);
+        if (toRemove != null) this.variants.remove(toRemove);
+
         // Any time we add a variant we should update the list of relations pertaining to this VLM
         // Keep the variant list sorted
         this.variants.sort(Comparator.comparingInt(x -> x.getReadings().size()));

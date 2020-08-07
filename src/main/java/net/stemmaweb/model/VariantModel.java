@@ -143,6 +143,22 @@ public class VariantModel {
         deletedLayers.forEach(witnesses::remove);
     }
 
+    // This can have more than two answers, so we return a string.
+    String containsWitnesses(Map<String,List<String>> witnessList) {
+        boolean witnessSeen = false;
+        boolean witnessMissed = false;
+        for (String layer : witnessList.keySet()) {
+            if (this.witnesses.containsKey(layer)) {
+                for (String sigil : witnessList.get(layer)) {
+                    witnessSeen = this.witnesses.get(layer).contains(sigil);
+                }
+            } else witnessMissed = true;
+        }
+        if (witnessSeen && witnessMissed) return "partial";
+        if (witnessSeen) return "yes";
+        return "no";
+    }
+
     @JsonIgnore
     public List<String> getWitnessList() {
         ArrayList<String> sigList = new ArrayList<>();

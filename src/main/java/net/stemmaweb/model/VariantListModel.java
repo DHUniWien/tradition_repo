@@ -284,7 +284,6 @@ public class VariantListModel {
 
     // Deal with non-colocated variants
     private void combineDisplacements() {
-        List<VariantLocationModel> result = new ArrayList<>();
         // TODO do we need this index or will getVLM() do what we need?
         // Make an index of our base reading sequences and the VLMs they appear in
         HashMap<String,VariantLocationModel> lemmaIndex = new HashMap<>();
@@ -293,8 +292,8 @@ public class VariantListModel {
             String baseKey = vlm.getBase().stream().map(ReadingModel::getId).collect(Collectors.joining("-"));
             lemmaIndex.put(baseKey, vlm);
         }
-        // - Get the list of displacements
-        vlmlist.stream().filter(VariantLocationModel::hasDisplacement).forEach(vlm -> {
+        // - Get the list of locations with a variant reading linked elsewhere
+        vlmlist.stream().filter(x -> x.getVariants().stream().anyMatch(VariantModel::getDisplaced)).forEach(vlm -> {
             // - Find the variant location that corresponds to each of the addition + omission
             // Which variant(s) is dislocated?
             List<VariantModel> toDelete = new ArrayList<>();
@@ -307,12 +306,20 @@ public class VariantListModel {
                         .collect(Collectors.toList());
                 VariantLocationModel displacedBase = findDisplacement(vm, vmrels, lemmaIndex);
                 if (displacedBase != null) {
-                    // Remove this VariantModel from the current VLM and add it to the one that was found.
+                    // Try to remove this VariantModel from the current VLM and add it to the one that was found.
                     toDelete.add(vm);
-                    displacedBase.addVariant(vm);
-                    // Add an anchor for the displaced variant
-                    vm.setAnchor( vlm.getBefore().getRank() > displacedBase.getBefore().getRank()
-                            ? vlm.getBefore() : vlm.getAfter() );
+                    try {
+                        displacedBase.addVariant(vm); // this might throw an exception
+                        displacedBase.setDisplacement(true);
+                        // Add an anchor for the displaced variant
+                        vm.setAnchor(vlm.getBefore().getRank() > displacedBase.getBefore().getRank()
+                                ? vlm.getBefore() : vlm.getAfter());
+                    } catch (RuntimeException e) {
+                        // We can't move this variant, probably because it has a symmetrical displacement
+                        // at this spot already.
+                        // LATER Revisit this, see if we can solve this
+                        toDelete.remove(vm);
+                    }
                 }
             });
             vlm.setVariants(vlm.getVariants().stream().filter(x -> !toDelete.contains(x)).collect(Collectors.toList()));

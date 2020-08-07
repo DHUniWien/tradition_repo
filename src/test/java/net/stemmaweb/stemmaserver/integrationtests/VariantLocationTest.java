@@ -12,10 +12,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class VariantLocationTest extends TestCase {
@@ -62,9 +59,11 @@ public class VariantLocationTest extends TestCase {
         VariantListModel vlist = rsp.readEntity(VariantListModel.class);
         List<VariantLocationModel> vlocs = vlist.getVariantlist();
         assertEquals(3, vlocs.size());
-        // Two of our three locations should have a displacement
-        List<VariantLocationModel> found = vlocs.stream().filter(VariantLocationModel::hasDisplacement)
-                .collect(Collectors.toList());
+
+        // None of our locations should yet have a displacement, but two should have variants that are displaced
+        assertTrue(vlocs.stream().noneMatch(VariantLocationModel::hasDisplacement));
+        List<VariantLocationModel> found = vlocs.stream().filter(x -> x.getVariants().stream()
+                .anyMatch(VariantModel::getDisplaced)).collect(Collectors.toList());
         assertEquals(2, found.size());
         for (VariantLocationModel f : found) {
             assertEquals(1, f.getBase().size());
@@ -96,9 +95,15 @@ public class VariantLocationTest extends TestCase {
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
         assertEquals(2, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+        assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+        // The "Plä(t)zchen" should no longer be there
+        assertTrue(vlocs.stream().noneMatch(x -> x.toString().contains("Plä")));
+        HashSet<String> expected = new HashSet<>();
+        vlocs.forEach(x -> expected.add(x.toString()));
 
-        // Now try combining the transposition
+
+        // Now try combining the transpositions. Here it won't work, since they are symmetrical and
+        // that makes things complicated.
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("normalize", "spelling")
                 .queryParam("combine_dislocations", "yes")
@@ -107,8 +112,9 @@ public class VariantLocationTest extends TestCase {
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
         assertEquals(2, vlocs.size());
+        assertTrue(expected.containsAll(vlocs.stream().map(VariantLocationModel::toString).collect(Collectors.toList())));
 
-        // Then with a significance filter
+        // Then with a significance filter, and no normalisation, which will return only the spelling variant
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("significant", "maybe")
                 .request().get();
@@ -117,6 +123,8 @@ public class VariantLocationTest extends TestCase {
         vlocs = vlist.getVariantlist();
         assertEquals(1, vlocs.size());
         assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+        assertTrue(vlocs.stream().allMatch(x -> x.toString().contains("Plä")));
+
     }
 
     public void testChaucer() {
@@ -161,7 +169,7 @@ public class VariantLocationTest extends TestCase {
         VariantListModel vlist = rsp.readEntity(VariantListModel.class);
         List<VariantLocationModel> vlocs = vlist.getVariantlist();
         assertEquals(7, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+        assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("normalize", "spelling").request().get();
@@ -169,7 +177,7 @@ public class VariantLocationTest extends TestCase {
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
         assertEquals(6, vlocs.size());
-        assertEquals(2, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+        assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("significant", "yes").request().get();
@@ -193,15 +201,21 @@ public class VariantLocationTest extends TestCase {
         VariantListModel vlist = rsp.readEntity(VariantListModel.class);
         List<VariantLocationModel> vlocs = vlist.getVariantlist();
         assertEquals(121, vlocs.size());
-        // TODO spot check for omissions, interpolations and a.c. readings
-        // 2: ընդ] 	ընդիր: J (a.c.);
-        // 4: ընդ] 	(om.): Bz644 K;
-        // 6: այնոսիկ և] 	. (interp.): Bz644 D F H K M2899 M8232 W Y;
-        // 103: . և քրիստոնեայք] 	քրիստոնէիցն: F (a.c.);
-        // 106: քրիստոնեայք անթիւք] 	քրիստոնեայքն անթիւ: M8232;
-        // 107: անթիւք] 	անթիւ: Bz644 K W (a.c.);
 
-
+        // Spot check for omissions, interpolations and a.c. readings
+        HashSet<String> stringifiedVList = new HashSet<>();
+        vlocs.forEach(x -> stringifiedVList.add(x.toString()));
+        // There should be no repeats
+        assertEquals(121, stringifiedVList.size());
+        List<String> expected = Arrays.asList(
+                "2: ընդ] \tընդիր: J (a.c.); ",
+                "4: ընդ] \t(om.): Bz644 K; ",
+                "6: այնոսիկ և] \t. (interp.): Bz644 D F H K M2899 M8232 W Y; ",
+                "103: . և քրիստոնեայք] \tքրիստոնէիցն: F (a.c.); ",
+                "106: քրիստոնեայք անթիւք] \tքրիստոնեայքն անթիւ: M8232; ",
+                "107: անթիւք] \tանթիւ: Bz644 K W (a.c.); "
+        );
+        assertTrue(stringifiedVList.containsAll(expected));
 
 
         // Now normalized, suppress punctuation and nonsense readings, no combination
@@ -213,21 +227,29 @@ public class VariantLocationTest extends TestCase {
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
         assertEquals(81, vlocs.size());
-        // TODO Check on some that should have been altered
-        // there is no 6
-        // 26: յաշխարհն] 	աշխարհն: C D I J K M1775 M2899 M8232 O V W Y Z;
-        // there is no 68
-        // 69: զոր] 	զորս: D E F I J M1775 M3380 M8232 O V W W243 W246 X Y Z;
-        // 104: և քրիստոնեայք] 	քրիստոնէիցն: F (a.c.);
-        // 106: քրիստոնեայք անթիւք] 	քրիստոնեայքն անթիւ: M8232;
-        // 107: անթիւք] 	անթիւ: Bz644 K W (a.c.);
-        // 122: գաւառին] 	գաւառի: A; 	գաւառէն: C D E F G H I J M2855 M3380 M6605 W W243 W246 Y Z;
-        // 128: և] 	(om.): Bz644 W246 X;
-        // 139: զառաւել] 	զառաւելն: E F G M2855 M3380 M8232 V W243 W246 Y; (only one)
-        // 151: անողորմ արձակեալ] 	յարձակեալ: A; 	յանողորմ յարձակեալ: V Y; ի վերայ իրերաց (interp.): Bz644 K;
-        // there is no 152 <== actually there is, this is a different sort of variant
-        // 174: անասնոց] 	անասնցն: E F G M2855 M3380 M8232 W243 W246 Y; 	աւանաց և գիւղից: Bz644 K;
-        // 194: ժամանակի] 	ժամանակին: D I J M1775 M2855 M8232 O W;
+
+        // Check on some that should no longer exist
+        assertTrue(vlocs.stream().noneMatch(x -> x.getRankIndex().equals(6L)));
+        assertTrue(vlocs.stream().noneMatch(x -> x.getRankIndex().equals(68L)));
+        assertEquals(1, vlocs.stream().filter(x -> x.getRankIndex().equals(139L)).count());
+
+        // Check on some that should have changed
+        stringifiedVList.clear();
+        vlocs.forEach(x -> stringifiedVList.add(x.toString()));
+        assertEquals(81, stringifiedVList.size());
+        expected = Arrays.asList(
+                "26: յաշխարհն] \tաշխարհն: C D I J K M1775 M2899 M8232 O V W Y Z; ",
+                "69: զոր] \tզորս: D E F I J M1775 M3380 M8232 O V W W243 W246 X Y Z; ",
+                "104: և քրիստոնեայք] \tքրիստոնէիցն: F (a.c.); ",
+                "106: քրիստոնեայք անթիւք] \tքրիստոնեայքն անթիւ: M8232; ",
+                "107: անթիւք] \tանթիւ: Bz644 K W (a.c.); ",
+                "122: գաւառին] \tգաւառի: A; \tգաւառէն: C D E F G H I J M2855 M3380 M6605 W W243 W246 Y Z; ",
+                "128: և] \t(om.): Bz644 W246 X; ",
+                "139: զառաւել] \tզառաւելն: E F G M2855 M3380 M8232 V W243 W246 Y; ",
+                "174: անասնոց] \tանասնցն: E F G M2855 M3380 M8232 W243 W246 Y; \tաւանաց և գիւղից: Bz644 K; ",
+                "194: ժամանակի] \tժամանակին: D I J M1775 M2855 M8232 O W; "
+        );
+        assertTrue(stringifiedVList.containsAll(expected));
 
         // Now normalized, suppress punctuation & nonsense readings, collapse dislocations
         rsp = jerseyTest.target(restPath + "variants")
@@ -238,12 +260,24 @@ public class VariantLocationTest extends TestCase {
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
         vlist = rsp.readEntity(VariantListModel.class);
         vlocs = vlist.getVariantlist();
-        assertEquals(81, vlocs.size()); // TODO not actually implemented yet
+        assertEquals(80, vlocs.size());
 
-        // 16 should compress
-        // 99 should compress
-        // 134 should maybe compress?
-        // 149 should be gone into 151
+        // Check on the ones that should have been changed
+        assertTrue(vlocs.stream().noneMatch(x -> x.getRankIndex().equals(101L)));
+        stringifiedVList.clear();
+        vlocs.forEach(x -> stringifiedVList.add(x.toString()));
+        assertEquals(80, stringifiedVList.size());
+        expected = Arrays.asList(
+                "16: սով] \ttransp. post սաստիկ: X; ",
+                "18: սաստիկ ի] \tև (interp.): D; ",
+                "99: լինէր] \ttransp. post անցումն: Bz644 K M8232 V Y; ",
+                "134: սաստկանայր] \ttransp. post սովն: C D I J M1775 M6605 O W Z; ",
+                "136: սովն առաւել] \tսաստկացաւ (interp.): H M2899; "
+        );
+        assertTrue(stringifiedVList.containsAll(expected));
+
+        // 149 persists because 151 lemma doesn't exactly match
+        //
     }
 
     public void tearDown() throws Exception {
