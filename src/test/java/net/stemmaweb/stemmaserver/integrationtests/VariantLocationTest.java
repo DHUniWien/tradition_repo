@@ -171,6 +171,17 @@ public class VariantLocationTest extends TestCase {
         assertEquals(7, vlocs.size());
         assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
+        // Check that parameters are set correctly
+        assertFalse(vlist.isDislocationCombined());
+        assertFalse(vlist.isFilterTypeOne());
+        assertFalse(vlist.isNonsenseSuppressed());
+        assertEquals("^(\\p{IsPunctuation}+)$", vlist.getSuppressedReadingsRegex());
+        assertEquals("majority", vlist.getBasisText());
+        assertNull(vlist.getConflateOnRelation());
+        assertEquals("no", vlist.getSignificant());
+        assertEquals(1, vlist.getDislocationTypes().size());
+        assertTrue(vlist.getDislocationTypes().contains("transposition"));
+
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("normalize", "spelling").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
@@ -179,6 +190,17 @@ public class VariantLocationTest extends TestCase {
         assertEquals(6, vlocs.size());
         assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
 
+        // Check that parameters are set correctly
+        assertFalse(vlist.isDislocationCombined());
+        assertFalse(vlist.isFilterTypeOne());
+        assertFalse(vlist.isNonsenseSuppressed());
+        assertEquals("^(\\p{IsPunctuation}+)$", vlist.getSuppressedReadingsRegex());
+        assertEquals("majority", vlist.getBasisText());
+        assertEquals("spelling", vlist.getConflateOnRelation());
+        assertEquals("no", vlist.getSignificant());
+        assertEquals(1, vlist.getDislocationTypes().size());
+        assertTrue(vlist.getDislocationTypes().contains("transposition"));
+
         rsp = jerseyTest.target(restPath + "variants")
                 .queryParam("significant", "yes").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
@@ -186,6 +208,17 @@ public class VariantLocationTest extends TestCase {
         vlocs = vlist.getVariantlist();
         assertEquals(1, vlocs.size());
         assertEquals(0, vlocs.stream().filter(VariantLocationModel::hasDisplacement).count());
+
+        // Check that parameters are set correctly
+        assertFalse(vlist.isDislocationCombined());
+        assertFalse(vlist.isFilterTypeOne());
+        assertFalse(vlist.isNonsenseSuppressed());
+        assertEquals("^(\\p{IsPunctuation}+)$", vlist.getSuppressedReadingsRegex());
+        assertEquals("majority", vlist.getBasisText());
+        assertNull(vlist.getConflateOnRelation());
+        assertEquals("yes", vlist.getSignificant());
+        assertEquals(1, vlist.getDislocationTypes().size());
+        assertTrue(vlist.getDislocationTypes().contains("transposition"));
     }
 
     public void testMatthew() {

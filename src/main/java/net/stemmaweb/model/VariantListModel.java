@@ -284,8 +284,8 @@ public class VariantListModel {
 
     // Deal with non-colocated variants
     private void combineDisplacements() {
-        // TODO do we need this index or will getVLM() do what we need?
-        // Make an index of our base reading sequences and the VLMs they appear in
+        // Make an index of our base reading sequences and the VLMs they appear in.
+        // (getVLM needs the node chain, which we no longer have at this point.)
         HashMap<String,VariantLocationModel> lemmaIndex = new HashMap<>();
         List<VariantLocationModel> vlmlist = this.getVariantlist();
         for (VariantLocationModel vlm : vlmlist) {
@@ -328,7 +328,7 @@ public class VariantListModel {
         // - Remove any now-empty variant locations
         this.variantlist = vlmlist.stream().filter(x -> x.getVariants().size() > 0).collect(Collectors.toList());
 
-        // - TODO condense symmetrical transpositions
+        // - SOMEDAY condense symmetrical transpositions
     }
 
     // Return the VLM that contains the base text corresponding to the given variant. The base text
@@ -340,7 +340,6 @@ public class VariantListModel {
         List<String> baseIds = new ArrayList<>();
         String relationType = null;
         for (ReadingModel rdgm : vm.getReadings()) {
-            // TODO can we just add the dislocation type list to this filter and skip the 'continue' below?
             List<RelationModel> rdgrels = relations.stream()
                     .filter(x -> x.getSource().equals(rdgm.getId()) || x.getTarget().equals(rdgm.getId()))
                     .collect(Collectors.toList());
@@ -418,8 +417,8 @@ public class VariantListModel {
         return filterTypeOne;
     }
 
-    public RelationModel.Significance getSignificant() {
-        return significant;
+    public String getSignificant() {
+        return significant.toString();
     }
 
     public List<String> getDislocationTypes() {

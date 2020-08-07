@@ -219,7 +219,7 @@ public class VariantLocationModel {
         return rankIndex;
     }
 
-    public void setRankIndex(Long rankIndex) {
+    void setRankIndex(Long rankIndex) {
         this.rankIndex = rankIndex;
     }
 
@@ -277,17 +277,14 @@ public class VariantLocationModel {
         this.relations = relations;
     }
 
-    public void addRelation(RelationModel rm) {
-        this.relations.add(rm);
-    }
-
     @JsonGetter("has_displacement")
     public boolean hasDisplacement() {
         return has_displacement;
     }
 
+    @SuppressWarnings("SameParameterValue")
     @JsonSetter("has_displacement")
-    public void setDisplacement(boolean has_displacement) {
+    void setDisplacement(boolean has_displacement) {
         this.has_displacement = has_displacement;
     }
 

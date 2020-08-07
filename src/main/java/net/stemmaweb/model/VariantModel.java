@@ -6,7 +6,6 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.ReadingService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Path;
-import org.neo4j.graphdb.Relationship;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.*;
@@ -65,7 +64,7 @@ public class VariantModel {
      * @param othervm - the other VariantModel to compare against
      * @return the answer
      */
-    public boolean sameAs(VariantModel othervm) {
+    boolean sameAs(VariantModel othervm) {
         // Are the readings the same?
         String ourText = ReadingService.textOfReadings(this.readings, this.normal, true);
         String theirText = ReadingService.textOfReadings(othervm.readings, othervm.normal, true);
@@ -84,7 +83,7 @@ public class VariantModel {
      * @param othervm - the other VariantModel to merge with
      * @return a boolean indicating whether the variants were merged
      */
-    public boolean mergeVariant(VariantModel othervm) {
+    boolean mergeVariant(VariantModel othervm) {
         if (this.sameAs(othervm)) {
             // We merge only the witnesses.
             this.addWitnesses(othervm.getWitnesses());
@@ -113,7 +112,7 @@ public class VariantModel {
         this.witnesses = witnesses;
     }
 
-    public void addWitnesses(Map<String, List<String>> witnesses) {
+    private void addWitnesses(Map<String, List<String>> witnesses) {
         // Add the given witnesses to the existing list.
         for (String layer: witnesses.keySet()) {
             if (this.witnesses.containsKey(layer)) {
@@ -160,7 +159,7 @@ public class VariantModel {
     }
 
     @JsonIgnore
-    public List<String> getWitnessList() {
+    List<String> getWitnessList() {
         ArrayList<String> sigList = new ArrayList<>();
         for (String l : this.witnesses.keySet())
             for (String s : this.witnesses.get(l))
@@ -181,7 +180,8 @@ public class VariantModel {
         return displaced;
     }
 
-    public void setDisplaced(Boolean displaced) {
+    @SuppressWarnings("SameParameterValue")
+    void setDisplaced(Boolean displaced) {
         this.displaced = displaced;
     }
 
