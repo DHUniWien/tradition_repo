@@ -14,8 +14,7 @@ import org.neo4j.graphdb.Relationship;
 @XmlRootElement
 public class RelationModel {
 
-    @SuppressWarnings("unused")
-    private enum Significance {
+    enum Significance {
         no,
         maybe,
         yes

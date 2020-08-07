@@ -4,6 +4,7 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.core.Response;
@@ -178,6 +179,8 @@ public class TEIParallelSegParser {
 
             // Now try re-ranking the nodes.
             recalculateRank(startNode);
+            // Calculate which nodes are common
+            VariantGraphService.calculateCommon(parentNode);
             tx.success();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();

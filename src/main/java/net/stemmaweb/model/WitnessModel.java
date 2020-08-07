@@ -25,7 +25,7 @@ public class WitnessModel implements Comparable<WitnessModel> {
      */
     private String sigil;
 
-    @SuppressWarnings("unused")     // It's used by response.getEntity(GenericType blah)
+    @SuppressWarnings("unused")     // It's used by response.readEntity(GenericType blah)
     public WitnessModel() {
     }
     /**

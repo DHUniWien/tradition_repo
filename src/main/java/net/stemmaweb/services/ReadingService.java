@@ -271,6 +271,7 @@ public class ReadingService {
     }
 
     public static String textOfReadings(List<ReadingModel> rml, Boolean normal, Boolean show_gaps) {
+        if (rml.size() == 0) return "";
         StringBuilder witnessAsText = new StringBuilder();
         Boolean joinNext = false;
         long lastSeenRank = 0L;
@@ -422,8 +423,8 @@ public class ReadingService {
 
         // TEMPORARY: Test that our colocated groups are actually colocated
         Node ourSection = db.getNodeById((Long) startNode.getProperty("section_id"));
-        String tradId = VariantGraphService.getTraditionNode(ourSection, db).getProperty("id").toString();
-        List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db);
+        String tradId = VariantGraphService.getTraditionNode(ourSection).getProperty("id").toString();
+        List<Set<Node>> clusters = RelationService.getClusters(tradId, String.valueOf(ourSection.getId()), db, true);
         for (Set<Node> cluster : clusters) {
             Long clusterRank = null;
             for (Node n : cluster) {
@@ -538,7 +539,7 @@ public class ReadingService {
         GraphDatabaseService db = firstReading.getGraphDatabase();
         // Get our list of colocations
         Node sectionNode = db.getNodeById(Long.valueOf(firstReading.getProperty("section_id").toString()));
-        Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
         Map<Long, Set<Node>> colocatedLookup = buildColocationLookup(
                 traditionNode.getProperty("id").toString(), String.valueOf(sectionNode.getId()), db);
 
@@ -584,7 +585,7 @@ public class ReadingService {
     private static Map<Long, Set<Node>> buildColocationLookup (String tradId, String sectionId, GraphDatabaseService db)
             throws Exception {
         Map<Long, Set<Node>> result = new HashMap<>();
-        List<Set<Node>> clusters = RelationService.getClusters(tradId, sectionId, db);
+        List<Set<Node>> clusters = RelationService.getClusters(tradId, sectionId, db, true);
         for (Set<Node> cluster : clusters)
             for (Node n : cluster)
                 result.put(n.getId(), cluster);

@@ -38,7 +38,7 @@ public class StemmaModel {
      */
     private String dot;
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused")   // It's used by Jersey request.get(StemmaModel.class)
     public StemmaModel () {}
 
     public StemmaModel(Node stemmaNode) {

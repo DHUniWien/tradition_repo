@@ -8,8 +8,7 @@ import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.graphdb.traversal.*;
 
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
@@ -23,11 +22,7 @@ import java.util.stream.StreamSupport;
 
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
-import static net.stemmaweb.services.ReadingService.AlignmentTraverse;
-import static net.stemmaweb.services.ReadingService.addWitnessLink;
-import static net.stemmaweb.services.ReadingService.recalculateRank;
-import static net.stemmaweb.services.ReadingService.removePlaceholder;
-import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
+import static net.stemmaweb.services.ReadingService.*;
 
 /**
  * Comprises all the API calls related to a tradition section.
@@ -35,9 +30,9 @@ import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
  * @author tla
  */
 public class Section {
-    private GraphDatabaseService db;
-    private String tradId;
-    private String sectId;
+    private final GraphDatabaseService db;
+    private final String tradId;
+    private final String sectId;
 
     public Section(String traditionId, String sectionId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -72,14 +67,14 @@ public class Section {
      * @statuscode 500 - on failure, with an error message
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = SectionModel.class)
     public Response getSectionInfo() {
         SectionModel result;
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            result = new SectionModel(db.getNodeById(Long.valueOf(sectId)));
+            result = new SectionModel(db.getNodeById(Long.parseLong(sectId)));
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -100,13 +95,13 @@ public class Section {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = SectionModel.class)
     public Response updateSectionInfo(SectionModel newInfo) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
             if (newInfo.getName() != null)
                 thisSection.setProperty("name", newInfo.getName());
             if (newInfo.getLanguage() != null)
@@ -135,7 +130,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
                     .entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node foundSection = db.getNodeById(Long.valueOf(sectId));
+            Node foundSection = db.getNodeById(Long.parseLong(sectId));
             if (foundSection != null) {
                 // Find the section either side of this one and connect them if necessary.
                 removeFromSequence(foundSection);
@@ -183,7 +178,7 @@ public class Section {
      */
     @GET
     @Path("/witnesses")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getAllWitnessInSection() {
         if (!sectionInTradition())
@@ -246,7 +241,7 @@ public class Section {
      */
     @GET
     @Path("/readings")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
         if (!sectionInTradition())
@@ -289,7 +284,7 @@ public class Section {
      */
     @GET
     @Path("/relations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = sectionRelations(includeReadings.equals("true"));
@@ -336,12 +331,12 @@ public class Section {
      */
     @GET
     @Path("/colocated")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getColocatedClusters() {
         List<Set<Node>> clusterList;
         try {
-            clusterList = RelationService.getClusters(tradId, sectId, db);
+            clusterList = RelationService.getClusters(tradId, sectId, db, true);
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
         }
@@ -371,7 +366,7 @@ public class Section {
      */
     @GET
     @Path("/lemmatext")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = TextSequenceModel.class)
     public Response getLemmaText(@QueryParam("final")     @DefaultValue("false") String followFinal,
                                  @QueryParam("startRank") @DefaultValue("1") String startRank,
@@ -414,7 +409,7 @@ public class Section {
      */
     @GET
     @Path("/lemmareadings")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal,
                                      @QueryParam("startRank") @DefaultValue("1") String startRank,
@@ -440,10 +435,10 @@ public class Section {
         Node sectionStart = VariantGraphService.getStartNode(sectId, db);
         Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
-            long startRank = Long.valueOf(startFrom);
+            long startRank = Long.parseLong(startFrom);
             long endRank = endAt.equals("E")
-                    ? Long.valueOf(sectionEnd.getProperty("rank").toString()) - 1
-                    : Long.valueOf(endAt);
+                    ? Long.parseLong(sectionEnd.getProperty("rank").toString()) - 1
+                    : Long.parseLong(endAt);
             if (followFinal) {
                 ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
                         .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
@@ -477,7 +472,7 @@ public class Section {
     private String rankForReading(String rdgId) {
         String answer;
         try (Transaction tx = db.beginTx()) {
-            Node rdgNode = db.getNodeById(Long.valueOf(rdgId));
+            Node rdgNode = db.getNodeById(Long.parseLong(rdgId));
             answer = rdgNode.getProperty("rank").toString();
             tx.success();
         }
@@ -499,7 +494,7 @@ public class Section {
      */
     @GET
     @Path("/annotations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response getAnnotationsOnSection(@QueryParam("label") List<String> filterLabels,
                                             @QueryParam("recursive") @DefaultValue("false") String recurse) {
@@ -544,6 +539,54 @@ public class Section {
         return Response.ok(result).build();
     }
 
+    /**
+     * Return a list of variant groupings suitable for a critical apparatus. The base text to use
+     * is determined as follows:
+     *  - If the 'base' parameter is given, that witness text will be the base.
+     *  - If not, and '/setlemma' has been called on the section, that lemma text will be the base.
+     *  - Otherwise, the majority text will be calculated and used as the base.
+     *
+     * @param significant - Restrict the variant groups to the given significance level or above
+     * @param excludeType1 - If true, exclude type 1 (i.e. singleton) variants from the groupings
+     * @param combine - If true, attempt to combine non-colocated variants (e.g. transpositions) into
+     *                the VariantLocationModel of the corresponding base
+     * @param suppressMatching - A regular expression to match readings that should be disregarded in the
+     *                 variant list. Defaults to punctuation-only readings.
+     * @param excludeNonsense - Whether
+     * @param baseWitness  - Use the path of the given witness as the base path.
+     * @param conflate - The name of a relation type that should be used for normalization
+     *
+     * @return A list of VariantLocationModels
+     */
+
+    @GET
+    @Path("/variants")
+    @Produces("application/json; charset=utf-8")
+    @ReturnType(clazz = VariantListModel.class)
+    public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
+                                     @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
+                                     @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
+                                     @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
+                                     @DefaultValue("punct") @QueryParam("suppress_matching") String suppressMatching,
+                                                         @QueryParam("base_witness") String baseWitness,
+                                                         @QueryParam("normalize") String conflate) {
+        if (!sectionInTradition())
+            return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
+
+
+        try (Transaction tx = db.beginTx()) {
+            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
+            VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, conflate, suppressMatching,
+                    !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
+            tx.success();
+            return Response.ok(vlocs).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(e.getMessage()).build();
+        }
+    }
+
+
     /*
      * Manipulation
      */
@@ -572,7 +615,7 @@ public class Section {
             if (priorSectID.equals(sectId))
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
 
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
 
             // Check that the requested prior section also exists and is part of the tradition
             Node priorSection = null;   // the requested prior section
@@ -595,11 +638,11 @@ public class Section {
                 else if (latterSection.equals(thisSection))
                     return Response.ok().build();
             } else {
-                priorSection = db.getNodeById(Long.valueOf(priorSectID));
+                priorSection = db.getNodeById(Long.parseLong(priorSectID));
                 if (priorSection == null) {
                     return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
                 }
-                Node pnTradition = VariantGraphService.getTraditionNode(priorSection, db);
+                Node pnTradition = VariantGraphService.getTraditionNode(priorSection);
                 if (!pnTradition.getProperty("id").equals(tradId))
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
@@ -639,9 +682,10 @@ public class Section {
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
      */
+    @SuppressWarnings("RedundantCast")
     @POST
     @Path("/splitAtRank/{rankstr}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     // @ReturnType("java.lang.String")
     public Response splitAtRank (@PathParam("rankstr") String rankstr) {
         if (!sectionInTradition())
@@ -651,10 +695,10 @@ public class Section {
         // Get the reading(s) at the given rank, and at the prior rank
         Node startNode = VariantGraphService.getStartNode(sectId, db);
         Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
-        Long newSectionId;
+        long newSectionId;
 
         try (Transaction tx = db.beginTx()) {
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
 
             // Make sure we aren't just trying to split off the end node
             if (rank.equals(sectionEnd.getProperty("rank")))
@@ -680,7 +724,7 @@ public class Section {
 
             // Make a new section node and insert it into the sequence
             Node newSection = db.createNode(Nodes.SECTION);
-            VariantGraphService.getTraditionNode(thisSection, db).createRelationshipTo(newSection, ERelations.PART);
+            VariantGraphService.getTraditionNode(thisSection).createRelationshipTo(newSection, ERelations.PART);
             newSection.setProperty("name", thisSection.getProperty("name") + " split");
             newSectionId = newSection.getId();
             Section newSectionRest = new Section(tradId, String.valueOf(newSection.getId()));
@@ -745,7 +789,7 @@ public class Section {
                         if (x.hasLabel(Nodes.READING)) {
                             x.setProperty("section_id", newId);
                             if (!x.equals(newStart))
-                                x.setProperty("rank", Long.valueOf(x.getProperty("rank").toString()) - rank + 1);
+                                x.setProperty("rank", Long.parseLong(x.getProperty("rank").toString()) - rank + 1);
                         }
                     }
             );
@@ -808,7 +852,7 @@ public class Section {
 
         try (Transaction tx = db.beginTx()) {
             // Get this node, and see which direction we're merging
-            Node thisSection = db.getNodeById(Long.valueOf(sectId));
+            Node thisSection = db.getNodeById(Long.parseLong(sectId));
             Node firstSection = null;
             Node secondSection = null;
             for (Relationship r : thisSection.getRelationships(ERelations.NEXT)) {
@@ -951,7 +995,7 @@ public class Section {
      */
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") long startRank,
@@ -994,10 +1038,10 @@ public class Section {
         for (Node nodeA : questionedReadings) {
             if (processed.contains(nodeA.getId()))
                 continue;
-            Long aRank = Long.valueOf(nodeA.getProperty("rank").toString());
+            long aRank = Long.parseLong(nodeA.getProperty("rank").toString());
             List<Node> sameText = questionedReadings.stream().filter(x -> !x.equals(nodeA)
                 && x.getProperty("text").equals(nodeA.getProperty("text"))
-                && Math.abs(Long.valueOf(x.getProperty("rank").toString()) - aRank) < threshold)
+                && Math.abs(Long.parseLong(x.getProperty("rank").toString()) - aRank) < threshold)
                     .collect(Collectors.toList());
             for (Node n : sameText) {
                 if (processed.contains(n.getId()))
@@ -1025,6 +1069,7 @@ public class Section {
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
+    @SuppressWarnings("rawtypes")
     private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode, String limitText) throws Exception {
         List<Node> readings;
         PathExpander e = new AlignmentTraverse(startNode);
@@ -1032,8 +1077,8 @@ public class Section {
             Stream<Node> readingStream = db.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().stream()
-                    .filter(x -> startRank <= Long.valueOf(x.getProperty("rank").toString()) &&
-                            endRank >= Long.valueOf(x.getProperty("rank").toString()));
+                    .filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
+                            endRank >= Long.parseLong(x.getProperty("rank").toString()));
             if (!limitText.equals(""))
                 readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
             readings = readingStream.collect(Collectors.toList());
@@ -1057,7 +1102,7 @@ public class Section {
     // TODO refactor all these traversals somewhere!
     @GET
     @Path("/identicalreadings/{startRank}/{endRank}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getIdenticalReadings(@PathParam("startRank") long startRank,
                                          @PathParam("endRank") long endRank) {
@@ -1138,7 +1183,7 @@ public class Section {
      */
     @POST
     @Path("/setlemma")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     // @ReturnType("java.lang.String")
     public Response setLemmaText() {
         if (!sectionInTradition())
@@ -1162,7 +1207,7 @@ public class Section {
             // Recreate links, checking for branching
             Node priorLemma = startNode;
             for (ReadingModel tl : sectionLemmata) {
-                Node thisLemma = db.getNodeById(Long.valueOf(tl.getId()));
+                Node thisLemma = db.getNodeById(Long.parseLong(tl.getId()));
                 ReadingModel pl = new ReadingModel(priorLemma);
                 // Check that we don't have same-rank readings
                 if (priorLemma.getProperty("rank").equals(thisLemma.getProperty("rank")))
@@ -1211,7 +1256,7 @@ public class Section {
      */
     @GET
     @Path("/emendations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response getEmendations() {
         if (!sectionInTradition())
@@ -1220,7 +1265,7 @@ public class Section {
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             // Crawl the section looking for all emendations
-            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
             List<Node> emended = new ArrayList<>();
             for (Relationship r : sectionNode.getRelationships(ERelations.HAS_EMENDATION, Direction.OUTGOING))
                 emended.add(r.getEndNode());
@@ -1252,10 +1297,11 @@ public class Section {
      * @statuscode 404 - if the tradition and/or section doesn't exist
      * @statuscode 500 - on error
      */
+    @SuppressWarnings("RedundantCast")
     @POST
     @Path("/emend")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response emendText(ProposedEmendationModel proposal) {
         if (!sectionInTradition())
@@ -1287,7 +1333,7 @@ public class Section {
             ReadingModel emrm = new ReadingModel(emendation);
             result.setReadings(Collections.singletonList(emrm));
             // Connect it in the graph
-            Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
             sectionNode.createRelationshipTo(emendation, ERelations.HAS_EMENDATION);
             List<SequenceModel> newLinks = new ArrayList<>();
             for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
@@ -1319,7 +1365,7 @@ public class Section {
      */
     @GET
     @Path("/graph")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response getGraphModel() {
         // TODO does this check make sense, or does the not-found happen already in Tradition.java?
@@ -1364,7 +1410,7 @@ public class Section {
      */
     @GET
     @Path("/graphml")
-    @Produces(MediaType.APPLICATION_XML + "; charset=utf-8")
+    @Produces("application/xml; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (VariantGraphService.getTraditionNode(tradId, db) == null)
@@ -1393,7 +1439,7 @@ public class Section {
      */
     @GET
     @Path("/dot")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
@@ -1422,7 +1468,7 @@ public class Section {
      */
     @GET
     @Path("/json")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AlignmentModel.class)
     public Response getJson(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1439,7 +1485,7 @@ public class Section {
      */
     @GET
     @Path("/csv")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getCsv(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1456,7 +1502,7 @@ public class Section {
      */
     @GET
     @Path("/tsv")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getTsv(@QueryParam("conflate") String toConflate) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1475,7 +1521,7 @@ public class Section {
      */
     @GET
     @Path("/matrix")
-    @Produces(MediaType.TEXT_PLAIN + "; charset=utf-8")
+    @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {

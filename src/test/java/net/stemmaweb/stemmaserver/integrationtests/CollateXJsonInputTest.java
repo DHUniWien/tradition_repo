@@ -5,7 +5,6 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
@@ -65,9 +64,14 @@ public class CollateXJsonInputTest extends TestCase {
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(381, allreadings.size());
-        for (ReadingModel r: allreadings)
+        int common = 0;
+        for (ReadingModel r: allreadings) {
             if (r.getIs_end())
                 assertEquals(87L, r.getRank(), 0);
+            else if (r.getIs_common() && !r.getIs_start())
+                common++;
+        }
+        assertEquals(15, common);
 
         // Check for witnesses and their layers
         List<WitnessModel> allwits = jerseyTest

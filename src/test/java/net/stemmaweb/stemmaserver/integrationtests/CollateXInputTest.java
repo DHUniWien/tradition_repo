@@ -6,7 +6,6 @@ import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 
-import org.glassfish.jersey.client.ClientResponse;
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
@@ -16,6 +15,9 @@ import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Test the CollateX parser
@@ -57,11 +59,17 @@ public class CollateXInputTest extends TestCase {
         @SuppressWarnings("unchecked")
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(10, allReadings.size());
-        Boolean foundReading = false;
+        boolean foundReading = false;
         for (ReadingModel r : allReadings)
             if (r.getText().equals("Plätzchen"))
                 foundReading = true;
         assertTrue(foundReading);
+
+        // Check that the common readings are set correctly
+        List<String> common = allReadings.stream().filter(ReadingModel::getIs_common)
+                .map(ReadingModel::getText).collect(Collectors.toList());
+        List<String> expected = Arrays.asList("hab", "wieder ein");
+        assertEquals(expected, common);
     }
 
     public void testParseCollateXFromPlaintext() {
@@ -124,33 +132,37 @@ public class CollateXInputTest extends TestCase {
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
         String tradId = Util.getValueFromJson(cResult, "tradId");
-        Tradition tradition = new Tradition(tradId);
 
-        Response result = tradition.getTraditionInfo();
-        TraditionModel tradInfo = (TraditionModel) result.getEntity();
+        Response result = jerseyTest.target("/tradition/" + tradId).request().get();
+        TraditionModel tradInfo = result.readEntity(TraditionModel.class);
         assertEquals("LR", tradInfo.getDirection());
         assertEquals("Auch hier", tradInfo.getName());
 
-        result = tradition.getAllWitnesses();
-        @SuppressWarnings("unchecked")
-        ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
+        result = jerseyTest.target(("/tradition/" + tradId + "/witnesses")).request().get();
+        ArrayList<WitnessModel> allWitnesses = result.readEntity(new GenericType<ArrayList<WitnessModel>>() {});
         assertEquals(3, allWitnesses.size());
 
         // Get a witness text
-        Witness witness = new Witness(tradId, "W2");
-        TextSequenceModel response = (TextSequenceModel) witness.getWitnessAsText().getEntity();
-        assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
+        // TODO for some reason TextSequenceModel can't be decoded by ReadEntity.
+        // We will check the readings instead.
+        result = jerseyTest.target("/tradition/" + tradId + "/witness/W2/readings").request(MediaType.APPLICATION_JSON).get();
+        ArrayList<ReadingModel> response = result.readEntity(new GenericType<ArrayList<ReadingModel>>() {});
+        assertEquals("Ich hab auch hier wieder ein Pläzchen",
+                response.stream().map(ReadingModel::getText).collect(Collectors.joining(" ")));
 
-        result = tradition.getAllReadings();
-        @SuppressWarnings("unchecked")
-        ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
+        result = jerseyTest.target("/tradition/" + tradId + "/readings").request().get();
+        ArrayList<ReadingModel> allReadings = result.readEntity(new GenericType<ArrayList<ReadingModel>>() {});
         assertEquals(10, allReadings.size());
-        Boolean foundReading = false;
-        for (ReadingModel r : allReadings)
+        boolean foundReading = false;
+        List<String> common = Arrays.asList("hab", "wieder ein");
+        for (ReadingModel r : allReadings) {
             if (r.getText().equals("Plätzchen")) {
                 foundReading = true;
                 break;
             }
+            if (common.contains(r.getText()))
+                assertTrue(r.getIs_common());
+        }
         assertTrue(foundReading);
     }
 

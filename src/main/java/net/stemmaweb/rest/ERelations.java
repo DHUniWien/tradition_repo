@@ -18,7 +18,9 @@ public enum ERelations implements RelationshipType {
     HAS_END,        // between section part and END node
     SEQUENCE,       // the basic link between word sequences in a text
     NSEQUENCE,      // a shadow sequence link to handle normalisation logic
+    REPRESENTS,     // a temporary relationship used for normalization logic
     LEMMA_TEXT,     // to indicate canonical word sequence
+    MAJORITY,       // a temporary relationship used for calculation of majority text
     HAS_WITNESS,    // links text witnesses to the tradition
     HAS_STEMMA,     // this type is used to make a stemma tree (directed/undirected)
     HAS_ARCHETYPE,  // used to point from the stemma node to its archetype

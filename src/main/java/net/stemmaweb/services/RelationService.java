@@ -72,10 +72,10 @@ public class RelationService {
             if (referenceNode.hasLabel(Nodes.TRADITION))
                 traditionNode = referenceNode;
             else if (referenceNode.hasLabel(Nodes.SECTION))
-                traditionNode = VariantGraphService.getTraditionNode(referenceNode, db);
+                traditionNode = VariantGraphService.getTraditionNode(referenceNode);
             else if (referenceNode.hasLabel(Nodes.READING)) {
                 Node sectionNode = db.getNodeById(Long.valueOf(referenceNode.getProperty("section_id").toString()));
-                traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
+                traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             }
             assert(traditionNode != null);
             // ...and query its relation types.
@@ -90,32 +90,61 @@ public class RelationService {
         return result;
     }
 
+    public static List<Relationship> getDislocations(Node r) throws Exception {
+        GraphDatabaseService db = r.getGraphDatabase();
+        List<Relationship> result = new ArrayList<>();
+        List<RelationTypeModel> dislocationTypes = ourRelationTypes(r).stream()
+                .filter(x -> !x.getIs_colocation()).collect(Collectors.toList());
+        try (Transaction tx = db.beginTx()) {
+            // what is this supposed to do?
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("Could not collect dislocations", e);
+        }
+        return result;
+    }
+
     /**
-     * Retrieve clusters of colocated readings from the given section of the given tradition.
+     * Retrieve clusters of readings, either colocated or non-, from the given section of the given tradition.
      *
      * @param tradId - the UUID of the relevant tradition
      * @param sectionId - the ID (as a string) of the relevant section
      * @param db - the GraphDatabaseService to use
+     * @param colocations - whether we are retrieving colocated clusters or non-colocated ones
      * @return - a list of sets, where each set represents a group of colocated readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong in the algorithm.
      */
     public static List<Set<Node>> getClusters(
-            String tradId, String sectionId, GraphDatabaseService db)
+            String tradId, String sectionId, GraphDatabaseService db, Boolean colocations)
             throws Exception {
         // Get the tradition node and find the relevant relation types
-        HashSet<String> colocatedRels = new HashSet<>();
+        HashSet<String> useRelationTypes = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         for (RelationTypeModel rtm : ourRelationTypes(traditionNode))
-            if (rtm.getIs_colocation())
-                colocatedRels.add(String.format("\"%s\"", rtm.getName()));
+            if (rtm.getIs_colocation() == colocations)
+                useRelationTypes.add(String.format("\"%s\"", rtm.getName()));
 
         // Now run the unionFind algorithm on the relevant subset of relation types
-        return collectSpecifiedClusters(sectionId, db, colocatedRels);
+        return collectSpecifiedClusters(sectionId, db, useRelationTypes);
     }
 
-    public static List<Set<Node>> getCloselyRelatedClusters(
+    /**
+     * Retrieve clusters of readings that should be conflated according to the given threshold RelationType.
+     *
+     * @param tradId - the UUID of the relevant tradition
+     * @param sectionId - the ID (as a string) of the relevant section
+     * @param db - the GraphDatabaseService to use
+     * @param thresholdName - the name of a RelationType; all of these relations and ones more closely bound will be clustered.
+     * @return - a list of sets, where each set represents a group of closely related readings
+     * @throws Exception - if the relation types can't be collected, or if something goes wrong with the algorithm
+     */
+    static List<Set<Node>> getCloselyRelatedClusters(
             String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
             throws Exception {
+        // Is it a no-op?
+        if (thresholdName == null) return new ArrayList<>();
+        // Then we have some work to do.
         HashSet<String> closeRelations = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode);
@@ -164,15 +193,15 @@ public class RelationService {
         return result;
     }
 
-    public static Node findRepresentative(Set<Node> alternatives) {
+    static Node findRepresentative(Set<Node> alternatives) {
         GraphDatabaseService db;
         // See if this is trivial
         if (alternatives.isEmpty()) return null;
         Node ref = alternatives.stream().findFirst().get();
         if (alternatives.size() == 1) return ref;
-        // It's not trivial
-        else db = ref.getGraphDatabase();
 
+        // It's not trivial
+        db = ref.getGraphDatabase();
         Node representative = null;
         // Go through the alternatives
         try (Transaction tx = db.beginTx()) {

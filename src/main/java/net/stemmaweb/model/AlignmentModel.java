@@ -3,7 +3,6 @@ package net.stemmaweb.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.WitnessPath;
 import org.neo4j.graphdb.*;
@@ -35,38 +34,29 @@ public class AlignmentModel {
     // Make an empty alignment table
     public AlignmentModel() {}
 
-    // Get an alignment table where some of the related readings are conflated.
-    public AlignmentModel(Node sectionNode, String collapseRelated) throws Exception {
+    // Get an alignment table
+    public AlignmentModel(Node sectionNode) {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {
             String sectId = String.valueOf(sectionNode.getId());
-            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, db);
-            String tradId = traditionNode.getProperty("id").toString();
+            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             Node startNode = VariantGraphService.getStartNode(sectId, db);
             Node endNode = VariantGraphService.getEndNode(sectId, db);
 
             // First get the length, that's the easy part.
             length = (long) endNode.getProperty("rank") - 1;
 
+            // See if we are computing a normalized table
+            RelationshipType seqType = ERelations.SEQUENCE;
+            if (startNode.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING))
+                seqType = ERelations.NSEQUENCE;
+
             // Get the traverser for the tradition readings
             Traverser traversedTradition = db.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                    .relationships(seqType, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
-
-            // Get the list of equivalent readings based on our reference relation - we
-            // will conflate any readings that are linked with relations of, at most,
-            // the bindlevel of the given relation type.
-            List<Set<Node>> readingClusters = RelationService.getCloselyRelatedClusters(tradId, sectId, db, collapseRelated);
-            HashMap<Node, Node> equivalences = new HashMap<>();
-            for (Set<Node> cluster : readingClusters) {
-                Node representative = RelationService.findRepresentative(cluster);
-                // Set the representative for all cluster members.
-                for (Node n : cluster)
-                    equivalences.put(n, representative);
-
-            }
 
             // Now make the alignment.
             alignment = new ArrayList<>();
@@ -101,19 +91,16 @@ public class AlignmentModel {
                     // Get the witness readings for the given layer
                     ArrayList<String> alternatives = new ArrayList<>();
                     if (!layer.equals("base")) alternatives.add(layer);
-                    Evaluator e = new WitnessPath(sigil, alternatives).getEvalForWitness();
+                    Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
                     ReadingModel filler;
                     for (Node r : db.traversalDescription().depthFirst()
-                            .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                            .relationships(seqType, Direction.OUTGOING)
                             .evaluator(e)
                             .uniqueness(Uniqueness.NODE_PATH)
                             .traverse(startNode)
                             .nodes()) {
                         if (r.hasProperty("is_end"))
                             continue;
-                        // Get the reading we should use
-                        if (equivalences.containsKey(r))
-                            r = equivalences.get(r);
 
                         // Make the reading token
                         ReadingModel readingToken = new ReadingModel(r);

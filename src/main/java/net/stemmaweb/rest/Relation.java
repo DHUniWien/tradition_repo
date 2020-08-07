@@ -43,7 +43,7 @@ public class Relation {
     private static final String SCOPE_TRADITION = "tradition";
 
 
-    Relation(String traditionId) {
+    public Relation(String traditionId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         tradId = traditionId;

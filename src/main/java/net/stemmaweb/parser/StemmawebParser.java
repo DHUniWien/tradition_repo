@@ -56,7 +56,7 @@ public class StemmawebParser {
                     .build();
         }
         // The information on the relevant tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         String tradId;
 
         // Some variables to collect information
@@ -349,6 +349,8 @@ public class StemmawebParser {
             // Re-rank the entire tradition
             Node sectionStart = VariantGraphService.getStartNode(String.valueOf(parentNode.getId()), db);
             ReadingService.recalculateRank(sectionStart, true);
+            // Calculate the common nodes; don't trust the old format for this.
+            VariantGraphService.calculateCommon(parentNode);
 
             // Create the witness nodes.
             witnesses.keySet().forEach(x -> Util.findOrCreateExtant(traditionNode, x));

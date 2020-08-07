@@ -135,6 +135,7 @@ public class TabularParser {
             }
 
             // Go through the remaining rows and create the readings
+            int distinct = 0;
             for (int idx = 1; idx < tableData.size(); idx++) { // for each row
                 String[] collationRow = tableData.get(idx);
                 HashMap<String, Node> createdReadings = new HashMap<>();
@@ -144,8 +145,10 @@ public class TabularParser {
                     String sigil = witnessList[j];
                     Node lastNode = lastReading.get(sigil);
                     // Is it an empty reading?
-                    if (reading == null || reading.equals(""))
+                    if (reading == null || reading.equals("")) {
+                        distinct++;
                         continue;
+                    }
                     // Is it a continuation of a lacuna?
                     if (reading.equals("#LACUNA#"))
                         if (lastNode.hasProperty("is_lacuna"))
@@ -160,6 +163,9 @@ public class TabularParser {
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))
                             readingNode.setProperty("is_lacuna", true);
+                        else {
+                            distinct++;
+                        }
                         createdReadings.put(reading, readingNode);
                     }
                     // Does the reading have a relationship with lastNode? If not, create it.
@@ -177,6 +183,9 @@ public class TabularParser {
                     seqWitnesses.add(sigil);
                     lastReading.put(sigil, readingNode);
                 }
+                // Did we create only one reading (and no gaps?) If so it is a common reading.
+                boolean common = distinct == 1;
+                createdReadings.values().forEach(x -> x.setProperty("is_common", common));
                 // Now that we have been through the row, create the witness / layer attributes
                 // for the created relationships.
                 for (Relationship r : linkWitnesses.keySet()) {

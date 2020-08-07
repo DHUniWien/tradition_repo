@@ -4,6 +4,7 @@ import net.stemmaweb.rest.ERelations;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
@@ -17,14 +18,29 @@ import java.util.List;
 public class WitnessPath {
     private final String sigil;
     private final List<String> alternative;
+    private final RelationshipType seqType;
+
+    public WitnessPath (String sigil, List<String> alternative, RelationshipType seqType) {
+        this.sigil = sigil;
+        this.alternative = alternative;
+        this.seqType = seqType;
+    }
+
+    public WitnessPath (String sigil, RelationshipType seqType) {
+        this.sigil = sigil;
+        this.alternative = new ArrayList<>();
+        this.seqType = seqType;
+    }
 
     public WitnessPath (String sigil, List<String> alternative) {
         this.sigil = sigil;
         this.alternative = alternative;
+        this.seqType = ERelations.SEQUENCE;
     }
     public WitnessPath (String sigil) {
         this.sigil = sigil;
         this.alternative = new ArrayList<>();
+        this.seqType = ERelations.SEQUENCE;
     }
 
     public Evaluator getEvalForWitness () {
@@ -37,7 +53,7 @@ public class WitnessPath {
             Relationship correct = null;
             for (String layer : alternative) {
                 Node priorNode = path.lastRelationship().getStartNode();
-                for (Relationship r : priorNode.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE))
+                for (Relationship r : priorNode.getRelationships(Direction.OUTGOING, seqType))
                     if (r.hasProperty(layer) && witnessIn(r.getProperty(layer)))
                         if (correct != null) // There is more than one relevant path; cut the tree off.
                             return Evaluation.EXCLUDE_AND_PRUNE;

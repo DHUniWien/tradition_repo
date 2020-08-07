@@ -134,8 +134,9 @@ public class ReadingModel implements Comparable<ReadingModel> {
                 this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
             this.setId(String.valueOf(node.getId()));
             this.setSection(node.getProperty("section_id").toString());
-            if (node.hasProperty("is_common"))
-                this.setIs_common((Boolean) node.getProperty("is_common"));
+            // If there is an "ncommon" property, use this in preference to "is_common"
+            // because it means we are in normalized mode
+            this.setIs_common(node.getProperty("ncommon", node.getProperty("is_common", false)).equals(true));
             if (node.hasProperty("is_end"))
                 this.setIs_end((Boolean) node.getProperty("is_end"));
             if (node.hasProperty("is_lacuna"))
@@ -182,8 +183,15 @@ public class ReadingModel implements Comparable<ReadingModel> {
                 // We don't check whether this property exists, because it darn well should
                 this.setAuthority(node.getProperty("authority").toString());
             }
+            // Get the witnesses
             HashSet<String> collectedWits = new HashSet<>();
-            for (Relationship r : node.getRelationships(ERelations.SEQUENCE, Direction.BOTH)) {
+            List<Relationship> seq = new ArrayList<>();
+            // If we are operating under normalization, we need to look at the NSEQUENCE links rather than
+            // the SEQUENCE links, but in this case the SEQUENCE links will be redundant so there is no
+            // harm in looking at them anyway.
+            node.getRelationships(ERelations.SEQUENCE, Direction.BOTH).forEach(seq::add);
+            node.getRelationships(ERelations.NSEQUENCE, Direction.BOTH).forEach(seq::add);
+            for (Relationship r : seq) {
                 for (String prop : r.getPropertyKeys()) {
                     String[] sigla = (String[]) r.getProperty(prop);
                     if (prop.equals("witnesses")) {
@@ -195,6 +203,10 @@ public class ReadingModel implements Comparable<ReadingModel> {
             }
             this.witnesses = new ArrayList<>(collectedWits);
             this.witnesses.sort(String::compareTo);
+            // Get any represented readings
+            for (Relationship r : node.getRelationships(ERelations.REPRESENTS, Direction.OUTGOING)) {
+                this.addRepresented(new ReadingModel(r.getEndNode()));
+            }
             tx.success();
         }
     }
@@ -361,24 +373,30 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return orig_reading;
     }
 
-    public void setOrig_reading(String orig_reading) {  this.orig_reading = orig_reading; }
+    public void setOrig_reading(String orig_reading) {
+        this.orig_reading = orig_reading;
+    }
 
     public List<String> getWitnesses() {
-        List<String> ourWits = this.witnesses;
-        if (represented != null) {
-            // Add the witnesses we are representing.
-            HashSet<String> repWits = new HashSet<>();
-            represented.forEach(x -> repWits.addAll(x.getWitnesses()));
-            ourWits.addAll(repWits);
-            ourWits.sort(String::compareTo);
-        }
-        return ourWits;
+        return this.witnesses;
     }
 
     @Override
     public int compareTo(@NonNull ReadingModel readingModel) {
         Long compareRank = readingModel.getRank();
         return (int) (this.rank - compareRank);
+    }
+
+    @Override
+    public String toString() {
+        if (is_start || is_end || is_lacuna) {
+            String fstr = is_start ? "#START#" : (is_end ? "#END#" : "#LACUNA");
+            return String.format("%s: " + fstr + " | %d", id, rank);
+        }
+        if (normal_form == null || normal_form.equals(text))
+            return String.format("%s: %s | %d", id, text, rank);
+        else
+            return String.format("%s: %s (%s) | %d", id, text, normal_form, rank);
     }
 
     @JsonIgnore
@@ -396,14 +414,13 @@ public class ReadingModel implements Comparable<ReadingModel> {
         return authority;
     }
 
-    @SuppressWarnings("WeakerAccess")
     public void setAuthority(String authority) {
         this.authority = authority;
     }
 
     public List<ReadingModel> getRepresented() { return represented; }
 
-    public void addRepresented(ReadingModel rm) {
+    private void addRepresented(ReadingModel rm) {
         if (represented == null) represented = new ArrayList<>();
         represented.add(rm);
     }

@@ -212,7 +212,9 @@ public class TabularExporter {
         ArrayList<AlignmentModel> tables = new ArrayList<>();
         int length = 0;
         for (Node sectionNode : traditionSections) {
-            AlignmentModel asJson = new AlignmentModel(sectionNode, collapseRelated);
+            if (collapseRelated != null) VariantGraphService.normalizeGraph(sectionNode, collapseRelated);
+            AlignmentModel asJson = new AlignmentModel(sectionNode);
+            if (collapseRelated != null) VariantGraphService.clearNormalization(sectionNode);
             // Save the alignment to our tables list
             tables.add(asJson);
             length += asJson.getLength();

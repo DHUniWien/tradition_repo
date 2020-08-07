@@ -49,7 +49,7 @@ public class CollateXParser {
             NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         try (Transaction tx = db.beginTx()) {
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
@@ -134,6 +134,8 @@ public class CollateXParser {
             }
             // Create all the witnesses
             seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x));
+            // Calculate the common readings
+            VariantGraphService.calculateCommon(parentNode);
 
             // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {
