@@ -550,6 +550,36 @@ public class AnnotationTest extends TestCase {
         assertEquals(0, anns.size());
     }
 
+    public void testExportWithAnnotations() {
+        addTestLabel();
+        addTestAnnotation();
+        Response response = jerseyTest.target("/tradition/" + tradId + "/graphml")
+                .request(MediaType.APPLICATION_XML_TYPE).get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        // Check that the annotation is represented in the GraphML file.
+        String xmlOutput = response.readEntity(String.class);
+
+        String translation = returnTestAnnotation().getProperties().get("text").toString();
+        assertTrue(xmlOutput.contains("[ANNOTATIONLABEL]"));
+        assertTrue(xmlOutput.contains("[TRANSLATION]"));
+        assertTrue(xmlOutput.contains(translation));
+
+        // Check that it gets re-imported correctly
+        response = Util.createTraditionFromFileOrString(jerseyTest, "reimported", "LR", "1",
+                xmlOutput, "graphml");
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String newTradId = Util.getValueFromJson(response, "tradId");
+        response = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<AnnotationModel> am = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(1, am.size());
+        assertEquals("TRANSLATION", am.get(0).getLabel());
+        assertTrue(am.get(0).getProperties().containsKey("text"));
+        assertEquals(translation, am.get(0).getProperties().get("text"));
+
+    }
+
     public void tearDown() throws Exception {
         db.shutdown();
         jerseyTest.tearDown();
