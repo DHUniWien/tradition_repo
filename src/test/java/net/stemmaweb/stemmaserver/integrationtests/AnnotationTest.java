@@ -1,14 +1,10 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import junit.framework.TestCase;
-import net.stemmaweb.model.AnnotationLabelModel;
-import net.stemmaweb.model.AnnotationLinkModel;
-import net.stemmaweb.model.AnnotationModel;
-import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 
-import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -24,6 +20,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.time.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -442,10 +439,10 @@ public class AnnotationTest extends TestCase {
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
         String str = readingLookup.get("luminaribus/4");
-        prb.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
+        prb.setTarget(Long.valueOf(readingLookup.get(str)));
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
+        pre.setTarget(Long.valueOf(readingLookup.get(str)));
         ref2.addLink(prb);
         ref2.addLink(pre);
         response = jerseyTest
@@ -550,6 +547,88 @@ public class AnnotationTest extends TestCase {
         assertEquals(0, anns.size());
     }
 
+    public void testAnnotationTypes() {
+        // ArrayList<String> allowedValues = new ArrayList<>(Arrays.asList("Boolean", "Long", "Double",
+        //                        "Character", "String", "LocalDate", "OffsetTime", "LocalTime", "ZonedDateTime",
+        //                        "LocalDateTime", "TemporalAmount"));
+        // We've already tested strings
+        HashMap<String,Class<?>> nameToType = new HashMap<>();
+        nameToType.put("SOMEBOOL", Boolean.class);
+        nameToType.put("SOMELONG", Long.class);
+        nameToType.put("SOMEDOUBLE", Double.class);
+        nameToType.put("SOMECHAR", Character.class);
+        nameToType.put("SOMELDATE", LocalDate.class);
+        nameToType.put("SOMEOFFSET", OffsetTime.class);
+        nameToType.put("SOMELTIME", LocalTime.class);
+        nameToType.put("SOMEZDTIME", ZonedDateTime.class);
+        nameToType.put("SOMELDTIME", LocalDateTime.class);
+        nameToType.put("SOMEDURATION", Duration.class);
+        nameToType.put("SOMEPERIOD", Period.class);
+
+        HashMap<String,AnnotationLabelModel> annsToTest = new HashMap<>();
+        for (String k : nameToType.keySet()) {
+            AnnotationLabelModel alm = new AnnotationLabelModel();
+            alm.setName(k);
+            Map<String, String> aprop = new HashMap<>();
+            String[] classNameParts = nameToType.get(k).getName().split("\\.");
+            aprop.put("value", classNameParts[classNameParts.length - 1]);
+            Map<String, String> alink = new HashMap<>();
+            alink.put("READING", "ATTACHED");
+            alm.setProperties(aprop);
+            alm.setLinks(alink);
+            annsToTest.put(k, alm);
+        }
+
+        // Try making each of these annotation labels
+        for (AnnotationLabelModel alm : annsToTest.values()) {
+            Response response = jerseyTest
+                    .target("/tradition/" + tradId + "/annotationlabel/" + alm.getName())
+                    .request(MediaType.APPLICATION_JSON)
+                    .put(Entity.json(alm));
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
+
+        // Now try using each of these annotations
+        HashMap<String,Object> nameToValue = new HashMap<>();
+        nameToValue.put("SOMEBOOL", true);
+        nameToValue.put("SOMELONG", "1");
+        nameToValue.put("SOMEDOUBLE", "1.0");
+        nameToValue.put("SOMECHAR", "a");
+        nameToValue.put("SOMELDATE", "2007-12-03");
+        nameToValue.put("SOMEOFFSET", "10:15:30+01:00");
+        nameToValue.put("SOMELTIME", "10:15");
+        nameToValue.put("SOMEZDTIME", "2007-12-03T10:15:30+01:00");
+        nameToValue.put("SOMELDTIME", "2007-12-03T10:15:30");
+        nameToValue.put("SOMEDURATION", Duration.ofHours(3).toString());
+        nameToValue.put("SOMEPERIOD", Period.ofDays(3).toString());
+
+        for (String k : nameToType.keySet()) {
+            AnnotationModel am = new AnnotationModel();
+            am.setLabel(k);
+            Map<String, Object> props = new HashMap<>();
+            props.put("value", nameToValue.get(k));
+            am.setProperties(props);
+            AnnotationLinkModel start = new AnnotationLinkModel();
+            start.setTarget(Long.valueOf(readingLookup.get("in/1")));
+            start.setType("ATTACHED");
+            am.addLink(start);
+
+            // Try making each of these annotations
+            Response response = jerseyTest
+                    .target("/tradition/" + tradId + "/annotation")
+                    .request(MediaType.APPLICATION_JSON)
+                    .post(Entity.json(am));
+            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        }
+
+        // Check that they come back out
+        Response response = jerseyTest.target("/tradition/" + tradId + "/annotations")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<AnnotationModel> ourAnnotations = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        assertEquals(nameToType.size(), ourAnnotations.size());
+    }
+
     public void testExportWithAnnotations() {
         addTestLabel();
         addTestAnnotation();
@@ -557,16 +636,29 @@ public class AnnotationTest extends TestCase {
                 .request(MediaType.APPLICATION_XML_TYPE).get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         // Check that the annotation is represented in the GraphML file.
-        String xmlOutput = response.readEntity(String.class);
+        String tradXmlOutput = response.readEntity(String.class);
 
         String translation = returnTestAnnotation().getProperties().get("text").toString();
-        assertTrue(xmlOutput.contains("[ANNOTATIONLABEL]"));
-        assertTrue(xmlOutput.contains("[TRANSLATION]"));
-        assertTrue(xmlOutput.contains(translation));
+        assertTrue(tradXmlOutput.contains("[ANNOTATIONLABEL]"));
+        assertTrue(tradXmlOutput.contains("[LINKS]"));
+        assertTrue(tradXmlOutput.contains("[TRANSLATION]"));
+        assertTrue(tradXmlOutput.contains(translation));
+
+        // ...also for the individual section.
+        List<SectionModel> sects = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<List<SectionModel>>() {});
+        String sectId = sects.get(0).getId();
+        response = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/graphml")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String sectXmlOutput = response.readEntity(String.class);
+        // assertTrue(tradXmlOutput.contains("[ANNOTATIONLABEL]"));
+        assertTrue(sectXmlOutput.contains("[TRANSLATION]"));
+        assertTrue(sectXmlOutput.contains(translation));
 
         // Check that it gets re-imported correctly
         response = Util.createTraditionFromFileOrString(jerseyTest, "reimported", "LR", "1",
-                xmlOutput, "graphml");
+                tradXmlOutput, "graphml");
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         String newTradId = Util.getValueFromJson(response, "tradId");
         response = jerseyTest.target("/tradition/" + newTradId + "/annotations")
