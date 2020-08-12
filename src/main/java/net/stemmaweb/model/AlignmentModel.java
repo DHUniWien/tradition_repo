@@ -34,8 +34,12 @@ public class AlignmentModel {
     // Make an empty alignment table
     public AlignmentModel() {}
 
-    // Get an alignment table
     public AlignmentModel(Node sectionNode) {
+        this(sectionNode, false);
+    }
+
+    // Get an alignment table
+    public AlignmentModel(Node sectionNode, boolean excludeLayers) {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {
@@ -68,11 +72,13 @@ public class AlignmentModel {
                 // Find out which witness layers we need to deal with
                 HashSet<String> layers = new HashSet<>();
                 layers.add("base");
-                for (Relationship seq : traversedTradition.relationships()) {
-                    for (String layer : seq.getPropertyKeys()) {
-                        if (!layer.equals("witnesses")) {
-                            ArrayList<String> layerwits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(layer)));
-                            if (layerwits.contains(sigil)) layers.add(layer);
+                if (!excludeLayers) {
+                    for (Relationship seq : traversedTradition.relationships()) {
+                        for (String layer : seq.getPropertyKeys()) {
+                            if (!layer.equals("witnesses")) {
+                                ArrayList<String> layerwits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(layer)));
+                                if (layerwits.contains(sigil)) layers.add(layer);
+                            }
                         }
                     }
                 }

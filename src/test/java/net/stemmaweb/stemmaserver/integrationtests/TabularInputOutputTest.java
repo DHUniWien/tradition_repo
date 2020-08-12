@@ -75,11 +75,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(310, allReadings.size());
-        boolean foundReading = false;
-        for (ReadingModel r : allReadings)
-            if (r.getText().equals("Μαξίμου"))
-                foundReading = true;
-        assertTrue(foundReading);
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("Μαξίμου")));
     }
 
     public void testParseCsvLayers() {
@@ -107,11 +103,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(311, allReadings.size());
-        boolean foundReading = false;
-        for (ReadingModel r : allReadings)
-            if (r.getText().equals("Μαξίμου"))
-                foundReading = true;
-        assertTrue(foundReading);
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("Μαξίμου")));
     }
 
     public void testSetRelationship() {
@@ -175,11 +167,7 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllReadings();
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(11, allReadings.size());
-        boolean foundReading = false;
-        for (ReadingModel r : allReadings)
-            if (r.getText().equals("այնոսիկ"))
-                foundReading = true;
-        assertTrue(foundReading);
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("այնոսիկ")));
 
         // Test a good XLSX file
         response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
@@ -193,20 +181,12 @@ public class TabularInputOutputTest extends TestCase {
         result = tradition.getAllWitnesses();
         allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
         assertEquals(3, allWitnesses.size());
-        boolean foundWitness = false;
-        for (WitnessModel w : allWitnesses)
-            if (w.getSigil().equals("Աբ2"))
-                foundWitness = true;
-        assertTrue(foundWitness);
+        assertTrue(allWitnesses.stream().anyMatch(x -> x.getSigil().equals("Աբ2")));
 
         result = tradition.getAllReadings();
         allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(12, allReadings.size());
-        foundReading = false;
-        for (ReadingModel r : allReadings)
-            if (r.getText().equals("այսոսիկ"))
-                foundReading = true;
-        assertTrue(foundReading);
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("այսոսիկ")));
     }
 
     // testOutputJSON
@@ -579,6 +559,19 @@ public class TabularInputOutputTest extends TestCase {
             }
         }
 
+        // Text export when we exclude the layers
+        response = jerseyTest.target("/tradition/" + traditionId + "/json")
+                .queryParam("exclude_layers", "true")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        table = new JSONObject(response.readEntity(String.class));
+        alignment = table.getJSONArray("alignment");
+        assertEquals(239, table.getInt("length"));
+        assertEquals(23, alignment.length());
+        for (int i=0; i < alignment.length(); i++) {
+            JSONObject witTokens = alignment.getJSONObject(i);
+            assertTrue(witTokens.isNull("layer"));
+        }
     }
 
     public void testComplexLayerExport() {
@@ -643,7 +636,7 @@ public class TabularInputOutputTest extends TestCase {
             allSigla.add(wtm.constructSigil());
         ArrayList<String> allExpectedWits = new ArrayList<>(Arrays.asList("D", "E", "E (a.c.)", "E (s.l.)", "F", "G",
                 "H", "H (s.l.)", "K", "P (a.c.)", "Q", "Q (a.c.)", "Q (s.l.)", "Q (margin)", "T", "T (a.c.)"));
-        allExpectedWits.addAll(expectedWits);
+        allExpectedWits.addAll(expectedWits); // A, B, C, P, S
         for (String sigil : allExpectedWits)
             assertTrue(allSigla.contains(sigil));
 
@@ -824,6 +817,28 @@ public class TabularInputOutputTest extends TestCase {
                 assertTrue(checkRdgSame(hColumn, hSlColumn, i));
                 assertTrue(checkRdgSame(pColumn, pAcColumn, i));
                 assertTrue(checkRdgSame(tColumn, tAcColumn, i));
+            }
+        }
+
+        // Test export when we exclude the layers
+        response = jerseyTest.target("/tradition/" + tradId + "/json")
+                .queryParam("exclude_layers", "true")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        AlignmentModel unlayered = response.readEntity(AlignmentModel.class);
+        assertEquals(13, unlayered.getAlignment().size());
+        assertEquals(280, unlayered.getLength());
+        // Check that the readings are the same as above
+        HashMap<String,List<ReadingModel>> priors = new HashMap<>();
+        priors.put("Q", qColumn);
+        priors.put("E", eColumn);
+        priors.put("H", hColumn);
+        priors.put("P", pColumn);
+        priors.put("T", tColumn);
+        for (WitnessTokensModel wtm : unlayered.getAlignment()) {
+            if (priors.containsKey(wtm.getWitness())) {
+                for (int i = 0; i < alignment.getLength(); i++)
+                    assertTrue(checkRdgSame(priors.get(wtm.getWitness()), wtm.getTokens(), i));
             }
         }
     }

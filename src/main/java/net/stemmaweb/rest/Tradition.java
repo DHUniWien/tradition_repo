@@ -847,8 +847,9 @@ public class Tradition {
      *
      * @summary Download JSON alignment
      *
-     * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
-     * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param toConflate    - Zero or more relationship types whose readings should be treated as identical
+     * @param sectionList   - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the JSON alignment
      */
     @GET
@@ -856,8 +857,10 @@ public class Tradition {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AlignmentModel.class)
     public Response getJson(@QueryParam("conflate") String toConflate,
-                            @QueryParam("section") List<String> sectionList) {
-        return new TabularExporter(db).exportAsJSON(traditionId, toConflate, sectionList);
+                            @QueryParam("section") List<String> sectionList,
+                            @QueryParam("exclude_layers") String excludeLayers) {
+        return new TabularExporter(db).exportAsJSON(traditionId, toConflate,
+                sectionList, "true".equals(excludeLayers));
     }
 
     /**
@@ -867,6 +870,7 @@ public class Tradition {
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the CSV alignment as plaintext
      */
     @GET
@@ -874,8 +878,10 @@ public class Tradition {
     @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getCsv(@QueryParam("conflate") String toConflate,
-                           @QueryParam("section") List<String> sectionList) {
-        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate, sectionList);
+                           @QueryParam("section") List<String> sectionList,
+                           @QueryParam("exclude_layers") String excludeLayers) {
+        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate,
+                sectionList, "true".equals(excludeLayers));
     }
 
     /**
@@ -885,6 +891,7 @@ public class Tradition {
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the TSV alignment as plaintext
      */
     @GET
@@ -892,8 +899,10 @@ public class Tradition {
     @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response getTsv(@QueryParam("conflate") String toConflate,
-                           @QueryParam("section") List<String> sectionList) {
-        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate, sectionList);
+                           @QueryParam("section") List<String> sectionList,
+                           @QueryParam("exclude_layers") String excludeLayers) {
+        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate,
+                sectionList, "true".equals(excludeLayers));
     }
 
     /**
@@ -903,6 +912,7 @@ public class Tradition {
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @param maxVars      - Maximum number of variants per location, above which that location will be discarded.
      *                       Default is 8, for compatibility with Phylip Pars.
      * @return the character matrix as plaintext
@@ -913,8 +923,10 @@ public class Tradition {
     @ReturnType("java.lang.Void")
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @QueryParam("section") List<String> sectionList,
+                                  @QueryParam("exclude_layers") String excludeLayers,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
-        return new TabularExporter(db).exportAsCharMatrix(traditionId, maxVars, toConflate, sectionList);
+        return new TabularExporter(db).exportAsCharMatrix(traditionId, maxVars, toConflate,
+                sectionList, "true".equals(excludeLayers));
     }
 
 }
