@@ -6,6 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class TextSequenceModel {
     private String text;
 
+    public TextSequenceModel() {}
     public TextSequenceModel(String theText) {
         this.text = theText;
     }

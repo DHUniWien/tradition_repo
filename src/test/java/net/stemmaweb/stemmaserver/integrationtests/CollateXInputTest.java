@@ -59,11 +59,7 @@ public class CollateXInputTest extends TestCase {
         @SuppressWarnings("unchecked")
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(10, allReadings.size());
-        boolean foundReading = false;
-        for (ReadingModel r : allReadings)
-            if (r.getText().equals("Plätzchen"))
-                foundReading = true;
-        assertTrue(foundReading);
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("Plätzchen")));
 
         // Check that the common readings are set correctly
         List<String> common = allReadings.stream().filter(ReadingModel::getIs_common)
@@ -143,12 +139,9 @@ public class CollateXInputTest extends TestCase {
         assertEquals(3, allWitnesses.size());
 
         // Get a witness text
-        // TODO for some reason TextSequenceModel can't be decoded by ReadEntity.
-        // We will check the readings instead.
-        result = jerseyTest.target("/tradition/" + tradId + "/witness/W2/readings").request(MediaType.APPLICATION_JSON).get();
-        ArrayList<ReadingModel> response = result.readEntity(new GenericType<ArrayList<ReadingModel>>() {});
-        assertEquals("Ich hab auch hier wieder ein Pläzchen",
-                response.stream().map(ReadingModel::getText).collect(Collectors.joining(" ")));
+        result = jerseyTest.target("/tradition/" + tradId + "/witness/W2/text").request(MediaType.APPLICATION_JSON).get();
+        TextSequenceModel response = result.readEntity(TextSequenceModel.class);
+        assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
 
         result = jerseyTest.target("/tradition/" + tradId + "/readings").request().get();
         ArrayList<ReadingModel> allReadings = result.readEntity(new GenericType<ArrayList<ReadingModel>>() {});
