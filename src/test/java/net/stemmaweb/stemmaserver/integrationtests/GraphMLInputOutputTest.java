@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotEquals;
 
 /**
@@ -161,6 +162,10 @@ public class GraphMLInputOutputTest extends TestCase {
         // Start with a multi-section tradition and get the section IDs
         List<SectionModel> sections = jerseyTest.target("/tradition/" + multiTradId + "/sections")
                 .request(MediaType.APPLICATION_JSON_TYPE).get(new GenericType<List<SectionModel>>() {});
+        // See how many witnesses we have to begin with
+        List<WitnessModel> witnesses = jerseyTest.target("/tradition/" + multiTradId + "/witnesses")
+                .request().get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(37, witnesses.size());
         // Get the GraphML output, make sure it has correct # of nodes & edges
         Response r = jerseyTest.target("/tradition/" + multiTradId + "/section/"
                 + sections.get(0).getId() + "/graphml")
@@ -198,6 +203,16 @@ public class GraphMLInputOutputTest extends TestCase {
         assertNotNull(graphdoc);
         nodes = graphdoc.getElementsByTagName("node");
         assertEquals(82, nodes.getLength());
+
+        // Now add this section again to the tradition and make sure the witnesses aren't doubled
+        Util.addSectionToTradition(jerseyTest, multiTradId,
+                xmlresp, "graphml", "Section 3");
+        sections = jerseyTest.target("/tradition/" + multiTradId + "/sections")
+                .request().get(new GenericType<List<SectionModel>>() {});
+        assertEquals(3, sections.size());
+        witnesses = jerseyTest.target("/tradition/" + multiTradId + "/witnesses")
+                .request().get(new GenericType<List<WitnessModel>>() {});
+        assertEquals(37, witnesses.size());
     }
 
     public void testXMLInputCreateFromSection() {

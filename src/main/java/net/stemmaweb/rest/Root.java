@@ -37,8 +37,8 @@ import static net.stemmaweb.rest.Util.jsonresp;
  */
 @Path("/")
 public class Root {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
     
     /*
      * Delegated API calls

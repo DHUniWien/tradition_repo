@@ -35,9 +35,9 @@ import static net.stemmaweb.rest.Util.jsonerror;
  */
 
 public class Annotation {
-    private GraphDatabaseService db;
-    private String tradId;
-    private String annoId;
+    private final GraphDatabaseService db;
+    private final String tradId;
+    private final String annoId;
 
     Annotation(String tradId, String aid) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -55,7 +55,7 @@ public class Annotation {
      * @statuscode 500 - on error
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response getAnnotation() {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
@@ -84,7 +84,7 @@ public class Annotation {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response updateAnnotation(AnnotationModel newAnno) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
@@ -101,7 +101,7 @@ public class Annotation {
             AnnotationLabelModel alm = new AnnotationLabelModel(al.get());
 
             // Get our annotation node
-            Node aNode = db.getNodeById(Long.valueOf(annoId));
+            Node aNode = db.getNodeById(Long.parseLong(annoId));
             // Set the label if it has changed, removing any old label if necessary
             if (aNode.getLabels().iterator().hasNext()) {
                 Label aLabel = aNode.getLabels().iterator().next();
@@ -116,29 +116,32 @@ public class Annotation {
             // Now check and replace its properties
             aNode.getPropertyKeys().forEach(aNode::removeProperty);
             for (String pkey : newAnno.getProperties().keySet()) {
-                if (!alm.getProperties().keySet().contains(pkey))
+                if (!alm.getProperties().containsKey(pkey))
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity(jsonerror("No property " + pkey + " defined for this annotation label"))
                             .build();
                 // Okay? Then set the property
                 String ptype = alm.getProperties().get(pkey);
                 Object pval;
-                // Is it a time-based thing?
-                if (ptype.contains("Date") || ptype.contains("Time") || ptype.contains("Temporal")) {
+                try {
+                    // Is it a time-based thing?
                     Method parse = Class.forName("java.time." + ptype).getMethod("parse", CharSequence.class);
                     pval = parse.invoke(null, newAnno.getProperties().get(pkey).toString());
-                } else if (ptype.equals("Character")) {
-                    String pstr = newAnno.getProperties().get(pkey).toString();
-                    if (pstr.length() > 1)
-                        throw new Exception("Cannot set multi-character string value as Character");
-                    pval = pstr.charAt(0);
-                } else {
-                    Class<?> pclass = Class.forName("java.lang." + ptype);
-                    if (ptype.equals("String") || ptype.equals("Boolean"))
-                        pval = pclass.cast(newAnno.getProperties().get(pkey));
-                    else
-                        pval = pclass.getMethod("valueOf", String.class)
-                                .invoke(null, newAnno.getProperties().get(pkey).toString());
+                } catch (ClassNotFoundException e) {
+                    // It isn't a time-based thing.
+                    if (ptype.equals("Character")) {
+                        String pstr = newAnno.getProperties().get(pkey).toString();
+                        if (pstr.length() > 1)
+                            throw new Exception("Cannot set multi-character string value as Character");
+                        pval = pstr.charAt(0);
+                    } else {
+                        Class<?> pclass = Class.forName("java.lang." + ptype);
+                        if (ptype.equals("String") || ptype.equals("Boolean"))
+                            pval = pclass.cast(newAnno.getProperties().get(pkey));
+                        else
+                            pval = pclass.getMethod("valueOf", String.class)
+                                    .invoke(null, newAnno.getProperties().get(pkey).toString());
+                    }
                 }
                 aNode.setProperty(pkey, pval);
             }
@@ -176,7 +179,7 @@ public class Annotation {
      * @statuscode 500 - on error
      */
     @DELETE
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response deleteAnnotation() {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
@@ -232,13 +235,13 @@ public class Annotation {
     @POST
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response addAnnotationLink(AnnotationLinkModel alm) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
         AnnotationModel updated;
         try (Transaction tx = db.beginTx()) {
-            Node aNode = db.getNodeById(Long.valueOf(annoId));
+            Node aNode = db.getNodeById(Long.parseLong(annoId));
             // See if the link already exists
             if (findExistingLink(alm) != null) {
                 tx.success();
@@ -290,7 +293,7 @@ public class Annotation {
     @DELETE
     @Path("/link")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response deleteAnnotationLink(AnnotationLinkModel alm) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
@@ -325,7 +328,7 @@ public class Annotation {
 
     @GET
     @Path("/referents")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel")
     public Response getReferents(@QueryParam("recursive") @DefaultValue("false") String recurse) {
         if (annotationNotFound()) return Response.status(Response.Status.NOT_FOUND).build();
@@ -344,7 +347,7 @@ public class Annotation {
     List<Node> collectReferents(boolean recurse) {
         List<Node> result;
         try (Transaction tx = db.beginTx()) {
-            Node aNode = db.getNodeById(Long.valueOf(annoId));
+            Node aNode = db.getNodeById(Long.parseLong(annoId));
             if (recurse) {
                 result = new ArrayList<>();
                 db.traversalDescription().depthFirst()
@@ -363,7 +366,7 @@ public class Annotation {
 
     // Used inside a transaction
     private Relationship findExistingLink(AnnotationLinkModel alm) {
-        Node aNode = db.getNodeById(Long.valueOf(annoId));
+        Node aNode = db.getNodeById(Long.parseLong(annoId));
         for (Relationship r : aNode.getRelationships(Direction.OUTGOING)) {
             if (r.getType().name().equals(alm.getType()) && r.getEndNodeId() == alm.getTarget()) {
                 return r;
@@ -373,7 +376,7 @@ public class Annotation {
     }
 
     // Evaluator to walk the annotation structure
-    private static Evaluator crawlReferents = path -> {
+    private static final Evaluator crawlReferents = path -> {
         if (path.length() == 0)
             return Evaluation.EXCLUDE_AND_CONTINUE;
         // Incoming direction only

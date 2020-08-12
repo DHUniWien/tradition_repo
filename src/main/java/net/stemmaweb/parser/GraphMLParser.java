@@ -1,8 +1,10 @@
 package net.stemmaweb.parser;
 
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.RelationType;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.rest.*;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
@@ -20,8 +22,8 @@ import java.util.stream.Collectors;
  * Created by tla on 17/02/2017.
  */
 public class GraphMLParser {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     /**
      * Parses a GraphML file representing either an entire tradition, or a single tradition
@@ -56,6 +58,8 @@ public class GraphMLParser {
         String parentId = null;
         String parentLabel = null;
         ArrayList<Node> sectionNodes = new ArrayList<>();
+        ArrayList<Node> witnessNodes = new ArrayList<>();
+        ArrayList<Node> annoLabelNodes = new ArrayList<>();
         HashSet<String> sigla = new HashSet<>();
         // Keep track of XML ID to Neo4J ID mapping for all nodes
         HashMap<String, Node> entityMap = new HashMap<>();
@@ -65,6 +69,10 @@ public class GraphMLParser {
             // The UUID of the tradition that was passed in for parsing
             String tradId = traditionNode.getProperty("id").toString();
             NodeList entityNodes = rootEl.getElementsByTagName("node");
+            // Hold back nodes that were labeled by the user rather than the system, such as annotations,
+            // so that we can add them to the graph with the existing verification / sanity checks.
+            ArrayList<org.w3c.dom.Node> userLabeledNodes = new ArrayList<>();
+            ArrayList<org.w3c.dom.Node> userLabeledEdges = new ArrayList<>();
             for (int i = 0; i < entityNodes.getLength(); i++) {
                 org.w3c.dom.Node entityXML = entityNodes.item(i);
                 NamedNodeMap entityAttrs = entityXML.getAttributes();
@@ -76,15 +84,13 @@ public class GraphMLParser {
                 String neolabel = nodeProperties.remove("neolabel").toString();
                 String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
 
-                // If there is already a different tradition with this tradition ID, we are making a
-                // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
-                // node to match the one in the GraphML.
                 if (neolabel.contains("TRADITION")) {
+                    // We are apparently parsing a whole tradition.
+                    // If there is already a different tradition with this tradition ID, we are making a
+                    // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
+                    // node to match the one in the GraphML.
                     if (parentLabel != null) {
                         // We apparently have two TRADITION nodes. Abort.
-                        // n.b. Old code, not sure if it was needed or just misunderstanding transactions
-                        // entityMap.values().forEach(Node::delete);
-                        // tx.success();
                         return Response.status(Response.Status.BAD_REQUEST)
                                 .entity(Util.jsonerror("Multiple TRADITION nodes in input")).build();
                     }
@@ -109,13 +115,22 @@ public class GraphMLParser {
                 } else {
                     // Now we have the information of the XML, we can create the node.
                     Node entity = db.createNode();
-                    for (String l : entityLabel)
-                        entity.addLabel(Nodes.valueOf(l));
-                    nodeProperties.forEach(entity::setProperty);
-                    entityMap.put(xmlId, entity);
-                    // Save section node(s), in case we are uploading individual sections and need to connect
-                    // them to our tradition node
-                    if (neolabel.contains("SECTION")) sectionNodes.add(entity);
+                    for (String l : entityLabel) {
+                        try {
+                            entity.addLabel(Nodes.valueOf(l));
+                            nodeProperties.forEach(entity::setProperty);
+                            entityMap.put(xmlId, entity);
+                            // Save section node(s), in case we are uploading individual sections and need to connect
+                            // them to our tradition node
+                            if (neolabel.contains("[SECTION]")) sectionNodes.add(entity);
+                            if (neolabel.contains("[WITNESS]")) witnessNodes.add(entity);
+                            if (neolabel.contains("[ANNOTATIONLABEL]")) annoLabelNodes.add(entity);
+                        } catch (IllegalArgumentException e) {
+                            // This is an annotation node, which we will deal with in a separate pass.
+                            userLabeledNodes.add(entityXML);
+                            entity.delete();
+                        }
+                    }
                 }
             }
 
@@ -160,8 +175,18 @@ public class GraphMLParser {
                                 .entity(Util.jsonerror("Relation defined without a type")).build();
                     seenRelationTypes.add(edgeProperties.get("type").toString());
                 }
-                Relationship newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
-                edgeProperties.forEach(newRel::setProperty);
+                Relationship newRel;
+                try {
+                    newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
+                    edgeProperties.forEach(newRel::setProperty);
+                } catch (IllegalArgumentException e) {
+                    // We are either here because we tried to link an annotation (which doesn't yet exist)
+                    // to the tradition via a HAS_ANNOTATION link, or because we tried to use a user-defined
+                    // relationship label in the context of an annotation.
+                    // If the former, ignore it (we will add these links later); if the latter, add it to
+                    // our list of user-defined entities that should be dealt with later.
+                    if (!neolabel.equals("HAS_ANNOTATION")) userLabeledEdges.add(edgeNodes.item(i));
+                }
             }
 
             // Connect our new section to an existing tradition node, and to the last existing section,
@@ -176,6 +201,28 @@ public class GraphMLParser {
                 }
                 traditionNode.createRelationshipTo(newSection, ERelations.PART);
                 parentId = String.valueOf(newSection.getId());
+            }
+
+            // Check any witness nodes we created and connect them to the tradition node if they wouldn't
+            // be duplicates
+            for (Node w : witnessNodes) {
+                if (!witnessExists(traditionNode, w) && w.getProperty("hypothetical").equals(false))
+                    traditionNode.createRelationshipTo(w, ERelations.HAS_WITNESS);
+            }
+
+            // Check any annotation label nodes & associates we created and connect them to the tradition
+            // node if they wouldn't be duplicates
+            for (Node al : annoLabelNodes) {
+                if (!annoLabelExists(traditionNode, al)) {
+                    traditionNode.createRelationshipTo(al, ERelations.HAS_ANNOTATION_TYPE);
+                } else {
+                    // This is a redundant annotation label, so delete it as well as its links and properties.
+                    al.getRelationships(Direction.OUTGOING).forEach(x -> {
+                        x.getEndNode().delete();
+                        x.delete();
+                    });
+                    al.delete();
+                }
             }
 
             // Reset the section IDs stored on each reading to the ID of the newly created node
@@ -201,6 +248,71 @@ public class GraphMLParser {
                 }
             }
 
+            // Now add user-labeled nodes separately, via the existing validation infrastructure.
+            List<AnnotationModel> annotationsToAdd = new ArrayList<>();
+            for (org.w3c.dom.Node xn : userLabeledNodes) {
+                AnnotationModel am = new AnnotationModel();
+                // Get the properties on this annotation node.
+                HashMap<String,Object> props = returnProperties(((Element) xn).getElementsByTagName("data"), dataKeys);
+                // We already know from the first pass that this label exists
+                String annLabel = props.remove("neolabel").toString();
+                annLabel = annLabel.substring(1, annLabel.length() - 1);
+                // Is it marked as a primary annotation?
+                boolean isPrimary = props.containsKey("__primary")
+                        && props.remove("__primary").toString().equals("true");
+                // Fill out the annotation model
+                am.setLabel(annLabel);
+                am.setPrimary(isPrimary);
+                am.setProperties(props);
+                // Add the links, from our collected edges
+                for (org.w3c.dom.Node xe : userLabeledEdges) {
+                    NamedNodeMap edgeAttrs = xe.getAttributes();
+                    String sourceXmlId = edgeAttrs.getNamedItem("source").getNodeValue();
+                    String targetXmlId = edgeAttrs.getNamedItem("target").getNodeValue();
+                    HashMap<String,Object> edgeProps = returnProperties(((Element) xe).getElementsByTagName("data"), dataKeys);
+                    if (sourceXmlId.equals(((Element) xn).getAttribute("id"))) {
+                        // It is a link that belongs to this source. For now set the XML element ID as the
+                        // target; this will need to be converted progressively into real node IDs.
+                        AnnotationLinkModel alm = new AnnotationLinkModel();
+                        alm.setTarget(Long.valueOf(targetXmlId));
+                        alm.setType(edgeProps.get("neolabel").toString());
+                        if (edgeProps.containsKey("follow")) alm.setFollow(edgeProps.get("follow").toString());
+                        am.addLink(alm);
+                    }
+                }
+                annotationsToAdd.add(am);
+            }
+            while (annotationsToAdd.size() > 0) {
+                Tradition tradService = new Tradition(tradId);
+                List<AnnotationModel> toRemove = new ArrayList<>();
+                for (AnnotationModel am : annotationsToAdd) {
+                    // Look at the links and see if the targets exist yet
+                    boolean targetsExist = true;
+                    for (Long target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).collect(Collectors.toList())) {
+                        targetsExist = targetsExist && entityMap.containsKey(target.toString());
+                    }
+                    if (targetsExist) {
+                        // We can update the links with the "real" nodes and create the annotation.
+                        for (AnnotationLinkModel alm : am.getLinks()) {
+                            Node nodeTarget = entityMap.get(alm.getTarget().toString());
+                            alm.setTarget(nodeTarget.getId());
+                        }
+                        Response result = tradService.addAnnotation(am);
+                        if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                            throw new UnsupportedOperationException(String.format(
+                                    "Error on adding user annotation %s/%s: %s",
+                                    am.getId(), am.getLabel(), result.getEntity()));
+                        }
+                        toRemove.add(am);
+                    }
+                }
+                // Guard against infinite loops
+                if (toRemove.isEmpty())
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(Util.jsonerror("Annotations in XML could not all be resolved")).build();
+                annotationsToAdd.removeAll(toRemove);
+            }
+
             // Sanity check: if we created any relationship-less nodes, delete them again.
             entityMap.values().stream().filter(n -> !n.hasRelationship()).forEach(Node::delete);
 
@@ -216,7 +328,45 @@ public class GraphMLParser {
         return Response.status(Response.Status.CREATED).entity(response).build();
     }
 
+    // Return true if the tradition already has a witness with the given sigil.
+    // LATER think about consistency checks, in case witness information conflicts
+    private boolean witnessExists(Node tradition, Node witness) {
+        String sigil = witness.getProperty("sigil").toString();
+        return DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS).stream()
+                .anyMatch(x -> x.getProperty("sigil", "").equals(sigil));
+    }
 
+    // Return true if the tradition already has an annotation under the given name.
+    // Throws an IllegalArgumentException if the annotation information conflicts.
+    private boolean annoLabelExists(Node tradition, Node alabel) {
+        String name = alabel.getProperty("name").toString();
+        Optional<Node> matching = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS).stream()
+                .filter(x -> x.getProperty("name", "").equals(name)).findFirst();
+        if (!matching.isPresent()) return false;
+
+        // Check for a mismatch of properties and links. The existing model may contain a superset of
+        // allowed properties and links.
+        AnnotationLabelModel existing = new AnnotationLabelModel(matching.get());
+        AnnotationLabelModel added = new AnnotationLabelModel(alabel);
+        for (String k : added.getProperties().keySet()) {
+            if (!added.getProperties().get(k).equals(existing.getProperties().getOrDefault(k,null)))
+                throw new UnsupportedOperationException(String.format(
+                        "Mismatch between existing and input properties for annotation label %s", name));
+        }
+        for (String k : added.getLinks().keySet()) {
+            if (!existing.getLinks().containsKey(k))
+                throw new UnsupportedOperationException(String.format(
+                        "Existing annotation label %s is missing link for node type %s", name, k));
+            List<String> linkTypes = Arrays.asList(added.getLinks().get(k).split(","));
+            List<String> existingLTypes = Arrays.asList(existing.getLinks().get(k).split(","));
+            if (!existingLTypes.containsAll(linkTypes))
+                throw new UnsupportedOperationException(String.format(
+                        "Existing annotation label %s has different links to node type %s", name, k));
+        }
+
+        // If we didn't throw any errors then we can continue.
+        return true;
+    }
     private HashMap<String, Object> returnProperties (NodeList dataNodes, HashMap<String, String[]> dataKeys) {
         HashMap<String, Object> nodeProperties = new HashMap<>();
         for (int j = 0; j < dataNodes.getLength(); j++) {

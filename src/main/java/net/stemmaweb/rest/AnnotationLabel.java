@@ -127,7 +127,7 @@ public class AnnotationLabel {
                 ourNode.createRelationshipTo(pnode, ERelations.HAS_PROPERTIES);
                 ArrayList<String> allowedValues = new ArrayList<>(Arrays.asList("Boolean", "Long", "Double",
                         "Character", "String", "LocalDate", "OffsetTime", "LocalTime", "ZonedDateTime",
-                        "LocalDateTime", "TemporalAmount"));
+                        "LocalDateTime", "Duration", "Period"));
                 for (String key : alm.getProperties().keySet()) {
                     // Reject any property names with a reserved prefix
                     if (key.startsWith("__"))

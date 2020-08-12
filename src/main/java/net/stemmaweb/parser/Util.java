@@ -121,6 +121,7 @@ public class Util {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     public static PathExpander getExpander (Direction d, String stemmaName) {
         final String pStemmaName = stemmaName;
         return new PathExpander() {
@@ -149,6 +150,7 @@ public class Util {
     static String jsonresp (String key, String message) {
         return String.format("{\"%s\": \"%s\"}", key, escape(message));
     }
+    @SuppressWarnings("SameParameterValue")
     static String jsonresp (String key, Long value) {
         return String.format("{\"%s\": %d}", key, value);
     }

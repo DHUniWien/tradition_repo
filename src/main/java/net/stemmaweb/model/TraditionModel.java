@@ -58,13 +58,13 @@ public class TraditionModel {
      */
     private String owner;
 
-    // Derived from relationships
     /**
      * The list of witness sigla belonging to this tradition
      */
     private ArrayList<String> witnesses;
 
     @MireDotIgnore
+    // Derived from relationships
     private ArrayList<String> reltypes;
 
     public TraditionModel() {}
@@ -81,7 +81,7 @@ public class TraditionModel {
             if (node.hasProperty("is_public"))
                 setIs_public((Boolean) node.getProperty("is_public"));
             if (node.hasProperty("stemweb_jobid"))
-                setStemweb_jobid(Integer.valueOf(node.getProperty("stemweb_jobid").toString()));
+                setStemweb_jobid(Integer.parseInt(node.getProperty("stemweb_jobid").toString()));
 
             Relationship ownerRel = node.getSingleRelationship(ERelations.OWNS_TRADITION,
                     org.neo4j.graphdb.Direction.INCOMING);
@@ -135,6 +135,7 @@ public class TraditionModel {
     }
     public Integer getStemweb_jobid () { return stemweb_jobid; }
     public void setStemweb_jobid (int stemweb_jobid ) { this.stemweb_jobid = stemweb_jobid; }
+    public ArrayList<String> getWitnesses() { return witnesses; }
     @SuppressWarnings("unused")
     public ArrayList<String> getReltypes() { return reltypes; }
     @SuppressWarnings("unused")
