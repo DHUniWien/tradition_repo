@@ -651,14 +651,15 @@ public class AnnotationTest extends TestCase {
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         String sectXmlOutput = response.readEntity(String.class);
-        // assertTrue(tradXmlOutput.contains("[ANNOTATIONLABEL]"));
+        assertTrue(tradXmlOutput.contains("[ANNOTATIONLABEL]"));
+        assertTrue(tradXmlOutput.contains("[LINKS]"));
         assertTrue(sectXmlOutput.contains("[TRANSLATION]"));
         assertTrue(sectXmlOutput.contains(translation));
 
         // Check that it gets re-imported correctly
         response = Util.createTraditionFromFileOrString(jerseyTest, "reimported", "LR", "1",
                 tradXmlOutput, "graphml");
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String newTradId = Util.getValueFromJson(response, "tradId");
         response = jerseyTest.target("/tradition/" + newTradId + "/annotations")
                 .request().get();
@@ -669,6 +670,15 @@ public class AnnotationTest extends TestCase {
         assertTrue(am.get(0).getProperties().containsKey("text"));
         assertEquals(translation, am.get(0).getProperties().get("text"));
 
+        // Check that the individual section can be added to the existing tradition
+        response = Util.addSectionToTradition(jerseyTest, newTradId, sectXmlOutput, "graphml", "duplicate");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        response = jerseyTest.target("/tradition/" + newTradId + "/annotations").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        am = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        // There should be two of them now
+        assertEquals(2, am.size());
+        assertTrue(am.stream().allMatch(x -> x.getLabel().equals("TRANSLATION")));
     }
 
     public void tearDown() throws Exception {

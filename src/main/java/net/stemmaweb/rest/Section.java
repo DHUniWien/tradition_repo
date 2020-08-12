@@ -230,6 +230,22 @@ public class Section {
         return new ArrayList<>(witnessList);
     }
 
+    // Also used by the GraphML exporter
+    public List<Node> collectSectionAnnotations() {
+        try (Transaction tx = db.beginTx()) {
+            // We want to find all annotation nodes that are linked both to the tradition node
+            // and to some node in this section.
+            HashSet<Node> foundAnns = new HashSet<>();
+            for (Node n : VariantGraphService.returnTraditionSection(sectId, db).nodes()) {
+                StreamSupport.stream(n.getRelationships(Direction.INCOMING).spliterator(), false)
+                        .filter(x -> x.getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
+                        .map(Relationship::getStartNode).forEach(foundAnns::add);
+            }
+            tx.success();
+            return new ArrayList<>(foundAnns);
+        }
+    }
+
     /**
      * Gets a list of all readings in the given tradition section.
      *
@@ -504,12 +520,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             // We want to find all annotation nodes that are linked both to the tradition node
             // and to some node in this section.
-            HashSet<Node> foundAnns = new HashSet<>();
-            for (Node n : VariantGraphService.returnTraditionSection(sectId, db).nodes()) {
-                StreamSupport.stream(n.getRelationships(Direction.INCOMING).spliterator(), false)
-                        .filter(x -> x.getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
-                        .map(Relationship::getStartNode).forEach(foundAnns::add);
-            }
+            List<Node> foundAnns = collectSectionAnnotations();
             // Filter the annotations if we have been asked to
             if (filterLabels.size() > 0) {
                 for (Node a : new ArrayList<>(foundAnns)) {

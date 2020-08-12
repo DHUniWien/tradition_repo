@@ -10,6 +10,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
@@ -23,8 +24,8 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  * @author PSE FS 2015 Team2
  */
 public class GraphMLExporter {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     private HashMap<String,String[]> nodeMap;
     private HashMap<String,String[]> edgeMap;
@@ -148,11 +149,39 @@ public class GraphMLExporter {
                 VariantGraphService.returnTraditionSection(sectionId, db).relationships();
 
         // Collect any extra nodes that should go into the list for whatever reason.
-        ArrayList<Node> extraNodes = new ArrayList<>();
-        if (sectionId != null && includeWitnesses) {
-            // We also want to include the witness nodes that appear in this section.
+        // So far this only applies if we are requesting a single section.
+
+        List<Node> extraNodes = new ArrayList<>();
+        List<Relationship> extraRels = new ArrayList<>();
+        if (sectionId != null) {
+            // We also want to include the annotation nodes that appear in this section,
+            // and relevant witness nodes if requested.
             Section sectionService = new Section(tradId, sectionId);
-            extraNodes = sectionService.collectSectionWitnesses();
+            extraNodes.addAll(sectionService.collectSectionAnnotations());
+            if (!extraNodes.isEmpty()) {
+                try (Transaction tx = db.beginTx()) {
+                    // Add the relationships pointing from the annotations to the section and to each other
+                    extraNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraRels::add));
+                    // Add in the annotation spec for this tradition, so that the annotations we just collected
+                    // can be validated when this file is parsed again.
+                    traditionNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING)
+                            .forEach(x -> {
+                                extraNodes.add(x.getEndNode());
+                                x.getEndNode().getRelationships(Direction.OUTGOING).forEach(y -> {
+                                    extraRels.add(y);
+                                    extraNodes.add(y.getEndNode());
+                                });
+                            });
+                    tx.success();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return Response
+                            .status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity("Error in user-defined node generation")
+                            .build();
+                }
+            }
+            if (includeWitnesses) extraNodes.addAll(sectionService.collectSectionWitnesses());
         }
 
 
@@ -178,6 +207,11 @@ public class GraphMLExporter {
             for (Node n : extraNodes) {
                 collectProperties(n, nodeMap);
                 nodeCount++;
+            }
+
+            for (Relationship e : extraRels) {
+                collectProperties(e, edgeMap);
+                edgeCount++;
             }
 
             writer.writeStartDocument();
@@ -221,6 +255,7 @@ public class GraphMLExporter {
 
             // And list out all the edges, which should already be unique in the traversal
             traditionEdges.forEach(x -> writeEdge(writer, x));
+            extraRels.forEach(x -> writeEdge(writer, x));
 
 
             writer.writeEndElement(); // graph
