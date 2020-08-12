@@ -24,12 +24,12 @@ import java.util.stream.Collectors;
  */
 public class TabularExporter {
 
-    private GraphDatabaseService db;
+    private final GraphDatabaseService db;
     public TabularExporter(GraphDatabaseService db){
         this.db = db;
     }
 
-    public Response exportAsJSON(String tradId, String conflate, List<String> sectionList) {
+    public Response exportAsJSON(String tradId, String conflate, List<String> sectionList, boolean excludeLayers) {
         ArrayList<Node> traditionSections;
         try {
             traditionSections = getSections(tradId, sectionList);
@@ -37,7 +37,7 @@ public class TabularExporter {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
 
-            return Response.ok(getTraditionAlignment(traditionSections, conflate),
+            return Response.ok(getTraditionAlignment(traditionSections, conflate, excludeLayers),
                     MediaType.APPLICATION_JSON_TYPE).build();
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
@@ -47,10 +47,11 @@ public class TabularExporter {
     }
 
 
-    public Response exportAsCSV(String tradId, char separator, String conflate, List<String> sectionList) {
+    public Response exportAsCSV(String tradId, char separator, String conflate, List<String> sectionList,
+                                boolean excludeLayers) {
         AlignmentModel wholeTradition;
         try {
-            wholeTradition = returnFullAlignment(tradId, conflate, sectionList);
+            wholeTradition = returnFullAlignment(tradId, conflate, sectionList, excludeLayers);
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
@@ -90,10 +91,11 @@ public class TabularExporter {
     }
 
 
-    public Response exportAsCharMatrix(String tradId, int maxVars, String conflate, List<String> sectionList) {
+    public Response exportAsCharMatrix(String tradId, int maxVars, String conflate, List<String> sectionList,
+                                       boolean excludeLayers) {
         AlignmentModel wholeTradition;
         try {
-            wholeTradition = returnFullAlignment(tradId, conflate, sectionList);
+            wholeTradition = returnFullAlignment(tradId, conflate, sectionList, excludeLayers);
             if (wholeTradition==null) return Response.status(Response.Status.NOT_FOUND).build();
         } catch (TabularExporterException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
@@ -165,11 +167,12 @@ public class TabularExporter {
         return Response.ok(charMatrix.toString()).build();
     }
 
-    private AlignmentModel returnFullAlignment(String tradId, String conflate, List<String> sectionList)
+    private AlignmentModel returnFullAlignment(String tradId, String conflate, List<String> sectionList,
+                                               boolean excludeLayers)
             throws Exception {
         ArrayList<Node> traditionSections = getSections(tradId, sectionList);
         if(traditionSections==null) return null;
-        return getTraditionAlignment(traditionSections, conflate);
+        return getTraditionAlignment(traditionSections, conflate, excludeLayers);
     }
 
     private static String shortenSigil (String sigil) {
@@ -193,7 +196,7 @@ public class TabularExporter {
         ArrayList<Node> collectedSections = new ArrayList<>();
         for (String sectionId : sectionList) {
             try (Transaction tx = db.beginTx()) {
-                collectedSections.add(db.getNodeById(Long.valueOf(sectionId)));
+                collectedSections.add(db.getNodeById(Long.parseLong(sectionId)));
                 tx.success();
             } catch (NotFoundException e) {
                 throw new TabularExporterException("Section " + sectionId + " not found in tradition");
@@ -202,7 +205,7 @@ public class TabularExporter {
         return collectedSections;
     }
 
-    private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, String collapseRelated)
+    private AlignmentModel getTraditionAlignment(ArrayList<Node> traditionSections, String collapseRelated, boolean excludeLayers)
             throws Exception {
         // Make a new alignment model that has a column for every witness layer across the requested sections.
 
@@ -213,7 +216,7 @@ public class TabularExporter {
         int length = 0;
         for (Node sectionNode : traditionSections) {
             if (collapseRelated != null) VariantGraphService.normalizeGraph(sectionNode, collapseRelated);
-            AlignmentModel asJson = new AlignmentModel(sectionNode);
+            AlignmentModel asJson = new AlignmentModel(sectionNode, excludeLayers);
             if (collapseRelated != null) VariantGraphService.clearNormalization(sectionNode);
             // Save the alignment to our tables list
             tables.add(asJson);

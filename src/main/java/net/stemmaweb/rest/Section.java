@@ -1464,15 +1464,17 @@ public class Section {
      * @summary Download JSON alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the JSON alignment
      */
     @GET
     @Path("/json")
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AlignmentModel.class)
-    public Response getJson(@QueryParam("conflate") String toConflate) {
+    public Response getJson(@QueryParam("conflate") String toConflate,
+                            @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        return new TabularExporter(db).exportAsJSON(tradId, toConflate, thisSection);
+        return new TabularExporter(db).exportAsJSON(tradId, toConflate, thisSection, "true".equals(excludeLayers));
     }
 
     /**
@@ -1481,15 +1483,18 @@ public class Section {
      * @summary Download CSV alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the CSV alignment as plaintext
      */
     @GET
     @Path("/csv")
     @Produces("text/plain; charset=utf-8")
     @ReturnType("java.lang.Void")
-    public Response getCsv(@QueryParam("conflate") String toConflate) {
+    public Response getCsv(@QueryParam("conflate") String toConflate,
+                           @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        return new TabularExporter(db).exportAsCSV(tradId, ',', toConflate, thisSection);
+        return new TabularExporter(db).exportAsCSV(tradId, ',', toConflate,
+                thisSection, "true".equals(excludeLayers));
     }
 
     /**
@@ -1498,15 +1503,18 @@ public class Section {
      * @summary Download TSV alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @return the TSV alignment as plaintext
      */
     @GET
     @Path("/tsv")
     @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
-    public Response getTsv(@QueryParam("conflate") String toConflate) {
+    public Response getTsv(@QueryParam("conflate") String toConflate,
+                           @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        return new TabularExporter(db).exportAsCSV(tradId, '\t', toConflate, thisSection);
+        return new TabularExporter(db).exportAsCSV(tradId, '\t', toConflate,
+                thisSection, "true".equals(excludeLayers));
     }
 
     /**
@@ -1515,6 +1523,7 @@ public class Section {
      * @summary Download character matrix for parsimony analysis
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeLayers - If "true", exclude witness layers from the output.
      * @param maxVars      - Maximum number of variants per location, above which that location will be discarded.
      *                       Default is 8, for compatibility with Phylip Pars.
      * @return the character matrix as plaintext
@@ -1524,9 +1533,11 @@ public class Section {
     @Produces("text/plain; charset=utf-8")
     @ReturnType(clazz = String.class)
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
+                                  @QueryParam("exclude_layers") String excludeLayers,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
-        return new TabularExporter(db).exportAsCharMatrix(tradId, maxVars, toConflate, thisSection);
+        return new TabularExporter(db).exportAsCharMatrix(tradId, maxVars, toConflate,
+                thisSection, "true".equals(excludeLayers));
     }
 
     // For use in a transaction!
