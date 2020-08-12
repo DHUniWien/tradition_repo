@@ -3,6 +3,7 @@ package net.stemmaweb.parser;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
+import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
@@ -56,6 +57,7 @@ public class GraphMLParser {
         String parentId = null;
         String parentLabel = null;
         ArrayList<Node> sectionNodes = new ArrayList<>();
+        ArrayList<Node> witnessNodes = new ArrayList<>();
         HashSet<String> sigla = new HashSet<>();
         // Keep track of XML ID to Neo4J ID mapping for all nodes
         HashMap<String, Node> entityMap = new HashMap<>();
@@ -76,10 +78,11 @@ public class GraphMLParser {
                 String neolabel = nodeProperties.remove("neolabel").toString();
                 String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
 
-                // If there is already a different tradition with this tradition ID, we are making a
-                // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
-                // node to match the one in the GraphML.
                 if (neolabel.contains("TRADITION")) {
+                    // We are apparently parsing a whole tradition.
+                    // If there is already a different tradition with this tradition ID, we are making a
+                    // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
+                    // node to match the one in the GraphML.
                     if (parentLabel != null) {
                         // We apparently have two TRADITION nodes. Abort.
                         // n.b. Old code, not sure if it was needed or just misunderstanding transactions
@@ -115,7 +118,8 @@ public class GraphMLParser {
                     entityMap.put(xmlId, entity);
                     // Save section node(s), in case we are uploading individual sections and need to connect
                     // them to our tradition node
-                    if (neolabel.contains("SECTION")) sectionNodes.add(entity);
+                    if (neolabel.contains("[SECTION]")) sectionNodes.add(entity);
+                    if (neolabel.contains("[WITNESS]")) witnessNodes.add(entity);
                 }
             }
 
@@ -178,6 +182,13 @@ public class GraphMLParser {
                 parentId = String.valueOf(newSection.getId());
             }
 
+            // Check any witness nodes we created and connect them to the tradition node if they wouldn't
+            // be duplicates
+            for (Node w : witnessNodes) {
+                if (!witnessExists(traditionNode, w) && w.getProperty("hypothetical").equals(false))
+                    traditionNode.createRelationshipTo(w, ERelations.HAS_WITNESS);
+            }
+
             // Reset the section IDs stored on each reading to the ID of the newly created node
             for (Node r : entityMap.values().stream().filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList())) {
                 String rSectId = r.getProperty("section_id").toString();
@@ -216,6 +227,13 @@ public class GraphMLParser {
         return Response.status(Response.Status.CREATED).entity(response).build();
     }
 
+    // Return true if the tradition already has a witness with the given sigil.
+    // LATER think about consistency checks, in case witness information conflicts
+    private boolean witnessExists(Node tradition, Node witness) {
+        String sigil = witness.getProperty("sigil").toString();
+        return DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS).stream()
+                .anyMatch(x -> x.getProperty("sigil", "").equals(sigil));
+    }
 
     private HashMap<String, Object> returnProperties (NodeList dataNodes, HashMap<String, String[]> dataKeys) {
         HashMap<String, Object> nodeProperties = new HashMap<>();

@@ -438,11 +438,10 @@ public class AnnotationTest extends TestCase {
         ref2.setLabel("PERSONREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        String str = readingLookup.get("luminaribus/4");
-        prb.setTarget(Long.valueOf(readingLookup.get(str)));
+        prb.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(Long.valueOf(readingLookup.get(str)));
+        pre.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
         ref2.addLink(prb);
         ref2.addLink(pre);
         response = jerseyTest
