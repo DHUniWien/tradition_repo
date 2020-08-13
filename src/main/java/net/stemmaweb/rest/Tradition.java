@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import com.alexmerz.graphviz.ParseException;
 import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
@@ -9,9 +10,7 @@ import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
 import net.stemmaweb.services.*;
-import org.json.JSONObject;
 import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.json.JSONException;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
@@ -24,6 +23,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.time.LocalDateTime.now;
 import static net.stemmaweb.rest.Util.jsonerror;
 import static net.stemmaweb.rest.Util.jsonresp;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
@@ -125,9 +125,9 @@ public class Tradition {
     /**
      * Create / save a new stemma for this tradition.
      *
-     * @summary Upload stemma
+     * @summary Upload a new stemma
      *
-     * @param dot - the stemma definition in modified GraphViz dot format
+     * @param stemmaSpec - the StemmaModel that describes the new stemma
      * @return The stemma specification in JSON format.
      * @statuscode 201 - on success
      * @statuscode 500 - on error, with an error message
@@ -137,22 +137,25 @@ public class Tradition {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
     @ReturnType("net.stemmaweb.model.StemmaModel")
-    public Response newStemma(String dot) {
-        DotParser parser = new DotParser(db);
-        Response result = parser.importStemmaFromDot(dot, traditionId);
-        if(result.getStatus() == Status.CREATED.getStatusCode()) {
-            Stemma restStemma;
-            try {
-                // Read the stemma name and return the stemma that was created
-                JSONObject newStemma = new JSONObject(result.getEntity().toString());
-                restStemma = new Stemma(traditionId, newStemma.getString("name"), true);
-            } catch (JSONException e) {
-                return Response.serverError().entity(jsonerror("Error reading JSON response on creation")).build();
+    public Response newStemma(StemmaModel stemmaSpec) {
+        // Make sure the tradition exists
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+
+        // Make sure the stemma has a name.
+        if (stemmaSpec.getIdentifier() == null || stemmaSpec.getIdentifier().equals("")) {
+            // Is there a name in the dot spec?
+            if (stemmaSpec.getDot() != null) try {
+                stemmaSpec.setIdentifier(DotParser.getDotGraphName(stemmaSpec.getDot()));
+            } catch (ParseException e) {
+                return Response.status(Status.BAD_REQUEST)
+                        .entity(jsonerror("Parse error in dot: " + e.getMessage())).build();
             }
-            return restStemma.getStemma();
-        } else {
-            return result;
+            else stemmaSpec.setIdentifier(String.format("New stemma %s", now()));
         }
+        Stemma restStemma = new Stemma(traditionId, stemmaSpec.getIdentifier(), true);
+        return restStemma.replaceStemma(stemmaSpec);
     }
 
     private ArrayList<SectionModel> produceSectionList (Node traditionNode) {

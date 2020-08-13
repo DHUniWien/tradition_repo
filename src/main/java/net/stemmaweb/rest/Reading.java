@@ -34,11 +34,11 @@ public class Reading {
 
     private String errorMessage; // global error message used for sub-method calls
 
-    private GraphDatabaseService db;
+    private final GraphDatabaseService db;
     /**
      * The ID of the reading to query
      */
-    private Long readId;
+    private final Long readId;
 
     public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -57,7 +57,7 @@ public class Reading {
      * @statuscode 500 - on error, with an error message
     */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getReading() {
         ReadingModel reading;
@@ -90,7 +90,7 @@ public class Reading {
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
         ReadingModel modelToReturn = new ReadingModel();
@@ -148,7 +148,7 @@ public class Reading {
      * @statuscode 500 - on error
      */
     @DELETE
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response deleteUserReading() {
         GraphModel deletedElements = new GraphModel();
@@ -204,7 +204,7 @@ public class Reading {
     @POST
     @Path("setlemma")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response setReadingAsLemma(@FormParam("value") @DefaultValue("false") String value) {
         List<ReadingModel> changed = new ArrayList<>();
@@ -254,7 +254,7 @@ public class Reading {
      */
     @POST
     @Path("/lacunaAfter")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("net.stemmaweb.model.GraphModel")
     public Response addLacuna (@QueryParam("witness") List<String> forWitnesses) {
         GraphModel result = new GraphModel();
@@ -323,7 +323,7 @@ public class Reading {
      */
     @GET
     @Path("related")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
         try {
@@ -352,7 +352,7 @@ public class Reading {
      */
     @POST
     @Path("normaliseRelated/{reltype}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response normaliseRelated(@PathParam("reltype") String onRelationType) {
         List<ReadingModel> changed = new ArrayList<>();
@@ -416,7 +416,7 @@ public class Reading {
      */
     @DELETE
     @Path("relations")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel")
     public Response deleteAllRelations() {
         ArrayList<RelationModel> deleted = new ArrayList<>();
@@ -449,7 +449,7 @@ public class Reading {
      */
     @GET
     @Path("witnesses")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getReadingWitnesses() {
         try {
@@ -513,7 +513,7 @@ public class Reading {
     @POST
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response duplicateReading(DuplicateModel duplicateModel) {
 
@@ -547,7 +547,7 @@ public class Reading {
             ArrayList<SequenceModel> tempSequences = new ArrayList<>();
             for (SequenceModel sm : newSequences) {
                 try {
-                    db.getRelationshipById(Long.valueOf(sm.getId()));
+                    db.getRelationshipById(Long.parseLong(sm.getId()));
                 } catch (NotFoundException e) {
                     tempSequences.add(sm);
                 }
@@ -658,7 +658,7 @@ public class Reading {
         Section sectionRest = new Section(tradId, sectId);
         Long ourRank = (Long) originalReading.getProperty("rank");
         for (RelationModel rm : sectionRest.sectionRelations()) {
-            Relationship originalRel = db.getRelationshipById(Long.valueOf(rm.getId()));
+            Relationship originalRel = db.getRelationshipById(Long.parseLong(rm.getId()));
             if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                     (rm.getSource().equals(String.valueOf(originalReading.getId())) ||
                      rm.getTarget().equals(String.valueOf(originalReading.getId())))) {
@@ -671,8 +671,8 @@ public class Reading {
             } else if (!(originalRel.hasProperty("colocation") &&
                     originalRel.getProperty("colocation").equals(true))){
                 // Get the related readings
-                ReadingModel relSource = new ReadingModel(db.getNodeById(Long.valueOf(rm.getSource())));
-                ReadingModel relTarget = new ReadingModel(db.getNodeById(Long.valueOf(rm.getTarget())));
+                ReadingModel relSource = new ReadingModel(db.getNodeById(Long.parseLong(rm.getSource())));
+                ReadingModel relTarget = new ReadingModel(db.getNodeById(Long.parseLong(rm.getTarget())));
                 if ((relSource.getRank() < ourRank && relTarget.getRank() > ourRank)
                     || (relSource.getRank() > ourRank && relTarget.getRank() < ourRank)) {
                     originalRel.delete();
@@ -921,7 +921,7 @@ public class Reading {
     @POST
     @Path("split/{splitIndex}")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
@@ -1084,7 +1084,7 @@ public class Reading {
      */
     @GET
     @Path("next/{witnessId}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
@@ -1115,7 +1115,7 @@ public class Reading {
      */
     @GET
     @Path("prior/{witnessId}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
@@ -1228,7 +1228,7 @@ public class Reading {
     @POST
     @Path("concatenate/{read2Id}")
     @Consumes(MediaType.APPLICATION_JSON)
-    // @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    // @Produces("application/json; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
 
@@ -1413,7 +1413,7 @@ public class Reading {
         String tradId;
         try (Transaction tx = db.beginTx()) {
             Node rdg = db.getNodeById(readId);
-            tradId = db.getNodeById(Long.valueOf(rdg.getProperty("section_id").toString()))
+            tradId = db.getNodeById(Long.parseLong(rdg.getProperty("section_id").toString()))
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING)
                     .getStartNode().getProperty("id").toString();
             tx.success();

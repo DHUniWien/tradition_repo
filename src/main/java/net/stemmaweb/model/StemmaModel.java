@@ -1,6 +1,8 @@
 package net.stemmaweb.model;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.qmino.miredot.annotations.MireDotIgnore;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.rest.ERelations;
@@ -32,13 +34,16 @@ public class StemmaModel {
      */
     private Boolean is_contaminated;
     @MireDotIgnore
-    private Long from_jobid;
+    private Integer from_jobid;
     /**
      * A string that holds the dot specification of the stemma or tree topology.
      */
     private String dot;
+    /**
+     * A string that holds the Newick specification of the tree topology.
+     */
+    private String newick;
 
-    @SuppressWarnings("unused")   // It's used by Jersey request.get(StemmaModel.class)
     public StemmaModel () {}
 
     public StemmaModel(Node stemmaNode) {
@@ -48,7 +53,7 @@ public class StemmaModel {
             is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);
             is_contaminated = stemmaNode.hasProperty("is_contaminated");
             if (stemmaNode.hasProperty("from_jobid"))
-                from_jobid = (Long) stemmaNode.getProperty("from_jobid");
+                from_jobid = (Integer) stemmaNode.getProperty("from_jobid");
 
             // Generate the dot as well.
             Node traditionNode = stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING).getStartNode();
@@ -59,10 +64,22 @@ public class StemmaModel {
         }
     }
 
-    // This should be read-only; we shouldn't need to construct a stemma model for a query. So far.
     public String getIdentifier () { return this.identifier; }
+    public void setIdentifier(String identifier) { this.identifier = identifier; }
+
     public String getDot () { return this.dot; }
-    public Long getFrom_jobid () { return this.from_jobid; }
+    public void setDot(String dot) { this.dot = dot; }
+
+    @JsonGetter("from_jobid")
+    public Integer getJobid () { return this.from_jobid; }
+    public Boolean cameFromJobid() { return this.from_jobid != null && this.from_jobid != 0; }
+    @JsonSetter("from_jobid")
+    public void setJobid(Integer jobid) { this.from_jobid = jobid; }
+
+    public String getNewick() { return this.newick; }
+    public void setNewick(String n) { this.newick = n; }
+
+    /* Read-only accessors */
     public Boolean getIs_undirected () { return this.is_undirected; }
     public Boolean getIs_contaminated () { return this.is_contaminated; }
 

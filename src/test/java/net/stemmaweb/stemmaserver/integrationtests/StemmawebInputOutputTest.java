@@ -103,8 +103,8 @@ public class StemmawebInputOutputTest {
     /**
      * test if the tradition node exists
      */
-    private Boolean traditionNodeExists(){
-        Boolean answer;
+    private boolean traditionNodeExists(){
+        boolean answer;
         try(Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
             answer = tradNodesIt.hasNext();
@@ -259,7 +259,8 @@ public class StemmawebInputOutputTest {
         assertEquals("Greek", Util.getValueFromJson(jerseyResponse, "language"));
 
         // Add a stemma
-        String newStemma = "digraph Stemma {\n" +
+        StemmaModel newStemma = new StemmaModel();
+        newStemma.setDot("digraph Stemma {\n" +
                 "    \"α\" [ class=hypothetical ];\n" +
                 "    \"γ\" [ class=hypothetical ];\n" +
                 "    \"δ\" [ class=hypothetical ];\n" +
@@ -301,7 +302,7 @@ public class StemmawebInputOutputTest {
                 "    5 -> 7;\n" +
                 "    7 -> E;\n" +
                 "    7 -> G;\n" +
-                "}\n";
+                "}\n");
         jerseyResponse = jerseyTest
                 .target("/tradition/" + traditionId + "/stemma")
                 .request(MediaType.APPLICATION_JSON)
@@ -407,7 +408,7 @@ public class StemmawebInputOutputTest {
                 });
         assertEquals(1, stemmata.size());
 
-        Util.assertStemmasEquivalent(newStemma, stemmata.get(0).getDot());
+        Util.assertStemmasEquivalent(newStemma.getDot(), stemmata.get(0).getDot());
 
         // Check for the correct language setting
     }

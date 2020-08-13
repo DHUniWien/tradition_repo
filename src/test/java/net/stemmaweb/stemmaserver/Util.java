@@ -156,7 +156,7 @@ public class Util {
         String value = null;
         InputStream response = r.getEntityStream();
         try {
-            JSONObject content = new JSONObject(IOUtils.toString(response, "UTF-8"));
+            JSONObject content = new JSONObject(IOUtils.toString(response, StandardCharsets.UTF_8));
             if (content.has(key))
                 value = String.valueOf(content.get(key));
         } catch (Exception e) {

@@ -7,6 +7,7 @@ import javax.ws.rs.core.Response.Status;
 
 import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.objects.*;
+import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -31,35 +32,37 @@ public class DotParser {
         this.db = db;
     }
 
-    public Response importStemmaFromDot(String dot, String tradId) {
+    /**
+     * Parses the dot string in a StemmaModel into a stemma object, and returns an appropriate Response.
+     *
+     * @param tradId     - The ID of the tradition to which this stemma should be added
+     * @param stemmaSpec - A StemmaModel containing the specification for the stemma
+     * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
+     */
+    public Response importStemmaFromDot(String tradId, StemmaModel stemmaSpec) {
         Status result = null;
-        // Split the dot string into separate lines if necessary. Having
-        // single-line dot seems to confuse the parser.
-        if (dot.indexOf('\n') == -1) {
-            dot = dot.replaceAll("; ", ";\n");
-            dot = dot.replaceAll("\\{ ", "{\n");
-            dot = dot.replaceAll(" }", "\n}");
-        }
-        StringBuffer dotstream = new StringBuffer(dot);
-        Parser p = new Parser();
+        Graph stemma = null;
         try {
-            p.parse(dotstream);
+            List<Graph> parsedgraphs = parseDot(stemmaSpec.getDot());
+            if (parsedgraphs.size() == 0) {
+                messageValue = "No graphs were found in this DOT specification.";
+                result = Status.BAD_REQUEST;
+            } else if (parsedgraphs.size() > 1) {
+                messageValue = "More than one graph was found in this DOT specification.";
+                result = Status.BAD_REQUEST;
+            }
+            stemma = parsedgraphs.get(0);
+            // Get its name, in case we still don't have one
+            if (stemmaSpec.getIdentifier() == null)
+                stemmaSpec.setIdentifier(getDotGraphName(stemma));
         } catch (ParseException e) {
-            messageValue = e.toString();
-            result = Status.BAD_REQUEST;
-        }
-        ArrayList<Graph> parsedgraphs = p.getGraphs();
-        if (parsedgraphs.size() == 0) {
-            messageValue = "No graphs were found in this DOT specification.";
-            result = Status.BAD_REQUEST;
-        } else if (parsedgraphs.size() > 1) {
-            messageValue = "More than one graph was found in this DOT specification.";
+            messageValue = "Error on attempt to parse dot: " + e.getMessage();
             result = Status.BAD_REQUEST;
         }
 
         // Save the graph into Neo4J.
         if (result == null)
-            result = saveToNeo(parsedgraphs.get(0), tradId);
+            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier());
 
         // Return our answer.
         String returnKey = result == Status.CREATED ? "name" : "error";
@@ -68,17 +71,12 @@ public class DotParser {
                 .build();
     }
 
-    private Status saveToNeo(Graph stemma, String tradId) {
+    private Status saveToNeo(Graph stemma, String tradId, String stemmaName) {
         // Check for the existence of the tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null)
             return Status.NOT_FOUND;
 
-        String stemmaName = stemma.getId().getLabel();
-        // If the stemma name wasn't quoted, it will be an id.
-        if (stemmaName.equals("")) {
-            stemmaName = stemma.getId().getId();
-        }
         try (Transaction tx = db.beginTx()) {
             // First check that no stemma with this name already exists for this tradition,
             // unless we intend to replace it.
@@ -108,7 +106,7 @@ public class DotParser {
                     messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
                     return Status.BAD_REQUEST;
                 }
-                Boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
+                boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
                 // Check for the existence of a node by this name
                 Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
                 if (existingWitness != null) {
@@ -213,6 +211,37 @@ public class DotParser {
         }
         messageValue = stemmaName;
         return Status.CREATED;
+    }
+
+    public static String getDotGraphName (String dotSpec) throws ParseException {
+        // Handle the case where we didn't provide a name in the StemmaModel, e.g. when parsing
+        // bare dot strings from the old Stemmaweb
+        List<Graph> allGraphs = parseDot(dotSpec);
+        if (allGraphs.size() == 0) return null;
+        return getDotGraphName(allGraphs.get(0));
+    }
+
+    private static String getDotGraphName (Graph dotStemma) {
+        String stemmaName = dotStemma.getId().getLabel();
+        // If the stemma name wasn't quoted, it will be an id.
+        if (stemmaName.equals("")) {
+            stemmaName = dotStemma.getId().getId();
+        }
+        return stemmaName;
+    }
+
+    private static List<Graph> parseDot (String dot) throws ParseException {
+        // Split the dot string into separate lines if necessary. Having
+        // single-line dot seems to confuse the parser.
+        if (dot.indexOf('\n') == -1) {
+            dot = dot.replaceAll("; ", ";\n");
+            dot = dot.replaceAll("\\{ ", "{\n");
+            dot = dot.replaceAll(" }", "\n}");
+        }
+        StringBuffer dotstream = new StringBuffer(dot);
+        Parser p = new Parser();
+        p.parse(dotstream);
+        return p.getGraphs();
     }
 
     private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {

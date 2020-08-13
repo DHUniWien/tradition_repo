@@ -1,7 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -541,10 +541,10 @@ public class TraditionTest {
         String florId = createTraditionFromFile("Florilegium", testfile, userModel.getId());
 
         // give it a stemma
-        String newStemma = null;
+        StemmaModel newStemma = new StemmaModel();
         try {
             byte[] encStemma = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
-            newStemma = new String(encStemma, Charset.forName("utf-8"));
+            newStemma.setDot(new String(encStemma, StandardCharsets.UTF_8));
         } catch (IOException e) {
             fail();
         }
@@ -558,7 +558,7 @@ public class TraditionTest {
         jerseyResponse = jerseyTest
                 .target("/tradition/" + florId + "/stemma/Stemma/reorient/2")
                 .request()
-                .post(Entity.json(newStemma));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
 
         // give it some relationships - rank 37, rank 13, ranks 217/219

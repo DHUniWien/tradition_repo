@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 
@@ -25,8 +26,8 @@ import org.neo4j.graphdb.*;
  * @author PSE FS 2015 Team2
  */
 public class StemmawebParser {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     /* public Response parseGraphML(String filename, Node parentNode)
         throws FileNotFoundException {
@@ -180,10 +181,7 @@ public class StemmawebParser {
                                     String val = reader.getElementText();
                                     switch (attr) {
                                         case "a_derivable_from_b":
-                                            if (val.equals("1"))
-                                                currentRelModel.setA_derivable_from_b(true);
-                                            else
-                                                currentRelModel.setA_derivable_from_b(false);
+                                            currentRelModel.setA_derivable_from_b(val.equals("1"));
                                             break;
                                         case "alters_meaning":
                                             currentRelModel.setAlters_meaning(Long.parseLong(val));
@@ -192,10 +190,7 @@ public class StemmawebParser {
                                             currentRelModel.setAnnotation(val);
                                             break;
                                         case "b_derivable_from_a":
-                                            if (val.equals("1"))
-                                                currentRelModel.setB_derivable_from_a(true);
-                                            else
-                                                currentRelModel.setB_derivable_from_a(false);
+                                            currentRelModel.setB_derivable_from_a(val.equals("1"));
                                             break;
                                         case "displayform":
                                             currentRelModel.setDisplayform(val);
@@ -219,10 +214,7 @@ public class StemmawebParser {
                                             currentRelModel.setIs_significant(val);
                                             break;
                                         case "non_independent":
-                                            if (val.equals("1"))
-                                                currentRelModel.setNon_independent(true);
-                                            else
-                                                currentRelModel.setNon_independent(false);
+                                            currentRelModel.setNon_independent(val.equals("1"));
                                             break;
                                         case "scope":
                                             currentRelModel.setScope(val);
@@ -290,35 +282,6 @@ public class StemmawebParser {
                                 currentRelModel.setAlters_meaning(null);
                                 currentRelModel.setB_derivable_from_a(null);
                                 currentRelModel.setNon_independent(null);
-/*
-                                String sourceName = reader.getAttributeValue("", "source");
-                                String targetName = reader.getAttributeValue("", "target");
-                                Node from = db.getNodeById(idToNeo4jId.get(sourceName));
-                                Node to = db.getNodeById(idToNeo4jId.get(targetName));
-                                ERelations relKind = (currentGraph.equals("relationships")) ?
-                                        ERelations.RELATED : ERelations.SEQUENCE;
-                                // Sequence relationships are specified multiple times in the graph, once
-                                // per witness. Reading relationships should be specified only once.
-                                if (from.hasRelationship(relKind, Direction.BOTH)) {
-                                    for (Relationship qr : from.getRelations(relKind, Direction.BOTH)) {
-                                        if (qr.getStartNode().equals(to) || qr.getEndNode().equals(to)) {
-                                            // If a RELATED link already exists, we have a problem.
-                                            if (relKind.equals(ERelations.RELATED))
-                                                return Response.status(Response.Status.BAD_REQUEST)
-                                                        .entity("Error: Tradition specifies the reading relationship " +
-                                                                sourceName + " -- " + targetName +
-                                                                "twice")
-                                                        .build();
-                                            // It's a SEQUENCE link, so we are good.
-                                            currentRel = qr;
-                                            break;
-                                        }
-                                    }
-                                }
-                                // If not, create it.
-                                if (currentRel == null)
-                                    currentRel = from.createRelationshipTo(to, relKind);
-*/
                                 break;
                             case "node":
                                 assert(currentGraph != null);
@@ -372,7 +335,9 @@ public class StemmawebParser {
 
             for (String graph : graphs) {
                 DotParser parser = new DotParser(db);
-                parser.importStemmaFromDot(graph, tradId);
+                StemmaModel sm = new StemmaModel();
+                sm.setDot(graph);
+                parser.importStemmaFromDot(tradId, sm);
             }
         }
 

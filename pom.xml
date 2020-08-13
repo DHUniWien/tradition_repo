@@ -120,10 +120,13 @@
 			<artifactId>opencsv</artifactId>
 			<version>5.2</version>
 		</dependency>
-		<!-- The following are used for API documentation -->
-		<!-- <dependency> <groupId>com.wordnik</groupId> <artifactId>swagger-annotations</artifactId> 
-			<version>1.5.3-M1</version> <type>jar</type> </dependency> <dependency> <groupId>io.swagger</groupId> 
-			<artifactId>swagger-jersey2-jaxrs</artifactId> <version>1.5.0</version> </dependency> -->
+		<!-- Newick parsing -->
+		<dependency>
+			<groupId>com.github.qurben</groupId>
+			<artifactId>libnewicktree</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<!-- Neo4J dependencies -->
 		<dependency>
 			<groupId>org.neo4j</groupId>
 			<artifactId>neo4j</artifactId>

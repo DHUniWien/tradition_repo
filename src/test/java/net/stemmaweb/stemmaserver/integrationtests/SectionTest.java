@@ -380,7 +380,7 @@ public class SectionTest extends TestCase {
         Response jerseyResponse = jerseyTest
                 .target(requestPath)
                 .request()
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
 
         String pText = "Ὄψις γυναικὸς πεφαρμακευμένον βέλος ἐστὶ ἔτρωσε τὴν ψυχὴν, καὶ τὸν ἰὸν ἐναπέθετο, καὶ ὅσον " +
@@ -419,13 +419,13 @@ public class SectionTest extends TestCase {
         jerseyResponse = jerseyTest
                 .target(requestPath)
                 .request()
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResponse.getStatus());
 
         // Now try merge of 2 into 1
         targetSection = florIds.get(0);
         requestPath = "/tradition/" + florId + "/section/" + florIds.get(1) + "/merge/" + targetSection;
-        jerseyResponse = jerseyTest.target(requestPath).request().post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+        jerseyResponse = jerseyTest.target(requestPath).request().post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         assertEquals(2, jerseyTest
                 .target("/tradition/" + florId + "/sections")
@@ -491,7 +491,7 @@ public class SectionTest extends TestCase {
         Response jerseyResult = jerseyTest
                 .target(splitPath)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         String newSectionId = Util.getValueFromJson(jerseyResult, "sectionId");
 
@@ -554,11 +554,7 @@ public class SectionTest extends TestCase {
                 .target("/tradition/" + florId + "/section/" + newSectionId + "/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {});
-        boolean foundRank1 = false;
-        for (ReadingModel rdg : part2rdgs)
-            if (rdg.getRank().equals(1L))
-                foundRank1 = true;
-        assertTrue(foundRank1);
+        assertTrue(part2rdgs.stream().anyMatch(x -> x.getRank().equals(1L)));
 
         // Check that the first half's end rank correct
         List<ReadingModel> part1rdgs = jerseyTest
@@ -628,7 +624,7 @@ public class SectionTest extends TestCase {
         jerseyResponse = jerseyTest
                 .target(splitPath)
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
         String newSectionId = Util.getValueFromJson(jerseyResponse, "sectionId");
         // Check that the first half can be exported to dot
@@ -658,11 +654,7 @@ public class SectionTest extends TestCase {
                 .target("/tradition/" + mattId + "/section/" + newSectionId + "/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {});
-        boolean foundRank1 = false;
-        for (ReadingModel rdg : part2rdgs)
-            if (rdg.getRank().equals(1L))
-                foundRank1 = true;
-        assertTrue(foundRank1);
+        assertTrue(part2rdgs.stream().anyMatch(x -> x.getRank().equals(1L)));
 
         // Check that the first half's end rank correct
         List<ReadingModel> part1rdgs = jerseyTest
@@ -825,7 +817,7 @@ public class SectionTest extends TestCase {
         // Split the section and check that we can still retrieve each emendation
         response = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/splitAtRank/8")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         String newSection = Util.getValueFromJson(response, "sectionId");
         GraphModel oldResult = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/emendations")
@@ -876,7 +868,7 @@ public class SectionTest extends TestCase {
         ReadingModel eReading = newEmendation.getReadings().iterator().next();
 
         // Lemmatise the emendation
-        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<String,String>();
+        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
         lemmaParam.add("value", "true");
         response = jerseyTest.target("/reading/" + eReading.getId() + "/setlemma")
                 .request()
@@ -896,7 +888,7 @@ public class SectionTest extends TestCase {
         response = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/setlemma")
                 .request(MediaType.APPLICATION_JSON)
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
 
         // Check that we can still request the section dot
@@ -1060,7 +1052,7 @@ public class SectionTest extends TestCase {
                 "terre/6", "illius/7", "ad/8", "dei/9", "veri/10", "noticiam/11", "et/12", "cultum/13",
                 "magis/14", "illustrabatur/16", "jugiter/17", "ac/18", "informabatur/19", "Sanctus/20", "autem/21"};
         // Make the request data for lemmatising
-        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<String,String>();
+        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
         lemmaParam.add("value", "true");
         for (String rdg : lemmatised) {
             // Set normal forms for a few selected readings
@@ -1145,7 +1137,7 @@ public class SectionTest extends TestCase {
         jerseyResult = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + newSectId + "/setlemma")
                 .request()
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
 
         // Check that we now have a lemma text
@@ -1220,7 +1212,7 @@ public class SectionTest extends TestCase {
         jerseyResult = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + newSectId + "/setlemma")
                 .request()
-                .post(Entity.entity(null, MediaType.APPLICATION_FORM_URLENCODED));
+                .post(null);
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
         jerseyResult = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + newSectId + "/lemmatext")

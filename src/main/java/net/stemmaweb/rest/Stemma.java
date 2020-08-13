@@ -13,9 +13,9 @@ import javax.ws.rs.core.Response.Status;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
+import net.stemmaweb.parser.NewickParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
-import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import static net.stemmaweb.rest.Util.jsonerror;
@@ -27,17 +27,13 @@ import static net.stemmaweb.rest.Util.jsonerror;
  */
 public class Stemma {
 
-    private GraphDatabaseService db;
-    private String tradId;
-    private String name;
-    private Boolean newCreated;
+    private final GraphDatabaseService db;
+    private final String tradId;
+    private final String name;
+    private final Boolean newCreated;
 
     public Stemma (String traditionId, String requestedName) {
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-        db = dbServiceProvider.getDatabase();
-        tradId = traditionId;
-        name = requestedName;
-        newCreated = false;
+        this(traditionId, requestedName, false);
     }
 
     public Stemma (String traditionId, String requestedName, Boolean created) {
@@ -58,7 +54,7 @@ public class Stemma {
      * @statuscode 500 - on failure, with an error message
      */
     @GET
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = StemmaModel.class)
     public Response getStemma() {
         Node stemmaNode = getStemmaNode();
@@ -75,7 +71,7 @@ public class Stemma {
      * Stores a new or updated stemma under the given name.
      *
      * @summary Replace or add new stemma
-     * @param dot - The string specification of the new or replacement stemma topology.
+     * @param stemmaSpec - A StemmaModel containing the new or replacement stemma.
      * @return The stemma information, including its dot specification.
      * @statuscode 200 - on success, if stemma is updated
      * @statuscode 201 - on success, if stemma is new
@@ -85,28 +81,32 @@ public class Stemma {
      */
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = StemmaModel.class)
-    public Response replaceStemma(String dot) {
-        DotParser parser = new DotParser(db);
+    public Response replaceStemma(StemmaModel stemmaSpec) {
+        // In case the stemma spec doesn't have a name, assume it wants the name in the URL just called
+        if (stemmaSpec.getIdentifier() == null)
+            stemmaSpec.setIdentifier(this.name);
         // Wrap this entire thing in a transaction so that we can roll back
         // the deletion if the replacement import fails.
         try (Transaction tx = db.beginTx()) {
-            String originalName = name;
-            Response deletionResult = deleteStemma();
-            if (deletionResult.getStatus() != 200)
-                return deletionResult;
+            if (!this.newCreated) {
+                Response deletionResult = deleteStemma();
+                if (deletionResult.getStatus() != 200)
+                    return deletionResult;
+            }
 
-            Response replaceResult = parser.importStemmaFromDot(dot, tradId);
+            Response replaceResult;
+            if (stemmaSpec.getNewick() != null) {
+                // We are importing a Newick tree; roleplay accordingly.
+                NewickParser parser = new NewickParser(db);
+                replaceResult = parser.importStemmaFromNewick(tradId, stemmaSpec);
+            } else {
+                DotParser parser = new DotParser(db);
+                replaceResult = parser.importStemmaFromDot(tradId, stemmaSpec);
+            }
             if (replaceResult.getStatus() != 201)
                 return replaceResult;
-
-            // Check that the names matched.
-            JSONObject content = new JSONObject(replaceResult.getEntity().toString());
-            if (!content.get("name").equals(originalName)) {
-                return Response.status(Status.BAD_REQUEST)
-                        .entity(jsonerror("Name mismatch between original and replacement stemma")).build();
-            }
 
             // OK, we can commit it.
             tx.success();
@@ -114,6 +114,7 @@ public class Stemma {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
+        // Return the stemma that has been PUT under this name.
         return this.getStemma();
     }
 
@@ -131,7 +132,8 @@ public class Stemma {
     @ReturnType("java.lang.Void")
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
-        assert stemmaNode != null;
+        if (stemmaNode == null)
+            return Response.status(Status.NOT_FOUND).build();
         try (Transaction tx = db.beginTx()) {
             Set<Relationship> removableRelations = new HashSet<>();
             Set<Node> removableNodes = new HashSet<>();
@@ -181,7 +183,7 @@ public class Stemma {
      */
     @POST
     @Path("reorient/{nodeId}")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())

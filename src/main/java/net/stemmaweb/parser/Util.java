@@ -58,7 +58,7 @@ public class Util {
         return witnessNode;
     }
 
-    static void findOrCreateExtant(Node traditionNode, String sigil) {
+    static Node findOrCreateExtant(Node traditionNode, String sigil) {
         // This list should contain either zero or one items.
         ArrayList<Node> existingWit = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                 .stream().filter(x -> x.hasProperty("hypothetical")
@@ -68,9 +68,9 @@ public class Util {
         if (existingWit.size() == 0) {
             Node witnessNode = createWitness(traditionNode, sigil, false);
             traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
-        //     return witnessNode;
-        // } else {
-        //     return existingWit.get(0);
+            return witnessNode;
+        } else {
+            return existingWit.get(0);
         }
     }
 
