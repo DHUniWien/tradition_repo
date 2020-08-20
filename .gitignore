@@ -1,6 +1,7 @@
 legacy/StemmaServer/database/*
 database/*
 generated/*
+src/main/webapp/WEB-INF/docs
 target/*
 .idea/*
 upload/*
