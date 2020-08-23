@@ -18,10 +18,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
-import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.File;
@@ -42,6 +42,7 @@ import static net.stemmaweb.rest.Util.jsonresp;
  */
 @Path("/")
 public class Root {
+    @Context ServletContext context;
     private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private final GraphDatabaseService db = dbServiceProvider.getDatabase();
     
@@ -57,8 +58,6 @@ public class Root {
         return CLICHED_MESSAGE;
     }
 
-    @Inject
-    private ServletContext context;
     @GET
     @Path("{path: docs.*}")
     public Response getDocs(@PathParam("path") String path) {
