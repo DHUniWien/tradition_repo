@@ -20,6 +20,8 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
+    - name: Install Graphviz
+      run: apt install graphviz
     - name: Add Miredot license
       run: sed -i "s/MIREDOT_LICENSE/${{ secrets.MIREDOT_LICENSE }}/" pom.xml
     - name: Build with Maven
