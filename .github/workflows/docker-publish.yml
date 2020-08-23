@@ -4,7 +4,7 @@ on:
   push:
     # Publish `1.2.3` tags as releases.
     tags:
-      - [0-9]*
+      - '[0-9]*'
 
 env:
   # TODO: Change variable to your image's name.
