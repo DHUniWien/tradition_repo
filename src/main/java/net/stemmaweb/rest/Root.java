@@ -11,16 +11,21 @@ import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
+import org.apache.tika.Tika;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
+import javax.servlet.ServletContext;
 import javax.ws.rs.*;
 import javax.ws.rs.Path;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +42,7 @@ import static net.stemmaweb.rest.Util.jsonresp;
  */
 @Path("/")
 public class Root {
+    @Context ServletContext context;
     private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private final GraphDatabaseService db = dbServiceProvider.getDatabase();
     
@@ -52,6 +58,20 @@ public class Root {
         return CLICHED_MESSAGE;
     }
 
+    @GET
+    @Path("{path: docs.*}")
+    public Response getDocs(@PathParam("path") String path) {
+        if (path.equals("docs") || path.equals("docs/")) path = "docs/index.html";
+        final String target = String.format("/WEB-INF/%s", path);
+        Tika tika = new Tika();
+        try {
+            String mimeType = tika.detect(new File(context.getRealPath(target)));
+            InputStream resource = context.getResourceAsStream(target);
+            return Response.status(Response.Status.OK).type(mimeType).entity(resource).build();
+        } catch (IOException e) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+    }
 
     /**
      * @param tradId - the ID of the tradition being queried
@@ -110,7 +130,7 @@ public class Root {
     @POST
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.lang.Void")
     public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
                                   @FormDataParam("userId") String userId,
@@ -195,7 +215,7 @@ public class Root {
      */
     @GET
     @Path("/traditions")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
     public Response getAllTraditions(@DefaultValue("false") @QueryParam("public") Boolean publiconly) {
         List<TraditionModel> traditionList = new ArrayList<>();
@@ -226,7 +246,7 @@ public class Root {
      */
     @GET
     @Path("/users")
-    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.UserModel>")
     public Response getAllUsers() {
         List<UserModel> userList = new ArrayList<>();
