@@ -23,7 +23,7 @@ jobs:
     - name: Add Miredot license
       run: sed -i "s/MIREDOT_LICENSE/${{ secrets.MIREDOT_LICENSE }}/" pom.xml
     - name: Build with Maven
-      run: mvn -B package -Dtests.skip.true --file pom.xml
+      run: mvn -B package -Dmaven.test.skip=true --file pom.xml
     - name: Archive .war file
       uses: actions/upload-artifact@v2
       with:
