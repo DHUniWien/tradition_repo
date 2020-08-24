@@ -1,4 +1,5 @@
 legacy/StemmaServer/database/*
+src/main/webapp/WEB-INF/docs
 database/*
 generated/*
 target/*

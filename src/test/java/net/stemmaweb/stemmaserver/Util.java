@@ -5,6 +5,7 @@ import com.alexmerz.graphviz.Parser;
 import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
@@ -273,6 +274,14 @@ public class Util {
             result.put(key, r.getId());
         }
         return result;
+    }
+
+    public static SectionModel getSingleSection(JerseyTest jerseyTest, String tradId) {
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
+                .request().get(new GenericType<List<SectionModel>>() {});
+        if (sections.size() != 1)
+            throw new RuntimeException("Tradition does not have a single section");
+        return sections.get(0);
     }
 
 }

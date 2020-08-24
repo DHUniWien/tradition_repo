@@ -4,6 +4,7 @@ import junit.framework.TestCase;
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -23,10 +24,10 @@ import javax.ws.rs.core.MediaType;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNotEquals;
 
 /**
@@ -298,6 +299,58 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request()
                 .get(new GenericType<List<WitnessModel>>() {});
         assertEquals(13, wits.size());
+    }
+
+    public void testXMLInputWithAnnotations() {
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Matthew 401", "LR",
+                "me@example.org", "src/TestFiles/m401-annotated.xml", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String mattId = Util.getValueFromJson(r, "tradId");
+        SectionModel section = Util.getSingleSection(jerseyTest, mattId);
+        List<AnnotationModel> annos = jerseyTest.target("/tradition/" + mattId + "/annotations")
+                .request().get(new GenericType<List<AnnotationModel>>() {});
+        // Check that all annotations are there
+        assertEquals(24, annos.size());
+        assertEquals(14, annos.stream().filter(x -> x.getLabel().equals("TRANSLATION")).count());
+        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("DATEREF")).count());
+        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("TITLE")).count());
+        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("DATING")).count());
+        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("PERSONREF")).count());
+        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("PLACEREF")).count());
+        // Get our section ID
+
+        // Spot-check that a few are linked correctly
+        Optional<AnnotationModel> testAnno = annos.stream().filter(x -> x.getLabel().equals("TRANSLATION")
+                && x.getProperties().get("text").equals("And after 5 years locusts arose in that district, " +
+                "like sands of the sea, and ruined the earth.")).findFirst();
+        assertTrue(testAnno.isPresent());
+        List<ReadingModel> sectionReadings = jerseyTest
+                .target("/tradition/" + mattId + "/section/" + section.getId() + "/lemmareadings")
+                .request().get(new GenericType<List<ReadingModel>>() {});
+        // Find the ranks of the start and finish of this translation
+        assertEquals(2, testAnno.get().getLinks().size());
+        Long startId = 0L;
+        Long endId = 0L;
+        for (AnnotationLinkModel lm : testAnno.get().getLinks()) {
+            if (lm.getType().equals("BEGIN"))
+                startId = lm.getTarget();
+            else if (lm.getType().equals("END"))
+                endId = lm.getTarget();
+        }
+        assertFalse(startId == 0L);
+        assertFalse(endId == 0L);
+        List<ReadingModel> translated = new ArrayList<>();
+        boolean in_translation = false;
+        for (ReadingModel rm : sectionReadings) {
+            if (rm.getId().equals(String.valueOf(startId)))
+                in_translation = true;
+            if (in_translation) translated.add(rm);
+            if (rm.getId().equals(String.valueOf(endId)))
+                in_translation = false;
+        }
+        String expected = "և զկնի հինկ ամին եկեալ մարախ յայնմ գաւառին որպէս զաւազ ծովու և ապականեաց զերկիր.";
+        String actual = ReadingService.textOfReadings(translated, true, false);
+        assertEquals(expected, actual);
     }
 
     // testXMLUserNodes

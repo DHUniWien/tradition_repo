@@ -136,7 +136,7 @@ public class Annotation {
                         pval = pstr.charAt(0);
                     } else {
                         Class<?> pclass = Class.forName("java.lang." + ptype);
-                        if (ptype.equals("String") || ptype.equals("Boolean"))
+                        if (ptype.equals("String"))
                             pval = pclass.cast(newAnno.getProperties().get(pkey));
                         else
                             pval = pclass.getMethod("valueOf", String.class)
