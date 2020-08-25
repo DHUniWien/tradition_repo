@@ -776,6 +776,11 @@ public class Reading {
      * @return true if readings can be merged, false if not
      */
     private boolean canBeMerged(Node stayingReading, Node deletingReading) throws Exception {
+        // Ensure that the two readings belong to the same section.
+        if (!stayingReading.getProperty("section_id").equals(deletingReading.getProperty("section_id"))) {
+            errorMessage = "Readings must be in the same section!";
+            return false;
+        }
         // Test for non-colo relations.
         if (hasNonColoRelations(stayingReading, deletingReading)) {
             errorMessage = "Readings to be merged cannot contain cross-location relations";

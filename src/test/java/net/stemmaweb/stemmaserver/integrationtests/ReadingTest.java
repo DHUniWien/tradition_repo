@@ -177,7 +177,7 @@ public class ReadingTest {
 
         // Check that the node text didn't change
         try (Transaction tx = db.beginTx()) {
-            Node node = db.getNodeById(Long.valueOf(nodeid));
+            Node node = db.getNodeById(Long.parseLong(nodeid));
             assertEquals("showers", node.getProperty("text").toString());
             tx.success();
         }
@@ -264,7 +264,7 @@ public class ReadingTest {
         String nodeId = readingLookup.get("showers/5");
         ReadingModel expectedReadingModel;
         try (Transaction tx = db.beginTx()) {
-            Node node = db.getNodeById(Long.valueOf(nodeId));
+            Node node = db.getNodeById(Long.parseLong(nodeId));
             expectedReadingModel = new ReadingModel(node);
             tx.success();
         }
@@ -314,7 +314,7 @@ public class ReadingTest {
     @Test
     public void getReadingWithFalseIdTest() {
         Response response = jerseyTest
-                .target("/reading/" + 200)
+                .target("/reading/200")
                 .request(MediaType.APPLICATION_JSON).get();
 
         assertEquals(Status.NO_CONTENT.getStatusCode(),
@@ -678,8 +678,8 @@ public class ReadingTest {
         // Check that the following reading has two inbound paths, one with the rest of
         // the witnesses
         try (Transaction tx = db.beginTx()) {
-            for (Relationship inbound : db.getNodeById(Long.valueOf(following)).getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
-                if (inbound.getStartNode().getId() == Long.valueOf(Legei)) {
+            for (Relationship inbound : db.getNodeById(Long.parseLong(following)).getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
+                if (inbound.getStartNode().getId() == Long.parseLong(Legei)) {
                     List<String> sigla = Arrays.asList((String []) inbound.getProperty("witnesses"));
                     assertEquals(5, sigla.size());
                     assertTrue(sigla.contains("w11"));
@@ -789,8 +789,8 @@ public class ReadingTest {
         Node firstNode;
         Node secondNode;
         try (Transaction tx = db.beginTx()) {
-            firstNode = db.getNodeById(Long.valueOf(firstNodeId));
-            secondNode = db.getNodeById(Long.valueOf(secondNodeId));
+            firstNode = db.getNodeById(Long.parseLong(firstNodeId));
+            secondNode = db.getNodeById(Long.parseLong(secondNodeId));
             ResourceIterator<Node> showers = db.findNodes(Nodes.READING, "text", "showers");
             while (showers.hasNext()) {
                 Node n = showers.next();
@@ -973,7 +973,7 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(30);
 
-            Node duplicatedOf = db.getNodeById(Long.valueOf(firstWord.getId()));
+            Node duplicatedOf = db.getNodeById(Long.parseLong(firstWord.getId()));
             // test witnesses and number of paths
             int numberOfPaths = 0;
             for (Relationship incoming : originalOf.getRelationships(ERelations.SEQUENCE,
@@ -2066,7 +2066,7 @@ public class ReadingTest {
 
         // Check that the ranks are correct
         try (Transaction tx = db.beginTx()) {
-            Node remain = db.getNodeById(Long.valueOf(firstId));
+            Node remain = db.getNodeById(Long.parseLong(firstId));
             assertEquals(5L, remain.getProperty("rank"));
             Node capv = db.findNode(Nodes.READING, "text", "Venerabilis");
             assertEquals(5L, capv.getProperty("rank"));
@@ -2536,6 +2536,18 @@ public class ReadingTest {
 
     }
 */
+
+    @Test
+    public void compressReadingsAcrossTraditionsTest() {
+        HashMap<String,String> r1lookup = Util.makeReadingLookup(jerseyTest, tradId);
+        String secondTrad = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest,
+                "Next copy", "LR", "1","src/TestFiles/testTradition.xml", "stemmaweb"), "tradId");
+        HashMap<String,String> r2lookup = Util.makeReadingLookup(jerseyTest, secondTrad);
+        Response r = jerseyTest.target("/reading/" + r1lookup.get("april/2") + "/merge/" + r2lookup.get("april/2"))
+                .request().post(Entity.text(null));
+        assertEquals(Status.CONFLICT.getStatusCode(), r.getStatus());
+
+    }
 
     @Test
     public void randomNodeExistsTest() {
