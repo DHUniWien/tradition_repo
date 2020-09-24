@@ -13,12 +13,14 @@ public class VariantCrawler {
     private final Set<String> lemmaLinks;
     private final Set<Long> lemmaNodes;
     private final RelationshipType followType;
+    private final Set<String> excludeWitnesses;
     // Hash by path string rather than path itself, in case the objects aren't equal
-    private Map<String, Map<String,Set<String>>> pathWitnesses;
+    private final Map<String, Map<String,Set<String>>> pathWitnesses;
 
-    public VariantCrawler(List<Relationship> lp, RelationshipType rt) {
+    public VariantCrawler(List<Relationship> lp, RelationshipType rt, List<String> excludeWitnesses) {
         this.lemmaLinks = lp.stream().map(Relationship::toString).collect(Collectors.toSet());
         this.lemmaNodes = lp.stream().map(x -> x.getEndNode().getId()).collect(Collectors.toSet());
+        this.excludeWitnesses = new HashSet<>(excludeWitnesses);
         this.followType = rt;
         this.pathWitnesses = new HashMap<>();
     }
@@ -57,7 +59,10 @@ public class VariantCrawler {
                     for (Relationship r: result) {
                         Map<String,Set<String>> pathWits = new HashMap<>();
                         for (String layer : r.getPropertyKeys()) {
-                            pathWits.put(layer, new HashSet<>(Arrays.asList((String[]) r.getProperty(layer))));
+                            List<String> followWits = Arrays.stream((String[]) r.getProperty(layer)).filter(
+                                    x -> !excludeWitnesses.contains(x)).collect(Collectors.toList());
+                            if (!followWits.isEmpty())
+                                pathWits.put(layer, new HashSet<>(followWits));
                         }
                         pathWitnesses.put(r.toString(), pathWits);
                     }

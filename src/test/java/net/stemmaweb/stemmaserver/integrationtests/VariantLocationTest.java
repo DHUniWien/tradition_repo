@@ -308,9 +308,66 @@ public class VariantLocationTest extends TestCase {
                 "136: սովն առաւել] \tսաստկացաւ (interp.): H M2899; "
         );
         assertTrue(stringifiedVList.containsAll(expected));
+        // Setup for the next test
+        assertEquals(2, vlocs.stream().filter(x -> x.getRankIndex().equals(29L)).count());
+        assertEquals(3, vlocs.stream().filter(x -> x.getRankIndex().equals(78L)).count());
+        assertEquals(2, vlocs.stream().filter(x -> x.getRankIndex().equals(146L)).count());
 
         // 149 persists because 151 lemma doesn't exactly match
         //
+
+
+
+        // Now try excluding Bz644 and M3380
+        rsp = jerseyTest.target(restPath + "variants")
+                .queryParam("normalize", "spelling")
+                .queryParam("exclude_nonsense", "true")
+                .queryParam("combine_dislocations", "true")
+                .queryParam("exclude_witness", "Bz644")
+                .queryParam("exclude_witness", "K")
+                .queryParam("exclude_witness", "M3380")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), rsp.getStatus());
+        vlist = rsp.readEntity(VariantListModel.class);
+        vlocs = vlist.getVariantlist();
+        assertEquals(72, vlocs.size());
+
+        // Check that the right eight entries disappeared
+        List<Long> shouldBeGone = Arrays.asList(1L, 4L, 85L, 152L, 163L);
+        assertTrue(vlocs.stream().noneMatch(x -> shouldBeGone.contains(x.getRankIndex())));
+        assertEquals(1, vlocs.stream().filter(x -> x.getRankIndex().equals(29L)).count());
+        assertEquals(2, vlocs.stream().filter(x -> x.getRankIndex().equals(78L)).count());
+        assertEquals(1, vlocs.stream().filter(x -> x.getRankIndex().equals(146L)).count());
+
+        // Check that the right entries were modified
+        expected = Arrays.asList(
+                "26: յաշխարհն] \tաշխարհն: C D I J M1775 M2899 M8232 O V W Y Z; ",
+                "55: տատանումն] \tտատանում: E F G M2855 M8232 W243 W246; ",
+                "67: ուռհա] \tյուռհա: A; ",
+                "69: զոր] \tզորս: D E F I J M1775 M8232 O V W W243 W246 X Y Z; ",
+                "78: յայնմ] \tայն: V Y; \tյայնմն: X; ",
+                "91: յերեսաց] \t(om.): M8232; ",
+                "93: այն] \tյայն: H M2899 X; \tայնորիկ: W246; ",
+                "99: լինէր] \ttransp. post անցումն: M8232 V Y; ",
+                "106: քրիստոնեայք] \tքրիստոնէիցն: F X; \tքրիստոնեայքն: E G M2855 V W243 Y; \tի քրիստոնէից: A; ",
+                "107: անթիւք] \tանթիւ: W (a.c.); ",
+                "117: ամին] \tամի: F; ",
+                "121: յայնմ] \tայնմ: M1775 (a.c.); \tյայնմն: M8232; ",
+                "122: գաւառին] \tգաւառէն: C D E F G H I J M2855 M6605 W W243 W246 Y Z; \tգաւառի: A; ",
+                "128: և] \t(om.): W246 X; ",
+                "139: զառաւել] \tզառաւելն: E F G M2855 M8232 V W243 W246 Y; ",
+                "153: արձակեալ] \tարձեալ: M1775 (a.c.); \tյարձակեալ: E G M2855 W243 W246 X; \tարձակեցան: C M6605; \tյարձակեցան: H M2899; ",
+                "174: անասնոց] \tանասնցն: E F G M2855 M8232 W243 W246 Y; ",
+                "178: բազում գևղք] \t(om.): M8232 Y; ",
+                "181: գաւառք անմարդ լինէին. և] \t(om.): M8232 Y; ",
+                "182: անմարդ] \tանմարդն: M1775; \tյանմարդ: E F G M2855 W243 W246 X; \tանմարդաբնակ: A; "
+        );
+        stringifiedVList.clear();
+        vlocs.forEach(x -> stringifiedVList.add(x.toString()));
+        for (String app: expected)
+            assertTrue(stringifiedVList.contains(app));
+
+
     }
 
     public void tearDown() throws Exception {

@@ -566,6 +566,7 @@ public class Section {
      * @param excludeNonsense - Whether
      * @param baseWitness  - Use the path of the given witness as the base path.
      * @param conflate - The name of a relation type that should be used for normalization
+     * @param excWitnesses - One or more witnesses that should be excluded from the variant list
      *
      * @return A list of VariantLocationModels
      */
@@ -580,14 +581,16 @@ public class Section {
                                      @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
                                      @DefaultValue("punct") @QueryParam("suppress_matching") String suppressMatching,
                                                          @QueryParam("base_witness") String baseWitness,
-                                                         @QueryParam("normalize") String conflate) {
+                                                         @QueryParam("normalize") String conflate,
+                                                         @QueryParam("exclude_witness") List<String> excWitnesses) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
 
 
         try (Transaction tx = db.beginTx()) {
             Node sectionNode = db.getNodeById(Long.parseLong(sectId));
-            VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, conflate, suppressMatching,
+            VariantListModel vlocs = new VariantListModel(
+                    sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
                     !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
             tx.success();
             return Response.ok(vlocs).build();
@@ -693,7 +696,6 @@ public class Section {
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
      */
-    @SuppressWarnings("RedundantCast")
     @POST
     @Path("/splitAtRank/{rankstr}")
     @Produces("application/json; charset=utf-8")
@@ -1308,7 +1310,6 @@ public class Section {
      * @statuscode 404 - if the tradition and/or section doesn't exist
      * @statuscode 500 - on error
      */
-    @SuppressWarnings("RedundantCast")
     @POST
     @Path("/emend")
     @Consumes(MediaType.APPLICATION_JSON)

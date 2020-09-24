@@ -55,7 +55,6 @@ public class VariantListModel {
      */
     private List<String> dislocationTypes;
 
-    @SuppressWarnings("unused")     // It's used by response.readEntity(VariantListModel.class)
     public VariantListModel() {
         variantlist = new ArrayList<>();
         suppressedReadingsRegex = "^$";
@@ -76,8 +75,9 @@ public class VariantListModel {
      * @param combine     - whether to move variants marked as dislocations to the variant location of
      *                    their corresponding base readings
      */
-    public VariantListModel(Node sectionNode, String baseWitness, String conflate, String suppress, Boolean filterNonsense,
-                            Boolean filterTypeOne, String significant, Boolean combine) throws Exception {
+    public VariantListModel(Node sectionNode, String baseWitness, List<String> excludeWitnesses, String conflate,
+                            String suppress, Boolean filterNonsense, Boolean filterTypeOne, String significant,
+                            Boolean combine) throws Exception {
         // Initialize our instance properties
         this.variantlist = new ArrayList<>();
         this.conflateOnRelation = conflate;
@@ -140,7 +140,7 @@ public class VariantListModel {
                 }
             }
 
-            this.findVariants(db, baseText, follow);
+            this.findVariants(db, baseText, excludeWitnesses, follow);
 
             // Filter readings by regex / nonsense flag as needed. Pass the base text in case
             // any before/after reading settings need to be altered.
@@ -167,9 +167,10 @@ public class VariantListModel {
         }
     }
 
-    private void findVariants (GraphDatabaseService db, List<Relationship> sequence, RelationshipType follow) {
+    private void findVariants (GraphDatabaseService db, List<Relationship> sequence, List<String> excludeWitnesses,
+                               RelationshipType follow) {
         // Create the evaluator we need
-        VariantCrawler crawler = new VariantCrawler(sequence, follow);
+        VariantCrawler crawler = new VariantCrawler(sequence, follow, excludeWitnesses);
         // Set up the traversal for the path segments we want
         try (Transaction tx = db.beginTx()) {
             TraversalDescription traverser = db.traversalDescription().depthFirst()
