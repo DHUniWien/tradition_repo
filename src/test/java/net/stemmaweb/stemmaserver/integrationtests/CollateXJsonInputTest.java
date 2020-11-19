@@ -57,7 +57,7 @@ public class CollateXJsonInputTest extends TestCase {
         sectId = testSections.get(0).getId();
     }
 
-    public void testParseCollateX() throws Exception {
+    public void testParseCollateX() {
         // Check for correct number of readings and ranks
         List<ReadingModel> allreadings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
@@ -249,6 +249,14 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals(secondSect, ourSections.get(1).getId());
         assertEquals("AM 401", ourSections.get(0).getName());
         assertEquals("AM 407", ourSections.get(1).getName());
+    }
+
+    public void testInputInput() {
+        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/collatex-input.json", "cxjson");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
+        String msg = Util.getValueFromJson(jerseyResult, "error");
+        assertEquals("Bad format: is this CollateX JSON input instead of output?", msg);
     }
 
     /** For diagnostic use when parsing a section fails

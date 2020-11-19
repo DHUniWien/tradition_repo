@@ -16,12 +16,13 @@ import org.neo4j.graphdb.Transaction;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class CollateXJsonParser {
 
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     public Response parseCollateXJson(InputStream filestream, Node parentNode) {
         // parse the JSON
@@ -31,9 +32,15 @@ public class CollateXJsonParser {
         // JSON parsing block; turn CollateX JSON into our model classes.
         // Needs its own try/catch for JSON exceptions
         try {
-            JSONObject table = new JSONObject(IOUtils.toString(filestream, "utf-8"));
+            JSONObject table = new JSONObject(IOUtils.toString(filestream, StandardCharsets.UTF_8));
             // get the witness list from the clunky JSON interface
             JSONArray jWit = table.getJSONArray("witnesses");
+            // Is the list of witnesses a list of sigla, or a list of id/token objects? If the latter,
+            // tell the user they are trying to use CollateX input.
+            Object firstWit = jWit.get(0);
+            if (firstWit instanceof JSONObject)
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Util.jsonerror("Bad format: is this CollateX JSON input instead of output?")).build();
             for (int i = 0; i < jWit.length(); i++) collationWitnesses.add(jWit.getString(i));
 
             // get the table data from the clunky JSON interface
