@@ -1,6 +1,7 @@
 package net.stemmaweb.stemmaserver.acceptancetests;
 
 
+import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.TraditionModel;
@@ -52,16 +53,14 @@ import static org.junit.Assume.assumeTrue;
  * Try parsing all the traditions from the live database.
  * Created by tla on 11/08/15.
  */
-public class TraditionParseTest{
+public class TraditionParseTest extends TestCase {
 
     private GraphDatabaseService db;
     
     private JerseyTest jerseyTest;
 
-
-    @Before
     public void setUp() throws Exception {
-
+        super.setUp();
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
 
         // Create a root node and test user
@@ -85,12 +84,12 @@ public class TraditionParseTest{
 
     }
 
-    @Test
-    public void loadAllTraditionsTest() {
+    public void testLoadAllTraditions() {
         // import all production traditions into the db
         // TODO make this a benchmark test...?
         File testdir = new File("src/TestProductionFiles");
-        assumeTrue(testdir.exists() && testdir.isDirectory());
+        if (!(testdir.exists() && testdir.isDirectory()))
+            return;
 
         HashMap<String, TraditionXMLParser> traditionNames = new HashMap<>();
         File[] fileList = testdir.listFiles(x -> x.getName().endsWith("xml"));
@@ -200,10 +199,9 @@ public class TraditionParseTest{
     }
     */
 
-    @After
     public void tearDown() throws Exception {
-
         db.shutdown();
-
+        jerseyTest.tearDown();
+        super.tearDown();
     }
 }
