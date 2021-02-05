@@ -12,6 +12,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
@@ -567,7 +568,7 @@ public class StemmaTest {
 
     @Test
     public void importStemmaFromNewickTest() {
-        String newickSpec = "((((((((((((M,C),D),S),F),L),V),U),T2),J),A),B),T1);\n";
+        String newickSpec = "((((((((((((M,C),D),S),F),L),V),U),T2),J),A),B),T1);";
         String dotEquivalent = "graph \"RHM 1382784254\" {\n" +
                 "  0 [ class=hypothetical ];\n" +
                 "  1 [ class=hypothetical ];\n" +
@@ -625,7 +626,16 @@ public class StemmaTest {
         sm.setJobid(37);
         sm.setNewick(newickSpec);
         String tradId = createTraditionFromFile("Besoin", "src/TestFiles/besoin.xml");
-        Response r = jerseyTest.target("/tradition/" + tradId + "/stemma")
+        // Set a matching job ID so we can test that it is removed on import
+        TraditionModel textInfo = jerseyTest.target("/tradition/" + tradId)
+                .request().get(TraditionModel.class);
+        textInfo.setStemweb_jobid(37);
+        Response r = jerseyTest.target("/tradition/" + tradId)
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(textInfo));
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+
+        // Now add the stemma
+        r = jerseyTest.target("/tradition/" + tradId + "/stemma")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(sm));
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
@@ -635,6 +645,11 @@ public class StemmaTest {
         assertTrue(result.cameFromJobid());
         assertEquals(Integer.valueOf(37), result.getJobid());
         Util.assertStemmasEquivalent(dotEquivalent, result.getDot());
+
+        // and check that the job ID on the tradition has been unset.
+        textInfo = jerseyTest.target("/tradition/" + tradId)
+                .request().get(TraditionModel.class);
+        assertNull(textInfo.getStemweb_jobid());
     }
 
 

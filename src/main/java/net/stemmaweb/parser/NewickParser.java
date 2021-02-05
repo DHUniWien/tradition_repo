@@ -94,6 +94,11 @@ public class NewickParser {
             // Finally, connect the stemma to its tradition
             traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
 
+            // If the stemma we just imported had a jobID that matches the tradition's stemweb_jobid, clear the latter
+            if (stemmaSpec.getJobid() != null && stemmaSpec.getJobid().equals(
+                    traditionNode.getProperty("stemweb_jobid", 0)))
+                traditionNode.removeProperty("stemweb_jobid");
+
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
