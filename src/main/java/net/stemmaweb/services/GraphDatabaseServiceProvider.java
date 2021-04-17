@@ -30,7 +30,7 @@ public class GraphDatabaseServiceProvider {
     public GraphDatabaseServiceProvider(String db_location) throws KernelException {
 
         GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data"));
+        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data/databases/graph.db"));
         File config = new File(db_location + "/conf/neo4j.conf");
         if (config.exists())
             db = dbbuilder.loadPropertiesFromFile(config.toString()).newGraphDatabase();
