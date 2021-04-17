@@ -336,7 +336,7 @@ public class TraditionTest {
         }
 
         /*
-         * Change the owner of the tradition, and another of its properties
+         * Change the owner of the tradition, and another of its properties, and add a stemweb_jobid
          */
         TraditionModel textInfo = new TraditionModel();
         textInfo.setName("RenamedTraditionName");
@@ -344,6 +344,7 @@ public class TraditionTest {
         textInfo.setDirection("RL");
         textInfo.setIs_public(false);
         textInfo.setOwner("42");
+        textInfo.setStemweb_jobid(3);
 
         Response ownerChangeResponse = jerseyTest
                 .target("/tradition/" + tradId)
@@ -362,6 +363,7 @@ public class TraditionTest {
             assertEquals(tradId, tradition.getId());
             assertEquals("RenamedTraditionName", tradition.getName());
             assertEquals("RL", tradition.getDirection());
+            assertEquals(Integer.valueOf(3), tradition.getStemweb_jobid());
             tx.success();
 
         }
@@ -376,6 +378,31 @@ public class TraditionTest {
 
             tx.success();
         }
+
+        /*
+         * Now check that we can delete the Stemweb job ID
+         */
+        TraditionModel sjDel = new TraditionModel();
+        sjDel.setStemweb_jobid(0);
+        Response jobIdDelResponse = jerseyTest
+                .target("/tradition/" + tradId)
+                .request()
+                .put(Entity.json(sjDel));
+        assertEquals(Status.OK.getStatusCode(), jobIdDelResponse.getStatus());
+
+        try (Transaction tx = db.beginTx()) {
+            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            TraditionModel tradition = new TraditionModel(tradNode);
+
+            assertEquals("42", tradition.getOwner());
+            assertEquals(tradId, tradition.getId());
+            assertEquals("RenamedTraditionName", tradition.getName());
+            assertEquals("RL", tradition.getDirection());
+            assertNull(tradition.getStemweb_jobid());
+            tx.success();
+
+        }
+
     }
 
 

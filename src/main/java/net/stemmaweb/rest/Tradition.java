@@ -662,10 +662,17 @@ public class Tradition {
                 traditionNode.setProperty("is_public", tradition.getIs_public());
             if (tradition.getLanguage() != null )
                 traditionNode.setProperty("language", tradition.getLanguage());
-            if (tradition.getDirection() != null )
+            if (!tradition.getDirection().equals("") )
                 traditionNode.setProperty("direction", tradition.getDirection());
-            if (tradition.getStemweb_jobid() != null )
-                traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
+            // We need to be able to both set and unset this, but not touch it if it isn't specified.
+            // Thus, if the value passed is 0 or negative, we unset it entirely.
+            Integer swjid = tradition.getStemweb_jobid();
+            if (swjid != null ) {
+                if (swjid < 1)
+                    traditionNode.removeProperty("stemweb_jobid");
+                else
+                    traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
+            }
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
