@@ -630,7 +630,7 @@ public class Tradition {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = TraditionModel.class)
     public Response changeTraditionMetadata(TraditionModel tradition) {
-
+        TraditionModel updatedTradition;
         try (Transaction tx = db.beginTx()) {
             Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
             if( traditionNode == null ) {
@@ -673,12 +673,14 @@ public class Tradition {
                 else
                     traditionNode.setProperty("stemweb_jobid", tradition.getStemweb_jobid());
             }
+            // Generate the updated model to return it
+            updatedTradition = new TraditionModel(traditionNode);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(tradition).build();
+        return Response.ok(updatedTradition).build();
     }
 
     /**

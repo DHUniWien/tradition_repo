@@ -389,19 +389,12 @@ public class TraditionTest {
                 .request()
                 .put(Entity.json(sjDel));
         assertEquals(Status.OK.getStatusCode(), jobIdDelResponse.getStatus());
-
-        try (Transaction tx = db.beginTx()) {
-            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            TraditionModel tradition = new TraditionModel(tradNode);
-
-            assertEquals("42", tradition.getOwner());
-            assertEquals(tradId, tradition.getId());
-            assertEquals("RenamedTraditionName", tradition.getName());
-            assertEquals("RL", tradition.getDirection());
-            assertNull(tradition.getStemweb_jobid());
-            tx.success();
-
-        }
+        TraditionModel sjResult = jobIdDelResponse.readEntity(TraditionModel.class);
+        assertEquals("RenamedTraditionName", sjResult.getName());
+        assertEquals("RL", sjResult.getDirection());
+        assertEquals(tradId, sjResult.getId());
+        assertEquals("42", sjResult.getOwner());
+        assertNull(sjResult.getStemweb_jobid());
 
     }
 
