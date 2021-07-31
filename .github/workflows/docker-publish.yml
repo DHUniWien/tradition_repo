@@ -48,24 +48,28 @@ jobs:
           name: stemmarest-war
           path: target/stemmarest.war
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: $IMAGE_NAME
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
       - name: Build image
         run: docker build . --file Dockerfile --tag $IMAGE_NAME
 
-      - name: Log into registry
-        run: echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_PW }}
 
-      - name: Push image
-        run: |
-          # Strip git ref prefix from version
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-          # Strip "v" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-          echo IMAGE_NAME=$IMAGE_NAME
-          echo VERSION=$VERSION
-
-          docker tag $IMAGE_NAME $IMAGE_NAME:$VERSION
-          docker tag $IMAGE_NAME $IMAGE_NAME:latest
-          docker push $IMAGE_NAME:$VERSION
-          docker push $IMAGE_NAME:latest
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
