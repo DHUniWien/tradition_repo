@@ -205,7 +205,7 @@
            set-text="resource.name !== '' ? resource.name : '&nbsp;/'"
            target="_self"></a>
     </div>
-    <ul ng-show="resource.hierarchyOpen" class="searchList hierarchical">
+    <ul ng-if="resource.hierarchyOpen" class="searchList hierarchical">
         <li ng-repeat="leaf in resource.leafResources | orderBy:'url'">
             <div class="summaryMethodUrl" ng-class="{resourceVisible: isResourceVisible(leaf.url)}">
                 <a ng-click="openResource(leaf.url, (leaf.methods | orderBy:methodHttpOrderFunction)[0].hash)"
@@ -219,7 +219,7 @@
             </div>
         </li>
     </ul>
-    <ul ng-show="resource.hierarchyOpen" class="searchList hierarchical">
+    <ul ng-if="resource.hierarchyOpen" class="searchList hierarchical">
         <li ng-repeat="resource in resource.resources | orderBy:'name'"
             ng-include="'resource_nav_item_renderer.html'"></li>
     </ul>
@@ -238,10 +238,10 @@
             <ul class="nav nav-pills"
                 style="margin-left: -10px; padding-bottom: 14px; padding-left: 10px; padding-top: 4px;">
                 <li ng-class="{active: navigationView == 'hierarchical'}">
-                    <a ng-click="navigationView = 'hierarchical'" style="cursor: pointer">Resources</a>
+                    <a ng-click="navigationRightNavigateTo('hierarchical')" style="cursor: pointer">Resources</a>
                 </li>
                 <li ng-class="{active: navigationView == 'search'}">
-                    <a ng-click="navigationView = 'search'" style="cursor: pointer">Search</a>
+                    <a ng-click="navigationRightNavigateTo('search')" style="cursor: pointer">Search</a>
                 </li>
             </ul>
         </div>
@@ -257,71 +257,76 @@
                     </ul>
                 </div>
                 <div ng-show="navigationView == 'search'">
-                    <div id="searchform">
-                        <form>
-                            <label for="keywordInput" class="searchLabel">
-                                URL contains...
-                            </label>
-                            <input id="keywordInput" type="text" class="input-medium search-query searchInput"
-                                   style="margin-bottom: 15px"
-                                   ng-model="searchQuery.url">
-                            <label for="urlInput" class="searchLabel">
-                                URL matches...
-                            </label>
-                            <input id="urlInput" type="text" class="input-medium search-query searchInput"
-                                   style="display: block; margin-bottom: 15px"
-                                   placeholder="{{baseUrl.value + '...' }}"
-                                   ng-model="searchByExample">
-                            <label for="fullTextSearch" class="searchLabel">
-                                Full text search
-                            </label>
-                            <input id="fullTextSearch" type="text" class="input-medium search-query searchInput"
-                                   style="margin-bottom: 15px"
-                                   ng-model="$parent.fullTextSearch"
-                                   ng-change="doFullTextSearch()">
-                            <label class="searchLabel">
-                                Http method
-                            </label>
-                            <div class="tagInput">
-                                <span ng-repeat="method in httpMethods" set-text="method"
-                                      class="httpMethod httpMethodSelection" set-class="method"
-                                      ng-class="{disabled: method != searchQuery.http}"
-                                      ng-click="toggleSearchQueryHttp(method)"></span>
-                            </div>
-                            <label class="searchLabel" set-if="serviceTags.length > 0">
-                                Tags
-                            </label>
-                            <div class="tagInput">
-                                <div class="tag"
-                                     ng-repeat="tag in serviceTags | orderBy:'name'"
-                                     ng-click="tag.selected = ! tag.selected"
-                                     ng-class="{tagSelected: tag.selected}">
-                                    <i class="icon-circle"
-                                       style="color: #eee; text-shadow: 0 0 -1px rgba(0,0,0,0.3);"></i>
-                                    <span set-text="'&nbsp;' + tag.name"></span>
-                                </div>
-                            </div>
-                        </form>
+                    <div ng-show="!isSearchIndexCreated">
+                        <img alt="Building search index" src="img/ajax-loader-mini.gif"/> Building search index...
                     </div>
-                    <div id="results">
-                        <ul id="resultList">
-                            <li ng-repeat="interface in interfaces | orderBy:['url', interfaceHttpOrderFunction]"
-                                ng-show="((interface | searchByExampleFilter:searchByExample:baseUrl.value)
-                                           && (interface | serviceTagFilter:serviceTags)
-                                           && (interface | searchQueryFilter:searchQuery)
-                                           && (interface | fullTextSearchFilter))">
-                                <div class="summaryMethodUrl"
-                                     ng-class="{resourceVisible: isResourceVisible(interface.url)}">
-                                    <a ng-click="openResource(interface.url, interface.hash)">
-                                        <div class="httpMethodSearchResult">
-                                            <span class="httpMethod small" set-class="interface.http"
-                                                  set-text="interface.http"></span>
-                                        </div>
-                                        <span set-text="interface.url" class="result"></span>
-                                    </a>
+                    <div ng-show="isSearchIndexCreated">
+                        <div id="searchform">
+                            <form>
+                                <label for="keywordInput" class="searchLabel">
+                                    URL contains...
+                                </label>
+                                <input id="keywordInput" type="text" class="input-medium search-query searchInput"
+                                       style="margin-bottom: 15px"
+                                       ng-model="searchQuery.url">
+                                <label for="urlInput" class="searchLabel">
+                                    URL matches...
+                                </label>
+                                <input id="urlInput" type="text" class="input-medium search-query searchInput"
+                                       style="display: block; margin-bottom: 15px"
+                                       placeholder="{{baseUrl.value + '...' }}"
+                                       ng-model="searchByExample">
+                                <label for="fullTextSearch" class="searchLabel">
+                                    Full text search
+                                </label>
+                                <input id="fullTextSearch" type="text" class="input-medium search-query searchInput"
+                                       style="margin-bottom: 15px"
+                                       ng-model="$parent.fullTextSearch"
+                                       ng-change="doFullTextSearch()">
+                                <label class="searchLabel">
+                                    Http method
+                                </label>
+                                <div class="tagInput">
+                                    <span ng-repeat="method in httpMethods" set-text="method"
+                                          class="httpMethod httpMethodSelection" set-class="method"
+                                          ng-class="{disabled: method != searchQuery.http}"
+                                          ng-click="toggleSearchQueryHttp(method)"></span>
                                 </div>
-                            </li>
-                        </ul>
+                                <label class="searchLabel" set-if="serviceTags.length > 0">
+                                    Tags
+                                </label>
+                                <div class="tagInput">
+                                    <div class="tag"
+                                         ng-repeat="tag in serviceTags | orderBy:'name'"
+                                         ng-click="tag.selected = ! tag.selected"
+                                         ng-class="{tagSelected: tag.selected}">
+                                        <i class="icon-circle"
+                                           style="color: #eee; text-shadow: 0 0 -1px rgba(0,0,0,0.3);"></i>
+                                        <span set-text="'&nbsp;' + tag.name"></span>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <div id="results">
+                            <ul id="resultList">
+                                <li ng-repeat="interface in interfaces | orderBy:['url', interfaceHttpOrderFunction]"
+                                    ng-show="((interface | searchByExampleFilter:searchByExample:baseUrl.value)
+                                               && (interface | serviceTagFilter:serviceTags)
+                                               && (interface | searchQueryFilter:searchQuery)
+                                               && (interface | fullTextSearchFilter))">
+                                    <div class="summaryMethodUrl"
+                                         ng-class="{resourceVisible: isResourceVisible(interface.url)}">
+                                        <a ng-click="openResource(interface.url, interface.hash)">
+                                            <div class="httpMethodSearchResult">
+                                                <span class="httpMethod small" set-class="interface.http"
+                                                      set-text="interface.http"></span>
+                                            </div>
+                                            <span set-text="interface.url" class="result"></span>
+                                        </a>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
