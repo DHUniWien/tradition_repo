@@ -112,11 +112,18 @@ public class Tradition {
      * @param annoid - the ID of the requested annotation
      */
     @Path("/annotation/{annoid}")
-    public Annotation getAnnotationOnSection(@PathParam("annoid") String annoid) {
+    public Annotation getAnnotationOnTradition(@PathParam("annoid") String annoid) {
         return new Annotation(traditionId, annoid);
     }
 
-
+    /**
+     * Delegates to {@link net.stemmaweb.rest.Reading Reading} module
+     * @param readingId - the ID of the requested reading
+     */
+    @Path("/reading/{readingId}")
+    public Reading getReadingOnTradition(@PathParam("readingId") String readingId) {
+        return new Reading(readingId);
+    }
 
     /*
      * Resource creation calls

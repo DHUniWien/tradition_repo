@@ -54,6 +54,21 @@ public class Section {
         return new Witness(tradId, sectId, sigil);
     }
 
+    /**
+     * Delegates to {@link net.stemmaweb.rest.Reading Reading} module
+     * @param readingId - the ID of the requested reading
+     */
+    @Path("/reading/{readingId}")
+    public Reading getReadingOnSection(@PathParam("readingId") String readingId) {
+        // Check that the reading actually belongs to our section
+        boolean readingInSection;
+        try (Transaction tx = db.beginTx()) {
+            ReadingModel rdg = new ReadingModel(db.getNodeById(Long.valueOf(readingId)));
+            readingInSection = rdg.getSection().equals(sectId);
+            tx.success();
+        }
+        return readingInSection ? new Reading(readingId) : null;
+    }
 
     // Base paths
 

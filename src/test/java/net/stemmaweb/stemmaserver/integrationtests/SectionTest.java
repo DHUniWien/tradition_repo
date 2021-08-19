@@ -25,6 +25,7 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertNotEquals;
@@ -138,6 +139,38 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {});
         assertEquals(77, allRdgs.size());
+    }
+
+    public void testSectionRequestReading() {
+        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+                "stemmaweb", "section 2"), "parentId");
+        List<ReadingModel> sectRdgs = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/readings")
+                .request()
+                .get(new GenericType<List<ReadingModel>>() {});
+        // Choose a reading at random within the list to request
+        ReadingModel ourRdg = null;
+        while (ourRdg == null || ourRdg.getIs_end() || ourRdg.getIs_start()) {
+            int idx = (int) (Math.random() * sectRdgs.size());
+            ourRdg = sectRdgs.get(idx);
+        }
+        Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/reading/" + ourRdg.getId())
+                .request()
+                .get();
+        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        ReadingModel theRdg = jerseyResponse.readEntity(ReadingModel.class);
+        assertEquals(theRdg.getId(), ourRdg.getId());
+        assertEquals(theRdg.getText(), ourRdg.getText());
+
+        // Now choose a reading ID that doesn't exist in the list
+        AtomicLong badRdgId = new AtomicLong(Long.parseLong(theRdg.getId()));
+        while (sectRdgs.stream().anyMatch(x -> x.getId().equals(String.valueOf(badRdgId.get())))) {
+            badRdgId.set((long) (Math.random() * 1000));
+        }
+        jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/reading/" + badRdgId.get())
+                .request()
+                .get();
+        // LATER make this return something useful
+        assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), jerseyResponse.getStatus());
     }
 
     public void testSectionWitnesses() {
