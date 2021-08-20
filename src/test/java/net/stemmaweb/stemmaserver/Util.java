@@ -182,12 +182,12 @@ public class Util {
         // Populate the test database with the root node and a user with id 1
         DatabaseService.createRootNode(db);
         try(Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+            // Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
             Node node = db.createNode(Nodes.USER);
             node.setProperty("id", userId);
             node.setProperty("role", "admin");
 
-            rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
+            // rootNode.createRelationshipTo(node, ERelations.SEQUENCE);
             tx.success();
         }
     }

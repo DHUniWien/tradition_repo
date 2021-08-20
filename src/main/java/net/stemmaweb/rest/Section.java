@@ -245,20 +245,8 @@ public class Section {
         return new ArrayList<>(witnessList);
     }
 
-    // Also used by the GraphML exporter
-    public List<Node> collectSectionAnnotations() {
-        try (Transaction tx = db.beginTx()) {
-            // We want to find all annotation nodes that are linked both to the tradition node
-            // and to some node in this section.
-            HashSet<Node> foundAnns = new HashSet<>();
-            for (Node n : VariantGraphService.returnTraditionSection(sectId, db).nodes()) {
-                StreamSupport.stream(n.getRelationships(Direction.INCOMING).spliterator(), false)
-                        .filter(x -> x.getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
-                        .map(Relationship::getStartNode).forEach(foundAnns::add);
-            }
-            tx.success();
-            return new ArrayList<>(foundAnns);
-        }
+    private List<Node> collectSectionAnnotations() {
+        return VariantGraphService.collectAnnotationsOnSet(db, VariantGraphService.returnTraditionSection(sectId, db).nodes());
     }
 
     /**
@@ -1445,7 +1433,7 @@ public class Section {
                     .entity("No such tradition found").build();
 
         GraphMLExporter exporter = new GraphMLExporter();
-        return exporter.writeNeo4J(tradId, sectId, includeWitnesses);
+        return exporter.writeNeo4J(tradId, sectId, includeWitnesses, false);
     }
 
     // Export the dot / SVG for a particular section

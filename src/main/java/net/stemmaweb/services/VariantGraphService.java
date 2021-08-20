@@ -12,6 +12,7 @@ import org.neo4j.graphdb.traversal.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class VariantGraphService {
 
@@ -345,14 +346,53 @@ public class VariantGraphService {
         return result;
     }
 
+    /**
+     * Collect all annotations, recursively, on the set of nodes that has been passed in.
+     *
+     *
+     * @return The annotation nodes that point (ultimately) to the nodes in question
+     */
+    public static List<Node> collectAnnotationsOnSet(GraphDatabaseService db, ResourceIterable<Node> nodeSet) {
+        ArrayList<Node> annotationNodes;
+        try (Transaction tx = db.beginTx()) {
+            // We want to find all annotation nodes that are linked both to the tradition node
+            // and (perhaps indirectly through other annotations) to some node in this set.
+            HashSet<Node> foundAnns = new HashSet<>();
+            for (Node n : nodeSet) {
+                Traverser theseAnnotations = returnTraverser(n, nodeAnnotations, PathExpanders.forDirection(Direction.INCOMING));
+                theseAnnotations.nodes().forEach(foundAnns::add);
+            }
+            annotationNodes = new ArrayList<>(foundAnns);
+            tx.success();
+        }
+        return annotationNodes;
+    }
+
     /*
      * Tradition and section crawlers, respectively
      */
 
+    // Returns every node pointing outward from a TRADITION.
     private static final Evaluator traditionCrawler = path -> {
         if (path.length() == 0)
             return Evaluation.INCLUDE_AND_CONTINUE;
         if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        return Evaluation.INCLUDE_AND_CONTINUE;
+    };
+
+    // Returns every node pointing outward from a TRADITION, stopping at PART relationships and
+    // HAS_ANNOTATION relationships to exclude sections and annotations.
+    private static final Evaluator traditionMetaCrawler = path -> {
+        if (path.length() == 0)
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        // Stop at the sections
+        if (path.lastRelationship().getType().name().equals(ERelations.PART.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        // Also exclude any annotations
+        if (path.lastRelationship().getType().name().equals(ERelations.HAS_ANNOTATION.toString()))
             return Evaluation.EXCLUDE_AND_PRUNE;
         return Evaluation.INCLUDE_AND_CONTINUE;
     };
@@ -374,6 +414,20 @@ public class VariantGraphService {
         if (path.lastRelationship().getType().name().equals(ERelations.RELATED.toString()))
             return Evaluation.INCLUDE_AND_CONTINUE;
         return Evaluation.EXCLUDE_AND_CONTINUE;
+    };
+
+    private static final Evaluator nodeAnnotations = path -> {
+        // Don't include the node in question
+        if (path.length() == 0)
+            return Evaluation.EXCLUDE_AND_CONTINUE;
+        // Truncate before we get back to the tradition itself
+        if (path.lastRelationship().getType().name().equals(ERelations.HAS_ANNOTATION.toString()))
+            return Evaluation.EXCLUDE_AND_PRUNE;
+        // Do follow through any annotation nodes, identified by the existence of that relationship
+        if (path.lastRelationship().getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
+            return Evaluation.INCLUDE_AND_CONTINUE;
+        // Don't follow anything else
+        return Evaluation.EXCLUDE_AND_PRUNE;
     };
 
     @SuppressWarnings("rawtypes")
@@ -411,6 +465,10 @@ public class VariantGraphService {
      */
     public static Traverser returnEntireTradition(Node traditionNode) {
         return returnTraverser(traditionNode, traditionCrawler, PathExpanders.forDirection(Direction.OUTGOING));
+    }
+
+    public static Traverser returnTraditionMeta(Node traditionNode) {
+        return returnTraverser(traditionNode, traditionMetaCrawler, PathExpanders.forDirection(Direction.OUTGOING));
     }
 
     /**

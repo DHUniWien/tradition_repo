@@ -121,12 +121,11 @@ public class GraphMLExporter {
         }
     }
 
-    public Response writeNeo4J(String tradId) {
-        return writeNeo4J(tradId, null, false);
-    }
+    public Response writeNeo4J(String tradId, String sectionId, Boolean includeWitnesses, Boolean excludeSections) {
+        // Basic sanity check
+        if (sectionId != null && excludeSections)
+            return Response.status(Status.BAD_REQUEST).build();
 
-
-    public Response writeNeo4J(String tradId, String sectionId, Boolean includeWitnesses) {
         // Get the tradition node
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null)
@@ -141,37 +140,55 @@ public class GraphMLExporter {
             e.printStackTrace();
             return Response.serverError().build();
         }
-        ResourceIterable<Node> traditionNodes = sectionId == null ?
-                VariantGraphService.returnEntireTradition(traditionNode).nodes() :
-                VariantGraphService.returnTraditionSection(sectionId, db).nodes();
-        ResourceIterable<Relationship> traditionEdges = sectionId == null ?
-                VariantGraphService.returnEntireTradition(traditionNode).relationships() :
-                VariantGraphService.returnTraditionSection(sectionId, db).relationships();
+        ResourceIterable<Node> collectionNodes;
+        if (sectionId != null)
+            collectionNodes = VariantGraphService.returnTraditionSection(sectionId, db).nodes();
+        else if (excludeSections)
+            collectionNodes = VariantGraphService.returnTraditionMeta(traditionNode).nodes();
+        else
+            collectionNodes = VariantGraphService.returnEntireTradition(traditionNode).nodes();
+
+        ResourceIterable<Relationship> collectionEdges;
+        if (sectionId != null)
+            collectionEdges = VariantGraphService.returnTraditionSection(sectionId, db).relationships();
+        else if (excludeSections)
+            collectionEdges = VariantGraphService.returnTraditionMeta(traditionNode).relationships();
+        else
+            collectionEdges = VariantGraphService.returnEntireTradition(traditionNode).relationships();
+
 
         // Collect any extra nodes that should go into the list for whatever reason.
-        // So far this only applies if we are requesting a single section.
+        // So far two use cases:
+        // - Adding relevant annotations to a section export or a tradition metadata export
+        // - Adding witnesses to a section export if requested
 
         List<Node> extraNodes = new ArrayList<>();
         List<Relationship> extraRels = new ArrayList<>();
-        if (sectionId != null) {
-            // We also want to include the annotation nodes that appear in this section,
-            // and relevant witness nodes if requested.
-            Section sectionService = new Section(tradId, sectionId);
-            extraNodes.addAll(sectionService.collectSectionAnnotations());
+        if (sectionId != null || excludeSections) {
+            // Add back any annotation nodes that belong to this export.
+            extraNodes.addAll(VariantGraphService.collectAnnotationsOnSet(db, collectionNodes));
             if (!extraNodes.isEmpty()) {
                 try (Transaction tx = db.beginTx()) {
                     // Add the relationships pointing from the annotations to the section and to each other
                     extraNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraRels::add));
-                    // Add in the annotation spec for this tradition, so that the annotations we just collected
-                    // can be validated when this file is parsed again.
-                    traditionNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING)
-                            .forEach(x -> {
-                                extraNodes.add(x.getEndNode());
-                                x.getEndNode().getRelationships(Direction.OUTGOING).forEach(y -> {
-                                    extraRels.add(y);
-                                    extraNodes.add(y.getEndNode());
+                    // Add the links back to the tradition node
+                    extraNodes.forEach(x -> extraRels.add(
+                            x.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING)));
+
+                    if (sectionId != null) {
+                        // If we are exporting a section only, we need to add in the annotation spec for the
+                        // tradition, so that the annotations we just collected can be validated when this
+                        // file is parsed again.
+                        traditionNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING)
+                                .forEach(x -> {
+                                    extraNodes.add(x.getEndNode());
+                                    x.getEndNode().getRelationships(Direction.OUTGOING).forEach(y -> {
+                                        extraRels.add(y);
+                                        extraNodes.add(y.getEndNode());
+                                    });
                                 });
-                            });
+                    }
+
                     tx.success();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -181,7 +198,26 @@ public class GraphMLExporter {
                             .build();
                 }
             }
-            if (includeWitnesses) extraNodes.addAll(sectionService.collectSectionWitnesses());
+            if (includeWitnesses) {
+                // Add in the witness nodes that are relevant to the requested section
+                Section sectionService = new Section(tradId, sectionId);
+                List<Node> witnessNodes = sectionService.collectSectionWitnesses();
+                extraNodes.addAll(witnessNodes);
+                try (Transaction tx = db.beginTx()) {
+                    witnessNodes.forEach(x -> extraRels.add(x.getSingleRelationship(ERelations.HAS_WITNESS, Direction.INCOMING)));
+                    tx.success();
+                }
+            }
+            // Finally, if we are exporting a single section, we need to include the tradition node if we
+            // had annotations or witnesses, so that these are not orphaned.
+            if (sectionId != null && !extraNodes.isEmpty()) {
+                extraNodes.add(traditionNode);
+                try (Transaction tx = db.beginTx()) {
+                    extraRels.add(db.getNodeById(Long.parseLong(sectionId))
+                            .getSingleRelationship(ERelations.PART, Direction.INCOMING));
+                    tx.success();
+                }
+            }
         }
 
 
@@ -194,12 +230,12 @@ public class GraphMLExporter {
             edgeMap.put("neolabel", new String[]{"0", "string"});
             int nodeCount = 0;
             int edgeCount = 0;
-            for (Node n : traditionNodes) {
+            for (Node n : collectionNodes) {
                 collectProperties(n, nodeMap);
                 nodeCount++;
             }
 
-            for (Relationship e : traditionEdges) {
+            for (Relationship e : collectionEdges) {
                 collectProperties(e, edgeMap);
                 edgeCount++;
             }
@@ -241,7 +277,7 @@ public class GraphMLExporter {
 
             // Now list out all the nodes, checking against duplicates in the traversal
             HashSet<Long> addedNodes = new HashSet<>();
-            for (Node n : traditionNodes)
+            for (Node n : collectionNodes)
                 if (!addedNodes.contains(n.getId())) {
                     writeNode(writer, n);
                     addedNodes.add(n.getId());
@@ -254,7 +290,7 @@ public class GraphMLExporter {
                 }
 
             // And list out all the edges, which should already be unique in the traversal
-            traditionEdges.forEach(x -> writeEdge(writer, x));
+            collectionEdges.forEach(x -> writeEdge(writer, x));
             extraRels.forEach(x -> writeEdge(writer, x));
 
 

@@ -116,15 +116,6 @@ public class Tradition {
         return new Annotation(traditionId, annoid);
     }
 
-    /**
-     * Delegates to {@link net.stemmaweb.rest.Reading Reading} module
-     * @param readingId - the ID of the requested reading
-     */
-    @Path("/reading/{readingId}")
-    public Reading getReadingOnTradition(@PathParam("readingId") String readingId) {
-        return new Reading(readingId);
-    }
-
     /*
      * Resource creation calls
      */
@@ -798,17 +789,18 @@ public class Tradition {
      * Returns a GraphML file that describes the specified tradition and its data.
      * @summary Download GraphML
      *
+     * @param excludeSections - return the tradition metadata without any sections
      * @return XML data
      */
     @GET
     @Path("/graphml")
     @Produces(MediaType.APPLICATION_XML)
     @ReturnType("java.lang.Void")
-    public Response getGraphML() {
+    public Response getGraphML(@DefaultValue("false") @QueryParam("no_sections") Boolean excludeSections) {
         if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
         GraphMLExporter exporter = new GraphMLExporter();
-        return exporter.writeNeo4J(traditionId);
+        return exporter.writeNeo4J(traditionId, null, false, excludeSections);
     }
 
     /**

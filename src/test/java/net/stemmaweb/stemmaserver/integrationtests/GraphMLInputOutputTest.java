@@ -203,7 +203,7 @@ public class GraphMLInputOutputTest extends TestCase {
         }
         assertNotNull(graphdoc);
         nodes = graphdoc.getElementsByTagName("node");
-        assertEquals(82, nodes.getLength());
+        assertEquals(83, nodes.getLength());
 
         // Now add this section again to the tradition and make sure the witnesses aren't doubled
         Util.addSectionToTradition(jerseyTest, multiTradId,
