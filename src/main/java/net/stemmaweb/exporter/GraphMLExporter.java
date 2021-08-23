@@ -1,9 +1,12 @@
 package net.stemmaweb.exporter;
 
-import java.io.StringWriter;
+import java.io.*;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
-import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.stream.XMLOutputFactory;
@@ -11,9 +14,9 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Section;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
+import org.apache.commons.compress.utils.IOUtils;
 import org.neo4j.graphdb.*;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
@@ -34,7 +37,7 @@ public class GraphMLExporter {
             throws XMLStreamException{
             for (Map.Entry<String, String[]> entry : currentMap.entrySet()) {
                 String[] values = entry.getValue();
-                String key = String.format("d%s%s", kind.substring(0, 1), values[0]);
+                String key = String.format("d%s%s", kind.charAt(0), values[0]);
                 writer.writeEmptyElement("key");
                 writer.writeAttribute("attr.name", entry.getKey());
                 writer.writeAttribute("attr.type", values[1]);
@@ -121,106 +124,10 @@ public class GraphMLExporter {
         }
     }
 
-    public Response writeNeo4J(String tradId, String sectionId, Boolean includeWitnesses, Boolean excludeSections) {
-        // Basic sanity check
-        if (sectionId != null && excludeSections)
-            return Response.status(Status.BAD_REQUEST).build();
-
-        // Get the tradition node
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).build();
-
-        StringWriter result = new StringWriter();
-        XMLOutputFactory output = XMLOutputFactory.newInstance();
-        XMLStreamWriter writer;
-        try {
-            writer = new IndentingXMLStreamWriter(output.createXMLStreamWriter(result));
-        } catch (XMLStreamException e) {
-            e.printStackTrace();
-            return Response.serverError().build();
-        }
-        ResourceIterable<Node> collectionNodes;
-        if (sectionId != null)
-            collectionNodes = VariantGraphService.returnTraditionSection(sectionId, db).nodes();
-        else if (excludeSections)
-            collectionNodes = VariantGraphService.returnTraditionMeta(traditionNode).nodes();
-        else
-            collectionNodes = VariantGraphService.returnEntireTradition(traditionNode).nodes();
-
-        ResourceIterable<Relationship> collectionEdges;
-        if (sectionId != null)
-            collectionEdges = VariantGraphService.returnTraditionSection(sectionId, db).relationships();
-        else if (excludeSections)
-            collectionEdges = VariantGraphService.returnTraditionMeta(traditionNode).relationships();
-        else
-            collectionEdges = VariantGraphService.returnEntireTradition(traditionNode).relationships();
-
-
-        // Collect any extra nodes that should go into the list for whatever reason.
-        // So far two use cases:
-        // - Adding relevant annotations to a section export or a tradition metadata export
-        // - Adding witnesses to a section export if requested
-
-        List<Node> extraNodes = new ArrayList<>();
-        List<Relationship> extraRels = new ArrayList<>();
-        if (sectionId != null || excludeSections) {
-            // Add back any annotation nodes that belong to this export.
-            extraNodes.addAll(VariantGraphService.collectAnnotationsOnSet(db, collectionNodes));
-            if (!extraNodes.isEmpty()) {
-                try (Transaction tx = db.beginTx()) {
-                    // Add the relationships pointing from the annotations to the section and to each other
-                    extraNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraRels::add));
-                    // Add the links back to the tradition node
-                    extraNodes.forEach(x -> extraRels.add(
-                            x.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING)));
-
-                    if (sectionId != null) {
-                        // If we are exporting a section only, we need to add in the annotation spec for the
-                        // tradition, so that the annotations we just collected can be validated when this
-                        // file is parsed again.
-                        traditionNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING)
-                                .forEach(x -> {
-                                    extraNodes.add(x.getEndNode());
-                                    x.getEndNode().getRelationships(Direction.OUTGOING).forEach(y -> {
-                                        extraRels.add(y);
-                                        extraNodes.add(y.getEndNode());
-                                    });
-                                });
-                    }
-
-                    tx.success();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return Response
-                            .status(Response.Status.INTERNAL_SERVER_ERROR)
-                            .entity("Error in user-defined node generation")
-                            .build();
-                }
-            }
-            if (includeWitnesses) {
-                // Add in the witness nodes that are relevant to the requested section
-                Section sectionService = new Section(tradId, sectionId);
-                List<Node> witnessNodes = sectionService.collectSectionWitnesses();
-                extraNodes.addAll(witnessNodes);
-                try (Transaction tx = db.beginTx()) {
-                    witnessNodes.forEach(x -> extraRels.add(x.getSingleRelationship(ERelations.HAS_WITNESS, Direction.INCOMING)));
-                    tx.success();
-                }
-            }
-            // Finally, if we are exporting a single section, we need to include the tradition node if we
-            // had annotations or witnesses, so that these are not orphaned.
-            if (sectionId != null && !extraNodes.isEmpty()) {
-                extraNodes.add(traditionNode);
-                try (Transaction tx = db.beginTx()) {
-                    extraRels.add(db.getNodeById(Long.parseLong(sectionId))
-                            .getSingleRelationship(ERelations.PART, Direction.INCOMING));
-                    tx.success();
-                }
-            }
-        }
-
-
+    private void outputXMLToStream(XMLStreamWriter writer,
+                                   String idLabel,
+                                   List<Node> collectionNodes,
+                                   List<Relationship> collectionEdges) throws XMLStreamException {
         try (Transaction tx = db.beginTx()) {
             // First we have to go through all nodes and edges in the tradition or section we want,
             // compiling a list of node and edge attributes.
@@ -236,16 +143,6 @@ public class GraphMLExporter {
             }
 
             for (Relationship e : collectionEdges) {
-                collectProperties(e, edgeMap);
-                edgeCount++;
-            }
-
-            for (Node n : extraNodes) {
-                collectProperties(n, nodeMap);
-                nodeCount++;
-            }
-
-            for (Relationship e : extraRels) {
                 collectProperties(e, edgeMap);
                 edgeCount++;
             }
@@ -267,7 +164,7 @@ public class GraphMLExporter {
 
             // Write out the <graph> opening tag
             writer.writeStartElement("graph");
-            writer.writeAttribute("id", traditionNode.getProperty("name").toString());
+            writer.writeAttribute("id", idLabel);
             writer.writeAttribute("edgedefault", "directed");
             writer.writeAttribute("parse.edgeids", "canonical");
             writer.writeAttribute("parse.edges", String.valueOf(edgeCount));
@@ -283,29 +180,169 @@ public class GraphMLExporter {
                     addedNodes.add(n.getId());
                 }
 
-            for (Node n : extraNodes)
-                if (!addedNodes.contains(n.getId())) {
-                    writeNode(writer, n);
-                    addedNodes.add(n.getId());
-                }
-
             // And list out all the edges, which should already be unique in the traversal
             collectionEdges.forEach(x -> writeEdge(writer, x));
-            extraRels.forEach(x -> writeEdge(writer, x));
-
 
             writer.writeEndElement(); // graph
             writer.writeEndElement(); // end graphml
             writer.flush();
 
             tx.success();
+        }
+    }
+
+    /**
+     * Write a tradition, or a single section thereof, out to GraphML format. The result will be
+     * a zip file of XML files, one for the tradition metadata and one for each section.
+     *
+     * @param tradId - The tradition to export
+     * @param sectionId - The section to export; 'null' means export the whole tradition.
+     *
+     * @return a Response containing a zip file download of the requested tradition/section
+     */
+    public Response writeNeo4J(String tradId, String sectionId) {
+        // Get the tradition node
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).build();
+
+        // Set up our output directory and the initial XML file stream
+        File tmpdirfh;
+        String tmpdir;
+        try {
+            tmpdirfh = Files.createTempDirectory(tradId).toFile();
+            tmpdir = tmpdirfh.getAbsolutePath();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        ArrayList<String> outputFiles = new ArrayList<>();
+        // Get the tradition meta-info
+        ResourceIterable<Node> collectionNodes = VariantGraphService.returnTraditionMeta(traditionNode).nodes();
+        ResourceIterable<Relationship> collectionEdges =
+                VariantGraphService.returnTraditionMeta(traditionNode).relationships();
+
+        // Get any annotations pertaining to the tradition node itself and its metadata
+        List<Node> extraNodes;
+        List<Relationship> extraRels = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            extraNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(db, collectionNodes));
+            // Add the relationships pointing from the annotations to the section and to each other
+            extraNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraRels::add));
+            // Add the links back from the annotations to the tradition node
+            extraNodes.forEach(x -> extraRels.add(
+                    x.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING)));
+            tx.success();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response
-                    .status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error: Tradition could not be exported!")
-                    .build();
+            return Response.serverError().build();
         }
-        return Response.ok(result.toString(), MediaType.APPLICATION_XML).build();
+
+        List<Node> allNodes = collectionNodes.stream().collect(Collectors.toList());
+        allNodes.addAll(extraNodes);
+        List<Relationship> allEdges = collectionEdges.stream().collect(Collectors.toList());
+        allEdges.addAll(extraRels);
+
+        // Set up the XML output stream to the first file
+        XMLOutputFactory output = XMLOutputFactory.newInstance();
+        try {
+            String fileName = "tradition.xml";
+            FileWriter traditionMeta = new FileWriter(tmpdir + "/" + fileName);
+            XMLStreamWriter writer = new IndentingXMLStreamWriter(output.createXMLStreamWriter(traditionMeta));
+            outputXMLToStream(writer, tradId, allNodes, allEdges);
+            outputFiles.add(fileName);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+
+        // Now do it all over again for each section we want to output.
+        List<Node> allSections = new ArrayList<>();
+        if (sectionId != null) {
+            try (Transaction tx = db.beginTx()) {
+                allSections.add(db.getNodeById(Long.parseLong(sectionId)));
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().build();
+            }
+        } else {
+            allSections = VariantGraphService.getSectionNodes(tradId, db);
+        }
+        assert allSections != null; // We won't have got this far if it is null
+        for (Node s : allSections) {
+            String sectId = String.valueOf(s.getId());
+            // Gather the section-relevant nodes
+            ResourceIterable<Node> sectionNodes = VariantGraphService.returnTraditionSection(s).nodes();
+            ResourceIterable<Relationship> sectionEdges = VariantGraphService.returnTraditionSection(s).relationships();
+
+            // Collect relevant annotations
+            List<Node> extraSectNodes;
+            List<Relationship> extraSectRels = new ArrayList<>();
+            try (Transaction tx = db.beginTx()) {
+                extraSectNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(db, sectionNodes));
+                // Add the relationships pointing from the annotations to the section and to each other
+                extraSectNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraSectRels::add));
+                tx.success();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().build();
+            }
+
+            // Assemble main and extra into single lists
+            List<Node> allSectNodes = sectionNodes.stream().collect(Collectors.toList());
+            allSectNodes.addAll(extraSectNodes);
+            List<Relationship> allSectEdges = sectionEdges.stream().collect(Collectors.toList());
+            allSectEdges.addAll(extraSectRels);
+
+            // Setup the file stream
+            XMLOutputFactory sectionOutput = XMLOutputFactory.newInstance();
+            try {
+                String fileName = String.format("section-%s.xml", sectId);
+                FileWriter traditionSection = new FileWriter(tmpdir + "/" + fileName);
+                XMLStreamWriter writer = new IndentingXMLStreamWriter(sectionOutput.createXMLStreamWriter(traditionSection));
+                outputXMLToStream(writer, sectId, allSectNodes, allSectEdges);
+                outputFiles.add(fileName);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Response.serverError().build();
+            }
+
+        }
+
+        // Finally, assemble the contents of tmpdir into a zip file.
+        ByteArrayOutputStream result;
+        try {
+            result = new ByteArrayOutputStream();
+            BufferedOutputStream bos = new BufferedOutputStream(result);
+            ZipOutputStream zipOut = new ZipOutputStream(bos);
+            for (String fn : outputFiles) {
+                zipOut.putNextEntry(new ZipEntry(fn));
+                FileInputStream fis = new FileInputStream(tmpdir + "/" + fn);
+
+                IOUtils.copy(fis, zipOut);
+                fis.close();
+                zipOut.closeEntry();
+            }
+            zipOut.finish();
+            zipOut.flush();
+            IOUtils.closeQuietly(zipOut);
+            IOUtils.closeQuietly(bos);
+            IOUtils.closeQuietly(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+
+        // Cleanup. These will get deleted in reverse order of registration.
+        tmpdirfh.deleteOnExit();
+        for (String fn : outputFiles) {
+            File fh = new File(tmpdir + "/" + fn);
+            fh.deleteOnExit();
+        }
+
+        String sectionAppend = sectionId != null ? "-section-" + sectionId : "";
+        String cdisp = String.format("attachment; filename=\"%s%s.zip\"", tradId, sectionAppend);
+        return Response.ok(result.toByteArray(), "application/zip").header("Content-Disposition", cdisp).build();
     }
 }

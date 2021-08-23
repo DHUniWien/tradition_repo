@@ -1425,7 +1425,7 @@ public class Section {
      */
     @GET
     @Path("/graphml")
-    @Produces("application/xml; charset=utf-8")
+    @Produces("application/zip")
     @ReturnType("java.lang.Void")
     public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
         if (VariantGraphService.getTraditionNode(tradId, db) == null)
@@ -1433,7 +1433,7 @@ public class Section {
                     .entity("No such tradition found").build();
 
         GraphMLExporter exporter = new GraphMLExporter();
-        return exporter.writeNeo4J(tradId, sectId, includeWitnesses, false);
+        return exporter.writeNeo4J(tradId, sectId);
     }
 
     // Export the dot / SVG for a particular section

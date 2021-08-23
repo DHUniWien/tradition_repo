@@ -11,6 +11,7 @@ import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
 import net.stemmaweb.services.*;
 import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.*;
 
@@ -215,57 +216,31 @@ public class Tradition {
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream) {
-        // Make a new section node to connect to the tradition in question. But if we are
-        // parsing our own GraphML, the section node(s) should be created according to the
-        // XML data therein, and not here.
+
+        // Make a new section node to connect to the tradition in question.
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-        Node sectionNode = traditionNode;
-        if (!filetype.equals("graphml")) {
-            try (Transaction tx = db.beginTx()) {
-                sectionNode = db.createNode(Nodes.SECTION);
-                sectionNode.setProperty("name", sectionName);
-                traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-                tx.success();
-            }
+        Node sectionNode;
+        try (Transaction tx = db.beginTx()) {
+            sectionNode = db.createNode(Nodes.SECTION);
+            sectionNode.setProperty("name", sectionName);
+            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
+            tx.success();
         }
 
-        // Parse the contents of the given file into that section
-        Response result = null;
-        if (filetype.equals("csv"))
-            // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ',');
-        if (filetype.equals("tsv"))
-            // Pass it off to the CSV reader with tab separators
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, '\t');
-        if (filetype.startsWith("xls"))
-            // Pass it off to the Excel reader
-            result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
-        if (filetype.equals("teips"))
-            // Pass it off to the TEI parser
-            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
-        // TODO we need to parse TEI double-endpoint attachment from CTE
-        if (filetype.equals("collatex"))
-            // Pass it off to the CollateX parser
-            result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
-        if (filetype.equals("cxjson"))
-            // Pass it off to the CollateX JSON parser
-            result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, sectionNode);
-        if (filetype.equals("stemmaweb"))
-            // Pass it off to the somewhat legacy GraphML parser
-            result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode);
-        if (filetype.equals("graphml"))
-            result = new GraphMLParser().parseGraphML(uploadedInputStream, traditionNode);
-        // If we got this far, it was an unrecognized filetype.
-        if (result == null)
-            result = Response.status(Status.BAD_REQUEST).entity(jsonerror("Unrecognized file type " + filetype)).build();
+        // Dispatch the data for parsing, with the new section node as the parent node
+        Response result = parseDispatcher(sectionNode, filetype, uploadedInputStream, true);
 
+        // Handle the result
         if (result.getStatus() > 201) {
             // If the result wasn't a success, delete the section node before returning the result.
             Section restSect = new Section(traditionId, String.valueOf(sectionNode.getId()));
             restSect.deleteSection();
-        } else if (!filetype.equals("graphml")){
-            // Otherwise, if we haven't already, link this section behind the last of the prior sections.
+            return result;
+        } else {
+            // Otherwise, retrieve the section ID for our own response and link this section
+            // behind the last of the prior sections
+            JSONObject internResponse = new JSONObject(result.readEntity(String.class));
             if (existingSections != null && existingSections.size() > 0) {
                 SectionModel ls = existingSections.get(existingSections.size() - 1);
                 try (Transaction tx = db.beginTx()) {
@@ -274,9 +249,44 @@ public class Tradition {
                     tx.success();
                 } catch (Exception e) {
                     e.printStackTrace();
+                    return Response.serverError().build();
                 }
             }
+            return Response.status(Status.CREATED).entity(jsonresp("sectionId", internResponse.getLong("parentId"))).build();
         }
+    }
+
+    // A package-private method to add all sections to a new tradition, used by POST /tradition and POST /section
+    static Response parseDispatcher(Node parentNode, String filetype, InputStream uploadedInputStream, boolean isSingleSection) {
+        // Parse the contents of the given file into that section
+        Response result = null;
+        if (filetype.equals("csv"))
+            // Pass it off to the CSV reader
+            result = new TabularParser().parseCSV(uploadedInputStream, parentNode, ',');
+        if (filetype.equals("tsv"))
+            // Pass it off to the CSV reader with tab separators
+            result = new TabularParser().parseCSV(uploadedInputStream, parentNode, '\t');
+        if (filetype.startsWith("xls"))
+            // Pass it off to the Excel reader
+            result = new TabularParser().parseExcel(uploadedInputStream, parentNode, filetype);
+        if (filetype.equals("teips"))
+            // Pass it off to the TEI parser
+            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, parentNode);
+        // TODO we need to parse TEI double-endpoint attachment from CTE
+        if (filetype.equals("collatex"))
+            // Pass it off to the CollateX parser
+            result = new CollateXParser().parseCollateX(uploadedInputStream, parentNode);
+        if (filetype.equals("cxjson"))
+            // Pass it off to the CollateX JSON parser
+            result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, parentNode);
+        if (filetype.equals("stemmaweb"))
+            // Pass it off to the somewhat legacy GraphML parser
+            result = new StemmawebParser().parseGraphML(uploadedInputStream, parentNode);
+        if (filetype.equals("graphml"))
+            result = new GraphMLParser().parseGraphMLZip(uploadedInputStream, parentNode, isSingleSection);
+        // If we got this far, it was an unrecognized filetype.
+        if (result == null)
+            result = Response.status(Status.BAD_REQUEST).entity(jsonerror("Unrecognized file type " + filetype)).build();
 
         return result;
     }
@@ -789,18 +799,17 @@ public class Tradition {
      * Returns a GraphML file that describes the specified tradition and its data.
      * @summary Download GraphML
      *
-     * @param excludeSections - return the tradition metadata without any sections
      * @return XML data
      */
     @GET
     @Path("/graphml")
-    @Produces(MediaType.APPLICATION_XML)
+    @Produces("application/zip")
     @ReturnType("java.lang.Void")
-    public Response getGraphML(@DefaultValue("false") @QueryParam("no_sections") Boolean excludeSections) {
+    public Response getGraphML() {
         if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
         GraphMLExporter exporter = new GraphMLExporter();
-        return exporter.writeNeo4J(traditionId, null, false, excludeSections);
+        return exporter.writeNeo4J(traditionId, null);
     }
 
     /**

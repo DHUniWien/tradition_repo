@@ -7,14 +7,20 @@ import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
+import org.apache.commons.compress.utils.IOUtils;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.w3c.dom.*;
 
 import javax.ws.rs.core.Response;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import static net.stemmaweb.parser.Util.jsonerror;
+import static net.stemmaweb.parser.Util.jsonresp;
 
 /**
  * Parser for the GraphML that Stemmarest itself produces.
@@ -26,20 +32,73 @@ public class GraphMLParser {
     private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     /**
-     * Parses a GraphML file representing either an entire tradition, or a single tradition
-     * section. Returns the ID of the object (either tradition or section) that was created.
+     * Parses a zipped set of GraphML files representing either an entire tradition, or a single
+     * tradition section. Returns the ID of the object (either tradition or section) that was created.
      *
      * @param filestream - an InputStream with the XML data
-     * @param traditionNode - a Node to represent the tradition this data belongs to
+     * @param parentNode - a Node to represent the parent of this data, either a tradition or a section
+     * @param isSingleSection - whether we are parsing a whole tradition or just a single section
+     *
      * @return a Response object carrying a JSON dictionary {"parentId": <ID>}
      */
 
-    public Response parseGraphML(InputStream filestream, Node traditionNode)
+    public Response parseGraphMLZip(InputStream filestream, Node parentNode, boolean isSingleSection) {
+        // Keep track of GraphML ID -> created node ID
+        HashMap<String,Long> idMap = new HashMap<>();
+        // Initialise our response
+        String ret;
+        // Unzip the file and send each XML file therein to the "real" parser
+        try (Transaction tx = db.beginTx()) {
+            ret = Util.jsonresp("parentId", parentNode.getId());
+            BufferedInputStream buf = new BufferedInputStream(filestream);
+            ZipInputStream zipIn = new ZipInputStream(buf);
+            ZipEntry ze;
+            while ((ze = zipIn.getNextEntry()) != null) {
+                // SOMEDAY can we do this without writing out to a file?
+                String zfName = ze.getName();
+                File someTmp = File.createTempFile(zfName, "");
+                someTmp.deleteOnExit();
+                FileOutputStream fo = new FileOutputStream(someTmp);
+                IOUtils.copy(zipIn, fo);
+                fo.close();
+                zipIn.closeEntry();
+                FileInputStream fi = new FileInputStream(someTmp.getAbsolutePath());
+                Response result = parseGraphML(fi, zfName, parentNode, idMap, isSingleSection);
+                // Did something go wrong? If so, exit now
+                if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                    zipIn.close();
+                    return result;
+                }
+                // Otherwise move on, recording the last section created
+                ret = result.readEntity(String.class);
+            }
+            zipIn.close();
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        return Response.status(Response.Status.CREATED).entity(ret).build();
+    }
+
+    /**
+     * Parses the contents of the XML file stream, returning ...something
+     *
+     * @param filestream - The unzipped XML file stream
+     * @param fileName   - The name of the XML file we are working on
+     * @param parentNode - The tradition node (if !isSingleSection), or the section node
+     * @param idMap      - A map of node xml:id -> Neo4J node ID
+     * @param isSingleSection - Whether we are parsing a new tradition, or adding a section to an existing one
+     *
+     * @return a Response indicating the result
+     */
+    private Response parseGraphML(InputStream filestream, String fileName, Node parentNode,
+                                  Map<String,Long> idMap, boolean isSingleSection)
     {
         // We will use a DOM parser for this
         Document doc = Util.openFileStream(filestream);
         if (doc == null)
-            return Response.serverError().entity(Util.jsonerror("No document found")).build();
+            return Response.serverError().entity(jsonerror("No document found")).build();
 
         Element rootEl = doc.getDocumentElement();
         rootEl.normalize();
@@ -56,19 +115,27 @@ public class GraphMLParser {
         }
 
         String parentId = null;
-        String parentLabel = null;
         ArrayList<Node> sectionNodes = new ArrayList<>();
         ArrayList<Node> witnessNodes = new ArrayList<>();
         ArrayList<Node> annoLabelNodes = new ArrayList<>();
         HashSet<String> sigla = new HashSet<>();
-        // Keep track of XML ID to Neo4J ID mapping for all nodes
-        HashMap<String, Node> entityMap = new HashMap<>();
+
+        // Get the tradition node
+        Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode) : parentNode;
 
         // Now get to work with node and relationship creation.
         try (Transaction tx = db.beginTx()) {
             // The UUID of the tradition that was passed in for parsing
             String tradId = traditionNode.getProperty("id").toString();
             NodeList entityNodes = rootEl.getElementsByTagName("node");
+            // If this is a single section upload, get the existing tradition metadata nodes for use
+            List<Node> existingMeta = isSingleSection ?
+                    VariantGraphService.returnTraditionMeta(traditionNode).nodes().stream().collect(Collectors.toList()) :
+                    new ArrayList<>();
+            List<Relationship> existingMetaRel = isSingleSection ?
+                    VariantGraphService.returnTraditionMeta(traditionNode).relationships().stream().collect(Collectors.toList()) :
+                    new ArrayList<>();
+
             // Hold back nodes that were labeled by the user rather than the system, such as annotations,
             // so that we can add them to the graph with the existing verification / sanity checks.
             ArrayList<org.w3c.dom.Node> userLabeledNodes = new ArrayList<>();
@@ -80,72 +147,93 @@ public class GraphMLParser {
                 NodeList dataNodes = ((Element) entityXML).getElementsByTagName("data");
                 HashMap<String, Object> nodeProperties = returnProperties(dataNodes, dataKeys);
                 if (!nodeProperties.containsKey("neolabel"))
-                    return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror("Node without label found")).build();
+                    return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("Node without label found")).build();
                 String neolabel = nodeProperties.remove("neolabel").toString();
                 String[] entityLabel = neolabel.replace("[", "").replace("]", "").split(",\\s+");
 
                 if (neolabel.contains("TRADITION")) {
-                    // We are apparently parsing a whole tradition.
-                    // If there is already a different tradition with this tradition ID, we are making a
-                    // duplicate and the real ID of this one was set in Root.java; if not, fix our tradition
-                    // node to match the one in the GraphML.
-                    if (parentLabel != null) {
-                        // We apparently have two TRADITION nodes. Abort.
+                    // If we are parsing a single section, we ignore the ID on this tradition, and set
+                    // the tradition node to be the existing one for the section.
+                    // Otherwise, if there is already a different tradition with this tradition ID, we are making a
+                    // duplicate and the real ID of this one was set in Root.java. If there is not yet a different
+                    // tradition with this ID, we need to fix our tradition node to match the ID in the GraphML.
+
+
+                    if (fileName.equals("tradition.xml")) {
+                        // If we are parsing the main tradition.xml, then we need to align the tradition nodes
+                        String fileTraditionId = nodeProperties.get("id").toString();
+                        Node existingTradition = db.findNode(Nodes.TRADITION, "id", fileTraditionId);
+                        if (existingTradition == null) {
+                            // Set the ID of the new tradition node to match the old ID.
+                            traditionNode.setProperty("id", fileTraditionId);
+                            tradId = fileTraditionId;
+                        } // else there is another tradition with the original ID, so this is a duplicate
+                        // and needs its new ID.
+
+                        // This node is already created, but we need to reset its properties according to
+                        // what is in the GraphML file. We also save this ID as the parent ID that was created.
+                        for (String p : nodeProperties.keySet())
+                            if (!p.equals("id"))
+                                traditionNode.setProperty(p, nodeProperties.get(p));
+                        parentId = tradId;
+                        idMap.put(xmlId, traditionNode.getId());
+                    } else if (!idMap.get(xmlId).equals(traditionNode.getId())) {
+                        // If we are parsing the section XML, then we just need to make sure we have the right XML ID
                         return Response.status(Response.Status.BAD_REQUEST)
-                                .entity(Util.jsonerror("Multiple TRADITION nodes in input")).build();
+                                .entity(jsonerror("Mismatched tradition node XML ID in input")).build();
                     }
-
-                    String fileTraditionId = nodeProperties.get("id").toString();
-                    Node existingTradition = db.findNode(Nodes.TRADITION, "id", fileTraditionId);
-                    if (existingTradition == null) {
-                        // Set the ID of the new tradition node to match the old ID.
-                        traditionNode.setProperty("id", fileTraditionId);
-                        tradId = fileTraditionId;
-                    } // else there is another tradition with the original ID, so this is a duplicate
-                    // and needs its new ID.
-
-                    // This node is already created, but we need to reset its properties according to
-                    // what is in the GraphML file. We also save this ID as the parent ID that was created.
-                    for (String p : nodeProperties.keySet())
-                        if (!p.equals("id"))
-                            traditionNode.setProperty(p, nodeProperties.get(p));
-                    parentId = tradId;
-                    parentLabel = "tradition";
-                    entityMap.put(xmlId, traditionNode);
                 } else {
-                    // Now we have the information of the XML, we can create the node.
-                    Node entity = db.createNode();
-                    for (String l : entityLabel) {
-                        try {
-                            entity.addLabel(Nodes.valueOf(l));
-                            nodeProperties.forEach(entity::setProperty);
-                            entityMap.put(xmlId, entity);
-                            // Save section node(s), in case we are uploading individual sections and need to connect
-                            // them to our tradition node
-                            if (neolabel.contains("[SECTION]")) sectionNodes.add(entity);
-                            if (neolabel.contains("[WITNESS]")) witnessNodes.add(entity);
-                            if (neolabel.contains("[ANNOTATIONLABEL]")) annoLabelNodes.add(entity);
-                        } catch (IllegalArgumentException e) {
-                            // This is an annotation node, which we will deal with in a separate pass.
-                            userLabeledNodes.add(entityXML);
-                            entity.delete();
+                    // Now we have the information of the XML, we can create the new node if we need to.
+                    // We don't need to...
+                    // - if it is already in the idMap
+                    // - if it is the SECTION node
+                    // - if this is a single section upload, we are in the tradition.xml file, and a node
+                    //   with identical properties already exists
+
+                    if (!idMap.containsKey(xmlId)) {
+                        // Is this the single-section section node?
+                        Node entity = null;
+                        boolean exists = false;
+                        if (neolabel.contains("SECTION") && isSingleSection) entity = parentNode;
+                        else if (fileName.equals("tradition.xml")) {
+                            // Does the node already exist in the tradition's metadata?
+                            exists = true;
+                            for (Node ex : existingMeta) {
+                                for (String p : nodeProperties.keySet()) {
+                                    exists = exists && nodeProperties.get(p).equals(ex.getProperty(p, null));
+                                }
+                                if (exists) {
+                                    // The node already exists, so we add it to the idMap and move on.
+                                    entity = ex;
+                                    break;
+                                } else {
+                                    entity = db.createNode();
+                                }
+                            }
+                        } else entity = db.createNode();
+                        assert(entity != null);
+
+                        idMap.put(xmlId, entity.getId());
+                        if (!exists)
+                            for (String l : entityLabel) {
+                                try {
+                                    entity.addLabel(Nodes.valueOf(l));
+                                    nodeProperties.forEach(entity::setProperty);
+                                    // Save section node(s), in case we are uploading individual sections and need to connect
+                                    // them to our tradition node
+                                    if (neolabel.contains("[SECTION]")) sectionNodes.add(entity);
+                                    if (neolabel.contains("[WITNESS]")) witnessNodes.add(entity);
+                                    if (neolabel.contains("[ANNOTATIONLABEL]")) annoLabelNodes.add(entity);
+                                } catch (IllegalArgumentException e) {
+                                    // This is an annotation node, which we will deal with in a separate pass.
+                                    userLabeledNodes.add(entityXML);
+                                    entity.delete();
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            // Check the parent type
-            if (parentLabel == null) // i.e. if it hasn't been set to "tradition"
-                if (sectionNodes.size() == 0)
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(Util.jsonerror("Neither TRADITION nor SECTION found in input")).build();
-                else
-                    parentLabel = "section";
-
-            // If we have seen multiple sections but no tradition, error out.
-            if (sectionNodes.size() > 1 && parentLabel.equals("section"))
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Util.jsonerror("Multiple SECTION nodes but no TRADITION in input")).build();
 
 
             // Next go through all the edges and create them between the nodes. Keep track of the
@@ -156,12 +244,12 @@ public class GraphMLParser {
                 NamedNodeMap edgeAttrs = edgeNodes.item(i).getAttributes();
                 String sourceXmlId = edgeAttrs.getNamedItem("source").getNodeValue();
                 String targetXmlId = edgeAttrs.getNamedItem("target").getNodeValue();
-                Node source = entityMap.get(sourceXmlId);
-                Node target = entityMap.get(targetXmlId);
+                Node source = db.getNodeById(idMap.get(sourceXmlId));
+                Node target = db.getNodeById(idMap.get(targetXmlId));
                 NodeList dataNodes = ((Element) edgeNodes.item(i)).getElementsByTagName("data");
                 HashMap<String, Object> edgeProperties = returnProperties(dataNodes, dataKeys);
                 if (!edgeProperties.containsKey("neolabel"))
-                    return Response.serverError().entity(Util.jsonerror("Node without label found")).build();
+                    return Response.serverError().entity(jsonerror("Node without label found")).build();
                 String neolabel = edgeProperties.remove("neolabel").toString();
                 // If this is a SEQUENCE relation, track the sigla so we can be sure the witnesses
                 // exist (they are not exported for sections.)
@@ -172,7 +260,7 @@ public class GraphMLParser {
                 } else if (neolabel.equals("RELATED")) {
                     if (!edgeProperties.containsKey("type"))
                         return Response.status(Response.Status.BAD_REQUEST)
-                                .entity(Util.jsonerror("Relation defined without a type")).build();
+                                .entity(jsonerror("Relation defined without a type")).build();
                     seenRelationTypes.add(edgeProperties.get("type").toString());
                 }
                 Relationship newRel;
@@ -191,7 +279,7 @@ public class GraphMLParser {
 
             // Connect our new section to an existing tradition node, and to the last existing section,
             // if this is a section-only upload.
-            if (parentLabel.equals("section")) {
+            if (isSingleSection) {
                 Node newSection = sectionNodes.get(0);
                 ArrayList<Node> existingSections = VariantGraphService.getSectionNodes(tradId, db);
                 assert (existingSections != null); // We should have already errored if this will be null.
@@ -226,9 +314,10 @@ public class GraphMLParser {
             }
 
             // Reset the section IDs stored on each reading to the ID of the newly created node
-            for (Node r : entityMap.values().stream().filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList())) {
+            for (Node r : idMap.values().stream().map(db::getNodeById)
+                    .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList())) {
                 String rSectId = r.getProperty("section_id").toString();
-                r.setProperty("section_id", entityMap.get(rSectId).getId());
+                r.setProperty("section_id", idMap.get(rSectId));
             }
 
             // Ensure that all witnesses we have encountered actually exist.
@@ -289,12 +378,12 @@ public class GraphMLParser {
                     // Look at the links and see if the targets exist yet
                     boolean targetsExist = true;
                     for (Long target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).collect(Collectors.toList())) {
-                        targetsExist = targetsExist && entityMap.containsKey(target.toString());
+                        targetsExist = targetsExist && idMap.containsKey(target.toString());
                     }
                     if (targetsExist) {
                         // We can update the links with the "real" nodes and create the annotation.
                         for (AnnotationLinkModel alm : am.getLinks()) {
-                            Node nodeTarget = entityMap.get(alm.getTarget().toString());
+                            Node nodeTarget = db.getNodeById(idMap.get(alm.getTarget().toString()));
                             alm.setTarget(nodeTarget.getId());
                         }
                         Response result = tradService.addAnnotation(am);
@@ -309,23 +398,23 @@ public class GraphMLParser {
                 // Guard against infinite loops
                 if (toRemove.isEmpty())
                     return Response.status(Response.Status.BAD_REQUEST)
-                            .entity(Util.jsonerror("Annotations in XML could not all be resolved")).build();
+                            .entity(jsonerror("Annotations in XML could not all be resolved")).build();
                 annotationsToAdd.removeAll(toRemove);
             }
 
             // Sanity check: if we created any relationship-less nodes, delete them again.
-            entityMap.values().stream().filter(n -> !n.hasRelationship()).forEach(Node::delete);
+            idMap.values().stream().map(db::getNodeById)
+                    .filter(n -> !n.hasRelationship()).forEach(Node::delete);
 
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
         }
 
-        String response = String.format("{\"parentId\":\"%s\",\"parentLabel\":\"%s\"}", parentId, parentLabel);
-        return Response.status(Response.Status.CREATED).entity(response).build();
+        return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentId)).build();
     }
 
     // Return true if the tradition already has a witness with the given sigil.

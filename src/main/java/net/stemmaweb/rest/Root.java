@@ -1,16 +1,12 @@
 package net.stemmaweb.rest;
 
-// When we want to switch to Jersey 2.x
-//import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-//import org.glassfish.jersey.media.multipart.FormDataParam;
-
-
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
+import net.stemmaweb.services.VariantGraphService;
 import org.apache.tika.Tika;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
@@ -168,15 +164,13 @@ public class Root {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
-        // Otherwise we should treat the file contents as a single section of that tradition, and send it off
-        // for parsing.
+        // If we got file contents, we should send them off for parsing.
         if (empty == null) {
-            Tradition traditionService = new Tradition(tradId);
-            Response dataResult = traditionService.addSection("DEFAULT",
-                    filetype, uploadedInputStream);
+            Response dataResult = Tradition.parseDispatcher(VariantGraphService.getTraditionNode(tradId, db),
+                    filetype, uploadedInputStream, false);
             if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
                 // If something went wrong, delete the new tradition immediately and return the error.
-                traditionService.deleteTraditionById();
+                new Tradition(tradId).deleteTraditionById();
                 return dataResult;
             }
             // If we just parsed GraphML (the only format that can preserve prior tradition IDs),
@@ -191,7 +185,6 @@ public class Root {
                     return Response.serverError().entity(jsonerror("Bad file parse response")).build();
                 }
             }
-
         }
 
         return Response.status(Response.Status.CREATED).entity(jsonresp("tradId", tradId)).build();
