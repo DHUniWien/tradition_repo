@@ -308,7 +308,7 @@
 		<neo4j-version>3.5.29</neo4j-version>
 		<neo4j-algo-version>3.5.4.0</neo4j-algo-version>
 		<jackson-version>2.12.4</jackson-version>
-		<jersey-version>2.34</jersey-version>
+		<jersey-version>3.0.2</jersey-version>
 
 	</properties>
 

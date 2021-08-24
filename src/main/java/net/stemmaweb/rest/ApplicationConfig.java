@@ -3,13 +3,7 @@ package net.stemmaweb.rest;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.ws.rs.core.Application;
-
-import net.stemmaweb.services.DatabaseService;
-
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import org.neo4j.graphdb.GraphDatabaseService;
+import jakarta.ws.rs.core.Application;
 
 /**
  * This is the main configuration and setup class.
@@ -29,26 +23,5 @@ public class ApplicationConfig extends Application {
 
         return s;
     }
-    
-/*
-    @PostConstruct
-    public void initializeApp()
-    {
-        // This has been moved to ApplicationContextListener so that
-        // apache tomcat properly shuts down neo4j.
-        // Connect to the database, create the root node if necessary, and leave.
-        //GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
-        //DatabaseService.createRootNode(db);
-        //registerShutdownHook(db);
-    }
-
-    private static void registerShutdownHook( final GraphDatabaseService graphDb )
-    {
-        // Registers a shutdown hook for the Neo4j instance so that it
-        // shuts down nicely when the VM exits (even if you "Ctrl-C" the
-        // running application).
-        Runtime.getRuntime().addShutdownHook(new Thread(graphDb::shutdown));
-    }
-    */
 
 }

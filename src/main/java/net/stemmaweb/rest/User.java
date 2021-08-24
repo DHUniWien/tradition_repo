@@ -2,10 +2,10 @@ package net.stemmaweb.rest;
 
 import java.util.ArrayList;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.TraditionModel;

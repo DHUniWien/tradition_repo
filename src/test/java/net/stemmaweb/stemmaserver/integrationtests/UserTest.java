@@ -5,10 +5,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
