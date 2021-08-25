@@ -18,7 +18,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
-import javax.servlet.ServletContext;
+import jakarta.servlet.ServletContext;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Context;
