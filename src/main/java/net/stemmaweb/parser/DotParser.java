@@ -2,8 +2,8 @@ package net.stemmaweb.parser;
 
 import java.util.*;
 
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Response.Status;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import com.alexmerz.graphviz.ParseException;
 import com.alexmerz.graphviz.objects.*;

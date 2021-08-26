@@ -17,10 +17,10 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 import javax.xml.parsers.DocumentBuilderFactory;
-import jakarta.ws.rs.core.GenericType;
-import jakarta.ws.rs.core.MediaType;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;

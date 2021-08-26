@@ -11,7 +11,7 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.w3c.dom.*;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;

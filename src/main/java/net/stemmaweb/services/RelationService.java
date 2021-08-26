@@ -9,7 +9,7 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;

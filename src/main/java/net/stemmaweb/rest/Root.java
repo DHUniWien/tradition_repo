@@ -18,12 +18,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
-import jakarta.servlet.ServletContext;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import javax.servlet.ServletContext;
+import javax.ws.rs.*;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;

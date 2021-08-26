@@ -15,7 +15,7 @@ import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 
