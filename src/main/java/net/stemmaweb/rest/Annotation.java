@@ -94,7 +94,7 @@ public class Annotation {
             // Find the relevant annotation label
             Optional<Node> al = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
                     .stream().filter(x -> x.getProperty("name").equals(newAnno.getLabel())).findFirst();
-            if (!al.isPresent())
+            if (al.isEmpty())
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("No annotation label " + newAnno.getLabel() + " defined for this tradition"))
                         .build();

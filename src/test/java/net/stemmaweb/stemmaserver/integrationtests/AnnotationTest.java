@@ -617,7 +617,7 @@ public class AnnotationTest extends TestCase {
                     .target("/tradition/" + tradId + "/annotation")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(am));
-            assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+            assertEquals("creation of " + k + " annotation", Response.Status.CREATED.getStatusCode(), response.getStatus());
         }
 
         // Check that they come back out
