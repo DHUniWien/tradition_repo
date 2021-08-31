@@ -20,6 +20,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,9 +40,10 @@ import static net.stemmaweb.rest.Util.jsonresp;
 @Path("/")
 public class Root {
     @Context ServletContext context;
+    @Context UriInfo uri;
     private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private final GraphDatabaseService db = dbServiceProvider.getDatabase();
-    
+
     /*
      * Delegated API calls
      */
@@ -174,7 +176,7 @@ public class Root {
                 return dataResult;
             }
             // If we just parsed GraphML (the only format that can preserve prior tradition IDs),
-            // get the actual tradition ID in case it changed.
+            // get the actual tradition ID in case it was preserved from a prior export.
             if (filetype.equals("graphml")) {
                 try {
                     JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
@@ -187,7 +189,9 @@ public class Root {
             }
         }
 
-        return Response.status(Response.Status.CREATED).entity(jsonresp("tradId", tradId)).build();
+
+        return Response.created(uri.getRequestUriBuilder().path(tradId).build())
+                .entity(jsonresp("tradId", tradId)).build();
     }
 
     /*
