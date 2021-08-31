@@ -271,17 +271,6 @@ public class GraphMLParser {
                 }
             }
 
-            // Connect our new section to the last existing section, if this is a section-only upload.
-            if (isSingleSection) {
-                assert (existingSections != null); // We should have already errored if this will be null,
-                                                   // though it might well be empty.
-                if (existingSections.size() > 0) {
-                    Node lastExisting = existingSections.get(existingSections.size() - 1);
-                    lastExisting.createRelationshipTo(parentNode, ERelations.NEXT);
-                }
-                parentId = String.valueOf(parentNode.getId());
-            }
-
             // Reset the section IDs stored on each reading to the ID of the newly created node
             for (Node r : idMap.values().stream().map(db::getNodeById)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList())) {

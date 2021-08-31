@@ -2,7 +2,6 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
@@ -24,18 +23,25 @@ import static net.stemmaweb.services.ReadingService.removePlaceholder;
  * Parse a TEI parallel-segmentation file into a tradition graph.
  */
 public class TEIParallelSegParser {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 
     // Global variables needed for the parsing
     // Keep track of which witnesses are "active" at any given time
-    private HashMap<String, Boolean> activeWitnesses = new HashMap<>();
+    private final HashMap<String, Boolean> activeWitnesses = new HashMap<>();
     // Keep a list of the placeholder nodes that are made in this process
-    private ArrayList<Node> placeholderNodes = new ArrayList<>();
+    private final ArrayList<Node> placeholderNodes = new ArrayList<>();
     // Note whether the witStart / witEnd tags are being used
     private Boolean appSiglorumPresent = false;
     private Boolean spaceSignificant = false;
 
+    /**
+     * Parse a TEI XML input stream with parallel-segmentation representation of variant text
+     * and attach it to the given (section) parentNode.
+     *
+     * @param xmldata - The data to parse
+     * @param parentNode - The section node that will carry the parsed data
+     * @return a Response to indicate the result
+     */
     public Response parseTEIParallelSeg(InputStream xmldata, Node parentNode) {
         XMLInputFactory factory;
         XMLStreamReader reader;
@@ -50,7 +56,7 @@ public class TEIParallelSegParser {
         }
 
         // Main XML parser loop
-        Node traditionNode = DatabaseService.getRelated(parentNode, ERelations.PART).get(0);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         String tradId;
         String parentId;
         Node startNode;
@@ -185,9 +191,9 @@ public class TEIParallelSegParser {
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
-            System.out.println(String.format("Error encountered in XML line %d column %d: ",
+            System.out.printf("Error encountered in XML line %d column %d: %n",
                     reader.getLocation().getLineNumber(),
-                    reader.getLocation().getColumnNumber()));
+                    reader.getLocation().getColumnNumber());
             e.printStackTrace();
             return Response.serverError().build();
         }
@@ -196,7 +202,7 @@ public class TEIParallelSegParser {
         long endRank;
         try (Transaction tx = db.beginTx()) {
             assert(endNode != null);
-            endRank = Long.valueOf(endNode.getProperty("rank").toString());
+            endRank = Long.parseLong(endNode.getProperty("rank").toString());
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -207,7 +213,7 @@ public class TEIParallelSegParser {
             ReadingModel first = identSet.remove(0);
             Reading rd = new Reading(first.getId());
             for (ReadingModel identical : identSet) {
-                Response done = rd.mergeReadings(Long.valueOf(identical.getId()));
+                Response done = rd.mergeReadings(Long.parseLong(identical.getId()));
                 if (done.getStatus() != Response.Status.OK.getStatusCode())
                     return Response.serverError().entity(done.getEntity()).build();
             }

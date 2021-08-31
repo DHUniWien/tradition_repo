@@ -220,13 +220,9 @@ public class Tradition {
         // Make a new section node to connect to the tradition in question.
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-        Node sectionNode;
-        try (Transaction tx = db.beginTx()) {
-            sectionNode = db.createNode(Nodes.SECTION);
-            sectionNode.setProperty("name", sectionName);
-            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-            tx.success();
-        }
+        Node sectionNode = createNewSection(traditionNode, sectionName);
+        if (sectionNode == null)
+            return Response.serverError().entity(jsonerror("Error creating new section node on tradition")).build();
 
         // Dispatch the data for parsing, with the new section node as the parent node
         Response result = parseDispatcher(sectionNode, filetype, uploadedInputStream, true);
@@ -256,10 +252,45 @@ public class Tradition {
         }
     }
 
-    // A package-private method to add all sections to a new tradition, used by POST /tradition and POST /section
-    static Response parseDispatcher(Node parentNode, String filetype, InputStream uploadedInputStream, boolean isSingleSection) {
-        // Parse the contents of the given file into that section
+
+    // utility method for creating a new section on a tradition
+    private static Node createNewSection(Node traditionNode, String sectionName) {
+        Node sectionNode;
+        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            sectionNode = db.createNode(Nodes.SECTION);
+            sectionNode.setProperty("name", sectionName);
+            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return sectionNode;
+    }
+
+    /**
+     * A package-private method to add sections to a given tradition, used by POST /tradition and POST /section
+     *
+     * @param parentNode - either the tradition node or the section node, depending on addSingleSection
+     * @param filetype   - indicates which of the supported filetypes we are parsing
+     * @param uploadedInputStream - the data to parse
+     * @param addSingleSection - whether we are adding a section to an existing tradition, or uploading
+     *                          a new tradition entirely
+     * @return a Response indicating the result
+     */
+    static Response parseDispatcher(Node parentNode, String filetype, InputStream uploadedInputStream, boolean addSingleSection) {
         Response result = null;
+        // All parsers except GraphML expect a section node; create it here if we are not adding a
+        // section to an existing tradition.
+        if (!addSingleSection && !filetype.equals("graphml")) {
+            Node sectionNode = createNewSection(parentNode, "DEFAULT");
+            if (sectionNode == null)
+                return Response.serverError()
+                        .entity(jsonerror("Error creating new section node on tradition")).build();
+            parentNode = sectionNode;
+        }
+        // Parse the contents of the given file into that section
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
             result = new TabularParser().parseCSV(uploadedInputStream, parentNode, ',');
@@ -283,7 +314,7 @@ public class Tradition {
             // Pass it off to the somewhat legacy GraphML parser
             result = new StemmawebParser().parseGraphML(uploadedInputStream, parentNode);
         if (filetype.equals("graphml"))
-            result = new GraphMLParser().parseGraphMLZip(uploadedInputStream, parentNode, isSingleSection);
+            result = new GraphMLParser().parseGraphMLZip(uploadedInputStream, parentNode, addSingleSection);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity(jsonerror("Unrecognized file type " + filetype)).build();

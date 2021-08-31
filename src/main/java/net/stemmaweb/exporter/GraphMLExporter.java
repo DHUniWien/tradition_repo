@@ -223,25 +223,25 @@ public class GraphMLExporter {
                 VariantGraphService.returnTraditionMeta(traditionNode).relationships();
 
         // Get any annotations pertaining to the tradition node itself and its metadata
-        List<Node> extraNodes;
-        List<Relationship> extraRels = new ArrayList<>();
+        List<Node> allNodes;
+        List<Relationship> allEdges;
         try (Transaction tx = db.beginTx()) {
-            extraNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(db, collectionNodes));
+            List<Node> extraNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(db, collectionNodes));
+            allNodes = collectionNodes.stream().collect(Collectors.toList());
+            allNodes.addAll(extraNodes);
             // Add the relationships pointing from the annotations to the section and to each other
+            List<Relationship> extraRels = new ArrayList<>();
             extraNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraRels::add));
             // Add the links back from the annotations to the tradition node
             extraNodes.forEach(x -> extraRels.add(
                     x.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING)));
+            allEdges = collectionEdges.stream().collect(Collectors.toList());
+            allEdges.addAll(extraRels);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
         }
-
-        List<Node> allNodes = collectionNodes.stream().collect(Collectors.toList());
-        allNodes.addAll(extraNodes);
-        List<Relationship> allEdges = collectionEdges.stream().collect(Collectors.toList());
-        allEdges.addAll(extraRels);
 
         // Set up the XML output stream to the first file
         XMLOutputFactory output = XMLOutputFactory.newInstance();
@@ -277,23 +277,22 @@ public class GraphMLExporter {
             ResourceIterable<Relationship> sectionEdges = VariantGraphService.returnTraditionSection(s).relationships();
 
             // Collect relevant annotations
-            List<Node> extraSectNodes;
-            List<Relationship> extraSectRels = new ArrayList<>();
+            List<Node> allSectNodes;
+            List<Relationship> allSectEdges;
             try (Transaction tx = db.beginTx()) {
-                extraSectNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(db, sectionNodes));
+                List<Node> extraSectNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(db, sectionNodes));
+                allSectNodes = sectionNodes.stream().collect(Collectors.toList());
+                allSectNodes.addAll(extraSectNodes);
                 // Add the relationships pointing from the annotations to the section and to each other
+                List<Relationship> extraSectRels = new ArrayList<>();
                 extraSectNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraSectRels::add));
+                allSectEdges = sectionEdges.stream().collect(Collectors.toList());
+                allSectEdges.addAll(extraSectRels);
                 tx.success();
             } catch (Exception e) {
                 e.printStackTrace();
                 return Response.serverError().build();
             }
-
-            // Assemble main and extra into single lists
-            List<Node> allSectNodes = sectionNodes.stream().collect(Collectors.toList());
-            allSectNodes.addAll(extraSectNodes);
-            List<Relationship> allSectEdges = sectionEdges.stream().collect(Collectors.toList());
-            allSectEdges.addAll(extraSectRels);
 
             // Setup the file stream
             XMLOutputFactory sectionOutput = XMLOutputFactory.newInstance();

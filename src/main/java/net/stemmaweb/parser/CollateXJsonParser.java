@@ -24,6 +24,13 @@ public class CollateXJsonParser {
     private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
     private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    /**
+     * Parse a CollateX JSON input stream and attach it to the given (section) parentNode.
+     *
+     * @param filestream - The data to parse
+     * @param parentNode - The section node that will carry the parsed data
+     * @return a Response to indicate the result
+     */
     public Response parseCollateXJson(InputStream filestream, Node parentNode) {
         // parse the JSON
         ArrayList<String> collationWitnesses = new ArrayList<>();

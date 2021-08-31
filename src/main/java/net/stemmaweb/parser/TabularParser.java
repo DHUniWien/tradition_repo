@@ -6,14 +6,13 @@ import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
-import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import javax.ws.rs.core.Response;
@@ -26,7 +25,7 @@ import java.util.*;
  * into a tradition.
  */
 public class TabularParser {
-    private GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+    private final GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 
     /**
      * Parse a comma- or tab-separated file stream into a graph.
@@ -106,7 +105,7 @@ public class TabularParser {
     private Response parseTableToCollation(ArrayList<String[]> tableData, Node parentNode) {
         String response;
         Response.Status result = Response.Status.OK;
-        Node traditionNode = DatabaseService.getRelated(parentNode, ERelations.PART).get(0);
+        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
 
         try (Transaction tx = db.beginTx()) {
             // Make the start node

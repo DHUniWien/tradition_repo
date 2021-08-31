@@ -41,7 +41,7 @@ public class StemmawebParser {
      * that the GraphML describes a valid graph as exported from the legacy Stemmaweb.
      *
      * @param xmldata - the GraphML file stream
-     * @param parentNode - the node to which the collation should be attached
+     * @param parentNode - the section node to which the collation should be attached
      * @return Http Response with the id of the imported tradition
      */
     public Response parseGraphML(InputStream xmldata, Node parentNode) {

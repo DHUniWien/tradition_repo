@@ -26,9 +26,16 @@ import java.util.Optional;
  * @author tla
  */
 public class CollateXParser {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
+    /**
+     * Parse a CollateX XML input stream and attach it to the given (section) parentNode.
+     *
+     * @param filestream - The data to parse
+     * @param parentNode - The section node that will carry the parsed data
+     * @return a Response to indicate the result
+     */
     public Response parseCollateX(InputStream filestream, Node parentNode)
     {
         // Try this the DOM parsing way
@@ -54,7 +61,7 @@ public class CollateXParser {
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
-            Long highestRank = 0L;
+            long highestRank = 0L;
             boolean transpositionSeen = false;
             for (int i = 0; i < readingNodes.getLength(); i++) {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
@@ -68,9 +75,9 @@ public class CollateXParser {
                     String keyId = dataAttrs.getNamedItem("key").getNodeValue();
                     String keyVal = dataNodes.item(j).getTextContent();
                     if (dataKeys.get(keyId).equals("rank")) {
-                        Long rankVal = Long.valueOf(keyVal);
+                        long rankVal = Long.parseLong(keyVal);
                         reading.setProperty("rank", rankVal);
-                        highestRank = rankVal > highestRank ? rankVal : highestRank;
+                        highestRank = Math.max(rankVal, highestRank);
                         // Detect start node
                         if (rankVal == 0) {
                             parentNode.createRelationshipTo(reading, ERelations.COLLATION);
@@ -86,7 +93,7 @@ public class CollateXParser {
             Optional<Node> endNodeOpt = createdReadings.values().stream()
                     .filter(x -> x.getProperty("rank").equals(hr))
                     .findFirst();
-            if (!endNodeOpt.isPresent())
+            if (endNodeOpt.isEmpty())
                 return Response.serverError().entity(Util.jsonerror("No end node found")).build();
             Node endNode = endNodeOpt.get();
             endNode.setProperty("is_end", true);
