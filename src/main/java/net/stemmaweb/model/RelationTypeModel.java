@@ -26,6 +26,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     /**
      * A short description of what this relationship type signifies
      */
+    private Boolean defaultsettings; // undocumented; use this for Stemmaweb legacy defaults
     private String  description;
     /**
      * How tightly the relationship binds. A lower number indicates a closer binding.
@@ -66,6 +67,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     public RelationTypeModel (String name) {
         this.thename = name;
         // Set some defaults
+        this.defaultsettings = false;
         this.description = "A type of reading relation";
         this.bindlevel = 10;
         this.is_colocation = true;
@@ -105,6 +107,10 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     public void setName(String aname) {
         this.thename = aname;
     }
+
+    public Boolean getDefaultsettings() { return defaultsettings; }
+
+    public void setDefaultsettings(Boolean defaultsettings) { this.defaultsettings = defaultsettings; }
 
     public String getDescription() {
         return description;

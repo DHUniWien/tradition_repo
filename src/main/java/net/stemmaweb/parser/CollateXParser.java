@@ -1,5 +1,6 @@
 package net.stemmaweb.parser;
 
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
@@ -146,8 +147,11 @@ public class CollateXParser {
 
             // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {
-                Response rtResult = new RelationType(traditionNode.getProperty("id").toString(), "transposition")
-                        .makeDefaultType();
+                RelationTypeModel rtm = new RelationTypeModel();
+                rtm.setName("transposition");
+                rtm.setDefaultsettings(true);
+                Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
+                        rtm.getName()).create(rtm);
                 if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                     return rtResult;
             }

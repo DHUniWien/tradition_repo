@@ -50,8 +50,12 @@ public class RelationService {
     public static RelationTypeModel returnRelationType(String traditionId, String relType) {
         RelationType rtRest = new RelationType(traditionId, relType);
         Response rtResult = rtRest.getRelationType();
-        if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode())
-            rtResult = rtRest.makeDefaultType();
+        if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
+            RelationTypeModel rtm = new RelationTypeModel();
+            rtm.setName(relType);
+            rtm.setDefaultsettings(true);
+            rtResult = rtRest.create(rtm);
+        }
         return (RelationTypeModel) rtResult.getEntity();
     }
 
@@ -74,7 +78,7 @@ public class RelationService {
             else if (referenceNode.hasLabel(Nodes.SECTION))
                 traditionNode = VariantGraphService.getTraditionNode(referenceNode);
             else if (referenceNode.hasLabel(Nodes.READING)) {
-                Node sectionNode = db.getNodeById(Long.valueOf(referenceNode.getProperty("section_id").toString()));
+                Node sectionNode = db.getNodeById(Long.parseLong(referenceNode.getProperty("section_id").toString()));
                 traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             }
             assert(traditionNode != null);
@@ -86,21 +90,6 @@ public class RelationService {
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("Could not collect relation types", e);
-        }
-        return result;
-    }
-
-    public static List<Relationship> getDislocations(Node r) throws Exception {
-        GraphDatabaseService db = r.getGraphDatabase();
-        List<Relationship> result = new ArrayList<>();
-        List<RelationTypeModel> dislocationTypes = ourRelationTypes(r).stream()
-                .filter(x -> !x.getIs_colocation()).collect(Collectors.toList());
-        try (Transaction tx = db.beginTx()) {
-            // what is this supposed to do?
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Exception("Could not collect dislocations", e);
         }
         return result;
     }
@@ -254,8 +243,8 @@ public class RelationService {
      *
      */
     public static class RelatedReadingsTraverser implements Evaluator {
-        private HashMap<String, RelationTypeModel> ourTypes;
-        private Function<RelationTypeModel, Boolean> criterion;
+        private final HashMap<String, RelationTypeModel> ourTypes;
+        private final Function<RelationTypeModel, Boolean> criterion;
 
         public RelatedReadingsTraverser(Node fromReading) throws Exception {
             this(fromReading, x -> true);
@@ -285,8 +274,8 @@ public class RelationService {
     }
 
     public static class TransitiveRelationTraverser implements Evaluator {
-        private String tradId;
-        private RelationTypeModel rtm;
+        private final String tradId;
+        private final RelationTypeModel rtm;
 
         public TransitiveRelationTraverser(String tradId, RelationTypeModel reltypemodel) {
             this.tradId = tradId;

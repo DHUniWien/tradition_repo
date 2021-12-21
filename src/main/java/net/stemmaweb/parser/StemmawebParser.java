@@ -10,6 +10,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
@@ -130,7 +131,10 @@ public class StemmawebParser {
                                         relship.setProperty("type", typeName);
                                         // Make sure this relationship type exists
                                         if (!relationtypes.contains(typeName)) {
-                                            Response rtResult = new RelationType(tradId, typeName).makeDefaultType();
+                                            RelationTypeModel rtm = new RelationTypeModel();
+                                            rtm.setName(typeName);
+                                            rtm.setDefaultsettings(true);
+                                            Response rtResult = new RelationType(tradId, typeName).create(rtm);
                                             if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                                                 return rtResult;
                                             else relationtypes.add(typeName);

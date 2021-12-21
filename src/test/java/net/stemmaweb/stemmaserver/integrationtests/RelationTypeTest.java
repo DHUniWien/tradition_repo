@@ -140,6 +140,28 @@ public class RelationTypeTest extends TestCase {
         assertEquals(10, allRelTypes.get(0).getBindlevel());
     }
 
+    public void testAddDefaultType() {
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("spelling");
+        rtm.setDefaultsettings(true);
+
+        Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm));
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        RelationTypeModel created = jerseyResult.readEntity(RelationTypeModel.class);
+        assertEquals("spelling", created.getName());
+        assertFalse(created.getDefaultsettings());
+        assertEquals("These are the same reading, spelled differently.", created.getDescription());
+        assertEquals(1, created.getBindlevel());
+        assertTrue(created.getIs_colocation());
+        assertTrue(created.getIs_transitive());
+
+        // Now try setting the same default relation again, which should fail
+        jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm));
+        assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
+    }
+
     public void testNonGeneralizable() {
         String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
         String legei = readingLookup.getOrDefault("λεγει/1", "17");
@@ -355,7 +377,7 @@ public class RelationTypeTest extends TestCase {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = db.getNodeById(Long.valueOf(nid));
+                Node n = db.getNodeById(Long.parseLong(nid));
                 assertEquals(22L, n.getProperty("rank"));
             }
             tx.success();
@@ -387,7 +409,7 @@ public class RelationTypeTest extends TestCase {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = db.getNodeById(Long.valueOf(nid));
+                Node n = db.getNodeById(Long.parseLong(nid));
                 assertEquals(24L, n.getProperty("rank"));
             }
             tx.success();
@@ -412,7 +434,7 @@ public class RelationTypeTest extends TestCase {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = db.getNodeById(Long.valueOf(nid));
+                Node n = db.getNodeById(Long.parseLong(nid));
                 assertEquals(25L, n.getProperty("rank"));
             }
             tx.success();
