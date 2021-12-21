@@ -3,6 +3,7 @@ package net.stemmaweb.parser;
 import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -242,7 +243,10 @@ public class GraphMLParser {
                     .forEach(x -> existingTypes.add(x.getEndNode().getProperty("name").toString()));
             for (String rtype : seenRelationTypes) {
                 if (!existingTypes.contains(rtype)) {
-                    Response rtResult = new RelationType(tradId, rtype).makeDefaultType();
+                    RelationTypeModel rtm = new RelationTypeModel();
+                    rtm.setName(rtype);
+                    rtm.setDefaultsettings(true);
+                    Response rtResult = new RelationType(tradId, rtype).create(rtm);
                     if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                         return rtResult;
                 }

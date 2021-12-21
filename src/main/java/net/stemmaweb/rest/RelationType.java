@@ -23,12 +23,12 @@ import static net.stemmaweb.rest.Util.jsonerror;
  */
 
 public class RelationType {
-    private GraphDatabaseService db;
+    private final GraphDatabaseService db;
     /**
      * The name of a type of reading relation.
      */
-    private String traditionId;
-    private String typeName;
+    private final String traditionId;
+    private final String typeName;
 
     public RelationType(String tradId, String requestedType) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -77,6 +77,15 @@ public class RelationType {
         // Find any existing relation type on this tradition
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         Node extantRelType = rtModel.lookup(traditionNode);
+
+        // Were we asked for the secret Stemmaweb defaults?
+        if (rtModel.getDefaultsettings()) {
+            // This won't work if we also have an extant type of this name.
+            if (extantRelType != null)
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(jsonerror("Cannot instantiate a default for a type that already exists")).build();
+            return this.makeDefaultType();
+        }
 
         if (extantRelType != null) {
             extantRelType = rtModel.update(traditionNode);
@@ -140,9 +149,8 @@ public class RelationType {
      * @statuscode 201 on success, if a new type was created
      * @statuscode 500 on failure, with an error report in JSON format
      */
-    @ReturnType(clazz = RelationTypeModel.class)
-    public Response makeDefaultType() {
-        Map<String, String> defaultRelations = new HashMap<String, String>() {{
+    private Response makeDefaultType() {
+        Map<String, String> defaultRelations = new HashMap<>() {{
             put("collated", "Internal use only");
             put("orthographic", "These are the same reading, neither unusually spelled.");
             put("punctuation", "These are the same reading apart from punctuation.");
