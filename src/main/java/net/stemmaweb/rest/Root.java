@@ -180,7 +180,7 @@ public class Root {
             if (filetype.equals("graphml")) {
                 try {
                     JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
-                    if (dataValues.get("parentLabel").toString().equals("tradition"))
+                    if (dataValues.get("parentId").toString().equals("tradition"))
                         tradId = dataValues.get("parentId").toString();
                 } catch (JSONException e) {
                     e.printStackTrace();

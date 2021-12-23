@@ -7,7 +7,6 @@ import net.stemmaweb.rest.*;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
-import org.apache.commons.compress.utils.IOUtils;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 import org.w3c.dom.*;
@@ -16,8 +15,6 @@ import javax.ws.rs.core.Response;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static net.stemmaweb.parser.Util.jsonerror;
 import static net.stemmaweb.parser.Util.jsonresp;
@@ -49,30 +46,19 @@ public class GraphMLParser {
         String ret;
         // Unzip the file and send each XML file therein to the "real" parser
         try (Transaction tx = db.beginTx()) {
+            // Set the parentId for our response
             ret = Util.jsonresp("parentId", parentNode.getId());
-            BufferedInputStream buf = new BufferedInputStream(filestream);
-            ZipInputStream zipIn = new ZipInputStream(buf);
-            ZipEntry ze;
-            while ((ze = zipIn.getNextEntry()) != null) {
-                // SOMEDAY can we do this without writing out to a file?
-                String zfName = ze.getName();
-                File someTmp = File.createTempFile(zfName, "");
-                someTmp.deleteOnExit();
-                FileOutputStream fo = new FileOutputStream(someTmp);
-                IOUtils.copy(zipIn, fo);
-                fo.close();
-                zipIn.closeEntry();
-                FileInputStream fi = new FileInputStream(someTmp.getAbsolutePath());
-                Response result = parseGraphML(fi, zfName, parentNode, idMap, isSingleSection);
+            // Get the XML files out of the zip stream
+            ArrayList<File> inputXML = Util.parseGraphMLZip(filestream);
+            for (File infile : inputXML) {
+                FileInputStream fi = new FileInputStream(infile.getAbsolutePath());
+                Response result = parseGraphML(fi, infile.getName(), parentNode, idMap, isSingleSection);
                 // Did something go wrong? If so, exit now
-                if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                    zipIn.close();
+                if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                     return result;
-                }
                 // Otherwise move on, recording the last section created
-                ret = result.readEntity(String.class);
+                ret = (String) result.getEntity();
             }
-            zipIn.close();
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -114,7 +100,7 @@ public class GraphMLParser {
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), dataInfo);
         }
 
-        String parentId = null;
+        String parentId = String.valueOf(parentNode.getId());
 
         // Get the tradition node
         Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode) : parentNode;
@@ -126,7 +112,6 @@ public class GraphMLParser {
             NodeList entityNodes = rootEl.getElementsByTagName("node");
             // If this is a single section upload, get the existing tradition metadata nodes
             // to make sure we don't duplicate them
-            List<Node> existingSections = isSingleSection ? VariantGraphService.getSectionNodes(tradId, db) : new ArrayList<>();
             List<Node> existingMeta = isSingleSection ?
                     VariantGraphService.returnTraditionMeta(traditionNode).nodes().stream().collect(Collectors.toList()) :
                     new ArrayList<>();
@@ -136,7 +121,7 @@ public class GraphMLParser {
 
             // We will hold back nodes that were labeled by the user rather than the system, such as annotations,
             // so that we can add them to the graph with the existing verification / sanity checks.
-            ArrayList<org.w3c.dom.Node> userLabeledNodes = new ArrayList<>();
+            HashMap<String,org.w3c.dom.Node> userLabeledNodes = new HashMap<>();
             ArrayList<org.w3c.dom.Node> userLabeledEdges = new ArrayList<>();
 
             // Now process the XML 'node' elements.
@@ -169,11 +154,13 @@ public class GraphMLParser {
                         for (String p : nodeProperties.keySet())
                             traditionNode.setProperty(p, nodeProperties.get(p));
                         parentId = tradId;
-                        idMap.put(xmlId, traditionNode.getId());
                     } // else
                         // If we are parsing the tradition meta-info for a single section, or if we are parsing a
-                        // section XML file, we ignore the data for this node, and set the tradition node to be the
-                        // existing one for the section we are creating.
+                        // section XML file, we ignore the data for this node and we will keep the parent ID as the
+                        // ID of the section node.
+                    // Now set the tradition node to be our real tradition node, whether from this file or
+                    // from the existing tradition for this section
+                    idMap.put(xmlId, traditionNode.getId());
 
                 } else {
                     // Now we have the information of the XML, we can create the new node if we need to.
@@ -187,7 +174,8 @@ public class GraphMLParser {
                         // Is this the single-section section node?
                         Node entity = null;
                         boolean exists = false;
-                        if (neolabel.contains("SECTION") && isSingleSection) entity = parentNode;
+                        if (neolabel.contains("SECTION") && isSingleSection)
+                            entity = parentNode;
                         else if (fileName.equals("tradition.xml")) {
                             // Does the node already exist in the tradition's metadata?
                             exists = true;
@@ -214,7 +202,9 @@ public class GraphMLParser {
                                     nodeProperties.forEach(entity::setProperty);
                                 } catch (IllegalArgumentException e) {
                                     // This is an annotation node, which we will deal with in a separate pass.
-                                    userLabeledNodes.add(entityXML);
+                                    // Remove the node and its entry in the idMap.
+                                    userLabeledNodes.put(xmlId, entityXML);
+                                    idMap.remove(xmlId);
                                     entity.delete();
                                 }
                             }
@@ -229,8 +219,23 @@ public class GraphMLParser {
                 NamedNodeMap edgeAttrs = edgeNodes.item(i).getAttributes();
                 String sourceXmlId = edgeAttrs.getNamedItem("source").getNodeValue();
                 String targetXmlId = edgeAttrs.getNamedItem("target").getNodeValue();
-                Node source = db.getNodeById(idMap.get(sourceXmlId));
-                Node target = db.getNodeById(idMap.get(targetXmlId));
+                // Is this an annotation edge? If so, add it to userLabeledEdges for later processing
+                Node source;
+                Node target;
+                try {
+                    source = db.getNodeById(idMap.get(sourceXmlId));
+                    target = db.getNodeById(idMap.get(targetXmlId));
+                } catch (NullPointerException e) {
+                    // If the source or the target is in userLabeledNodes, we know this is a userLabeledEdge, i.e.
+                    // an annotation edge. Skip it for later addition through the annotation framework
+                    if (userLabeledNodes.containsKey(sourceXmlId) || userLabeledNodes.containsKey(targetXmlId)) {
+                        userLabeledEdges.add(edgeNodes.item(i));
+                        continue;
+                    }
+                    else
+                        throw e;
+                }
+
                 NodeList dataNodes = ((Element) edgeNodes.item(i)).getElementsByTagName("data");
                 HashMap<String, Object> edgeProperties = returnProperties(dataNodes, dataKeys);
                 if (!edgeProperties.containsKey("neolabel"))
@@ -263,10 +268,13 @@ public class GraphMLParser {
                     } catch (IllegalArgumentException e) {
                         // We are either here because we tried to link an annotation (which doesn't yet exist)
                         // to the tradition via a HAS_ANNOTATION link, or because we tried to use a user-defined
-                        // relationship label in the context of an annotation.
-                        // If the former, ignore it (we will add these links later); if the latter, add it to
-                        // our list of user-defined entities that should be dealt with later.
-                        if (!neolabel.equals("HAS_ANNOTATION")) userLabeledEdges.add(edgeNodes.item(i));
+                        // relationship label in the context of an annotation where both nodes already existed.
+                        // If the former, ignore it (we will add these links later); if the latter, warn because
+                        // I really don't expect this.
+                        if (!neolabel.equals("HAS_ANNOTATION")) {
+                            System.out.println("Found annotation edge between two non-annotation nodes?!");
+                            userLabeledEdges.add(edgeNodes.item(i));
+                        }
                     }
                 }
             }
@@ -280,7 +288,7 @@ public class GraphMLParser {
 
             // Now add user-labeled nodes separately, via the existing validation infrastructure.
             List<AnnotationModel> annotationsToAdd = new ArrayList<>();
-            for (org.w3c.dom.Node xn : userLabeledNodes) {
+            for (org.w3c.dom.Node xn : userLabeledNodes.values()) {
                 AnnotationModel am = new AnnotationModel();
                 // Get the properties on this annotation node.
                 HashMap<String,Object> props = returnProperties(((Element) xn).getElementsByTagName("data"), dataKeys);

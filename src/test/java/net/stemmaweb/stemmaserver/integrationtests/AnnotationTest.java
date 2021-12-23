@@ -20,7 +20,12 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -632,10 +637,19 @@ public class AnnotationTest extends TestCase {
         addTestLabel();
         addTestAnnotation();
         Response response = jerseyTest.target("/tradition/" + tradId + "/graphml")
-                .request(MediaType.APPLICATION_XML_TYPE).get();
+                .request("application/zip").get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        // Check that the annotation is represented in the GraphML file.
-        String tradXmlOutput = response.readEntity(String.class);
+        // Save the result into a temp file so that we can reimport it for the second half of this test
+        String tradXmlOutput = "";
+        String graphMLPath = "";
+        try {
+            graphMLPath = Util.saveGraphMLTempfile(response);
+            tradXmlOutput = Util.getConcatenatedGraphML(graphMLPath);
+        } catch (Exception e) {
+            fail();
+        }
+        // Unzip the result and check that the annotation is represented somewhere. Do this first
+        // by concatenating all the XML int one big string
 
         String translation = returnTestAnnotation().getProperties().get("text").toString();
         assertTrue(tradXmlOutput.contains("[ANNOTATIONLABEL]"));
@@ -650,15 +664,22 @@ public class AnnotationTest extends TestCase {
         response = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/graphml")
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        String sectXmlOutput = response.readEntity(String.class);
-        assertTrue(tradXmlOutput.contains("[ANNOTATIONLABEL]"));
-        assertTrue(tradXmlOutput.contains("[LINKS]"));
+        String sectXmlOutput = "";
+        String sectMLPath = "";
+        try {
+            sectMLPath = Util.saveGraphMLTempfile(response);
+            sectXmlOutput = Util.getConcatenatedGraphML(graphMLPath);
+        } catch (Exception e) {
+            fail();
+        }
+        assertTrue(sectXmlOutput.contains("[ANNOTATIONLABEL]"));
+        assertTrue(sectXmlOutput.contains("[LINKS]"));
         assertTrue(sectXmlOutput.contains("[TRANSLATION]"));
         assertTrue(sectXmlOutput.contains(translation));
 
         // Check that it gets re-imported correctly
         response = Util.createTraditionFromFileOrString(jerseyTest, "reimported", "LR", "1",
-                tradXmlOutput, "graphml");
+                graphMLPath, "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String newTradId = Util.getValueFromJson(response, "tradId");
         response = jerseyTest.target("/tradition/" + newTradId + "/annotations")
@@ -671,7 +692,7 @@ public class AnnotationTest extends TestCase {
         assertEquals(translation, am.get(0).getProperties().get("text"));
 
         // Check that the individual section can be added to the existing tradition
-        response = Util.addSectionToTradition(jerseyTest, newTradId, sectXmlOutput, "graphml", "duplicate");
+        response = Util.addSectionToTradition(jerseyTest, newTradId, sectMLPath, "graphml", "duplicate");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         response = jerseyTest.target("/tradition/" + newTradId + "/annotations").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());

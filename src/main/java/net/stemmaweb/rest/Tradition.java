@@ -236,7 +236,7 @@ public class Tradition {
         } else {
             // Otherwise, retrieve the section ID for our own response and link this section
             // behind the last of the prior sections
-            JSONObject internResponse = new JSONObject(result.readEntity(String.class));
+            JSONObject internResponse = new JSONObject((String) result.getEntity());
             if (existingSections != null && existingSections.size() > 0) {
                 SectionModel ls = existingSections.get(existingSections.size() - 1);
                 try (Transaction tx = db.beginTx()) {

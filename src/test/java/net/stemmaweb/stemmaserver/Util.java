@@ -6,7 +6,6 @@ import com.alexmerz.graphviz.objects.Edge;
 import com.alexmerz.graphviz.objects.Graph;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
@@ -263,12 +262,41 @@ public class Util {
         return result;
     }
 
+    // Save a GraphML zip file to a temporary location
+    public static String saveGraphMLTempfile(Response r) throws IOException {
+        File ourTemp = File.createTempFile("testGraphML", "");
+        ourTemp.deleteOnExit();
+        FileOutputStream fo = new FileOutputStream(ourTemp);
+        IOUtils.copy(r.readEntity(InputStream.class), fo);
+        fo.close();
+        return ourTemp.getAbsolutePath();
+    }
+
+    public static String getConcatenatedGraphML(String zipFilePath) throws FileNotFoundException {
+        InputStream is = new FileInputStream(zipFilePath);
+        return getConcatentatedGraphML(is);
+    }
+    public static String getConcatentatedGraphML(InputStream is) {
+        StringBuilder output = new StringBuilder();
+        try {
+            for (File f : net.stemmaweb.parser.Util.parseGraphMLZip(is)) {
+                FileInputStream fi = new FileInputStream(f.getAbsolutePath());
+                String content = new String(fi.readAllBytes(), StandardCharsets.UTF_8);
+                output.append(content);
+                fi.close();
+            }
+        } catch (IOException e) {
+            fail();
+        }
+        return output.toString();
+    }
+
     public static HashMap<String, String> makeReadingLookup (JerseyTest jerseyTest, String tradId) {
         HashMap<String, String> result = new HashMap<>();
         List<ReadingModel> readings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         for (ReadingModel r : readings) {
             String key = String.format("%s/%d", r.getText(), r.getRank());
             result.put(key, r.getId());
@@ -278,7 +306,7 @@ public class Util {
 
     public static SectionModel getSingleSection(JerseyTest jerseyTest, String tradId) {
         List<SectionModel> sections = jerseyTest.target("/tradition/" + tradId + "/sections")
-                .request().get(new GenericType<List<SectionModel>>() {});
+                .request().get(new GenericType<>() {});
         if (sections.size() != 1)
             throw new RuntimeException("Tradition does not have a single section");
         return sections.get(0);

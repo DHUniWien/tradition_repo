@@ -5,15 +5,18 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
+import org.apache.commons.compress.utils.IOUtils;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.InputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 /**
  * Utility functions for the parsers
@@ -87,6 +90,28 @@ public class Util {
             e.printStackTrace();
             return null;
         }
+    }
+
+    // Zip parsing utilities - public because also used by test suite
+    // Returns a structure which is a list of zip
+    public static ArrayList<File> parseGraphMLZip(InputStream is) throws IOException {
+        ArrayList<File> result = new ArrayList<>();
+        BufferedInputStream buf = new BufferedInputStream(is);
+        ZipInputStream zipIn = new ZipInputStream(buf);
+        ZipEntry ze;
+        while ((ze = zipIn.getNextEntry()) != null) {
+            // SOMEDAY can we do this without writing out to a file?
+            String zfName = ze.getName();
+            File someTmp = File.createTempFile(zfName, "");
+            someTmp.deleteOnExit();
+            FileOutputStream fo = new FileOutputStream(someTmp);
+            IOUtils.copy(zipIn, fo);
+            fo.close();
+            zipIn.closeEntry();
+            result.add(someTmp);
+        }
+        zipIn.close();
+        return result;
     }
 
     // Helper to get any existing SEQUENCE link between two readings.
