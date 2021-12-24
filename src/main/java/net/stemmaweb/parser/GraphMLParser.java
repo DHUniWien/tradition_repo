@@ -29,12 +29,44 @@ public class GraphMLParser {
     private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
     /**
+     * Parses a single GraphML file (the old style) representing either an entire tradition or a single
+     * tradition section. Returns the ID of the object (either tradition or section) that was created.
+     *
+     * @param filestream - an InputStream with the XML data
+     * @param parentNode - a Node to represent the parent of this data, either a tradition or a section
+     * @param isSingleSection - whether we are parsing a whole tradition or just a single section into
+     *                        an existing tradition
+     *
+     * @return a Response object carrying a JSON dictionary {"parentId": <ID>}
+     */
+    public Response parseGraphMLSingle(InputStream filestream, Node parentNode, boolean isSingleSection) {
+        // Simulate the expected filenames in the zip file
+        String filename = isSingleSection ? "section-new.xml" : "tradition.xml";
+        // We won't use this, but the new parser expects it
+        HashMap<String,Long> idMap = new HashMap<>();
+        Response result;
+        try (Transaction tx = db.beginTx()) {
+            // Mimic whether this is a tradition or a section file
+            result = parseGraphML(filestream, filename, parentNode, idMap, isSingleSection);
+            // Did something go wrong? If so, exit now
+            if (result.getStatus() != Response.Status.CREATED.getStatusCode())
+                return result;
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+        return result;
+    }
+
+    /**
      * Parses a zipped set of GraphML files representing either an entire tradition, or a single
      * tradition section. Returns the ID of the object (either tradition or section) that was created.
      *
      * @param filestream - an InputStream with the XML data
      * @param parentNode - a Node to represent the parent of this data, either a tradition or a section
-     * @param isSingleSection - whether we are parsing a whole tradition or just a single section
+     * @param isSingleSection - whether we are parsing a whole tradition or just a single section into
+     *                        an existing tradition
      *
      * @return a Response object carrying a JSON dictionary {"parentId": <ID>}
      */
@@ -43,21 +75,22 @@ public class GraphMLParser {
         // Keep track of GraphML ID -> created node ID
         HashMap<String,Long> idMap = new HashMap<>();
         // Initialise our response
-        String ret;
+        String ret = null;
         // Unzip the file and send each XML file therein to the "real" parser
         try (Transaction tx = db.beginTx()) {
-            // Set the parentId for our response
-            ret = Util.jsonresp("parentId", parentNode.getId());
             // Get the XML files out of the zip stream
-            ArrayList<File> inputXML = Util.parseGraphMLZip(filestream);
-            for (File infile : inputXML) {
+            LinkedHashMap<String,File> inputXML = Util.extractGraphMLZip(filestream);
+            for (String filename : inputXML.keySet()) {
+                File infile = inputXML.get(filename);
                 FileInputStream fi = new FileInputStream(infile.getAbsolutePath());
-                Response result = parseGraphML(fi, infile.getName(), parentNode, idMap, isSingleSection);
+                Response result = parseGraphML(fi, filename, parentNode, idMap, isSingleSection);
                 // Did something go wrong? If so, exit now
                 if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                     return result;
-                // Otherwise move on, recording the last section created
-                ret = (String) result.getEntity();
+                // If we haven't picked up a return JSON yet, pick it up on the first pass, which
+                // should be the tradition bzw. single section ID
+                if (ret == null)
+                    ret = (String) result.getEntity();
             }
             tx.success();
         } catch (Exception e) {
@@ -100,22 +133,24 @@ public class GraphMLParser {
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), dataInfo);
         }
 
-        String parentId = String.valueOf(parentNode.getId());
-
         // Get the tradition node
         Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode) : parentNode;
+        String parentId;
 
         // Now get to work with node and relationship creation.
         try (Transaction tx = db.beginTx()) {
             // The UUID of the tradition node that was passed in to receive the parsed data
             String tradId = traditionNode.getProperty("id").toString();
             NodeList entityNodes = rootEl.getElementsByTagName("node");
-            // If this is a single section upload, get the existing tradition metadata nodes
+            // Set the parent ID appropriately, depending on whether we are looking at a tradition file
+            // or a section file
+            parentId = fileName.equals("tradition.xml") ? tradId : String.valueOf(parentNode.getId());
+            // If we are parsing a new section into an existing tradition, get the tradition metadata nodes
             // to make sure we don't duplicate them
-            List<Node> existingMeta = isSingleSection ?
+            List<Node> existingMeta = fileName.startsWith("section-") ?
                     VariantGraphService.returnTraditionMeta(traditionNode).nodes().stream().collect(Collectors.toList()) :
                     new ArrayList<>();
-            List<Relationship> existingMetaRel = isSingleSection ?
+            List<Relationship> existingMetaRel = fileName.startsWith("section-") ?
                     VariantGraphService.returnTraditionMeta(traditionNode).relationships().stream().collect(Collectors.toList()) :
                     new ArrayList<>();
 
@@ -138,22 +173,22 @@ public class GraphMLParser {
 
                 if (neolabel.contains("TRADITION")) {
                     if (fileName.equals("tradition.xml") && !isSingleSection) {
-                        // Otherwise, if there is already a different tradition with this tradition ID, we are making a
-                        // duplicate and the effective UUID of this one was already set in Root.java. If there is not yet
-                        // a different tradition with this UUID, we need to retain the UUID in the GraphML.
+                        // If there is already a different tradition with this tradition ID, we are making a duplicate
+                        // and the effective UUID of this one was already set in Root.java. If there is not yet a
+                        // different tradition with this UUID, we need to retain the UUID in the GraphML.
 
                         String fileTraditionId = nodeProperties.get("id").toString();
                         Node existingTradition = db.findNode(Nodes.TRADITION, "id", fileTraditionId);
                         if (existingTradition != null) // There is another tradition with this UUID; don't re-use it.
                             nodeProperties.remove("id");
-                        else  // There is no other tradition with this UUID; update the tradId to match the XML.
+                        else { // There is no other tradition with this UUID; update the tradId to match the XML.
                             tradId = fileTraditionId;
-
+                            parentId = tradId;
+                        }
                         // This node is already created, but we need to reset its properties according to
                         // what is in the GraphML file. We also save this ID as the parent ID that was created.
                         for (String p : nodeProperties.keySet())
                             traditionNode.setProperty(p, nodeProperties.get(p));
-                        parentId = tradId;
                     } // else
                         // If we are parsing the tradition meta-info for a single section, or if we are parsing a
                         // section XML file, we ignore the data for this node and we will keep the parent ID as the
@@ -178,8 +213,8 @@ public class GraphMLParser {
                             entity = parentNode;
                         else if (fileName.equals("tradition.xml")) {
                             // Does the node already exist in the tradition's metadata?
-                            exists = true;
                             for (Node ex : existingMeta) {
+                                exists = true;
                                 for (String p : nodeProperties.keySet()) {
                                     exists = exists && nodeProperties.get(p).equals(ex.getProperty(p, null));
                                 }

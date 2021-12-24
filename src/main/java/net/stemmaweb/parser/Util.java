@@ -14,6 +14,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -94,8 +95,8 @@ public class Util {
 
     // Zip parsing utilities - public because also used by test suite
     // Returns a structure which is a list of zip
-    public static ArrayList<File> parseGraphMLZip(InputStream is) throws IOException {
-        ArrayList<File> result = new ArrayList<>();
+    public static LinkedHashMap<String,File> extractGraphMLZip(InputStream is) throws IOException {
+        LinkedHashMap<String,File> result = new LinkedHashMap<>();
         BufferedInputStream buf = new BufferedInputStream(is);
         ZipInputStream zipIn = new ZipInputStream(buf);
         ZipEntry ze;
@@ -108,7 +109,7 @@ public class Util {
             IOUtils.copy(zipIn, fo);
             fo.close();
             zipIn.closeEntry();
-            result.add(someTmp);
+            result.put(zfName, someTmp);
         }
         zipIn.close();
         return result;

@@ -283,7 +283,7 @@ public class Tradition {
         Response result = null;
         // All parsers except GraphML expect a section node; create it here if we are not adding a
         // section to an existing tradition.
-        if (!addSingleSection && !filetype.equals("graphml")) {
+        if (!addSingleSection && !filetype.startsWith("graphml")) {
             Node sectionNode = createNewSection(parentNode, "DEFAULT");
             if (sectionNode == null)
                 return Response.serverError()
@@ -311,9 +311,13 @@ public class Tradition {
             // Pass it off to the CollateX JSON parser
             result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, parentNode);
         if (filetype.equals("stemmaweb"))
-            // Pass it off to the somewhat legacy GraphML parser
+            // Pass it off to the old Stemmaweb-format parser
             result = new StemmawebParser().parseGraphML(uploadedInputStream, parentNode);
+        if (filetype.equals("graphmlsingle"))
+            // Pass it off to the legacy single-file GraphML parser
+            result = new GraphMLParser().parseGraphMLSingle(uploadedInputStream, parentNode, addSingleSection);
         if (filetype.equals("graphml"))
+            // Pass it off to the GraphML ZIP parser
             result = new GraphMLParser().parseGraphMLZip(uploadedInputStream, parentNode, addSingleSection);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)

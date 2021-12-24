@@ -180,8 +180,7 @@ public class Root {
             if (filetype.equals("graphml")) {
                 try {
                     JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
-                    if (dataValues.get("parentId").toString().equals("tradition"))
-                        tradId = dataValues.get("parentId").toString();
+                    tradId = dataValues.get("parentId").toString();
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return Response.serverError().entity(jsonerror("Bad file parse response")).build();
@@ -189,8 +188,11 @@ public class Root {
             }
         }
 
-
-        return Response.created(uri.getRequestUriBuilder().path(tradId).build())
+        // Handle direct non-Jersey calls from our test suite
+        if (uri == null)
+            return Response.status(Response.Status.CREATED).entity(jsonresp("tradId", tradId)).build();
+        else
+            return Response.created(uri.getRequestUriBuilder().path(tradId).build())
                 .entity(jsonresp("tradId", tradId)).build();
     }
 

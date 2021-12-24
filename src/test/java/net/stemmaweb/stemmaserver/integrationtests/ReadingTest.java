@@ -1197,7 +1197,7 @@ public class ReadingTest {
     @Test
     public void duplicateLayerConsistencyTest() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "570", "LR", "1",
-                "src/TestFiles/milestone-570a.xml", "graphml");
+                "src/TestFiles/milestone-570a.xml", "graphmlsingle");
         String newTradId = Util.getValueFromJson(response, "tradId");
         List<SectionModel> sects = jerseyTest
                 .target("/tradition/" + newTradId + "/sections")

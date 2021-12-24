@@ -53,7 +53,7 @@ public class CollateXJsonInputTest extends TestCase {
         List<SectionModel> testSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         sectId = testSections.get(0).getId();
     }
 
@@ -62,7 +62,7 @@ public class CollateXJsonInputTest extends TestCase {
         List<ReadingModel> allreadings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(381, allreadings.size());
         int common = 0;
         for (ReadingModel r: allreadings) {
@@ -77,7 +77,7 @@ public class CollateXJsonInputTest extends TestCase {
         List<WitnessModel> allwits = jerseyTest
                 .target("/tradition/" + tradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(22, allwits.size());
 
 
@@ -129,7 +129,7 @@ public class CollateXJsonInputTest extends TestCase {
         List<ReadingModel> gReadings = jerseyTest
                 .target("/tradition/" + tradId + "/witness/G/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(77, gReadings.size());
         JSONObject token = new JSONObject(gReadings.get(0).getExtra());
         assertEquals(firstPage, token.getJSONObject("G").getJSONObject("page").getString("n"));
@@ -183,7 +183,7 @@ public class CollateXJsonInputTest extends TestCase {
     public void testAddSection() {
         // Add another section
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
-                "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "parentId");
+                "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "sectionId");
         Response response = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/orderAfter/" + newSectId)
                 .request()
@@ -192,7 +192,7 @@ public class CollateXJsonInputTest extends TestCase {
         List<SectionModel> ourSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections/")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, ourSections.size());
         assertEquals(newSectId, ourSections.get(0).getId());
         assertEquals(sectId, ourSections.get(1).getId());
@@ -201,7 +201,7 @@ public class CollateXJsonInputTest extends TestCase {
         List<WitnessModel> allwits = jerseyTest
                 .target("/tradition/" + tradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(23, allwits.size());
     }
 
@@ -218,32 +218,32 @@ public class CollateXJsonInputTest extends TestCase {
         List<WitnessModel> allwits = jerseyTest
                 .target("/tradition/" + newTradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(0, allwits.size());
 
         // Add the first section and check number of witnesses
         String firstSect = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, newTradId,
-                "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "parentId");
+                "src/TestFiles/Matthew-401.json", "cxjson", "AM 401"), "sectionId");
         allwits = jerseyTest
                 .target("/tradition/" + newTradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(15, allwits.size());
 
         // Add the second section and do the same
         String secondSect = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, newTradId,
-                "src/TestFiles/Matthew-407.json", "cxjson", "AM 407"), "parentId");
+                "src/TestFiles/Matthew-407.json", "cxjson", "AM 407"), "sectionId");
         allwits = jerseyTest
                 .target("/tradition/" + newTradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(23, allwits.size());
 
         // Check section ordering
         List<SectionModel> ourSections = jerseyTest
                 .target("/tradition/" + newTradId + "/sections/")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, ourSections.size());
         assertEquals(firstSect, ourSections.get(0).getId());
         assertEquals(secondSect, ourSections.get(1).getId());

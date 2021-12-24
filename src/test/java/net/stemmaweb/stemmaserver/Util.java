@@ -279,7 +279,7 @@ public class Util {
     public static String getConcatentatedGraphML(InputStream is) {
         StringBuilder output = new StringBuilder();
         try {
-            for (File f : net.stemmaweb.parser.Util.parseGraphMLZip(is)) {
+            for (File f : net.stemmaweb.parser.Util.extractGraphMLZip(is).values()) {
                 FileInputStream fi = new FileInputStream(f.getAbsolutePath());
                 String content = new String(fi.readAllBytes(), StandardCharsets.UTF_8);
                 output.append(content);
