@@ -150,7 +150,7 @@ public class RelationTypeTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
         RelationTypeModel created = jerseyResult.readEntity(RelationTypeModel.class);
         assertEquals("spelling", created.getName());
-        assertFalse(created.getDefaultsettings());
+        assertNull(created.getDefaultsettings());
         assertEquals("These are the same reading, spelled differently.", created.getDescription());
         assertEquals(1, created.getBindlevel());
         assertTrue(created.getIs_colocation());

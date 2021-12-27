@@ -79,7 +79,7 @@ public class RelationType {
         Node extantRelType = rtModel.lookup(traditionNode);
 
         // Were we asked for the secret Stemmaweb defaults?
-        if (rtModel.getDefaultsettings()) {
+        if (rtModel.getDefaultsettings() != null) {
             // This won't work if we also have an extant type of this name.
             if (extantRelType != null)
                 return Response.status(Response.Status.CONFLICT)
@@ -90,7 +90,7 @@ public class RelationType {
         if (extantRelType != null) {
             extantRelType = rtModel.update(traditionNode);
             if (extantRelType != null)
-                return Response.ok().build();
+                return Response.ok().entity(rtModel).build();
         } else {
             extantRelType = rtModel.instantiate(traditionNode);
             if (extantRelType != null)
