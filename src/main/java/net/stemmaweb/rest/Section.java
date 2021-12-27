@@ -63,7 +63,7 @@ public class Section {
         // Check that the reading actually belongs to our section
         boolean readingInSection;
         try (Transaction tx = db.beginTx()) {
-            ReadingModel rdg = new ReadingModel(db.getNodeById(Long.valueOf(readingId)));
+            ReadingModel rdg = new ReadingModel(db.getNodeById(Long.parseLong(readingId)));
             readingInSection = rdg.getSection().equals(sectId);
             tx.success();
         }
@@ -652,7 +652,7 @@ public class Section {
             if (priorSectID.equals("none")) {
                 // There is no prior section, and the first section will become the latter one. Find it.
                 ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(tradId, db);
-                if (sectionNodes == null)
+                if (sectionNodes.isEmpty())
                     return Response.serverError().entity("Tradition has no sections").build();
                 for (Node s : sectionNodes) {
                     if (!s.hasRelationship(ERelations.NEXT, Direction.INCOMING)) {

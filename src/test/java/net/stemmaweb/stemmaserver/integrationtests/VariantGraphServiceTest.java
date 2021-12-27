@@ -73,7 +73,6 @@ public class VariantGraphServiceTest {
     @Test
     public void getSectionNodesTest() {
         ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(traditionId, db);
-        assertNotNull(sectionNodes);
         assertEquals(1, sectionNodes.size());
         try (Transaction tx = db.beginTx()) {
             assertTrue(sectionNodes.get(0).hasLabel(Label.label("SECTION")));
@@ -87,7 +86,6 @@ public class VariantGraphServiceTest {
         assertNotNull(foundTradition);
         // Now by section node
         ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(traditionId, db);
-        assertNotNull(sectionNodes);
         assertEquals(1, sectionNodes.size());
         assertEquals(foundTradition, VariantGraphService.getTraditionNode(sectionNodes.get(0)));
     }
@@ -100,7 +98,6 @@ public class VariantGraphServiceTest {
                 "tradId"
         );
         ArrayList<Node> sections = VariantGraphService.getSectionNodes(newTradId, db);
-        assertNotNull(sections);
         try (Transaction tx = db.beginTx()) {
             HashMap<Node,Node> representatives = VariantGraphService.normalizeGraph(sections.get(0), "collated");
             for (Node n : representatives.keySet()) {
@@ -143,7 +140,6 @@ public class VariantGraphServiceTest {
                 "tradId"
         );
         ArrayList<Node> sections = VariantGraphService.getSectionNodes(newTradId, db);
-        assertNotNull(sections);
         String expectedMajority = "sanoi herra Heinärickus Erjkillen weljellensä Läckämme Hämehen maallen";
         try (Transaction tx = db.beginTx()) {
             List<Node> majorityReadings = VariantGraphService.calculateMajorityText(sections.get(0));

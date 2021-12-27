@@ -56,16 +56,12 @@ public class DotExporter
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         Node startNode = VariantGraphService.getStartNode(tradId, db);
         Node endNode = VariantGraphService.getEndNode(tradId, db);
-        if(startNode==null || endNode==null) {
+        if(startNode==null || endNode==null || traditionNode==null) {
             return Response.status(Status.NOT_FOUND).build();
         }
 
         // Get the list of section nodes
         ArrayList<Node> sections = VariantGraphService.getSectionNodes(tradId, db);
-        if (sections == null) {
-            return Response.status(Status.NOT_FOUND).build();
-        }
-
         File output;
         String result;
         try (Transaction tx = db.beginTx()) {
