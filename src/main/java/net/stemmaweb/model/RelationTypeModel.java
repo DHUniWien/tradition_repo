@@ -1,5 +1,6 @@
 package net.stemmaweb.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -17,6 +18,7 @@ import javax.xml.bind.annotation.XmlRootElement;
  */
 
 @XmlRootElement
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
     /**
@@ -67,7 +69,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     public RelationTypeModel (String name) {
         this.thename = name;
         // Set some defaults
-        this.defaultsettings = false;
+        // this.defaultsettings = false;
         this.description = "A type of reading relation";
         this.bindlevel = 10;
         this.is_colocation = true;
