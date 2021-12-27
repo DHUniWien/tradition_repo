@@ -72,7 +72,7 @@ public class VariantGraphService {
         Node currentNode = getTraditionNode(nodeId, db);
         if (currentNode != null) {
             ArrayList<Node> sections = getSectionNodes(nodeId, db);
-            if (sections != null && sections.size() > 0) {
+            if (!sections.isEmpty()) {
                 Node relevantSection = direction.equals(ERelations.HAS_END)
                         ? sections.get(sections.size() - 1)
                         : sections.get(0);
@@ -101,13 +101,13 @@ public class VariantGraphService {
      *
      * @param tradId    the tradition whose sections to return
      * @param db        the GraphDatabaseService where the tradition is stored
-     * @return          a list of sections, or null if the tradition doesn't exist
+     * @return          a list of sections, which is empty if the tradition doesn't exist
      */
     public static ArrayList<Node> getSectionNodes(String tradId, GraphDatabaseService db) {
         Node tradition = getTraditionNode(tradId, db);
-        if (tradition == null)
-            return null;
         ArrayList<Node> sectionNodes = new ArrayList<>();
+        if (tradition == null)
+            return sectionNodes;
         ArrayList<Node> sections = DatabaseService.getRelated(tradition, ERelations.PART);
         int size = sections.size();
         try (Transaction tx = db.beginTx()) {

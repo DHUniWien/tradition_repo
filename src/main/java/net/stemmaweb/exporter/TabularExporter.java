@@ -187,7 +187,7 @@ public class TabularExporter {
     throws TabularExporterException {
         ArrayList<Node> traditionSections = VariantGraphService.getSectionNodes(tradId, db);
         // Does the tradition exist in the first place?
-        if (traditionSections == null) return null;
+        if (traditionSections.isEmpty()) return null;
 
         // Are we requesting all sections?
         if (sectionList.size() == 0) return traditionSections;
@@ -245,7 +245,7 @@ public class TabularExporter {
                 // Find the WitnessTokensModel corresponding to wit, if it exists
                 Optional<WitnessTokensModel> thisWitness = aSection.getAlignment().stream()
                         .filter(x -> x.constructSigil().equals(sigil)).findFirst();
-                if (!thisWitness.isPresent()) {
+                if (thisWitness.isEmpty()) {
                     // Try again for the base witness
                     thisWitness = aSection.getAlignment().stream()
                             .filter(x -> x.getWitness().equals(parsed[0]) && !x.hasLayer()).findFirst();

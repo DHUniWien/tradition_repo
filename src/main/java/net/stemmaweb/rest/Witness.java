@@ -31,8 +31,8 @@ import static net.stemmaweb.rest.Util.jsonerror;
 
 public class Witness {
 
-    private GraphDatabaseService db;
-    private String tradId;
+    private final GraphDatabaseService db;
+    private final String tradId;
     private String sigil;
     private String sectId;
     private String errorMessage;
@@ -243,7 +243,7 @@ public class Witness {
                 // Find the rank of the graph's end.
                 Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END).get(0);
                 try (Transaction tx = db.beginTx()) {
-                    endRank = Long.valueOf(endNode.getProperty("rank").toString());
+                    endRank = Long.parseLong(endNode.getProperty("rank").toString());
                     tx.success();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -270,8 +270,8 @@ public class Witness {
                 final long sr = startRank;
                 final long er = endRank;
                 witnessReadings.addAll(traverseReadings(startNode, layer).stream()
-                        .filter(x -> Long.valueOf(x.getProperty("rank").toString()) >= sr
-                                && Long.valueOf(x.getProperty("rank").toString()) <= er)
+                        .filter(x -> Long.parseLong(x.getProperty("rank").toString()) >= sr
+                                && Long.parseLong(x.getProperty("rank").toString()) <= er)
                         .collect(Collectors.toList()));
                 tx.success();
             } catch (Exception e) {
@@ -380,7 +380,7 @@ public class Witness {
                 return null;
             }
             try (Transaction tx = db.beginTx()) {
-                Node sectionNode = db.getNodeById(Long.valueOf(sectId));
+                Node sectionNode = db.getNodeById(Long.parseLong(sectId));
                 iterationList.add(sectionNode);
                 tx.success();
             } catch (Exception e) {
