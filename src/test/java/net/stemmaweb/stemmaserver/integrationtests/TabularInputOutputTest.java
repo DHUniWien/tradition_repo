@@ -239,7 +239,7 @@ public class TabularInputOutputTest extends TestCase {
             String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
             String sectId = Util.getValueFromJson(
                     Util.addSectionToTradition(jerseyTest, tradId, fileName, "csv", String.format("part %d", i)),
-                    "parentId");
+                    "sectionId");
             tradSections.add(sectId);
         }
 

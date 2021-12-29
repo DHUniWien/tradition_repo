@@ -169,7 +169,7 @@ public class Util {
         List<ReadingModel> allReadings = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         for (ReadingModel r : allReadings) {
             if (r.getText().equals(reading) && r.getRank().equals(rank))
                 return r.getId();
@@ -263,18 +263,28 @@ public class Util {
     }
 
     // Save a GraphML zip file to a temporary location
-    public static String saveGraphMLTempfile(Response r) throws IOException {
-        File ourTemp = File.createTempFile("testGraphML", "");
-        ourTemp.deleteOnExit();
-        FileOutputStream fo = new FileOutputStream(ourTemp);
-        IOUtils.copy(r.readEntity(InputStream.class), fo);
-        fo.close();
-        return ourTemp.getAbsolutePath();
+    public static String saveGraphMLTempfile(Response r) {
+        try {
+            File ourTemp = File.createTempFile("testGraphML", "");
+            ourTemp.deleteOnExit();
+            FileOutputStream fo = new FileOutputStream(ourTemp);
+            IOUtils.copy(r.readEntity(InputStream.class), fo);
+            fo.close();
+            return ourTemp.getAbsolutePath();
+        } catch (IOException e) {
+            fail();
+            return null;
+        }
     }
 
-    public static String getConcatenatedGraphML(String zipFilePath) throws FileNotFoundException {
-        InputStream is = new FileInputStream(zipFilePath);
-        return getConcatentatedGraphML(is);
+    public static String getConcatenatedGraphML(String zipFilePath) {
+        try {
+            InputStream is = new FileInputStream(zipFilePath);
+            return getConcatentatedGraphML(is);
+        } catch (Exception e) {
+            fail();
+            return null;
+        }
     }
     public static String getConcatentatedGraphML(InputStream is) {
         StringBuilder output = new StringBuilder();

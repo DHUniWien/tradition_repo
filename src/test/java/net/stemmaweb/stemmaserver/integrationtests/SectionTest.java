@@ -87,7 +87,7 @@ public class SectionTest extends TestCase {
         Node endNode = VariantGraphService.getEndNode(tradId, db);
 
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2"), "parentId");
+                "stemmaweb", "section 2"), "sectionId");
 
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
@@ -117,7 +117,7 @@ public class SectionTest extends TestCase {
 
     public void testSectionRelationships() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2"), "parentId");
+                "stemmaweb", "section 2"), "sectionId");
         List<RelationModel> sectRels = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/relations")
                 .request()
                 .get(new GenericType<List<RelationModel>>() {});
@@ -130,7 +130,7 @@ public class SectionTest extends TestCase {
 
     public void testSectionReadings() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2"), "parentId");
+                "stemmaweb", "section 2"), "sectionId");
         List<ReadingModel> sectRdgs = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/readings")
                 .request()
                 .get(new GenericType<List<ReadingModel>>() {});
@@ -143,10 +143,10 @@ public class SectionTest extends TestCase {
 
     public void testSectionRequestReading() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2"), "parentId");
+                "stemmaweb", "section 2"), "sectionId");
         List<ReadingModel> sectRdgs = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         // Choose a reading at random within the list to request
         ReadingModel ourRdg = null;
         while (ourRdg == null || ourRdg.getIs_end() || ourRdg.getIs_start()) {
@@ -187,7 +187,7 @@ public class SectionTest extends TestCase {
 
     public void testAddGraphmlSectionWithWitnesses() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2_graphml.xml",
-                "graphml", "section 2"), "parentId");
+                "graphmlsingle", "section 2"), "sectionId");
 
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
@@ -263,7 +263,7 @@ public class SectionTest extends TestCase {
         while (i < 3) {
             String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
             jerseyResult = Util.addSectionToTradition(jerseyTest, florId, fileName, "csv", String.format("part %d", i));
-            florIds.add(Util.getValueFromJson(jerseyResult, "parentId"));
+            florIds.add(Util.getValueFromJson(jerseyResult, "sectionId"));
         }
         return florIds;
     }
@@ -1051,7 +1051,7 @@ public class SectionTest extends TestCase {
 
     public void testLemmaText() {
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2"), "parentId");
+                "stemmaweb", "section 2"), "sectionId");
 
         // First check before any lemma readings are set
         Response jerseyResult = jerseyTest
@@ -1270,7 +1270,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationModel> sectAnn = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        List<AnnotationModel> sectAnn = response.readEntity(new GenericType<>() {});
         assertEquals(1, sectAnn.size());
         assertTrue(sectAnn.stream().anyMatch(x -> x.getLabel().equals("PLACEREF")
                 && x.getId().equals(stuffCreated.get("ref1"))));
@@ -1282,7 +1282,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        sectAnn = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        sectAnn = response.readEntity(new GenericType<>() {});
         assertEquals(2, sectAnn.size());
         assertTrue(sectAnn.stream().anyMatch(x -> x.getLabel().equals("PLACEREF")
                 && x.getId().equals(stuffCreated.get("ref2"))));

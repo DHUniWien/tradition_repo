@@ -12,7 +12,6 @@ import org.neo4j.graphdb.traversal.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public class VariantGraphService {
 
@@ -352,21 +351,28 @@ public class VariantGraphService {
      *
      * @return The annotation nodes that point (ultimately) to the nodes in question
      */
-    public static List<Node> collectAnnotationsOnSet(GraphDatabaseService db, ResourceIterable<Node> nodeSet) {
+    public static List<Node> collectAnnotationsOnSet(GraphDatabaseService db, List<Node> nodeSet, boolean collectReferents) {
         ArrayList<Node> annotationNodes;
         try (Transaction tx = db.beginTx()) {
             // We want to find all annotation nodes that are linked both to the tradition node
             // and (perhaps indirectly through other annotations) to some node in this set.
             HashSet<Node> foundAnns = new HashSet<>();
             for (Node n : nodeSet) {
-                Traverser theseAnnotations = returnTraverser(n, nodeAnnotations, PathExpanders.forDirection(Direction.INCOMING));
-                theseAnnotations.nodes().forEach(foundAnns::add);
+                if (collectReferents) {
+                    Traverser theseAnnotations = returnTraverser(n, nodeAnnotations, PathExpanders.forDirection(Direction.INCOMING));
+                    theseAnnotations.nodes().forEach(foundAnns::add);
+                } else {
+                    for (Relationship r : n.getRelationships(Direction.INCOMING))
+                        if (r.getStartNode().hasRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING))
+                            foundAnns.add(r.getStartNode());
+                }
             }
             annotationNodes = new ArrayList<>(foundAnns);
             tx.success();
         }
         return annotationNodes;
     }
+
 
     /*
      * Tradition and section crawlers, respectively
@@ -388,9 +394,15 @@ public class VariantGraphService {
             return Evaluation.INCLUDE_AND_CONTINUE;
         if (path.lastRelationship().getType().name().equals(ERelations.OWNS_TRADITION.toString()))
             return Evaluation.EXCLUDE_AND_PRUNE;
-        // Stop at the sections
-        if (path.lastRelationship().getType().name().equals(ERelations.PART.toString()))
-            return Evaluation.EXCLUDE_AND_PRUNE;
+        // Stop at the sections, inclusively
+        if (path.lastRelationship().getStartNode().hasLabel(Nodes.SECTION)) {
+            // We want to keep the relationship if it is a NEXT or a PUB_ORDER one, otherwise truncate.
+            ArrayList<String> allowed = new ArrayList<>(Arrays.asList("NEXT", "PUB_ORDER"));
+            if (allowed.contains(path.lastRelationship().getType().name()))
+                return Evaluation.INCLUDE_AND_PRUNE;
+            else
+                return Evaluation.EXCLUDE_AND_PRUNE;
+        }
         // Also exclude any annotations
         if (path.lastRelationship().getType().name().equals(ERelations.HAS_ANNOTATION.toString()))
             return Evaluation.EXCLUDE_AND_PRUNE;
@@ -401,7 +413,8 @@ public class VariantGraphService {
         if (path.length() == 0)
             return Evaluation.INCLUDE_AND_CONTINUE;
         String type = path.lastRelationship().getType().name();
-        if (type.equals(ERelations.PART.toString()) || type.equals(ERelations.NEXT.toString()))
+        if (type.equals(ERelations.PART.toString()) || type.equals(ERelations.NEXT.toString())
+                || type.equals(ERelations.PUB_ORDER.toString()))
             return Evaluation.EXCLUDE_AND_PRUNE;
         return Evaluation.INCLUDE_AND_CONTINUE;
     };

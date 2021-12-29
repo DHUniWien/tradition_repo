@@ -20,12 +20,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.time.*;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -262,7 +257,7 @@ public class AnnotationTest extends TestCase {
         List<AnnotationModel> existing = jerseyTest
                 .target("/tradition/" + tradId + "/annotations")
                 .request()
-                .get(new GenericType<List<AnnotationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, existing.size());
 
         Response response = jerseyTest
@@ -274,7 +269,7 @@ public class AnnotationTest extends TestCase {
         existing = jerseyTest
                 .target("/tradition/" + tradId + "/annotations")
                 .request()
-                .get(new GenericType<List<AnnotationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(0, existing.size());
     }
 
@@ -320,7 +315,7 @@ public class AnnotationTest extends TestCase {
         List<AnnotationLabelModel> labels = jerseyTest
                 .target("/tradition/" + tradId + "/annotationlabels")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<AnnotationLabelModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(0, labels.size());
     }
 
@@ -399,7 +394,7 @@ public class AnnotationTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationLabelModel> allLabels = response.readEntity(new GenericType<List<AnnotationLabelModel>>() {});
+        List<AnnotationLabelModel> allLabels = response.readEntity(new GenericType<>() {});
         assertEquals(2, allLabels.size());
         assertTrue(allLabels.stream().anyMatch(x -> x.getName().equals("PERSON")));
         assertTrue(allLabels.stream().anyMatch(x -> x.getName().equals("PERSONREF")));
@@ -469,15 +464,15 @@ public class AnnotationTest extends TestCase {
         WebTarget baseQuery = jerseyTest.target("/tradition/" + tradId + "/annotations");
         response = baseQuery.request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationModel> anns = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        List<AnnotationModel> anns = response.readEntity(new GenericType<>() {});
         assertEquals(3, anns.size());
         response = baseQuery.queryParam("label", "PERSONREF").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        anns = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        anns = response.readEntity(new GenericType<>() {});
         assertEquals(2, anns.size());
         response = baseQuery.queryParam("label", "PERSON").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        anns = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        anns = response.readEntity(new GenericType<>() {});
         assertEquals(1, anns.size());
 
         // See if the structure makes sense
@@ -510,13 +505,13 @@ public class AnnotationTest extends TestCase {
                 .request()
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationModel> deleted = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        List<AnnotationModel> deleted = response.readEntity(new GenericType<>() {});
         assertEquals(1, deleted.size());
         assertEquals(ref1.getId(), deleted.get(0).getId());
 
         anns = jerseyTest.target("/tradition/" + tradId + "/annotations")
                 .request()
-                .get(new GenericType<List<AnnotationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, anns.size());
 
         response = jerseyTest
@@ -524,14 +519,14 @@ public class AnnotationTest extends TestCase {
                 .request()
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        deleted = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        deleted = response.readEntity(new GenericType<>() {});
         assertEquals(1, deleted.size());
         assertEquals(ref2.getId(), deleted.get(0).getId());
 
         anns = jerseyTest
                 .target("/tradition/" + tradId + "/annotations")
                 .request()
-                .get(new GenericType<List<AnnotationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, anns.size());
 
         // Now delete the PERSON explicitly, which should work
@@ -540,14 +535,14 @@ public class AnnotationTest extends TestCase {
                 .request()
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        deleted = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        deleted = response.readEntity(new GenericType<>() {});
         assertEquals(1, deleted.size());
         assertEquals(henry.getId(), deleted.get(0).getId());
 
         anns = jerseyTest
                 .target("/tradition/" + tradId + "/annotations")
                 .request()
-                .get(new GenericType<List<AnnotationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(0, anns.size());
     }
 
@@ -629,7 +624,7 @@ public class AnnotationTest extends TestCase {
         Response response = jerseyTest.target("/tradition/" + tradId + "/annotations")
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationModel> ourAnnotations = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        List<AnnotationModel> ourAnnotations = response.readEntity(new GenericType<>() {});
         assertEquals(nameToType.size(), ourAnnotations.size());
     }
 
@@ -659,7 +654,7 @@ public class AnnotationTest extends TestCase {
 
         // ...also for the individual section.
         List<SectionModel> sects = jerseyTest.target("/tradition/" + tradId + "/sections")
-                .request().get(new GenericType<List<SectionModel>>() {});
+                .request().get(new GenericType<>() {});
         String sectId = sects.get(0).getId();
         response = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/graphml")
                 .request().get();
@@ -685,7 +680,7 @@ public class AnnotationTest extends TestCase {
         response = jerseyTest.target("/tradition/" + newTradId + "/annotations")
                 .request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<AnnotationModel> am = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        List<AnnotationModel> am = response.readEntity(new GenericType<>() {});
         assertEquals(1, am.size());
         assertEquals("TRANSLATION", am.get(0).getLabel());
         assertTrue(am.get(0).getProperties().containsKey("text"));
@@ -696,7 +691,7 @@ public class AnnotationTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         response = jerseyTest.target("/tradition/" + newTradId + "/annotations").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        am = response.readEntity(new GenericType<List<AnnotationModel>>() {});
+        am = response.readEntity(new GenericType<>() {});
         // There should be two of them now
         assertEquals(2, am.size());
         assertTrue(am.stream().allMatch(x -> x.getLabel().equals("TRANSLATION")));

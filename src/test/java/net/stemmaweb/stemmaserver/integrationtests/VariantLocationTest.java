@@ -222,7 +222,7 @@ public class VariantLocationTest extends TestCase {
     }
 
     public void testMatthew() {
-        Map<String,String> textinfo = setupText("milestone-401-related.xml", "graphml");
+        Map<String,String> textinfo = setupText("milestone-401-related.xml", "graphmlsingle");
         String restPath = String.format("/tradition/%s/section/%s/", textinfo.get("tradId"), textinfo.get("sectId"));
 
         // First normalized, no suppression, no combination
@@ -276,7 +276,7 @@ public class VariantLocationTest extends TestCase {
                 "104: և քրիստոնեայք] \tքրիստոնէիցն: F (a.c.); ",
                 "106: քրիստոնեայք անթիւք] \tքրիստոնեայքն անթիւ: M8232; ",
                 "107: անթիւք] \tանթիւ: Bz644 K W (a.c.); ",
-                "122: գաւառին] \tգաւառի: A; \tգաւառէն: C D E F G H I J M2855 M3380 M6605 W W243 W246 Y Z; ",
+                "122: գաւառին] \tգաւառէն: C D E F G H I J M2855 M3380 M6605 W W243 W246 Y Z; \tգաւառի: A; ",
                 "128: և] \t(om.): Bz644 W246 X; ",
                 "139: զառաւել] \tզառաւելն: E F G M2855 M3380 M8232 V W243 W246 Y; ",
                 "174: անասնոց] \tանասնցն: E F G M2855 M3380 M8232 W243 W246 Y; \tաւանաց և գիւղից: Bz644 K; ",

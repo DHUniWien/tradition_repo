@@ -245,8 +245,11 @@ public class Section {
         return new ArrayList<>(witnessList);
     }
 
-    private List<Node> collectSectionAnnotations() {
-        return VariantGraphService.collectAnnotationsOnSet(db, VariantGraphService.returnTraditionSection(sectId, db).nodes());
+    private List<Node> collectSectionAnnotations(boolean collectReferents) {
+        return VariantGraphService.collectAnnotationsOnSet(db,
+                VariantGraphService.returnTraditionSection(sectId, db)
+                        .nodes().stream().distinct().collect(Collectors.toList()),
+                collectReferents);
     }
 
     /**
@@ -523,7 +526,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             // We want to find all annotation nodes that are linked both to the tradition node
             // and to some node in this section.
-            List<Node> foundAnns = collectSectionAnnotations();
+            List<Node> foundAnns = collectSectionAnnotations(recurse.equals("true"));
             // Filter the annotations if we have been asked to
             if (filterLabels.size() > 0) {
                 for (Node a : new ArrayList<>(foundAnns)) {
@@ -535,13 +538,6 @@ public class Section {
                 }
             }
 
-            // If we've been asked for referents too, add them to the model
-            if (recurse.equals("true")) {
-                for (Node n : new ArrayList<>(foundAnns)) {
-                    Annotation aService = new Annotation(tradId, String.valueOf(n.getId()));
-                    foundAnns.addAll(aService.collectReferents(true));
-                }
-            }
             foundAnns.forEach(x -> result.add(new AnnotationModel(x)));
             tx.success();
         } catch (Exception e) {
@@ -1417,7 +1413,6 @@ public class Section {
      * Returns a GraphML file that describes the specified section and its data, including annotations.
      *
      * @summary Download GraphML XML description of section
-     * @param includeWitnesses - Whether or not to include witness information in the XML
      * @return GraphML description of the section subgraph
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1427,7 +1422,7 @@ public class Section {
     @Path("/graphml")
     @Produces("application/zip")
     @ReturnType("java.lang.Void")
-    public Response getGraphML(@DefaultValue("false") @QueryParam("include_witnesses") Boolean includeWitnesses) {
+    public Response getGraphML() {
         if (VariantGraphService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
                     .entity("No such tradition found").build();

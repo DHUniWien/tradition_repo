@@ -78,6 +78,20 @@ public class Util {
         }
     }
 
+    static void ensureSectionLink (Node traditionNode, Node sectionNode) {
+        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            String tradId = traditionNode.getProperty("id").toString();
+            ArrayList<Node> tsections = VariantGraphService.getSectionNodes(tradId, db);
+            if (!tsections.contains(sectionNode)) {
+                traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
+                if (!tsections.isEmpty())
+                    tsections.get(tsections.size()-1).createRelationshipTo(sectionNode, ERelations.NEXT);
+            }
+            tx.success();
+        }
+    }
+
     private static Boolean isDotId (String nodeid) {
         return nodeid.matches("^[A-Za-z][A-Za-z0-9_.]*$")
                 || nodeid.matches("^-?(\\.\\d+|\\d+\\.\\d+)$");
