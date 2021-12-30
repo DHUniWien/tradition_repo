@@ -462,17 +462,67 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(1, s2Annos.size());
 
     }
-    
-    @Ignore
-    public void testZipArbitaryTradition() {
+
+/*
+    public void testZipArbitraryTradition() {
         // Import the given tradition file and check that it works
         String fn = "src/TestFiles/4aaf8973-7ac9-402a-8df9-19a2a050e364.zip";
-        Response r = Util.createTraditionFromFileOrString(jerseyTest, "John verse 2", "BI",
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Arbitrary tradition", "BI",
                 "me@example.org", fn, "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         String newTradId = Util.getValueFromJson(r, "tradId");
         assertNotNull(newTradId);
+
+        // See if we still have our duplicated annotation labels
+        List<AnnotationLabelModel> annoTypes = jerseyTest.target("/tradition/" + newTradId + "/annotationlabels")
+                .request().get(new GenericType<>() {});
+        assertEquals(13, annoTypes.size());
+
+        // Check that the tradition has the right number of chapter links
+        HashMap<String,Integer> chapterDivs = new HashMap<>();
+        chapterDivs.put("Book One", 25);
+        chapterDivs.put("Book Two", 15);
+        chapterDivs.put("Book Three", 14);
+        chapterDivs.put("Continuation", 23);
+
+        List<AnnotationModel> ch = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .queryParam("label", "CHAPTER")
+                .request().get(new GenericType<>() {});
+        assertEquals(4, ch.size());
+        for (AnnotationModel am : ch) {
+            String chtitle = am.getProperties().get("title").toString();
+            assertEquals(chapterDivs.get(chtitle), Integer.valueOf(am.getLinks().size()));
+        }
+
+        // Check that the tradition has the right number of titles, two per section
+        List<SectionModel> sectionModels = jerseyTest.target("/tradition/" + newTradId + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(77, sectionModels.size());
+        List<AnnotationModel> titleModels = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .queryParam("label", "TITLE")
+                .request().get(new GenericType<>() {});
+        assertEquals(146, titleModels.size());
+        for (SectionModel sm : sectionModels) {
+            if (titleModels.stream().noneMatch(x -> x.getProperties().get("language").equals("hy")
+                    && x.getLinks().get(0).getTarget().equals(Long.valueOf(sm.getId()))))
+                System.out.println("No Armenian title found for section " + sm.getName());
+            if (titleModels.stream().noneMatch(x -> x.getProperties().get("language").equals("en")
+                    && x.getLinks().get(0).getTarget().equals(Long.valueOf(sm.getId()))))
+                System.out.println("No English title found for section " + sm.getName());
+        }
+
+        // Check that the tradition has the right number of PLACEREFs
+        List<AnnotationModel> placerefModels = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .queryParam("label", "PLACEREF")
+                .request().get(new GenericType<>() {});
+        assertEquals(148, placerefModels.size());
+        // Check that the tradition has the right number of PLACEs
+        List<AnnotationModel> placeModels = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .queryParam("label", "PLACE")
+                .request().get(new GenericType<>() {});
+        assertEquals(51, placeModels.size());
     }
+*/
 
     // testXMLUserNodes
 

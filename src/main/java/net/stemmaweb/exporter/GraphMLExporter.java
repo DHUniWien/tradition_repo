@@ -117,7 +117,7 @@ public class GraphMLExporter {
             String type = "string";
             Object prop = ent.getProperty(p);
             if (prop instanceof Long) type = "long";
-            else if (prop instanceof Integer) type = "integer";
+            else if (prop instanceof Integer) type = "int";
             else if (prop instanceof Boolean) type = "boolean";
             else if (prop instanceof String[]) type = "stringarray";
             if (!collection.containsKey(p) || !collection.get(p)[1].equals(type)) {

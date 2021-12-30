@@ -323,12 +323,11 @@ public class GraphMLParser {
                         // We are either here because we tried to link an annotation (which doesn't yet exist)
                         // to the tradition via a HAS_ANNOTATION link, or because we tried to use a user-defined
                         // relationship label in the context of an annotation where both nodes already existed.
-                        // If the former, ignore it (we will add these links later); if the latter, warn because
-                        // I really don't expect this.
-                        if (!neolabel.equals("HAS_ANNOTATION")) {
-                            System.out.println("Found annotation edge between two non-annotation nodes?!");
+                        // If the former, ignore it (we will add these links below  `); if the latter, it is a case
+                        // where the annotation node was already created (e.g. the same annotation is present in
+                        // multiple sections) but we still need to link it through proper channels below.
+                        if (!neolabel.equals("HAS_ANNOTATION"))
                             userLabeledEdges.add(edgeNodes.item(i));
-                        }
                     }
                 }
             }
@@ -489,7 +488,7 @@ public class GraphMLParser {
                 case "long":
                     propValue = Long.valueOf(keyVal);
                     break;
-                case "integer":
+                case "int":
                     propValue = Integer.valueOf(keyVal);
                     break;
                 case "stringarray":
