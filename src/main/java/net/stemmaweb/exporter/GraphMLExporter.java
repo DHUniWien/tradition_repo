@@ -240,16 +240,7 @@ public class GraphMLExporter {
                         .collect(Collectors.toList());
             }
             // Get any annotations pertaining to the tradition node itself and its metadata
-            List<Node> extraNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(
-                    db, collectionNodes, true));
-            collectionNodes.addAll(extraNodes);
-            // Add the relationships pointing from the annotations to the section and to each other
-            List<Relationship> extraRels = new ArrayList<>();
-            extraNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraRels::add));
-            // Add the links back from the annotations to the tradition node
-            extraNodes.forEach(x -> extraRels.add(
-                    x.getSingleRelationship(ERelations.HAS_ANNOTATION, Direction.INCOMING)));
-            collectionEdges.addAll(extraRels);
+            collectExtraNodesAndEdges(collectionNodes, collectionEdges);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -294,20 +285,14 @@ public class GraphMLExporter {
             try (Transaction tx = db.beginTx()) {
                 allSectNodes = sectionNodes.stream().collect(Collectors.toList());
                 allSectEdges = sectionEdges.stream().collect(Collectors.toList());
-                List<Node> extraSectNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(
-                        db, allSectNodes, true));
-                allSectNodes.addAll(extraSectNodes);
-                // Add the relationships pointing from the annotations to the section and to each other
-                List<Relationship> extraSectRels = new ArrayList<>();
-                extraSectNodes.forEach(x -> x.getRelationships(Direction.OUTGOING).forEach(extraSectRels::add));
-                allSectEdges.addAll(extraSectRels);
+                collectExtraNodesAndEdges(allSectNodes, allSectEdges);
                 tx.success();
             } catch (Exception e) {
                 e.printStackTrace();
                 return Response.serverError().build();
             }
 
-            // Set up the file stream
+            // Set up the file stream and write out to it
             XMLOutputFactory sectionOutput = XMLOutputFactory.newInstance();
             try {
                 String fileName = String.format("section-%s.xml", sectId);
@@ -356,5 +341,18 @@ public class GraphMLExporter {
         String sectionAppend = sectionId != null ? "-section-" + sectionId : "";
         String cdisp = String.format("attachment; filename=\"%s%s.zip\"", tradId, sectionAppend);
         return Response.ok(result.toByteArray(), "application/zip").header("Content-Disposition", cdisp).build();
+    }
+
+    private void collectExtraNodesAndEdges(List<Node> startingNodes, List<Relationship> startingEdges) {
+        List<Node> extraNodes = new ArrayList<>(VariantGraphService.collectAnnotationsOnSet(
+                db, startingNodes, true));
+        startingNodes.addAll(extraNodes);
+        // Add the relationships pointing from the annotations to the section and to each other
+        List<Relationship> extraSectRels = new ArrayList<>();
+        for (Node n : extraNodes)
+            for (Relationship r : n.getRelationships(Direction.OUTGOING))
+                if (startingNodes.contains(r.getEndNode()))
+                    extraSectRels.add(r);
+        startingEdges.addAll(extraSectRels);
     }
 }

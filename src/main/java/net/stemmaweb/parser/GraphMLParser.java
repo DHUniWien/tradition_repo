@@ -354,7 +354,7 @@ public class GraphMLParser {
                 RelationService.returnRelationType(tradId, rt);
 
             // Now add user-labeled nodes separately, via the existing validation infrastructure.
-            List<AnnotationModel> annotationsToAdd = new ArrayList<>();
+            HashMap<String,AnnotationModel> annotationsToAdd = new HashMap<>();
             for (org.w3c.dom.Node xn : userLabeledNodes.values()) {
                 AnnotationModel am = new AnnotationModel();
                 // Get the properties on this annotation node.
@@ -366,6 +366,7 @@ public class GraphMLParser {
                 boolean isPrimary = props.containsKey("__primary")
                         && props.remove("__primary").toString().equals("true");
                 // Fill out the annotation model
+
                 am.setLabel(annLabel);
                 am.setPrimary(isPrimary);
                 am.setProperties(props);
@@ -385,12 +386,13 @@ public class GraphMLParser {
                         am.addLink(alm);
                     }
                 }
-                annotationsToAdd.add(am);
+                annotationsToAdd.put(((Element) xn).getAttribute("id"), am);
             }
             while (annotationsToAdd.size() > 0) {
                 Tradition tradService = new Tradition(tradId);
-                List<AnnotationModel> toRemove = new ArrayList<>();
-                for (AnnotationModel am : annotationsToAdd) {
+                List<String> toRemove = new ArrayList<>();
+                for (String amid : annotationsToAdd.keySet()) {
+                    AnnotationModel am = annotationsToAdd.get(amid);
                     // Look at the links and see if the targets exist yet
                     boolean targetsExist = true;
                     for (Long target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).collect(Collectors.toList())) {
@@ -408,14 +410,19 @@ public class GraphMLParser {
                                     "Error on adding user annotation %s/%s: %s",
                                     am.getId(), am.getLabel(), result.getEntity()));
                         }
-                        toRemove.add(am);
+                        // Add the new annotation node to the idMap so that it is there for any
+                        // dependent annotations
+                        AnnotationModel newAnno = (AnnotationModel) result.getEntity();
+                        idMap.put(amid, Long.parseLong(newAnno.getId()));
+                        // Mark this annotation to be removed from the queue
+                        toRemove.add(amid);
                     }
                 }
                 // Guard against infinite loops
                 if (toRemove.isEmpty())
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity(jsonerror("Annotations in XML could not all be resolved")).build();
-                annotationsToAdd.removeAll(toRemove);
+                toRemove.forEach(annotationsToAdd::remove);
             }
 
             // Sanity check: if we created any relationship-less nodes, delete them again.

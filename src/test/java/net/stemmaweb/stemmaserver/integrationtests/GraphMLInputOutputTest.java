@@ -9,6 +9,7 @@ import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
+import org.junit.Ignore;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
@@ -17,6 +18,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.Response;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.ws.rs.core.GenericType;
@@ -359,6 +361,117 @@ public class GraphMLInputOutputTest extends TestCase {
         String expected = "և զկնի հինկ ամին եկեալ մարախ յայնմ գաւառին որպէս զաւազ ծովու և ապականեաց զերկիր.";
         String actual = ReadingService.textOfReadings(translated, true, false);
         assertEquals(expected, actual);
+    }
+
+    public void testZipExportAnnotationsAcrossSection() {
+        HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, multiTradId);
+        // Write the annotation schema
+        AnnotationLabelModel placerefAlm = new AnnotationLabelModel();
+        placerefAlm.setName("PLACEREF");
+        placerefAlm.addLink("READING", "BEGIN,END");
+        placerefAlm.addProperty("authority", "String");
+        Response r = jerseyTest.target("/tradition/" + multiTradId + "/annotationlabel/PLACEREF")
+                .request().put(Entity.json(placerefAlm));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        AnnotationLabelModel placeAlm = new AnnotationLabelModel();
+        placeAlm.setName("PLACE");
+        placeAlm.addProperty("name", "String");
+        placeAlm.addLink("PLACEREF", "REFERENCED");
+        r = jerseyTest.target("/tradition/" + multiTradId + "/annotationlabel/PLACE")
+                .request().put(Entity.json(placeAlm));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+
+        // Add the first place reference "swecia"
+        AnnotationModel sect1ref = new AnnotationModel();
+        sect1ref.setLabel("PLACEREF");
+        sect1ref.addProperty("authority", "tla");
+        AnnotationLinkModel s1b = new AnnotationLinkModel();
+        s1b.setTarget(Long.parseLong(readingLookup.get("swecia/2")));
+        s1b.setType("BEGIN");
+        sect1ref.addLink(s1b);
+        AnnotationLinkModel s1e = new AnnotationLinkModel();
+        s1e.setTarget(Long.parseLong(readingLookup.get("swecia/2")));
+        s1e.setType("END");
+        sect1ref.addLink(s1e);
+        r = jerseyTest.target("/tradition/" + multiTradId + "/annotation/").request().post(Entity.json(sect1ref));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        sect1ref = r.readEntity(AnnotationModel.class);
+
+        // Add the second place reference ("terre illius")
+        AnnotationModel sect2ref = new AnnotationModel();
+        sect2ref.setLabel("PLACEREF");
+        sect2ref.addProperty("authority", "tla");
+        AnnotationLinkModel s2b = new AnnotationLinkModel();
+        s2b.setTarget(Long.parseLong(readingLookup.get("terre/6")));
+        s2b.setType("BEGIN");
+        sect2ref.addLink(s2b);
+        AnnotationLinkModel s2e = new AnnotationLinkModel();
+        s2e.setTarget(Long.parseLong(readingLookup.get("illius/7")));
+        s2e.setType("END");
+        sect2ref.addLink(s2e);
+        r = jerseyTest.target("/tradition/" + multiTradId + "/annotation").request().post(Entity.json(sect2ref));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        sect2ref = r.readEntity(AnnotationModel.class);
+
+        // Add the place to which these refer
+        AnnotationModel thePlace = new AnnotationModel();
+        thePlace.setLabel("PLACE");
+        thePlace.addProperty("name", "Sweden");
+        AnnotationLinkModel r1 = new AnnotationLinkModel();
+        r1.setTarget(Long.parseLong(sect1ref.getId()));
+        r1.setType("REFERENCED");
+        thePlace.addLink(r1);
+        AnnotationLinkModel r2 = new AnnotationLinkModel();
+        r2.setTarget(Long.parseLong(sect2ref.getId()));
+        r2.setType("REFERENCED");
+        thePlace.addLink(r2);
+        r = jerseyTest.target("/tradition/" + multiTradId + "/annotation").request().post(Entity.json(thePlace));
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        thePlace = r.readEntity(AnnotationModel.class);
+
+        // Export the zip file
+        r = jerseyTest.target("/tradition/" + multiTradId + "/graphml").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        String ourZip = Util.saveGraphMLTempfile(r);
+
+        // ...and try reimporting it
+        r = Util.createTraditionFromFileOrString(jerseyTest, "new Legend", "LR", "me@example.org", ourZip, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newTradId = Util.getValueFromJson(r, "tradId");
+
+        // Ask for section annotations and make sure they are correct
+        List<SectionModel> ourSections = jerseyTest.target("/tradition/" + newTradId + "/sections")
+                .request().get(new GenericType<>() {});
+        assertEquals(2, ourSections.size());
+        List<AnnotationModel> allAnnos = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .request().get(new GenericType<>() {});
+        assertEquals(3, allAnnos.size());
+        List<AnnotationModel> placeAnnos = jerseyTest.target("/tradition/" + newTradId + "/annotations")
+                .queryParam("label", "PLACE")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, placeAnnos.size());
+        assertEquals(thePlace.getLabel(), placeAnnos.get(0).getLabel());
+        assertEquals(thePlace.getProperties().get("name"), placeAnnos.get(0).getProperties().get("name"));
+        List<AnnotationModel> s1Annos = jerseyTest
+                .target("/tradition/" + newTradId + "/section/" + ourSections.get(0).getId() + "/annotations")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, s1Annos.size());
+        List<AnnotationModel> s2Annos = jerseyTest
+                .target("/tradition/" + newTradId + "/section/" + ourSections.get(1).getId() + "/annotations")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, s2Annos.size());
+
+    }
+    
+    @Ignore
+    public void testZipArbitaryTradition() {
+        // Import the given tradition file and check that it works
+        String fn = "src/TestFiles/4aaf8973-7ac9-402a-8df9-19a2a050e364.zip";
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "John verse 2", "BI",
+                "me@example.org", fn, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String newTradId = Util.getValueFromJson(r, "tradId");
+        assertNotNull(newTradId);
     }
 
     // testXMLUserNodes
