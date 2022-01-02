@@ -67,7 +67,7 @@ public class SectionTest extends TestCase {
     public void testTraditionCreated() {
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, tSections.size());
         assertEquals("DEFAULT", tSections.get(0).getName());
 
@@ -91,7 +91,7 @@ public class SectionTest extends TestCase {
 
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, tSections.size());
         assertEquals("section 2", tSections.get(1).getName());
         Long expectedRank = 22L;
@@ -120,11 +120,11 @@ public class SectionTest extends TestCase {
                 "stemmaweb", "section 2"), "sectionId");
         List<RelationModel> sectRels = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(9, sectRels.size());
         List<RelationModel> allRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(21, allRels.size());
     }
 
@@ -133,11 +133,11 @@ public class SectionTest extends TestCase {
                 "stemmaweb", "section 2"), "sectionId");
         List<ReadingModel> sectRdgs = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(47, sectRdgs.size());
         List<ReadingModel> allRdgs = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(77, allRdgs.size());
     }
 
@@ -176,12 +176,12 @@ public class SectionTest extends TestCase {
     public void testSectionWitnesses() {
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         String sectId = tSections.get(0).getId();
 
         List<WitnessModel> sectWits = jerseyTest.target("/tradition/"  + tradId + "/section/" + sectId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(37, sectWits.size());
     }
 
@@ -191,7 +191,7 @@ public class SectionTest extends TestCase {
 
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, tSections.size());
         assertEquals("section 2", tSections.get(1).getName());
 
@@ -218,18 +218,18 @@ public class SectionTest extends TestCase {
     public void testDeleteSection() {
         List<ReadingModel> tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(30, tReadings.size());
 
         Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml", "stemmaweb", "section 2");
         tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(77, tReadings.size());
 
         List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         SectionModel firstSection = tSections.get(0);
 
         Response jerseyResult = jerseyTest
@@ -240,7 +240,7 @@ public class SectionTest extends TestCase {
 
         tReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(47, tReadings.size());
     }
 
@@ -252,7 +252,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> returnedSections = jerseyTest
                 .target("/tradition/" + florId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(4, returnedSections.size());
         ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("DEFAULT", "part 1", "part 2", "part 3"));
         ArrayList<String> returnedIds = new ArrayList<>();
@@ -562,14 +562,14 @@ public class SectionTest extends TestCase {
         List<ReadingModel> part2rdgs = jerseyTest
                 .target("/tradition/" + florId + "/section/" + newSectionId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertTrue(part2rdgs.stream().anyMatch(x -> x.getRank().equals(1L)));
 
         // Check that the first half's end rank correct
         List<ReadingModel> part1rdgs = jerseyTest
                 .target("/tradition/" + florId + "/section/" + targetSectionId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         Optional<ReadingModel> oFirstEnd = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst();
         assertTrue(oFirstEnd.isPresent());
         ReadingModel firstEnd = oFirstEnd.get();
@@ -585,7 +585,7 @@ public class SectionTest extends TestCase {
         List<WitnessModel> firstSectWits = jerseyTest
                 .target("/tradition/" + florId + "/section/" + targetSectionId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         for (WitnessModel wit : firstSectWits) {
             Response connectedTest = jerseyTest
                     .target("/tradition/" + florId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
@@ -622,7 +622,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> returnedSections = jerseyTest
                 .target("/tradition/" + mattId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
 
         SectionModel origSection = returnedSections.get(0);
         String targetSectionId = origSection.getId();
@@ -662,14 +662,14 @@ public class SectionTest extends TestCase {
         List<ReadingModel> part2rdgs = jerseyTest
                 .target("/tradition/" + mattId + "/section/" + newSectionId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertTrue(part2rdgs.stream().anyMatch(x -> x.getRank().equals(1L)));
 
         // Check that the first half's end rank correct
         List<ReadingModel> part1rdgs = jerseyTest
                 .target("/tradition/" + mattId + "/section/" + targetSectionId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         Optional<ReadingModel> ofe = part1rdgs.stream().filter(ReadingModel::getIs_end).findFirst();
         assertTrue(ofe.isPresent());
         ReadingModel firstEnd = ofe.get();
@@ -685,7 +685,7 @@ public class SectionTest extends TestCase {
         List<WitnessModel> firstSectWits = jerseyTest
                 .target("/tradition/" + mattId + "/section/" + targetSectionId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         for (WitnessModel wit : firstSectWits) {
             Response connectedTest = jerseyTest
                     .target("/tradition/" + mattId + "/section/" + targetSectionId + "/witness/" + wit.getSigil() + "/text")
@@ -709,7 +709,7 @@ public class SectionTest extends TestCase {
         List<ReadingModel> readingList = jerseyTest
                 .target("/tradition/" + tid + "/section/" + sid + "/witness/" + sigil + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, readingList.size());
         assertTrue(readingList.get(0).getIs_lacuna());
     }
@@ -730,7 +730,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> tradSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         String sectId = tradSections.get(0).getId();
 
         // Propose an emendation for the wrong ranks
@@ -857,12 +857,12 @@ public class SectionTest extends TestCase {
         List<SectionModel> tradSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, tradSections.size());
         List<List<ReadingModel>> pathClusters = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + tradSections.get(0).getId() + "/colocated")
                 .request()
-                .get(new GenericType<List<List<ReadingModel>>>() {});
+                .get(new GenericType<>() {});
         assertEquals(5, pathClusters.size());
     }
 
@@ -885,14 +885,14 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<ReadingModel> lemmaReadings = jerseyResult.readEntity(new GenericType<List<ReadingModel>>() {});
+        List<ReadingModel> lemmaReadings = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(0, lemmaReadings.size());
 
         // Now set some lemma readings
         List<ReadingModel> allReadings = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + newSectId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         HashMap<String, String> readingLookup = new HashMap<>();
         for (ReadingModel rm : allReadings) {
             String key = rm.getText() + "/" + rm.getRank().toString();
@@ -962,7 +962,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaReadings = jerseyResult.readEntity(new GenericType<List<ReadingModel>>() {});
+        lemmaReadings = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(20, lemmaReadings.size());
         HashSet<String> inLemma = new HashSet<>();
         lemmaReadings.forEach(x -> inLemma.add(x.getId()));
@@ -976,7 +976,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaReadings = jerseyResult.readEntity(new GenericType<List<ReadingModel>>() {});
+        lemmaReadings = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(3, lemmaReadings.size());
         for (String rdg : new String[] {"noticiam/11", "et/12", "cultum/13"}) {
             String rdgid = readingLookup.get(rdg);
@@ -1008,7 +1008,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        lemmaReadings = jerseyResult.readEntity(new GenericType<List<ReadingModel>>() {});
+        lemmaReadings = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(20, lemmaReadings.size());
         HashSet<String> inFinalLemma = new HashSet<>();
         lemmaReadings.forEach(x -> inFinalLemma.add(x.getId()));
@@ -1021,7 +1021,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<ReadingModel> changed = jerseyResult.readEntity(new GenericType<List<ReadingModel>>() {});
+        List<ReadingModel> changed = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(2, changed.size());
         assertTrue(changed.stream().anyMatch(x -> x.getId().equals(readingLookup.get("iugiter/17")) && x.getIs_lemma()));
         assertTrue(changed.stream().anyMatch(x -> x.getId().equals(readingLookup.get("jugiter/17")) && !x.getIs_lemma()));
@@ -1115,7 +1115,7 @@ public class SectionTest extends TestCase {
         List<ReadingModel> s2Readings = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + stuffCreated.get("section2") + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         // Now try to delete section 1
         Response response = jerseyTest
@@ -1130,7 +1130,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<ReadingModel> remaining = response.readEntity(new GenericType<List<ReadingModel>>() {});
+        List<ReadingModel> remaining = response.readEntity(new GenericType<>() {});
         assertEquals(s2Readings.size(), remaining.size());
         assertEquals(s2Readings.stream().map(ReadingModel::getId).sorted().collect(Collectors.toList()),
                 remaining.stream().map(ReadingModel::getId).sorted().collect(Collectors.toList()));
@@ -1165,7 +1165,7 @@ public class SectionTest extends TestCase {
         List<SectionModel> ourSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         data.put("section1", ourSections.get(0).getId());
         data.put("section2", ourSections.get(1).getId());
         // Make some reading lookups
@@ -1223,6 +1223,7 @@ public class SectionTest extends TestCase {
         AnnotationLinkModel slinks = new AnnotationLinkModel();
         slinks.setType("NAMED");
         slinks.setTarget(Long.valueOf(ref1.getId()));
+        suecia.addLink(slinks);
         response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
                 .request(MediaType.APPLICATION_JSON)
@@ -1259,6 +1260,15 @@ public class SectionTest extends TestCase {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(newLink));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+
+        // Make sure that the place in question has links to two different PLACEREFs
+        response = jerseyTest.target("/tradition/" + tradId + "/annotations" )
+                .queryParam("label", "PLACE")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        List<AnnotationModel> places = response.readEntity(new GenericType<>() {});
+        assertEquals(1, places.size());
+        assertEquals(2, places.get(0).getLinks().size());
 
         return data;
     }
