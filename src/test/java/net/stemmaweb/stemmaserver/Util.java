@@ -252,6 +252,32 @@ public class Util {
                 .post(Entity.entity(form, MediaType.MULTIPART_FORM_DATA_TYPE));
     }
 
+    public static List<String> importFlorilegium (JerseyTest jerseyTest) {
+        List<String> florIds = new ArrayList<>();
+        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
+                "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+        String florId = Util.getValueFromJson(jerseyResult, "tradId");
+        florIds.add(florId);
+        // Get the existing single section ID
+        SectionModel firstSection = jerseyTest.target("/tradition/" + florId + "/sections")
+                .request()
+                .get(new GenericType<List<SectionModel>>() {}).get(0);
+        if (firstSection == null) fail();
+        florIds.add(firstSection.getId());
+
+        // Add the other three sections
+        int i = 0;
+        while (i < 3) {
+            String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
+            jerseyResult = Util.addSectionToTradition(jerseyTest, florId, fileName, "csv", String.format("part %d", i));
+            florIds.add(Util.getValueFromJson(jerseyResult, "sectionId"));
+        }
+        return florIds;
+    }
+
+
+
     private static InputStream getFileOrStringContent(String content) {
         InputStream result;
         try {

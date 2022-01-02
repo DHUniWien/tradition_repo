@@ -244,33 +244,9 @@ public class SectionTest extends TestCase {
         assertEquals(47, tReadings.size());
     }
 
-    private List<String> importFlorilegium () {
-        List<String> florIds = new ArrayList<>();
-        Response jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
-                    "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
-        assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
-        String florId = Util.getValueFromJson(jerseyResult, "tradId");
-        florIds.add(florId);
-        // Get the existing single section ID
-        SectionModel firstSection = jerseyTest.target("/tradition/" + florId + "/sections")
-                .request()
-                .get(new GenericType<List<SectionModel>>() {}).get(0);
-        assertNotNull(firstSection);
-        florIds.add(firstSection.getId());
-
-        // Add the other three sections
-        int i = 0;
-        while (i < 3) {
-            String fileName = String.format("src/TestFiles/florilegium_%c.csv", 120 + i++);
-            jerseyResult = Util.addSectionToTradition(jerseyTest, florId, fileName, "csv", String.format("part %d", i));
-            florIds.add(Util.getValueFromJson(jerseyResult, "sectionId"));
-        }
-        return florIds;
-    }
-
     // test ordering of sections
     public void testSectionOrdering() {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
         // Test that we get the sections back in the correct order
         List<SectionModel> returnedSections = jerseyTest
@@ -303,7 +279,7 @@ public class SectionTest extends TestCase {
     }
 
     public void testDeleteSectionMiddle() {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
         Response jerseyResult = jerseyTest
                 .target("/tradition/" + florId + "/section/" + florIds.get(1))
@@ -328,7 +304,7 @@ public class SectionTest extends TestCase {
     }
 
     public void testReorderSections() {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
         String reorderPath = "/section/" + florIds.get(1)
                 + "/orderAfter/" + florIds.get(2);
@@ -378,7 +354,7 @@ public class SectionTest extends TestCase {
     }
 
     public void testSectionWrongTradition () {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
         String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId,
                 "src/TestFiles/lf2.xml", "stemmaweb", "section 2"), "parentId");
@@ -390,7 +366,7 @@ public class SectionTest extends TestCase {
     }
 
     public void testSectionOrderAfterSelf () {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
         String tryReorder = florIds.get(2);
         Response jerseyResult = jerseyTest
@@ -403,7 +379,7 @@ public class SectionTest extends TestCase {
     }
 
     public void testMergeSections() {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
 
         // Try merge of 3 into 4
@@ -502,7 +478,7 @@ public class SectionTest extends TestCase {
     // Test merge of tradition sections with layered readings
 
     public void testSplitSection() {
-        List<String> florIds = importFlorilegium();
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
 
         String targetSectionId = florIds.get(1);
@@ -877,64 +853,6 @@ public class SectionTest extends TestCase {
         assertEquals(2, newResult.getReadings().size());
     }
 
-    public void testEmendedLemmatisedDot() {
-        // Get the section ID
-        List<SectionModel> tradSections = jerseyTest
-                .target("/tradition/" + tradId + "/sections")
-                .request()
-                .get(new GenericType<List<SectionModel>>() {});
-        String sectId = tradSections.get(0).getId();
-
-        // Propose an emendation and set it
-        ProposedEmendationModel pem = new ProposedEmendationModel();
-        pem.setAuthority("H. Granger");
-        pem.setText("alohomora");
-        pem.setFromRank(4L);
-        pem.setToRank(6L);
-        Response response = jerseyTest
-                .target("/tradition/" + tradId + "/section/" + sectId + "/emend")
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(pem));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        GraphModel newEmendation = response.readEntity(GraphModel.class);
-        assertEquals(1, newEmendation.getReadings().size());
-        ReadingModel eReading = newEmendation.getReadings().iterator().next();
-
-        // Lemmatise the emendation
-        MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
-        lemmaParam.add("value", "true");
-        response = jerseyTest.target("/reading/" + eReading.getId() + "/setlemma")
-                .request()
-                .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-
-        // Check that we can request the section dot
-        response = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/dot")
-                .queryParam("show_normal", "true")
-                .request()
-                .get(Response.class);
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        String sectionDot = response.readEntity(String.class);
-        assertTrue(sectionDot.startsWith("digraph"));
-
-        // Now set the section lemma
-        response = jerseyTest
-                .target("/tradition/" + tradId + "/section/" + sectId + "/setlemma")
-                .request(MediaType.APPLICATION_JSON)
-                .post(null);
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-
-        // Check that we can still request the section dot
-        response = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId + "/dot")
-                .queryParam("show_normal", "true")
-                .request()
-                .get();
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        sectionDot = response.readEntity(String.class);
-        assertTrue(sectionDot.startsWith("digraph"));
-
-    }
-
     public void testRelatedClusters() {
         List<SectionModel> tradSections = jerseyTest
                 .target("/tradition/" + tradId + "/sections")
@@ -946,107 +864,6 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<List<List<ReadingModel>>>() {});
         assertEquals(5, pathClusters.size());
-    }
-
-    public void testSectionDotOutput() {
-        List<String> florIds = importFlorilegium();
-        String florId = florIds.remove(0);
-        String targetSection = florIds.get(3);
-
-        String getDot = "/tradition/" + florId + "/dot";
-        Response jerseyResult = jerseyTest
-                .target(getDot)
-                .request(MediaType.TEXT_PLAIN)
-                .get();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        // Do a basic sanity check of the dot file - does it have the right number of lines?
-        String[] dotLines = jerseyResult.readEntity(String.class).split("\n");
-        assertEquals(651, dotLines.length);
-
-        String wWord = "Μαξίμου";
-        String xWord = "βλασφημεῖται";
-        String yWord = "συντυχίας";
-        String zWord = "βλασφημοῦντος";
-
-        // Set a normal form on one reading, see if it turns up in dot output.
-        // Also stick a double quote inside one of the readings
-        try (Transaction tx = db.beginTx()) {
-            Node n = db.findNode(Nodes.READING, "text", "ὄψιν,");
-            assertNotNull(n);
-            n.setProperty("text", "ὄψ\"ιν,");
-            n.setProperty("normal_form", "ὄψιν");
-            n = db.findNode(Nodes.READING, "text", "γυναικῶν.");
-            assertNotNull(n);
-            n.setProperty("text", "γυν\"αι\"κῶν.");
-            tx.success();
-        }
-
-        String getSectionDot = "/tradition/" + florId + "/section/" + florIds.get(2) + "/dot";
-        jerseyResult = jerseyTest
-                .target(getSectionDot)
-                .queryParam("expand_sigla", "true")
-                .request(MediaType.TEXT_PLAIN)
-                .get();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        String dotStr = jerseyResult.readEntity(String.class);
-        assertTrue(dotStr.startsWith("digraph \"part 2\""));
-        assertFalse(dotStr.contains("majority"));
-        assertTrue(dotStr.contains(yWord));
-        assertTrue(dotStr.contains("γυν\\\"αι\\\"κῶν."));
-
-
-        getSectionDot = "/tradition/" + florId + "/section/" + targetSection + "/dot";
-        jerseyResult = jerseyTest
-                .target(getSectionDot)
-                .queryParam("show_normal", "true")
-                .request(MediaType.TEXT_PLAIN)
-                .get();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        dotStr = jerseyResult.readEntity(String.class);
-        dotLines = dotStr.split("\n");
-        assertEquals(121, dotLines.length);
-        assertFalse(dotStr.contains(wWord));
-        assertFalse(dotStr.contains(xWord));
-        assertFalse(dotStr.contains(yWord));
-        assertTrue(dotStr.contains(zWord));
-        assertTrue(dotStr.contains("#START#"));
-        assertTrue(dotStr.contains("#END#"));
-        assertTrue(dotStr.contains("<ὄ&psi;&quot;&iota;&nu;,<BR/><FONT COLOR=\"grey\">ὄ&psi;&iota;&nu;</FONT>>"));
-
-        getSectionDot = "/tradition/" + florId + "/section/" + florIds.get(1) + "/dot";
-        jerseyResult = jerseyTest.target(getSectionDot)
-                .queryParam("exclude_witness", "A")
-                .queryParam("exclude_witness", "B")
-                .queryParam("exclude_witness", "F")
-                .queryParam("exclude_witness", "G")
-                .queryParam("exclude_witness", "Q")
-                .queryParam("exclude_witness", "T")
-                .request(MediaType.TEXT_PLAIN)
-                .get();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        dotStr = jerseyResult.readEntity(String.class);
-        dotLines = dotStr.split("\n");
-        assertEquals(123, dotLines.length);
-        assertFalse(dotStr.contains("νείλου"));
-        assertTrue(dotStr.contains(xWord));
-        // There should only be one link out from the start
-        Optional<String> startNode = Arrays.stream(dotLines).filter(x -> x.contains("__START__")).findFirst();
-        assertTrue(startNode.isPresent());
-        Long startId = getNodeFromDot(startNode.get());
-        assertEquals(1, Arrays.stream(dotLines).filter(x -> x.contains("\t" + startId + "->")).count());
-        List<String> gars = Arrays.stream(dotLines).filter(x -> x.contains("γὰρ")).collect(Collectors.toList());
-        assertEquals(1, gars.size());
-        Long garId = getNodeFromDot(gars.get(0));
-        List<String> garLink = Arrays.stream(dotLines).filter(x -> x.contains("\t" + garId + "->"))
-                .collect(Collectors.toList());
-        assertEquals(2, garLink.size());
-        for (String l : garLink) {
-            assertFalse(l.contains("F"));
-        }
-    }
-
-    private Long getNodeFromDot(String dotLine) {
-        return Long.valueOf(dotLine.replaceAll("\\s+", "").split("\\[")[0]);
     }
 
     public void testLemmaText() {

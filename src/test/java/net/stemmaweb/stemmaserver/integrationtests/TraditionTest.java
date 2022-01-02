@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
@@ -54,7 +52,6 @@ public class TraditionTest {
      * grizzly http service
      */
     private JerseyTest jerseyTest;
-    private HashMap<String, String> readingLookup;
 
     @Before
     public void setUp() throws Exception {
@@ -75,11 +72,6 @@ public class TraditionTest {
          * create a tradition inside the test DB
          */
         tradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml", "1");
-        /*
-         * get a mapping of reading text/rank to ID
-         */
-        readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
-
     }
 
     private String createTraditionFromFile(String tName, String fName, String userId) {
@@ -104,7 +96,7 @@ public class TraditionTest {
 
         List<TraditionModel> traditions = jerseyTest.target("/traditions")
                 .request()
-                .get(new GenericType<List<TraditionModel>>() {});
+                .get(new GenericType<>() {});
         for (TraditionModel returned : traditions) {
             assertTrue(expectedIds.contains(returned.getId()));
             assertEquals("Tradition", returned.getName());
@@ -140,7 +132,7 @@ public class TraditionTest {
 
         List<RelationModel> relationships = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         RelationModel relLoaded = relationships.get(2);
 
         assertEquals(rel.getSource(), relLoaded.getSource());
@@ -157,7 +149,7 @@ public class TraditionTest {
 
         List<RelationModel> relationships = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
 
         assertEquals(3, relationships.size());
     }
@@ -167,7 +159,7 @@ public class TraditionTest {
         Set<String> expectedWitnesses = new HashSet<>(Arrays.asList("A", "B", "C"));
         List<WitnessModel> witnesses = jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(expectedWitnesses.size(), witnesses.size());
         for (WitnessModel w: witnesses) {
             assertTrue(expectedWitnesses.contains(w.getSigil()));
@@ -181,7 +173,7 @@ public class TraditionTest {
         Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml", "stemmaweb", "section 2");
         List<WitnessModel> witnesses = jerseyTest.target("/tradition/" + tradId + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(expectedWitnesses.size(), witnesses.size());
         for (WitnessModel w: witnesses) {
             assertTrue(expectedWitnesses.contains(w.getSigil()));
@@ -195,96 +187,6 @@ public class TraditionTest {
                 .get();
 
         assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
-    }
-
-    @Test
-    public void getDotOfNonExistentTraditionTest() {
-        Response resp = jerseyTest
-                .target("/tradition/10000/dot")
-                .request()
-                .get();
-
-        assertEquals(Response.status(Status.NOT_FOUND).build().getStatus(), resp.getStatus());
-    }
-
-    @Test
-    public void getDotTest() {
-        String str = jerseyTest
-                .target("/tradition/" + tradId + "/dot")
-                .request()
-                .get(String.class);
-
-        String[] exp = new String[64];
-        exp[0] = "digraph \"Tradition\" \\{";
-        exp[1] = "graph \\[bgcolor=\"none\", rankdir=\"LR\"\\]";
-        exp[2] = "node \\[fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"\\]";
-        exp[3] = "edge \\[arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"\\]";
-        exp[4] = String.format("subgraph \\{ rank=same %s \"#SILENT#\" \\}", readingLookup.get("#START#/0"));
-        exp[5] = "\"#SILENT#\" \\[shape=diamond,color=white,penwidth=0,label=\"\"\\]";
-        exp[6] = String.format("%s \\[id=\"__START__\", label=\"#START#\"\\]", readingLookup.get("#START#/0"));
-        exp[7] = String.format("%s \\[id=\"n%s\", label=\"when\"\\]", readingLookup.get("when/1"), readingLookup.get("when/1"));
-        exp[9] = String.format("%s \\[id=\"n%s\", label=\"april\"\\]", readingLookup.get("april/2"), readingLookup.get("april/2"));
-        exp[11] = String.format("%s \\[id=\"n%s\", label=\"showers\"\\]", readingLookup.get("showers/5"), readingLookup.get("showers/5"));
-        exp[14] = String.format("%s \\[id=\"n%s\", label=\"with\"\\]", readingLookup.get("with/3"), readingLookup.get("with/3"));
-        exp[16] = String.format("%s \\[id=\"n%s\", label=\"sweet\"\\]", readingLookup.get("sweet/6"), readingLookup.get("sweet/6"));
-        exp[18] = String.format("%s \\[id=\"n%s\", label=\"his\"\\]", readingLookup.get("his/4"), readingLookup.get("his/4"));
-        exp[20] = String.format("%s \\[id=\"n%s\", label=\"with\"\\]", readingLookup.get("with/7"), readingLookup.get("with/7"));
-        exp[22] = String.format("%s \\[id=\"n%s\", label=\"april\"\\]", readingLookup.get("april/8"), readingLookup.get("april/8"));
-        exp[24] = String.format("%s \\[id=\"n%s\", label=\"fruit\"\\]", readingLookup.get("fruit/9"), readingLookup.get("fruit/9"));
-        exp[27] = String.format("%s \\[id=\"n%s\", label=\"teh\"\\]", readingLookup.get("teh/10"), readingLookup.get("teh/10"));
-        exp[29] = String.format("%s \\[id=\"n%s\", label=\"the\"\\]", readingLookup.get("the/10"), readingLookup.get("the/10"));
-        exp[31] = String.format("%s \\[id=\"n%s\", label=\"drought\"\\]", readingLookup.get("drought/11"), readingLookup.get("drought/11"));
-        exp[34] = String.format("%s \\[id=\"n%s\", label=\"march\"\\]", readingLookup.get("march/11"), readingLookup.get("march/11"));
-        exp[36] = String.format("%s \\[id=\"n%s\", label=\"of\"\\]", readingLookup.get("of/12"), readingLookup.get("of/12"));
-        exp[39] = String.format("%s \\[id=\"n%s\", label=\"drought\"\\]", readingLookup.get("drought/13"), readingLookup.get("drought/13"));
-        exp[41] = String.format("%s \\[id=\"n%s\", label=\"march\"\\]", readingLookup.get("march/13"), readingLookup.get("march/13"));
-        exp[43] = String.format("%s \\[id=\"n%s\", label=\"has\"\\]", readingLookup.get("has/14"), readingLookup.get("has/14"));
-        exp[46] = String.format("%s \\[id=\"n%s\", label=\"pierced\"\\]", readingLookup.get("pierced/15"), readingLookup.get("pierced/15"));
-        exp[48] = String.format("%s \\[id=\"n%s\", label=\"to\"\\]", readingLookup.get("to/16"), readingLookup.get("to/16"));
-        exp[50] = String.format("%s \\[id=\"n%s\", label=\"unto\"\\]", readingLookup.get("unto/16"), readingLookup.get("unto/16"));
-        exp[52] = String.format("%s \\[id=\"n%s\", label=\"teh\"\\]", readingLookup.get("teh/16"), readingLookup.get("teh/16"));
-        exp[54] = String.format("%s \\[id=\"n%s\", label=\"the\"\\]", readingLookup.get("the/17"), readingLookup.get("the/17"));
-        exp[57] = String.format("%s \\[id=\"n%s\", label=\"rood\"\\]", readingLookup.get("rood/17"), readingLookup.get("rood/17"));
-        exp[59] = String.format("%s \\[id=\"n%s\", label=\"root\"\\]", readingLookup.get("root/18"), readingLookup.get("root/18"));
-        exp[61] = String.format("%s \\[id=\"__END__\", label=\"#END#\"\\]", readingLookup.get("#END#/19"));
-        exp[8] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("#START#/0"), readingLookup.get("when/1"));
-        exp[10] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("when/1"), readingLookup.get("april/2"));
-        exp[12] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("april/2"), readingLookup.get("with/3"));
-        exp[13] = String.format("%s->%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\", minlen=\"4\"\\]", readingLookup.get("when/1"), readingLookup.get("showers/5"));
-        exp[15] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("with/3"), readingLookup.get("his/4"));
-        exp[17] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("showers/5"), readingLookup.get("sweet/6"));
-        exp[19] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("his/4"), readingLookup.get("showers/5"));
-        exp[21] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("sweet/6"), readingLookup.get("with/7"));
-        exp[23] = String.format("%s->%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("with/7"), readingLookup.get("april/8"));
-        exp[25] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("with/7"), readingLookup.get("fruit/9"));
-        exp[26] = String.format("%s->%s \\[label=\"B, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("april/8"), readingLookup.get("fruit/9"));
-        exp[28] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("fruit/9"), readingLookup.get("teh/10"));
-        exp[30] = String.format("%s->%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("fruit/9"), readingLookup.get("the/10"));
-        exp[32] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/10"), readingLookup.get("drought/11"));
-        exp[33] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("drought/11"));
-        exp[35] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("the/10"), readingLookup.get("march/11"));
-        exp[37] = String.format("%s->%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("drought/11"), readingLookup.get("of/12"));
-        exp[38] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("march/11"), readingLookup.get("of/12"));
-        exp[40] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("of/12"), readingLookup.get("drought/13"));
-        exp[42] = String.format("%s->%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("of/12"), readingLookup.get("march/13"));
-        exp[44] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("drought/13"), readingLookup.get("has/14"));
-        exp[45] = String.format("%s->%s \\[label=\"A, C\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("march/13"), readingLookup.get("has/14"));
-        exp[47] = String.format("%s->%s \\[label=\"A, B, C\", id=\"e\\d+\", penwidth=\"1.4\"\\]", readingLookup.get("has/14"), readingLookup.get("pierced/15"));
-        exp[49] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("to/16"));
-        exp[51] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("unto/16"));
-        exp[53] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("pierced/15"), readingLookup.get("teh/16"));
-        exp[55] = String.format("%s->%s \\[label=\"A\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("unto/16"), readingLookup.get("the/17"));
-        exp[56] = String.format("%s->%s \\[label=\"B\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("to/16"), readingLookup.get("the/17"));
-        exp[58] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\"\\]", readingLookup.get("teh/16"), readingLookup.get("rood/17"));
-        exp[60] = String.format("%s->%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("the/17"), readingLookup.get("root/18"));
-        exp[62] = String.format("%s->%s \\[label=\"C\", id=\"e\\d+\", penwidth=\"1.0\", minlen=\"2\"\\]", readingLookup.get("rood/17"), readingLookup.get("#END#/19"));
-        exp[63] = String.format("%s->%s \\[label=\"A, B\", id=\"e\\d+\", penwidth=\"1.2\"\\]", readingLookup.get("root/18"), readingLookup.get("#END#/19"));
-
-        for (String anExp : exp) {
-            Pattern p = Pattern.compile(anExp);
-            Matcher m = p.matcher(str);
-            assertTrue("seeking pattern" + m.toString(), m.find());
-        }
     }
 
     /**
@@ -409,7 +311,7 @@ public class TraditionTest {
          */
         Response jerseyResult = jerseyTest.target("/user/1/traditions").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<TraditionModel> tradList = jerseyResult.readEntity(new GenericType<List<TraditionModel>>() {});
+        List<TraditionModel> tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
         assertEquals(tradId, tradList.get(0).getId());
 
@@ -433,7 +335,7 @@ public class TraditionTest {
          */
         jerseyResult = jerseyTest.target("/user/1/traditions").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        tradList = jerseyResult.readEntity(new GenericType<List<TraditionModel>>() {});
+        tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
         assertEquals(tradId, tradList.get(0).getId());
         assertEquals("Tradition", tradList.get(0).getName());
@@ -474,7 +376,7 @@ public class TraditionTest {
          */
         jerseyResult = jerseyTest.target("/user/1/traditions").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<TraditionModel> tradList = jerseyResult.readEntity(new GenericType<List<TraditionModel>>() {});
+        List<TraditionModel> tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
         assertEquals(tradId, tradList.get(0).getId());
 
@@ -504,7 +406,7 @@ public class TraditionTest {
          */
         jerseyResult = jerseyTest.target("/user/1/traditions").request().get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        tradList = jerseyResult.readEntity(new GenericType<List<TraditionModel>>() {});
+        tradList = jerseyResult.readEntity(new GenericType<>() {});
         assertEquals(1, tradList.size());
         assertEquals(tradId, tradList.get(0).getId());
         assertEquals("Tradition", tradList.get(0).getName());

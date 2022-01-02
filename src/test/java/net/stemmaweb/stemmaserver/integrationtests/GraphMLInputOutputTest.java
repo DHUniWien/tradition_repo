@@ -9,7 +9,6 @@ import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
-import org.junit.Ignore;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;

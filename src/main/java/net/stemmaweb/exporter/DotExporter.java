@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -36,11 +36,11 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  */
 public class DotExporter
 {
-    private GraphDatabaseService db;
+    private final GraphDatabaseService db;
 
     private OutputStream out = null;
 
-    private static DecimalFormat df2 = new DecimalFormat(".##");
+    private static final DecimalFormat df2 = new DecimalFormat(".##");
 
     public DotExporter(GraphDatabaseService db){
         this.db = db;
@@ -70,7 +70,7 @@ public class DotExporter
 
             Node requestedSection = null;
             if (sectionId != null)
-                requestedSection = db.getNodeById(Long.valueOf(sectionId));
+                requestedSection = db.getNodeById(Long.parseLong(sectionId));
             if (requestedSection != null) {
                 if (!sections.contains(requestedSection))
                     return Response.status(Status.BAD_REQUEST)
@@ -178,8 +178,10 @@ public class DotExporter
                         else
                             for (Object v : rel.getAllProperties().values())
                                 for (String s : (String[]) v)
-                                    if (!dm.getExcludeWitnesses().contains(s))
+                                    if (!dm.getExcludeWitnesses().contains(s)) {
                                         witnessLink = true;
+                                        break;
+                                    }
 
                         if (witnessLink)
                             inRequestedWitness = true;
@@ -259,7 +261,7 @@ public class DotExporter
 
             // Now pull the string back out of the output file.
             byte[] encDot = Files.readAllBytes(output.toPath());
-            result = new String(encDot, Charset.forName("utf-8"));
+            result = new String(encDot, StandardCharsets.UTF_8);
 
             // Remove the following line, if you want to keep the created file
             Files.deleteIfExists(output.toPath());
@@ -535,6 +537,7 @@ public class DotExporter
         return String.join("\n", stemmaList);
     }
 
+    @SuppressWarnings("rawtypes")
     private Set<String> traverseStemma(Node stemma, Node archetype) {
         String stemmaName = (String) stemma.getProperty("name");
         Set<String> allPaths = new HashSet<>();
