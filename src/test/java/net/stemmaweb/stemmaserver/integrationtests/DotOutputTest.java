@@ -369,6 +369,15 @@ public class DotOutputTest {
                 "%s->%s [id=l", eReading.getId(), readingLookup.get("de/7"))));
     }
 
+    @Test
+    public void testDotNonAscii() {
+        String naTradId = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "", "LR",
+                "user@example.com", "src/TestFiles/milestone-591.zip", "graphml"), "tradId");
+        assertNotNull(naTradId);
+        String dotOutput = jerseyTest.target("/tradition/" + naTradId + "/dot").request().get(String.class);
+        assertTrue(dotOutput.contains("եկն"));
+    }
+
     @After
     public void tearDown() throws Exception {
         db.shutdown();

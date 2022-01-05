@@ -575,7 +575,7 @@ public class DotExporter
 
     private void write(String str) throws IOException
     {
-        out.write(str.getBytes());
+        out.write(str.getBytes(StandardCharsets.UTF_8));
     }
 
 
