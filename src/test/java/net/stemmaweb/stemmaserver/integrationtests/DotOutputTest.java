@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 
@@ -63,7 +64,7 @@ public class DotOutputTest {
                 "tradId");
     }
 
-        @Test
+    @Test
     public void getDotOfNonExistentTraditionTest() {
         Response resp = jerseyTest
                 .target("/tradition/10000/dot")
@@ -266,6 +267,9 @@ public class DotOutputTest {
                 .get(new GenericType<>() {});
         String sectId = tradSections.get(0).getId();
 
+        // Get the reading hash
+        HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, msTradId);
+
         // Propose an emendation and set it
         ProposedEmendationModel pem = new ProposedEmendationModel();
         pem.setAuthority("H. Granger");
@@ -281,13 +285,39 @@ public class DotOutputTest {
         assertEquals(1, newEmendation.getReadings().size());
         ReadingModel eReading = newEmendation.getReadings().iterator().next();
 
-        // Lemmatise the emendation
+        // Check that the dot contains the emendation and that it is connected in the graph
+        response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String traditionDot = response.readEntity(String.class);
+
+        // Check that the node is in there and its ID is correct
+        assertTrue(traditionDot.contains(String.format("%s [id=\"e%s\", label=\"%s\"];",
+                eReading.getId(), eReading.getId(), eReading.getText())));
+        assertFalse(traditionDot.contains("n" + eReading.getId()));
+        // Check that the node has its anchoring links
+        int anchoringLinks = 0;
+        for (String l : traditionDot.split("\n")) {
+            if (l.contains(eReading.getId()) && l.contains("->")) {
+                anchoringLinks++;
+                assertTrue(l.contains("[color=white,penwidth=0]"));
+            }
+        }
+        assertEquals(12, anchoringLinks);
+        assertTrue(traditionDot.contains(String.format("%s->%s", readingLookup.get("venerabilis/3"), eReading.getId())));
+
+        // Lemmatise the emendation and a string of other readings
+        List<String> lemmata = Stream.of("in/1", "swecia/2", "venerabilis/3", "de/7", "anglia/8", "oriundus/9")
+                .map(readingLookup::get).collect(Collectors.toList());
+        lemmata.add(eReading.getId());
         MultivaluedMap<String, String> lemmaParam = new MultivaluedHashMap<>();
         lemmaParam.add("value", "true");
-        response = jerseyTest.target("/reading/" + eReading.getId() + "/setlemma")
-                .request()
-                .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
-        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        for (String rstr : lemmata) {
+            response = jerseyTest.target("/reading/" + rstr + "/setlemma")
+                    .request()
+                    .post(Entity.entity(lemmaParam, MediaType.APPLICATION_FORM_URLENCODED));
+            assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        }
 
         // Check that we can request the section dot
         response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
@@ -298,7 +328,22 @@ public class DotOutputTest {
         String sectionDot = response.readEntity(String.class);
         assertTrue(sectionDot.startsWith("digraph"));
 
-        // Now set the section lemma
+        // Check that the emendation is there as before
+        assertTrue(sectionDot.contains(String.format("%s [id=\"e%s\", label=\"%s\"];",
+                eReading.getId(), eReading.getId(), eReading.getText())));
+        assertFalse(sectionDot.contains("n" + eReading.getId()));
+        // Check that the node has its anchoring links
+        anchoringLinks = 0;
+        for (String l : sectionDot.split("\n")) {
+            if (l.contains(eReading.getId()) && l.contains("->")) {
+                anchoringLinks++;
+                assertTrue(l.contains("[color=white,penwidth=0]"));
+            }
+        }
+        assertEquals(12, anchoringLinks);
+        assertTrue(sectionDot.contains(String.format("%s->%s", readingLookup.get("venerabilis/3"), eReading.getId())));
+
+        // Now set the section lemma path
         response = jerseyTest
                 .target("/tradition/" + msTradId + "/section/" + sectId + "/setlemma")
                 .request(MediaType.APPLICATION_JSON)
@@ -314,6 +359,14 @@ public class DotOutputTest {
         sectionDot = response.readEntity(String.class);
         assertTrue(sectionDot.startsWith("digraph"));
 
+        // Now the emendation should be linked via a lemma path
+        assertTrue(sectionDot.contains(String.format("%s [id=\"e%s\", label=\"%s\"];",
+                eReading.getId(), eReading.getId(), eReading.getText())));
+        assertFalse(sectionDot.contains("n" + eReading.getId()));
+        assertTrue(sectionDot.contains(String.format(
+                "%s->%s [id=l", readingLookup.get("venerabilis/3"), eReading.getId())));
+        assertTrue(sectionDot.contains(String.format(
+                "%s->%s [id=l", eReading.getId(), readingLookup.get("de/7"))));
     }
 
     @After

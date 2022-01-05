@@ -141,11 +141,14 @@ public class DotExporter
                         .uniqueness(Uniqueness.NODE_GLOBAL)
                         .traverse(sectionStartNode).relationships()
                         .forEach(r -> {
-                            // We don't display lemma edges to emendations, for now; emendations are not in
-                            // the representatives list.
                             if (representatives.containsKey(r.getStartNode()) && representatives.containsKey(r.getEndNode()))
                                 lemmaLinks.put(representatives.get(r.getStartNode()), representatives.get(r.getEndNode()));
                         });
+
+                // Collect any emendation anchors
+                ArrayList<Relationship> emendationAnchors = new ArrayList<>();
+                representatives.values().stream().filter(x -> x.hasLabel(Nodes.EMENDATION)).forEach(e ->
+                    e.getRelationships(Direction.BOTH, ERelations.EMENDED).forEach(emendationAnchors::add));
 
                 // Now start writing some dot.
                 for (Node node : new HashSet<>(representatives.values())) {
@@ -244,10 +247,13 @@ public class DotExporter
                     }
 
                 // Write any remaining lemma links
-                for (Node n : lemmaLinks.keySet()) {
-                    write(String.format("\t%d->%d [ id=l%d ];\n",
+                for (Node n : lemmaLinks.keySet())
+                    write(String.format("\t%d->%d [id=l%d];\n",
                             n.getId(), lemmaLinks.get(n).getId(), edgeId++));
-                }
+
+                // Write any emendation links
+                for (Relationship r : emendationAnchors)
+                    write(String.format("\t%d->%d [color=white,penwidth=0];\n", r.getStartNodeId(), r.getEndNodeId()));
 
                 // Clean up after ourselves
                 if (seqLabel.equals(ERelations.NSEQUENCE))
@@ -302,7 +308,8 @@ public class DotExporter
 
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
         // Get the proper node ID
-        String nodeDotId = "n" + node.getId();
+        String nodeDotId = node.hasLabel(Nodes.EMENDATION) ? "e" : "n";
+        nodeDotId+= node.getId();
         if (node.getProperty("is_end", false).equals(true)) nodeDotId = "__END__";
         else if (node.getProperty("is_start", false).equals(true)) nodeDotId = "__START__";
 
