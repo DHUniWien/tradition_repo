@@ -20,10 +20,7 @@ import org.neo4j.test.TestGraphDatabaseFactory;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.*;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -292,7 +289,7 @@ public class DotOutputTest {
         String traditionDot = response.readEntity(String.class);
 
         // Check that the node is in there and its ID is correct
-        assertTrue(traditionDot.contains(String.format("%s [id=\"e%s\", label=\"%s\"];",
+        assertTrue(traditionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReading.getId(), eReading.getId(), eReading.getText())));
         assertFalse(traditionDot.contains("n" + eReading.getId()));
         // Check that the node has its anchoring links
@@ -300,7 +297,7 @@ public class DotOutputTest {
         for (String l : traditionDot.split("\n")) {
             if (l.contains(eReading.getId()) && l.contains("->")) {
                 anchoringLinks++;
-                assertTrue(l.contains("[color=white,penwidth=0]"));
+                assertTrue(l.contains("[color=white,penwidth=0,arrowhead=none]"));
             }
         }
         assertEquals(12, anchoringLinks);
@@ -329,7 +326,7 @@ public class DotOutputTest {
         assertTrue(sectionDot.startsWith("digraph"));
 
         // Check that the emendation is there as before
-        assertTrue(sectionDot.contains(String.format("%s [id=\"e%s\", label=\"%s\"];",
+        assertTrue(sectionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReading.getId(), eReading.getId(), eReading.getText())));
         assertFalse(sectionDot.contains("n" + eReading.getId()));
         // Check that the node has its anchoring links
@@ -337,7 +334,7 @@ public class DotOutputTest {
         for (String l : sectionDot.split("\n")) {
             if (l.contains(eReading.getId()) && l.contains("->")) {
                 anchoringLinks++;
-                assertTrue(l.contains("[color=white,penwidth=0]"));
+                assertTrue(l.contains("[color=white,penwidth=0,arrowhead=none]"));
             }
         }
         assertEquals(12, anchoringLinks);
@@ -360,13 +357,48 @@ public class DotOutputTest {
         assertTrue(sectionDot.startsWith("digraph"));
 
         // Now the emendation should be linked via a lemma path
-        assertTrue(sectionDot.contains(String.format("%s [id=\"e%s\", label=\"%s\"];",
+        assertTrue(sectionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
                 eReading.getId(), eReading.getId(), eReading.getText())));
         assertFalse(sectionDot.contains("n" + eReading.getId()));
         assertTrue(sectionDot.contains(String.format(
                 "%s->%s [id=l", readingLookup.get("venerabilis/3"), eReading.getId())));
         assertTrue(sectionDot.contains(String.format(
                 "%s->%s [id=l", eReading.getId(), readingLookup.get("de/7"))));
+
+        // Get a normalised version of the dot
+        response = jerseyTest.target("/tradition/" + msTradId + "/section/" + sectId + "/dot")
+                .queryParam("normalise", "spelling")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        sectionDot = response.readEntity(String.class);
+        assertTrue(sectionDot.startsWith("digraph"));
+
+        // Check that the emendation is there
+        assertTrue(sectionDot.contains(String.format("%s [id=\"ne%s\", label=\"%s\"];",
+                eReading.getId(), eReading.getId(), eReading.getText())));
+        assertFalse(sectionDot.contains("n" + eReading.getId()));
+        assertTrue(sectionDot.contains(String.format(
+                "%s->%s [id=l", readingLookup.get("venerabilis/3"), eReading.getId())));
+        assertTrue(sectionDot.contains(String.format(
+                "%s->%s [id=l", eReading.getId(), readingLookup.get("de/7"))));
+
+        // Check that there aren't any nodes referred to that shouldn't exist, e.g. for anchor edges
+        HashSet<String> nodeIds = new HashSet<>();
+        HashSet<String> edgeNodes = new HashSet<>();
+        Arrays.stream(sectionDot.split("\n")).forEach( l -> {
+            Pattern pNode = Pattern.compile("^\\t(\\d+) \\[id=\"(ne?\\1|__).*");
+            Pattern pEdge = Pattern.compile("^\\t(\\d+)->(\\d+).*");
+            Matcher mNode = pNode.matcher(l);
+            Matcher mEdge = pEdge.matcher(l);
+            if (mNode.matches()) {
+                nodeIds.add(mNode.group(1));
+            }
+            if (mEdge.matches()) {
+                edgeNodes.add(mEdge.group(1));
+                edgeNodes.add(mEdge.group(2));
+            }
+        });
+        assertTrue(nodeIds.containsAll(edgeNodes));
     }
 
     @Test

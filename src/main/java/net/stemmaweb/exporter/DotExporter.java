@@ -148,7 +148,13 @@ public class DotExporter
                 // Collect any emendation anchors
                 ArrayList<Relationship> emendationAnchors = new ArrayList<>();
                 representatives.values().stream().filter(x -> x.hasLabel(Nodes.EMENDATION)).forEach(e ->
-                    e.getRelationships(Direction.BOTH, ERelations.EMENDED).forEach(emendationAnchors::add));
+                        e.getRelationships(Direction.BOTH, ERelations.EMENDED)
+                                .forEach(x ->
+                                {
+                                    if (representatives.get(x.getOtherNode(e)).equals(x.getOtherNode(e)))
+                                        emendationAnchors.add(x);
+                                })
+                );
 
                 // Now start writing some dot.
                 for (Node node : new HashSet<>(representatives.values())) {
@@ -253,7 +259,7 @@ public class DotExporter
 
                 // Write any emendation links
                 for (Relationship r : emendationAnchors)
-                    write(String.format("\t%d->%d [color=white,penwidth=0];\n", r.getStartNodeId(), r.getEndNodeId()));
+                    write(String.format("\t%d->%d [color=white,penwidth=0,arrowhead=none];\n", r.getStartNodeId(), r.getEndNodeId()));
 
                 // Clean up after ourselves
                 if (seqLabel.equals(ERelations.NSEQUENCE))
@@ -308,7 +314,7 @@ public class DotExporter
 
     private static String nodeSpec(Node node, DisplayOptionModel dm) {
         // Get the proper node ID
-        String nodeDotId = node.hasLabel(Nodes.EMENDATION) ? "e" : "n";
+        String nodeDotId = node.hasLabel(Nodes.EMENDATION) ? "ne" : "n";
         nodeDotId+= node.getId();
         if (node.getProperty("is_end", false).equals(true)) nodeDotId = "__END__";
         else if (node.getProperty("is_start", false).equals(true)) nodeDotId = "__START__";
