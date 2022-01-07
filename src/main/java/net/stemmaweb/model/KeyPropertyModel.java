@@ -11,6 +11,12 @@ public class KeyPropertyModel {
     private String key;
     private Object property;
 
+    public KeyPropertyModel() {}
+    public KeyPropertyModel(String k, Object v) {
+        this.key = k;
+        this.property = v;
+    }
+
     public String getKey() {
         return key;
     }

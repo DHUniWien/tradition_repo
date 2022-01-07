@@ -183,15 +183,18 @@ public class ReadingService {
      * @param start - the first node to link
      * @param end   - the second node to link
      * @param copyFrom  - the SEQUENCE relationship whose witnesses to take over
+     * @return a list of the relationships that were added or modified
      */
-    public static void transferWitnesses (Node start, Node end, Relationship copyFrom, RelationshipType seqType) {
+    public static Set<Relationship> transferWitnesses (Node start, Node end, Relationship copyFrom, RelationshipType seqType) {
+        Set<Relationship> updatedLinks = new HashSet<>();
         for (String witclass : copyFrom.getPropertyKeys())
             for (String w : (String[]) copyFrom.getProperty(witclass))
-                addWitnessLink(start, end, w, witclass, seqType);
+                updatedLinks.add(addWitnessLink(start, end, w, witclass, seqType));
+        return updatedLinks;
     }
 
-    public static void transferWitnesses (Node start, Node end, Relationship copyFrom) {
-        transferWitnesses(start, end, copyFrom, ERelations.SEQUENCE);
+    public static Set<Relationship> transferWitnesses (Node start, Node end, Relationship copyFrom) {
+        return transferWitnesses(start, end, copyFrom, ERelations.SEQUENCE);
     }
 
     /**
@@ -311,7 +314,7 @@ public class ReadingService {
             // Get the list of colocated nodes in this section.
             GraphDatabaseService db = startNode.getGraphDatabase();
             String sectionId = String.valueOf(startNode.getProperty("section_id"));
-            String tradId = db.getNodeById(Long.valueOf(sectionId))
+            String tradId = db.getNodeById(Long.parseLong(sectionId))
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
                     .getProperty("id").toString();
             this.colocatedNodes = buildColocationLookup(tradId, sectionId, startNode.getGraphDatabase());
@@ -451,8 +454,8 @@ public class ReadingService {
      */
     public static class AlignmentTraverse implements PathExpander {
 
-        private Relationship excludeRel = null;
-        private HashSet<String> includeRelationTypes = new HashSet<>();
+        // What was this?? private final Relationship excludeRel = null;
+        private final HashSet<String> includeRelationTypes = new HashSet<>();
 
         // Walk the graph of sequences only
         public AlignmentTraverse() {}
@@ -495,7 +498,7 @@ public class ReadingService {
                 relevantRelations.add(relationship);
             // Get the alignment relationships and filter them
             for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
-                if (includeRelationTypes.contains(r.getProperty("type").toString()) && !r.equals(excludeRel))
+                if (includeRelationTypes.contains(r.getProperty("type").toString()))
                     relevantRelations.add(r);
             }
             return relevantRelations;
@@ -506,7 +509,7 @@ public class ReadingService {
 
     private static class RankEvaluate implements Evaluator {
 
-        private Long rank;
+        private final Long rank;
 
         RankEvaluate(Long stoprank) {
             rank = stoprank;
@@ -538,7 +541,7 @@ public class ReadingService {
     public static boolean wouldGetCyclic(Node firstReading, Node secondReading) throws Exception {
         GraphDatabaseService db = firstReading.getGraphDatabase();
         // Get our list of colocations
-        Node sectionNode = db.getNodeById(Long.valueOf(firstReading.getProperty("section_id").toString()));
+        Node sectionNode = db.getNodeById(Long.parseLong(firstReading.getProperty("section_id").toString()));
         Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
         Map<Long, Set<Node>> colocatedLookup = buildColocationLookup(
                 traditionNode.getProperty("id").toString(), String.valueOf(sectionNode.getId()), db);

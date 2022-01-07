@@ -93,7 +93,7 @@ public class ReadingTest {
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
         List<SectionModel> testSections = jerseyTest.target("/tradition/" + tradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         sectId = testSections.get(0).getId();
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
 
@@ -108,7 +108,7 @@ public class ReadingTest {
         List<ReadingModel> listOfReadings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(number, listOfReadings.size());
         for (ReadingModel rm : listOfReadings)
             if (rm.getIs_start())
@@ -133,13 +133,9 @@ public class ReadingTest {
     public void changeReadingPropertiesOnePropertyTest() {
         String nodeId = readingLookup.get("showers/5");
 
-        KeyPropertyModel keyModel = new KeyPropertyModel();
-        keyModel.setKey("text");
-        keyModel.setProperty("snow");
+        KeyPropertyModel keyModel = new KeyPropertyModel("text", "snow");
         ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-        List<KeyPropertyModel> models = new ArrayList<>();
-        models.add(keyModel);
-        chgModel.setProperties(models);
+        chgModel.addProperty(keyModel);
 
         Response response = jerseyTest
                 .target("/reading/" + nodeId)
@@ -158,12 +154,8 @@ public class ReadingTest {
     public void changeReadingPropertiesWrongDatatypeTest() {
         String nodeid = readingLookup.get("showers/5");
 
-        KeyPropertyModel keyModel = new KeyPropertyModel();
-        keyModel.setKey("text");
-        keyModel.setProperty("rainshowers");
-        KeyPropertyModel keyModel2 = new KeyPropertyModel();
-        keyModel2.setKey("join_next");
-        keyModel2.setProperty("true");
+        KeyPropertyModel keyModel = new KeyPropertyModel("text", "rainshowers");
+        KeyPropertyModel keyModel2 = new KeyPropertyModel("join_next", "true");
         List<KeyPropertyModel> models = new ArrayList<>();
         models.add(keyModel);
         models.add(keyModel2);
@@ -187,19 +179,13 @@ public class ReadingTest {
     public void changeReadingPropertiesMultiplePropertiesTest() {
         String nodeId = readingLookup.get("showers/5");
 
-        KeyPropertyModel keyModel = new KeyPropertyModel();
-        keyModel.setKey("text");
-        keyModel.setProperty("snow");
+        KeyPropertyModel keyModel = new KeyPropertyModel("text", "snow");
         ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
         List<KeyPropertyModel> models = new ArrayList<>();
         models.add(keyModel);
-        KeyPropertyModel keyModel2 = new KeyPropertyModel();
-        keyModel2.setKey("language");
-        keyModel2.setProperty("hebrew");
+        KeyPropertyModel keyModel2 = new KeyPropertyModel("language", "hebrew");
         models.add(keyModel2);
-        KeyPropertyModel keyModel3 = new KeyPropertyModel();
-        keyModel3.setKey("is_nonsense");
-        keyModel3.setProperty(true);
+        KeyPropertyModel keyModel3 = new KeyPropertyModel("is_nonsense", true);
         models.add(keyModel3);
         chgModel.setProperties(models);
 
@@ -222,13 +208,9 @@ public class ReadingTest {
     public void changeReadingPropertiesPropertyKeyNotFoundTest() {
         String nodeId = readingLookup.get("showers/5");
 
-        KeyPropertyModel keyModel = new KeyPropertyModel();
-        keyModel.setKey("test");
-        keyModel.setProperty("snow");
+        KeyPropertyModel keyModel = new KeyPropertyModel("test", "snow");
         ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
-        List<KeyPropertyModel> models = new ArrayList<>();
-        models.add(keyModel);
-        chgModel.setProperties(models);
+        chgModel.addProperty(keyModel);
         Response response = jerseyTest
                 .target("/reading/" + nodeId)
                 .request(MediaType.APPLICATION_JSON)
@@ -286,7 +268,7 @@ public class ReadingTest {
         String newTradId = Util.getValueFromJson(response, "tradId");
         List<SectionModel> sects = jerseyTest.target("/tradition/" + newTradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, sects.size());
         String newSectId = sects.get(0).getId();
 
@@ -294,7 +276,7 @@ public class ReadingTest {
         List<ReadingModel> allreadings = jerseyTest
                 .target("/tradition/" + newTradId + "/section/" + newSectId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         for (ReadingModel r : allreadings) {
             List<String> witnesses = r.getWitnesses();
@@ -332,7 +314,7 @@ public class ReadingTest {
         List<ReadingModel> allreadings = jerseyTest
                 .target("/tradition/" + newTradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         // Find a reading with several relations
         Optional<ReadingModel> ourEn = allreadings.stream().filter(
@@ -343,7 +325,7 @@ public class ReadingTest {
                 .request()
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<RelationModel> deleted = response.readEntity(new GenericType<List<RelationModel>>() {});
+        List<RelationModel> deleted = response.readEntity(new GenericType<>() {});
         assertEquals(2, deleted.size());
         assertEquals("orthographic", deleted.get(0).getType());
         assertEquals("orthographic", deleted.get(1).getType());
@@ -363,7 +345,7 @@ public class ReadingTest {
                 .request()
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        deleted = response.readEntity(new GenericType<List<RelationModel>>() {});
+        deleted = response.readEntity(new GenericType<>() {});
         assertEquals(2, deleted.size());
         assertEquals("orthographic", deleted.get(0).getType());
         assertEquals("orthographic", deleted.get(1).getType());
@@ -533,7 +515,7 @@ public class ReadingTest {
         List<ReadingModel> allreadings = jerseyTest
                 .target("/tradition/" + newTradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
 
         // Find a set of readings to propagate on
         Optional<ReadingModel> apolusw = allreadings.stream()
@@ -544,7 +526,7 @@ public class ReadingTest {
                 .request()
                 .post(Entity.text(null));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<ReadingModel> changed = response.readEntity(new GenericType<List<ReadingModel>>(){});
+        List<ReadingModel> changed = response.readEntity(new GenericType<>(){});
         assertEquals(2, changed.size());
 
         // Now all readings at that rank should have the same normal form
@@ -553,9 +535,7 @@ public class ReadingTest {
                 .forEach(r -> assertEquals("ἀπολύσω", r.getNormal_form()));
 
         // Change the first reading's normal form and try again
-        KeyPropertyModel km = new KeyPropertyModel();
-        km.setKey("normal_form");
-        km.setProperty("Ἀπολύσω");
+        KeyPropertyModel km = new KeyPropertyModel("normal_form", "Ἀπολύσω");
         ReadingChangePropertyModel rcpm = new ReadingChangePropertyModel();
         rcpm.addProperty(km);
         response = jerseyTest.target("/reading/" + apolusw.get().getId())
@@ -568,7 +548,7 @@ public class ReadingTest {
                 .request()
                 .post(Entity.text(null));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        changed = response.readEntity(new GenericType<List<ReadingModel>>(){});
+        changed = response.readEntity(new GenericType<>(){});
         assertEquals(2, changed.size());
 
         // Now all readings at that rank should have the same normal form
@@ -728,7 +708,7 @@ public class ReadingTest {
         // get existing relationships
         List<RelationModel> allRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
 
         // set a lemma
         Response response = jerseyTest.target("/reading/" + firstNodeId + "/setlemma")
@@ -758,7 +738,7 @@ public class ReadingTest {
 
         List<RelationModel> ourRels = jerseyTest.target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(allRels.size(), ourRels.size());
         for (RelationModel rm : allRels) {
             long found = ourRels.stream()
@@ -836,7 +816,7 @@ public class ReadingTest {
         List<RelationModel> allRels = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         // add a relationship between droughts
         RelationModel drel = new RelationModel();
         drel.setSource(String.valueOf(readingLookup.get("drought/10")));
@@ -868,7 +848,7 @@ public class ReadingTest {
             List<RelationModel> ourRels = jerseyTest
                     .target("/tradition/" + tradId + "/relations")
                     .request()
-                    .get(new GenericType<List<RelationModel>>() {});
+                    .get(new GenericType<>() {});
             assertEquals(allRels.size() - 1, ourRels.size());
             for (RelationModel del : readingsAndRelationshipsModel.getRelations()) {
                 for (RelationModel kept : ourRels) {
@@ -946,7 +926,7 @@ public class ReadingTest {
             List<RelationModel> origRelations = jerseyTest
                     .target("/tradition/" + tradId + "/relations")
                     .request()
-                    .get(new GenericType<List<RelationModel>>() {});
+                    .get(new GenericType<>() {});
 
             // duplicate reading
             String jsonPayload = "{\"readings\":[" + originalOf.getId() + "], \"witnesses\":[\"B\"]}";
@@ -966,7 +946,7 @@ public class ReadingTest {
             List<RelationModel> nowRelations = jerseyTest
                     .target("/tradition/" + tradId + "/relations")
                     .request()
-                    .get(new GenericType<List<RelationModel>>() {});
+                    .get(new GenericType<>() {});
             assertEquals(origRelations.size() - 1, nowRelations.size());
             for (RelationModel nr : nowRelations)
                 assertFalse(nr.getSource().equals(marchId) || nr.getTarget().equals(marchId));
@@ -1028,7 +1008,7 @@ public class ReadingTest {
         List<RelationModel> rms = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         int origRelCt = rms.size();
 
         // duplicate reading
@@ -1047,7 +1027,7 @@ public class ReadingTest {
         rms = jerseyTest
                 .target("/tradition/" + tradId + "/relations")
                 .request()
-                .get(new GenericType<List<RelationModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(origRelCt - 1, rms.size());
         // check that the deleted relationship came back in our result
         assertEquals(1, result.getRelations().size());
@@ -1122,7 +1102,7 @@ public class ReadingTest {
         List<SectionModel> sects = jerseyTest
                 .target("/tradition/" + newTradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, sects.size());
         String florSectId = sects.get(0).getId();
 
@@ -1202,7 +1182,7 @@ public class ReadingTest {
         List<SectionModel> sects = jerseyTest
                 .target("/tradition/" + newTradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, sects.size());
         String msSectId = sects.get(0).getId();
 
@@ -1277,6 +1257,25 @@ public class ReadingTest {
                     .post(Entity.text(null));
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
+            GraphModel ourResult = response.readEntity(GraphModel.class);
+            assertEquals(1, ourResult.getReadings().size());
+            ourResult.getReadings().forEach(x -> assertEquals(String.valueOf(firstNode.getId()), x.getId()));
+            assertEquals(0, ourResult.getRelations().size());
+            assertEquals(2, ourResult.getSequences().size());
+            for (SequenceModel seq : ourResult.getSequences()) {
+                assertEquals("SEQUENCE", seq.getType());
+                if (seq.getTarget().equals(String.valueOf(firstNode.getId()))) {
+                    ReadingModel before = new ReadingModel(db.getNodeById(Long.parseLong(seq.getSource())));
+                    assertEquals("with", before.getText());
+                    assertEquals(Long.valueOf(7), before.getRank());
+                } else if (seq.getSource().equals(String.valueOf(firstNode.getId()))) {
+                    ReadingModel after = new ReadingModel(db.getNodeById(Long.parseLong(seq.getTarget())));
+                    assertEquals(Long.valueOf(9), after.getRank());
+                    assertEquals("the", after.getText());
+                    assertTrue(after.getWitnesses().containsAll(Arrays.asList("A", "B")));
+                } else
+                    fail();
+            }
 
             for (String sigil : drm.getWitnesses()) {
                 response = jerseyTest
@@ -1340,7 +1339,7 @@ public class ReadingTest {
         List<ReadingModel> ourRdgs = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         Optional<ReadingModel> aprilA = ourRdgs.stream()
                 .filter(x -> x.getText().equals("april") && x.getWitnesses().contains("A")).findFirst();
         Optional<ReadingModel> aprilB = ourRdgs.stream()
@@ -1413,6 +1412,83 @@ public class ReadingTest {
                 .request()
                 .post(Entity.text(null));
         assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        // test result - no new relation should have been created
+        GraphModel ourResult = result.readEntity(GraphModel.class);
+        assertEquals(0, ourResult.getRelations().size());
+    }
+
+    @Test
+    public void mergeReadingsRelationTransfer() {
+        HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+        // Set the to-be-deleted text to match for the merge
+        ReadingChangePropertyModel rcpm = new ReadingChangePropertyModel();
+        rcpm.addProperty(new KeyPropertyModel("text", "the"));
+        String toDelete = readingLookup.get("teh/15");
+        String toKeep = readingLookup.get("the/16");
+        Response result = jerseyTest.target("/reading/" + toDelete)
+                .request().put(Entity.json(rcpm));
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+
+        // Set a same-rank lexical relation
+        RelationModel rel = new RelationModel();
+        rel.setSource(toDelete);
+        rel.setTarget(readingLookup.get("to/15"));
+        rel.setType("lexical");
+        rel.setScope("local");
+        result = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request().post(Entity.json(rel));
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        // Do the merge
+        result = jerseyTest
+                .target("/reading/" + toKeep + "/merge/" + toDelete)
+                .request().post(Entity.text(null));
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+        GraphModel ourResult = result.readEntity(GraphModel.class);
+        assertEquals(1, ourResult.getRelations().size());
+        RelationModel newRel = ourResult.getRelations().iterator().next();
+        assertEquals(rel.getTarget(), newRel.getTarget());
+        assertEquals(toKeep, newRel.getSource());
+        assertEquals(rel.getType(), newRel.getType());
+        assertEquals(rel.getScope(), newRel.getScope());
+    }
+
+    @Test
+    public void mergeReadingsRelationConflict() {
+        HashMap<String,String> readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+        // Set the to-be-deleted text to match for the merge
+        ReadingChangePropertyModel rcpm = new ReadingChangePropertyModel();
+        rcpm.addProperty(new KeyPropertyModel("text", "the"));
+        String toDelete = readingLookup.get("teh/15");
+        String toKeep = readingLookup.get("the/16");
+        Response result = jerseyTest.target("/reading/" + toDelete)
+                .request().put(Entity.json(rcpm));
+        assertEquals(Status.OK.getStatusCode(), result.getStatus());
+
+        // Set a same-rank lexical relation
+        RelationModel rel = new RelationModel();
+        rel.setSource(toDelete);
+        rel.setTarget(readingLookup.get("to/15"));
+        rel.setType("lexical");
+        rel.setScope("local");
+        result = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request().post(Entity.json(rel));
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        // Set a grammatical relation to our merge target
+        rel.setSource(toKeep);
+        rel.setType("grammatical");
+        result = jerseyTest.target("/tradition/" + tradId + "/relation")
+                .request().post(Entity.json(rel));
+        assertEquals(Status.CREATED.getStatusCode(), result.getStatus());
+
+        // Try the merge
+        result = jerseyTest
+                .target("/reading/" + toKeep + "/merge/" + toDelete)
+                .request().post(Entity.text(null));
+        assertEquals(Status.CONFLICT.getStatusCode(), result.getStatus());
+        assertEquals(String.format("Conflicting lexical relation to node %s prevents merge", rel.getTarget()),
+                Util.getValueFromJson(result, "error"));
     }
 
     @Test
@@ -1436,7 +1512,7 @@ public class ReadingTest {
         List<ReadingModel> remaining = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, remaining.stream().filter(x -> x.getText().equals("drought")).count());
     }
 
@@ -1462,7 +1538,7 @@ public class ReadingTest {
         List<ReadingModel> remaining = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, remaining.stream().filter(x -> x.getText().equals("to")).count());
     }
 
@@ -1489,7 +1565,7 @@ public class ReadingTest {
         List<ReadingModel> remaining = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, remaining.stream().filter(x -> x.getText().equals("march")).count());
     }
 
@@ -1879,7 +1955,7 @@ public class ReadingTest {
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
-            GraphModel result = response.readEntity(new GenericType<GraphModel>() {});
+            GraphModel result = response.readEntity(GraphModel.class);
             assertEquals(4, result.getReadings().size());
             assertEquals(4, result.getSequences().size());
 
@@ -1903,7 +1979,7 @@ public class ReadingTest {
         List<ReadingModel> listOfReadings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {
+                .get(new GenericType<>() {
                 });
         Collections.sort(listOfReadings);
 
@@ -1941,7 +2017,7 @@ public class ReadingTest {
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/3/9")
                 .request()
-                .get(new GenericType<List<List<ReadingModel>>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, listOfIdenticalReadings.size());
         identicalReadings = listOfIdenticalReadings.get(0);
         assertEquals(2, identicalReadings.size());
@@ -1958,7 +2034,7 @@ public class ReadingTest {
         List<List<ReadingModel>> listOfIdenticalReadings = jerseyTest
                 .target("/tradition/" + tradId + "/section/" + sectId + "/identicalreadings/1/9")
                 .request()
-                .get(new GenericType<List<List<ReadingModel>>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, listOfIdenticalReadings.size());
 
         identicalReadings = listOfIdenticalReadings.get(0);
@@ -1992,7 +2068,7 @@ public class ReadingTest {
         List<SectionModel> sects = jerseyTest
                 .target("/tradition/" + newTradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, sects.size());
         String newSectId = sects.get(0).getId();
 
@@ -2008,7 +2084,7 @@ public class ReadingTest {
         List<List<ReadingModel>> couldBeIdenticalReadings = jerseyTest
                 .target("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/2/9")
                 .request()
-                .get(new GenericType<List<List<ReadingModel>>>() {});
+                .get(new GenericType<>() {});
         assertEquals(4, couldBeIdenticalReadings.size());
         HashSet<String> expectedIdentical = new HashSet<>(Arrays.asList("beatus", "pontifex", "venerabilis", "henricus"));
         for (List<ReadingModel> cbi : couldBeIdenticalReadings) {
@@ -2019,7 +2095,7 @@ public class ReadingTest {
         List<List<ReadingModel>> mergeableHenrys = jerseyTest.target("/tradition/" + newTradId + "/section/" + newSectId + "/mergeablereadings/2/9")
                 .queryParam("text", "henricus")
                 .request()
-                .get(new GenericType<List<List<ReadingModel>>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, mergeableHenrys.size());
         for (List<ReadingModel> mh : mergeableHenrys) {
             assertEquals("henricus", mh.get(0).getText());
@@ -2035,7 +2111,7 @@ public class ReadingTest {
         String newTradId = Util.getValueFromJson(response, "tradId");
         List<SectionModel> sects = jerseyTest.target("/tradition/" + newTradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, sects.size());
         String newSectId = sects.get(0).getId();
         String firstId = "";
@@ -2081,7 +2157,7 @@ public class ReadingTest {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-        List<List<ReadingModel>> r = response.readEntity(new GenericType<List<List<ReadingModel>>>() {});
+        List<List<ReadingModel>> r = response.readEntity(new GenericType<>() {});
         assertEquals(1, r.size());
         assertEquals("pontifex", r.get(0).get(0).getText());
     }
@@ -2097,7 +2173,7 @@ public class ReadingTest {
         List<SectionModel> sects = jerseyTest
                 .target("/tradition/" + newTradId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, sects.size());
         String newSectId = sects.get(0).getId();
 
@@ -2108,7 +2184,7 @@ public class ReadingTest {
 
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         List<List<ReadingModel>> result =
-                response.readEntity(new GenericType<List<List<ReadingModel>>>() {});
+                response.readEntity(new GenericType<>() {});
         assertEquals(0, result.size());
     }
 
@@ -2169,11 +2245,18 @@ public class ReadingTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(readingBoundaryModel));
         assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
-        ReadingModel showerssweet = jerseyTest
-                .target("/reading/" + showers)
-                .request()
-                .get(ReadingModel.class);
-        assertEquals("showerssweet", showerssweet.getText());
+        GraphModel ourResult = res.readEntity(GraphModel.class);
+        assertEquals(1, ourResult.getReadings().size());
+        assertEquals(1, ourResult.getSequences().size());
+        assertEquals(0, ourResult.getRelations().size());
+        ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
+        assertEquals(showers, ourCompressed.getId());
+        assertEquals("showerssweet", ourCompressed.getText());
+        SequenceModel ourLinkOut = ourResult.getSequences().iterator().next();
+        assertEquals(showers, ourLinkOut.getSource());
+        assertEquals(readingLookup.get("with/7"), ourLinkOut.getTarget());
+        for (String w : Arrays.asList("A", "B", "C"))
+            assertTrue(ourLinkOut.getWitnesses().contains(w));
 
         // there is one fewer reading in the tradition and witnesses now read slightly differently
         expectedWitnessA = expectedWitnessA.replace("showers sweet", "showerssweet");
@@ -2205,6 +2288,11 @@ public class ReadingTest {
                 .post(Entity.json(readingBoundaryModel));
 
         assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+        GraphModel ourResult = res.readEntity(GraphModel.class);
+        ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
+        assertNotNull(ourCompressed);
+        assertEquals(showers, ourCompressed.getId());
+        assertEquals("showerstestsweet", ourCompressed.getText());
 
         expectedWitnessA = expectedWitnessA.replace("showers sweet", "showerstestsweet");
         expectedWitnessB = expectedWitnessB.replace("showers sweet", "showerstestsweet");
@@ -2238,6 +2326,11 @@ public class ReadingTest {
                 .post(Entity.json(readingBoundaryModel));
 
         assertEquals(Response.Status.OK.getStatusCode(), res.getStatus());
+        GraphModel ourResult = res.readEntity(GraphModel.class);
+        ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
+        assertNotNull(ourCompressed);
+        assertEquals(showers, ourCompressed.getId());
+        assertEquals("showers\"sweet", ourCompressed.getText());
 
         expectedWitnessA = "when april with his showers\"sweet with fruit the drought of march has pierced unto me the root";
         Response resp = new Witness(tradId, "A").getWitnessAsText();
@@ -2303,7 +2396,7 @@ public class ReadingTest {
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
-            GraphModel result = response.readEntity(new GenericType<GraphModel>() {});
+            GraphModel result = response.readEntity(GraphModel.class);
             HashMap<String, String> text2id = new HashMap<>();
             for (ReadingModel rm : result.getReadings()) {
                 text2id.put(rm.getText(), rm.getId());
@@ -2338,7 +2431,7 @@ public class ReadingTest {
         List<SectionModel> testSections = jerseyTest
                 .target("/tradition/" + sapId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         String sapSectId = testSections.get(0).getId();
         try (Transaction tx = db.beginTx()) {
             // Identify the first five nodes by rank
@@ -2365,6 +2458,14 @@ public class ReadingTest {
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
+            GraphModel ourResult = response.readEntity(GraphModel.class);
+            assertEquals(1, ourResult.getReadings().size());
+            assertEquals(2, ourResult.getSequences().size());
+            ourResult.getReadings().forEach(x -> assertEquals("Verbum Ista sequencia", x.getText()));
+            ourResult.getSequences().forEach(x -> {
+                assertEquals("SEQUENCE", x.getType());
+                assertEquals(n1.getId(), Long.parseLong(x.getSource()));
+            });
 
             for (Long nid : fourth) {
                 Node n = db.getNodeById(nid);
@@ -2400,9 +2501,9 @@ public class ReadingTest {
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(rbm));
         assertEquals(Status.OK.getStatusCode(), jerseyResult.getStatus());
-        ReadingModel compressed = jerseyTest.target("/reading/" + first_id)
-                .request()
-                .get(ReadingModel.class);
+        GraphModel ourResult = jerseyResult.readEntity(GraphModel.class);
+        ReadingModel compressed = ourResult.getReadings().iterator().next();
+        assertNotNull(compressed);
         assertEquals("թվկնութես հայո՛ց", compressed.getText());
         assertEquals("թ<O>վկ</O>նութ<O>ես</O> հայո՛ց", compressed.getDisplay());
         assertEquals("թուականութեանս հայո՛ց", compressed.getNormal_form());
@@ -2519,13 +2620,13 @@ public class ReadingTest {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
-        List<ReadingModel> relatedReadings = jerseyResponse.readEntity(new GenericType<List<ReadingModel>>() {});
+        List<ReadingModel> relatedReadings = jerseyResponse.readEntity(new GenericType<>() {});
         assertEquals(1, relatedReadings.size());
         assertEquals("the root", relatedReadings.get(0).getText());
         List<ReadingModel> allRels = jerseyTest
                 .target("/reading/" + readId + "/related")
                 .request()
-                .get(new GenericType<List<ReadingModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(2, allRels.size());
     }
 

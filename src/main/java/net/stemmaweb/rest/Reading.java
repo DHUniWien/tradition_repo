@@ -43,8 +43,7 @@ public class Reading {
     public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
-        readId = Long.valueOf(requestedId.replaceAll("n", ""));
+        readId = Long.valueOf(requestedId);
     }
 
     /**
@@ -700,17 +699,16 @@ public class Reading {
      */
     @POST
     @Path("merge/{secondReadId}")
-    @ReturnType("java.lang.Void")
+    @Produces("application/json; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
 
-        Node stayingReading;
-        Node deletingReading;
+        GraphModel result;
 
         try (Transaction tx = db.beginTx()) {
-            stayingReading = db.getNodeById(readId);
-            deletingReading = db.getNodeById(secondReadId);
+            Node stayingReading = db.getNodeById(readId);
+            Node deletingReading = db.getNodeById(secondReadId);
 
-            // TEMPORARY sanity check: Find all witnesses of the reading to be merged.
             ReadingModel drm = new ReadingModel(deletingReading);
 
             if (!canBeMerged(stayingReading, deletingReading)) {
@@ -730,7 +728,7 @@ public class Reading {
             }
 
             // Do the deed
-            merge(stayingReading, deletingReading);
+            result = merge(stayingReading, deletingReading);
 
             // TEMPORARY: Check that all affected witnesses still have paths to the end node
             for (String sig : drm.getWitnesses()) {
@@ -757,12 +755,15 @@ public class Reading {
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
+        } catch (IllegalStateException e) {
+            errorMessage = e.getMessage();
+            return errorResponse(Status.CONFLICT);
         } catch (Exception e) {
             e.printStackTrace();
             errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
-        return Response.ok().build();
+        return Response.ok().entity(result).build();
     }
 
     /**
@@ -838,21 +839,28 @@ public class Reading {
      * @param deletingReading
      *            the reading which will be deleted from the database
      */
-    private void merge(Node stayingReading, Node deletingReading) {
+    private GraphModel merge(Node stayingReading, Node deletingReading) throws IllegalStateException {
+        GraphModel merged = new GraphModel();
         // Remove any existing relations between the readings
         deleteRelationBetweenReadings(stayingReading, deletingReading);
         // Transfer the witnesses of the to-be-deleted reading to the staying reading
         for (Relationship r : deletingReading.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
-            ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r);
+            ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r).stream().map(SequenceModel::new)
+                    .forEach(merged.getSequences()::add);
             r.delete();
         }
         for (Relationship r : deletingReading.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
-            ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r);
+            ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r).stream().map(SequenceModel::new)
+                    .forEach(merged.getSequences()::add);
             r.delete();
         }
         // Transfer any existing reading relations to the node that will remain
-        addRelationsToStayingReading(stayingReading, deletingReading);
+        merged.addRelations(addRelationsToStayingReading(stayingReading, deletingReading));
+        // Delete the redundant reading (including any transitive relation artifacts) and record the remaining one
+        // deletingReading.getRelationships().forEach(Relationship::delete);
         deletingReading.delete();
+        merged.getReadings().add(new ReadingModel(stayingReading));
+        return merged;
     }
 
     /**
@@ -881,23 +889,29 @@ public class Reading {
      * @param deletingReading
      *            the reading which will be deleted from the database
      */
-    private void addRelationsToStayingReading(Node stayingReading,
-                                              Node deletingReading) {
-        // copy relationships from deletingReading to stayingReading
+    private Set<RelationModel> addRelationsToStayingReading(Node stayingReading, Node deletingReading)
+            throws IllegalStateException {
+        Set<RelationModel> addedRels = new HashSet<>();
+        Relation relService = new Relation(getTraditionId());
+        // copy any relevant and nonexistent relationships from deletingReading to stayingReading
         for (Relationship oldRel : deletingReading.getRelationships(
-                ERelations.RELATED, Direction.OUTGOING)) {
-            Relationship newRel = stayingReading.createRelationshipTo(
-                    oldRel.getEndNode(), ERelations.RELATED);
-            RelationService.copyRelationshipProperties(oldRel, newRel);
-            oldRel.delete();
+                ERelations.RELATED, Direction.BOTH)) {
+            RelationModel rel = new RelationModel(oldRel);
+            if (oldRel.getStartNode().equals(deletingReading))
+                rel.setSource(String.valueOf(stayingReading.getId()));
+            else
+                rel.setTarget(String.valueOf(stayingReading.getId()));
+            Response addResult = relService.create(rel);
+            if (addResult.getStatus() == Status.CREATED.getStatusCode())
+                addedRels.add(rel);
+            else if (addResult.getStatus() > 399)
+                throw new IllegalStateException(String.format("Conflicting %s relation to node %d prevents merge",
+                        rel.getType(), oldRel.getOtherNode(deletingReading).getId()));
         }
-        for (Relationship oldRel : deletingReading.getRelationships(
-                ERelations.RELATED, Direction.INCOMING)) {
-            Relationship newRel = oldRel.getStartNode().createRelationshipTo(
-                    stayingReading, ERelations.RELATED);
-            RelationService.copyRelationshipProperties(oldRel, newRel);
-            oldRel.delete();
-        }
+        // Now delete all the relations from deletingReading, including any that were created just now
+        // as transitive relation artifacts
+        deletingReading.getRelationships(ERelations.RELATED).forEach(Relationship::delete);
+        return addedRels;
     }
 
     /**
@@ -1230,29 +1244,30 @@ public class Reading {
      * @statuscode 409 - if the readings cannot legally be concatenated
      * @statuscode 500 - on error, with an error message
      */
+    // LATER: consider whether we should actually return all modified / deleted readings...
     @POST
     @Path("concatenate/{read2Id}")
     @Consumes(MediaType.APPLICATION_JSON)
-    // @Produces("application/json; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @Produces("application/json; charset=utf-8")
+    @ReturnType(clazz = GraphModel.class)
     public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
 
         Node read1, read2;
+        // some defaults if we fall through and haven't changed it
         errorMessage = "problem with a reading. could not compress";
+        Response resp;
 
         try (Transaction tx = db.beginTx()) {
             read1 = db.getNodeById(readId);
             read2 = db.getNodeById(readId2);
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
-                tx.success();
                 errorMessage = "the first reading has a higher rank then the second reading";
-                return errorResponse(Status.CONFLICT);
-            }
-            if (canBeCompressed(read1, read2)) {
-                compress(read1, read2, boundary);
+                resp =  errorResponse(Status.CONFLICT);
+            } else if (canBeCompressed(read1, read2)) {
+                resp = Response.ok().entity(compress(read1, read2, boundary)).build();
                 ReadingService.recalculateRank(read1);
-                tx.success();
-                return Response.ok().build();
+            } else {
+                resp = errorResponse(Status.CONFLICT);
             }
             tx.success();
         } catch (NotFoundException e) {
@@ -1263,7 +1278,7 @@ public class Reading {
             errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
-        return errorResponse(Status.CONFLICT);
+        return resp;
     }
 
     /**
@@ -1277,8 +1292,9 @@ public class Reading {
      *            the BoundaryModel that determines, in compbination with reading flags
      *            join_next and join_prior, how the reading text will be constructed.
      */
-    private void compress(Node read1, Node read2, ReadingBoundaryModel boundary) {
+    private GraphModel compress(Node read1, Node read2, ReadingBoundaryModel boundary) {
         String newText;
+        GraphModel compressedReading = new GraphModel();
         boolean joined = (read1.hasProperty("join_next") && (Boolean) read1.getProperty("join_next")) ||
                 (read2.hasProperty("join_prior") && (Boolean) read2.getProperty("join_prior"));
         // We need to join the text, the display form, and the normal form
@@ -1303,12 +1319,14 @@ public class Reading {
             if (!newText.equals("") && (!newText.equals(plaintextform) || read1.hasProperty(prop)))
                 read1.setProperty(prop, newText);
         }
+        compressedReading.getReadings().add(new ReadingModel(read1));
 
         for (Relationship r : getSequenceBetweenReadings(read1, read2) ) {
             r.delete();
         }
-        copyRelationships(read1, read2);
+        compressedReading.addSequences(copySequences(read1, read2));
         read2.delete();
+        return compressedReading;
     }
 
     /**
@@ -1320,7 +1338,8 @@ public class Reading {
      * @param read2
      *            the node from which relationships are copied
      */
-    private void copyRelationships(Node read1, Node read2) {
+    private Set<SequenceModel> copySequences(Node read1, Node read2) {
+        Set<SequenceModel> newCopies = new HashSet<>();
         for (Relationship tempRel : read2.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE, ERelations.LEMMA_TEXT)) {
             Node tempNode = tempRel.getOtherNode(read2);
             Relationship rel1 = read1.createRelationshipTo(tempNode, tempRel.getType());
@@ -1328,7 +1347,9 @@ public class Reading {
                 rel1.setProperty(key, tempRel.getProperty(key));
             }
             tempRel.delete();
+            newCopies.add(new SequenceModel(rel1));
         }
+        return newCopies;
     }
 
     /**
