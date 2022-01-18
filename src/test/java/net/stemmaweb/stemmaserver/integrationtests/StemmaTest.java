@@ -410,6 +410,32 @@ public class StemmaTest {
 
     }
 
+    @Test
+    public void addTraditionAndStemmaTwiceTest() {
+        StemmaModel input = new StemmaModel();
+        input.setIdentifier("Semstem stemma");
+        input.setDot("graph stemma {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}");
+        Response result = jerseyTest.target("/tradition/" + tradId + "/stemma")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(input));
+        assertEquals(Response.Status.CREATED.getStatusCode(), result.getStatus());
+        StemmaModel origStemma = result.readEntity(StemmaModel.class);
+        assertEquals("Semstem stemma", origStemma.getIdentifier());
+        assertEquals(9, origStemma.getDot().split("\n").length);
+
+        // Now add the tradition and the stemma all over again and see what happens
+        String newTradId = createTraditionFromFile("Tradition", "src/TestFiles/testTradition.xml");
+        result = jerseyTest.target("/tradition/" + newTradId + "/stemma")
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(input));
+        StemmaModel secondStemma = result.readEntity(StemmaModel.class);
+        assertEquals(9, secondStemma.getDot().split("\n").length);
+
+        StemmaModel firstStemma = jerseyTest.target("/tradition/" + tradId + "/stemma/Semstem%20stemma")
+                .request().get(StemmaModel.class);
+        assertEquals(9, firstStemma.getDot().split("\n").length);
+
+    }
 
     @Test
     public void recordStemmaLabelTest () {

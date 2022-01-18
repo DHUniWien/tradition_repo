@@ -481,9 +481,11 @@ public class DotExporter
             // archetype if we have one.
             ArrayList<Node> foundRoots = DatabaseService.getRelated(startNodeStemma, ERelations.HAS_ARCHETYPE);
             if (foundRoots.isEmpty()) {
-                // No archetype; just output the list of edges in any order.
-                Result txEdges = db.execute("MATCH (a:WITNESS)-[:TRANSMITTED {hypothesis:'" +
-                        stemmaTitle + "'}]->(b:WITNESS) RETURN a, b");
+                // No archetype, so we don't know where is okay to start traversal;
+                // just output the list of edges from this stemma in any order.
+                Result txEdges = db.execute(String.format("MATCH (s)-[:HAS_WITNESS]->(a:WITNESS)-[:TRANSMITTED " +
+                        "{hypothesis:'%s'}]->(b:WITNESS) WHERE id(s) = %d RETURN a, b",
+                        stemmaTitle, startNodeStemma.getId()));
                 while (txEdges.hasNext()) {
                     Map<String, Object> vector = txEdges.next();
                     String source = sigilDotString((Node) vector.get("a"));
