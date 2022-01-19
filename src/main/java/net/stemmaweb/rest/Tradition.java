@@ -95,6 +95,18 @@ public class Tradition {
     }
 
     /**
+     * Delegates to {@link net.stemmaweb.rest.Reading Reading} module, if the reading belongs to this tradition
+     */
+    @Path("/reading/{id}")
+    public Reading getReading(@PathParam("id") String rid) {
+        Reading resource = new Reading(rid);
+        if (resource.getTraditionId().equals(traditionId))
+            return resource;
+        // Otherwise return a Reading resource that will produce a 404
+        return new Reading("-1");
+    }
+
+    /**
      * Delegates to {@link net.stemmaweb.rest.RelationType RelationType} module
      * @param name - the name of the requested RelationType
      */

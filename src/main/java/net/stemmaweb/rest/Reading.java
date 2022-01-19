@@ -43,7 +43,8 @@ public class Reading {
     public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        readId = Long.valueOf(requestedId);
+        readId = Long.valueOf(requestedId); // This might be set to -1 if the reading was requested
+                                            // via a tradition it doesn't belong to
     }
 
     /**
@@ -59,6 +60,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getReading() {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ReadingModel reading;
         try (Transaction tx = db.beginTx()) {
             reading = new ReadingModel(db.getNodeById(readId));
@@ -92,6 +94,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ReadingModel modelToReturn = new ReadingModel();
         Node reading;
         String currentKey = "";
@@ -150,6 +153,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response deleteUserReading() {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         GraphModel deletedElements = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
@@ -206,6 +210,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response setReadingAsLemma(@FormParam("value") @DefaultValue("false") String value) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
@@ -256,6 +261,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("net.stemmaweb.model.GraphModel")
     public Response addLacuna (@QueryParam("witness") List<String> forWitnesses) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             // Get a reading model so we can easily check the witnesses
@@ -325,6 +331,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         try {
             List<Node> relatedReadings = collectRelatedReadings(filterTypes);
             return Response.ok(relatedReadings.stream().map(ReadingModel::new).collect(Collectors.toList())).build();
@@ -354,6 +361,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response normaliseRelated(@PathParam("reltype") String onRelationType) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             List<Node> related = collectRelatedReadings(Collections.singletonList(onRelationType));
@@ -418,6 +426,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel")
     public Response deleteAllRelations() {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ArrayList<RelationModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
@@ -451,6 +460,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getReadingWitnesses() {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         try {
             return Response.ok(collectWitnesses(false)).build();
         } catch (NotFoundException e) {
@@ -515,7 +525,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response duplicateReading(DuplicateModel duplicateModel) {
-
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
         ArrayList<RelationModel> tempDeleted = new ArrayList<>();
         ArrayList<SequenceModel> newSequences = new ArrayList<>();
@@ -702,7 +712,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
-
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         GraphModel result;
 
         try (Transaction tx = db.beginTx()) {
@@ -944,6 +954,7 @@ public class Reading {
     @ReturnType(clazz = GraphModel.class)
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         assert (model != null);
         GraphModel readingsAndRelations;
         Node originalReading;
@@ -1107,6 +1118,7 @@ public class Reading {
     @ReturnType(clazz = ReadingModel.class)
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.OUTGOING);
         if (foundNeighbour != null) {
             ReadingModel result = new ReadingModel(foundNeighbour);
@@ -1138,6 +1150,7 @@ public class Reading {
     @ReturnType(clazz = ReadingModel.class)
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.INCOMING);
         if (foundNeighbour != null) {
             ReadingModel result = new ReadingModel(foundNeighbour);
@@ -1251,7 +1264,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
-
+        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         Node read1, read2;
         // some defaults if we fall through and haven't changed it
         errorMessage = "problem with a reading. could not compress";
@@ -1435,7 +1448,7 @@ public class Reading {
         return foundRels;
     }
 
-    private String getTraditionId () {
+    String getTraditionId () {
         String tradId;
         try (Transaction tx = db.beginTx()) {
             Node rdg = db.getNodeById(readId);

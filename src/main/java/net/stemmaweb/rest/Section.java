@@ -67,7 +67,7 @@ public class Section {
             readingInSection = rdg.getSection().equals(sectId);
             tx.success();
         }
-        return readingInSection ? new Reading(readingId) : null;
+        return readingInSection ? new Reading(readingId) : new Reading("-1");
     }
 
     // Base paths
