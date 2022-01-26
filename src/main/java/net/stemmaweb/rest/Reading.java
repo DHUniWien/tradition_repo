@@ -50,7 +50,7 @@ public class Reading {
     /**
      * Returns the metadata for a single reading.
      *
-     * @summary Get a reading
+     * @title Get a reading
      * @return The reading information as a JSON structure.
      * @statuscode 200 - on success
      * @statuscode 204 - if the reading doesn't exist
@@ -79,7 +79,7 @@ public class Reading {
      * potential knock-on effects on other readings, such as "is_lemma", cannot be
      * set using this method.
      *
-     * @summary Update an existing reading
+     * @title Update an existing reading
      * @param changeModels
      *            an array of named key/value property pairs. For example, a request to
      *            change the reading's language to German will look like this:
@@ -142,7 +142,7 @@ public class Reading {
      * Deletes a reading. This only makes sense if it is a user-addable reading, i.e. an emendation.
      * If the lemma path goes through the emendation, the lemma path will also be removed.
      *
-     * @summary Delete a user-addable reading
+     * @title Delete a user-addable reading
      * @return  A GraphModel containing the deleted content (readings and sequences)
      * @statuscode 200 - on success
      * @statuscode 403 - if deletion of a non-user reading is requested
@@ -249,7 +249,7 @@ public class Reading {
      * reading(s) in the sequence for that witness / those witnesses. Intended to indicate that
      * empty ranks are not a simple omission.
      *
-     * @summary Insert a lacuna
+     * @title Insert a lacuna
      * @param forWitnesses - one or more witnesses that should have the lacuna marked.
      * @return a GraphModel containing the lacuna and its associated SEQUENCE links.
      * @statuscode 200 - on success
@@ -318,7 +318,7 @@ public class Reading {
 
     /**
      * Gets all readings related to the given reading.
-     * @summary Get related readings
+     * @title Get related readings
      *
      * @param filterTypes - a list of relation types to filter by
      * @return a list of readings related via the given relation types.
@@ -349,7 +349,7 @@ public class Reading {
     /**
      * Propagates this reading's normal form to all other readings related by the given type.
      *
-     * @summary Propagate normal form along relations
+     * @title Propagate normal form along relations
      * @param onRelationType - the relation type to propagate along
      * @return a list of changed readings
      * @statuscode 200 - on success
@@ -415,7 +415,7 @@ public class Reading {
 
     /**
      * Deletes all relations associated with the given reading.
-     * @summary Delete all reading relations
+     * @title Delete all reading relations
      *
      * @return a list of the relations that were deleted.
      * @statuscode 200 - on success
@@ -449,7 +449,7 @@ public class Reading {
 
     /**
      * Gets the list of witnesses that carry the given reading.
-     * @summary Get reading witnesses
+     * @title Get reading witnesses
      *
      * @return the metadata of the witnesses to this reading.
      * @statuscode 200 - on success
@@ -509,7 +509,7 @@ public class Reading {
      *
      * This is the opposite of the {@code merge} call.
      *
-     * @summary Duplicate a reading
+     * @title Duplicate a reading
      *
      * @param duplicateModel
      *            specifies the reading(s) to be duplicated, as well as the witnesses to which
@@ -699,9 +699,11 @@ public class Reading {
      *
      * This is the opposite of the {@code duplicate} call.
      *
-     * @summary Merge readings
+     * @title Merge readings
      *
      * @param secondReadId - the id of the second reading to be merged
+     * @return a GraphModel describing the newly-merged reading, and all sequences and relations
+     *         that were altered as a result
      * @statuscode 200 - on success
      * @statuscode 409 - if merging the readings would invalidate the graph.
      *                   This usually means that they are not in the same variant location.
@@ -930,7 +932,7 @@ public class Reading {
      *
      * This is the opposite of the {@code compress} call.
      *
-     * @summary Split a reading
+     * @title Split a reading
      *
      * @param splitIndex - the index of the first letter of the second word, indicating where
      *            the reading is to be split. For example, "unto" with index 2 produces "un"
@@ -1102,7 +1104,7 @@ public class Reading {
     /**
      * Gets the reading that follows the requested reading in the given witness.
      *
-     * @summary Next reading
+     * @title Next reading
      *
      * @param witnessId - the id (sigil) of the witness
      * @param layer - the witness layer to follow
@@ -1134,7 +1136,7 @@ public class Reading {
     /**
      * Gets the reading that precedes the requested reading in the given witness.
      *
-     * @summary Prior reading
+     * @title Prior reading
      *
      * @param witnessId - the id (sigil) of the witness
      * @param layer - the witness layer to follow
@@ -1245,14 +1247,14 @@ public class Reading {
      *
      * This is the opposite of the {@code split} call.
      *
-     * @summary Concatenate readings
+     * @title Concatenate readings
      *
      * @param readId2 - the id of the second reading
      * @param boundary
      *            The specification of whether the reading text will be separated with a string,
      *            and if so, what string it will be. If the readings have {@code join_next} or
      *            {@code join_prior} set, this will be respected in preference to the boundary specification.
-     *
+     * @return a GraphModel describing the newly compressed reading, and all sequences that were altered as a result
      * @statuscode 200 - on success
      * @statuscode 409 - if the readings cannot legally be concatenated
      * @statuscode 500 - on error, with an error message

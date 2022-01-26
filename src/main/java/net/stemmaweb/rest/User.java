@@ -42,7 +42,7 @@ public class User {
     /**
      * Gets the information for the given user ID.
      *
-     * @summary Get user
+     * @title Get user
      *
      * @return A JSON UserModel or a JSON error message
      * @statuscode 200 on success
@@ -70,7 +70,7 @@ public class User {
     /**
      * Creates or updates a user according to the specification given.
      *
-     * @summary Create / update user
+     * @title Create / update user
      *
      * @param userModel - a user specification
      * @return A JSON UserModel or a JSON error message
@@ -136,7 +136,7 @@ public class User {
     /**
      * Removes a user. This may only be used when the user's traditions have already been deleted.
      *
-     * @summary Delete user
+     * @title Delete user
      *
      * @statuscode 200 on success
      * @statuscode 404 if the requested user doesn't exist
@@ -174,7 +174,7 @@ public class User {
     /**
      * Get a list of the traditions belong to the user.
      *
-     * @summary List user traditions
+     * @title List user traditions
      *
      * @return A JSON list of tradition metadata objects
      */

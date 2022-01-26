@@ -136,7 +136,7 @@ public class Tradition {
     /**
      * Create / save a new stemma for this tradition.
      *
-     * @summary Upload a new stemma
+     * @title Upload a new stemma
      *
      * @param stemmaSpec - the StemmaModel that describes the new stemma
      * @return The stemma specification in JSON format.
@@ -208,7 +208,7 @@ public class Tradition {
      * Create a new section for this tradition. Returns the ID of the new section, in the
      * form {@code {"parentId": <ID>}}.
      *
-     * @summary Upload section
+     * @title Upload section
      *
      * @param sectionName - The name of the section
      * @param filetype - The format of the section data file.
@@ -411,7 +411,7 @@ public class Tradition {
     /**
      * Gets a list of all sections of a tradition with the given id.
      *
-     * @summary Get sections
+     * @title Get sections
      * @return A list of section metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -436,7 +436,7 @@ public class Tradition {
     /**
      * Gets a list of all the witnesses of a tradition with the given id.
      *
-     * @summary Get witnesses
+     * @title Get witnesses
      * @return A list of witness metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -466,7 +466,7 @@ public class Tradition {
     /**
      * Gets a list of all the stemmata associated with this tradition.
      *
-     * @summary Get stemmata
+     * @title Get stemmata
      * @return A list of section metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -498,7 +498,7 @@ public class Tradition {
     /**
      * Gets a list of all relationships defined within the given tradition.
      *
-     * @summary Get relationships
+     * @title Get relationships
      * @param includeReadings - Include the ReadingModel information for the source and target
      * @return A list of relationship metadata
      * @statuscode 200 - on success
@@ -531,7 +531,7 @@ public class Tradition {
     /**
      * Gets a list of all relation types defined within the given tradition.
      *
-     * @summary Get relationships
+     * @title Get relationships
      * @return A list of relationship metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -559,7 +559,7 @@ public class Tradition {
     /**
      * Gets a list of all readings in the given tradition.
      *
-     * @summary Get readings
+     * @title Get readings
      * @return A list of reading metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -595,7 +595,7 @@ public class Tradition {
     /**
      * Return a list of the annotations that have been made on this tradition.
      *
-     * @summary Get annotations on tradition
+     * @title Get annotations on tradition
      *
      * @param filterLabels Return only annotations with the given label. May be specified multiple times.
      * @return a list of AnnotationModels
@@ -634,7 +634,7 @@ public class Tradition {
     /**
      * Return a list of the annotation labels that have been defined for this tradition.
      *
-     * @summary Get annotation labels for tradition
+     * @title Get annotation labels for tradition
      *
      * @return a list of AnnotationLabelModels
      * @statuscode 200 - on success
@@ -672,7 +672,7 @@ public class Tradition {
     /**
      * Changes the metadata of the tradition.
      *
-     * @summary Update tradition information
+     * @title Update tradition information
      *
      * @param tradition A JSON specification of the desired tradition metadata.
      * @return The updated tradition information.
@@ -742,7 +742,7 @@ public class Tradition {
      * Removes an entire tradition, including all witnesses, stemmata, sections, readings,
      * and relationships.
      *
-     * @summary Delete tradition
+     * @title Delete tradition
      *
      * @statuscode 200 - on success
      * @statuscode 404 - if tradition does not exist
@@ -789,7 +789,7 @@ public class Tradition {
      * Deletes any annotations on this tradition that lack referents, unless the annotation is marked as "primary".
      * Returns a list of the deleted annotations.
      *
-     * @summary Clean up dangling annotations
+     * @title Clean up dangling annotations
      * @return a list of AnnotationModels representing deleted annotations
      */
     @POST
@@ -824,7 +824,7 @@ public class Tradition {
 
     /**
      * Returns the stored information (metadata) of a tradition.
-     * @summary Get tradition information
+     * @title Get tradition information
      * @return A JSON structure containing the tradition's metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if tradition does not exist
@@ -844,7 +844,7 @@ public class Tradition {
 
     /**
      * Returns a GraphML file that describes the specified tradition and its data.
-     * @summary Download GraphML
+     * @title Download GraphML
      *
      * @return XML data
      */
@@ -861,7 +861,7 @@ public class Tradition {
 
     /**
      * Returns a legacy Stemmaweb-compatible GraphML file that describes the specified tradition and its data.
-     * @summary Download legacy GraphML
+     * @title Download legacy GraphML
      *
      * @return XML data
      */
@@ -879,7 +879,7 @@ public class Tradition {
     /**
      * Returns a GraphViz dot file that describes the specified tradition and its data.
      *
-     * @summary Download GraphViz
+     * @title Download GraphViz
      *
      * @param includeRelatedRelationships - Include RELATED edges in the dot, if true
      * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
@@ -912,7 +912,7 @@ public class Tradition {
     /**
      * Returns a JSON file that contains the aligned reading data for the tradition.
      *
-     * @summary Download JSON alignment
+     * @title Download JSON alignment
      *
      * @param toConflate    - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList   - Restrict the output to include the given sections. Can be specified multiple times.
@@ -933,7 +933,7 @@ public class Tradition {
     /**
      * Returns a CSV file that contains the aligned reading data for the tradition.
      *
-     * @summary Download CSV alignment
+     * @title Download CSV alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
@@ -954,7 +954,7 @@ public class Tradition {
     /**
      * Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.
      *
-     * @summary Download TSV alignment
+     * @title Download TSV alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.
@@ -975,7 +975,7 @@ public class Tradition {
     /**
      * Returns a character matrix suitable for use with e.g. Phylip Pars.
      *
-     * @summary Download character matrix for parsimony analysis
+     * @title Download character matrix for parsimony analysis
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param sectionList - Restrict the output to include the given sections. Can be specified multiple times.

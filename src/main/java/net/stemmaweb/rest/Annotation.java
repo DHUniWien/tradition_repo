@@ -282,7 +282,7 @@ public class Annotation {
      * {@link net.stemmaweb.model.AnnotationLinkModel AnnotationLinkModel}. Returns the annotation
      * with the link deleted.
      *
-     * @summary Delete an outbound link on this annotation
+     * @title Delete an outbound link on this annotation
      * @param alm - the AnnotationLinkModel representing the link that should be added
      * @statuscode 200 - on success
      * @statuscode 404 - if the annotation doesn't exist, or doesn't belong to this tradition
@@ -318,7 +318,7 @@ public class Annotation {
      * set to 'true', then the call will return all ancestor annotations; otherwise it will
      * be limited to direct parents.
      *
-     * @summary Return annotation's referents (parents)
+     * @title Return annotation's referents (parents)
      * @param recurse - Include all ancestors in response
      * @return a list of parent / ancestor AnnotationModels
      * @statuscode 200 - on success

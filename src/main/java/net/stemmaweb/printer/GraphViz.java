@@ -55,8 +55,8 @@ import java.util.stream.Stream;
  * <pre>
  *    GraphViz gv = new GraphViz();
  *    gv.addln(gv.start_graph());
- *    gv.addln("A -> B;");
- *    gv.addln("A -> C;");
+ *    gv.addln("A -&gt; B;");
+ *    gv.addln("A -&gt; C;");
  *    gv.addln(gv.end_graph());
  *    System.out.println(gv.getDotSource());
  *
@@ -110,6 +110,7 @@ public class GraphViz
 
    /**
     * Adds a string to the graph's source (without newline).
+    * @param line - the line to add
     */
    public void add(String line) {
       graph.append(line);
@@ -117,6 +118,7 @@ public class GraphViz
 
    /**
     * Adds a string to the graph's source (with newline).
+    * @param line - the line to add
     */
    public void addln(String line) {
       graph.append(line).append("\n");

@@ -98,7 +98,7 @@ public class Witness {
 
     /**
      * Returns a WitnessModel corresponding to the requested witness.
-     * @summary Get witness information
+     * @title Get witness information
      * @return  A WitnessModel containing information about the witness
      * @statuscode 200 - on success
      * @statuscode 404 - if the tradition, section, or witness text doesn't exist
@@ -117,7 +117,7 @@ public class Witness {
     /**
      * Deletes the requested witness.
      *
-     * @summary Delete a witness
+     * @title Delete a witness
      * @statuscode 200 - on success
      * @statuscode 404 - if the tradition, section, or witness text doesn't exist
      * @statuscode 500 - on error, with an error message
@@ -201,7 +201,7 @@ public class Witness {
      * / from the start of the witness. If one or more witness layers are specified, return
      * the text composed of those layers.
      *
-     * @summary Get witness text
+     * @title Get witness text
      * @param layer - the text layer(s) to return, e.g. "a.c." or "s.l.". These layers must not conflict with each other!
      * @param start - the starting rank
      * @param end   - the end rank
@@ -296,7 +296,7 @@ public class Witness {
     /**
      * Returns the sequence of readings for a given witness.
      *
-     * @summary Get readings
+     * @title Get readings
      * @param witnessClass - the text layer to return, e.g. "a.c."
      * @return The witness text as a list of readings.
      * @statuscode 200 - on success

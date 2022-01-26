@@ -1,5 +1,6 @@
 package net.stemmaweb.rest;
 
+import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
@@ -52,12 +53,14 @@ public class Root {
 
     @GET
     @Produces("text/plain")
+    @MireDotIgnore
     public String getHello() {
         return CLICHED_MESSAGE;
     }
 
     @GET
     @Path("{path: docs.*}")
+    @MireDotIgnore
     public Response getDocs(@PathParam("path") String path) {
         if (path.equals("docs") || path.equals("docs/")) path = "docs/index.html";
         final String target = String.format("/WEB-INF/%s", path);
@@ -101,7 +104,7 @@ public class Root {
      * Imports a new tradition from file data of various forms, and creates at least one section
      * in doing so. Returns the ID of the given tradition, in the form {@code {"tradId": <ID>}}.
      *
-     * @summary Upload new tradition
+     * @title Upload new tradition
      *
      * @param name      the name of the tradition. Default is the empty string.
      * @param language  the language of the tradition text (e.g. Latin, Syriac).
@@ -203,8 +206,7 @@ public class Root {
     /**
      * Gets a list of all the complete traditions in the database.
      *
-     * @summary List traditions
-     *
+     * @title List traditions
      * @param publiconly    Returns only the traditions marked as being public.
      *                      Default is false.
      *
@@ -237,7 +239,7 @@ public class Root {
     /**
      * Gets a list of all the users in the database.
      *
-     * @summary List users
+     * @title List users
      *
      * @return A list, one item per user, of user metadata.
      * @statuscode 200 on success
