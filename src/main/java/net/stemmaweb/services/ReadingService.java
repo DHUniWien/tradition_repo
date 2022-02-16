@@ -377,8 +377,8 @@ public class ReadingService {
      * the rank on startNode needs to be correct before this is run.
      *
      * @param startNode - the reading from which to begin the recalculation
+     * @throws Exception if the RankCalcEvaluate initialisation fails
      * @return list of nodes whose ranks were changed
-     * @throws Exception, if the RankCalcEvaluate initialisation fails
      */
 
     public static Set<Node> recalculateRank (Node startNode, boolean recalculateAll) throws Exception {

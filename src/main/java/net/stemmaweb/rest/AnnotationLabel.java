@@ -27,9 +27,9 @@ import static net.stemmaweb.rest.Util.jsonerror;
  */
 
 public class AnnotationLabel {
-    private GraphDatabaseService db;
-    private String tradId;
-    private String name;
+    private final GraphDatabaseService db;
+    private final String tradId;
+    private final String name;
 
     AnnotationLabel(String tradId, String name) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -41,8 +41,7 @@ public class AnnotationLabel {
     /**
      * Gets the information for the given annotation type name.
      *
-     * @summary Get annotation label spec
-     *
+     * @title Get annotation label spec
      * @return A JSON AnnotationLabelModel or a JSON error message
      * @statuscode 200 on success
      * @statuscode 400 if there is an error in the annotation type specification
@@ -62,7 +61,7 @@ public class AnnotationLabel {
     /**
      * Creates or updates an annotation type specification
      *
-     * @summary Put annotation label spec
+     * @title Put annotation label spec
      * @param alm - The AnnotationLabelModel specification to use
      * @return The AnnotationLabelModel specification created / updated
      * @statuscode 200 on update of existing label
@@ -168,11 +167,12 @@ public class AnnotationLabel {
      * Deletes the specified annotation label specification from the tradition. Returns an error
      * if there are any annotations still using this type.
      *
-     * @summary Delete annotation label
+     * @title Delete annotation label
      *
      * @statuscode 200 on success
      * @statuscode 409 if the annotation label is still in use
      * @statuscode 500 on failure, with an error report in JSON format
+     * @return a Response indicating the outcome of the request
      */
     @DELETE
     @ReturnType("java.lang.Void")

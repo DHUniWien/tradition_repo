@@ -208,7 +208,7 @@ public class VariantGraphService {
      * @param normalizeType   The (string) name of the type on which we are normalizing
      * @return                A HashMap of nodes to their representatives
      *
-     * @throws                Exception, if clusters cannot be got, if the requested relation type doesn't
+     * @throws                Exception if clusters cannot be got, if the requested relation type doesn't
      *                        exist, or if something goes wrong with the transaction
      */
 
@@ -278,7 +278,7 @@ public class VariantGraphService {
      * Clean up after performing normalizeGraph. Removes all NSEQUENCE and REPRESENTS relationships within a section.
      *
      * @param sectionNode  the section to clean up
-     * @throws             Exception, if anything was missed
+     * @throws Exception if anything was missed
      */
 
     public static void clearNormalization(Node sectionNode) throws Exception {

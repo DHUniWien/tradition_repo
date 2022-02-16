@@ -173,6 +173,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     /**
      * Create the Neo4J node corresponding to this relation type model.
      * @param traditionNode - The tradition to which this model belongs
+     * @return the created RelationType node
      */
     public Node instantiate (Node traditionNode) {
         return match_relation_node(traditionNode, false);
@@ -181,6 +182,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     /**
      * Update the Neo4J node corresponding to this relation type model.
      * @param traditionNode - The tradition to which this model belongs
+     * @return the updated RelationType node
      */
     public Node update (Node traditionNode) {
         return match_relation_node(traditionNode, true);

@@ -40,7 +40,7 @@ public class RelationType {
     /**
      * Gets the information for the given relation type name.
      *
-     * @summary Get relation type
+     * @title Get relation type
      *
      * @return A JSON RelationTypeModel or a JSON error message
      * @statuscode 200 on success
@@ -61,7 +61,7 @@ public class RelationType {
     /**
      * Creates or updates a relation type according to the specification given.
      *
-     * @summary Create / update relation type specification
+     * @title Create / update relation type specification
      *
      * @param rtModel - a user specification
      * @return A JSON RelationTypeModel or a JSON error message
@@ -102,7 +102,7 @@ public class RelationType {
     /**
      * Deletes the named relation type.
      *
-     * @summary Delete a relation type
+     * @title Delete a relation type
      * @return A JSON RelationTypeModel of the deleted type
      * @statuscode 200 on success
      * @statuscode 404 if the specified type doesn't exist
@@ -142,7 +142,7 @@ public class RelationType {
      * Creates a relation type with the given name according to default values.
      * Method for use internally, logic intended for Stemmaweb backwards compatibility.
      *
-     * @summary Create a default relation type
+     * @title Create a default relation type
      *
      * @return A JSON RelationTypeModel or a JSON error message
      * @statuscode 200 on success, if an existing type was updated

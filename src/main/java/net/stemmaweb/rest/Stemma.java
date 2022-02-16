@@ -47,7 +47,7 @@ public class Stemma {
     /**
      * Fetches the information for the specified stemma.
      *
-     * @summary Get stemma
+     * @title Get stemma
      * @return The stemma information, including its dot specification.
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition exists
@@ -70,7 +70,7 @@ public class Stemma {
     /**
      * Stores a new or updated stemma under the given name.
      *
-     * @summary Replace or add new stemma
+     * @title Replace or add new stemma
      * @param stemmaSpec - A StemmaModel containing the new or replacement stemma.
      * @return The stemma information, including its dot specification.
      * @statuscode 200 - on success, if stemma is updated
@@ -122,7 +122,7 @@ public class Stemma {
     /**
      * Deletes the stemma that is identified by the given name.
      *
-     * @summary Delete stemma
+     * @title Delete stemma
      * @return The stemma information, including its dot specification.
      * @statuscode 200 - on success, if stemma is updated
      * @statuscode 500 - on failure, with an error message

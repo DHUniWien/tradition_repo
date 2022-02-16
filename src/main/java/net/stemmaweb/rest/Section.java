@@ -67,7 +67,7 @@ public class Section {
             readingInSection = rdg.getSection().equals(sectId);
             tx.success();
         }
-        return readingInSection ? new Reading(readingId) : null;
+        return readingInSection ? new Reading(readingId) : new Reading("-1");
     }
 
     // Base paths
@@ -75,7 +75,7 @@ public class Section {
     /**
      * Get the metadata for a section.
      *
-     * @summary Get section
+     * @title Get section
      * @return  a SectionModel for the requested section
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -101,7 +101,7 @@ public class Section {
     /**
      * Update the metadata for a section.
      *
-     * @summary Update section
+     * @title Update section
      * @param newInfo - A JSON specification of the section update
      * @return  a SectionModel for the updated section
      * @statuscode 200 - on success
@@ -133,7 +133,7 @@ public class Section {
      * Delete the specified section, and update the tradition's sequence of sections to
      * account for any resulting gap. Returns a JSON response on error with key 'error'.
      *
-     * @summary Delete section
+     * @title Delete section
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
      * @statuscode 500 - on failure, with an error message
@@ -185,7 +185,7 @@ public class Section {
     /**
      * Gets a list of all the witnesses of the section with the given id.
      *
-     * @summary Get witnesses
+     * @title Get witnesses
      * @return A list of witness metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -255,7 +255,7 @@ public class Section {
     /**
      * Gets a list of all readings in the given tradition section.
      *
-     * @summary Get readings
+     * @title Get readings
      * @return A list of reading metadata
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -297,7 +297,7 @@ public class Section {
     /**
      * Gets a list of all relations defined within the given section.
      *
-     * @summary Get relations
+     * @title Get relations
      * @param includeReadings - Include the ReadingModel information for the source and target
      * @return A list of relation metadata
      * @statuscode 200 - on success
@@ -346,7 +346,7 @@ public class Section {
     /**
      * Gets a list of all clusters of readings that are related via colocation links.
      *
-     * @summary Get colocated clusters of readings
+     * @title Get colocated clusters of readings
      * @return a list of clusters
      * @statuscode 200 - on success
      * @statuscode 500 - on error
@@ -375,7 +375,7 @@ public class Section {
      * Gets the lemma text for the section, if there is any. Returns the text in a JSON object
      * with key 'text'.
      *
-     * @summary Get lemma text
+     * @title Get lemma text
      * @param followFinal - Whether or not to follow the 'lemma_text' path
      * @param startRank - Return a substring of the lemma text starting at the given rank
      * @param endRank - Return a substring of the lemma text ending at the given rank
@@ -418,7 +418,7 @@ public class Section {
      * as lemmata will be returned, in order of rank, whether or not they are yet on a lemma
      * path.
      *
-     * @summary Get sequence of lemma readings
+     * @title Get sequence of lemma readings
      * @param followFinal - Whether or not to follow the 'lemma_text' path
      * @param startRank - Return a substring of the lemma text starting at the given rank
      * @param endRank - Return a substring of the lemma text ending at the given rank
@@ -507,6 +507,7 @@ public class Section {
      * annotation types. If the 'recursive' query parameter has a value of 'true', then the
      * results will include the ancestors of the (selected) section annotations.
      *
+     * @title Get annotations on section
      * @param filterLabels - one or more annotation labels to restrict the query to
      * @param recurse - return the ancestors of the selected annotations as well
      * @return A list of AnnotationModels representing the requested annotations on the section
@@ -556,6 +557,7 @@ public class Section {
      *  - If not, and '/setlemma' has been called on the section, that lemma text will be the base.
      *  - Otherwise, the majority text will be calculated and used as the base.
      *
+     * @title Get variant list
      * @param significant - Restrict the variant groups to the given significance level or above
      * @param excludeType1 - If true, exclude type 1 (i.e. singleton) variants from the groupings
      * @param combine - If true, attempt to combine non-colocated variants (e.g. transpositions) into
@@ -608,7 +610,7 @@ public class Section {
      * Move this section to a new place in the section sequence. Upon error, returns a JSON response
      * with key 'error'.
      *
-     * @summary Reorder section
+     * @title Reorder section
      * @param priorSectID - the ID of the section that should precede this one; "none" if this section should be first.
      * @statuscode 200 - on success
      * @statuscode 400 - if the priorSectId doesn't belong to the given tradition
@@ -687,7 +689,7 @@ public class Section {
      * Returns a JSON response of the form {@code {"sectionId": <ID>}}, containing the ID of the new section.
      * Upon error, returns an error message with key 'error'.
      *
-     * @summary Reorder section
+     * @title Reorder section
      * @param rankstr - the rank at which the section should be split
      * @return  JSON response with key 'sectionId' or key 'error'
      * @statuscode 200 - on success
@@ -845,7 +847,7 @@ public class Section {
      * Merge two sections into one, and adjust the tradition's section order accordingly. The
      * specified sections must be contiguous, and will be merged according to their existing order.
      *
-     * @summary Merge sections
+     * @title Merge sections
      * @param otherId - the rank at which the section should be split
      * @statuscode 200 - on success
      * @statuscode 400 - if the sections are not contiguous
@@ -995,7 +997,7 @@ public class Section {
      * identify possible inconsistencies in the collation. The pairs are ordered so that the
      * reading with more witnesses is listed first.
      *
-     * @summary List mergeable readings
+     * @title List mergeable readings
      * @param startRank - where to start
      * @param endRank   - where to end
      * @param threshold - the number of ranks to look ahead/behind
@@ -1104,7 +1106,7 @@ public class Section {
      * Get all readings which have the same text and the same rank, between the given ranks.
      * This is a constrained version of {@code mergeablereadings}.
      *
-     * @summary Find identical readings
+     * @title Find identical readings
      * @param startRank the rank from where to start the search
      * @param endRank   the rank at which to end the search
      * @return a list of lists of identical readings
@@ -1186,7 +1188,7 @@ public class Section {
      * Chain through the readings marked as lemmata and construct the LEMMA_TEXT link. Returns a
      * short
      *
-     * @summary Set the lemma text
+     * @title Set the lemma text
      * @return  JSON value with key 'result' (== 'success') or 'error'
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1261,6 +1263,7 @@ public class Section {
     /**
      * Return a list of emendations on this section.
      *
+     * @title Get emendations
      * @return a GraphModel containing the emendations that have been made on this section
      * @statuscode 200 - on success
      * @statuscode 404 - if specified section or specified tradition doesn't exist
@@ -1302,6 +1305,7 @@ public class Section {
      * An emendation is a special type of reading, which requires an authority (i.e. the
      * identity of the proposer) to be named.
      *
+     * @title Record emendation
      * @param proposal - A ProposedEmendationModel with the information
      * @return a GraphModel containing the new reading and its links to the rest of the text
      * @statuscode 200 - on success
@@ -1366,9 +1370,9 @@ public class Section {
      */
 
     /**
-     * Returns a JSON GraphModel (readings, relations, sequences incl. lemma & emendation) for the section.
+     * Returns a JSON GraphModel (readings, relations, sequences incl. lemma &amp; emendation) for the section.
      *
-     * @summary Download JSON description of graph nodes & edges
+     * @title Download JSON description of graph nodes &amp; edges
      * @return GraphModel of the section subgraph, excluding annotations
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1412,7 +1416,7 @@ public class Section {
     /**
      * Returns a GraphML file that describes the specified section and its data, including annotations.
      *
-     * @summary Download GraphML XML description of section
+     * @title Download GraphML XML description of section
      * @return GraphML description of the section subgraph
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1435,7 +1439,7 @@ public class Section {
     /**
      * Returns a GraphViz dot file that describes the specified section and its data.
      *
-     * @summary Download GraphViz
+     * @title Download GraphViz dot
      * @param includeRelatedRelationships - Include RELATED edges in the dot, if true
      * @param showNormalForms - Display normal form of readings alongside "raw" text form, if true
      * @param showRank - Display the rank of readings, if true
@@ -1471,7 +1475,7 @@ public class Section {
     /**
      * Returns an alignment table for the section in JSON format.
      *
-     * @summary Download JSON alignment
+     * @title Download JSON alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param excludeLayers - If "true", exclude witness layers from the output.
@@ -1490,7 +1494,7 @@ public class Section {
     /**
      * Returns a CSV file that contains the aligned reading data for the tradition.
      *
-     * @summary Download CSV alignment
+     * @title Download CSV alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param excludeLayers - If "true", exclude witness layers from the output.
@@ -1510,7 +1514,7 @@ public class Section {
     /**
      * Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.
      *
-     * @summary Download TSV alignment
+     * @title Download TSV alignment
      *
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param excludeLayers - If "true", exclude witness layers from the output.
@@ -1530,8 +1534,7 @@ public class Section {
     /**
      * Returns a character matrix suitable for use with e.g. Phylip Pars.
      *
-     * @summary Download character matrix for parsimony analysis
-     *
+     * @title Download character matrix for parsimony analysis
      * @param toConflate   - Zero or more relationship types whose readings should be treated as identical
      * @param excludeLayers - If "true", exclude witness layers from the output.
      * @param maxVars      - Maximum number of variants per location, above which that location will be discarded.

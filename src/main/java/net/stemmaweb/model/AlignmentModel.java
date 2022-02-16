@@ -16,12 +16,12 @@ import java.util.*;
  * represent the reading tokens.
  *
  * The result will look like this:
- *  $table = { alignment: [ { witness: "SIGIL",
+ *  {@code table = { alignment: [ { witness: "SIGIL",
  *                            tokens: [ { id: 123, text: "TEXT", normal_form: "NORMAL, ... }, ... ] },
  *                          { witness: "SIG2",
  *                            tokens: [ { id: 456, text: "TEXT", normal_form: "NORMAL, ... }, ... ] },
  *                           ... ],
- *             length => TEXTLEN };
+ *             length => TEXTLEN };}
  */
 
 @XmlRootElement

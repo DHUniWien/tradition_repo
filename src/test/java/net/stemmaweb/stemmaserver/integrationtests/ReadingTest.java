@@ -130,6 +130,66 @@ public class ReadingTest {
     }
 
     @Test
+    public void accessReadingViaTraditionAndSectionTest() {
+        // Choose an arbitrary reading
+        String rid = readingLookup.get("april/2");
+        ReadingModel rm = jerseyTest.target("/reading/" + rid).request().get(ReadingModel.class);
+        assertEquals(rid, rm.getId());
+
+        // Look it up by its tradition
+        Response r = jerseyTest.target("/tradition/" + tradId + "/reading/" + rid).request().get();
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+        ReadingModel trm = r.readEntity(ReadingModel.class);
+        assertEquals(rm.getId(), trm.getId());
+        assertEquals(rm.getText(), trm.getText());
+
+        // Look it up by its section
+        r = jerseyTest.target("/tradition/" + tradId + "/section/" + sectId +  "/reading/" + rid).request().get();
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+        ReadingModel srm = r.readEntity(ReadingModel.class);
+        assertEquals(rm.getId(), srm.getId());
+        assertEquals(rm.getText(), srm.getText());
+
+        // Make a POST call and make sure it works
+        ReadingChangePropertyModel rcpm = new ReadingChangePropertyModel();
+        rcpm.addProperty(new KeyPropertyModel("normal_form", "April"));
+        r = jerseyTest.target("/tradition/" + tradId + "/reading/" + rid)
+                .request(MediaType.APPLICATION_JSON)
+                .put(Entity.json(rcpm));
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+        trm = r.readEntity(ReadingModel.class);
+        assertEquals(rm.getId(), trm.getId());
+        assertEquals("April", trm.getNormal_form());
+
+        // Add a second tradition
+        String newTradId = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+                "src/TestFiles/florilegium_graphml.xml", "stemmaweb"), "tradId");
+        assertNotNull(newTradId);
+
+        // Now try to get the same reading via the new tradition
+        r = jerseyTest.target("/tradition/" + newTradId + "/reading/" + rid).request().get();
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+
+        // Add a second section to the first text
+        r = Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/testTradition.xml", "stemmaweb", "1");
+        assertEquals(Status.CREATED.getStatusCode(), r.getStatus());
+        String newSectId = Util.getValueFromJson(r, "sectionId");
+
+        // Try to get the reading as above, but from the wrong section
+        r = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId +  "/reading/" + rid).request().get();
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+
+        // But we can get a reading from the new section that actually belongs to it...?
+        readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
+        r = jerseyTest.target("/tradition/" + tradId + "/section/" + newSectId +  "/reading/"
+                + readingLookup.get("rood/17")).request().get();
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+        srm = r.readEntity(ReadingModel.class);
+        assertEquals(17L, Long.parseLong(srm.getRank().toString()));
+        assertEquals("rood", srm.getText());
+    }
+
+    @Test
     public void changeReadingPropertiesOnePropertyTest() {
         String nodeId = readingLookup.get("showers/5");
 

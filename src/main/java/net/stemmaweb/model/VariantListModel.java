@@ -66,6 +66,7 @@ public class VariantListModel {
      *
      * @param sectionNode - the section to generate the list for
      * @param baseWitness - the witness sigil to indicate the base text, if any
+     * @param excludeWitnesses - a list of witness sigla to exclude from the result
      * @param conflate    - the name of a relation that should be the basis for text normalisation, if any
      * @param suppress    - a regular expression of readings that should be excluded from the variant list
      * @param filterNonsense - whether to exclude readings marked as nonsense readings
@@ -74,6 +75,7 @@ public class VariantListModel {
      *                    values are "no", "maybe" and "yes".
      * @param combine     - whether to move variants marked as dislocations to the variant location of
      *                    their corresponding base readings
+     * @throws Exception (anything thrown by clearNormalization)
      */
     public VariantListModel(Node sectionNode, String baseWitness, List<String> excludeWitnesses, String conflate,
                             String suppress, Boolean filterNonsense, Boolean filterTypeOne, String significant,

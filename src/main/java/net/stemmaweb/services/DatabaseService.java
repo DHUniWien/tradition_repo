@@ -36,7 +36,7 @@ public class DatabaseService {
      *
      * @param startNode - the node at one end of the relationship
      * @param relType - the relationship type to follow
-     * @return ArrayList<Node> all nodes related to startNode by the given relationship
+     * @return a list of all nodes related to startNode by the given relationship
      */
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
         ArrayList<Node> result = new ArrayList<>();

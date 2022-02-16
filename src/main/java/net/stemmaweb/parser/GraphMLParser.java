@@ -35,7 +35,7 @@ public class GraphMLParser {
      * @param parentNode      - a Node to represent the parent of this data, either a tradition or a section
      * @param isSingleSection - whether we are parsing a whole tradition or just a single section into
      *                        an existing tradition
-     * @return a Response object carrying a JSON dictionary {"parentId": <ID>}
+     * @return a Response object carrying a JSON dictionary {@code {"parentId": <ID>}}
      */
     public Response parseGraphMLSingle(InputStream filestream, Node parentNode, boolean isSingleSection) {
         // Simulate the expected filenames in the zip file
@@ -65,7 +65,7 @@ public class GraphMLParser {
      * @param parentNode      - a Node to represent the parent of this data, either a tradition or a section
      * @param isSingleSection - whether we are parsing a whole tradition or just a single section into
      *                        an existing tradition
-     * @return a Response object carrying a JSON dictionary {"parentId": <ID>}
+     * @return a Response object carrying a JSON dictionary {@code {"parentId": <ID>}}
      */
 
     public Response parseGraphMLZip(InputStream filestream, Node parentNode, boolean isSingleSection) {

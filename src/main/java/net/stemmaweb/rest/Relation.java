@@ -52,7 +52,7 @@ public class Relation {
     /**
      * Creates a new relation between the specified reading nodes.
      *
-     * @summary Create relation
+     * @title Create relation
      * @param relationModel - JSON structure of the relation to create
      * @return The relation(s) created, as well as any other readings in the graph that
      * had a relation set between them.
@@ -398,7 +398,7 @@ public class Relation {
     /**
      * Remove the relation specified. There should be only one.
      *
-     * @summary Delete a relation specifed by JSON data.
+     * @title Delete a relation specifed by JSON data.
      * @param relationModel - the JSON specification of the relationship(s) to delete
      * @return A list of all relationships that were removed.
      * @statuscode 200 - on success
@@ -465,7 +465,7 @@ public class Relation {
     /**
      * Removes a relation by internal ID.
      *
-     * @summary Delete relation by ID
+     * @title Delete relation by ID
      * @param relationId - the ID of the relation to delete
      * @return The deleted relation
      * @statuscode 200 - on success

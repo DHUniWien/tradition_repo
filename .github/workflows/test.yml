@@ -1,10 +1,10 @@
-# This workflow will build a Java project with Maven
+# This workflow will run the integration test suite on a pull request
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Java CI with Maven
+name: Java CI with Maven - test only
 
 on:
-  push:
+  pull_request:
     branches: [ master ]
 
 jobs:
@@ -23,4 +23,4 @@ jobs:
     - name: Add Miredot license
       run: sed -i "s/MIREDOT_LICENSE/${{ secrets.MIREDOT_LICENSE }}/" pom.xml
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B test --file pom.xml
