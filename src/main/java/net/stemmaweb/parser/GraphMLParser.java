@@ -77,7 +77,13 @@ public class GraphMLParser {
         try (Transaction tx = db.beginTx()) {
             // Get the XML files out of the zip stream
             LinkedHashMap<String, File> inputXML = Util.extractGraphMLZip(filestream);
+            // Make sure the tradition.xml file is first
+            boolean seenTrad = false;
             for (String filename : inputXML.keySet()) {
+                seenTrad = seenTrad || filename.equals("tradition.xml");
+                if (!seenTrad)
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(jsonerror("Bad zipfile input - is tradition.xml not first?")).build();
                 File infile = inputXML.get(filename);
                 FileInputStream fi = new FileInputStream(infile.getAbsolutePath());
                 Response result = parseGraphML(fi, filename, parentNode, idMap, isSingleSection);

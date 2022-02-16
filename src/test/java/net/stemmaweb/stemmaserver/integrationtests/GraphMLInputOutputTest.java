@@ -462,6 +462,30 @@ public class GraphMLInputOutputTest extends TestCase {
 
     }
 
+    public void testZipBadSectionInput() {
+        Response r = Util.createTraditionFromFileOrString(jerseyTest, "Matthew 401", "LR",
+                "me@example.org", "src/TestFiles/m401-annotated.zip", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String mattId = Util.getValueFromJson(r, "tradId");
+
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + mattId + "/sections/")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, sections.size());
+
+        // Try to add a file that has been unzipped and rezipped by the user. It should fail
+        r = Util.addSectionToTradition(jerseyTest, mattId, "src/TestFiles/milestone-591-BAD.zip",
+                "graphml", "591");
+        // This should really be BAD REQUEST, but let's see if we can reproduce the problem
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+
+        // Try to request the list of sections again. This should succeed
+        r = jerseyTest.target("/tradition/" + mattId + "/sections/")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        sections = r.readEntity(new GenericType<>() {});
+        assertEquals(1, sections.size());
+    }
+
 /*
     public void testZipArbitraryTradition() {
         // Import the given tradition file and check that it works
