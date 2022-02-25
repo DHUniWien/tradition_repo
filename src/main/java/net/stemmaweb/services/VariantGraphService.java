@@ -443,6 +443,33 @@ public class VariantGraphService {
         return Evaluation.EXCLUDE_AND_PRUNE;
     };
 
+    private static final Evaluator sequenceLinks = path -> {
+        final Set<String> sequenceTypes = new HashSet<>();
+        sequenceTypes.add("SEQUENCE");
+        sequenceTypes.add("LEMMA_TEXT");
+        sequenceTypes.add("NSEQUENCE"); // this really shouldn't be found though
+        sequenceTypes.add("MAJORITY");  // nor this
+        sequenceTypes.add("EMENDED");
+        // Don't include the start node
+        if (path.length() == 0)
+            return Evaluation.EXCLUDE_AND_CONTINUE;
+        Relationship lr = path.lastRelationship();
+        // If we are on a tradition node or a sequence node we need to traverse down to the sequence start nodes
+        if (lr.getStartNode().hasLabel(Label.label("TRADITION")))
+            return lr.getType().name().equals("PART")
+                    ? Evaluation.EXCLUDE_AND_CONTINUE : Evaluation.EXCLUDE_AND_PRUNE;
+        if (lr.getStartNode().hasLabel(Label.label("SECTION")))
+            return lr.getType().name().equals("HAS_COLLATION")
+                    ? Evaluation.EXCLUDE_AND_CONTINUE : Evaluation.EXCLUDE_AND_PRUNE;
+        // By this point we should have got to the section start. Follow all readings, knowing that emendations
+        // are also readings.
+        if (lr.getStartNode().hasLabel(Label.label("READING")))
+            return sequenceTypes.contains(lr.getType().name())
+                    ? Evaluation.INCLUDE_AND_CONTINUE : Evaluation.EXCLUDE_AND_PRUNE;
+        // If we are in any other situation, cut it off.
+        return Evaluation.EXCLUDE_AND_PRUNE;
+    };
+
     @SuppressWarnings("rawtypes")
     private static Traverser returnTraverser (Node startNode, Evaluator ev, PathExpander ex) {
         Traverser tv;
@@ -519,5 +546,16 @@ public class VariantGraphService {
      */
     public static Traverser returnTraditionRelations(Node traditionNode) {
         return returnTraverser(traditionNode, traditionRelations, PathExpanders.allTypesAndDirections());
+    }
+
+    /**
+     * Return a traverser that includes all sequence-like relations in a tradition or section.
+     * It can start from the tradition node, the section node, or the section start node.
+     *
+     * @param startNode the Node object of the tradition or section to crawl
+     * @return          an org.neo4j.graphdb.traversal.Traverser object containing the sequences
+     */
+    public static Traverser returnAllSequences(Node startNode) {
+        return returnTraverser(startNode, sequenceLinks, PathExpanders.forDirection(Direction.OUTGOING));
     }
 }

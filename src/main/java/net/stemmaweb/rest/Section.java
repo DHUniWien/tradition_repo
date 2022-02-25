@@ -718,7 +718,7 @@ public class Section {
             if (rank.equals(sectionEnd.getProperty("rank")))
                 return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("Cannot split section at its end rank")).build();
 
-            // Make a list of relationships that cross our requested rank
+            // Make a list of sequence / lemma / emendation relationships that cross our requested rank
             // Keep track of the witnesses that had lacunae at this point; they will need lacunae
             // at the start of the new section too.
             boolean lacunoseWitsPresent = false;
@@ -827,11 +827,8 @@ public class Section {
     @SuppressWarnings("SameParameterValue")
     private List<Relationship> sequencesCrossingRank(Long rank, Boolean leftfencepost) {
         Node startNode = VariantGraphService.getStartNode(sectId, db);
-        return db.traversalDescription().depthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .evaluator(Evaluators.all())
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
-                .relationships().stream().filter(x -> crossesRank(x, rank, leftfencepost))
+        return VariantGraphService.returnAllSequences(startNode).relationships().stream()
+                .filter(x -> crossesRank(x, rank, leftfencepost))
                 .collect(Collectors.toList());
     }
 

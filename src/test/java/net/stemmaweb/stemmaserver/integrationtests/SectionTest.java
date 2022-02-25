@@ -615,6 +615,48 @@ public class SectionTest extends TestCase {
         assertEquals(bText, Util.getValueFromJson(jerseyResponse, "text"));
     }
 
+    public void testSplitSectionWithLemma() {
+        // Use the Florilegium
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
+        String florId = florIds.remove(0);
+        String flor3 = florIds.get(2);
+
+        // Lemmatize section 3 based on majority reading
+        try (Transaction tx = db.beginTx()) {
+            Node sect3 = db.getNodeById(Long.parseLong(flor3));
+            for (Node r : VariantGraphService.calculateMajorityText(sect3)) {
+                if (r.hasProperty("is_start") || r.hasProperty("is_end"))
+                    continue;
+                r.setProperty("is_lemma", true);
+            }
+            tx.success();
+        }
+
+        Response r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/setlemma")
+                .request(MediaType.APPLICATION_JSON)
+                .post(null);
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+
+        // Now try splitting the section at the Θάλλει
+        r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/splitAtRank/54")
+                .request(MediaType.APPLICATION_JSON).post(null);
+        assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+        // Before the split there should be no readings with rank >= endRank
+        SectionModel sm = jerseyTest.target("/tradition/" + florId + "/section/" + flor3)
+                .request().get(SectionModel.class);
+        assertEquals(Long.valueOf(54), sm.getEndRank());
+        List<ReadingModel> rdgs = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/readings")
+                .request().get(new GenericType<>() {});
+        for (ReadingModel rm : rdgs)
+            if (!rm.getIs_end())
+                assertTrue(rm.getRank() < sm.getEndRank());
+        // Check the dot output too
+        String dotOutput = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/dot")
+                .request().get(String.class);
+        assertFalse(dotOutput.contains("βοτάνη"));
+    }
+
+
     public void testSplitSectionMatthew() {
         Response jerseyResponse = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR",
                 "user@example.com", "src/TestFiles/ChronicleOfMatthew.xml", "stemmaweb");
