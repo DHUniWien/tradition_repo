@@ -96,7 +96,6 @@ public class DotExporter
             // Set node and edge visual defaults
             write("\tnode [fillcolor=\"white\", fontsize=\"14\", shape=\"ellipse\", style=\"filled\"];\n");
             write("\tedge [arrowhead=\"open\", color=\"#000000\", fontcolor=\"#000000\"];\n");
-            long edgeId = 0;
             Long lastSectionEndId = null;
             boolean subgraphWritten = false;
 
@@ -134,15 +133,18 @@ public class DotExporter
                 HashMap<Node, Node> representatives = getRepresentatives(sectionNode, dm.getNormaliseOn());
                 RelationshipType seqLabel = dm.getNormaliseOn() == null ? ERelations.SEQUENCE : ERelations.NSEQUENCE;
 
-                // Collect any lemma edge pairs
-                HashMap<Node, Node> lemmaLinks = new HashMap<>();
+                // Collect any lemma edge pairs. We need to be able to search by start node, but want to note
+                // both the end node and the link ID.
+                HashMap<Node, LemmaLink> lemmaLinks = new HashMap<>();
                 db.traversalDescription().breadthFirst()
                         .relationships(ERelations.LEMMA_TEXT,Direction.OUTGOING)
                         .uniqueness(Uniqueness.NODE_GLOBAL)
                         .traverse(sectionStartNode).relationships()
                         .forEach(r -> {
-                            if (representatives.containsKey(r.getStartNode()) && representatives.containsKey(r.getEndNode()))
-                                lemmaLinks.put(representatives.get(r.getStartNode()), representatives.get(r.getEndNode()));
+                            if (representatives.containsKey(r.getStartNode()) && representatives.containsKey(r.getEndNode())) {
+                                LemmaLink ll = new LemmaLink(r, representatives);
+                                lemmaLinks.put(representatives.get(r.getStartNode()), ll);
+                            }
                         });
 
                 // Collect any emendation anchors
@@ -203,14 +205,14 @@ public class DotExporter
 
                         // Does this edge coincide with a lemma edge?
                         boolean edge_is_lemma = false;
-                        if (lemmaLinks.containsKey(relStartNode) && lemmaLinks.get(relStartNode).equals(node)) {
+                        if (lemmaLinks.containsKey(relStartNode) && lemmaLinks.get(relStartNode).end.equals(node)) {
                             edge_is_lemma = true;
                             lemmaLinks.remove(relStartNode);
                         }
                         // Get the label
                         String label = sequenceLabel(convertProps(rel), numWits, dm);
                         Long rankDiff = (Long) node.getProperty("rank") - (Long) relStartNode.getProperty("rank");
-                        seqSpecs.add(relshipText(relStartNodeId, node.getId(), label, edgeId++,
+                        seqSpecs.add(relshipText(relStartNodeId, node.getId(), label, rel.getId(),
                                 calcPenWidth(convertProps(rel)), rankDiff, edge_is_lemma));
 
                     }
@@ -249,14 +251,15 @@ public class DotExporter
                             write("\t" + relatedRel.getStartNode().getId() + "->" +
                                     relatedRel.getEndNode().getId() + " [style=dotted, constraint=false, arrowhead=none, " +
                                     "label=\"" + relatedRel.getProperty("type").toString() + "\", id=\"e" +
-                                    edgeId++ + "\"];\n");
+                                    relatedRel.getId() + "\"];\n");
                     }
 
                 // Write any remaining lemma links
-                for (Node n : lemmaLinks.keySet())
+                for (Node n : lemmaLinks.keySet()) {
+                    LemmaLink ll = lemmaLinks.get(n);
                     write(String.format("\t%d->%d [id=l%d];\n",
-                            n.getId(), lemmaLinks.get(n).getId(), edgeId++));
-
+                            n.getId(), ll.end.getId(), ll.id));
+                }
                 // Write any emendation links
                 for (Relationship r : emendationAnchors)
                     write(String.format("\t%d->%d [color=white,penwidth=0,arrowhead=none];\n", r.getStartNodeId(), r.getEndNodeId()));
@@ -291,6 +294,20 @@ public class DotExporter
         // writeFromDot(output, "svg");
 
         return Response.ok().entity(result).build();
+    }
+
+    // A private class to represent the information we need for lemma links
+    private static class LemmaLink {
+        public final Node start;
+        public final Node end;
+        public final Long id;
+        public LemmaLink(Relationship r, Map<Node,Node> representatives) {
+            this.start = representatives.containsKey(r.getStartNode())
+                    ? representatives.get(r.getStartNode()) : r.getStartNode();
+            this.end = representatives.containsKey(r.getEndNode())
+                    ? representatives.get(r.getEndNode()) : r.getEndNode();
+            this.id = r.getId();
+        }
     }
 
     /*
