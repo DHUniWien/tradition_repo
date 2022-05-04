@@ -20,8 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static net.stemmaweb.rest.Util.jsonerror;
-import static net.stemmaweb.rest.Util.jsonresp;
+import static net.stemmaweb.Util.*;
 import static net.stemmaweb.services.ReadingService.*;
 
 /**

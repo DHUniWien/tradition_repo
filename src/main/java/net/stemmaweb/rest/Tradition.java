@@ -25,8 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.time.LocalDateTime.now;
-import static net.stemmaweb.rest.Util.jsonerror;
-import static net.stemmaweb.rest.Util.jsonresp;
+import static net.stemmaweb.Util.*;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
 

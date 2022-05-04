@@ -29,8 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static net.stemmaweb.rest.Util.jsonerror;
-import static net.stemmaweb.rest.Util.jsonresp;
+import static net.stemmaweb.Util.*;
 
 /**
  * The root of the REST hierarchy. Deals with system-wide collections of

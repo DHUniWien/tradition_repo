@@ -21,6 +21,9 @@ import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
 /**
  * This class provides a method for importing GraphMl (XML) File into Neo4J
  * 
@@ -54,7 +57,7 @@ public class StemmawebParser {
         } catch (XMLStreamException e) {
             e.printStackTrace();
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(Util.jsonerror("Error: Parsing of tradition file failed!"))
+                    .entity(jsonerror("Parsing of tradition file failed!"))
                     .build();
         }
         // The information on the relevant tradition
@@ -110,7 +113,7 @@ public class StemmawebParser {
                                             // If a RELATED link already exists, we have a problem.
                                             if (relKind.equals(ERelations.RELATED))
                                                 return Response.status(Response.Status.BAD_REQUEST)
-                                                        .entity(Util.jsonerror("Error: Tradition specifies the reading relation " +
+                                                        .entity(jsonerror("Tradition specifies the reading relation " +
                                                                 currentRelModel.getScope() + " -- " + currentRelModel.getTarget() +
                                                                 "twice"))
                                                         .build();
@@ -325,12 +328,12 @@ public class StemmawebParser {
             Util.setColocationFlags(traditionNode);
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch(Exception e) {
             e.printStackTrace();
 
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Util.jsonerror("Error: Tradition could not be imported!"))
+                    .entity(jsonerror("Tradition could not be imported!"))
                     .build();
         }
 
@@ -346,7 +349,7 @@ public class StemmawebParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(Util.jsonresp("parentId", parentNode.getId()))
+                .entity(jsonresp("parentId", parentNode.getId()))
                 .build();
     }
 

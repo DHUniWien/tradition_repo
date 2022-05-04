@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises the API calls having to do with specifying the annotation types that are allowed on

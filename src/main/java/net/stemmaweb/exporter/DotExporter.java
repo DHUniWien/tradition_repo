@@ -20,6 +20,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
 
+import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.parser.Util.getExpander;
 import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
 
@@ -74,7 +75,7 @@ public class DotExporter
             if (requestedSection != null) {
                 if (!sections.contains(requestedSection))
                     return Response.status(Status.BAD_REQUEST)
-                            .entity(String.format("Section %s not found in tradition %s", sectionId, tradId))
+                            .entity(jsonerror(String.format("Section %s not found in tradition %s", sectionId, tradId)))
                             .build();
                 sections.clear();
                 sections.add(requestedSection);
@@ -284,10 +285,10 @@ public class DotExporter
             tx.success();
         } catch (IOException e) {
             e.printStackTrace();
-            return Response.serverError().entity("Could not write file for export").build();
+            return Response.serverError().entity(jsonerror("Could not write file for export")).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         // Here is where to generate pictures from the file for debugging.

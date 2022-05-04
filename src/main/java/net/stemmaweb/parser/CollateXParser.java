@@ -21,6 +21,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
 /**
  * Parser for CollateX-collated traditions.
  *
@@ -95,7 +98,7 @@ public class CollateXParser {
                     .filter(x -> x.getProperty("rank").equals(hr))
                     .findFirst();
             if (endNodeOpt.isEmpty())
-                return Response.serverError().entity(Util.jsonerror("No end node found")).build();
+                return Response.serverError().entity(jsonerror("No end node found")).build();
             Node endNode = endNodeOpt.get();
             endNode.setProperty("is_end", true);
             parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
@@ -164,7 +167,7 @@ public class CollateXParser {
             return Response.serverError().build();
         }
 
-        return Response.status(Response.Status.CREATED).entity(Util.jsonresp("parentId", parentNode.getId())).build();
+        return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getId())).build();
     }
 
 }

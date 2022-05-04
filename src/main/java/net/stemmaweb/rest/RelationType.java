@@ -13,7 +13,7 @@ import javax.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.Map;
 
-import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Module to handle the specification and definition of relation types that may exist on

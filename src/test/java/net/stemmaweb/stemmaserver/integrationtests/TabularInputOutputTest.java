@@ -296,7 +296,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("Section 123456 not found in tradition", response.readEntity(String.class));
+        assertEquals("Section 123456 not found in tradition", Util.getValueFromJson(response, "error"));
 
         // Request sections on nonexistent tradition
         response = jerseyTest

@@ -21,7 +21,7 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via

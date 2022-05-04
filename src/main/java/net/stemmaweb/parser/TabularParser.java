@@ -20,6 +20,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
 /**
  * Reads a variety of tabular formats (TSV, CSV, XLS, XLSX) and parses the data
  * into a tradition.
@@ -49,7 +52,7 @@ public class TabularParser {
                 csvRows.add(nextLine);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity(Util.jsonerror(e.getMessage())).build();
+                .entity(jsonerror(e.getMessage())).build();
         }
         return parseTableToCollation(csvRows, sectionNode);
     }
@@ -75,7 +78,7 @@ public class TabularParser {
             excelRows = getTableFromWorkbook(workbook);
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(Util.jsonerror(e.getMessage())).build();
+                    .entity(jsonerror(e.getMessage())).build();
         }
         return parseTableToCollation(excelRows, sectionNode);
     }
@@ -128,7 +131,7 @@ public class TabularParser {
                     layerWitnesses.put(sigil, sigilParts);
                 else   // what is this i don't even
                     return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Util.jsonerror("Malformed sigil " + sigil)).build();
+                        .entity(jsonerror("Malformed sigil " + sigil)).build();
 
                 lastReading.put(sigil, startNode);
             }
@@ -226,15 +229,15 @@ public class TabularParser {
 
             // We are done!
             result = Response.Status.CREATED;
-            response = Util.jsonresp("parentId", parentNode.getId());
+            response = jsonresp("parentId", parentNode.getId());
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
             if (result.equals(Response.Status.OK))
                 result = Response.Status.INTERNAL_SERVER_ERROR;
-            response = Util.jsonerror(e.getMessage());
+            response = jsonerror(e.getMessage());
         }
 
         return Response.status(result).entity(response).build();

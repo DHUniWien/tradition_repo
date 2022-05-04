@@ -19,6 +19,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
 public class CollateXJsonParser {
 
     private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
@@ -47,7 +50,7 @@ public class CollateXJsonParser {
             Object firstWit = jWit.get(0);
             if (firstWit instanceof JSONObject)
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(Util.jsonerror("Bad format: is this CollateX JSON input instead of output?")).build();
+                        .entity(jsonerror("Bad format: is this CollateX JSON input instead of output?")).build();
             for (int i = 0; i < jWit.length(); i++) collationWitnesses.add(jWit.getString(i));
 
             // get the table data from the clunky JSON interface
@@ -114,7 +117,7 @@ public class CollateXJsonParser {
             }
         } catch (JSONException|IOException e) {
             e.printStackTrace();
-            return Response.serverError().entity(Util.jsonerror(e.getMessage())).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         // Now we have the data in our own model classes; proceed.
@@ -195,12 +198,12 @@ public class CollateXJsonParser {
                 ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
             tx.success();
-            return Response.status(Response.Status.CREATED).entity(Util.jsonresp("parentId", parentNode.getId())).build();
+            return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getId())).build();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(Util.jsonerror(e.getMessage())).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.serverError().entity(Util.jsonerror(e.getMessage())).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
     }
