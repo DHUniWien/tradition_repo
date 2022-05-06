@@ -89,7 +89,7 @@ public class TabularExporter {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
+        return Response.ok(sw.toString()).build();
     }
 
 
