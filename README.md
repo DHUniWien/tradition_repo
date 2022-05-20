@@ -10,7 +10,7 @@ Development of Stemmarest was begun by a team of software engineering students a
 You can get a version of Stemmarest via Docker Hub:
 
     docker pull dhuniwien/stemmarest:latest
-	docker run -d --rm --name stemmarest dhuniwien/stemmarest:latest
+	docker run -d --rm --name stemmarest -p 127.0.0.1:8080:80800 dhuniwien/stemmarest:latest
 
 Alternatively, if you wish to build from source, you can clone this repository and build a Stemmarest WAR file yourself (see below).
 
@@ -19,27 +19,14 @@ Alternatively, if you wish to build from source, you can clone this repository a
 Stemmarest needs to be built using [Maven](http://maven.apache.org/run-maven/index.html#Quick_Start). This can be done either in a suitable Java IDE, or at the command line after the Maven tools have been installed:
 
     mvn package  # note that this will also run the tests
-    
+
 Make sure, that the package graphviz is installed on your computer. If not, some tests will fail.     
 
 A WAR file will be produced, in `target/stemmarest.war`, that can then be deployed to the Tomcat server of your choice.
 
-#### NoClassDefFoundError?
-
-At present, building Stemmarest on some platforms can lead to a runtime error like the following:
-
-    java.lang.NoClassDefFoundError: javax/ws/rs/core/Link
-   	  at org.apache.cxf.jaxrs.impl.RuntimeDelegateImpl.<init>(RuntimeDelegateImpl.java:53)
-   	  at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
-   	  at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:62)
-   	  at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
-   	  at java.lang.reflect.Constructor.newInstance(Constructor.java:423)
-
-If you are having this problem, copy the provided `pom.xml.macosx` to `pom.xml` and try the build again.
-
 ## Running
 
-The application has been tested on Tomcat version 9 with JDK 8; to deploy it, copy the WAR file into the `webapps` directory of your Tomcat server.
+The application has been tested on Tomcat version 9 with JDK 11; to deploy it, copy the WAR file into the `webapps` directory of your Tomcat server.
 
 Stemmarest requires a location for its data storage; by default this is `/var/lib/stemmarest`, but can be changed by setting the environment variable `STEMMAREST_HOME`. The directory specified must have its permissions set so that the Tomcat user can write to it.
 
