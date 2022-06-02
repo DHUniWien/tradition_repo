@@ -443,8 +443,11 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        String tsvText = result.readEntity(String.class);
+        // Make sure we are not quoting the TSV values
+        assertFalse(tsvText.contains("\""));
         final CSVParser parser = new CSVParserBuilder().withSeparator('\t').build();
-        rdr = new CSVReaderBuilder(new StringReader(result.readEntity(String.class)))
+        rdr = new CSVReaderBuilder(new StringReader(tsvText))
                 .withCSVParser(parser)
                 .build();
         // See that we have our witnesses

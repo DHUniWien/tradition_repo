@@ -64,6 +64,7 @@ public class TabularExporter {
         StringWriter sw = new StringWriter();
         ICSVWriter writer = new CSVWriterBuilder(sw)
                 .withSeparator(separator)
+                .withQuoteChar(separator == ',' ? ICSVWriter.DEFAULT_QUOTE_CHARACTER : ICSVWriter.NO_QUOTE_CHARACTER)
                 .build();
 
         // First write out the witness list
