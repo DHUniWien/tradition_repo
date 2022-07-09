@@ -222,6 +222,7 @@ public class GraphViz
       } catch (java.io.IOException ioe) {
          System.err.println("Error:    in I/O processing of tempfile\n");
          System.err.println("       or in calling external command: " + ioe.getMessage());
+         System.err.println("Is Graphviz installed and in your PATH?");
          ioe.printStackTrace();
       } catch (java.lang.InterruptedException ie) {
          System.err.println("Error: the execution of the external program was interrupted");

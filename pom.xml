@@ -19,6 +19,15 @@
 					<release>11</release>
 				</configuration>
 			</plugin>
+			<!-- 
+				update maven-war-plugin to resolve error: 
+				Could not initialize class org.apache.maven.plugin.war.util.WebappStructureSerializer
+			-->
+			<plugin>
+		    	<groupId>org.apache.maven.plugins</groupId>
+		    	<artifactId>maven-war-plugin</artifactId>
+		    	<version>3.3.1</version>
+			</plugin>
 			<plugin>
                 <groupId>com.qmino</groupId>
                 <artifactId>miredot-plugin</artifactId>
@@ -169,6 +178,13 @@
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
 			<version>5.0.0</version>
+			<!-- exclude dependency to resolve duplicate module error -->
+			<exclusions>
+				<exclusion>
+					<groupId>xml-apis</groupId>
+					<artifactId>xml-apis</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<!-- Graphviz Dot parsing -->
 		<dependency>
