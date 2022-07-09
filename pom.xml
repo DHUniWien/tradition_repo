@@ -24,9 +24,9 @@
 				Could not initialize class org.apache.maven.plugin.war.util.WebappStructureSerializer
 			-->
 			<plugin>
-		        <groupId>org.apache.maven.plugins</groupId>
-		        <artifactId>maven-war-plugin</artifactId>
-		        <version>3.3.1</version>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>3.3.1</version>
 			</plugin>
 			<plugin>
                 <groupId>com.qmino</groupId>
