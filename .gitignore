@@ -9,3 +9,4 @@ stemmarest.iml
 !upload/notempty
 **/.DS_Store
 *swp
+/target/
