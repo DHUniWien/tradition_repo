@@ -12,6 +12,7 @@ import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -118,7 +119,6 @@ public class Util {
             // SOMEDAY can we do this without writing out to a file?
             String zfName = ze.getName();
             File someTmp = File.createTempFile(zfName, "");
-            someTmp.deleteOnExit();
             FileOutputStream fo = new FileOutputStream(someTmp);
             IOUtils.copy(zipIn, fo);
             fo.close();
@@ -127,6 +127,11 @@ public class Util {
         }
         zipIn.close();
         return result;
+    }
+
+    public static void cleanupExtractedZip(LinkedHashMap<String,File> result) throws IOException {
+        for (File f : result.values())
+            Files.deleteIfExists(f.toPath());
     }
 
     // Helper to get any existing SEQUENCE link between two readings.

@@ -244,6 +244,7 @@ public class GraphMLExporter {
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
+            cleanup(tmpdirfh);
             return Response.serverError().build();
         }
 
@@ -257,6 +258,7 @@ public class GraphMLExporter {
             outputFiles.add(fileName);
         } catch (Exception e) {
             e.printStackTrace();
+            cleanup(tmpdirfh);
             return Response.serverError().build();
         }
 
@@ -268,6 +270,7 @@ public class GraphMLExporter {
                 tx.success();
             } catch (Exception e) {
                 e.printStackTrace();
+                cleanup(tmpdirfh);
                 return Response.serverError().build();
             }
         } else {
@@ -289,6 +292,7 @@ public class GraphMLExporter {
                 tx.success();
             } catch (Exception e) {
                 e.printStackTrace();
+                cleanup(tmpdirfh);
                 return Response.serverError().build();
             }
 
@@ -302,6 +306,7 @@ public class GraphMLExporter {
                 outputFiles.add(fileName);
             } catch (Exception e) {
                 e.printStackTrace();
+                cleanup(tmpdirfh);
                 return Response.serverError().build();
             }
 
@@ -328,15 +333,11 @@ public class GraphMLExporter {
             IOUtils.closeQuietly(result);
         } catch (Exception e) {
             e.printStackTrace();
+            cleanup(tmpdirfh);
             return Response.serverError().build();
         }
 
-        // Cleanup. These will get deleted in reverse order of registration.
-        tmpdirfh.deleteOnExit();
-        for (String fn : outputFiles) {
-            File fh = new File(tmpdir + "/" + fn);
-            fh.deleteOnExit();
-        }
+        cleanup(tmpdirfh);
 
         String sectionAppend = sectionId != null ? "-section-" + sectionId : "";
         String cdisp = String.format("attachment; filename=\"%s%s.zip\"", tradId, sectionAppend);
@@ -354,5 +355,16 @@ public class GraphMLExporter {
                 if (startingNodes.contains(r.getEndNode()))
                     extraSectRels.add(r);
         startingEdges.addAll(extraSectRels);
+    }
+
+    private static void cleanup(File tmpdirfh) {
+        try {
+            for (File f : Objects.requireNonNull(tmpdirfh.listFiles()))
+                Files.delete(f.toPath());
+            Files.delete(tmpdirfh.toPath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 }

@@ -349,7 +349,7 @@ public class StemmawebExporter {
             nodesCount = attr.getNamedItem("parse.nodes");
             nodesCount.setTextContent(nodeCountGraph2 + "");
 
-            // TODO What is the point of this transformer call?
+            // TODO What is the point of this transformer call? Trying to cleanup `file` after this breaks.
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             DOMSource source = new DOMSource(doc);

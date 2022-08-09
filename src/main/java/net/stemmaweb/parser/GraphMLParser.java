@@ -95,6 +95,7 @@ public class GraphMLParser {
                 if (ret == null || isSingleSection)
                     ret = (String) result.getEntity();
             }
+            Util.cleanupExtractedZip(inputXML);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
