@@ -46,7 +46,7 @@ public class TabularInputOutputTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        Util.setupTestDB(db, "1");
+        Util.setupTestDB(db, "user@example.com");
 
         // Create a JerseyTestServer for the necessary REST API calls
 
@@ -57,7 +57,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testParseCSV() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium_simple.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -79,7 +79,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testParseCsvLayers() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -107,7 +107,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testSetRelationship() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium.csv", "csv");
         String tradId = Util.getValueFromJson(response, "tradId");
         Tradition tradition = new Tradition(tradId);
@@ -145,14 +145,14 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testParseExcel() {
         // Test a bad file
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "user@example.com",
                 "src/TestFiles/armexample_bad.xlsx", "xlsx");
         assertEquals(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
         assertTrue(response.readEntity(String.class).contains("has too many columns!"));
 
 
         // Test a good XLS file
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "user@example.com",
                 "src/TestFiles/armexample.xls", "xls");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -170,7 +170,7 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("այնոսիկ")));
 
         // Test a good XLSX file
-        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "1",
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Armenian XLS", "LR", "user@example.com",
                 "src/TestFiles/armexample.xlsx", "xlsx");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
 
@@ -192,7 +192,7 @@ public class TabularInputOutputTest extends TestCase {
     // testOutputJSON
     public void testJSONExport() {
         // Set up some data
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -221,7 +221,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testExportSelectedSections() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR",
-                "1", "src/TestFiles/florilegium_w.csv", "csv");
+                "user@example.com", "src/TestFiles/florilegium_w.csv", "csv");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
 
@@ -309,7 +309,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testConflatedJSONExport() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
                 "src/TestFiles/globalrel_test.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -385,7 +385,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testCSVExport() throws Exception {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Plaetzchen", "LR", "user@example.com",
                 "src/TestFiles/plaetzchen_cx.xml", "collatex");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -466,7 +466,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testExportMultiSection() throws Exception {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR", "user@example.com",
                 "src/TestFiles/lf2.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -516,7 +516,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testExportWithLayers() {
         // Take the uncorrected MoE section
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Chronicle", "LR", "user@example.com",
                 "src/TestFiles/Matthew-401.json", "cxjson");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -580,7 +580,7 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void testComplexLayerExport() {
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "user@example.com",
                 "src/TestFiles/florilegium_tei_ps.xml", "teips");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String tradId = Util.getValueFromJson(response, "tradId");
@@ -858,7 +858,7 @@ public class TabularInputOutputTest extends TestCase {
 
     public void testCharMatrixOutput () {
         // Set up some data
-        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "1",
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
                 "src/TestFiles/testTradition.xml", "stemmaweb");
         assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
         String traditionId = Util.getValueFromJson(response, "tradId");
@@ -890,6 +890,23 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals("A         AAAXAAAAA", matrixLines[1]);
         assertEquals("B         XXXAABBAA", matrixLines[2]);
         assertEquals("C         XXXABAABX", matrixLines[3]);
+    }
+
+    public void testCharMatrixMultiSection () {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Tradition", "LR", "user@example.com",
+                "src/TestFiles/florilegium-graphml.zip", "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+
+        // Get the matrix for both sections
+        response = jerseyTest
+                .target("/tradition/" + traditionId + "/matrix")
+                .request()
+                .get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String matrix = response.readEntity(String.class);
+        String[] matrixLines = matrix.split("\\n");
+        assertEquals(15, matrixLines.length);
     }
 
     public void tearDown() throws Exception {
