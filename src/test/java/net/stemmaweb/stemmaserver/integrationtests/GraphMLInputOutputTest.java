@@ -72,6 +72,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 assertTrue(new String(Files.readAllBytes(f.toPath()))
                         .contains("<key attr.name=\"neolabel\" attr.type=\"string\" for=\"node\" id=\"dn0\"/>"));
             }
+            net.stemmaweb.parser.Util.cleanupExtractedZip(lm);
         } catch (Exception e) {
             fail();
         }
@@ -195,7 +196,7 @@ public class GraphMLInputOutputTest extends TestCase {
             assertEquals(42, getXMLNodeList(xmlFiles.get("tradition.xml")).getLength());
             // The section file should contain a section and 30 readings
             assertEquals(31, getXMLNodeList(xmlFiles.get(sectFileName)).getLength());
-
+            net.stemmaweb.parser.Util.cleanupExtractedZip(xmlFiles);
         } catch (Exception e) {
             fail();
         }

@@ -15,8 +15,8 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static net.stemmaweb.parser.Util.jsonerror;
-import static net.stemmaweb.parser.Util.jsonresp;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 
 /**
  * Parser for the GraphML that Stemmarest itself produces.
@@ -95,6 +95,7 @@ public class GraphMLParser {
                 if (ret == null || isSingleSection)
                     ret = (String) result.getEntity();
             }
+            Util.cleanupExtractedZip(inputXML);
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();

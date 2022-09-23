@@ -15,6 +15,8 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 import static net.stemmaweb.services.ReadingService.addWitnessLink;
 import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
@@ -51,7 +53,7 @@ public class TEIParallelSegParser {
         } catch (XMLStreamException e) {
             e.printStackTrace();
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Error: Parsing of tradition file failed!")
+                    .entity(jsonerror("Parsing of tradition file failed!"))
                     .build();
         }
 
@@ -189,7 +191,7 @@ public class TEIParallelSegParser {
             VariantGraphService.calculateCommon(parentNode);
             tx.success();
         } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
             System.out.printf("Error encountered in XML line %d column %d: %n",
                     reader.getLocation().getLineNumber(),
@@ -220,7 +222,7 @@ public class TEIParallelSegParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(String.format("{\"parentId\":\"%s\"}", parentId)).build();
+                .entity(jsonresp("parentId", parentId)).build();
     }
 
     // Parse an app, its readings, and its sub-apps if necessary. Return the node that

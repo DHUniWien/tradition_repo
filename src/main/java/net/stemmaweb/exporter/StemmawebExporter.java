@@ -32,6 +32,8 @@ import org.w3c.dom.Document;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
+import static net.stemmaweb.Util.jsonerror;
+
 /**
  * This class provides methods for exporting GraphMl (XML) File from Neo4J in the old Stemmaweb format
  *
@@ -39,10 +41,10 @@ import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
  */
 
 public class StemmawebExporter {
-    private GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
 
-    private HashMap<String,String[]> nodeMap = new HashMap<String, String[]>() {
+    private final HashMap<String,String[]> nodeMap = new HashMap<>() {
         {
             put("grammar_invalid", new String[]{"dn0", "boolean"});
             put("id", new String[]{"dn1", "string"});
@@ -66,7 +68,7 @@ public class StemmawebExporter {
             put("sep_char", new String[]{"dn19", "string"});     // Sequence
         }
     };
-    private HashMap<String,String[]> relationMap = new HashMap<String, String[]>() {
+    private final HashMap<String,String[]> relationMap = new HashMap<>() {
         {
             put("a_derivable_from_b", new String[]{"de0", "boolean"});
             put("alters_meaning", new String[]{"de1", "int"});
@@ -84,7 +86,7 @@ public class StemmawebExporter {
             put("type_related", new String[]{"de13", "string"});
         }
     };
-    private HashMap<String,String[]> graphMap = new HashMap<String, String[]>() {
+    private final HashMap<String,String[]> graphMap = new HashMap<>() {
         {
             put("language", new String[]{"dg0", "string"});
             put("name", new String[]{"dg1", "string"});
@@ -122,10 +124,10 @@ public class StemmawebExporter {
 
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if(traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity("No tradition found for this ID").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No tradition found for this ID")).build();
         Node traditionStartNode = VariantGraphService.getStartNode(tradId, db);
         if(traditionStartNode == null)
-            return Response.status(Status.NOT_FOUND).entity("No graph found for this tradition.").build();
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No graph found for this tradition.")).build();
 
         File file;
         try (Transaction tx = db.beginTx()) {
@@ -347,7 +349,7 @@ public class StemmawebExporter {
             nodesCount = attr.getNamedItem("parse.nodes");
             nodesCount.setTextContent(nodeCountGraph2 + "");
 
-            // TODO What is the point of this transformer call?
+            // TODO What is the point of this transformer call? Trying to cleanup `file` after this breaks.
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             DOMSource source = new DOMSource(doc);
@@ -359,7 +361,7 @@ public class StemmawebExporter {
 
             return Response
                     .status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity("Error: Tradition could not be exported!")
+                    .entity(jsonerror("Error: Tradition could not be exported!"))
                     .build();
         }
 

@@ -25,8 +25,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.time.LocalDateTime.now;
-import static net.stemmaweb.rest.Util.jsonerror;
-import static net.stemmaweb.rest.Util.jsonresp;
+import static net.stemmaweb.Util.*;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
 
@@ -663,10 +662,44 @@ public class Tradition {
         return Response.ok(result).build();
     }
 
+    /**
+     * Deletes any annotations on this tradition that lack referents, unless the annotation is marked as "primary".
+     * Returns a list of the deleted annotations.
+     *
+     * @title Clean up dangling annotations
+     * @return a list of AnnotationModels representing deleted annotations
+     */
+    @POST
+    @Path("/pruneAnnotations")
+    @Produces("application/json; charset=utf-8")
+    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    public Response pruneAnnotations() {
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
+        List<AnnotationModel> deleted = new ArrayList<>();
+        try (Transaction tx = db.beginTx()) {
+            for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION)) {
+                boolean isPrimary = a.getProperty("primary", false).equals(true);
+                if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
+                    deleted.add(new AnnotationModel(a));
+                    a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
+                    a.delete();
+                }
+            }
+            tx.success();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return Response.ok(deleted).build();
+    }
+
+
 
     // TODO add method to find identical and mergeable readings across the whole tradition
     /*
-     * Tradition-specific calls
+     * Base tradition URL calls
      */
 
     /**
@@ -783,38 +816,6 @@ public class Tradition {
         }
 
         return Response.ok().build();
-    }
-
-    /**
-     * Deletes any annotations on this tradition that lack referents, unless the annotation is marked as "primary".
-     * Returns a list of the deleted annotations.
-     *
-     * @title Clean up dangling annotations
-     * @return a list of AnnotationModels representing deleted annotations
-     */
-    @POST
-    @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
-    public Response pruneAnnotations() {
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
-        List<AnnotationModel> deleted = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION)) {
-                boolean isPrimary = a.getProperty("primary", false).equals(true);
-                if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
-                    deleted.add(new AnnotationModel(a));
-                    a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
-                    a.delete();
-                }
-            }
-            tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
-        return Response.ok(deleted).build();
     }
 
     /*

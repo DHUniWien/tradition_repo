@@ -18,7 +18,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import org.neo4j.graphdb.*;
 
-import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises all the api calls related to a stemma.

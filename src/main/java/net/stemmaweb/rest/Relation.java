@@ -24,7 +24,7 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import static net.stemmaweb.rest.Util.jsonerror;
+import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.services.RelationService.returnRelationType;
 import static net.stemmaweb.services.RelationService.TransitiveRelationTraverser;
 

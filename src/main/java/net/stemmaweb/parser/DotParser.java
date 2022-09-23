@@ -20,6 +20,8 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.traversal.Evaluators;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+import static net.stemmaweb.Util.jsonresp;
+
 /**
  * This class provides methods for exporting Dot File from Neo4J
  * @author PSE FS 2015 Team2
@@ -67,7 +69,7 @@ public class DotParser {
         // Return our answer.
         String returnKey = result == Status.CREATED ? "name" : "error";
         return Response.status(result)
-                .entity(Util.jsonresp(returnKey, messageValue))
+                .entity(jsonresp(returnKey, messageValue))
                 .build();
     }
 

@@ -19,6 +19,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static net.stemmaweb.Util.jsonerror;
+
 /**
  * A class for writing a graph out to various forms of table: JSON, CSV, Excel, etc.
  */
@@ -40,9 +42,9 @@ public class TabularExporter {
             return Response.ok(getTraditionAlignment(traditionSections, conflate, excludeLayers),
                     MediaType.APPLICATION_JSON_TYPE).build();
         } catch (TabularExporterException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }
 
@@ -53,9 +55,9 @@ public class TabularExporter {
         try {
             wholeTradition = returnFullAlignment(tradId, conflate, sectionList, excludeLayers);
         } catch (TabularExporterException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         if (wholeTradition == null) return Response.status(Response.Status.NOT_FOUND).build();
 
@@ -86,9 +88,9 @@ public class TabularExporter {
             writer.close();
         } catch (IOException e) {
             e.printStackTrace();
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(sw.toString(), MediaType.TEXT_PLAIN_TYPE).build();
+        return Response.ok(sw.toString()).build();
     }
 
 
@@ -99,9 +101,9 @@ public class TabularExporter {
             wholeTradition = returnFullAlignment(tradId, conflate, sectionList, excludeLayers);
             if (wholeTradition==null) return Response.status(Response.Status.NOT_FOUND).build();
         } catch (TabularExporterException e) {
-            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
-            return Response.serverError().entity(e.getMessage()).build();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         // We will count on the order of the witness columns remaining constant.

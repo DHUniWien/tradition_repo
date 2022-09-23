@@ -138,7 +138,7 @@ public class TabularInputOutputTest extends TestCase {
                 .post(Entity.json(relationship));
         assertEquals(Response.Status.CREATED.getStatusCode(), actualResponse.getStatus());
 
-        GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
+        GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<>(){});
         assertEquals(0, readingsAndRelationships.getReadings().size());
         assertEquals(1, readingsAndRelationships.getRelations().size());
     }
@@ -296,7 +296,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-        assertEquals("Section 123456 not found in tradition", response.readEntity(String.class));
+        assertEquals("Section 123456 not found in tradition", Util.getValueFromJson(response, "error"));
 
         // Request sections on nonexistent tradition
         response = jerseyTest
@@ -421,6 +421,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        assertEquals("text/plain;charset=utf-8", result.getMediaType().toString());
         CSVReader rdr = new CSVReader(new StringReader(result.readEntity(String.class)));
         // See that we have our witnesses
         String[] wits = rdr.readNext();
@@ -443,6 +444,7 @@ public class TabularInputOutputTest extends TestCase {
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), result.getStatus());
+        assertEquals("text/plain;charset=utf-8", result.getMediaType().toString());
         String tsvText = result.readEntity(String.class);
         // Make sure we are not quoting the TSV values
         assertFalse(tsvText.contains("\""));
@@ -586,7 +588,7 @@ public class TabularInputOutputTest extends TestCase {
         // Split this into multiple sections - ranks 38, 156, 228
         List<SectionModel> allSections = jerseyTest.target("/tradition/" + tradId + "/sections/")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {});
+                .get(new GenericType<>() {});
         String section1 = allSections.get(0).getId();
         Response jerseyResponse = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/splitAtRank/228")
                 .request()
@@ -608,7 +610,7 @@ public class TabularInputOutputTest extends TestCase {
         // Section 4 should be missing all witnesses except A/B/C/P/S
         List<WitnessModel> section1Wits = jerseyTest.target("/tradition/" + tradId + "/section/" + section1 + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(11, section1Wits.size());
         for (WitnessModel wm : section1Wits) {
             assertNotEquals("G", wm.getSigil());
@@ -616,7 +618,7 @@ public class TabularInputOutputTest extends TestCase {
         }
         List<WitnessModel> section4Wits = jerseyTest.target("/tradition/" + tradId + "/section/" + section4 + "/witnesses")
                 .request()
-                .get(new GenericType<List<WitnessModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(5, section4Wits.size());
         List<String> expectedWits = Arrays.asList("A", "B", "C", "P", "S");
         for (WitnessModel wm : section4Wits)
@@ -656,7 +658,7 @@ public class TabularInputOutputTest extends TestCase {
             if (wtm.hasLayer()) {
                 req = req.queryParam("layer", wtm.getLayer());
             }
-            List<ReadingModel> witReadings = req.request().get(new GenericType<List<ReadingModel>>() {});
+            List<ReadingModel> witReadings = req.request().get(new GenericType<>() {});
             // Save the specific columns we will need later
             switch (wtm.constructSigil()) {
                 case "Q (a.c.)":

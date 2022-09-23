@@ -19,7 +19,8 @@ import java.io.StringReader;
 import java.util.HashMap;
 
 import static net.stemmaweb.parser.Util.findOrCreateExtant;
-import static net.stemmaweb.parser.Util.jsonerror;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 
 public class NewickParser {
     private final GraphDatabaseService db;
@@ -107,7 +108,7 @@ public class NewickParser {
         }
 
         return Response.status(Response.Status.CREATED)
-                .entity(Util.jsonresp("name", stemmaSpec.getIdentifier()))
+                .entity(jsonresp("name", stemmaSpec.getIdentifier()))
                 .build();
     }
 }
