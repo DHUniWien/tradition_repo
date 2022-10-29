@@ -190,7 +190,7 @@ public class VariantListModel {
                     // if (!baseChain.contains(v.startNode()) || !baseChain.contains(v.endNode()))
                     //     throw new Exception("Variant chain disconnected from base chain");
                     if (!vm.isEmpty()) {
-                        VariantLocationModel vloc = this.getVLM(baseChain, v.startNode(), v.endNode());
+                    	VariantLocationModel vloc = this.getVLM(baseChain, v.startNode(), v.endNode());
                         vloc.addVariant(vm);
                     }
                 }

@@ -6,6 +6,7 @@ import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
+import net.stemmaweb.exporter.TEIExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
@@ -20,6 +21,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.stream.XMLStreamException;
+
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -842,6 +846,7 @@ public class Tradition {
         TraditionModel metadata = new TraditionModel(traditionNode);
         return Response.ok(metadata).build();
     }
+    
 
     /**
      * Returns a GraphML file that describes the specified tradition and its data.

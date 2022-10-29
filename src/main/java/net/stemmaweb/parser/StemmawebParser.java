@@ -1,7 +1,14 @@
 package net.stemmaweb.parser;
 
+import java.io.BufferedReader;
 import java.io.InputStream;
-import java.util.*;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLInputFactory;
@@ -9,17 +16,22 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.PropertyContainer;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-
 import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
 
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;

@@ -4,6 +4,7 @@ import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.TEIExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
@@ -14,6 +15,10 @@ import javax.ws.rs.*;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import javax.xml.stream.XMLStreamException;
+
+import java.io.IOException;
 import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -1548,6 +1553,32 @@ public class Section {
         return new TabularExporter(db).exportAsCharMatrix(tradId, maxVars, toConflate,
                 thisSection, "true".equals(excludeLayers));
     }
+    
+    @GET
+    @Produces("application/xml; charset=utf-8")
+    @Path("/tei")
+    public Response getTei(@DefaultValue("no") @QueryParam("significant") String significant,
+            @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
+            @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
+            @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
+            @DefaultValue("punct") @QueryParam("suppress_matching") String suppressMatching,
+                                @QueryParam("base_witness") String baseWitness,
+                                @QueryParam("normalize") String conflate,
+                                @QueryParam("exclude_witness") List<String> excWitnesses) {
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
+
+        TEIExporter exp = new TEIExporter();
+        try {
+			return exp.writeTEI(tradId, sectId, null);
+		} catch (XMLStreamException|IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return Response.serverError().build();
+		}
+        //return Response.ok(metadata).build();
+    }
 
     // For use in a transaction!
     private void removeFromSequence (Node thisSection) {
@@ -1567,6 +1598,7 @@ public class Section {
             priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
         }
     }
+    
 
     private Boolean sectionInTradition() {
         return VariantGraphService.sectionInTradition(tradId, sectId, db);
