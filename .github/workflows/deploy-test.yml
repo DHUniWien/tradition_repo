@@ -1,4 +1,4 @@
-name: Docker
+name: Build, test, and deploy master
 
 on:
   workflow_dispatch:
