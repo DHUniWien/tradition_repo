@@ -43,21 +43,18 @@ public class CollateXInputTest extends TestCase {
         assertEquals(Response.Status.CREATED.getStatusCode(), cResult.getStatus());
 
         String tradId = Util.getValueFromJson(cResult, "tradId");
-        Tradition tradition = new Tradition(tradId);
 
-        Response result = tradition.getAllWitnesses();
-        @SuppressWarnings("unchecked")
-        ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) result.getEntity();
+        List<WitnessModel> allWitnesses = jerseyTest.target("/tradition/" + tradId + "/witnesses")
+                .request().get(new GenericType<>() {});
         assertEquals(3, allWitnesses.size());
 
         // Get a witness text
-        Witness witness = new Witness(tradId, "W2");
-        TextSequenceModel response = (TextSequenceModel) witness.getWitnessAsText().getEntity();
-        assertEquals("Ich hab auch hier wieder ein Pläzchen", response.getText());
+        TextSequenceModel tsm = jerseyTest.target("/tradition/" + tradId + "/witness/W2/text")
+                .request().get(TextSequenceModel.class);
+        assertEquals("Ich hab auch hier wieder ein Pläzchen", tsm.getText());
 
-        result = tradition.getAllReadings();
-        @SuppressWarnings("unchecked")
-        ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
+        List<ReadingModel> allReadings = jerseyTest.target("/tradition/" + tradId + "/readings")
+                .request().get(new GenericType<>() {});
         assertEquals(10, allReadings.size());
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("Plätzchen")));
 
@@ -66,6 +63,18 @@ public class CollateXInputTest extends TestCase {
                 .map(ReadingModel::getText).collect(Collectors.toList());
         List<String> expected = Arrays.asList("hab", "wieder ein");
         assertEquals(expected, common);
+
+        // Check that the transpositions are marked
+        List<RelationModel> allRels = jerseyTest.target("/tradition/" + tradId + "/relations")
+                .request().get(new GenericType<>() {});
+        assertEquals(2, allRels.size());
+
+        // Check that the transposition relation type exists and is correct
+        List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
+                .request().get(new GenericType<>() {});
+        assertEquals(1, allRelTypes.size());
+        assertEquals("transposition", allRelTypes.get(0).getName());
+        assertFalse(allRelTypes.get(0).getIs_colocation());
     }
 
     public void testParseCollateXFromPlaintext() {
