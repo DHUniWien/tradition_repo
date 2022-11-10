@@ -11,7 +11,7 @@ on:
   push:
     branches: [ master ]
     paths:
-      - /src
+      - src
       - Dockerfile
 
 jobs:
