@@ -69,13 +69,13 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PW }}
 
-      - name: Build and push
+      - name: Build and push with branch tag
         uses: docker/build-push-action@v2
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: dev
+          tags: ${{ steps.meta.outputs.tags }}
 
   ## Redeploy the new image to Rancher
   deploy:
