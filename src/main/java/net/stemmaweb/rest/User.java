@@ -50,7 +50,7 @@ public class User {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("net.stemmaweb.model.UserModel")
+    @ReturnType(clazz = UserModel.class)
     public Response getUserById() {
         UserModel userModel;
         try (Transaction tx = db.beginTx()) {
@@ -144,13 +144,16 @@ public class User {
      * @statuscode 500 on failure, with an error report in JSON format
      */
     @DELETE
-    @ReturnType("java.lang.Void")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = UserModel.class)
     public Response deleteUser() {
         Node foundUser;
+        UserModel removed;
         try (Transaction tx = db.beginTx()) {
             foundUser = db.findNode(Nodes.USER, "id", userId);
 
             if (foundUser != null) {
+                removed = new UserModel(foundUser);
                 // See if the user owns any traditions
                 ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
                 if (userTraditions.size() > 0)
@@ -168,7 +171,7 @@ public class User {
                         .build();
             }
         }
-        return Response.status(Response.Status.OK).build();
+        return Response.ok(removed).build();
     }
 
     /**

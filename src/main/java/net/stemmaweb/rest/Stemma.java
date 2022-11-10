@@ -128,12 +128,13 @@ public class Stemma {
      * @statuscode 500 - on failure, with an error message
      */
     @DELETE
-    @Produces(MediaType.TEXT_PLAIN)
-    @ReturnType("java.lang.Void")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = StemmaModel.class)
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null)
             return Response.status(Status.NOT_FOUND).build();
+        StemmaModel removed = new StemmaModel(stemmaNode);
         try (Transaction tx = db.beginTx()) {
             Set<Relationship> removableRelations = new HashSet<>();
             Set<Node> removableNodes = new HashSet<>();
@@ -164,7 +165,7 @@ public class Stemma {
             removableRelations.forEach(Relationship::delete);
             removableNodes.stream().filter(x -> !x.hasRelationship()).forEach(Node::delete);
             tx.success();
-            return Response.ok().build();
+            return Response.ok(removed).build();
         } catch (Exception e ){
             return Response.serverError().entity(e.getMessage()).build();
         }
@@ -184,6 +185,7 @@ public class Stemma {
     @POST
     @Path("reorient/{nodeId}")
     @Produces("application/json; charset=utf-8")
+    @ReturnType(clazz = StemmaModel.class)
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())

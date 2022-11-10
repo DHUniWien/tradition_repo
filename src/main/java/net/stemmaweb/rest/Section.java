@@ -689,7 +689,7 @@ public class Section {
      * Upon error, returns an error message with key 'error'.
      *
      * @title Reorder section
-     * @param rank - the rank at which the section should be split
+     * @param rankstr - the rank at which the section should be split
      * @return  JSON response with key 'sectionId' or key 'error'
      * @statuscode 200 - on success
      * @statuscode 400 - if the section doesn't contain the specified rank
@@ -699,7 +699,7 @@ public class Section {
     @POST
     @Path("/splitAtRank/{rank}")
     @Produces("application/json; charset=utf-8")
-    // @ReturnType("java.lang.String")
+    @ReturnType("java.util.Map<String,Long>")
     public Response splitAtRank (@PathParam("rank") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -1226,7 +1226,7 @@ public class Section {
     @POST
     @Path("/setlemma")
     @Produces("application/json; charset=utf-8")
-    // @ReturnType("java.lang.String")
+    @ReturnType("java.util.Map<String,String>")
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
