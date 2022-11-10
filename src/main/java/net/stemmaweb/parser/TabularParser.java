@@ -4,8 +4,13 @@ import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Relation;
+import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -19,6 +24,7 @@ import javax.ws.rs.core.Response;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
@@ -116,6 +122,15 @@ public class TabularParser {
             Node endNode = Util.createEndNode(parentNode);
             endNode.setProperty("rank", (long) tableData.size());
 
+            // Make the COLLATED relation type
+            RelationTypeModel rtm = new RelationTypeModel();
+            rtm.setName("collated");
+            rtm.setDefaultsettings(true);
+            Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
+                    rtm.getName()).create(rtm);
+            if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
+                return rtResult;
+
             // Get the witnesses from the first row of the table
             String[] witnessList = tableData.get(0);
             // Keep a table of the last-spotted reading for each witness
@@ -211,6 +226,30 @@ public class TabularParser {
                     // Finally, set the properties for each layer label
                     layerMap.forEach((x, y) -> r.setProperty(x, y.toArray(new String[0])));
                 }
+                // Create a COLLATED link between all non-meta readings created at the same rank, to preserve
+                // the collation as it was uploaded.
+                List<ReadingModel> collatedReadings = createdReadings.values().stream().map(ReadingModel::new)
+                        .filter(x -> !x.isMeta()).collect(Collectors.toList());
+                int i = collatedReadings.size();
+                Relation relRest = new Relation(traditionNode.getProperty("id").toString());
+                RelationModel rm = new RelationModel();
+                rm.setType("collated");
+                rm.setAnnotation("Aligned in tabular input");
+                while (i > 1) {
+                    ReadingModel srdg = collatedReadings.get(i-1);
+                    ReadingModel trdg = collatedReadings.get(i-2);
+                    // Make sure the readings aren't the same and aren't linked yet
+                    if (srdg.equals(trdg))
+                        throw new Exception("Same reading twice in createdReadings?!");
+                    rm.setSource(srdg.getId());
+                    rm.setTarget(trdg.getId());
+                    Response resp = relRest.create(rm);
+                    if (resp.getStatus() > 399)
+                        throw new Exception("Problem collating aligned readings: " + resp.getEntity().toString());
+                    i--;
+                }
+
+
             }
 
             // Tie all the last readings to the end node.
