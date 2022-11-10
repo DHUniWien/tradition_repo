@@ -76,6 +76,30 @@ public class TabularInputOutputTest extends TestCase {
         ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(310, allReadings.size());
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("Μαξίμου")));
+
+        // Do something that might cause a re-ranking, to make sure that our readings stay aligned
+        HashMap<String, String> rdgs = Util.makeReadingLookup(jerseyTest, tradId);
+        String firstTest = rdgs.get("νύσσης/104");
+        String firstComp = rdgs.get("Νύσης/104");
+        String secondTest = rdgs.get("μέλος/167");
+        String secondComp = rdgs.get("βέλος/167");
+        // This will re-rank the graph after the readings that come after
+        String combi1 = rdgs.get("ἡ/99");
+        String combi2 = rdgs.get("ἁμαρτία./100");
+        ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
+        readingBoundaryModel.setCharacter(" ");
+        response = jerseyTest.target("/reading/" + combi1 + "/concatenate/" + combi2)
+                .request(MediaType.APPLICATION_JSON)
+                .post(Entity.json(readingBoundaryModel));
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        try (Transaction tx = db.beginTx()) {
+            assertEquals(db.getNodeById(Long.parseLong(firstComp)).getProperty("rank"),
+                    db.getNodeById(Long.parseLong(firstTest)).getProperty("rank"));
+            assertEquals(db.getNodeById(Long.parseLong(secondComp)).getProperty("rank"),
+                    db.getNodeById(Long.parseLong(secondTest)).getProperty("rank"));
+            tx.success();
+        }
+
     }
 
     public void testParseCsvLayers() {

@@ -172,10 +172,10 @@ public class AnnotationLabel {
      * @statuscode 200 on success
      * @statuscode 409 if the annotation label is still in use
      * @statuscode 500 on failure, with an error report in JSON format
-     * @return a Response indicating the outcome of the request
+     * @return the label model that was deleted
      */
     @DELETE
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = AnnotationLabelModel.class)
     public Response deleteAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
         if (ourNode == null) return Response.status(Response.Status.NOT_FOUND).build();
@@ -213,7 +213,7 @@ public class AnnotationLabel {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok().build();
+        return Response.ok(ourModel).build();
     }
 
     private Node lookupAnnotationLabel() {

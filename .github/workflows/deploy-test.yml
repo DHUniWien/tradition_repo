@@ -1,13 +1,21 @@
-name: Docker
+name: Build, test, and deploy master
 
 on:
+  workflow_dispatch:
+    inputs:
+      testOnly:
+        description: "Just run the tests"
+        required: false
+        type: boolean
+        default: false
   push:
-    # Publish `1.2.3` tags as releases.
-    tags:
-      - '[0-9]*'
+    branches: [ master ]
+    paths:
+      - /src
+      - Dockerfile
 
 jobs:
-  # Build artifacts, skip tests since they should already be known to pass
+  # Build and test the commit
   build:
     runs-on: ubuntu-latest
     steps:
@@ -26,14 +34,13 @@ jobs:
         name: stemmarest-war
         path: target/stemmarest.war
 
-  # Push image to Docker.
+  # Push a dev image to Docker.
   # See also https://docs.docker.com/docker-hub/builds/
   push:
     # Ensure build job passes before pushing image.
     needs: build
-
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: inputs.testOnly != true
 
     steps:
       - uses: actions/checkout@v2
@@ -62,13 +69,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PW }}
 
-      - name: Build and push
+      - name: Build and push with branch tag
         uses: docker/build-push-action@v2
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+
+  ## Redeploy the new image to Rancher
   deploy:
     needs: push
     runs-on: ubuntu-latest

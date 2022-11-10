@@ -90,7 +90,7 @@ public class UserTest {
         List<UserModel> allUsers = jerseyTest
                 .target("/users")
                 .request(MediaType.APPLICATION_JSON)
-                .get(new GenericType<List<UserModel>>() {});
+                .get(new GenericType<>() {});
         assertEquals(1, allUsers.size());
         Optional<UserModel> newUser = allUsers.stream().filter(x -> x.getId().equals("1337")).findFirst();
         assertTrue(newUser.isPresent());
@@ -382,7 +382,7 @@ public class UserTest {
         List<TraditionModel> traditions = jerseyTest
                 .target("/user/837462/traditions")
                 .request()
-                .get(new GenericType<List<TraditionModel>>() {
+                .get(new GenericType<>() {
                 });
         TraditionModel tradLoaded = traditions.get(0);
         assertEquals(trad.getId(), tradLoaded.getId());

@@ -697,10 +697,10 @@ public class Section {
      * @statuscode 500 - on failure, with an error message
      */
     @POST
-    @Path("/splitAtRank/{rankstr}")
+    @Path("/splitAtRank/{rank}")
     @Produces("application/json; charset=utf-8")
-    // @ReturnType("java.lang.String")
-    public Response splitAtRank (@PathParam("rankstr") String rankstr) {
+    @ReturnType("java.util.Map<String,Long>")
+    public Response splitAtRank (@PathParam("rank") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
@@ -844,7 +844,7 @@ public class Section {
      * specified sections must be contiguous, and will be merged according to their existing order.
      *
      * @title Merge sections
-     * @param otherId - the rank at which the section should be split
+     * @param otherId - the ID of the section to merge with this one
      * @statuscode 200 - on success
      * @statuscode 400 - if the sections are not contiguous
      * @statuscode 404 - if no such tradition or section exists
@@ -994,8 +994,8 @@ public class Section {
      * reading with more witnesses is listed first.
      *
      * @title List mergeable readings
-     * @param startRank - where to start
-     * @param endRank   - where to end
+     * @param startRank - where to start: either "start" or a numerical rank
+     * @param endRank   - where to end: either "end" or a numerical rank
      * @param threshold - the number of ranks to look ahead/behind
      * @param limitText      - limit search to readings with the given text
      * @return a list of lists of readings that may be merged.
@@ -1008,8 +1008,8 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getCouldBeIdenticalReadings(
-            @PathParam("startRank") long startRank,
-            @PathParam("endRank") long endRank,
+            @PathParam("startRank") String startRank,
+            @PathParam("endRank") String endRank,
             @DefaultValue("10") @QueryParam("threshold") long threshold,
             @DefaultValue("") @QueryParam("text") String limitText) {
         Node startNode = VariantGraphService.getStartNode(sectId, db);
@@ -1018,10 +1018,20 @@ public class Section {
                     .entity(jsonerror("Tradition and/or section not found")).build();
         }
 
+        // Parse the start and end rank into longs
+        Map<String,Long> useRanks;
+        try {
+            useRanks = getLongRanks(startRank, endRank);
+        } catch (NumberFormatException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
+        }
+
+
         List<List<ReadingModel>> couldBeIdenticalReadings;
         try (Transaction tx = db.beginTx()) {
             List<Node> questionedReadings = getReadingsBetweenRanks(
-                    startRank, endRank, startNode, limitText);
+                    useRanks.get("start"), useRanks.get("end"), startNode, limitText);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings, threshold);
             tx.success();
@@ -1030,6 +1040,20 @@ public class Section {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(couldBeIdenticalReadings).build();
+    }
+
+    private Map<String,Long> getLongRanks(String startRank, String endRank)
+        throws NumberFormatException {
+        Map<String,Long> result = new HashMap<>();
+        long startRankL = startRank.equals("start")
+                    ? 1
+                    : Long.parseLong(startRank);
+        long endRankL = endRank.equals("end")
+                    ? VariantGraphService.getEndNode(sectId, db).getId()
+                    : Long.parseLong(endRank);
+        result.put("start", startRankL);
+        result.put("end", endRankL);
+        return result;
     }
 
     /**
@@ -1103,8 +1127,8 @@ public class Section {
      * This is a constrained version of {@code mergeablereadings}.
      *
      * @title Find identical readings
-     * @param startRank the rank from where to start the search
-     * @param endRank   the rank at which to end the search
+     * @param startRank the rank from where to start the search, or "start"
+     * @param endRank   the rank at which to end the search, or "end"
      * @return a list of lists of identical readings
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1114,9 +1138,17 @@ public class Section {
     @Path("/identicalreadings/{startRank}/{endRank}")
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
-    public Response getIdenticalReadings(@PathParam("startRank") long startRank,
-                                         @PathParam("endRank") long endRank) {
-        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(startRank, endRank);
+    public Response getIdenticalReadings(@PathParam("startRank") String startRank,
+                                         @PathParam("endRank") String endRank) {
+        Map<String,Long> useRanks;
+        try {
+            useRanks = getLongRanks(startRank, endRank);
+        } catch (NumberFormatException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
+        }
+
+        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(useRanks.get("start"), useRanks.get("end"));
         if (identicalReadings == null)
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("no identical readings were found")).build();
 
@@ -1194,7 +1226,7 @@ public class Section {
     @POST
     @Path("/setlemma")
     @Produces("application/json; charset=utf-8")
-    // @ReturnType("java.lang.String")
+    @ReturnType("java.util.Map<String,String>")
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
