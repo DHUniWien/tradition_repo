@@ -1571,7 +1571,9 @@ public class Section {
 
         TEIExporter exp = new TEIExporter();
         try {
-			return exp.writeTEI(tradId, sectId, null);
+			return exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, 
+					conflate, suppressMatching, Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), 
+					significant, Boolean.getBoolean(conflate));
 		} catch (XMLStreamException|IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

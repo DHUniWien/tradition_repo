@@ -31,6 +31,7 @@ import org.neo4j.graphdb.Transaction;
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.model.VariantListModel;
 import net.stemmaweb.model.VariantLocationModel;
@@ -199,7 +200,9 @@ public class TEIExporter {
 	 * @throws XMLStreamException
 	 * @throws IOException
 	 */
-	public Response writeTEI(String tradId, String sectionId, Map<String, String> extraParams)
+	public Response writeTEI(String tradId, String sectionId, Map<String, String> extraParams, String baseWitness, List<String> excludeWitnesses, String conflate,
+            String suppress, Boolean filterNonsense, Boolean filterTypeOne, String significant,
+            Boolean combine)
 			throws XMLStreamException, IOException {
 		Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
 		if (traditionNode == null)
@@ -256,22 +259,39 @@ public class TEIExporter {
 			if (sectionId != null) {
 				sectionNode = db.getNodeById(Long.parseLong(sectionId));
 				sectionList.add(sectionNode);
-				vlocs = new VariantListModel(sectionNode, null, new ArrayList<String>(), null, "punct", false, false,
-						"no", false);
+				vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate, suppress, filterNonsense, filterTypeOne,
+						significant, combine);
 				
 			} else {
 				// TODO: for traditions
 				sectionList = VariantGraphService.getSectionNodes(tradId, db);
 			}
 			
-			// TODO: pass base witness and follow
 			List<Relationship> baseReadings = new ArrayList<Relationship>();
-			VariantGraphService.getBaseText(sectionNode, sectionNode, null, ERelations.SEQUENCE, baseReadings);
+			VariantGraphService.getBaseText(sectionNode, sectionNode, baseWitness, ERelations.SEQUENCE, baseReadings);
 			
 			List<ReadingModel> baseChain = baseReadings.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
             baseChain.add(0, new ReadingModel(baseReadings.get(0).getStartNode()));
             
+            // get section witnesses
+            SectionModel sectionModel = new SectionModel(sectionNode);
+			String sectionWitnesses = 
+					String.join(" ", sectionModel.getWitnesses()
+					.stream().map(w -> "#" + w)
+					.collect(Collectors.toList()));
+			
+			
 			writer.writeStartElement("body");
+			
+			// list witnesses in section
+			writer.writeStartElement("app");
+			writer.writeAttribute("id", "AppStart");
+			writer.writeStartElement("rdg");
+			writer.writeAttribute("wit", sectionWitnesses);
+			writer.writeEmptyElement("witStart");
+			writer.writeEndElement(); // end rdg
+			writer.writeEndElement(); // end app
+			
 			long idCounter = 1;
 			if (vlocs != null) {
 				Iterator<VariantLocationModel> iterator = vlocs.getVariantlist().iterator();
@@ -283,6 +303,9 @@ public class TEIExporter {
 				for (ReadingModel baseReading : baseChain) {
 					if (variant != null && variant.getVariants() != null && variant.getVariants().size() > 0) {
 						boolean hasBeenWritten = false;
+						// we need a while loop because there can be variants that add text
+						// they will have no base and be in between readings (this loop should execute
+						// 1 or 2 times.
 						while (variant != null) {
 							if (prev != null && variant.getBefore().getId().equals(prev.getId())) {
 								writer.writeEmptyElement("anchor");
@@ -313,34 +336,23 @@ public class TEIExporter {
 					}
 					prev = baseReading;
 					
-					
 				}
-				for (VariantLocationModel vlocModel : vlocs.getVariantlist()) {
-					
-					for (ReadingModel reading : vlocModel.getBase()) {
-						writer.writeStartElement("variant");
-						if (vlocModel.getVariants() != null && vlocModel.getVariants().stream()
-								.anyMatch(v -> v.getReadings() != null && !v.getReadings().isEmpty())) { // !section.getVariants().isEmpty())
-																											// {
-
-							//writer.writeEmptyElement("anchor");
-							
-							// create an id for the next lemma
-							String id = "ID" + idCounter++;
-							writer.writeAttribute("id", id);
-							writer.writeCharacters(getText(reading));
-							writeReadings(writer, vlocModel, id);
-						} else {
-							writer.writeCharacters(getText(reading));
-						}
-						writer.writeEndElement();
-					}
-				}
+				
 			}
-			writer.writeEndElement();
+			
+			// list end of witnesses in section
+			writer.writeStartElement("app");
+			writer.writeAttribute("id", "AppEnd");
+			writer.writeStartElement("rdg");
+			writer.writeAttribute("wit", sectionWitnesses);
+			writer.writeEmptyElement("witEnd");
+			writer.writeEndElement(); // end rdg
+			writer.writeEndElement(); // end app
+			
+			writer.writeEndElement(); // end body
 
-			writer.writeEndElement();
-			writer.writeEndElement();
+			writer.writeEndElement(); // end text
+			writer.writeEndElement(); // end TEI
 			// eventually...
 			tx.success();
 			writer.flush();
@@ -370,7 +382,7 @@ public class TEIExporter {
 		writer.writeStartElement("app");
 		writer.writeAttribute("from", id);
 		for (VariantModel variant : section.getVariants()) {
-			if (variant.getReadings() != null && !variant.getReadings().isEmpty()) {
+			if (variant.getReadings() != null && variant.getReadings().size()> 0) {
 				for (ReadingModel variantReading : variant.getReadings()) {
 					writer.writeStartElement("rdg");
 					StringBuffer sigils = new StringBuffer();
@@ -381,6 +393,15 @@ public class TEIExporter {
 					writer.writeCharacters(variantReading.getText());
 					writer.writeEndElement();
 				}
+			} else if (variant.getWitnesses().get("witnesses") != null && variant.getWitnesses().get("witnesses").size() > 0) {
+				// if the witnesses omit text
+				writer.writeStartElement("rdg");
+				StringBuffer sigils = new StringBuffer();
+				for (String sigil : variant.getWitnesses().get("witnesses")) {
+					sigils.append("#" + sigil + " ");
+				}
+				writer.writeAttribute("wit", sigils.toString().trim());
+				writer.writeEndElement();
 			}
 		}
 		writer.writeEndElement();
