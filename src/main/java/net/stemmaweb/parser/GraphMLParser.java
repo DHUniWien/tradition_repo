@@ -14,6 +14,7 @@ import javax.ws.rs.core.Response;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
@@ -312,9 +313,9 @@ public class GraphMLParser {
                         }
                     }
                 }
-                if (newRel == null) { // If it exists already we don't touch it.
+                if (newRel == null && !relationshipExists(source, neolabel, Direction.OUTGOING)) { // If it exists already we don't touch it.
                     try {
-                        newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
+                    	newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
                         edgeProperties.forEach(newRel::setProperty);
                         // Catch any relation types and witnesses that were used, so that we can ensure
                         // their existence when we are done
@@ -445,6 +446,27 @@ public class GraphMLParser {
 
         return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentId)).build();
     }
+
+    /**
+     * Checks for ANNOTATIONLABEL nodes whether a relationship already exists for type and direction.
+     * 
+     * @param source	the node
+     * @param type		relationship type
+     * @param dir		direction		
+     * @return
+     */
+	private boolean relationshipExists(Node source, String type, Direction dir) {
+		boolean exists = false;
+
+		if (StreamSupport.stream(source.getLabels().spliterator(), false).anyMatch(label -> Nodes.ANNOTATIONLABEL.name().equals(label.name()))
+				&& (type.equals(ERelations.HAS_PROPERTIES.name()) || type.equals(ERelations.HAS_LINKS.name()))) {
+			Relationship rel = source.getSingleRelationship(ERelations.valueOf(type), dir);
+			if (rel != null && rel.getStartNode().equals(source)) {
+				exists = true;
+			}
+		}
+		return exists;
+	}
 
     // Return true if the tradition already has an annotation under the given name.
     // Throws an IllegalArgumentException if the annotation information conflicts.

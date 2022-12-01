@@ -388,7 +388,8 @@ public class GraphMLInputOutputTest extends TestCase {
         r = Util.addSectionToTradition(jerseyTest, mattId, "src/TestFiles/milestone-591.zip",
                 "graphml", "section 591");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
-        String s591 = Util.getValueFromJson(r, "sectId");
+        String s591 = Util.getValueFromJson(r, "sectionId");
+        assertNotNull(s591);
         // There should still be the same number of annotation labels, properties, and links in the tradition
         List<AnnotationLabelModel> tradAnnoTypes = jerseyTest.target("/tradition/" + mattId + "/annotationlabels")
                 .request().get(new GenericType<>() {});
