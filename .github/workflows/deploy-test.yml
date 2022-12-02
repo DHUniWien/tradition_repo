@@ -11,8 +11,9 @@ on:
   push:
     branches: [ master ]
     paths:
-      - src
-      - Dockerfile
+      - 'src/**'
+      - 'Dockerfile'
+      - 'pom.xml'
 
 jobs:
   # Build and test the commit
