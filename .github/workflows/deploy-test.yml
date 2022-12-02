@@ -86,4 +86,6 @@ jobs:
       - name: Deploy to Rancher
         run: |
           curl -i -X POST "${{ secrets.RANCHERURL }}?action=redeploy" -H "Authorization: Bearer ${{ secrets.RANCHER_BEARER_TOKEN }}"
+          sleep 60
+          curl -i -X POST "${{ secrets.RANGINXURL }}?action=redeploy" -H "Authorization: Bearer ${{ secrets.RANCHER_BEARER_TOKEN }}"
           
