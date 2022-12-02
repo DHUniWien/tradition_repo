@@ -112,6 +112,8 @@ public class TabularExporter {
         // Collect the character rows as they are built for each witness.
         HashMap<String, StringBuilder> witnessRows = new HashMap<>();
         for (String sigil : witnessSigla) witnessRows.put(sigil, new StringBuilder());
+        // Keep track of any witnesses whose last seen node was a lacuna.
+        HashSet<Integer> lacunose = new HashSet<>();
         // Go rank by rank through all the lists of tokens, converting them into chars
         int totalLength = 0;
         for (int i = 0; i < wholeTradition.getLength(); i++) {
@@ -149,13 +151,16 @@ public class TabularExporter {
                 StringBuilder ourRow = witnessRows.get(witnessSigla.get(w));
                 ReadingModel ourReading = row.get(w);
                 if (ourReading == null) {
-                    ourRow.append('X');
+                    ourRow.append(lacunose.contains(w) ? '?' : 'X');
                     curr++; // Count this in our maximum of eight characters
                 }
-                else if (ourReading.getIs_lacuna())
+                else if (ourReading.getIs_lacuna()) {
                     ourRow.append('?');
-                else
+                    lacunose.add(w);
+                } else {
                     ourRow.append(charMap.get(row.get(w).getId()));
+                    lacunose.remove(w);
+                }
             }
         }
         // Now let's build the whole matrix.
@@ -230,8 +235,13 @@ public class TabularExporter {
             }
         }
 
+        // Make a generic lacuna node for witnesses entirely missing from a section
+        ReadingModel genLacuna = new ReadingModel();
+        genLacuna.setIs_lacuna(true);
+        genLacuna.setText("#LACUNA#");
+        genLacuna.setRank(1L);
         // Now make an alignment model containing all witness layers present in allWitnesses, filling in
-        // if necessary either nulls or the base witness per witness layer, per section.
+        // if necessary either lacunae or the base witness per witness layer, per section.
         AlignmentModel wholeTradition = new AlignmentModel();
         List<String> sortedWits = new ArrayList<>(allWitnesses);
         Collections.sort(sortedWits);
@@ -259,8 +269,9 @@ public class TabularExporter {
                     wholeWitness.getTokens().addAll(witcolumn.getTokens());
                     assert(witcolumn.getTokens().size() == aSection.getLength());
                 } else {
-                    // Add a bunch of nulls
-                    wholeWitness.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) aSection.getLength(), null)));
+                    // Add a lacuna and a bunch of nulls, to fill out the missing witness
+                    wholeWitness.getTokens().add(genLacuna);
+                    wholeWitness.getTokens().addAll(new ArrayList<>(Collections.nCopies((int) (aSection.getLength() - 1), null)));
                 }
             }
             // Add the WitnessTokensModel to the new AlignmentModel.

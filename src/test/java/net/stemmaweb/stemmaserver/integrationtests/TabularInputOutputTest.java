@@ -520,7 +520,7 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(30, table.getInt("length"));
         JSONObject witN = table.getJSONArray("alignment").getJSONObject(24);
         assertEquals("N", witN.getString("witness"));
-        for (int i=0; i < 21; i++) {
+        for (int i=1; i < 21; i++) {
             assertEquals("null", "" + witN.getJSONArray("tokens").get(i));
         }
         JSONObject firstN = witN.getJSONArray("tokens").getJSONObject(21);
@@ -731,21 +731,27 @@ public class TabularInputOutputTest extends TestCase {
             // Check that the first reading is at the correct rank
             Long firstRank = witReadings.get(0).getRank();
             // Account for section splits, above
-            if (wtm.getWitness().equals("B") || wtm.getWitness().equals("G"))
-                firstRank += 37;
             int i = 1;
+            if (wtm.getWitness().equals("B") || wtm.getWitness().equals("G")) {
+                firstRank += 37;
+                i = 2;
+                assertTrue(tableReadings.get(0).getIs_lacuna());
+            }
             while (i < firstRank) {
                 assertNull(tableReadings.get(i-1));
                 i++;
             }
             assertNotNull(tableReadings.get(i-1));
             // Check that the last reading is at the correct rank
-            if (!expectedWits.contains(wtm.getWitness()))
-                for (int j = 227; j < alignment.getLength(); j++)
+            if (!expectedWits.contains(wtm.getWitness())) {
+                assertTrue(tableReadings.get(227).getIs_lacuna());
+                for (int j = 228; j < alignment.getLength(); j++)
                     assertNull(tableReadings.get(j));
+            }
 
             // Check that the (non-null) reading sequences are identical
             tableReadings.removeIf(Objects::isNull);
+            tableReadings.removeIf(x -> x.getId() == null); // remove the inferred lacunae
             List<String> witRdgIds = witReadings.stream().map(ReadingModel::getId).collect(Collectors.toList());
             List<String> tableRdgIds = tableReadings.stream().map(ReadingModel::getId).collect(Collectors.toList());
 
@@ -877,7 +883,7 @@ public class TabularInputOutputTest extends TestCase {
         ReadingModel r2 = c2.get(index);
         if (r1 == null) return r2 == null;
         if (r2 == null) return false; // we would have returned already if c1 were null
-        return r1.getId().equals(r2.getId());
+        return r1.toString().equals(r2.toString());
     }
 
     public void testCharMatrixOutput () {
@@ -930,7 +936,7 @@ public class TabularInputOutputTest extends TestCase {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         String matrix = response.readEntity(String.class);
         String[] matrixLines = matrix.split("\\n");
-        assertEquals(15, matrixLines.length);
+        assertEquals(14, matrixLines.length);
     }
 
     public void tearDown() throws Exception {
