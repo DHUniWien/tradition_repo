@@ -20,6 +20,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import org.apache.commons.collections4.iterators.PeekingIterator;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.neo4j.graphdb.Direction;
@@ -45,9 +46,6 @@ import net.stemmaweb.services.WitnessDbService;
 
 public class TEIExporter {
 	private final GraphDatabaseService db = (new GraphDatabaseServiceProvider()).getDatabase();
-
-	private ReadingsDbService readingsService = new ReadingsDbService();
-	private WitnessDbService witnessService = new WitnessDbService();
 
 	private void writeTEIHeader(XMLStreamWriter writer, Map<String, String> extraParams) throws XMLStreamException {
 		// Get the information that is in the tradition node
@@ -239,39 +237,27 @@ public class TEIExporter {
 			writer.writeAttribute("xmlns", "http://www.tei-c.org/ns/1.0");
 
 			// Collect the parameters needed for the TEI header
-			extraParams.put("title", traditionNode.getProperty("name").toString());
-			if (traditionNode.hasRelationship(Direction.INCOMING, ERelations.OWNS_TRADITION)) {
-				Node ownNode = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING)
-						.getStartNode();
-				extraParams.put("owner", (new UserModel(ownNode)).getId());
-			}
-			for (Relationship r : traditionNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
-				WitnessModel wm = new WitnessModel(r.getEndNode());
-				extraParams.put("witness:" + wm.getId(), wm.getSigil());
-			}
+			addExtraParams(extraParams, traditionNode);
 			writeTEIHeader(writer, extraParams);
 
 			// Start chaining the text together
 			writer.writeStartElement("text");
 			ArrayList<Node> sectionList = new ArrayList<>();
-			VariantListModel vlocs = null;
 			Node sectionNode = null;
 			if (sectionId != null) {
 				sectionNode = db.getNodeById(Long.parseLong(sectionId));
-				sectionList.add(sectionNode);
-				vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate, suppress, filterNonsense, filterTypeOne,
-						significant, combine);
-				
+				sectionList.add(sectionNode);				
 			} else {
-				// TODO: for traditions
+				// get sections of traditions
 				sectionList = VariantGraphService.getSectionNodes(tradId, db);
 			}
 			
-			List<Relationship> baseReadings = new ArrayList<Relationship>();
-			VariantGraphService.getBaseText(sectionNode, sectionNode, baseWitness, ERelations.SEQUENCE, baseReadings);
+			// this will raise a null pointer if there is no section
+			// TODO: for traditions this needs to be fixed
+			VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate, suppress, filterNonsense, filterTypeOne,
+					significant, combine);
 			
-			List<ReadingModel> baseChain = baseReadings.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
-            baseChain.add(0, new ReadingModel(baseReadings.get(0).getStartNode()));
+			List<ReadingModel> baseReadingChain = getBaseReadingChain(baseWitness, sectionNode);
             
             // get section witnesses
             SectionModel sectionModel = new SectionModel(sectionNode);
@@ -284,70 +270,14 @@ public class TEIExporter {
 			writer.writeStartElement("body");
 			
 			// list witnesses in section
-			writer.writeStartElement("app");
-			writer.writeAttribute("id", "AppStart");
-			writer.writeStartElement("rdg");
-			writer.writeAttribute("wit", sectionWitnesses);
-			writer.writeEmptyElement("witStart");
-			writer.writeEndElement(); // end rdg
-			writer.writeEndElement(); // end app
+			writeWitnesses(writer, sectionWitnesses, "AppStart");
 			
-			long idCounter = 1;
 			if (vlocs != null) {
-				Iterator<VariantLocationModel> iterator = vlocs.getVariantlist().iterator();
-				VariantLocationModel variant  = null;
-				if (iterator.hasNext()) {
-					variant = iterator.next();
-				}
-				ReadingModel prev = null;
-				for (ReadingModel baseReading : baseChain) {
-					if (variant != null && variant.getVariants() != null && variant.getVariants().size() > 0) {
-						boolean hasBeenWritten = false;
-						// we need a while loop because there can be variants that add text
-						// they will have no base and be in between readings (this loop should execute
-						// 1 or 2 times.
-						while (variant != null) {
-							if (prev != null && variant.getBefore().getId().equals(prev.getId())) {
-								writer.writeEmptyElement("anchor");
-								// create an id for the next lemma
-								String id = "ID" + idCounter++;
-								writer.writeAttribute("id", id);
-								// if there is a base reading, we print it
-								boolean hasBase = variant.getBase() != null && variant.getBase().size()>0;
-								if (hasBase) {
-									writer.writeCharacters(getText(baseReading));
-									hasBeenWritten = true;
-								}
-								writeReadings(writer, variant, id);
-								if (iterator.hasNext()) {
-									variant = iterator.next();		
-								} else {
-									variant = null;
-								}
-							} else {
-								if (!hasBeenWritten) {
-									writer.writeCharacters(getText(baseReading));
-								}
-								break;
-							}
-						}
-					} else {
-						writer.writeCharacters(getText(baseReading));
-					}
-					prev = baseReading;
-					
-				}
-				
+				writeText(writer, vlocs, baseReadingChain);
 			}
 			
 			// list end of witnesses in section
-			writer.writeStartElement("app");
-			writer.writeAttribute("id", "AppEnd");
-			writer.writeStartElement("rdg");
-			writer.writeAttribute("wit", sectionWitnesses);
-			writer.writeEmptyElement("witEnd");
-			writer.writeEndElement(); // end rdg
-			writer.writeEndElement(); // end app
+			writeWitnesses(writer, sectionWitnesses, "AppEnd");
 			
 			writer.writeEndElement(); // end body
 
@@ -370,8 +300,100 @@ public class TEIExporter {
 				.build();
 	}
 
-	private String getText(ReadingModel reading) {
+	/**
+	 * Method to write text with anchors and variants to XML document.
+	 * @param writer The XML writer object to use.
+	 * @param vlocs The {@link VariantListModel} holding all variants.
+	 * @param baseReadingChain A list of {@link ReadingModel}s holding the base text.
+	 * @throws XMLStreamException
+	 */
+	private void writeText(XMLStreamWriter writer, VariantListModel vlocs, List<ReadingModel> baseReadingChain) throws XMLStreamException {
+		long idCounter = 1;
+		
+		Iterator<VariantLocationModel> iterator = vlocs.getVariantlist().iterator();
+		VariantLocationModel variant  = null;
+		if (iterator.hasNext()) {
+			variant = iterator.next();
+		}
+		ReadingModel prev = null;
+		PeekingIterator<ReadingModel> chainIterator = new PeekingIterator<ReadingModel>(baseReadingChain.iterator());
+		while (chainIterator.hasNext()) {
+			ReadingModel baseReading = chainIterator.next();
+			if (variant != null && variant.getVariants() != null && variant.getVariants().size() > 0) {
+				boolean hasBeenWritten = false;
+				// we need a while loop because there can be variants that add text
+				// they will have no base and be in between readings (this loop should execute
+				// 1 or 2 times.
+				while (variant != null) {
+					if (prev != null && variant.getBefore().getId().equals(prev.getId())) {
+						writer.writeEmptyElement("anchor");
+						// create an id for the next lemma
+						String id = "ID" + idCounter++;
+						writer.writeAttribute("id", id);
+						// if there is a base reading, we print it
+						boolean hasBase = variant.getBase() != null && variant.getBase().size()>0;
+						if (hasBase) {
+							writer.writeCharacters(getText(baseReading, chainIterator.peek()));
+							hasBeenWritten = true;
+						}
+						writeReadings(writer, variant, id);
+						if (iterator.hasNext()) {
+							variant = iterator.next();		
+						} else {
+							variant = null;
+						}
+					} else {
+						if (!hasBeenWritten) {
+							writer.writeCharacters(getText(baseReading, chainIterator.peek()));
+						}
+						break;
+					}
+				}
+			} else {
+				writer.writeCharacters(getText(baseReading, chainIterator.peek()));
+			}
+			prev = baseReading;
+			
+		}
+	}
+
+	private void addExtraParams(Map<String, String> extraParams, Node traditionNode) {
+		extraParams.put("title", traditionNode.getProperty("name").toString());
+		if (traditionNode.hasRelationship(Direction.INCOMING, ERelations.OWNS_TRADITION)) {
+			Node ownNode = traditionNode.getSingleRelationship(ERelations.OWNS_TRADITION, Direction.INCOMING)
+					.getStartNode();
+			extraParams.put("owner", (new UserModel(ownNode)).getId());
+		}
+		for (Relationship r : traditionNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
+			WitnessModel wm = new WitnessModel(r.getEndNode());
+			extraParams.put("witness:" + wm.getId(), wm.getSigil());
+		}
+	}
+
+	private List<ReadingModel> getBaseReadingChain(String baseWitness, Node sectionNode) {
+		List<Relationship> baseReadings = new ArrayList<Relationship>();
+		VariantGraphService.getBaseText(sectionNode, sectionNode, baseWitness, ERelations.SEQUENCE, baseReadings);
+		
+		List<ReadingModel> baseChain = baseReadings.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
+		baseChain.add(0, new ReadingModel(baseReadings.get(0).getStartNode()));
+		return baseChain;
+	}
+
+	private void writeWitnesses(XMLStreamWriter writer, String sectionWitnesses, String id) throws XMLStreamException {
+		writer.writeStartElement("app");
+		writer.writeAttribute("id", id);
+		writer.writeStartElement("rdg");
+		writer.writeAttribute("wit", sectionWitnesses);
+		writer.writeEmptyElement("witStart");
+		writer.writeEndElement(); // end rdg
+		writer.writeEndElement(); // end app
+	}
+
+	private String getText(ReadingModel reading, ReadingModel nextReading) {
 		if (reading.getJoin_next()) {
+			return reading.getText();
+		} 
+		if (nextReading!= null && nextReading.getJoin_prior()) {
 			return reading.getText();
 		}
 		return reading.getText() + " ";
