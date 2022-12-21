@@ -192,6 +192,8 @@ public class TEIExporter {
 	 *                    be specified for each witness by its sigil using keywords
 	 *                    (substitute SIG for the actual sigil): (SIG:settlement,
 	 *                    SIG:repository, SIG:idno) or SIG:msName.
+	 * @param baseWitness - Witness to use as base.
+	 * @param excludeWitnesses - Witness to be excluded.
 	 *
 	 * @return a Response containing an XML string that represents the requested
 	 *         tradition/section

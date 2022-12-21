@@ -56,7 +56,7 @@ public class SectionModel {
      * Generates a model from a Neo4j Node
      * @param node - the section node to initialize from
      */
-    public SectionModel(Node node) {
+	public SectionModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
             setId(String.valueOf(node.getId()));
             if (node.hasProperty("name"))
@@ -73,7 +73,6 @@ public class SectionModel {
             setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
             
             // Get the traverser for the tradition readings
-            // TODO: is SEQUENCE correct here?
             Node startNode = VariantGraphService.getStartNode(String.valueOf(node.getId()), node.getGraphDatabase());
             Traverser traversedTradition = node.getGraphDatabase().traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
@@ -115,9 +114,9 @@ public class SectionModel {
         this.endRank = rank;
     }
     public Set<String> getWitnesses() {
-		return witnesses;
+	    return witnesses;
 	}
-	public void setWitnesses(Set<String> witnesses) {
-		this.witnesses = witnesses;
+    public void setWitnesses(Set<String> witnesses) {
+        this.witnesses = witnesses;
 	}
 }
