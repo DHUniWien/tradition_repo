@@ -58,10 +58,8 @@ public class SectionTest extends TestCase {
             jerseyResult = Util.createTraditionFromFileOrString(jerseyTest, "Legend", "LR",
                     "user@example.com", "src/TestFiles/legendfrag.xml", "stemmaweb");
         } catch (Exception e) {
-        	e.printStackTrace();
-            fail();
+        	fail();
         }
-        System.out.println(jerseyResult);
         tradId = Util.getValueFromJson(jerseyResult, "tradId");
     }
 

@@ -1571,15 +1571,13 @@ public class Section {
 
         TEIExporter exp = new TEIExporter();
         try {
-			return exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, 
-					conflate, suppressMatching, Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), 
-					significant, Boolean.getBoolean(conflate));
-		} catch (XMLStreamException|IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return Response.serverError().build();
-		}
-        //return Response.ok(metadata).build();
+            return exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, conflate, suppressMatching,
+                    Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), significant,
+                    Boolean.getBoolean(conflate));
+        } catch (XMLStreamException | IOException e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
     }
 
     // For use in a transaction!

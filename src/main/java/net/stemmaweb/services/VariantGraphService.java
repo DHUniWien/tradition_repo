@@ -88,11 +88,8 @@ public class VariantGraphService {
         // If we are here, we were asked for a section node.
         try (Transaction tx = db.beginTx()) {
             currentNode = db.getNodeById(nodeIndex);
-            if (currentNode != null) {
-            	Relationship outgoing = currentNode.getSingleRelationship(direction, Direction.OUTGOING);
-            	if (outgoing != null)
-            		boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
-            }
+            if (currentNode != null)
+                boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
             tx.success();
         }
         return boundNode;
@@ -159,9 +156,8 @@ public class VariantGraphService {
         Node tradition;
         GraphDatabaseService db = section.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
-        	Relationship relationship = section.getSingleRelationship(ERelations.PART, Direction.INCOMING);
-            tradition = relationship.getStartNode();
-        	tx.success();
+            tradition = section.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
+            tx.success();
         }
         return tradition;
     }
@@ -318,41 +314,46 @@ public class VariantGraphService {
      * @param baseText
      * @return
      */
-    public static String getBaseText(Node sectionNode, Node startNode, String baseWitness, RelationshipType follow, List<Relationship> baseText) {
-    	GraphDatabaseService db = sectionNode.getGraphDatabase();
-    	try (Transaction tx = db.beginTx()) {
-	    	String basisText;
-	    	TraversalDescription baseWalker = db.traversalDescription().depthFirst();
-	        
-	        if (baseWitness != null) {
-	            // We use the requested witness text, which is connected via SEQUENCE or NSEQUENCE
-	            // links and so unproblematic.
-	            baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
-	            baseText.addAll(baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList()));
-	            basisText = baseWitness;
-	        } else {
-	            // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the base text.
-	            List<Node> baseReadings;
-	            if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING)) {
-	                // We traverse the lemma text
-	                baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
-	                baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
-	                basisText = "lemma";
-	            } else {
-	                // We calculate and use the majority text
-	                baseReadings = VariantGraphService.calculateMajorityText(sectionNode);
-	                basisText = "majority";
-	            }
-	            Node prior = baseReadings.remove(0);
-	            for (Node curr : baseReadings) {
-	                prior.getRelationships(follow, Direction.OUTGOING).forEach(x -> {
-	                    if (x.getEndNode().equals(curr)) baseText.add(x);});
-	                prior = curr;
-	            }
-	        }
-	        tx.success();
-	        return basisText;
-    	}
+    public static String getBaseText(Node sectionNode, Node startNode, String baseWitness, RelationshipType follow,
+            List<Relationship> baseText) {
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            String basisText;
+            TraversalDescription baseWalker = db.traversalDescription().depthFirst();
+
+            if (baseWitness != null) {
+                // We use the requested witness text, which is connected via SEQUENCE or
+                // NSEQUENCE
+                // links and so unproblematic.
+                baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
+                baseText.addAll(baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList()));
+                basisText = baseWitness;
+            } else {
+                // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the
+                // base text.
+                List<Node> baseReadings;
+                if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING)) {
+                    // We traverse the lemma text
+                    baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
+                    baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
+                    basisText = "lemma";
+                } else {
+                    // We calculate and use the majority text
+                    baseReadings = VariantGraphService.calculateMajorityText(sectionNode);
+                    basisText = "majority";
+                }
+                Node prior = baseReadings.remove(0);
+                for (Node curr : baseReadings) {
+                    prior.getRelationships(follow, Direction.OUTGOING).forEach(x -> {
+                        if (x.getEndNode().equals(curr))
+                            baseText.add(x);
+                    });
+                    prior = curr;
+                }
+            }
+            tx.success();
+            return basisText;
+        }
 
     }
 

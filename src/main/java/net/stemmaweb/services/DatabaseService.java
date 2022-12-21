@@ -40,13 +40,11 @@ public class DatabaseService {
      */
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
         ArrayList<Node> result = new ArrayList<>();
-        if (startNode != null) {
-	        GraphDatabaseService db = startNode.getGraphDatabase();
-	        try (Transaction tx = db.beginTx()) {
-	            Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
-	            allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
-	            tx.success();
-	        }
+        GraphDatabaseService db = startNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
+            allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
+            tx.success();
         }
         return result;
     }
