@@ -50,13 +50,13 @@ public class SectionModel {
      */
     private Set<String> witnesses;
 
-	public SectionModel() {}
+    public SectionModel() {}
 
     /**
      * Generates a model from a Neo4j Node
      * @param node - the section node to initialize from
      */
-	public SectionModel(Node node) {
+    public SectionModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
             setId(String.valueOf(node.getId()));
             if (node.hasProperty("name"))
