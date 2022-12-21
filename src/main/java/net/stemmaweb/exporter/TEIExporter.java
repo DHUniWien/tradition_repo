@@ -40,9 +40,7 @@ import net.stemmaweb.model.VariantModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingsDbService;
 import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.services.WitnessDbService;
 
 public class TEIExporter {
 	private final GraphDatabaseService db = (new GraphDatabaseServiceProvider()).getDatabase();
