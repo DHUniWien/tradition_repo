@@ -1,14 +1,13 @@
 package net.stemmaweb.parser;
 
-import java.io.BufferedReader;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.stream.Collectors;
 
 import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLInputFactory;
@@ -32,9 +31,6 @@ import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
-
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.Util.jsonresp;
 
 /**
  * This class provides a method for importing GraphMl (XML) File into Neo4J
