@@ -114,9 +114,9 @@ public class SectionModel {
         this.endRank = rank;
     }
     public Set<String> getWitnesses() {
-	    return witnesses;
-	}
+        return witnesses;
+    }
     public void setWitnesses(Set<String> witnesses) {
         this.witnesses = witnesses;
-	}
+    }
 }
