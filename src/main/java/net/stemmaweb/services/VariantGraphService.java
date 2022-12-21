@@ -323,8 +323,7 @@ public class VariantGraphService {
 
             if (baseWitness != null) {
                 // We use the requested witness text, which is connected via SEQUENCE or
-                // NSEQUENCE
-                // links and so unproblematic.
+                // NSEQUENCE links and so unproblematic.
                 baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
                 baseText.addAll(baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList()));
                 basisText = baseWitness;
