@@ -311,7 +311,24 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(13, wits.size());
     }
 
-    public void testZipInputWithAnnotations() {
+    public void testZipOutputAndInputWithAnnotations() {
+        // Create the tradition
+
+        // Set its annotation structure
+
+        // Input the annotations
+
+        // Export it to a zipfile
+
+        // Reimport it; all annotations should be there
+
+        // Add another section
+
+        // Export the single section
+
+        // Reimport it; the annotation label structure should not have changed
+
+        // All the above is the full test; here below is the quick and dirty version
         Response r = Util.createTraditionFromFileOrString(jerseyTest, "Matthew 401", "LR",
                 "me@example.org", "src/TestFiles/m401-annotated.zip", "graphml");
         assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
@@ -319,17 +336,22 @@ public class GraphMLInputOutputTest extends TestCase {
         SectionModel section = Util.getSingleSection(jerseyTest, mattId);
         List<AnnotationModel> annos = jerseyTest.target("/tradition/" + mattId + "/annotations")
                 .request().get(new GenericType<>() {});
-        // Check that all annotations are there
+        // Check that all annotations are there.
+        // BUG: the PERSON/PLACE/DATE annotations did not make it into the test data export.
+        // This needs to be explicitly tested for in a more formal manner above.
         assertEquals(24, annos.size());
         assertEquals(14, annos.stream().filter(x -> x.getLabel().equals("TRANSLATION")).count());
-        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("DATEREF")).count());
         assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("TITLE")).count());
+        assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("DATEREF")).count());
         assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("DATING")).count());
+        // assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("DATE")).count());
         assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("PERSONREF")).count());
+        // assertEquals(1, annos.stream().filter(x -> x.getLabel().equals("PERSON")).count());
         assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("PLACEREF")).count());
+        // assertEquals(2, annos.stream().filter(x -> x.getLabel().equals("PLACE")).count());
         // Get our section ID
 
-        // Spot-check that a few are linked correctly
+        // Spot-check that something is linked correctly
         Optional<AnnotationModel> testAnno = annos.stream().filter(x -> x.getLabel().equals("TRANSLATION")
                 && x.getProperties().get("text").equals("And after 5 years locusts arose in that district, " +
                 "like sands of the sea, and ruined the earth.")).findFirst();
@@ -361,6 +383,20 @@ public class GraphMLInputOutputTest extends TestCase {
         String expected = "և զկնի հինկ ամին եկեալ մարախ յայնմ գաւառին որպէս զաւազ ծովու և ապականեաց զերկիր.";
         String actual = ReadingService.textOfReadings(translated, true, false);
         assertEquals(expected, actual);
+
+        // Add a second section to this tradition
+        r = Util.addSectionToTradition(jerseyTest, mattId, "src/TestFiles/milestone-591.zip",
+                "graphml", "section 591");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String s591 = Util.getValueFromJson(r, "sectionId");
+        assertNotNull(s591);
+        // There should still be the same number of annotation labels, properties, and links in the tradition
+        List<AnnotationLabelModel> tradAnnoTypes = jerseyTest.target("/tradition/" + mattId + "/annotationlabels")
+                .request().get(new GenericType<>() {});
+        assertEquals(13, tradAnnoTypes.size());
+        List<AnnotationModel> sectAnnos = jerseyTest.target("/tradition/" + mattId + "/section/" + s591 + "/annotations")
+                .request().get(new GenericType<>() {});
+        assertEquals(9, sectAnnos.size());
     }
 
     public void testZipExportAnnotationsAcrossSection() {
