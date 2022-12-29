@@ -44,14 +44,15 @@ public class RelationTypeTest extends TestCase {
         readingLookup = Util.makeReadingLookup(jerseyTest, tradId);
     }
 
-    public void testNoRelationTypes() {
-        // Initially, no relationship types should be defined.
+    public void testInitialRelationTypes() {
+        // Initially, the only defined relation type should be the "collated" one for the CSV input.
         Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
                 .request()
                 .get();
         assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
-        List<RelationTypeModel> allRelTypes = jerseyResult.readEntity(new GenericType<List<RelationTypeModel>>() {});
-        assertEquals(0, allRelTypes.size());
+        List<RelationTypeModel> allRelTypes = jerseyResult.readEntity(new GenericType<>() {});
+        assertEquals(1, allRelTypes.size());
+        assertEquals("collated", allRelTypes.get(0).getName());
     }
 
     public void testCreateRelationAddType() {
@@ -78,10 +79,13 @@ public class RelationTypeTest extends TestCase {
         // Now check that the spelling relation type has been created
         List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
                 .request()
-                .get(new GenericType<List<RelationTypeModel>>() {});
-        assertEquals(1, allRelTypes.size());
-        assertEquals("spelling", allRelTypes.get(0).getName());
-        assertEquals(1, allRelTypes.get(0).getBindlevel());
+                .get(new GenericType<>() {});
+        assertEquals(2, allRelTypes.size());
+        RelationTypeModel rtm = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request().get(RelationTypeModel.class);
+        assertEquals("spelling", rtm.getName());
+        assertEquals(1, rtm.getBindlevel());
+        assertTrue(rtm.getIs_colocation());
     }
 
     private void checkExpectedRelations(HashSet<String> createdRels, HashSet<String> expectedLinks) {
@@ -133,11 +137,13 @@ public class RelationTypeTest extends TestCase {
         // Check that our relation type hasn't changed
         List<RelationTypeModel> allRelTypes = jerseyTest.target("/tradition/" + tradId + "/relationtypes")
                 .request()
-                .get(new GenericType<List<RelationTypeModel>>() {});
-        assertEquals(1, allRelTypes.size());
-        assertEquals("spelling", allRelTypes.get(0).getName());
-        assertEquals("A weaker version of the spelling relationship", allRelTypes.get(0).getDescription());
-        assertEquals(10, allRelTypes.get(0).getBindlevel());
+                .get(new GenericType<>() {});
+        assertEquals(2, allRelTypes.size());
+        RelationTypeModel spel = jerseyTest.target("/tradition/" + tradId + "/relationtype/spelling")
+                .request().get(RelationTypeModel.class);
+        assertEquals("spelling", spel.getName());
+        assertEquals("A weaker version of the spelling relationship", spel.getDescription());
+        assertEquals(10, spel.getBindlevel());
     }
 
     public void testAddDefaultType() {
@@ -352,8 +358,15 @@ public class RelationTypeTest extends TestCase {
 
         HashSet<String> testReadings = new HashSet<>();
 
-        // Re-rank the whole thing according to relations or lack thereof
-        // LATER maybe implement the 'collated' relation
+        // Remove all the 'collated' relations and then re-rank from the beginning.
+        for (RelationModel rm : jerseyTest.target("/tradition/" + tradId + "/relations")
+                .request().get(new GenericType<List<RelationModel>>() {})) {
+            if (rm.getType().equals("collated")) {
+                Response rd = jerseyTest.target("/tradition/" + tradId + "/relation/remove")
+                        .request(MediaType.APPLICATION_JSON).post(Entity.json(rm));
+                assertEquals(Response.Status.OK.getStatusCode(), rd.getStatus());
+            }
+        }
         Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/initRanks")
                 .request()
                 .get();

@@ -124,15 +124,17 @@ public class Witness {
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType(clazz = WitnessModel.class)
     public Response deleteWitness() {
         if (sectId != null)
             return Response.status(Status.BAD_REQUEST).entity("Cannot delete a witness from a single section").build();
+        WitnessModel removed;
         try (Transaction tx = db.beginTx()) {
             // Find the node in question
             Node witnessNode = getWitnessBySigil();
             if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
             // Find all references to the witness throughout the tradition, and delete them
+            removed = new WitnessModel(witnessNode);
             HashSet<Node> orphanReadings = new HashSet<>();
             for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships()) {
                 if (r.isType(ERelations.SEQUENCE)) {
@@ -189,7 +191,7 @@ public class Witness {
             e.printStackTrace();
             return Response.serverError().build();
         }
-        return Response.ok().build();
+        return Response.ok(removed).build();
     }
 
 
