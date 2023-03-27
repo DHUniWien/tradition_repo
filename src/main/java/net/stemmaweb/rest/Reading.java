@@ -38,13 +38,13 @@ public class Reading {
     /**
      * The ID of the reading to query
      */
-    private final Long readId;
+    private final String readId;
 
     public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        readId = Long.valueOf(requestedId); // This might be set to -1 if the reading was requested
-                                            // via a tradition it doesn't belong to
+        readId = requestedId; // This might be set to -1 if the reading was requested
+                              // via a tradition it doesn't belong to
     }
 
     /**
@@ -60,11 +60,11 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response getReading() {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         ReadingModel reading;
         try (Transaction tx = db.beginTx()) {
-            reading = new ReadingModel(db.getNodeById(readId));
-            tx.success();
+            reading = new ReadingModel(tx.getNodeByElementId(readId));
+            tx.close();
         } catch (NotFoundException e) {
             return Response.noContent().build();
         } catch (Exception e) {
@@ -94,12 +94,12 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = ReadingModel.class)
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         ReadingModel modelToReturn = new ReadingModel();
         Node reading;
         String currentKey = "";
         try (Transaction tx = db.beginTx()) {
-            reading = db.getNodeById(readId);
+            reading = tx.getNodeByElementId(readId);
             for (KeyPropertyModel keyPropertyModel : changeModels.getProperties()) {
                 currentKey = keyPropertyModel.getKey();
                 if (currentKey.equals("id")) {
@@ -120,7 +120,7 @@ public class Reading {
                     reading.setProperty(currentKey, keyPropertyModel.getProperty());
             }
             modelToReturn = new ReadingModel(reading);
-            tx.success();
+            tx.close();
         } catch (NoSuchFieldException f) {
             errorMessage = "Reading has no such property '" + f.getMessage() + "'";
             return errorResponse(Status.BAD_REQUEST);
@@ -153,10 +153,10 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response deleteUserReading() {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         GraphModel deletedElements = new GraphModel();
         try (Transaction tx = db.beginTx()) {
-            Node reading = db.getNodeById(readId);
+            Node reading = tx.getNodeByElementId(readId);
             // Can we delete the reading?
             if (!reading.hasLabel(Nodes.EMENDATION)) {
                 errorMessage = "Only emendation readings can be deleted";
@@ -177,13 +177,13 @@ public class Reading {
             }
             if (onLemmaPath) {
                 // The entire lemma sequence text should be deleted; otherwise it will be broken here.
-                db.traversalDescription().depthFirst().relationships(ERelations.LEMMA_TEXT).traverse(reading)
+                tx.traversalDescription().depthFirst().relationships(ERelations.LEMMA_TEXT).traverse(reading)
                         .relationships().forEach(x -> {deletedSeqs.add(new SequenceModel(x)); x.delete();});
             }
             deletedElements.setSequences(deletedSeqs);
             deletedElements.setReadings(Collections.singletonList(new ReadingModel(reading)));
             reading.delete();
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -210,17 +210,17 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response setReadingAsLemma(@FormParam("value") @DefaultValue("false") String value) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node reading = db.getNodeById(readId);
+            Node reading = tx.getNodeByElementId(readId);
             if (value.equals("true")) {
                 if (!reading.hasProperty("is_lemma") || !reading.getProperty("is_lemma").equals(true)) {
                     Map<String, Object> criteria = new HashMap<>();
                     criteria.put("section_id", reading.getProperty("section_id"));
                     criteria.put("rank", reading.getProperty("rank"));
                     criteria.put("is_lemma", true);
-                    db.findNodes(Nodes.READING, criteria).forEachRemaining(x -> {
+                    tx.findNodes(Nodes.READING, criteria).forEachRemaining(x -> {
                         x.removeProperty("is_lemma");
                         changed.add(new ReadingModel(x));
                     });
@@ -231,7 +231,7 @@ public class Reading {
                 reading.removeProperty("is_lemma");
                 changed.add(new ReadingModel(reading));
             } // otherwise it's a no-op
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -261,14 +261,14 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("net.stemmaweb.model.GraphModel")
     public Response addLacuna (@QueryParam("witness") List<String> forWitnesses) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             // Get a reading model so we can easily check the witnesses
-            Node us = db.getNodeById(readId);
+            Node us = tx.getNodeByElementId(readId);
             ReadingModel thisReading = new ReadingModel(us);
             // Make our lacuna node
-            Node lacuna = db.createNode(Nodes.READING);
+            Node lacuna = tx.createNode(Nodes.READING);
             lacuna.setProperty("is_lacuna", true);
             lacuna.setProperty("rank", (Long) us.getProperty("rank") + 1);
             lacuna.setProperty("section_id", us.getProperty("section_id"));
@@ -303,7 +303,7 @@ public class Reading {
             }
             result.setReadings(changedReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
             result.setSequences(newSeqs.stream().map(SequenceModel::new).collect(Collectors.toList()));
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -331,7 +331,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         try {
             List<Node> relatedReadings = collectRelatedReadings(filterTypes);
             return Response.ok(relatedReadings.stream().map(ReadingModel::new).collect(Collectors.toList())).build();
@@ -361,13 +361,13 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response normaliseRelated(@PathParam("reltype") String onRelationType) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             List<Node> related = collectRelatedReadings(Collections.singletonList(onRelationType));
-            Node us = db.getNodeById(readId);
+            Node us = tx.getNodeByElementId(readId);
             String key = us.hasProperty("normal_form") ? "normal_form" : "text";
-            Object ourNormalForm = db.getNodeById(readId).getProperty(key);
+            Object ourNormalForm = tx.getNodeByElementId(readId).getProperty(key);
             // Set the normal form on this reading if it wasn't already there
             us.setProperty("normal_form", ourNormalForm);
             for (Node n : related) {
@@ -376,7 +376,7 @@ public class Reading {
                     changed.add(new ReadingModel(n));
                 }
             }
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             Status ret = Status.NOT_FOUND;    // Maybe it was the reading that wasn't found
             errorMessage = e.getMessage();
@@ -395,7 +395,7 @@ public class Reading {
     private List<Node> collectRelatedReadings(List<String> filterTypes) throws Exception {
         List<Node> allRelated = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node reading = db.getNodeById(readId);
+            Node reading = tx.getNodeByElementId(readId);
             RelationService.RelatedReadingsTraverser rt;
             if (filterTypes == null || filterTypes.size() == 0)
                 // Traverse all relations
@@ -403,12 +403,12 @@ public class Reading {
             else
                 // Traverse only the named relations
                 rt = new RelationService.RelatedReadingsTraverser(reading, x -> filterTypes.contains(x.getName()));
-            db.traversalDescription().depthFirst()
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.RELATED)
                     .evaluator(rt)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(reading).nodes().forEach(allRelated::add);
-            tx.success();
+            tx.close();
         }
         return allRelated;
     }
@@ -426,15 +426,15 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel")
     public Response deleteAllRelations() {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         ArrayList<RelationModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node reading = db.getNodeById(readId);
+            Node reading = tx.getNodeByElementId(readId);
             for (Relationship rel : reading.getRelationships(ERelations.RELATED)) {
                 deleted.add(new RelationModel(rel));
                 rel.delete();
             }
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -460,7 +460,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getReadingWitnesses() {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         try {
             return Response.ok(collectWitnesses(false)).build();
         } catch (NotFoundException e) {
@@ -478,7 +478,7 @@ public class Reading {
 
         // Look at all incoming SEQUENCE relationships to the reading
         try (Transaction tx = db.beginTx()) {
-            Node reading = db.getNodeById(readId);
+            Node reading = tx.getNodeByElementId(readId);
             // First get the "normal" witnesses
             Iterable<Relationship> readingSeqs = reading.getRelationships(Direction.BOTH, ERelations.SEQUENCE);
             for (Relationship r : readingSeqs)
@@ -497,7 +497,7 @@ public class Reading {
                     }
                 }
             }
-            tx.success();
+            tx.close();
         }
         return normalWitnesses;
     }
@@ -525,7 +525,7 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response duplicateReading(DuplicateModel duplicateModel) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
         ArrayList<RelationModel> tempDeleted = new ArrayList<>();
         ArrayList<SequenceModel> newSequences = new ArrayList<>();
@@ -533,21 +533,21 @@ public class Reading {
         Node originalReading;
 
         try (Transaction tx = db.beginTx()) {
-            List<Long> readings = duplicateModel.getReadings().stream().map(Long::valueOf).collect(Collectors.toList());
-            for (Long readId : readings) {
-                originalReading = db.getNodeById(readId);
+            List<String> readings = duplicateModel.getReadings().stream().map(String::valueOf).collect(Collectors.toList());
+            for (String readId : readings) {
+                originalReading = tx.getNodeByElementId(readId);
                 List<String> newWitnesses = duplicateModel.getWitnesses();
 
                 if (!canBeDuplicated(originalReading, newWitnesses)) {
                     return errorResponse(Status.INTERNAL_SERVER_ERROR);
                 }
 
-                Node newNode = db.createNode();
+                Node newNode = tx.createNode();
                 GraphModel localResult = duplicate(newWitnesses, originalReading, newNode);
                 tempDeleted.addAll(localResult.getRelations());
                 newSequences.addAll(localResult.getSequences());
                 ReadingModel newModel = new ReadingModel(newNode);
-                newModel.setOrig_reading(String.valueOf(readId));
+                newModel.setOrig_reading(readId);
                 createdReadings.add(newModel);
             }
 
@@ -556,13 +556,13 @@ public class Reading {
             ArrayList<SequenceModel> tempSequences = new ArrayList<>();
             for (SequenceModel sm : newSequences) {
                 try {
-                    db.getRelationshipById(Long.parseLong(sm.getId()));
+                    tx.getRelationshipByElementId(sm.getId());
                 } catch (NotFoundException e) {
                     tempSequences.add(sm);
                 }
             }
             newSequences.removeAll(tempSequences);
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -597,7 +597,7 @@ public class Reading {
      */
     private boolean canBeDuplicated(Node originalReading, List<String> newWitnesses) {
         // Make a new REST object for the given reading, to check its witnesses
-        Reading tocheck = new Reading(String.valueOf(originalReading.getId()));
+        Reading tocheck = new Reading(originalReading.getElementId());
         HashSet<String> allWitnesses = tocheck.collectWitnesses(true);
 
         if (newWitnesses.isEmpty()) {
@@ -636,7 +636,7 @@ public class Reading {
     private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) throws Exception {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
-        Reading rdgRest = new Reading(String.valueOf(originalReading.getId()));
+        Reading rdgRest = new Reading(originalReading.getElementId());
 
         // add witnesses to the correct sequence links
         HashSet<Relationship> newSequences = new HashSet<>();
@@ -645,7 +645,7 @@ public class Reading {
             Node prior = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
             Node next = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
             if (prior == null || next == null) {
-                throw new Exception("No prior / next node found for reading " + originalReading.getId() + "!");
+                throw new Exception("No prior / next node found for reading " + originalReading.getElementId() + "!");
             }
             try (Transaction tx = db.beginTx()) {
                 // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
@@ -653,7 +653,7 @@ public class Reading {
                 newSequences.add(ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer")));
                 ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"), "end");
                 ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"), "start");
-                tx.success();
+                tx.close();
             }
         }
         ArrayList<SequenceModel> sequenceModels = new ArrayList<>();
@@ -666,11 +666,12 @@ public class Reading {
         String tradId = getTraditionId();
         Section sectionRest = new Section(tradId, sectId);
         Long ourRank = (Long) originalReading.getProperty("rank");
+        Transaction tx = db.beginTx();
         for (RelationModel rm : sectionRest.sectionRelations()) {
-            Relationship originalRel = db.getRelationshipById(Long.parseLong(rm.getId()));
+            Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
             if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
-                    (rm.getSource().equals(String.valueOf(originalReading.getId())) ||
-                     rm.getTarget().equals(String.valueOf(originalReading.getId())))) {
+                    (rm.getSource().equals(originalReading.getElementId()) ||
+                     rm.getTarget().equals(originalReading.getElementId()))) {
                 Relationship newRel = addedReading.createRelationshipTo(
                         originalRel.getOtherNode(originalReading),
                         ERelations.RELATED);
@@ -680,8 +681,8 @@ public class Reading {
             } else if (!(originalRel.hasProperty("colocation") &&
                     originalRel.getProperty("colocation").equals(true))){
                 // Get the related readings
-                ReadingModel relSource = new ReadingModel(db.getNodeById(Long.parseLong(rm.getSource())));
-                ReadingModel relTarget = new ReadingModel(db.getNodeById(Long.parseLong(rm.getTarget())));
+                ReadingModel relSource = new ReadingModel(tx.getNodeByElementId(rm.getSource()));
+                ReadingModel relTarget = new ReadingModel(tx.getNodeByElementId(rm.getTarget()));
                 if ((relSource.getRank() < ourRank && relTarget.getRank() > ourRank)
                     || (relSource.getRank() > ourRank && relTarget.getRank() < ourRank)) {
                     originalRel.delete();
@@ -714,12 +715,12 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         GraphModel result;
 
         try (Transaction tx = db.beginTx()) {
-            Node stayingReading = db.getNodeById(readId);
-            Node deletingReading = db.getNodeById(secondReadId);
+            Node stayingReading = tx.getNodeByElementId(readId);
+            Node deletingReading = tx.getNodeByElementId(String.valueOf(secondReadId));
 
             ReadingModel drm = new ReadingModel(deletingReading);
 
@@ -763,7 +764,7 @@ public class Reading {
                 ReadingService.recalculateRank(aPriorNode);
             }
 
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -803,7 +804,8 @@ public class Reading {
         boolean aligned = false;
         RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
                 stayingReading, RelationTypeModel::getIs_colocation);
-        for (Node n : db.traversalDescription().depthFirst()
+        Transaction tx = db.beginTx();
+        for (Node n : tx.traversalDescription().depthFirst()
                 .relationships(ERelations.RELATED)
                 .evaluator(rt)
                 .uniqueness(Uniqueness.NODE_GLOBAL)
@@ -813,6 +815,7 @@ public class Reading {
                 break;
             }
         }
+        tx.close();
         // Test for cycles.
         if (!aligned) {
             if (ReadingService.wouldGetCyclic(stayingReading, deletingReading)) {
@@ -856,12 +859,12 @@ public class Reading {
         // Remove any existing relations between the readings
         deleteRelationBetweenReadings(stayingReading, deletingReading);
         // Transfer the witnesses of the to-be-deleted reading to the staying reading
-        for (Relationship r : deletingReading.getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
+        for (Relationship r : deletingReading.getRelationships(Direction.INCOMING, ERelations.SEQUENCE)) {
             ReadingService.transferWitnesses(r.getStartNode(), stayingReading, r).stream().map(SequenceModel::new)
                     .forEach(merged.getSequences()::add);
             r.delete();
         }
-        for (Relationship r : deletingReading.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
+        for (Relationship r : deletingReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
             ReadingService.transferWitnesses(stayingReading, r.getEndNode(), r).stream().map(SequenceModel::new)
                     .forEach(merged.getSequences()::add);
             r.delete();
@@ -907,18 +910,18 @@ public class Reading {
         Relation relService = new Relation(getTraditionId());
         // copy any relevant and nonexistent relationships from deletingReading to stayingReading
         for (Relationship oldRel : deletingReading.getRelationships(
-                ERelations.RELATED, Direction.BOTH)) {
+        		Direction.BOTH, ERelations.RELATED)) {
             RelationModel rel = new RelationModel(oldRel);
             if (oldRel.getStartNode().equals(deletingReading))
-                rel.setSource(String.valueOf(stayingReading.getId()));
+                rel.setSource(stayingReading.getElementId());
             else
-                rel.setTarget(String.valueOf(stayingReading.getId()));
+                rel.setTarget(stayingReading.getElementId());
             Response addResult = relService.create(rel);
             if (addResult.getStatus() == Status.CREATED.getStatusCode())
                 addedRels.add(rel);
             else if (addResult.getStatus() > 399)
                 throw new IllegalStateException(String.format("Conflicting %s relation to node %d prevents merge",
-                        rel.getType(), oldRel.getOtherNode(deletingReading).getId()));
+                        rel.getType(), oldRel.getOtherNode(deletingReading).getElementId()));
         }
         // Now delete all the relations from deletingReading, including any that were created just now
         // as transitive relation artifacts
@@ -956,12 +959,12 @@ public class Reading {
     @ReturnType(clazz = GraphModel.class)
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         assert (model != null);
         GraphModel readingsAndRelations;
         Node originalReading;
         try (Transaction tx = db.beginTx()) {
-            originalReading = db.getNodeById(readId);
+            originalReading = tx.getNodeByElementId(readId);
             String originalText = originalReading.getProperty("text").toString();
             if (splitIndex >= originalText.length())
                 errorMessage = "The index must be smaller than the text length";
@@ -993,7 +996,7 @@ public class Reading {
             readingsAndRelations = split(originalReading, splitIndex, model);
             ReadingService.recalculateRank(originalReading, true);
 
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -1052,7 +1055,7 @@ public class Reading {
 
         // Get the sequence relationships that came out of the original reading
         ArrayList<Relationship> originalOutgoingRels = new ArrayList<>();
-        originalReading.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING).forEach(originalOutgoingRels::add);
+        originalReading.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE).forEach(originalOutgoingRels::add);
 
         // Get the sequence of reading text that should be created
         String[] splitWords = splitUpText(splitIndex, model.getCharacter(),
@@ -1064,9 +1067,10 @@ public class Reading {
 
         // Add the new readings
         Node lastReading = originalReading;
+        Transaction tx = db.beginTx();
 
         for (int i = 1; i < splitWords.length; i++) {
-            Node newReading = db.createNode();
+            Node newReading = tx.createNode();
 
             ReadingService.copyReadingProperties(lastReading, newReading);
             newReading.setProperty("text", splitWords[i]);
@@ -1091,6 +1095,7 @@ public class Reading {
             // Loop
             lastReading = newReading;
         }
+        tx.close();
         for (Relationship oldRel : originalOutgoingRels) {
             Relationship newRel = lastReading.createRelationshipTo(oldRel.getEndNode(), oldRel.getType());
             RelationService.copyRelationshipProperties(oldRel, newRel);
@@ -1120,7 +1125,7 @@ public class Reading {
     @ReturnType(clazz = ReadingModel.class)
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.OUTGOING);
         if (foundNeighbour != null) {
             ReadingModel result = new ReadingModel(foundNeighbour);
@@ -1152,7 +1157,7 @@ public class Reading {
     @ReturnType(clazz = ReadingModel.class)
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.INCOMING);
         if (foundNeighbour != null) {
             ReadingModel result = new ReadingModel(foundNeighbour);
@@ -1170,7 +1175,7 @@ public class Reading {
     private Node getNeighbourReadingInSequence(String witnessId, String layer, Direction dir) {
         Node neighbour = null;
         try (Transaction tx = db.beginTx()) {
-            Node read = db.getNodeById(readId);
+            Node read = tx.getNodeByElementId(readId);
             // Sanity check: does the requested witness+layer actually exist in this node in
             // either direction?
             ReadingModel rm = new ReadingModel(read);
@@ -1183,7 +1188,7 @@ public class Reading {
 
             }
             String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
-            Iterable<Relationship> seqs = read.getRelationships(ERelations.SEQUENCE, dir);
+            Iterable<Relationship> seqs = read.getRelationships(dir, ERelations.SEQUENCE);
             // Get the list of relations matching the given layer
             Collection<Relationship> matching = StreamSupport.stream(seqs.spliterator(), false)
                     .filter(x -> isPathFor(x, witnessId, layer))
@@ -1202,7 +1207,7 @@ public class Reading {
             } else {
                 neighbour = matching.iterator().next().getOtherNode(read);
             }
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
         } catch (Exception e) {
@@ -1266,15 +1271,15 @@ public class Reading {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
     public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
-        if (readId == -1) return Response.status(Status.NOT_FOUND).build();
+        if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         Node read1, read2;
         // some defaults if we fall through and haven't changed it
         errorMessage = "problem with a reading. could not compress";
         Response resp;
 
         try (Transaction tx = db.beginTx()) {
-            read1 = db.getNodeById(readId);
-            read2 = db.getNodeById(readId2);
+            read1 = tx.getNodeByElementId(readId);
+            read2 = tx.getNodeByElementId(String.valueOf(readId2));
             if ((long) read1.getProperty("rank") > (long) read2.getProperty("rank")) {
                 errorMessage = "the first reading has a higher rank then the second reading";
                 resp =  errorResponse(Status.CONFLICT);
@@ -1284,7 +1289,7 @@ public class Reading {
             } else {
                 resp = errorResponse(Status.CONFLICT);
             }
-            tx.success();
+            tx.close();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -1453,11 +1458,11 @@ public class Reading {
     String getTraditionId () {
         String tradId;
         try (Transaction tx = db.beginTx()) {
-            Node rdg = db.getNodeById(readId);
-            tradId = db.getNodeById(Long.parseLong(rdg.getProperty("section_id").toString()))
+            Node rdg = tx.getNodeByElementId(readId);
+            tradId = tx.getNodeByElementId(rdg.getProperty("section_id").toString())
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING)
                     .getStartNode().getProperty("id").toString();
-            tx.success();
+            tx.close();
         }
         return tradId;
     }

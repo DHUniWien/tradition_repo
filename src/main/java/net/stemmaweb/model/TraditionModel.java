@@ -96,7 +96,7 @@ public class TraditionModel {
             reltypes = new ArrayList<>(Arrays.asList("grammatical", "spelling", "other", "punctuation",
                     "lexical", "orthographic", "uncertain"));
 
-            tx.success();
+            tx.close();
         }
     }
 

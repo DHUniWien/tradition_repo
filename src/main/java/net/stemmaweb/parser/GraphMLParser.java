@@ -41,7 +41,7 @@ public class GraphMLParser {
         // Simulate the expected filenames in the zip file
         String filename = isSingleSection ? "section-new.xml" : "tradition.xml";
         // We won't use this, but the new parser expects it
-        HashMap<String, Long> idMap = new HashMap<>();
+        HashMap<String, String> idMap = new HashMap<>();
         Response result;
         try (Transaction tx = db.beginTx()) {
             // Mimic whether this is a tradition or a section file
@@ -49,7 +49,7 @@ public class GraphMLParser {
             // Did something go wrong? If so, exit now
             if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                 return result;
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -70,7 +70,7 @@ public class GraphMLParser {
 
     public Response parseGraphMLZip(InputStream filestream, Node parentNode, boolean isSingleSection) {
         // Keep track of GraphML ID -> created node ID
-        HashMap<String, Long> idMap = new HashMap<>();
+        HashMap<String, String> idMap = new HashMap<>();
         // Initialise our response
         String ret = null;
         // Unzip the file and send each XML file therein to the "real" parser
@@ -96,7 +96,7 @@ public class GraphMLParser {
                     ret = (String) result.getEntity();
             }
             Util.cleanupExtractedZip(inputXML);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -115,7 +115,7 @@ public class GraphMLParser {
      * @return a Response indicating the result
      */
     private Response parseGraphML(InputStream filestream, String fileName, Node parentNode,
-                                  Map<String, Long> idMap, boolean isSingleSection) {
+                                  Map<String, String> idMap, boolean isSingleSection) {
         // We will use a DOM parser for this
         Document doc = Util.openFileStream(filestream);
         if (doc == null)
@@ -152,7 +152,7 @@ public class GraphMLParser {
             // The parentId we return should be the ID of the parent node for whatever we just processed –
             // either the tradition ID if we are parsing a new tradition, or the section ID if we are
             // parsing a new section into a tradition. LATER does this make sense??
-            parentId = fileName.equals("tradition.xml") ? tradId : String.valueOf(parentNode.getId());
+            parentId = fileName.equals("tradition.xml") ? tradId : String.valueOf(parentNode.getElementId());
             // If we are parsing a new section into an existing tradition, get the tradition metadata nodes
             // to make sure we don't duplicate them. This should only happen if we have isSingleSection set,
             // since otherwise the relevant nodes should already be in idMap.
@@ -187,7 +187,7 @@ public class GraphMLParser {
                         // different tradition with this UUID, we need to retain the UUID in the GraphML.
 
                         String fileTraditionId = nodeProperties.get("id").toString();
-                        Node existingTradition = db.findNode(Nodes.TRADITION, "id", fileTraditionId);
+                        Node existingTradition = tx.findNode(Nodes.TRADITION, "id", fileTraditionId);
                         if (existingTradition != null) // There is another tradition with this UUID; don't re-use it.
                             nodeProperties.remove("id");
                         else { // There is no other tradition with this UUID; update the tradId to match the XML.
@@ -204,7 +204,7 @@ public class GraphMLParser {
                         // ID of the section node.
                     // Now set the tradition node to be our real tradition node, whether from this file or
                     // from the existing tradition for this section
-                    idMap.put(xmlId, traditionNode.getId());
+                    idMap.put(xmlId, traditionNode.getElementId());
 
                 } else {
                     // Now we have the information of the XML, we can create the new node if we need to.
@@ -215,7 +215,7 @@ public class GraphMLParser {
                     //   with identical properties already exists
                     Node entity = null;
                     if (idMap.containsKey(xmlId)) {
-                        entity = db.getNodeById(idMap.get(xmlId));
+                        entity = tx.getNodeByElementId(idMap.get(xmlId));
                     } else {
                         // Is this the single-section section node?
                         boolean exists = false;
@@ -236,9 +236,9 @@ public class GraphMLParser {
                             }
                         }
                         // If we haven't found a Neo4J node to match this XML node, we need to create one.
-                        if (entity == null) entity = db.createNode();
+                        if (entity == null) entity = tx.createNode();
                         // Record the XML -> n4j correlation
-                        idMap.put(xmlId, entity.getId());
+                        idMap.put(xmlId, entity.getElementId());
                         // and, if the node didn't already exist, update its labels and properties.
                         if (!exists)
                             for (String l : entityLabel) {
@@ -275,8 +275,8 @@ public class GraphMLParser {
                 Node source;
                 Node target;
                 try {
-                    source = db.getNodeById(idMap.get(sourceXmlId));
-                    target = db.getNodeById(idMap.get(targetXmlId));
+                    source = tx.getNodeByElementId(idMap.get(sourceXmlId));
+                    target = tx.getNodeByElementId(idMap.get(targetXmlId));
                 } catch (NullPointerException e) {
                     // If the source or the target is in userLabeledNodes, we know this is a userLabeledEdge, i.e.
                     // an annotation edge. Skip it for later addition through the annotation framework
@@ -345,7 +345,7 @@ public class GraphMLParser {
                     return Response.status(Response.Status.BAD_REQUEST).entity(
                             jsonerror("Reading nodes found in a file without a section")).build();
                 }
-                r.setProperty("section_id", thisSection.getId());
+                r.setProperty("section_id", thisSection.getElementId());
             }
 
             // Ensure that the tradition and section are linked
@@ -386,7 +386,7 @@ public class GraphMLParser {
                         // It is a link that belongs to this source. For now set the XML element ID as the
                         // target; this will need to be converted progressively into real node IDs.
                         AnnotationLinkModel alm = new AnnotationLinkModel();
-                        alm.setTarget(Long.valueOf(targetXmlId));
+                        alm.setTarget(targetXmlId);
                         alm.setType(edgeProps.get("neolabel").toString());
                         if (edgeProps.containsKey("follow")) alm.setFollow(edgeProps.get("follow").toString());
                         am.addLink(alm);
@@ -401,14 +401,14 @@ public class GraphMLParser {
                     AnnotationModel am = annotationsToAdd.get(amid);
                     // Look at the links and see if the targets exist yet
                     boolean targetsExist = true;
-                    for (Long target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).collect(Collectors.toList())) {
-                        targetsExist = targetsExist && idMap.containsKey(target.toString());
+                    for (String target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).collect(Collectors.toList())) {
+                        targetsExist = targetsExist && idMap.containsKey(target);
                     }
                     if (targetsExist) {
                         // We can update the links with the "real" nodes and create the annotation.
                         for (AnnotationLinkModel alm : am.getLinks()) {
-                            Node nodeTarget = db.getNodeById(idMap.get(alm.getTarget().toString()));
-                            alm.setTarget(nodeTarget.getId());
+                            Node nodeTarget = tx.getNodeByElementId(idMap.get(alm.getTarget().toString()));
+                            alm.setTarget(nodeTarget.getElementId());
                         }
                         Response result = tradService.addAnnotation(am);
                         if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
@@ -419,7 +419,7 @@ public class GraphMLParser {
                         // Add the new annotation node to the idMap so that it is there for any
                         // dependent annotations
                         AnnotationModel newAnno = (AnnotationModel) result.getEntity();
-                        idMap.put(amid, Long.parseLong(newAnno.getId()));
+                        idMap.put(amid, newAnno.getId());
                         // Mark this annotation to be removed from the queue
                         toRemove.add(amid);
                     }
@@ -432,10 +432,10 @@ public class GraphMLParser {
             }
 
             // Sanity check: if we created any relationship-less nodes, delete them again.
-            idMap.values().stream().map(db::getNodeById)
+            idMap.values().stream().map(tx::getNodeByElementId)
                     .filter(n -> !n.hasRelationship()).forEach(Node::delete);
 
-            tx.success();
+            tx.close();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

@@ -11,7 +11,7 @@ import java.util.stream.StreamSupport;
 
 public class VariantCrawler {
     private final Set<String> lemmaLinks;
-    private final Set<Long> lemmaNodes;
+    private final Set<String> lemmaNodes;
     private final RelationshipType followType;
     private final Set<String> excludeWitnesses;
     // Hash by path string rather than path itself, in case the objects aren't equal
@@ -19,7 +19,7 @@ public class VariantCrawler {
 
     public VariantCrawler(List<Relationship> lp, RelationshipType rt, List<String> excludeWitnesses) {
         this.lemmaLinks = lp.stream().map(Relationship::toString).collect(Collectors.toSet());
-        this.lemmaNodes = lp.stream().map(x -> x.getEndNode().getId()).collect(Collectors.toSet());
+        this.lemmaNodes = lp.stream().map(x -> x.getEndNode().getElementId()).collect(Collectors.toSet());
         this.excludeWitnesses = new HashSet<>(excludeWitnesses);
         this.followType = rt;
         this.pathWitnesses = new HashMap<>();
@@ -34,7 +34,7 @@ public class VariantCrawler {
             if (this.lemmaLinks.contains(path.lastRelationship().toString()))
                 return Evaluation.EXCLUDE_AND_PRUNE;
             // Have we hit a lemma node again? If so, truncate after.
-            if (this.lemmaNodes.contains(path.endNode().getId()))
+            if (this.lemmaNodes.contains(path.endNode().getElementId()))
                 return Evaluation.INCLUDE_AND_PRUNE;
             // Otherwise keep going, but don't return the path yet.
             return Evaluation.EXCLUDE_AND_CONTINUE;
@@ -52,10 +52,10 @@ public class VariantCrawler {
     public PathExpander variantListExpander () {
         return new PathExpander() {
             @Override
-            public Iterable<Relationship> expand(Path path, BranchState branchState) {
+            public ResourceIterable<Relationship> expand(Path path, BranchState branchState) {
                 // If the path is zero-length, try all continuing paths and record their witnesses
                 if (path.length() == 0) {
-                    Iterable<Relationship> result = path.endNode().getRelationships(Direction.OUTGOING, followType);
+                	ResourceIterable<Relationship> result = path.endNode().getRelationships(Direction.OUTGOING, followType);
                     for (Relationship r: result) {
                         Map<String,Set<String>> pathWits = new HashMap<>();
                         for (String layer : r.getPropertyKeys()) {
@@ -72,10 +72,10 @@ public class VariantCrawler {
                 // If not, we have some work to do
                 String key = pathKey(path.relationships(), null);
                 Map<String,Set<String>> witsSoFar = pathWitnesses.getOrDefault(key, null);
-                if (witsSoFar == null || witsSoFar.isEmpty())
+                if (witsSoFar == null || witsSoFar.isEmpty()) {
                     // We have no "through" witnesses for this path, so don't go any farther.
                     return new ArrayList<>();
-
+                }
                 // Now for each witness sigil in witsSoFar, find the relationship that continues it.
                 Map<String, Relationship> continuations = new HashMap<>();
                 Set<String> baseWits = witsSoFar.getOrDefault("witnesses", new HashSet<>());

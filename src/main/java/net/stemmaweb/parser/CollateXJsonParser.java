@@ -157,7 +157,7 @@ public class CollateXJsonParser {
                                 expandExtraField(thisReading.getProperty("extra").toString(),
                                         witParts, rm.getExtra()));
                     } else {
-                        thisReading = db.createNode(Nodes.READING);
+                        thisReading = tx.createNode(Nodes.READING);
                         thisReading.setProperty("text", rm.getText());
                         thisReading.setProperty("normal_form", rm.getNormal_form());
                         if (rm.getDisplay() != null)
@@ -173,7 +173,7 @@ public class CollateXJsonParser {
                             thisReading.setProperty("extra", thisExtra.toString());
                         }
                         thisReading.setProperty("rank", rank);
-                        thisReading.setProperty("section_id", parentNode.getId());
+                        thisReading.setProperty("section_id", parentNode.getElementId());
                         createdReadings.put(lookupKey, thisReading);
                         distinct++;
                     }
@@ -197,8 +197,8 @@ public class CollateXJsonParser {
                 Node lastReading = lastWitnessReading.get(witString);
                 ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
-            tx.success();
-            return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getId())).build();
+            tx.close();
+            return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getElementId())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

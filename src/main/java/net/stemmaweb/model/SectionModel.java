@@ -43,7 +43,7 @@ public class SectionModel {
      */
     public SectionModel(Node node) {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
-            setId(String.valueOf(node.getId()));
+            setId(node.getElementId());
             if (node.hasProperty("name"))
                 setName(node.getProperty("name").toString());
             // If this node has a language set, use it; otherwise fall back to the tradition language.
@@ -57,7 +57,7 @@ public class SectionModel {
             Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
             setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
-            tx.success();
+            tx.close();
         }
     }
 

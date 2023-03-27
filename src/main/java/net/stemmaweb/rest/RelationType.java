@@ -129,7 +129,7 @@ public class RelationType {
             // Then I guess we can delete it.
             foundRelType.getSingleRelationship(ERelations.HAS_RELATION_TYPE, Direction.INCOMING).delete();
             foundRelType.delete();
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

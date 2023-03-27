@@ -70,8 +70,8 @@ public class CollateXParser {
             for (int i = 0; i < readingNodes.getLength(); i++) {
                 NamedNodeMap rdgAttrs = readingNodes.item(i).getAttributes();
                 String cxId = rdgAttrs.getNamedItem("id").getNodeValue();
-                Node reading = db.createNode(Nodes.READING);
-                reading.setProperty("section_id", parentNode.getId());
+                Node reading = tx.createNode(Nodes.READING);
+                reading.setProperty("section_id", parentNode.getElementId());
 
                 NodeList dataNodes = ((Element) readingNodes.item(i)).getElementsByTagName("data");
                 for (int j = 0; j < dataNodes.getLength(); j++) {
@@ -132,8 +132,8 @@ public class CollateXParser {
                 Relationship relation = source.createRelationshipTo(target, rtype);
                 if (rtype != null && rtype.equals(ERelations.RELATED)) {
                     transpositionSeen = true;
-                    relation.setProperty("source", source.getId());
-                    relation.setProperty("target", target.getId());
+                    relation.setProperty("source", source.getElementId());
+                    relation.setProperty("target", target.getElementId());
                     relation.setProperty("type", "transposition");
                     relation.setProperty("reading_a", source.getProperty("text"));
                     relation.setProperty("reading_b", target.getProperty("text"));
@@ -159,7 +159,7 @@ public class CollateXParser {
                     return rtResult;
             }
 
-            tx.success();
+            tx.close();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {
@@ -167,7 +167,7 @@ public class CollateXParser {
             return Response.serverError().build();
         }
 
-        return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getId())).build();
+        return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getElementId())).build();
     }
 
 }

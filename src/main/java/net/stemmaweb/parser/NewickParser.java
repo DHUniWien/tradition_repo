@@ -47,7 +47,7 @@ public class NewickParser {
             for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
                 if (priorStemma.getProperty("name").equals(stemmaSpec.getIdentifier())) return Response.status(Response.Status.CONFLICT)
                         .entity(jsonerror("A stemma by this name already exists for this tradition.")).build();
-            tx.success();
+            tx.close();
         }
 
         // Parse the tree
@@ -60,7 +60,7 @@ public class NewickParser {
         try (Transaction tx = db.beginTx()) {
             HashMap<Integer,Node> stemmaWits = new HashMap<>();
             // Create the new stemma node
-            Node stemmaNode = db.createNode(Nodes.STEMMA);
+            Node stemmaNode = tx.createNode(Nodes.STEMMA);
             stemmaNode.setProperty("name", stemmaSpec.getIdentifier());
             stemmaNode.setProperty("directed", false);
             if (stemmaSpec.cameFromJobid()) stemmaNode.setProperty("from_jobid", stemmaSpec.getJobid());
@@ -100,7 +100,7 @@ public class NewickParser {
                     traditionNode.getProperty("stemweb_jobid", 0)))
                 traditionNode.removeProperty("stemweb_jobid");
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

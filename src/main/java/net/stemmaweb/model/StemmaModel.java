@@ -60,7 +60,7 @@ public class StemmaModel {
             DotExporter writer = new DotExporter(db);
             Response export = writer.writeNeo4JStemma(traditionNode.getProperty("id").toString(), identifier, false);
             dot = export.getEntity().toString();
-            tx.success();
+            tx.close();
         }
     }
 

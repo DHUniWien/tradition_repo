@@ -50,7 +50,7 @@ public class GraphMLExporter {
     private void writeNode(XMLStreamWriter writer, Node node) {
         try {
             writer.writeStartElement("node");
-            writer.writeAttribute("id", String.valueOf(node.getId()));
+            writer.writeAttribute("id", node.getElementId());
 
             // Write out the labels
             writer.writeStartElement("data");
@@ -70,9 +70,9 @@ public class GraphMLExporter {
     private void writeEdge(XMLStreamWriter writer, Relationship edge) {
         try {
             writer.writeStartElement("edge");
-            writer.writeAttribute("id", String.valueOf(edge.getId()));
-            writer.writeAttribute("source", String.valueOf(edge.getStartNode().getId()));
-            writer.writeAttribute("target", String.valueOf(edge.getEndNode().getId()));
+            writer.writeAttribute("id", String.valueOf(edge.getElementId()));
+            writer.writeAttribute("source", String.valueOf(edge.getStartNode().getElementId()));
+            writer.writeAttribute("target", String.valueOf(edge.getEndNode().getElementId()));
 
             // Write out the type
             writer.writeStartElement("data");
@@ -90,7 +90,7 @@ public class GraphMLExporter {
     }
 
     // TODO check for cases where the same property name has different types in different containers
-    private void writeProperties(XMLStreamWriter writer, PropertyContainer ent, HashMap<String, String[]> collection)
+    private void writeProperties(XMLStreamWriter writer, Entity ent, HashMap<String, String[]> collection)
             throws XMLStreamException {
         String prefix = collection.equals(nodeMap) ? "dn" : "de";
         for (String prop : ent.getPropertyKeys()) {
@@ -111,7 +111,7 @@ public class GraphMLExporter {
 
     // To be used inside a transaction
     // These datatypes need to be kept in sync with parser.GraphMLParser
-    private void collectProperties (PropertyContainer ent, HashMap<String, String[]> collection) {
+    private void collectProperties (Entity ent, HashMap<String, String[]> collection) {
         int ctr = collection.size();
         for (String p : ent.getPropertyKeys()) {
             String type = "string";
@@ -175,11 +175,11 @@ public class GraphMLExporter {
             writer.writeAttribute("parse.order", "nodesfirst");
 
             // Now list out all the nodes, checking against duplicates in the traversal
-            HashSet<Long> addedNodes = new HashSet<>();
+            HashSet<String> addedNodes = new HashSet<>();
             for (Node n : collectionNodes)
-                if (!addedNodes.contains(n.getId())) {
+                if (!addedNodes.contains(n.getElementId())) {
                     writeNode(writer, n);
-                    addedNodes.add(n.getId());
+                    addedNodes.add(n.getElementId());
                 }
 
             // And list out all the edges, which should already be unique in the traversal
@@ -189,7 +189,7 @@ public class GraphMLExporter {
             writer.writeEndElement(); // end graphml
             writer.flush();
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -220,8 +220,8 @@ public class GraphMLExporter {
         }
         ArrayList<String> outputFiles = new ArrayList<>();
         // Get the tradition meta-info
-        ResourceIterable<Node> cn = VariantGraphService.returnTraditionMeta(traditionNode).nodes();
-        ResourceIterable<Relationship> ce =
+        Iterable<Node> cn = VariantGraphService.returnTraditionMeta(traditionNode).nodes();
+        Iterable<Relationship> ce =
                 VariantGraphService.returnTraditionMeta(traditionNode).relationships();
 
         List<Node> collectionNodes;
@@ -241,7 +241,7 @@ public class GraphMLExporter {
             }
             // Get any annotations pertaining to the tradition node itself and its metadata
             collectExtraNodesAndEdges(collectionNodes, collectionEdges);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             cleanup(tmpdirfh);
@@ -266,8 +266,8 @@ public class GraphMLExporter {
         List<Node> allSections = new ArrayList<>();
         if (sectionId != null) {
             try (Transaction tx = db.beginTx()) {
-                allSections.add(db.getNodeById(Long.parseLong(sectionId)));
-                tx.success();
+                allSections.add(tx.getNodeByElementId(sectionId));
+                tx.close();
             } catch (Exception e) {
                 e.printStackTrace();
                 cleanup(tmpdirfh);
@@ -277,10 +277,10 @@ public class GraphMLExporter {
             allSections = VariantGraphService.getSectionNodes(tradId, db);
         }
         for (Node s : allSections) {
-            String sectId = String.valueOf(s.getId());
+            String sectId = s.getElementId();
             // Gather the section-relevant nodes
-            ResourceIterable<Node> sectionNodes = VariantGraphService.returnTraditionSection(s).nodes();
-            ResourceIterable<Relationship> sectionEdges = VariantGraphService.returnTraditionSection(s).relationships();
+            Iterable<Node> sectionNodes = VariantGraphService.returnTraditionSection(s).nodes();
+            Iterable<Relationship> sectionEdges = VariantGraphService.returnTraditionSection(s).relationships();
 
             // Convert ResourceIterables to lists and collect relevant annotations
             List<Node> allSectNodes;
@@ -289,7 +289,7 @@ public class GraphMLExporter {
                 allSectNodes = sectionNodes.stream().collect(Collectors.toList());
                 allSectEdges = sectionEdges.stream().collect(Collectors.toList());
                 collectExtraNodesAndEdges(allSectNodes, allSectEdges);
-                tx.success();
+                tx.close();
             } catch (Exception e) {
                 e.printStackTrace();
                 cleanup(tmpdirfh);

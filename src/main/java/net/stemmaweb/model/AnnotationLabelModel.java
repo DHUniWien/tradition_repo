@@ -56,12 +56,12 @@ public class AnnotationLabelModel {
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         Node alNode = null;
         try (Transaction tx = db.beginTx()) {
-            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            for (Relationship r : tradNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING))
+            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
+            for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE))
                 if (r.getEndNode().getProperty("name", "").equals(name)) {
                     alNode = r.getEndNode();
                 }
-            tx.success();
+            tx.close();
         }
         if (alNode != null)
             initFromNode(alNode);
@@ -92,7 +92,7 @@ public class AnnotationLabelModel {
                     links.put(key, lnode.getProperty(key).toString());
                 }
             }
-            tx.success();
+            tx.close();
         }
     }
 

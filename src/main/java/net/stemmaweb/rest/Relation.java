@@ -90,15 +90,15 @@ public class Relation {
             if (!scope.equals(SCOPE_LOCAL)) {
                 Boolean use_normal = returnRelationType(tradId, relationModel.getType()).getUse_regular();
                 try (Transaction tx = db.beginTx()) {
-                    Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
-                    Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
+                    Node readingA = tx.getNodeByElementId(relationModel.getSource());
+                    Node readingB = tx.getNodeByElementId(relationModel.getTarget());
                     Node startingPoint = VariantGraphService.getTraditionNode(tradId, db);
                     if (scope.equals(SCOPE_SECTION))
-                        startingPoint = db.getNodeById((Long) readingA.getProperty("section_id"));
-                    Relationship thisRelation = db.getRelationshipById(Long.valueOf(thisRelId));
+                        startingPoint = tx.getNodeByElementId(String.valueOf(readingA.getProperty("section_id")));
+                    Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
 
                     // Get all the readings that belong to our tradition or section
-                    ResourceIterable<Node> tradReadings = VariantGraphService.returnEntireTradition(startingPoint).nodes();
+                    Iterable<Node> tradReadings = VariantGraphService.returnEntireTradition(startingPoint).nodes();
                     // Pick out the ones that share the readingA text
                     Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
                             ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
@@ -107,12 +107,12 @@ public class Relation {
                             .collect(Collectors.toCollection(HashSet::new));
                     HashMap<String, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
-                        long node_id = cur_node.getId();
+                        String node_id = cur_node.getElementId();
                         long node_rank = (Long) cur_node.getProperty("rank");
                         String node_section = cur_node.getProperty("section_id").toString();
                         String key = node_section + "/" + node_rank;
                         HashSet<Long> cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
-                        cur_set.add(node_id);
+                        cur_set.add(Long.valueOf(node_rank));
                         ranks.putIfAbsent(key, cur_set);
                     }
 
@@ -122,7 +122,7 @@ public class Relation {
                             .collect(Collectors.toCollection(HashSet::new));
                     RelationModel userel;
                     for (Node cur_node : ourB) {
-                        long node_id = cur_node.getId();
+                        String node_id = cur_node.getElementId();
                         long node_rank = (Long) cur_node.getProperty("rank");
                         String node_section = cur_node.getProperty("section_id").toString();
                         String key = node_section + "/" + node_rank;
@@ -132,7 +132,7 @@ public class Relation {
                             for (Object id : cur_set) {
                                 userel = new RelationModel(thisRelation);
                                 userel.setSource(Long.toString((Long) id));
-                                userel.setTarget(Long.toString(node_id));
+                                userel.setTarget(node_id);
                                 response = this.create_local(userel);
                                 if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
                                     if (Status.CREATED.getStatusCode() == response.getStatus()) {
@@ -144,7 +144,7 @@ public class Relation {
                             }
                         }
                     }
-                    tx.success();
+                    tx.close();
                 } catch (Exception e) {
                     e.printStackTrace();
                     return Response.serverError().build();
@@ -165,10 +165,10 @@ public class Relation {
              * the id search is O(n) just go through all ids without care. And the
              *
              */
-            Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
-            Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
+            Node readingA = tx.getNodeByElementId(relationModel.getSource());
+            Node readingB = tx.getNodeByElementId(relationModel.getTarget());
 
-            Node ourSection = db.getNodeById(Long.valueOf(readingA.getProperty("section_id").toString()));
+            Node ourSection = tx.getNodeByElementId(readingA.getProperty("section_id").toString());
             Node ourTradition = ourSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
             if (!ourTradition.getProperty("id").equals(tradId))
                 return Response.status(Status.CONFLICT)
@@ -234,10 +234,10 @@ public class Relation {
                     RelationTypeModel rtm = returnRelationType(tradId, thisRel.getType());
                     if (thisRel.getType().equals(relationModel.getType())) {
                         // TODO allow for update of existing relation
-                        tx.success();
+                        tx.close();
                         return Response.status(Status.NOT_MODIFIED).type(MediaType.TEXT_PLAIN_TYPE).build();
                     } else if (!rtm.getIs_weak()) {
-                        tx.success();
+                        tx.close();
                         String msg = String.format("Relation of type %s already exists between readings %s and %s",
                                 relationModel.getType(), relationModel.getSource(), relationModel.getTarget());
                         return Response.status(Status.CONFLICT).entity(jsonerror(msg)).build();
@@ -249,7 +249,7 @@ public class Relation {
             readingsAndRelationModel = createSingleRelation(readingA, readingB, relationModel, rmodel);
             // We can also write any transitive relationships.
             propagateRelation(readingsAndRelationModel, rmodel);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -335,12 +335,13 @@ public class Relation {
         if (!rtm.getIs_transitive()) return;
         // Now go through all the relations that have been created, and make sure that any
         // transitivity effects have been accounted for.
+        Transaction tx = db.beginTx();
         for (RelationModel rm : newRelationResult.getRelations()) {
             TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tradId, rtm);
-            Node startNode = db.getNodeById(Long.valueOf(rm.getSource()));
+            Node startNode = tx.getNodeByElementId(rm.getSource());
             ArrayList<Node> relatedNodes = new ArrayList<>();
             // Get all the readings that are related by this or a more closely-bound type.
-            db.traversalDescription().depthFirst()
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.RELATED)
                     .evaluator(relTraverser)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
@@ -393,6 +394,7 @@ public class Relation {
 
             }
         }
+        tx.close();
     }
 
     /**
@@ -415,8 +417,8 @@ public class Relation {
         ArrayList<RelationModel> deleted = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
-            Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
+            Node readingA = tx.getNodeByElementId(relationModel.getSource());
+            Node readingB = tx.getNodeByElementId(relationModel.getTarget());
 
             switch (relationModel.getScope()) {
                 case SCOPE_LOCAL:
@@ -439,8 +441,8 @@ public class Relation {
 
                     for (Relationship rel : toCheck.relationships()) {
                         if (rel.getType().name().equals(ERelations.RELATED.name())) {
-                            Node ra = db.getNodeById(Long.parseLong(relationModel.getSource()));
-                            Node rb = db.getNodeById(Long.parseLong(relationModel.getTarget()));
+                            Node ra = tx.getNodeByElementId(relationModel.getSource());
+                            Node rb = tx.getNodeByElementId(relationModel.getTarget());
 
                             if ((rel.getStartNode().getProperty("text").equals(ra.getProperty("text"))
                                     || rel.getEndNode().getProperty("text").equals(ra.getProperty("text")))
@@ -457,7 +459,7 @@ public class Relation {
                 default:
                     return Response.status(Status.BAD_REQUEST).entity(jsonerror("Undefined Scope")).build();
             }
-            tx.success();
+            tx.close();
         }
         return Response.status(Response.Status.OK).entity(deleted).build();
     }
@@ -480,14 +482,14 @@ public class Relation {
         RelationModel relationModel;
 
         try (Transaction tx = db.beginTx()) {
-            Relationship relationship = db.getRelationshipById(Long.parseLong(relationId));
+            Relationship relationship = tx.getRelationshipByElementId(relationId);
             if(relationship.getType().name().equals("RELATED")) {
                 relationModel = new RelationModel(relationship);
                 relationship.delete();
             } else {
                 return Response.status(Status.FORBIDDEN).entity(jsonerror("This is not a relation link")).build();
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }

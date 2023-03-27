@@ -26,7 +26,7 @@ public class DatabaseService {
                 Node node = db.createNode(Nodes.ROOT);
                 node.setProperty("name", "Root node");
             }
-            tx.success();
+            tx.close();
         }
     }
 
@@ -44,7 +44,7 @@ public class DatabaseService {
         try (Transaction tx = db.beginTx()) {
             Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
             allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
-            tx.success();
+            tx.close();
         }
         return result;
     }
@@ -63,7 +63,7 @@ public class DatabaseService {
             for (Relationship r : startNode.getRelationships(rtype, Direction.BOTH))
                 if (r.getOtherNode(startNode).equals(endNode))
                     found.add(r);
-            tx.success();
+            tx.close();
         }
         return found;
     }
@@ -80,8 +80,8 @@ public class DatabaseService {
     public static boolean userExists(String userId, GraphDatabaseService db) {
         Node extantUser;
         try (Transaction tx = db.beginTx()) {
-            extantUser = db.findNode(Nodes.USER, "id", userId);
-            tx.success();
+            extantUser = tx.findNode(Nodes.USER, "id", userId);
+            tx.close();
         }
         return extantUser != null;
     }

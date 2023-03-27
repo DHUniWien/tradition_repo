@@ -94,7 +94,7 @@ public class AnnotationLabel {
                     return Response.status(Response.Status.CONFLICT)
                             .entity(jsonerror("Requested label " + alm.getName() + " already in use")).build();
                 // Create the label and its properties and links
-                ourNode = db.createNode(Nodes.ANNOTATIONLABEL);
+                ourNode = tx.createNode(Nodes.ANNOTATIONLABEL);
                 tradNode.createRelationshipTo(ourNode, ERelations.HAS_ANNOTATION_TYPE);
                 ourNode.setProperty("name", alm.getName());
                 existingLabels.add(alm.getName());
@@ -122,7 +122,7 @@ public class AnnotationLabel {
             // Now reset the properties and links according to the model given.
             // Do we have any new properties?
             if (!alm.getProperties().isEmpty()) {
-                Node pnode = db.createNode(Nodes.PROPERTIES);
+                Node pnode = tx.createNode(Nodes.PROPERTIES);
                 ourNode.createRelationshipTo(pnode, ERelations.HAS_PROPERTIES);
                 ArrayList<String> allowedValues = new ArrayList<>(Arrays.asList("Boolean", "Long", "Double",
                         "Character", "String", "LocalDate", "OffsetTime", "LocalTime", "ZonedDateTime",
@@ -144,7 +144,7 @@ public class AnnotationLabel {
             }
             // Do we have any links?
             if (!alm.getLinks().isEmpty()) {
-                Node lnode = db.createNode(Nodes.LINKS);
+                Node lnode = tx.createNode(Nodes.LINKS);
                 ourNode.createRelationshipTo(lnode, ERelations.HAS_LINKS);
                 for (String key : alm.getLinks().keySet()) {
                     // Validate the value - the node label that is specified as the target for this link
@@ -154,7 +154,7 @@ public class AnnotationLabel {
                             "Linked node label " + key + " not found in this tradition")).build();
                 }
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -186,7 +186,7 @@ public class AnnotationLabel {
             for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION))
                 if (annoNode.hasLabel(Label.label(ourModel.getName())))
                     return Response.status(Response.Status.CONFLICT).entity(jsonerror(
-                            "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getId()))
+                            "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getElementId()))
                             .build();
 
             // Delete the label's properties and links
@@ -208,7 +208,7 @@ public class AnnotationLabel {
             // Finally, delete the label
             ourNode.getSingleRelationship(ERelations.HAS_ANNOTATION_TYPE, Direction.INCOMING).delete();
             ourNode.delete();
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -223,7 +223,7 @@ public class AnnotationLabel {
             Optional<Node> foundNode = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
                     .stream().filter(x -> x.getProperty("name", "").equals(name)).findFirst();
             if (foundNode.isPresent()) ourNode = foundNode.get();
-            tx.success();
+            tx.close();
         }
         return ourNode;
     }
@@ -233,7 +233,7 @@ public class AnnotationLabel {
         List<Node> answer;
         try (Transaction tx = db.beginTx()) {
             answer = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE);
-            tx.success();
+            tx.close();
             return answer;
         }
     }
@@ -244,7 +244,7 @@ public class AnnotationLabel {
         try (Transaction tx = db.beginTx()) {
             answer = getExistingLabelsForTradition().stream()
                     .map(x -> x.getProperty("name").toString()).collect(Collectors.toList());
-            tx.success();
+            tx.close();
         }
         // Get the primary objects that can also be annotated
         for (Nodes x : Nodes.values()) {

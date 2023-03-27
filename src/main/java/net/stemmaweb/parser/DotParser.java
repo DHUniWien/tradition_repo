@@ -94,7 +94,7 @@ public class DotParser {
                     .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
 
             // Create the new stemma node
-            Node stemmaNode = db.createNode(Nodes.STEMMA);
+            Node stemmaNode = tx.createNode(Nodes.STEMMA);
             stemmaNode.setProperty("name", stemmaName);
             Boolean isDirected = stemma.getType() == 2;
             stemmaNode.setProperty("directed", isDirected);
@@ -146,7 +146,7 @@ public class DotParser {
             // Traverse the stemma looking for a cycle.
             boolean contaminated = false;
             for (Node witness : witnessesVisited.keySet()) {
-                ResourceIterator<Node> pathNodes = db.traversalDescription()
+                Iterator<Node> pathNodes = tx.traversalDescription()
                         .depthFirst()
                         .expand(Util.getExpander(Direction.BOTH, stemmaName))
                         .uniqueness(Uniqueness.RELATIONSHIP_PATH)
@@ -176,7 +176,7 @@ public class DotParser {
                     // If this witness has already been visited in another traversal, skip it.
                     if (witnessesVisited.get(witness))
                         continue;
-                    ResourceIterable<Node> pathNodes = db.traversalDescription().depthFirst()
+                    Iterable<Node> pathNodes = tx.traversalDescription().depthFirst()
                             .expand(Util.getExpander(Direction.INCOMING, stemmaName))
                             .traverse(witness).nodes();
                     Node pathEnd = null;
@@ -205,7 +205,7 @@ public class DotParser {
             // Save the stemma to the tradition.
             traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             messageValue = e.toString();

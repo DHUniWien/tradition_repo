@@ -78,15 +78,15 @@ public class RelationService {
             else if (referenceNode.hasLabel(Nodes.SECTION))
                 traditionNode = VariantGraphService.getTraditionNode(referenceNode);
             else if (referenceNode.hasLabel(Nodes.READING)) {
-                Node sectionNode = db.getNodeById(Long.parseLong(referenceNode.getProperty("section_id").toString()));
+                Node sectionNode = tx.getNodeByElementId(referenceNode.getProperty("section_id").toString());
                 traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             }
             assert(traditionNode != null);
             // ...and query its relation types.
-            traditionNode.getRelationships(ERelations.HAS_RELATION_TYPE, Direction.OUTGOING).forEach(
+            traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE).forEach(
                     x -> result.add(new RelationTypeModel(x.getEndNode()))
             );
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("Could not collect relation types", e);
@@ -159,22 +159,22 @@ public class RelationService {
             String cypherRels = String.format("MATCH (n:READING)-[r:RELATED]-(m) WHERE r.type IN [%s] RETURN id(n) AS source, id(m) AS target",
                     String.join(",", relatedTypes));
             // A struct to store the results
-            Map<Long, Set<Long>> clusters = new HashMap<>();
+            Map<String, Set<String>> clusters = new HashMap<>();
             // Stream the results and collect the clusters
-            Result r = db.execute(String.format("CALL algo.unionFind.stream('%s', '%s', {graph:'cypher'}) YIELD nodeId, setId", cypherNodes, cypherRels));
+            Result r = tx.execute(String.format("CALL algo.unionFind.stream('%s', '%s', {graph:'cypher'}) YIELD nodeId, setId", cypherNodes, cypherRels));
             while(r.hasNext()) {
                 Map<String, Object> row = r.next();
-                Long setId = (Long) row.get("setId");
-                Set<Long> cl = clusters.getOrDefault(setId, new HashSet<>());
-                Long nodeId = (Long) row.get("nodeId");
+                String setId = row.get("setId").toString();
+                Set<String> cl = clusters.getOrDefault(setId, new HashSet<>());
+                String nodeId = row.get("nodeId").toString();
                 cl.add(nodeId);
                 clusters.put(setId, cl);
             }
 
             // Convert the map of setID -> set of nodeIDs into a list of nodesets
             clusters.keySet().stream().filter(x -> clusters.get(x).size() > 1)
-                    .forEach(x -> result.add(clusters.get(x).stream().map(db::getNodeById).collect(Collectors.toSet())));
-            tx.success();
+                    .forEach(x -> result.add(clusters.get(x).stream().map(tx::getNodeByElementId).collect(Collectors.toSet())));
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("Could not detect colocation clusters", e);
@@ -228,7 +228,7 @@ public class RelationService {
                 representative = alternatives.stream().sorted(RelationService::byWitnessesDescending)
                         .collect(Collectors.toList()).get(0);
 
-            tx.success();
+            tx.close();
         }
         return representative;
     }

@@ -43,7 +43,7 @@ public class AlignmentModel {
         GraphDatabaseService db = sectionNode.getGraphDatabase();
 
         try (Transaction tx = db.beginTx()) {
-            String sectId = String.valueOf(sectionNode.getId());
+            String sectId = sectionNode.getElementId();
             Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
             Node startNode = VariantGraphService.getStartNode(sectId, db);
             Node endNode = VariantGraphService.getEndNode(sectId, db);
@@ -53,11 +53,11 @@ public class AlignmentModel {
 
             // See if we are computing a normalized table
             RelationshipType seqType = ERelations.SEQUENCE;
-            if (startNode.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING))
+            if (startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE))
                 seqType = ERelations.NSEQUENCE;
 
             // Get the traverser for the tradition readings
-            Traverser traversedTradition = db.traversalDescription().depthFirst()
+            Traverser traversedTradition = tx.traversalDescription().depthFirst()
                     .relationships(seqType, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
@@ -99,7 +99,7 @@ public class AlignmentModel {
                     if (!layer.equals("base")) alternatives.add(layer);
                     Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
                     ReadingModel filler;
-                    for (Node r : db.traversalDescription().depthFirst()
+                    for (Node r : tx.traversalDescription().depthFirst()
                             .relationships(seqType, Direction.OUTGOING)
                             .evaluator(e)
                             .uniqueness(Uniqueness.NODE_PATH)
@@ -135,7 +135,7 @@ public class AlignmentModel {
             }
             Comparator<WitnessTokensModel> bySigil = Comparator.comparing(WitnessTokensModel::constructSigil);
             alignment.sort(bySigil);
-            tx.success();
+            tx.close();
         }
     }
 

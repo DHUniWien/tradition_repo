@@ -51,7 +51,7 @@ public class UserModel {
                 setActive((Boolean) node.getProperty("active"));
             if (node.hasProperty("email"))
                 setEmail(node.getProperty("email").toString());
-            tx.success();
+            tx.close();
         }
     }
 

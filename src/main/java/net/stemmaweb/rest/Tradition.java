@@ -178,7 +178,7 @@ public class Tradition {
                     if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
                             .iterator()
                             .hasNext()) {
-                        db.traversalDescription()
+                        tx.traversalDescription()
                                 .depthFirst()
                                 .relationships(ERelations.NEXT, Direction.OUTGOING)
                                 .evaluator(Evaluators.toDepth(depth))
@@ -190,7 +190,7 @@ public class Tradition {
                     }
                 }
             }
-            tx.success();
+            tx.close();
             if (sectionList.size() != depth) {
                 throw new Exception(
                         String.format("Section list and section node mismatch: %d nodes, %d sections found",
@@ -241,7 +241,7 @@ public class Tradition {
         // Handle the result
         if (result.getStatus() > 201) {
             // If the result wasn't a success, delete the section node before returning the result.
-            Section restSect = new Section(traditionId, String.valueOf(sectionNode.getId()));
+            Section restSect = new Section(traditionId, sectionNode.getElementId());
             restSect.deleteSection();
             return result;
         } else {
@@ -251,9 +251,9 @@ public class Tradition {
             if (existingSections != null && existingSections.size() > 0) {
                 SectionModel ls = existingSections.get(existingSections.size() - 1);
                 try (Transaction tx = db.beginTx()) {
-                    Node lastSection = db.getNodeById(Long.parseLong(ls.getId()));
+                    Node lastSection = tx.getNodeByElementId(ls.getId());
                     lastSection.createRelationshipTo(sectionNode, ERelations.NEXT);
-                    tx.success();
+                    tx.close();
                 } catch (Exception e) {
                     e.printStackTrace();
                     return Response.serverError().build();
@@ -269,10 +269,10 @@ public class Tradition {
         Node sectionNode;
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
-            sectionNode = db.createNode(Nodes.SECTION);
+            sectionNode = tx.createNode(Nodes.SECTION);
             sectionNode.setProperty("name", sectionName);
             traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -358,15 +358,15 @@ public class Tradition {
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node anno = db.createNode();
+            Node anno = tx.createNode();
             traditionNode.createRelationshipTo(anno, ERelations.HAS_ANNOTATION);
-            Annotation annoRest = new Annotation(traditionId, String.valueOf(anno.getId()));
+            Annotation annoRest = new Annotation(traditionId, anno.getElementId());
             result = annoRest.updateAnnotation(am);
             if (result.getStatus() != Status.OK.getStatusCode())
                 // Abort the operation and return the non-OK result
                 return result;
             // Otherwise, commit it
-            tx.success();
+            tx.commit();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -395,7 +395,7 @@ public class Tradition {
             for (SectionModel sm : smlist) {
                 ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), db), true);
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -454,7 +454,7 @@ public class Tradition {
         try (Transaction tx = db.beginTx()) {
             DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                     .forEach(r -> witnessList.add(new WitnessModel(r)));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -485,7 +485,7 @@ public class Tradition {
         try (Transaction tx = db.beginTx()) {
             DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)
                     .forEach(x -> stemmata.add(new StemmaModel(x)));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -615,14 +615,14 @@ public class Tradition {
         List<AnnotationModel> result;
         try (Transaction tx = db.beginTx()) {
             ArrayList<AnnotationModel> allAnnotations = new ArrayList<>();
-            traditionNode.getRelationships(ERelations.HAS_ANNOTATION, Direction.OUTGOING)
+            traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION)
                     .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode())));
             if (filterLabels.size() > 0)
                 result = allAnnotations.stream().filter(x -> filterLabels.contains(x.getLabel()))
                         .collect(Collectors.toList());
             else
                 result = allAnnotations;
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
@@ -652,9 +652,9 @@ public class Tradition {
 
         List<AnnotationLabelModel> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            traditionNode.getRelationships(ERelations.HAS_ANNOTATION_TYPE, Direction.OUTGOING)
+            traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE)
                     .forEach(x -> result.add(new AnnotationLabelModel(x.getEndNode())));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
@@ -687,7 +687,7 @@ public class Tradition {
                     a.delete();
                 }
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -720,7 +720,7 @@ public class Tradition {
     public Response changeTraditionMetadata(TraditionModel tradition) {
         TraditionModel updatedTradition;
         try (Transaction tx = db.beginTx()) {
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", traditionId);
+            Node traditionNode = tx.findNode(Nodes.TRADITION, "id", traditionId);
             if( traditionNode == null ) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity(jsonerror("There is no Tradition with this id"))
@@ -728,7 +728,7 @@ public class Tradition {
             }
 
             if (tradition.getOwner() != null) {
-                Node newUser = db.findNode(Nodes.USER, "id", tradition.getOwner());
+                Node newUser = tx.findNode(Nodes.USER, "id", tradition.getOwner());
                 if (newUser == null) {
                     return Response.status(Response.Status.NOT_FOUND)
                             .entity(jsonerror("A user with this id does not exist"))
@@ -763,7 +763,7 @@ public class Tradition {
             }
             // Generate the updated model to return it
             updatedTradition = new TraditionModel(traditionNode);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -803,7 +803,7 @@ public class Tradition {
                  */
                 removableRelations.forEach(Relationship::delete);
                 removableNodes.forEach(Node::delete);
-                tx.success();
+                tx.commit();
             } catch (Exception e) {
                 e.printStackTrace();
                 return Response.serverError().entity(jsonerror(e.getMessage())).build();

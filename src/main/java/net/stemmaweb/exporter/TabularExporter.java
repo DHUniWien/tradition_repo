@@ -199,8 +199,8 @@ public class TabularExporter {
         ArrayList<Node> collectedSections = new ArrayList<>();
         for (String sectionId : sectionList) {
             try (Transaction tx = db.beginTx()) {
-                collectedSections.add(db.getNodeById(Long.parseLong(sectionId)));
-                tx.success();
+                collectedSections.add(tx.getNodeByElementId(sectionId));
+                tx.close();
             } catch (NotFoundException e) {
                 throw new TabularExporterException("Section " + sectionId + " not found in tradition");
             }

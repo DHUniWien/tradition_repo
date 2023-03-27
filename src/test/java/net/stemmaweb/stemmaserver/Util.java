@@ -182,7 +182,7 @@ public class Util {
         DatabaseService.createRootNode(db);
         try(Transaction tx = db.beginTx()) {
             // Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
+            Node node = tx.createNode(Nodes.USER);
             node.setProperty("id", userId);
             node.setProperty("role", "admin");
 

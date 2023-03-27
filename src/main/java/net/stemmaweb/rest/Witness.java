@@ -43,8 +43,7 @@ public class Witness {
         tradId = traditionId;
         // The "sigil" might be a sigil, or it might be a node ID.
         try {
-            Long nodeId = Long.valueOf(requestedSigil);
-            String found = getWitnessById(nodeId);
+            String found = getWitnessById(requestedSigil);
             if (found != null)
                 sigil = found;
         } catch (NumberFormatException e) {
@@ -59,18 +58,18 @@ public class Witness {
         sectId = sectionId;
     }
 
-    private String getWitnessById(Long nodeId) {
+    private String getWitnessById(String nodeId) {
         String foundSigil = null;
         Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
         try (Transaction tx = db.beginTx()) {
             Node found = null;
-            for (Relationship r : tradNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
-                if (r.getEndNodeId() == nodeId)
+            for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
+                if (r.getEndNode().getElementId().equals(nodeId))
                     found = r.getEndNode();
             }
             if (found != null)
                 foundSigil = found.getProperty("sigil").toString();
-            tx.success();
+            tx.close();
         }
         return foundSigil;
     }
@@ -79,14 +78,14 @@ public class Witness {
         Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
         Node found = null;
         try (Transaction tx = db.beginTx()) {
-            for (Relationship r : tradNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
+            for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
                 Node wit = r.getEndNode();
                 if (wit.hasProperty("sigil") && wit.getProperty("sigil").equals(sigil)) {
                     found = wit;
                     break;
                 }
             }
-            tx.success();
+            tx.close();
         }
         return found;
     }
@@ -156,7 +155,7 @@ public class Witness {
                         if (r.isType(ERelations.SEQUENCE) || r.isType(ERelations.LEMMA_TEXT))
                             return Response.serverError()
                                     .entity(String.format("Reading %d (%s) still has sequence links",
-                                            orphan.getId(), orphan.getProperty("text"))).build();
+                                            orphan.getElementId(), orphan.getProperty("text"))).build();
                         r.delete();
                     }
                     orphan.delete();
@@ -166,7 +165,7 @@ public class Witness {
             for (Relationship r : witnessNode.getRelationships(ERelations.HAS_WITNESS)) {
                 Node owner = r.getStartNode();
                 if (owner.hasLabel(Nodes.STEMMA)) {
-                    Node newHypothetical = db.createNode(Nodes.WITNESS);
+                    Node newHypothetical = tx.createNode(Nodes.WITNESS);
                     DatabaseService.copyProperties(witnessNode, newHypothetical);
                     newHypothetical.setProperty("hypothetical", true);
                     for (Relationship link : witnessNode.getRelationships(ERelations.TRANSMITTED)) {
@@ -184,7 +183,7 @@ public class Witness {
             }
             // Delete the node
             witnessNode.delete();
-            tx.success();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -244,7 +243,7 @@ public class Witness {
                 Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END).get(0);
                 try (Transaction tx = db.beginTx()) {
                     endRank = Long.parseLong(endNode.getProperty("rank").toString());
-                    tx.success();
+                    tx.close();
                 } catch (Exception e) {
                     e.printStackTrace();
                     return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -265,7 +264,7 @@ public class Witness {
                 endRank = tempRank;
             }
 
-            Node startNode = VariantGraphService.getStartNode(String.valueOf(currentSection.getId()), db);
+            Node startNode = VariantGraphService.getStartNode(currentSection.getElementId(), db);
             try (Transaction tx = db.beginTx()) {
                 final long sr = startRank;
                 final long er = endRank;
@@ -273,7 +272,7 @@ public class Witness {
                         .filter(x -> Long.parseLong(x.getProperty("rank").toString()) >= sr
                                 && Long.parseLong(x.getProperty("rank").toString()) <= er)
                         .collect(Collectors.toList()));
-                tx.success();
+                tx.close();
             } catch (Exception e) {
                 if (e.getMessage().equals("CONFLICT"))
                     return Response.status(Status.CONFLICT).entity(jsonerror("Traversal end node not reached")).build();
@@ -320,12 +319,12 @@ public class Witness {
 
         for (Node currentSection: iterationList) {
             try (Transaction tx = db.beginTx()) {
-                Node startNode = VariantGraphService.getStartNode(String.valueOf(currentSection.getId()), db);
+                Node startNode = VariantGraphService.getStartNode(currentSection.getElementId(), db);
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 // Remove the meta node from the list
                 if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getIs_end())
                     readingModels.remove(readingModels.size() - 1);
-                tx.success();
+                tx.close();
             } catch (Exception e) {
                 if (e.getMessage().equals("CONFLICT"))
                     return Response.status(Status.CONFLICT).entity(jsonerror("Traversal end node not reached")).build();
@@ -351,16 +350,22 @@ public class Witness {
             e = new WitnessPath(sigil, witnessClass).getEvalForWitness();
 
         ArrayList<Node> result = new ArrayList<>();
-        db.traversalDescription().depthFirst()
-                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                .evaluator(e)
-                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                .traverse(startNode)
-                .nodes()
-                .forEach(result::add);
-        // If the path is nonzero but the end node wasn't reached, we had a conflict.
-        if (result.size() > 0 && !result.get(result.size()-1).hasProperty("is_end"))
-            throw new Exception("CONFLICT");
+        try (Transaction tx = db.beginTx()) {
+	        tx.traversalDescription().depthFirst()
+	                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+	                .evaluator(e)
+	                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+	                .traverse(startNode)
+	                .nodes()
+	                .forEach(result::add);
+	        tx.close();
+	        // If the path is nonzero but the end node wasn't reached, we had a conflict.
+	        if (result.size() > 0 && !result.get(result.size()-1).hasProperty("is_end"))
+	            throw new Exception("CONFLICT");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            errorMessage = ex.getMessage();
+        }
         return result;
     }
 
@@ -380,9 +385,9 @@ public class Witness {
                 return null;
             }
             try (Transaction tx = db.beginTx()) {
-                Node sectionNode = db.getNodeById(Long.parseLong(sectId));
+                Node sectionNode = tx.getNodeByElementId(sectId);
                 iterationList.add(sectionNode);
-                tx.success();
+                tx.close();
             } catch (Exception e) {
                 e.printStackTrace();
                 errorMessage = e.getMessage();

@@ -132,7 +132,7 @@ public class ReadingModel implements Comparable<ReadingModel> {
         try (Transaction tx = node.getGraphDatabase().beginTx()) {
             if (node.hasProperty("grammar_invalid"))
                 this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
-            this.setId(String.valueOf(node.getId()));
+            this.setId(node.getElementId());
             this.setSection(node.getProperty("section_id").toString());
             // If there is an "ncommon" property, use this in preference to "is_common"
             // because it means we are in normalized mode
@@ -189,8 +189,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
             // If we are operating under normalization, we need to look at the NSEQUENCE links rather than
             // the SEQUENCE links, but in this case the SEQUENCE links will be redundant so there is no
             // harm in looking at them anyway.
-            node.getRelationships(ERelations.SEQUENCE, Direction.BOTH).forEach(seq::add);
-            node.getRelationships(ERelations.NSEQUENCE, Direction.BOTH).forEach(seq::add);
+            node.getRelationships(Direction.BOTH, ERelations.SEQUENCE).forEach(seq::add);
+            node.getRelationships(Direction.BOTH, ERelations.NSEQUENCE).forEach(seq::add);
             for (Relationship r : seq) {
                 for (String prop : r.getPropertyKeys()) {
                     String[] sigla = (String[]) r.getProperty(prop);
@@ -204,10 +204,10 @@ public class ReadingModel implements Comparable<ReadingModel> {
             this.witnesses = new ArrayList<>(collectedWits);
             this.witnesses.sort(String::compareTo);
             // Get any represented readings
-            for (Relationship r : node.getRelationships(ERelations.REPRESENTS, Direction.OUTGOING)) {
+            for (Relationship r : node.getRelationships(Direction.OUTGOING, ERelations.REPRESENTS)) {
                 this.addRepresented(new ReadingModel(r.getEndNode()));
             }
-            tx.success();
+            tx.close();
         }
     }
 

@@ -75,17 +75,17 @@ public class VariantLocationModel {
         Set<Node> clusterNodes = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
             for (ReadingModel rm : this.getBase())
-                clusterNodes.add(db.getNodeById(Long.parseLong(rm.getId())));
+                clusterNodes.add(tx.getNodeByElementId(rm.getId()));
             HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
             for (VariantModel vm : this.getVariants())
                 for (ReadingModel rm : vm.getReadings()) {
-                    Node vrdg = db.getNodeById(Long.parseLong(rm.getId()));
+                    Node vrdg = tx.getNodeByElementId(rm.getId());
                     clusterNodes.add(vrdg);
                     // As long as we're here, make a map of variant node -> VariantModel
                     vModelForReading.put(vrdg, vm);
                 }
             for (Node n : clusterNodes) {
-                for (Relationship rel : n.getRelationships(ERelations.RELATED, Direction.OUTGOING))
+                for (Relationship rel : n.getRelationships(Direction.OUTGOING, ERelations.RELATED))
                     // Add any relation we find that links to another node in this variant location
                     if (clusterNodes.contains(rel.getEndNode()))
                         relations.add(rel);
@@ -102,7 +102,7 @@ public class VariantLocationModel {
             List<RelationModel> rml = relations.stream().map(RelationModel::new).collect(Collectors.toList());
             this.setRelations(rml);
             this.isEmpty = false;
-            tx.success();
+            tx.close();
         }
     }
 

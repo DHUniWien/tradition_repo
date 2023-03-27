@@ -62,9 +62,9 @@ public class Section {
         // Check that the reading actually belongs to our section
         boolean readingInSection;
         try (Transaction tx = db.beginTx()) {
-            ReadingModel rdg = new ReadingModel(db.getNodeById(Long.parseLong(readingId)));
+            ReadingModel rdg = new ReadingModel(tx.getNodeByElementId(readingId));
             readingInSection = rdg.getSection().equals(sectId);
-            tx.success();
+            tx.close();
         }
         return readingInSection ? new Reading(readingId) : new Reading("-1");
     }
@@ -88,8 +88,8 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            result = new SectionModel(db.getNodeById(Long.parseLong(sectId)));
-            tx.success();
+            result = new SectionModel(tx.getNodeByElementId(sectId));
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -115,12 +115,12 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node thisSection = db.getNodeById(Long.parseLong(sectId));
+            Node thisSection = tx.getNodeByElementId(sectId);
             if (newInfo.getName() != null)
                 thisSection.setProperty("name", newInfo.getName());
             if (newInfo.getLanguage() != null)
                 thisSection.setProperty("language", newInfo.getLanguage());
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -144,7 +144,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
                     .entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node foundSection = db.getNodeById(Long.parseLong(sectId));
+            Node foundSection = tx.getNodeByElementId(sectId);
             if (foundSection != null) {
                 // Find the section either side of this one and connect them if necessary.
                 removeFromSequence(foundSection);
@@ -167,7 +167,7 @@ public class Section {
                     return pruned;
                 }
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().type(MediaType.APPLICATION_JSON_TYPE)
@@ -206,7 +206,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             ArrayList<WitnessModel> sectionWits = new ArrayList<>();
             sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
-            tx.success();
+            tx.close();
             Collections.sort(sectionWits);
             return Response.ok().entity(sectionWits).build();
         } catch (Exception e) {
@@ -236,7 +236,7 @@ public class Section {
                     }
                 }
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -279,13 +279,13 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             Node startNode = VariantGraphService.getStartNode(sectId, db);
             if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
-            db.traversalDescription().depthFirst()
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .relationships(ERelations.EMENDED, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
                     .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -325,15 +325,15 @@ public class Section {
 
         Node startNode = VariantGraphService.getStartNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
-            db.traversalDescription().depthFirst()
+            tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().forEach(
-                    n -> n.getRelationships(ERelations.RELATED, Direction.OUTGOING).forEach(
+                    n -> n.getRelationships(Direction.OUTGOING, ERelations.RELATED).forEach(
                             r -> relList.add(new RelationModel(r, includeReadings)))
             );
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -461,7 +461,7 @@ public class Section {
                     ? Long.parseLong(sectionEnd.getProperty("rank").toString()) - 1
                     : Long.parseLong(endAt);
             if (followFinal) {
-                ResourceIterable<Node> sectionLemmata = db.traversalDescription().depthFirst()
+                Iterable<Node> sectionLemmata = tx.traversalDescription().depthFirst()
                         .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
                         .evaluator(Evaluators.all())
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart)
@@ -471,7 +471,7 @@ public class Section {
                         .filter(x -> x.getRank() >= startRank && x.getRank() <= endRank)
                         .collect(Collectors.toList());
             } else {
-                result = db.traversalDescription().depthFirst()
+                result = tx.traversalDescription().depthFirst()
                         .expand(new AlignmentTraverse())
                         .uniqueness(Uniqueness.NODE_GLOBAL)
                         .traverse(sectionStart).nodes().stream()
@@ -482,7 +482,7 @@ public class Section {
                                 && (Long) x.getProperty("rank") <= endRank)
                         .map(ReadingModel::new).sorted().collect(Collectors.toList());
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             throw(e);
@@ -493,9 +493,9 @@ public class Section {
     private String rankForReading(String rdgId) {
         String answer;
         try (Transaction tx = db.beginTx()) {
-            Node rdgNode = db.getNodeById(Long.parseLong(rdgId));
+            Node rdgNode = tx.getNodeByElementId(rdgId);
             answer = rdgNode.getProperty("rank").toString();
-            tx.success();
+            tx.close();
         }
         return answer;
     }
@@ -539,7 +539,7 @@ public class Section {
             }
 
             foundAnns.forEach(x -> result.add(new AnnotationModel(x)));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -588,11 +588,11 @@ public class Section {
 
 
         try (Transaction tx = db.beginTx()) {
-            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
+            Node sectionNode = tx.getNodeByElementId(sectId);
             VariantListModel vlocs = new VariantListModel(
                     sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
                     !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
-            tx.success();
+            tx.close();
             return Response.ok(vlocs).build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -629,7 +629,7 @@ public class Section {
             if (priorSectID.equals(sectId))
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
 
-            Node thisSection = db.getNodeById(Long.parseLong(sectId));
+            Node thisSection = tx.getNodeByElementId(sectId);
 
             // Check that the requested prior section also exists and is part of the tradition
             Node priorSection = null;   // the requested prior section
@@ -640,7 +640,7 @@ public class Section {
                 if (sectionNodes.isEmpty())
                     return Response.serverError().entity("Tradition has no sections").build();
                 for (Node s : sectionNodes) {
-                    if (!s.hasRelationship(ERelations.NEXT, Direction.INCOMING)) {
+                    if (!s.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
                         latterSection = s;
                         break;
                     }
@@ -652,7 +652,7 @@ public class Section {
                 else if (latterSection.equals(thisSection))
                     return Response.ok().build();
             } else {
-                priorSection = db.getNodeById(Long.parseLong(priorSectID));
+                priorSection = tx.getNodeByElementId(priorSectID);
                 if (priorSection == null) {
                     return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
                 }
@@ -675,7 +675,7 @@ public class Section {
             if (priorSection != null) priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
             // ...and to the old "next" if it exists
             if (latterSection != null) thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -697,10 +697,10 @@ public class Section {
      * @statuscode 500 - on failure, with an error message
      */
     @POST
-    @Path("/splitAtRank/{rankstr}")
+    @Path("/splitAtRank/{rank}")
     @Produces("application/json; charset=utf-8")
-    // @ReturnType("java.lang.String")
-    public Response splitAtRank (@PathParam("rankstr") String rankstr) {
+    @ReturnType("java.util.Map<String,Long>")
+    public Response splitAtRank (@PathParam("rank") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
 
@@ -708,10 +708,10 @@ public class Section {
         // Get the reading(s) at the given rank, and at the prior rank
         Node startNode = VariantGraphService.getStartNode(sectId, db);
         Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
-        long newSectionId;
+        String newSectionId;
 
         try (Transaction tx = db.beginTx()) {
-            Node thisSection = db.getNodeById(Long.parseLong(sectId));
+            Node thisSection = tx.getNodeByElementId(sectId);
 
             // Make sure we aren't just trying to split off the end node
             if (rank.equals(sectionEnd.getProperty("rank")))
@@ -736,11 +736,11 @@ public class Section {
                         .entity(jsonerror("Rank not found within section")).build();
 
             // Make a new section node and insert it into the sequence
-            Node newSection = db.createNode(Nodes.SECTION);
+            Node newSection = tx.createNode(Nodes.SECTION);
             VariantGraphService.getTraditionNode(thisSection).createRelationshipTo(newSection, ERelations.PART);
             newSection.setProperty("name", thisSection.getProperty("name") + " split");
-            newSectionId = newSection.getId();
-            Section newSectionRest = new Section(tradId, String.valueOf(newSection.getId()));
+            newSectionId = newSection.getElementId();
+            Section newSectionRest = new Section(tradId, String.valueOf(newSection.getElementId()));
             Response reorder = newSectionRest.reorderSectionAfter(sectId);
             if (reorder.getStatus() != Response.Status.OK.getStatusCode())
                 return reorder;
@@ -751,23 +751,23 @@ public class Section {
 
             // Close off the prior rank with a new END node, and the requested rank with a new
             // START node
-            Node newEnd = db.createNode(Nodes.READING);
+            Node newEnd = tx.createNode(Nodes.READING);
             newEnd.setProperty("is_end", true);
             newEnd.setProperty("text", "#END#");
             newEnd.setProperty("rank", rank);
             newEnd.setProperty("section_id", Long.valueOf(sectId));
             thisSection.createRelationshipTo(newEnd, ERelations.HAS_END);
 
-            Node newStart = db.createNode(Nodes.READING);
+            Node newStart = tx.createNode(Nodes.READING);
             newStart.setProperty("is_start", true);
             newStart.setProperty("text", "#START#");
             newStart.setProperty("rank", 0L);
-            newStart.setProperty("section_id", newSection.getId());
+            newStart.setProperty("section_id", newSection.getElementId());
             newSection.createRelationshipTo(newStart, ERelations.COLLATION);
 
             Node newLacuna = null;
             if (lacunoseWitsPresent) {
-                newLacuna = db.createNode(Nodes.READING);
+                newLacuna = tx.createNode(Nodes.READING);
                 newLacuna.setProperty("is_lacuna", true);
                 newLacuna.setProperty("text", "#LACUNA#");
                 newLacuna.setProperty("rank", 1L);
@@ -791,8 +791,8 @@ public class Section {
             linksToSplit.forEach(Relationship::delete);
 
             // Collect all readings from the second section and alter their section metadata
-            final Long newId = newSection.getId();
-            db.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
+            final String newId = newSection.getElementId();
+            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
                     .stream().forEach(x -> {
                         if (x.hasLabel(Nodes.EMENDATION)) {
@@ -814,7 +814,7 @@ public class Section {
             // Re-initialize the ranks on the new section
             // recalculateRank(newStart);
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -844,7 +844,7 @@ public class Section {
      * specified sections must be contiguous, and will be merged according to their existing order.
      *
      * @title Merge sections
-     * @param otherId - the rank at which the section should be split
+     * @param otherId - the ID of the section to merge with this one
      * @statuscode 200 - on success
      * @statuscode 400 - if the sections are not contiguous
      * @statuscode 404 - if no such tradition or section exists
@@ -862,13 +862,13 @@ public class Section {
 
         try (Transaction tx = db.beginTx()) {
             // Get this node, and see which direction we're merging
-            Node thisSection = db.getNodeById(Long.parseLong(sectId));
+            Node thisSection = tx.getNodeByElementId(sectId);
             Node firstSection = null;
             Node secondSection = null;
             for (Relationship r : thisSection.getRelationships(ERelations.NEXT)) {
-                if (otherId.equals(String.valueOf(r.getEndNode().getId())))
+                if (otherId.equals(r.getEndNode().getElementId()))
                     secondSection = r.getEndNode();
-                else if (otherId.equals(String.valueOf(r.getStartNode().getId())))
+                else if (otherId.equals(r.getStartNode().getElementId()))
                     firstSection = r.getStartNode();
             }
             if (firstSection == null) {
@@ -881,14 +881,14 @@ public class Section {
                 secondSection = thisSection;
 
             // Move relationships from the old start & end nodes
-            Node oldEnd = VariantGraphService.getEndNode(String.valueOf(firstSection.getId()), db);
-            Node oldStart = VariantGraphService.getStartNode(String.valueOf(secondSection.getId()), db);
-            Node trueStart = VariantGraphService.getStartNode(String.valueOf(firstSection.getId()), db);
-            Node trueEnd = VariantGraphService.getEndNode(String.valueOf(secondSection.getId()), db);
+            Node oldEnd = VariantGraphService.getEndNode(firstSection.getElementId(), db);
+            Node oldStart = VariantGraphService.getStartNode(secondSection.getElementId(), db);
+            Node trueStart = VariantGraphService.getStartNode(firstSection.getElementId(), db);
+            Node trueEnd = VariantGraphService.getEndNode(secondSection.getElementId(), db);
 
             // Collect all readings from the second section and alter their section metadata
-            final Long keptId = firstSection.getId();
-            db.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
+            final String keptId = firstSection.getElementId();
+            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes()
                     .stream().filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
 
@@ -951,7 +951,7 @@ public class Section {
             for (Node n : firstSectionEnd)
                 recalculateRank(n);
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
@@ -974,7 +974,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
             ReadingService.recalculateRank(VariantGraphService.getStartNode(sectId, db), true);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -994,8 +994,8 @@ public class Section {
      * reading with more witnesses is listed first.
      *
      * @title List mergeable readings
-     * @param startRank - where to start
-     * @param endRank   - where to end
+     * @param startRank - where to start: either "start" or a numerical rank
+     * @param endRank   - where to end: either "end" or a numerical rank
      * @param threshold - the number of ranks to look ahead/behind
      * @param limitText      - limit search to readings with the given text
      * @return a list of lists of readings that may be merged.
@@ -1008,8 +1008,8 @@ public class Section {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getCouldBeIdenticalReadings(
-            @PathParam("startRank") long startRank,
-            @PathParam("endRank") long endRank,
+            @PathParam("startRank") String startRank,
+            @PathParam("endRank") String endRank,
             @DefaultValue("10") @QueryParam("threshold") long threshold,
             @DefaultValue("") @QueryParam("text") String limitText) {
         Node startNode = VariantGraphService.getStartNode(sectId, db);
@@ -1018,18 +1018,42 @@ public class Section {
                     .entity(jsonerror("Tradition and/or section not found")).build();
         }
 
+        // Parse the start and end rank into longs
+        Map<String,String> useRanks;
+        try {
+            useRanks = getLongRanks(startRank, endRank);
+        } catch (NumberFormatException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
+        }
+
+
         List<List<ReadingModel>> couldBeIdenticalReadings;
         try (Transaction tx = db.beginTx()) {
             List<Node> questionedReadings = getReadingsBetweenRanks(
-                    startRank, endRank, startNode, limitText);
+                    useRanks.get("start"), useRanks.get("end"), startNode, limitText);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings, threshold);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         return Response.ok(couldBeIdenticalReadings).build();
+    }
+
+    private Map<String,String> getLongRanks(String startRank, String endRank)
+        throws NumberFormatException {
+        Map<String,String> result = new HashMap<>();
+        String startRankL = startRank.equals("start")
+                    ? "1"
+                    : startRank;
+        String endRankL = endRank.equals("end")
+                    ? VariantGraphService.getEndNode(sectId, db).getElementId()
+                    : endRank;
+        result.put("start", startRankL);
+        result.put("end", endRankL);
+        return result;
     }
 
     /**
@@ -1043,10 +1067,10 @@ public class Section {
             List<Node> questionedReadings, long threshold) throws Exception {
 
         List<List<ReadingModel>> couldBeIdenticalReadings = new ArrayList<>();
-        HashSet<Long> processed = new HashSet<>();
+        HashSet<String> processed = new HashSet<>();
 
         for (Node nodeA : questionedReadings) {
-            if (processed.contains(nodeA.getId()))
+            if (processed.contains(nodeA.getElementId()))
                 continue;
             long aRank = Long.parseLong(nodeA.getProperty("rank").toString());
             List<Node> sameText = questionedReadings.stream().filter(x -> !x.equals(nodeA)
@@ -1054,7 +1078,7 @@ public class Section {
                 && Math.abs(Long.parseLong(x.getProperty("rank").toString()) - aRank) < threshold)
                     .collect(Collectors.toList());
             for (Node n : sameText) {
-                if (processed.contains(n.getId()))
+                if (processed.contains(n.getElementId()))
                     continue;
                 if (!wouldGetCyclic(nodeA, n)) {
                     // Get the reading models
@@ -1066,7 +1090,7 @@ public class Section {
                     couldBeIdenticalReadings.add(pair);
                 }
             }
-            processed.add(nodeA.getId());
+            processed.add(nodeA.getElementId());
         }
         return couldBeIdenticalReadings.stream()
                 .sorted(Comparator.comparingLong(this::rankDifference))
@@ -1084,7 +1108,7 @@ public class Section {
         List<Node> readings;
         PathExpander e = new AlignmentTraverse(startNode);
         try (Transaction tx = db.beginTx()) {
-            Stream<Node> readingStream = db.traversalDescription().depthFirst()
+            Stream<Node> readingStream = tx.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
                     .traverse(startNode).nodes().stream()
                     .filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
@@ -1092,7 +1116,7 @@ public class Section {
             if (!limitText.equals(""))
                 readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
             readings = readingStream.collect(Collectors.toList());
-            tx.success();
+            tx.close();
         }
         return readings;
     }
@@ -1103,8 +1127,8 @@ public class Section {
      * This is a constrained version of {@code mergeablereadings}.
      *
      * @title Find identical readings
-     * @param startRank the rank from where to start the search
-     * @param endRank   the rank at which to end the search
+     * @param startRank the rank from where to start the search, or "start"
+     * @param endRank   the rank at which to end the search, or "end"
      * @return a list of lists of identical readings
      * @statuscode 200 - on success
      * @statuscode 404 - if no such tradition or section exists
@@ -1114,9 +1138,17 @@ public class Section {
     @Path("/identicalreadings/{startRank}/{endRank}")
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
-    public Response getIdenticalReadings(@PathParam("startRank") long startRank,
-                                         @PathParam("endRank") long endRank) {
-        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(startRank, endRank);
+    public Response getIdenticalReadings(@PathParam("startRank") String startRank,
+                                         @PathParam("endRank") String endRank) {
+        Map<String,String> useRanks;
+        try {
+            useRanks = getLongRanks(startRank, endRank);
+        } catch (NumberFormatException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
+        }
+
+        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(Long.valueOf(useRanks.get("start")), Long.valueOf(useRanks.get("end")));
         if (identicalReadings == null)
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("no identical readings were found")).build();
 
@@ -1194,7 +1226,7 @@ public class Section {
     @POST
     @Path("/setlemma")
     @Produces("application/json; charset=utf-8")
-    // @ReturnType("java.lang.String")
+    @ReturnType("java.util.Map<String,String>")
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -1202,7 +1234,7 @@ public class Section {
             Node startNode = VariantGraphService.getStartNode(sectId, db);
             Node endNode = VariantGraphService.getEndNode(sectId, db);
             // Delete any existing lemma text links
-            ResourceIterable<Relationship> lemmaLinks = db.traversalDescription().depthFirst()
+            Iterable<Relationship> lemmaLinks = tx.traversalDescription().depthFirst()
                     .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
@@ -1217,7 +1249,7 @@ public class Section {
             // Recreate links, checking for branching
             Node priorLemma = startNode;
             for (ReadingModel tl : sectionLemmata) {
-                Node thisLemma = db.getNodeById(Long.parseLong(tl.getId()));
+                Node thisLemma = tx.getNodeByElementId(tl.getId());
                 ReadingModel pl = new ReadingModel(priorLemma);
                 // Check that we don't have same-rank readings
                 if (priorLemma.getProperty("rank").equals(thisLemma.getProperty("rank")))
@@ -1247,7 +1279,7 @@ public class Section {
                             .build();
                 priorLemma = r.getEndNode();
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             if (!e.getMessage().contains("More than one"))
                 e.printStackTrace();
@@ -1276,9 +1308,9 @@ public class Section {
         GraphModel result = new GraphModel();
         try (Transaction tx = db.beginTx()) {
             // Crawl the section looking for all emendations
-            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
+            Node sectionNode = tx.getNodeByElementId(sectId);
             List<Node> emended = new ArrayList<>();
-            for (Relationship r : sectionNode.getRelationships(ERelations.HAS_EMENDATION, Direction.OUTGOING))
+            for (Relationship r : sectionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_EMENDATION))
                 emended.add(r.getEndNode());
             result.setReadings(emended.stream().map(ReadingModel::new).collect(Collectors.toList()));
             List<SequenceModel> emendSeqs = new ArrayList<>();
@@ -1288,7 +1320,7 @@ public class Section {
                 }
             }
             result.setSequences(emendSeqs);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1336,7 +1368,7 @@ public class Section {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("Invalid rank range specified for emendation")).build();
             // Make the emendation node
-            Node emendation = db.createNode(Nodes.READING, Nodes.EMENDATION);
+            Node emendation = tx.createNode(Nodes.READING, Nodes.EMENDATION);
             emendation.setProperty("text", proposal.getText());
             emendation.setProperty("authority", proposal.getAuthority());
             emendation.setProperty("rank", proposal.getFromRank());
@@ -1344,7 +1376,7 @@ public class Section {
             ReadingModel emrm = new ReadingModel(emendation);
             result.setReadings(Collections.singletonList(emrm));
             // Connect it in the graph
-            Node sectionNode = db.getNodeById(Long.parseLong(sectId));
+            Node sectionNode = tx.getNodeByElementId(sectId);
             sectionNode.createRelationshipTo(emendation, ERelations.HAS_EMENDATION);
             List<SequenceModel> newLinks = new ArrayList<>();
             for (Node n : atOrPrior) newLinks.add(new SequenceModel(n.createRelationshipTo(emendation, ERelations.EMENDED)));
@@ -1352,7 +1384,7 @@ public class Section {
             result.setSequences(newLinks);
             // If it is a zero-width emendation, re-rank the graph
             ReadingService.recalculateRank(emendation);
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1400,7 +1432,7 @@ public class Section {
                     .filter(x -> x.isType(ERelations.SEQUENCE) || x.isType(ERelations.LEMMA_TEXT) || x.isType(ERelations.EMENDED))
                     .map(SequenceModel::new).collect(Collectors.toSet()));
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();

@@ -159,8 +159,8 @@ public class TabularParser {
                     // Does the reading exist?
                     Node readingNode = createdReadings.getOrDefault(reading, null);
                     if (readingNode == null) {
-                        readingNode = db.createNode(Nodes.READING);
-                        readingNode.setProperty("section_id", parentNode.getId());
+                        readingNode = tx.createNode(Nodes.READING);
+                        readingNode.setProperty("section_id", parentNode.getElementId());
                         readingNode.setProperty("rank", (long) idx);
                         readingNode.setProperty("text", reading);
                         if (reading.equals("#LACUNA#"))
@@ -229,8 +229,8 @@ public class TabularParser {
 
             // We are done!
             result = Response.Status.CREATED;
-            response = jsonresp("parentId", parentNode.getId());
-            tx.success();
+            response = jsonresp("parentId", parentNode.getElementId());
+            tx.close();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

@@ -66,13 +66,13 @@ public class TraditionParseTest extends TestCase {
         // Create a root node and test user
         DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            Node node = db.createNode(Nodes.USER);
+            Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
+            Node node = tx.createNode(Nodes.USER);
             node.setProperty("id", "1");
             node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
+            tx.commit();
         }
 
         // Create the Jersey test server
@@ -162,12 +162,12 @@ public class TraditionParseTest extends TestCase {
             assertNotNull(startNode);
             AtomicInteger foundEdges = new AtomicInteger(0);
             try (Transaction tx = db.beginTx()) {
-                db.traversalDescription().breadthFirst()
+                tx.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                         .evaluator(Evaluators.all())
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode)
                         .relationships().forEach(x -> foundEdges.getAndIncrement());
-                tx.success();
+                tx.close();
             }
             assertEquals(handler.numEdges, foundEdges.get());
 

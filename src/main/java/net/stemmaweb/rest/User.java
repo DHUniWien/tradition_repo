@@ -54,13 +54,13 @@ public class User {
     public Response getUserById() {
         UserModel userModel;
         try (Transaction tx = db.beginTx()) {
-            Node foundUser = db.findNode(Nodes.USER, "id", userId);
+            Node foundUser = tx.findNode(Nodes.USER, "id", userId);
             if (foundUser != null) {
                 userModel = new UserModel(foundUser);
             } else {
                 return Response.noContent().build();
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -86,8 +86,8 @@ public class User {
         // Find any existing user
         Node extantUser;
         try (Transaction tx = db.beginTx()) {
-            extantUser = db.findNode(Nodes.USER, "id", userId);
-            tx.success();
+            extantUser = tx.findNode(Nodes.USER, "id", userId);
+            tx.close();
         }
 
         Status returnedStatus;
@@ -102,7 +102,7 @@ public class User {
                     extantUser.setProperty("email", userModel.getEmail());
                 if (extantUser.getProperty("active") != userModel.getActive())
                     extantUser.setProperty("active", userModel.getActive());
-                tx.success();
+                tx.commit();
             } catch (Exception e) {
                 return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
@@ -110,9 +110,9 @@ public class User {
         } else {
             // Create it if it doesn't exist
             try (Transaction tx = db.beginTx()) {
-                Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
+                Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
 
-                extantUser = db.createNode(Nodes.USER);
+                extantUser = tx.createNode(Nodes.USER);
                 extantUser.setProperty("id", userId);
                 extantUser.setProperty("passphrase", userModel.getPassphrase());
                 extantUser.setProperty("role", userModel.getRole());
@@ -121,7 +121,7 @@ public class User {
 
                 rootNode.createRelationshipTo(extantUser, ERelations.SYSTEMUSER);
 
-                tx.success();
+                tx.commit();
             } catch (Exception e) {
                 return Response.serverError().entity(jsonerror(e.getMessage())).build();
             }
@@ -148,7 +148,7 @@ public class User {
     public Response deleteUser() {
         Node foundUser;
         try (Transaction tx = db.beginTx()) {
-            foundUser = db.findNode(Nodes.USER, "id", userId);
+            foundUser = tx.findNode(Nodes.USER, "id", userId);
 
             if (foundUser != null) {
                 // See if the user owns any traditions
@@ -161,7 +161,7 @@ public class User {
                 // Otherwise, do the deed.
                 foundUser.getRelationships().forEach(Relationship::delete);
                 foundUser.delete();
-                tx.success();
+                tx.commit();
             } else {
                 return Response.status(Status.NOT_FOUND)
                         .entity("A user with this ID was not found")
@@ -201,8 +201,8 @@ public class User {
     private Node getUserNode() {
         Node foundUser;
         try (Transaction tx = db.beginTx()) {
-            foundUser = db.findNode(Nodes.USER, "id", userId);
-            tx.success();
+            foundUser = tx.findNode(Nodes.USER, "id", userId);
+            tx.close();
         }
         return foundUser;
     }

@@ -98,7 +98,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                 this.setIs_generalizable((Boolean) n.getProperty("is_generalizable"));
             if (n.hasProperty("use_regular"))
                 this.setUse_regular((Boolean) n.getProperty("use_regular"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -198,13 +198,13 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         Node relTypeNode = null;
         try (Transaction tx = db.beginTx()) {
             // First see if there is a type with this name
-            for (Relationship r : traditionNode.getRelationships(ERelations.HAS_RELATION_TYPE, Direction.OUTGOING)) {
+            for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
                 if (r.getEndNode().getProperty("name").toString().equals(this.thename)) {
                     relTypeNode = r.getEndNode();
                     break;
                 }
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -218,7 +218,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         try (Transaction tx = db.beginTx()) {
             if (relType == null) {
                 // Create the node if it doesn't exist
-                relType = db.createNode(Nodes.RELATION_TYPE);
+                relType = tx.createNode(Nodes.RELATION_TYPE);
                 this.update_reltype(relType);
                 traditionNode.createRelationshipTo(relType, ERelations.HAS_RELATION_TYPE);
             } else {
@@ -234,7 +234,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                     else throw new Exception("Another relation type by this name already exists");
                 }
             }
-            tx.success();
+            tx.close();
             return relType;
         } catch (Exception e) {
             e.printStackTrace();

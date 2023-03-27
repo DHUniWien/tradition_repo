@@ -29,23 +29,27 @@ public class Util {
     // Start and end node creation
     static Node createStartNode(Node parentNode) {
         GraphDatabaseService db = parentNode.getGraphDatabase();
-        Node startNode = db.createNode(Nodes.READING);
+        Transaction tx = db.beginTx();
+        Node startNode = tx.createNode(Nodes.READING);
         startNode.setProperty("is_start", true);
-        startNode.setProperty("section_id", parentNode.getId());
+        startNode.setProperty("section_id", parentNode.getElementId());
         startNode.setProperty("rank", 0L);
         startNode.setProperty("text", "#START#");
         parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
+        tx.close();
         return startNode;
     }
 
     // Start and end node creation
     static Node createEndNode(Node parentNode) {
         GraphDatabaseService db = parentNode.getGraphDatabase();
-        Node endNode = db.createNode(Nodes.READING);
+        Transaction tx = db.beginTx();
+        Node endNode = tx.createNode(Nodes.READING);
         endNode.setProperty("is_end", true);
         endNode.setProperty("section_id", parentNode.getId());
         endNode.setProperty("text", "#END#");
         parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
+        tx.close();
         return endNode;
     }
 
@@ -56,10 +60,12 @@ public class Util {
             if (sigil.contains(illegal))
                 throw new IllegalArgumentException("The character " + illegal + " may not appear in a sigil name.");
         GraphDatabaseService db = traditionNode.getGraphDatabase();
-        Node witnessNode = db.createNode(Nodes.WITNESS);
+        Transaction tx = db.beginTx();
+        Node witnessNode = tx.createNode(Nodes.WITNESS);
         witnessNode.setProperty("sigil", sigil);
         witnessNode.setProperty("hypothetical", hypothetical);
         witnessNode.setProperty("quotesigil", !isDotId(sigil));
+        tx.close();
         return witnessNode;
     }
 
@@ -89,7 +95,7 @@ public class Util {
                 if (!tsections.isEmpty())
                     tsections.get(tsections.size()-1).createRelationshipTo(sectionNode, ERelations.NEXT);
             }
-            tx.success();
+            tx.close();
         }
     }
 
@@ -152,7 +158,7 @@ public class Util {
     // NOTE: For use inside a transaction
     static void setColocationFlags (Node traditionNode) {
         HashSet<String> colocatedTypes = new HashSet<>();
-        for (Relationship r : traditionNode.getRelationships(ERelations.HAS_RELATION_TYPE, Direction.OUTGOING)) {
+        for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
             RelationTypeModel relType = new RelationTypeModel(r.getEndNode());
             if (relType.getIs_colocation()) colocatedTypes.add(relType.getName());
         }
@@ -174,7 +180,7 @@ public class Util {
             public java.lang.Iterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
                 for (Relationship link : path.endNode()
-                        .getRelationships(ERelations.TRANSMITTED, d)) {
+                        .getRelationships(d, ERelations.TRANSMITTED)) {
                     if (link.getProperty("hypothesis").equals(pStemmaName)) {
                         goodPaths.add(link);
                     }

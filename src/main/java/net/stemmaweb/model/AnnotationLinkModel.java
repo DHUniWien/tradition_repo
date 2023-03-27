@@ -21,7 +21,7 @@ public class AnnotationLinkModel {
     /**
      * The ID of the target node for this annotation link.
      */
-    private Long target;
+    private String target;
 
     public AnnotationLinkModel() {}
 
@@ -29,10 +29,10 @@ public class AnnotationLinkModel {
         GraphDatabaseService db = r.getGraphDatabase();
         try (Transaction tx = db.beginTx()) {
             setType(r.getType().name());
-            setTarget(r.getEndNodeId());
+            setTarget(r.getEndNode().getElementId());
             if (r.hasProperty("follow"))
                 setFollow(r.getProperty("follow").toString());
-            tx.success();
+            tx.close();
         }
     }
 
@@ -52,11 +52,11 @@ public class AnnotationLinkModel {
         this.follow = follow;
     }
 
-    public Long getTarget() {
+    public String getTarget() {
         return target;
     }
 
-    public void setTarget(Long target) {
+    public void setTarget(String target) {
         this.target = target;
     }
 }

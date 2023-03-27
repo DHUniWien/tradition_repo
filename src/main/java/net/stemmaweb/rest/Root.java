@@ -223,11 +223,11 @@ public class Root {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> nodeList;
             if (publiconly)
-                nodeList = db.findNodes(Nodes.TRADITION, "is_public", true);
+                nodeList = tx.findNodes(Nodes.TRADITION, "is_public", true);
             else
-                nodeList = db.findNodes(Nodes.TRADITION);
+                nodeList = tx.findNodes(Nodes.TRADITION);
             nodeList.forEachRemaining(t -> traditionList.add(new TraditionModel(t)));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -253,9 +253,9 @@ public class Root {
 
         try (Transaction tx = db.beginTx()) {
 
-            db.findNodes(Nodes.USER)
+            tx.findNodes(Nodes.USER)
                     .forEachRemaining(t -> userList.add(new UserModel(t)));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -266,7 +266,7 @@ public class Root {
         String tradId = UUID.randomUUID().toString();
         try (Transaction tx = db.beginTx()) {
             // Make the tradition node
-            Node traditionNode = db.createNode(Nodes.TRADITION);
+            Node traditionNode = tx.createNode(Nodes.TRADITION);
             traditionNode.setProperty("id", tradId);
             // This has a default value
             traditionNode.setProperty("direction", direction);
@@ -277,7 +277,7 @@ public class Root {
                 traditionNode.setProperty("language", language);
             if (isPublic != null)
                 traditionNode.setProperty("is_public", isPublic.equals("true"));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -287,18 +287,18 @@ public class Root {
 
     private void linkUserToTradition(String userId, String tradId) throws Exception {
         try (Transaction tx = db.beginTx()) {
-            Node userNode = db.findNode(Nodes.USER, "id", userId);
+            Node userNode = tx.findNode(Nodes.USER, "id", userId);
             if (userNode == null) {
                 tx.failure();
                 throw new Exception("There is no user with ID " + userId + "!");
             }
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            Node traditionNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             if (traditionNode == null) {
                 tx.failure();
                 throw new Exception("There is no tradition with ID " + tradId + "!");
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-            tx.success();
+            tx.close();
         }
     }
 }

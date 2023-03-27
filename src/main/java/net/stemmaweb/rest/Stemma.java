@@ -109,7 +109,7 @@ public class Stemma {
                 return replaceResult;
 
             // OK, we can commit it.
-            tx.success();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -128,12 +128,13 @@ public class Stemma {
      * @statuscode 500 - on failure, with an error message
      */
     @DELETE
-    @Produces(MediaType.TEXT_PLAIN)
-    @ReturnType("java.lang.Void")
+    @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
+    @ReturnType(clazz = StemmaModel.class)
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null)
             return Response.status(Status.NOT_FOUND).build();
+        StemmaModel removed = new StemmaModel(stemmaNode);
         try (Transaction tx = db.beginTx()) {
             Set<Relationship> removableRelations = new HashSet<>();
             Set<Node> removableNodes = new HashSet<>();
@@ -153,7 +154,7 @@ public class Stemma {
 
             // Its associated TRANSMISSION relations are removable
             removableNodes
-                    .forEach(n -> n.getRelationships(ERelations.TRANSMITTED, Direction.BOTH)
+                    .forEach(n -> n.getRelationships(Direction.BOTH, ERelations.TRANSMITTED)
                             .forEach(r -> {
                                         if (r.getProperty("hypothesis").equals(name))
                                             removableRelations.add(r);
@@ -163,8 +164,8 @@ public class Stemma {
             // Its witnesses are removable if they have no links left
             removableRelations.forEach(Relationship::delete);
             removableNodes.stream().filter(x -> !x.hasRelationship()).forEach(Node::delete);
-            tx.success();
-            return Response.ok().build();
+            tx.commit();
+            return Response.ok(removed).build();
         } catch (Exception e ){
             return Response.serverError().entity(e.getMessage()).build();
         }
@@ -184,12 +185,13 @@ public class Stemma {
     @POST
     @Path("reorient/{nodeId}")
     @Produces("application/json; charset=utf-8")
+    @ReturnType(clazz = StemmaModel.class)
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())
         {
             // Get the stemma and the witness
-            Result foundStemma = db.execute("match (:TRADITION {id:'" + tradId
+            Result foundStemma = tx.execute("match (:TRADITION {id:'" + tradId
                     + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
                     + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
             if(!foundStemma.hasNext())
@@ -215,7 +217,7 @@ public class Stemma {
             // and make sure the stemma is directed.
             stemma.setProperty("directed", true);
 
-        tx.success();
+        tx.close();
         }
         return getStemma();
 
@@ -223,10 +225,10 @@ public class Stemma {
 
     private Node getStemmaNode () {
         try (Transaction tx = db.beginTx()) {
-            Result query = db.execute("match (:TRADITION {id:'" + tradId
+            Result query = tx.execute("match (:TRADITION {id:'" + tradId
                     + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
             ResourceIterator<Node> foundStemma = query.columnAs("s");
-            tx.success();
+            tx.close();
             if (!foundStemma.hasNext())
                 return null;
             return foundStemma.next();
