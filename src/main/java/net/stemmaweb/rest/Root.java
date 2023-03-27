@@ -131,7 +131,7 @@ public class Root {
     @Path("/tradition")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.util.Map<String,String>")
     public Response importGraphMl(@DefaultValue("") @FormDataParam("name") String name,
                                   @FormDataParam("userId") String userId,
                                   @FormDataParam("public") String is_public,

@@ -869,7 +869,7 @@ public class Tradition {
     @GET
     @Path("/stemmaweb")
     @Produces(MediaType.APPLICATION_XML)
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getGraphMLStemmaweb() {
         if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
@@ -893,7 +893,7 @@ public class Tradition {
     @GET
     @Path("/dot")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
@@ -944,7 +944,7 @@ public class Tradition {
     @GET
     @Path("/csv")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getCsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList,
                            @QueryParam("exclude_layers") String excludeLayers) {
@@ -965,7 +965,7 @@ public class Tradition {
     @GET
     @Path("/tsv")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getTsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList,
                            @QueryParam("exclude_layers") String excludeLayers) {
@@ -988,7 +988,7 @@ public class Tradition {
     @GET
     @Path("/matrix")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @ReturnType("java.lang.String")
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @QueryParam("section") List<String> sectionList,
                                   @QueryParam("exclude_layers") String excludeLayers,

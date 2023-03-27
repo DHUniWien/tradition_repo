@@ -402,6 +402,9 @@ public class ReadingModel implements Comparable<ReadingModel> {
     @JsonIgnore
     public String normalized() { return normal_form == null ? text : normal_form; }
 
+    @JsonIgnore
+    public Boolean isMeta() { return is_start || is_end || is_lacuna || is_ph; }
+
     public String getExtra() {
         return extra;
     }

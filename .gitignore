@@ -10,6 +10,7 @@ stemmarest.iml
 **/.DS_Store
 *swp
 /target/
+
 /.classpath
 /.factorypath
 /.project

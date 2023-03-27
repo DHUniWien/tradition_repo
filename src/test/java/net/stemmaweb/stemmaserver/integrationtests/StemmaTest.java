@@ -89,7 +89,7 @@ public class StemmaTest {
         List<StemmaModel> stemmata = jerseyTest
                 .target("/tradition/" + tradId + "/stemmata")
                 .request()
-                .get(new GenericType<List<StemmaModel>>() {
+                .get(new GenericType<>() {
                 });
         assertEquals(2, stemmata.size());
 
@@ -568,9 +568,6 @@ public class StemmaTest {
         ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
         assertEquals(2, stemmata.size());
 
-        // String original = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
-        //         + "A [ class=extant ];  B [ class=extant ];  "
-        //         + "C [ class=extant ]; 0 -> A;  0 -> B;  A -> C; \n}";
         String input = "graph stemma2 {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}";
         StemmaModel stemmaSpec = new StemmaModel();
         stemmaSpec.setDot(input);
