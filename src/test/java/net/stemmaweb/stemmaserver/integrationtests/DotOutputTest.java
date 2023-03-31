@@ -1,14 +1,27 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ProposedEmendationModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
+import javax.ws.rs.core.Response;
+
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -18,15 +31,15 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.*;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.junit.Assert.*;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ProposedEmendationModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 public class DotOutputTest {
 
@@ -177,14 +190,14 @@ public class DotOutputTest {
         // Set a normal form on one reading, see if it turns up in dot output.
         // Also stick a double quote inside one of the readings
         try (Transaction tx = db.beginTx()) {
-            Node n = db.findNode(Nodes.READING, "text", "ὄψιν,");
+            Node n = tx.findNode(Nodes.READING, "text", "ὄψιν,");
             assertNotNull(n);
             n.setProperty("text", "ὄψ\"ιν,");
             n.setProperty("normal_form", "ὄψιν");
-            n = db.findNode(Nodes.READING, "text", "γυναικῶν.");
+            n = tx.findNode(Nodes.READING, "text", "γυναικῶν.");
             assertNotNull(n);
             n.setProperty("text", "γυν\"αι\"κῶν.");
-            tx.success();
+            tx.commit();
         }
 
         String getSectionDot = "/tradition/" + florId + "/section/" + florIds.get(2) + "/dot";

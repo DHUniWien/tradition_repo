@@ -1,17 +1,10 @@
 package net.stemmaweb.parser;
 
-import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.VariantGraphService;
-import org.apache.commons.compress.utils.IOUtils;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.BranchState;
-import org.w3c.dom.Document;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,6 +12,27 @@ import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.apache.commons.compress.utils.IOUtils;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.BranchState;
+import org.w3c.dom.Document;
+
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Utility functions for the parsers
@@ -28,28 +42,34 @@ public class Util {
 
     // Start and end node creation
     static Node createStartNode(Node parentNode) {
-        GraphDatabaseService db = parentNode.getGraphDatabase();
-        Transaction tx = db.beginTx();
-        Node startNode = tx.createNode(Nodes.READING);
-        startNode.setProperty("is_start", true);
-        startNode.setProperty("section_id", parentNode.getElementId());
-        startNode.setProperty("rank", 0L);
-        startNode.setProperty("text", "#START#");
-        parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
-        tx.close();
+//        GraphDatabaseService db = parentNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        Node startNode;
+        try (Transaction tx = db.beginTx()) {
+	        startNode = tx.createNode(Nodes.READING);
+	        startNode.setProperty("is_start", true);
+	        startNode.setProperty("section_id", parentNode.getElementId());
+	        startNode.setProperty("rank", 0L);
+	        startNode.setProperty("text", "#START#");
+	        parentNode.createRelationshipTo(startNode, ERelations.COLLATION);
+	        tx.close();
+        }
         return startNode;
     }
 
     // Start and end node creation
     static Node createEndNode(Node parentNode) {
-        GraphDatabaseService db = parentNode.getGraphDatabase();
-        Transaction tx = db.beginTx();
-        Node endNode = tx.createNode(Nodes.READING);
-        endNode.setProperty("is_end", true);
-        endNode.setProperty("section_id", parentNode.getId());
-        endNode.setProperty("text", "#END#");
-        parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
-        tx.close();
+//        GraphDatabaseService db = parentNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        Node endNode;
+        try (Transaction tx = db.beginTx()) {
+	        endNode = tx.createNode(Nodes.READING);
+	        endNode.setProperty("is_end", true);
+	        endNode.setProperty("section_id", parentNode.getElementId());
+	        endNode.setProperty("text", "#END#");
+	        parentNode.createRelationshipTo(endNode, ERelations.HAS_END);
+	        tx.close();
+        }
         return endNode;
     }
 
@@ -59,13 +79,16 @@ public class Util {
         for (String illegal : new String[] {"<", ">", "#", "%", "\"", "{", "}", "|", "\\", "^", "[", "]", "`", "(", ")"})
             if (sigil.contains(illegal))
                 throw new IllegalArgumentException("The character " + illegal + " may not appear in a sigil name.");
-        GraphDatabaseService db = traditionNode.getGraphDatabase();
-        Transaction tx = db.beginTx();
-        Node witnessNode = tx.createNode(Nodes.WITNESS);
-        witnessNode.setProperty("sigil", sigil);
-        witnessNode.setProperty("hypothetical", hypothetical);
-        witnessNode.setProperty("quotesigil", !isDotId(sigil));
-        tx.close();
+        Node witnessNode;
+//        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        try (Transaction tx = db.beginTx()) {
+	        witnessNode = tx.createNode(Nodes.WITNESS);
+	        witnessNode.setProperty("sigil", sigil);
+	        witnessNode.setProperty("hypothetical", hypothetical);
+	        witnessNode.setProperty("quotesigil", !isDotId(sigil));
+	        tx.close();
+        }
         return witnessNode;
     }
 
@@ -86,7 +109,8 @@ public class Util {
     }
 
     static void ensureSectionLink (Node traditionNode, Node sectionNode) {
-        GraphDatabaseService db = traditionNode.getGraphDatabase();
+//        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             String tradId = traditionNode.getProperty("id").toString();
             ArrayList<Node> tsections = VariantGraphService.getSectionNodes(tradId, db);
@@ -177,7 +201,7 @@ public class Util {
         final String pStemmaName = stemmaName;
         return new PathExpander() {
             @Override
-            public java.lang.Iterable expand(Path path, BranchState branchState) {
+            public ResourceIterable expand(Path path, BranchState branchState) {
                 ArrayList<Relationship> goodPaths = new ArrayList<>();
                 for (Relationship link : path.endNode()
                         .getRelationships(d, ERelations.TRANSMITTED)) {
@@ -185,7 +209,37 @@ public class Util {
                         goodPaths.add(link);
                     }
                 }
-                return goodPaths;
+				return goodPaths;
+//                return new AbstractResourceIterable<Relationship>() {
+//
+//					@Override
+//					protected ResourceIterator<Relationship> newIterator() {
+//						// TODO Auto-generated method stub
+//						new ResourceIterator<Relationship>(goodPaths.iterator()) {
+//							
+//							private Iterator<Relationship> iterator;
+//
+//							public void ResourceIterator(Iterator<Relationship> iterator) {
+//								this.iterator = iterator;
+//							}
+//
+//							@Override
+//							public boolean hasNext() {
+//								return iterator.hasNext();
+//							}
+//
+//							@Override
+//							public Relationship next() {
+//								return iterator.next();
+//							}
+//
+//							@Override
+//							public void close() {
+//								// TODO Auto-generated method stub
+//							}
+//						};
+//					}
+//				};
             }
 
             @Override

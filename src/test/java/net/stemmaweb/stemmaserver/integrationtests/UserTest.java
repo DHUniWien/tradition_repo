@@ -1,6 +1,12 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -10,14 +16,6 @@ import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.UserModel;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -26,10 +24,15 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
-
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.UserModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 /**
  * 
@@ -73,9 +76,9 @@ public class UserTest {
     public void createUserTest(){
 
         try (Transaction tx = db.beginTx()) {
-            Node notaUser = db.findNode(Nodes.USER, "id", "1337");
+            Node notaUser = tx.findNode(Nodes.USER, "id", "1337");
             assertNull(notaUser);
-            tx.success();
+            tx.close();
         }
 
         String jsonPayload = "{\"role\":\"user\",\"id\":1337,\"passphrase\":\"ABCDSaltedHash\"}";
@@ -190,15 +193,15 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-            db.execute(createTradition);
+            tx.execute(createTradition);
             String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            db.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery);
 
-            tx.success();
+            tx.commit();
         }
 
         /*
@@ -208,14 +211,14 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'843' })";
-            db.execute(createTradition);
+            tx.execute(createTradition);
             String createNewRelationQuery = "MATCH(user:USER {id:'2'}) "
                     + "MATCH(tradition: TRADITION {id:'843'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            db.execute(createNewRelationQuery);
-            tx.success();
+            tx.execute(createNewRelationQuery);
+            tx.commit();
         }
 
         try(Transaction tx = db.beginTx())
@@ -232,13 +235,13 @@ public class UserTest {
             /*
              * Check that user 1 is still there
              */
-            Node user = db.findNode(Nodes.USER, "id", "1");
+            Node user = tx.findNode(Nodes.USER, "id", "1");
             assertNotNull(user);
 
             /*
              * Check that tradition 842 is still there
              */
-            Node tradition = db.findNode(Nodes.TRADITION, "id", "842");
+            Node tradition = tx.findNode(Nodes.TRADITION, "id", "842");
             assertNotNull(tradition);
 
             /*
@@ -248,7 +251,7 @@ public class UserTest {
                     .request()
                     .delete();
             assertEquals(Response.Status.OK.getStatusCode(), actualResponse.getStatus());
-            tradition = db.findNode(Nodes.TRADITION, "id", "842");
+            tradition = tx.findNode(Nodes.TRADITION, "id", "842");
             assertNull(tradition);
 
             /*
@@ -262,22 +265,22 @@ public class UserTest {
             /*
              * Check that user 1 is now gone
              */
-            user = db.findNode(Nodes.USER, "id", "1");
+            user = tx.findNode(Nodes.USER, "id", "1");
             assertNull(user);
 
             /*
              * Check if user 2 still exists
              */
-            user = db.findNode(Nodes.USER, "id", "2");
+            user = tx.findNode(Nodes.USER, "id", "2");
             assertNotNull(user);
 
             /*
              * Check if tradition 843 is removed
              */
-            tradition = db.findNode(Nodes.TRADITION, "id", "843");
+            tradition = tx.findNode(Nodes.TRADITION, "id", "843");
             assertNotNull(tradition);
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -303,13 +306,13 @@ public class UserTest {
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-            db.execute(createTradition);
+            tx.execute(createTradition);
             String createNewRelationQuery = "MATCH(user:USER {id:'1'}) "
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            db.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery);
 
             /*
              * Remove user 2 with all his traditions
@@ -323,31 +326,31 @@ public class UserTest {
             /*
              * Check if user 1 still exists
              */
-            Result result = db.execute("match (userId:USER {id:'1'}) return userId");
+            Result result = tx.execute("match (userId:USER {id:'1'}) return userId");
             Iterator<Node> nodes = result.columnAs("userId");
             assertTrue(nodes.hasNext());
 
             /*
              * Check if tradition 842 still exists
              */
-            result = db.execute("match (tradId:TRADITION {id:'842'}) return tradId");
+            result = tx.execute("match (tradId:TRADITION {id:'842'}) return tradId");
             nodes = result.columnAs("tradId");
             assertTrue(nodes.hasNext());
 
             /*
              * Check if user 2 does not exist
              */
-            result = db.execute("match (userId:USER {id:'2'}) return userId");
+            result = tx.execute("match (userId:USER {id:'2'}) return userId");
             nodes = result.columnAs("userId");
             assertFalse(nodes.hasNext());
 
             /*
              * Check if tradition 843 does not exist
              */
-            result = db.execute("match (tradId:TRADITION {id:'843'}) return tradId");
+            result = tx.execute("match (tradId:TRADITION {id:'843'}) return tradId");
             nodes = result.columnAs("tradId");
             assertFalse(nodes.hasNext());
-            tx.success();
+            tx.close();
         }
     }
 
@@ -362,19 +365,19 @@ public class UserTest {
                 .request(MediaType.APPLICATION_JSON)
                 .put(Entity.json(jsonPayload));
         
-        try(Transaction tx = db.beginTx())
+        try (Transaction tx = db.beginTx())
         {
             // Add the new ownership
             String createTradition = "CREATE (tradition:TRADITION { id:'842' })";
-            db.execute(createTradition);
+            tx.execute(createTradition);
             String createNewRelationQuery = "MATCH(user:USER {id:'837462'}) "
                     + "MATCH(tradition: TRADITION {id:'842'}) "
                     + "SET tradition.name = 'TestTradition' "
                     + "SET tradition.public = '0' "
                     + "CREATE (tradition)<-[r:OWNS_TRADITION]-(user) RETURN r, tradition";
-            db.execute(createNewRelationQuery);
+            tx.execute(createNewRelationQuery);
 
-            tx.success();
+            tx.commit();
         }
         TraditionModel trad = new TraditionModel();
         trad.setId("842");

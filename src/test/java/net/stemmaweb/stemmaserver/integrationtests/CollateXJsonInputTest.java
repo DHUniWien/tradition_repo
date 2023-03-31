@@ -1,13 +1,16 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.Util;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.JerseyTest;
@@ -19,15 +22,13 @@ import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
 import junit.framework.TestCase;
-
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.Util;
 
 public class CollateXJsonInputTest extends TestCase {
 
@@ -83,8 +84,10 @@ public class CollateXJsonInputTest extends TestCase {
 
         // Dive into the database and check that there are no redundant witness paths
         try (Transaction tx = db.beginTx()) {
-            List<Relationship> sequences = VariantGraphService.returnTraditionSection(sectId, db).relationships()
-                    .stream().filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
+            List<Relationship> sequences =
+//            		VariantGraphService.returnTraditionSection(sectId, db).relationships().stream()
+            		StreamSupport.stream(VariantGraphService.returnTraditionSection(sectId, db).relationships().spliterator(), false)
+            		.filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
             for (Relationship r : sequences) {
                 if (r.hasProperty("witnesses")) {
                     ArrayList<String> mainwits = new ArrayList<>(Arrays.asList((String[]) r.getProperty("witnesses")));
@@ -96,7 +99,7 @@ public class CollateXJsonInputTest extends TestCase {
                     }
                 }
             }
-            tx.success();
+            tx.close();
         }
 
         // Check a witness text
@@ -176,7 +179,7 @@ public class CollateXJsonInputTest extends TestCase {
                                 assertFalse(ew.contains(w));
                             }
                 }
-            tx.success();
+            tx.close();
         }
     }
 

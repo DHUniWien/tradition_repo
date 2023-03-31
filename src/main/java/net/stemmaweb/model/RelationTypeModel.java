@@ -3,6 +3,8 @@ package net.stemmaweb.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.neo4j.graphdb.*;
 
@@ -81,7 +83,9 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
     public RelationTypeModel (Node n) {
         this();
-        try (Transaction tx = n.getGraphDatabase().beginTx()) {
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+//        try (Transaction tx = n.getGraphDatabase().beginTx()) {
+        try (Transaction tx = db.beginTx()) {
             if (n.hasProperty("name"))
                 this.setName(n.getProperty("name").toString());
             if (n.hasProperty("description"))
@@ -194,7 +198,8 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @return - The correspondingly named RELATION_TYPE node, or null
      */
     public Node lookup (Node traditionNode) {
-        GraphDatabaseService db = traditionNode.getGraphDatabase();
+//        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         Node relTypeNode = null;
         try (Transaction tx = db.beginTx()) {
             // First see if there is a type with this name
@@ -213,7 +218,8 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     }
 
     private Node match_relation_node(Node traditionNode, Boolean allow_update) {
-        GraphDatabaseService db = traditionNode.getGraphDatabase();
+//        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         Node relType = this.lookup(traditionNode);
         try (Transaction tx = db.beginTx()) {
             if (relType == null) {

@@ -4,6 +4,8 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+
 /**
  * A model for an outbound link (relationship) from an annotation to some target node.
  */
@@ -26,7 +28,8 @@ public class AnnotationLinkModel {
     public AnnotationLinkModel() {}
 
     public AnnotationLinkModel(Relationship r) {
-        GraphDatabaseService db = r.getGraphDatabase();
+//        GraphDatabaseService db = r.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             setType(r.getType().name());
             setTarget(r.getEndNode().getElementId());

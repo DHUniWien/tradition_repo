@@ -2,11 +2,15 @@ package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * This model holds a witness. The sigil is also the witness name, e.g. 'Mk10'
@@ -33,7 +37,9 @@ public class WitnessModel implements Comparable<WitnessModel> {
      * @param node - the witness node to initialize from
      */
     public WitnessModel(Node node) {
-        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+//        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        try (Transaction tx = db.beginTx()) {
             id = node.getElementId();
             if (node.hasProperty("sigil"))
                 sigil = (String) node.getProperty("sigil");

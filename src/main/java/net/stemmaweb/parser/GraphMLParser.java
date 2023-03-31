@@ -153,16 +153,22 @@ public class GraphMLParser {
             // The parentId we return should be the ID of the parent node for whatever we just processed –
             // either the tradition ID if we are parsing a new tradition, or the section ID if we are
             // parsing a new section into a tradition. LATER does this make sense??
-            parentId = fileName.equals("tradition.xml") ? tradId : String.valueOf(parentNode.getElementId());
+            parentId = fileName.equals("tradition.xml") ? tradId : parentNode.getElementId();
             // If we are parsing a new section into an existing tradition, get the tradition metadata nodes
             // to make sure we don't duplicate them. This should only happen if we have isSingleSection set,
             // since otherwise the relevant nodes should already be in idMap.
-            List<Node> existingMeta = isSingleSection ?
-                    VariantGraphService.returnTraditionMeta(traditionNode).nodes().stream().collect(Collectors.toList()) :
-                    new ArrayList<>();
-            List<Relationship> existingMetaRel = isSingleSection ?
-                    VariantGraphService.returnTraditionMeta(traditionNode).relationships().stream().collect(Collectors.toList()) :
-                    new ArrayList<>();
+			List<Node> existingMeta = isSingleSection
+//                    VariantGraphService.returnTraditionMeta(traditionNode).nodes().stream().collect(Collectors.toList()) :
+					? StreamSupport
+							.stream(VariantGraphService.returnTraditionMeta(traditionNode).nodes().spliterator(), false)
+							.collect(Collectors.toList())
+					: new ArrayList<>();
+            List<Relationship> existingMetaRel = isSingleSection
+//                    VariantGraphService.returnTraditionMeta(traditionNode).relationships().stream().collect(Collectors.toList()) :
+					? StreamSupport
+							.stream(VariantGraphService.returnTraditionMeta(traditionNode).relationships().spliterator(), false)
+							.collect(Collectors.toList())
+					: new ArrayList<>();
 
             // We will hold back nodes that were labeled by the user rather than the system, such as annotations,
             // so that we can add them to the graph with the existing verification / sanity checks.

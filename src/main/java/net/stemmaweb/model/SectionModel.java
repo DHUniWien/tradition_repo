@@ -2,13 +2,17 @@ package net.stemmaweb.model;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import net.stemmaweb.rest.ERelations;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * This model holds a witness. The sigil is also the witness name, e.g. 'Mk10'
@@ -42,7 +46,9 @@ public class SectionModel {
      * @param node - the section node to initialize from
      */
     public SectionModel(Node node) {
-        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+//        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        try (Transaction tx = db.beginTx()) {
             setId(node.getElementId());
             if (node.hasProperty("name"))
                 setName(node.getProperty("name").toString());

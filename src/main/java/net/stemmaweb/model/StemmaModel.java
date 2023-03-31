@@ -1,18 +1,21 @@
 package net.stemmaweb.model;
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.qmino.miredot.annotations.MireDotIgnore;
-import net.stemmaweb.exporter.DotExporter;
-import net.stemmaweb.rest.ERelations;
+import javax.ws.rs.core.Response;
+import javax.xml.bind.annotation.XmlRootElement;
+
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
-import javax.ws.rs.core.Response;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.qmino.miredot.annotations.MireDotIgnore;
+
+import net.stemmaweb.exporter.DotExporter;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * A model for the stemma object and its representation.
@@ -47,7 +50,8 @@ public class StemmaModel {
     public StemmaModel () {}
 
     public StemmaModel(Node stemmaNode) {
-        GraphDatabaseService db = stemmaNode.getGraphDatabase();
+//        GraphDatabaseService db = stemmaNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             identifier = stemmaNode.getProperty("name").toString();
             is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);

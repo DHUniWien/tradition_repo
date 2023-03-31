@@ -93,11 +93,11 @@ public class TabularInputOutputTest extends TestCase {
                 .post(Entity.json(readingBoundaryModel));
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         try (Transaction tx = db.beginTx()) {
-            assertEquals(db.getNodeById(Long.parseLong(firstComp)).getProperty("rank"),
-                    db.getNodeById(Long.parseLong(firstTest)).getProperty("rank"));
-            assertEquals(db.getNodeById(Long.parseLong(secondComp)).getProperty("rank"),
-                    db.getNodeById(Long.parseLong(secondTest)).getProperty("rank"));
-            tx.success();
+            assertEquals(tx.getNodeByElementId(firstComp).getProperty("rank"),
+                    tx.getNodeByElementId(firstTest).getProperty("rank"));
+            assertEquals(tx.getNodeByElementId(secondComp).getProperty("rank"),
+                    tx.getNodeByElementId(secondTest).getProperty("rank"));
+            tx.close();
         }
 
     }
@@ -419,15 +419,15 @@ public class TabularInputOutputTest extends TestCase {
         String ptz;
         String pz;
         try (Transaction tx = db.beginTx()) {
-            Result res = db.execute("MATCH (n:READING {text:\"Plätzchen\", rank:5}) RETURN n");
+            Result res = tx.execute("MATCH (n:READING {text:\"Plätzchen\", rank:5}) RETURN n");
             Iterator<Node> nodes = res.columnAs("n");
             assertTrue(nodes.hasNext());
-            ptz = String.valueOf(nodes.next().getId());
-            res = db.execute("MATCH (n:READING {text:\"Pläzchen\", rank:5}) RETURN n");
+            ptz = nodes.next().getElementId();
+            res = tx.execute("MATCH (n:READING {text:\"Pläzchen\", rank:5}) RETURN n");
             nodes = res.columnAs("n");
             assertTrue(nodes.hasNext());
-            pz = String.valueOf(nodes.next().getId());
-            tx.success();
+            pz = nodes.next().getElementId();
+            tx.close();
         }
         RelationModel spellingrel = new RelationModel();
         spellingrel.setSource(ptz);

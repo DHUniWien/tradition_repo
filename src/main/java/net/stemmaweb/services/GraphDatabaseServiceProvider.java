@@ -1,16 +1,19 @@
 package net.stemmaweb.services;
 
 
-import org.neo4j.graphalgo.UnionFindProc;
-import org.neo4j.graphdb.DependencyResolver;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
-import org.neo4j.graphdb.factory.GraphDatabaseFactory;
-import org.neo4j.internal.kernel.api.exceptions.KernelException;
-import org.neo4j.kernel.impl.proc.Procedures;
-import org.neo4j.kernel.internal.GraphDatabaseAPI;
-
 import java.io.File;
+
+import org.neo4j.common.DependencyResolver.SelectionStrategy;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
+import org.neo4j.exceptions.KernelException;
+import org.neo4j.graphalgo.UnionFindProc;
+//import org.neo4j.graphdb.DependencyResolver;
+import org.neo4j.graphdb.GraphDatabaseService;
+//import org.neo4j.kernel.impl.proc.Procedures;
+import org.neo4j.internal.kernel.api.Procedures;
+//import org.neo4j.internal.kernel.api.exceptions.KernelException;
+import org.neo4j.kernel.internal.GraphDatabaseAPI;
 
 /**
  * Creates a global DatabaseService provider, which holds a reference to the
@@ -21,6 +24,7 @@ import java.io.File;
 public class GraphDatabaseServiceProvider {
 
     private static GraphDatabaseService db;
+    private DatabaseManagementService dbbuilder;
 
     // Get the database that has been initialized for the app
     public GraphDatabaseServiceProvider() {
@@ -29,13 +33,16 @@ public class GraphDatabaseServiceProvider {
     // Connect to a DB at a particular path
     public GraphDatabaseServiceProvider(String db_location) throws KernelException {
 
-        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data/databases/graph.db"));
+//        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
+//        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data/databases/graph.db"));
+		dbbuilder = new DatabaseManagementServiceBuilder(
+				new File(db_location + "/data/databases/graph.db").toPath()).build();
+		
         File config = new File(db_location + "/conf/neo4j.conf");
         if (config.exists())
-            db = dbbuilder.loadPropertiesFromFile(config.toString()).newGraphDatabase();
+            db = dbbuilder.database(config.toString());
         else
-            db = dbbuilder.newGraphDatabase();
+            db = dbbuilder.database("stemma");
         registerExtensions();
 
     }
@@ -55,8 +62,14 @@ public class GraphDatabaseServiceProvider {
         GraphDatabaseAPI api = (GraphDatabaseAPI) db;
         // See if our procedure is already registered
         api.getDependencyResolver()
-                .resolveDependency(Procedures.class, DependencyResolver.SelectionStrategy.ONLY)
+                .resolveDependency(Procedures.class, SelectionStrategy.SINGLE)
                 .registerProcedure(UnionFindProc.class, true);
+    }
+    
+    public void shutdown() {
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
     }
 
 }

@@ -12,6 +12,7 @@ import org.neo4j.graphdb.traversal.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class VariantGraphService {
 
@@ -76,7 +77,7 @@ public class VariantGraphService {
                 Node relevantSection = direction.equals(ERelations.HAS_END)
                         ? sections.get(sections.size() - 1)
                         : sections.get(0);
-                return getBoundaryNode(String.valueOf(relevantSection.getElementId()), db, direction);
+                return getBoundaryNode(relevantSection.getElementId(), db, direction);
             } else return null;
         }
 //        // Were we asked for a nonexistent tradition node (i.e. a non-Long that corresponds to no tradition)?
@@ -225,8 +226,11 @@ public class VariantGraphService {
         try (Transaction tx = db.beginTx()) {
             Node sectionStart = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
             // Get the list of all readings in this section
-            Set<Node> sectionNodes = returnTraditionSection(sectionNode).nodes().stream()
-                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
+//            Set<Node> sectionNodes = returnTraditionSection(sectionNode).nodes().stream()
+//                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
+			Set<Node> sectionNodes = StreamSupport
+					.stream(returnTraditionSection(sectionNode).nodes().spliterator(), false)
+					.filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
 
             // Find the normalisation clusters and nominate a representative for each
             String tradId = tradition.getProperty("id").toString();
@@ -298,8 +302,10 @@ public class VariantGraphService {
                     });
 
             // TEMPORARY: Check that we aren't polluting the graph DB
-            if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
-                    .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE) || x.isType(ERelations.REPRESENTS)))
+//            if (VariantGraphService.returnTraditionSection(sectionNode).relationships()
+//                    .stream().anyMatch(x -> x.isType(ERelations.NSEQUENCE) || x.isType(ERelations.REPRESENTS)))
+        	if (StreamSupport.stream(VariantGraphService.returnTraditionSection(sectionNode).relationships().spliterator(), false)
+        			.anyMatch(x -> x.isType(ERelations.NSEQUENCE) || x.isType(ERelations.REPRESENTS)))
                 throw new Exception("Data consistency error on normalization cleanup of section " + sectionNode.getElementId());
             tx.commit();
         }

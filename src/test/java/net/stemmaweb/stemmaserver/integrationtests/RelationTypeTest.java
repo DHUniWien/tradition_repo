@@ -1,9 +1,14 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.Util;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -12,14 +17,15 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import junit.framework.TestCase;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.Util;
 
 public class RelationTypeTest extends TestCase {
     private GraphDatabaseService db;
@@ -91,16 +97,16 @@ public class RelationTypeTest extends TestCase {
     private void checkExpectedRelations(HashSet<String> createdRels, HashSet<String> expectedLinks) {
         try (Transaction tx = db.beginTx()) {
             for (String rid : createdRels) {
-                Relationship link = db.getRelationshipById(Long.valueOf(rid));
+                Relationship link = tx.getRelationshipByElementId(rid);
                 String lookfor = String.format("%s -> %s: %s",
-                        link.getStartNode().getId(), link.getEndNode().getId(), link.getProperty("type"));
+                        link.getStartNode().getElementId(), link.getEndNode().getElementId(), link.getProperty("type"));
                 String lookrev = String.format("%s -> %s: %s",
-                        link.getEndNode().getId(), link.getStartNode().getId(), link.getProperty("type"));
+                        link.getEndNode().getElementId(), link.getStartNode().getElementId(), link.getProperty("type"));
                 String message = String.format("looking for %s in %s", lookfor,
                         java.util.Arrays.toString(expectedLinks.toArray()));
                 assertTrue(message,expectedLinks.remove(lookfor) ^ expectedLinks.remove(lookrev));
             }
-            tx.success();
+            tx.close();
         }
         assertTrue(expectedLinks.isEmpty());
     }
@@ -390,10 +396,10 @@ public class RelationTypeTest extends TestCase {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = db.getNodeById(Long.parseLong(nid));
+                Node n = tx.getNodeByElementId(nid);
                 assertEquals(22L, n.getProperty("rank"));
             }
-            tx.success();
+            tx.close();
         }
 
         newRel.setSource(euricko24);
@@ -422,10 +428,10 @@ public class RelationTypeTest extends TestCase {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = db.getNodeById(Long.parseLong(nid));
+                Node n = tx.getNodeByElementId(nid);
                 assertEquals(24L, n.getProperty("rank"));
             }
-            tx.success();
+            tx.close();
         }
 
         // Now add in an "other" relation, which is *not* transitive, to make sure the ranks still update.
@@ -447,10 +453,10 @@ public class RelationTypeTest extends TestCase {
 
         try (Transaction tx = db.beginTx()) {
             for (String nid : testReadings) {
-                Node n = db.getNodeById(Long.parseLong(nid));
+                Node n = tx.getNodeByElementId(nid);
                 assertEquals(25L, n.getProperty("rank"));
             }
-            tx.success();
+            tx.close();
         }
     }
 

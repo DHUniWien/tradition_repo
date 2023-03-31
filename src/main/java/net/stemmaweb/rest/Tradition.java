@@ -1,31 +1,72 @@
 package net.stemmaweb.rest;
 
+import static java.time.LocalDateTime.now;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.json.JSONObject;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
 import com.alexmerz.graphviz.ParseException;
 import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
+
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
 import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.*;
-import net.stemmaweb.parser.*;
-import net.stemmaweb.services.*;
-import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.json.JSONObject;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.*;
-
-import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import java.io.InputStream;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.time.LocalDateTime.now;
-import static net.stemmaweb.Util.*;
+import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.DisplayOptionModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.parser.CollateXJsonParser;
+import net.stemmaweb.parser.CollateXParser;
+import net.stemmaweb.parser.DotParser;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.parser.StemmawebParser;
+import net.stemmaweb.parser.TEIParallelSegParser;
+import net.stemmaweb.parser.TabularParser;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
 
@@ -267,7 +308,8 @@ public class Tradition {
     // utility method for creating a new section on a tradition
     private static Node createNewSection(Node traditionNode, String sectionName) {
         Node sectionNode;
-        GraphDatabaseService db = traditionNode.getGraphDatabase();
+//        GraphDatabaseService db = traditionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             sectionNode = tx.createNode(Nodes.SECTION);
             sectionNode.setProperty("name", sectionName);

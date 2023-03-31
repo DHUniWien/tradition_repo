@@ -1,12 +1,25 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.Util;
+import static org.junit.Assert.assertNotEquals;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -17,17 +30,21 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.Response;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import java.io.*;
-import java.nio.file.Files;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertNotEquals;
+import junit.framework.TestCase;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Tests for our own input/output formats.
@@ -131,11 +148,12 @@ public class GraphMLInputOutputTest extends TestCase {
                 .get(new GenericType<List<SectionModel>>() {})
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
-            List<Node> ourReadings = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
+//        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
+            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).nodes().spliterator(), false)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
-            tx.success();
+            tx.close();
         }
 
         // Do the witness texts match?
@@ -246,11 +264,12 @@ public class GraphMLInputOutputTest extends TestCase {
                 .get(new GenericType<List<SectionModel>>() {})
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
-            List<Node> ourReadings = VariantGraphService.returnEntireTradition(legendId, db).nodes().stream()
+//        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(legendId, db).nodes().stream()
+            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(legendId, db).nodes().spliterator(), false)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));
-            tx.success();
+            tx.close();
         }
 
         // Does the tradition have any relation types defined?
@@ -361,23 +380,23 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request().get(new GenericType<>() {});
         // Find the ranks of the start and finish of this translation
         assertEquals(2, testAnno.get().getLinks().size());
-        Long startId = 0L;
-        Long endId = 0L;
+        String startId = 0L;
+        String endId = 0L;
         for (AnnotationLinkModel lm : testAnno.get().getLinks()) {
             if (lm.getType().equals("BEGIN"))
                 startId = lm.getTarget();
             else if (lm.getType().equals("END"))
                 endId = lm.getTarget();
         }
-        assertFalse(startId == 0L);
-        assertFalse(endId == 0L);
+        assertFalse(startId.isBlank());
+        assertFalse(endId.isBlank());
         List<ReadingModel> translated = new ArrayList<>();
         boolean in_translation = false;
         for (ReadingModel rm : sectionReadings) {
-            if (rm.getId().equals(String.valueOf(startId)))
+            if (rm.getId().equals(startId))
                 in_translation = true;
             if (in_translation) translated.add(rm);
-            if (rm.getId().equals(String.valueOf(endId)))
+            if (rm.getId().equals(endId))
                 in_translation = false;
         }
         String expected = "և զկնի հինկ ամին եկեալ մարախ յայնմ գաւառին որպէս զաւազ ծովու և ապականեաց զերկիր.";
@@ -422,11 +441,11 @@ public class GraphMLInputOutputTest extends TestCase {
         sect1ref.setLabel("PLACEREF");
         sect1ref.addProperty("authority", "tla");
         AnnotationLinkModel s1b = new AnnotationLinkModel();
-        s1b.setTarget(Long.parseLong(readingLookup.get("swecia/2")));
+        s1b.setTarget(readingLookup.get("swecia/2"));
         s1b.setType("BEGIN");
         sect1ref.addLink(s1b);
         AnnotationLinkModel s1e = new AnnotationLinkModel();
-        s1e.setTarget(Long.parseLong(readingLookup.get("swecia/2")));
+        s1e.setTarget(readingLookup.get("swecia/2"));
         s1e.setType("END");
         sect1ref.addLink(s1e);
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotation/").request().post(Entity.json(sect1ref));
@@ -438,11 +457,11 @@ public class GraphMLInputOutputTest extends TestCase {
         sect2ref.setLabel("PLACEREF");
         sect2ref.addProperty("authority", "tla");
         AnnotationLinkModel s2b = new AnnotationLinkModel();
-        s2b.setTarget(Long.parseLong(readingLookup.get("terre/6")));
+        s2b.setTarget(readingLookup.get("terre/6"));
         s2b.setType("BEGIN");
         sect2ref.addLink(s2b);
         AnnotationLinkModel s2e = new AnnotationLinkModel();
-        s2e.setTarget(Long.parseLong(readingLookup.get("illius/7")));
+        s2e.setTarget(readingLookup.get("illius/7"));
         s2e.setType("END");
         sect2ref.addLink(s2e);
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotation").request().post(Entity.json(sect2ref));
@@ -454,11 +473,11 @@ public class GraphMLInputOutputTest extends TestCase {
         thePlace.setLabel("PLACE");
         thePlace.addProperty("name", "Sweden");
         AnnotationLinkModel r1 = new AnnotationLinkModel();
-        r1.setTarget(Long.parseLong(sect1ref.getId()));
+        r1.setTarget(sect1ref.getId());
         r1.setType("REFERENCED");
         thePlace.addLink(r1);
         AnnotationLinkModel r2 = new AnnotationLinkModel();
-        r2.setTarget(Long.parseLong(sect2ref.getId()));
+        r2.setTarget(sect2ref.getId());
         r2.setType("REFERENCED");
         thePlace.addLink(r2);
         r = jerseyTest.target("/tradition/" + multiTradId + "/annotation").request().post(Entity.json(thePlace));

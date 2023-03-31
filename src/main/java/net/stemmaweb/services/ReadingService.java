@@ -1,15 +1,33 @@
 package net.stemmaweb.services;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.BranchState;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.*;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 
@@ -304,7 +322,7 @@ public class ReadingService {
 
     private static class RankCalcEvaluate implements Evaluator {
 
-        Map<Long, Set<Node>> colocatedNodes;
+        Map<String, Set<Node>> colocatedNodes;
         boolean recalculateAll;
 
         // Constructor - we need to know where we are starting so we can build our list of
@@ -391,10 +409,12 @@ public class ReadingService {
 
         // Traverse the sequence graph from our start node, putting a mark on
         // all the nodes we expect to visit
-        tx.traversalDescription().depthFirst()
-                .expand(a)
-                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                .traverse(startNode).nodes().stream().forEach(x -> x.setProperty("touched", true));
+//        tx.traversalDescription().depthFirst()
+//                .expand(a)
+//                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+//                .traverse(startNode).nodes().stream().forEach(x -> x.setProperty("touched", true));
+		StreamSupport.stream(tx.traversalDescription().depthFirst().expand(a).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+				.traverse(startNode).nodes().spliterator(), false).forEach(x -> x.setProperty("touched", true));
 
         // At this point we can start to reassign ranks
         ResourceIterable<Node> touched = (ResourceIterable<Node>) tx.traversalDescription().depthFirst()
@@ -483,7 +503,7 @@ public class ReadingService {
             return new PathExpander() {
                 PathExpander parent = this;
                 @Override
-                public Iterable<Relationship> expand(Path path, BranchState branchState) {
+                public ResourceIterable expand(Path path, BranchState branchState) {
                     return expansion(path, Direction.INCOMING);
                 }
 

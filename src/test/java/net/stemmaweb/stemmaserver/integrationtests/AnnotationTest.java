@@ -1,9 +1,21 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.Util;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetTime;
+import java.time.Period;
+import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.Direction;
@@ -15,15 +27,14 @@ import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.time.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import junit.framework.TestCase;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.Util;
 
 public class AnnotationTest extends TestCase {
     private GraphDatabaseService db;
@@ -74,11 +85,11 @@ public class AnnotationTest extends TestCase {
         props.put("lang", "EN");
         am.setProperties(props);
         AnnotationLinkModel start = new AnnotationLinkModel();
-        start.setTarget(Long.valueOf(readingLookup.get("in/1")));
+        start.setTarget(readingLookup.get("in/1"));
         start.setType("BEGIN");
         start.setFollow("SEQUENCE/witness/A");
         AnnotationLinkModel end = new AnnotationLinkModel();
-        end.setTarget(Long.valueOf(readingLookup.get("oriundus/9")));
+        end.setTarget(readingLookup.get("oriundus/9"));
         end.setType("END");
         am.addLink(start);
         am.addLink(end);
@@ -228,7 +239,7 @@ public class AnnotationTest extends TestCase {
 
         // Check that the graph looks right
         try (Transaction tx = db.beginTx()) {
-            Node annoNode = db.getNodeById(Long.parseLong(am.getId()));
+            Node annoNode = tx.getNodeByElementId(am.getId());
             assertTrue(annoNode.hasLabel(Label.label("TRANSLATION")));
             assertEquals(am.getProperties().get("text"), annoNode.getProperty("text"));
             assertEquals(am.getProperties().get("lang"), annoNode.getProperty("lang"));
@@ -238,7 +249,7 @@ public class AnnotationTest extends TestCase {
             for (AnnotationLinkModel alm : am.getLinks()) {
                 Relationship link = links.get(alm.getType());
                 assertEquals(link.getType().name(), alm.getType());
-                assertEquals(Long.valueOf(link.getEndNode().getId()), alm.getTarget());
+                assertEquals(link.getEndNode().getElementId(), alm.getTarget());
                 if (alm.getType().equals("START"))
                     assertEquals(alm.getFollow(), link.getProperty("follow").toString());
             }
@@ -246,7 +257,7 @@ public class AnnotationTest extends TestCase {
                     RelationshipType.withName("HAS_ANNOTATION"), Direction.INCOMING);
             assertEquals(tradId, tlink.getStartNode().getProperty("id"));
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -324,7 +335,7 @@ public class AnnotationTest extends TestCase {
         AnnotationModel am = addTestAnnotation().readEntity(AnnotationModel.class);
 
         AnnotationLinkModel alm = new AnnotationLinkModel();
-        alm.setTarget(Long.valueOf(readingLookup.get("venerabilis/3")));
+        alm.setTarget(readingLookup.get("venerabilis/3"));
         alm.setType("BEGIN");
         Response response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + am.getId() + "/link")
@@ -404,10 +415,10 @@ public class AnnotationTest extends TestCase {
         ref1.setLabel("PERSONREF");
         AnnotationLinkModel prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(Long.valueOf(readingLookup.get("pontifex/4")));
+        prb.setTarget(readingLookup.get("pontifex/4"));
         AnnotationLinkModel pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(Long.valueOf(readingLookup.get("Henricus/6")));
+        pre.setTarget(readingLookup.get("Henricus/6"));
         ref1.addLink(prb);
         ref1.addLink(pre);
         response = jerseyTest
@@ -423,7 +434,7 @@ public class AnnotationTest extends TestCase {
         henry.setPrimary(true);
         henry.addProperty("href", "https://en.wikipedia.org/Saint_Henry");
         prb = new AnnotationLinkModel();
-        prb.setTarget(Long.valueOf(ref1.getId()));
+        prb.setTarget(ref1.getId());
         prb.setType("REFERENCED");
         henry.addLink(prb);
         response = jerseyTest
@@ -438,10 +449,10 @@ public class AnnotationTest extends TestCase {
         ref2.setLabel("PERSONREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
+        prb.setTarget(readingLookup.get("luminaribus/4"));
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(Long.valueOf(readingLookup.get("luminaribus/4")));
+        pre.setTarget(readingLookup.get("luminaribus/4"));
         ref2.addLink(prb);
         ref2.addLink(pre);
         response = jerseyTest
@@ -452,7 +463,7 @@ public class AnnotationTest extends TestCase {
         ref2 = response.readEntity(AnnotationModel.class);
 
         // Add the link
-        prb.setTarget(Long.valueOf(ref2.getId()));
+        prb.setTarget(ref2.getId());
         prb.setType("REFERENCED");
         response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + henry.getId() + "/link")
@@ -479,9 +490,9 @@ public class AnnotationTest extends TestCase {
         for (AnnotationModel am : anns) {
             if (am.getLabel().equals("PERSON")) {
                 assertEquals(2, am.getLinks().size());
-                HashMap<Long,Boolean> found = new HashMap<>();
-                found.put(Long.valueOf(ref1.getId()), false);
-                found.put(Long.valueOf(ref2.getId()), false);
+                HashMap<String,Boolean> found = new HashMap<>();
+                found.put(ref1.getId(), false);
+                found.put(ref2.getId(), false);
                 for (AnnotationLinkModel alm : am.getLinks()) {
                     assertEquals("REFERENCED", alm.getType());
                     found.put(alm.getTarget(), true);
@@ -608,7 +619,7 @@ public class AnnotationTest extends TestCase {
             props.put("value", nameToValue.get(k));
             am.setProperties(props);
             AnnotationLinkModel start = new AnnotationLinkModel();
-            start.setTarget(Long.valueOf(readingLookup.get("in/1")));
+            start.setTarget(readingLookup.get("in/1"));
             start.setType("ATTACHED");
             am.addLink(start);
 

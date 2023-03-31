@@ -1,7 +1,26 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
@@ -10,15 +29,6 @@ import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-
-import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
@@ -29,16 +39,36 @@ import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestGraphDatabaseFactory;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.DuplicateModel;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
+import net.stemmaweb.model.ProposedEmendationModel;
+import net.stemmaweb.model.ReadingBoundaryModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * 
@@ -229,9 +259,9 @@ public class ReadingTest {
 
         // Check that the node text didn't change
         try (Transaction tx = db.beginTx()) {
-            Node node = db.getNodeById(Long.parseLong(nodeid));
+            Node node = tx.getNodeByElementId(nodeid);
             assertEquals("showers", node.getProperty("text").toString());
-            tx.success();
+            tx.close();
         }
     }
 
@@ -306,9 +336,9 @@ public class ReadingTest {
         String nodeId = readingLookup.get("showers/5");
         ReadingModel expectedReadingModel;
         try (Transaction tx = db.beginTx()) {
-            Node node = db.getNodeById(Long.parseLong(nodeId));
+            Node node = tx.getNodeByElementId(nodeId);
             expectedReadingModel = new ReadingModel(node);
-            tx.success();
+            tx.close();
         }
 
             ReadingModel readingModel = jerseyTest
@@ -430,9 +460,13 @@ public class ReadingTest {
         Set<Node> allNodes = new HashSet<>();
         Set<Relationship> allLinks = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
-            allNodes = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream().collect(Collectors.toSet());
-            allLinks = VariantGraphService.returnEntireTradition(tradId, db).relationships().stream().collect(Collectors.toSet());
-            tx.success();
+//            allNodes = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
+        	allNodes = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).nodes().spliterator(), false)
+        			.collect(Collectors.toSet());
+//            allLinks = VariantGraphService.returnEntireTradition(tradId, db).relationships().stream()
+            allLinks = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).relationships().spliterator(), false)
+            		.collect(Collectors.toSet());
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -474,7 +508,7 @@ public class ReadingTest {
                 assertTrue(allNodes.contains(n));
             for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
                 assertTrue(allLinks.contains(r));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -553,7 +587,7 @@ public class ReadingTest {
                 assertTrue(allNodes.contains(n));
             for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
                 assertTrue(allLinks.contains(r));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -624,17 +658,17 @@ public class ReadingTest {
         String Legei = null;
         ReadingModel umin;
         try (Transaction tx = db.beginTx()) {
-            List<ReadingModel> rank1 = db.findNodes(Nodes.READING, "rank", 1L).stream()
+            List<ReadingModel> rank1 = tx.findNodes(Nodes.READING, "rank", 1L).stream()
                     .map(ReadingModel::new).collect(Collectors.toList());
             for (ReadingModel r : rank1) {
                 if (r.getText().equals("ν̣ηθια")) nithia = r.getId();
                 if (r.getText().equals("Λεγει")) Legei = r.getId();
             }
 
-            Node uminRdg = db.findNode(Nodes.READING, "rank", 32L);
+            Node uminRdg = tx.findNode(Nodes.READING, "rank", 32L);
             assertNotNull(uminRdg);
             umin = new ReadingModel(uminRdg);
-            tx.success();
+            tx.close();
         }
         assertNotNull(nithia);
         assertNotNull(Legei);
@@ -713,8 +747,9 @@ public class ReadingTest {
         // Check that the following reading has two inbound paths, one with the rest of
         // the witnesses
         try (Transaction tx = db.beginTx()) {
-            for (Relationship inbound : db.getNodeById(Long.parseLong(following)).getRelationships(ERelations.SEQUENCE, Direction.INCOMING)) {
-                if (inbound.getStartNode().getId() == Long.parseLong(Legei)) {
+            ResourceIterable<Relationship> relationships = tx.getNodeByElementId(following).getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+			for (Relationship inbound : relationships) {
+                if (inbound.getStartNode().getElementId().equals(Legei)) {
                     List<String> sigla = Arrays.asList((String []) inbound.getProperty("witnesses"));
                     assertEquals(5, sigla.size());
                     assertTrue(sigla.contains("w11"));
@@ -724,7 +759,7 @@ public class ReadingTest {
                     assertTrue(sigla.contains("w54"));
                 }
             }
-            tx.success();
+            tx.close();
         }
 
         // -- No rank gap tests (ὑμῖν)
@@ -824,9 +859,9 @@ public class ReadingTest {
         Node firstNode;
         Node secondNode;
         try (Transaction tx = db.beginTx()) {
-            firstNode = db.getNodeById(Long.parseLong(firstNodeId));
-            secondNode = db.getNodeById(Long.parseLong(secondNodeId));
-            ResourceIterator<Node> showers = db.findNodes(Nodes.READING, "text", "showers");
+            firstNode = tx.getNodeByElementId(firstNodeId);
+            secondNode = tx.getNodeByElementId(secondNodeId);
+            ResourceIterator<Node> showers = tx.findNodes(Nodes.READING, "text", "showers");
             while (showers.hasNext()) {
                 Node n = showers.next();
                 if (!n.equals(firstNode))
@@ -836,7 +871,7 @@ public class ReadingTest {
             assertFalse(duplicatedShowers.hasProperty("orig_reading"));
             assertFalse(duplicatedShowers.hasProperty("is_lemma"));
 
-            ResourceIterator<Node> sweet = db.findNodes(Nodes.READING, "text", "sweet");
+            ResourceIterator<Node> sweet = tx.findNodes(Nodes.READING, "text", "sweet");
             while (sweet.hasNext()) {
                 Node n = sweet.next();
                 if (!n.equals(secondNode))
@@ -861,7 +896,7 @@ public class ReadingTest {
                 String val2 = duplicatedSweet.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
-            tx.success();
+            tx.close();
         }
     }
 
@@ -874,8 +909,8 @@ public class ReadingTest {
                 .get(new GenericType<>() {});
         // add a relationship between droughts
         RelationModel drel = new RelationModel();
-        drel.setSource(String.valueOf(readingLookup.get("drought/10")));
-        drel.setTarget(String.valueOf(readingLookup.get("drought/12")));
+        drel.setSource(readingLookup.get("drought/10"));
+        drel.setTarget(readingLookup.get("drought/12"));
         drel.setType("transposition");
         drel.setScope("local");
         Response response = jerseyTest
@@ -886,10 +921,10 @@ public class ReadingTest {
 
         // duplicate reading
         try (Transaction tx = db.beginTx()) {
-            Node node = db.findNode(Nodes.READING, "text", "of");
-            String jsonPayload = "{\"readings\":[" + node.getId() + "], \"witnesses\":[\"A\",\"C\" ]}";
+            Node node = tx.findNode(Nodes.READING, "text", "of");
+            String jsonPayload = "{\"readings\":[\"" + node.getElementId() + "\"], \"witnesses\":[\"A\",\"C\" ]}";
             response = jerseyTest
-                    .target("/reading/" + node.getId() + "/duplicate")
+                    .target("/reading/" + node.getElementId() + "/duplicate")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(jsonPayload));
 
@@ -915,7 +950,7 @@ public class ReadingTest {
             testNumberOfReadingsAndWitnesses(30);
 
             // check that the new reading is really in the database
-            List<Node> ofNodes = db.findNodes(Nodes.READING, "text", "of")
+            List<Node> ofNodes = tx.findNodes(Nodes.READING, "text", "of")
                     .stream().collect(Collectors.toList());
             assertEquals(2, ofNodes.size());
             Node duplicatedOf = null;
@@ -926,16 +961,16 @@ public class ReadingTest {
 
             // test that original sequences are still there
             int numberOfPaths = 0;
-            for (Relationship incoming : node.getRelationships(ERelations.SEQUENCE,
-                    Direction.INCOMING)) {
+			ResourceIterable<Relationship> relationships = node.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+			for (Relationship incoming : relationships) {
                 assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
                 numberOfPaths++;
             }
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : node.getRelationships(ERelations.SEQUENCE,
-                    Direction.OUTGOING)) {
+			relationships = node.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+			for (Relationship outgoing : relationships) {
                 assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 numberOfPaths++;
             }
@@ -951,8 +986,8 @@ public class ReadingTest {
             }
 
             numberOfPaths = 0;
-            for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.SEQUENCE,
-                    Direction.OUTGOING)) {
+			relationships = duplicatedOf.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+			for (Relationship outgoing : relationships) {
                 assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) outgoing.getProperty("witnesses"))[1]);
                 numberOfPaths++;
@@ -966,17 +1001,17 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
-            tx.success();
+            tx.close();
         }
     }
 
     @Test
     public void duplicateWithDuplicateForOneWitnessTest() {
         try (Transaction tx = db.beginTx()) {
-            Node originalOf = db.findNode(Nodes.READING, "text", "of");
-            Node aMarch = db.findNodes(Nodes.READING, "text", "march").next();
+            Node originalOf = tx.findNode(Nodes.READING, "text", "of");
+            Node aMarch = tx.findNodes(Nodes.READING, "text", "march").next();
             assertNotNull(aMarch);
-            String marchId = String.valueOf(aMarch.getId());
+            String marchId = aMarch.getElementId();
             // get all relationships as baseline
             List<RelationModel> origRelations = jerseyTest
                     .target("/tradition/" + tradId + "/relations")
@@ -984,9 +1019,9 @@ public class ReadingTest {
                     .get(new GenericType<>() {});
 
             // duplicate reading
-            String jsonPayload = "{\"readings\":[" + originalOf.getId() + "], \"witnesses\":[\"B\"]}";
+            String jsonPayload = "{\"readings\":[\"" + originalOf.getElementId() + "\"], \"witnesses\":[\"B\"]}";
             Response response = jerseyTest
-                    .target("/reading/" + originalOf.getId() + "/duplicate")
+                    .target("/reading/" + originalOf.getElementId() + "/duplicate")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(jsonPayload));
 
@@ -1008,11 +1043,11 @@ public class ReadingTest {
 
             testNumberOfReadingsAndWitnesses(30);
 
-            Node duplicatedOf = db.getNodeById(Long.parseLong(firstWord.getId()));
+            Node duplicatedOf = tx.getNodeByElementId(firstWord.getId());
             // test witnesses and number of paths
             int numberOfPaths = 0;
-            for (Relationship incoming : originalOf.getRelationships(ERelations.SEQUENCE,
-                    Direction.INCOMING)) {
+			ResourceIterable<Relationship> relationships = originalOf.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+			for (Relationship incoming : relationships) {
                 assertEquals("A", ((String[]) incoming.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[1]);
                 numberOfPaths++;
@@ -1020,16 +1055,16 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship incoming : duplicatedOf.getRelationships(ERelations.SEQUENCE,
-                    Direction.INCOMING)) {
+			relationships = duplicatedOf.getRelationships(Direction.INCOMING, ERelations.SEQUENCE);
+			for (Relationship incoming : relationships) {
                 assertEquals("B", ((String[]) incoming.getProperty("witnesses"))[0]);
                 numberOfPaths++;
             }
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : originalOf.getRelationships(ERelations.SEQUENCE,
-                    Direction.OUTGOING)) {
+			 relationships = originalOf.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+			for (Relationship outgoing : relationships) {
                 assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 assertEquals("C", ((String[]) outgoing.getProperty("witnesses"))[1]);
                 numberOfPaths++;
@@ -1037,8 +1072,8 @@ public class ReadingTest {
             assertEquals(1, numberOfPaths);
 
             numberOfPaths = 0;
-            for (Relationship outgoing : duplicatedOf.getRelationships(ERelations.SEQUENCE,
-                    Direction.OUTGOING)) {
+			relationships = duplicatedOf.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE);
+			for (Relationship outgoing : relationships) {
                 assertEquals("B", ((String[]) outgoing.getProperty("witnesses"))[0]);
                 numberOfPaths++;
             }
@@ -1051,7 +1086,7 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
-            tx.success();
+            tx.close();
         }
     }
 
@@ -1281,19 +1316,19 @@ public class ReadingTest {
 
     private void checkRdgConsistency () {
         try (Transaction tx = db.beginTx()) {
-            for (ResourceIterator<Node> it = db.findNodes(Nodes.READING); it.hasNext(); ) {
+            for (ResourceIterator<Node> it = tx.findNodes(Nodes.READING); it.hasNext(); ) {
                 Node r = it.next();
                 if (r.hasProperty("is_start")) continue;
-                assertTrue("dangling reading " + r.getId(), r.getRelationships(ERelations.SEQUENCE, Direction.INCOMING).iterator().hasNext());
+                assertTrue("dangling reading " + r.getElementId(), r.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).iterator().hasNext());
             }
-            tx.success();
+            tx.close();
         }
     }
 
     @Test
     public void mergeReadingsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'fruit'}) return w");
+            Result result = tx.execute("match (w:READING {text:'fruit'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node firstNode = nodes.next();
@@ -1306,25 +1341,25 @@ public class ReadingTest {
 
             // merge readings
             Response response = jerseyTest
-                    .target("/reading/" + firstNode.getId()
-                            + "/merge/" + secondNode.getId())
+                    .target("/reading/" + firstNode.getElementId()
+                            + "/merge/" + secondNode.getElementId())
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.text(null));
 
             assertEquals(Status.OK.getStatusCode(), response.getStatusInfo().getStatusCode());
             GraphModel ourResult = response.readEntity(GraphModel.class);
             assertEquals(1, ourResult.getReadings().size());
-            ourResult.getReadings().forEach(x -> assertEquals(String.valueOf(firstNode.getId()), x.getId()));
+            ourResult.getReadings().forEach(x -> assertEquals(firstNode.getElementId(), x.getId()));
             assertEquals(0, ourResult.getRelations().size());
             assertEquals(2, ourResult.getSequences().size());
             for (SequenceModel seq : ourResult.getSequences()) {
                 assertEquals("SEQUENCE", seq.getType());
-                if (seq.getTarget().equals(String.valueOf(firstNode.getId()))) {
-                    ReadingModel before = new ReadingModel(db.getNodeById(Long.parseLong(seq.getSource())));
+                if (seq.getTarget().equals(firstNode.getElementId())) {
+                    ReadingModel before = new ReadingModel(tx.getNodeByElementId(seq.getSource()));
                     assertEquals("with", before.getText());
                     assertEquals(Long.valueOf(7), before.getRank());
-                } else if (seq.getSource().equals(String.valueOf(firstNode.getId()))) {
-                    ReadingModel after = new ReadingModel(db.getNodeById(Long.parseLong(seq.getTarget())));
+                } else if (seq.getSource().equals(firstNode.getElementId())) {
+                    ReadingModel after = new ReadingModel(tx.getNodeByElementId(seq.getTarget()));
                     assertEquals(Long.valueOf(9), after.getRank());
                     assertEquals("the", after.getText());
                     assertTrue(after.getWitnesses().containsAll(Arrays.asList("A", "B")));
@@ -1343,7 +1378,7 @@ public class ReadingTest {
             // should contain one reading less now
             testNumberOfReadingsAndWitnesses(28);
 
-            result = db.execute("match (w:READING {text:'fruit'}) return w");
+            result = tx.execute("match (w:READING {text:'fruit'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node stayingNode = nodes.next();
@@ -1357,8 +1392,9 @@ public class ReadingTest {
             assertEquals("C", ((String[]) incoming.getProperty("witnesses"))[2]);
 
             int counter = 0;
-            for (Relationship outgoing : stayingNode.getRelationships(
-                    ERelations.SEQUENCE, Direction.OUTGOING)) {
+            ResourceIterable<Relationship> relationships = stayingNode.getRelationships(
+            		Direction.OUTGOING, ERelations.SEQUENCE);
+			for (Relationship outgoing : relationships) {
                 counter++;
                 if (outgoing.getOtherNode(stayingNode).getProperty("text").equals("the")) {
                     assertEquals("A", ((String[]) outgoing.getProperty("witnesses"))[0]);
@@ -1372,7 +1408,9 @@ public class ReadingTest {
 
             // test relationships
             int numberOfRelationships = 0;
-            for (Relationship rel : stayingNode.getRelationships(ERelations.RELATED)) {
+            
+            relationships = stayingNode.getRelationships(ERelations.RELATED);
+			for (Relationship rel : relationships) {
                 numberOfRelationships++;
                 // test that relationships have been preserved
                 if (rel.getOtherNode(stayingNode).getProperty("text").equals("the root")) {
@@ -1384,7 +1422,7 @@ public class ReadingTest {
                 assertNotSame(rel.getOtherNode(stayingNode), stayingNode);
             }
             assertEquals(1, numberOfRelationships);
-            tx.success();
+            tx.close();
         }
     }
 
@@ -1434,17 +1472,17 @@ public class ReadingTest {
         // Change 'teh' to 'the', make relation from each to 'to', make sure they can be merged
         ReadingModel rmThe, rmTeh, rmTo;
         try (Transaction tx = db.beginTx()) {
-            Optional<Node> the = db.findNodes(Nodes.READING, "text", "the").stream().filter(x -> x.getProperty("rank").equals(16L)).findFirst();
+            Optional<Node> the = tx.findNodes(Nodes.READING, "text", "the").stream().filter(x -> x.getProperty("rank").equals(16L)).findFirst();
             assertTrue(the.isPresent());
             rmThe = new ReadingModel(the.get());
-            Node teh = db.findNode(Nodes.READING, "text", "teh");
+            Node teh = tx.findNode(Nodes.READING, "text", "teh");
             assertNotNull(teh);
             teh.setProperty("text", "the");
             rmTeh = new ReadingModel(teh);
-            Optional<Node> to = db.findNodes(Nodes.READING, "text", "to").stream().filter(x -> x.getProperty("rank").equals(15L)).findFirst();
+            Optional<Node> to = tx.findNodes(Nodes.READING, "text", "to").stream().filter(x -> x.getProperty("rank").equals(15L)).findFirst();
             assertTrue(to.isPresent());
             rmTo = new ReadingModel(to.get());
-            tx.success();
+            tx.close();
         }
         link.setSource(rmTeh.getId());
         link.setTarget(rmTo.getId());
@@ -1629,23 +1667,23 @@ public class ReadingTest {
         Node node;
         Node endNode;
         try (Transaction tx = db.beginTx()) {
-            node = db.findNode(Nodes.READING, "text", "the root");
+            node = tx.findNode(Nodes.READING, "text", "the root");
             assertTrue(node.hasRelationship(ERelations.RELATED));
-            endNode = db.findNode(Nodes.READING, "is_end", true);
+            endNode = tx.findNode(Nodes.READING, "is_end", true);
 
             // delete relationship, so that splitting is possible
             node.getSingleRelationship(ERelations.RELATED,
                     Direction.INCOMING).delete();
 
             assertFalse(node.hasRelationship(ERelations.RELATED));
-            tx.success();
+            tx.close();
         }
 
         // split reading
         ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
         readingBoundaryModel.setCharacter(" ");
         Response response = jerseyTest
-                .target("/reading/" + node.getId()
+                .target("/reading/" + node.getElementId()
                         + "/split/0")
                 .request(MediaType.APPLICATION_JSON)
                 .post(Entity.json(readingBoundaryModel));
@@ -1672,7 +1710,7 @@ public class ReadingTest {
         HashSet<String> relPaths = new HashSet<>();
         readingsAndRelationsModel.getSequences().forEach(x -> relPaths.add(x.getSource() + "->" + x.getTarget()));
         assertTrue(relPaths.contains(rdgWords.get("the") + "->" + rdgWords.get("root")));
-        assertTrue(relPaths.contains(rdgWords.get("root") + "->" + endNode.getId()));
+        assertTrue(relPaths.contains(rdgWords.get("root") + "->" + endNode.getElementId()));
 
         testNumberOfReadingsAndWitnesses(30);
 
@@ -1702,11 +1740,11 @@ public class ReadingTest {
         // prepare the database for the test
         String rotw;
         try (Transaction tx = db.beginTx()) {
-            Node node = db.findNode(Nodes.READING, "text", "rood-of-the-world");
+            Node node = tx.findNode(Nodes.READING, "text", "rood-of-the-world");
             assertNotNull(node);
             node.setProperty("text", "rood/of/the/world");
-            rotw = String.valueOf(node.getId());
-            tx.success();
+            rotw = node.getElementId();
+            tx.close();
         }
 
         // split reading
@@ -1843,11 +1881,11 @@ public class ReadingTest {
         // prepare the database for the test
         String rotw;
         try (Transaction tx = db.beginTx()) {
-            Node node = db.findNode(Nodes.READING, "text", "rood-of-the-world");
+            Node node = tx.findNode(Nodes.READING, "text", "rood-of-the-world");
             assertNotNull(node);
             node.setProperty("text", "rood\"of\"the\"world");
-            rotw = String.valueOf(node.getId());
-            tx.success();
+            rotw = node.getElementId();
+            tx.close();
         }
 
         // split reading
@@ -1920,22 +1958,22 @@ public class ReadingTest {
     @Test
     public void splitReadingNoRankGapTest() {
         try (Transaction tx = db.beginTx()) {
-            Node untoMe = db.findNode(Nodes.READING, "text", "unto me");
+            Node untoMe = tx.findNode(Nodes.READING, "text", "unto me");
             assertNotNull(untoMe);
 
             // find the rank of this reading and the following ones
             Object thisRank = untoMe.getProperty("rank");
-            HashMap<Long, Long> readingRanks = new HashMap<>();
-            for (Relationship r : untoMe.getRelationships(ERelations.SEQUENCE, Direction.OUTGOING)) {
+            HashMap<String, Long> readingRanks = new HashMap<>();
+            for (Relationship r : untoMe.getRelationships(Direction.OUTGOING, ERelations.SEQUENCE)) {
                 Node next = r.getEndNode();
-                readingRanks.put(next.getId(), Long.valueOf(next.getProperty("rank").toString()));
+                readingRanks.put(next.getElementId(), Long.valueOf(next.getProperty("rank").toString()));
             }
 
             // split reading
             ReadingBoundaryModel readingBoundaryModel = new ReadingBoundaryModel();
             readingBoundaryModel.setCharacter("");
             Response response = jerseyTest
-                    .target("/reading/" + untoMe.getId() + "/split/0")
+                    .target("/reading/" + untoMe.getElementId() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(readingBoundaryModel));
 
@@ -1943,15 +1981,15 @@ public class ReadingTest {
 
             // check the re-ranking
             assertEquals(thisRank, untoMe.getProperty("rank"));
-            for (Long nid : readingRanks.keySet()) {
+            for (String nid : readingRanks.keySet()) {
                 Long savedRank = readingRanks.get(nid);
-                Node n = db.getNodeById(nid);
+                Node n = tx.getNodeByElementId(nid);
                 if (savedRank == (Long) thisRank + 1) {
                     assertEquals(savedRank + 1, n.getProperty("rank"));
                 } else
                     assertEquals(savedRank, n.getProperty("rank"));
             }
-            tx.success();
+            tx.close();
         }
     }
 
@@ -1961,32 +1999,32 @@ public class ReadingTest {
     @Test
     public void splitReadingSeparateFalseTest() {
         try (Transaction tx = db.beginTx()) {
-            Node untome = db.findNode(Nodes.READING, "text", "unto me");
+            Node untome = tx.findNode(Nodes.READING, "text", "unto me");
             assertNotNull(untome);
 
             ReadingBoundaryModel rbm = new ReadingBoundaryModel();
             rbm.setSeparate(false);
             rbm.setCharacter("");
             Response response = jerseyTest
-                    .target("/reading/" + untome.getId() + "/split/2")
+                    .target("/reading/" + untome.getElementId() + "/split/2")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
 
             // Find the new nodes
             assertEquals("un", untome.getProperty("text"));
-            Node follower = db.findNode(Nodes.READING, "text", "to me");
+            Node follower = tx.findNode(Nodes.READING, "text", "to me");
             assertNotNull(follower);
             assertTrue(follower.hasProperty("join_prior"));
             assertEquals(true, follower.getProperty("join_prior"));
-            tx.success();
+            tx.close();
         }
     }
 
     @Test
     public void splitReadingZeroLengthRegexTest() {
         try (Transaction tx = db.beginTx()) {
-            Node rood = db.findNode(Nodes.READING, "text", "rood-of-the-world");
+            Node rood = tx.findNode(Nodes.READING, "text", "rood-of-the-world");
             assertNotNull(rood);
 
             // Try it with a non-matching regex
@@ -1995,7 +2033,7 @@ public class ReadingTest {
             rbm.setCharacter("(?=0)");
             rbm.setIsRegex(true);
             Response response = jerseyTest
-                    .target("/reading/" + rood.getId() + "/split/0")
+                    .target("/reading/" + rood.getElementId() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.INTERNAL_SERVER_ERROR.getStatusCode(), response.getStatus());
@@ -2006,7 +2044,7 @@ public class ReadingTest {
             // Now try one that matches
             rbm.setCharacter("(?=-)");
             response = jerseyTest
-                    .target("/reading/" + rood.getId() + "/split/0")
+                    .target("/reading/" + rood.getElementId() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -2014,14 +2052,14 @@ public class ReadingTest {
             assertEquals(4, result.getReadings().size());
             assertEquals(4, result.getSequences().size());
 
-            Node nof = db.findNode(Nodes.READING, "text", "-of");
+            Node nof = tx.findNode(Nodes.READING, "text", "-of");
             assertNotNull(nof);
             assertEquals(true, nof.getProperty("join_prior"));
 
             Response witText = new Witness(tradId, "C").getWitnessAsText();
             assertEquals(expectedWitnessC, ((TextSequenceModel) witText.getEntity()).getText());
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -2261,7 +2299,7 @@ public class ReadingTest {
     @Test
     public void splitCompressJoinedReadingTest() {
         try (Transaction tx = db.beginTx()) {
-            Node rood = db.findNode(Nodes.READING, "text", "rood-of-the-world");
+            Node rood = tx.findNode(Nodes.READING, "text", "rood-of-the-world");
             assertNotNull(rood);
 
             // First split it, unseparated
@@ -2269,7 +2307,7 @@ public class ReadingTest {
             rbm.setSeparate(false);
             rbm.setCharacter("-");
             Response response = jerseyTest
-                    .target("/reading/" + rood.getId() + "/split/0")
+                    .target("/reading/" + rood.getElementId() + "/split/0")
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -2277,7 +2315,7 @@ public class ReadingTest {
             HashMap<String, String> text2id = new HashMap<>();
             for (ReadingModel rm : result.getReadings()) {
                 text2id.put(rm.getText(), rm.getId());
-                if (rm.getId().equals(String.valueOf(rood.getId())))
+                if (rm.getId().equals(rood.getElementId()))
                     assertEquals("rood", rm.getText());
                 else
                     assertTrue(rm.getJoin_prior());
@@ -2295,7 +2333,7 @@ public class ReadingTest {
             TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "C").getWitnessAsText().getEntity();
             String expC = "when showers sweet with fruit to drought of march has pierced teh roodoftheworld";
             assertEquals(expC, resp.getText());
-            tx.success();
+            tx.close();
         }
     }
 
@@ -2312,26 +2350,26 @@ public class ReadingTest {
         String sapSectId = testSections.get(0).getId();
         try (Transaction tx = db.beginTx()) {
             // Identify the first five nodes by rank
-            Node n1 = db.findNode(Nodes.READING, "text", "Verbum");
-            Node n2 = db.findNode(Nodes.READING, "text", "Ista");
-            Optional<Node> n3o = db.findNodes(Nodes.READING, "text", "sequencia").stream()
+            Node n1 = tx.findNode(Nodes.READING, "text", "Verbum");
+            Node n2 = tx.findNode(Nodes.READING, "text", "Ista");
+            Optional<Node> n3o = tx.findNodes(Nodes.READING, "text", "sequencia").stream()
                     .filter(x -> (Long) x.getProperty("rank") == 3L).findFirst();
             assertTrue(n3o.isPresent());
             Node n3 = n3o.get();
-            HashSet<Long> fourth = new HashSet<>();
-            db.findNodes(Nodes.READING, "rank", 6L).stream()
+            HashSet<String> fourth = new HashSet<>();
+            tx.findNodes(Nodes.READING, "rank", 6L).stream()
                     .filter(x -> x.getProperty("section_id").toString().equals(sapSectId))
-                    .forEach(x -> fourth.add(x.getId()));
+                    .forEach(x -> fourth.add(x.getElementId()));
             assertEquals(3, fourth.size());
 
             ReadingBoundaryModel rbm = new ReadingBoundaryModel();
             Response response = jerseyTest
-                    .target("/reading/" + n1.getId() + "/concatenate/" + n2.getId())
+                    .target("/reading/" + n1.getElementId() + "/concatenate/" + n2.getElementId())
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
             response = jerseyTest
-                    .target("/reading/" + n1.getId() + "/concatenate/" + n3.getId())
+                    .target("/reading/" + n1.getElementId() + "/concatenate/" + n3.getElementId())
                     .request(MediaType.APPLICATION_JSON)
                     .post(Entity.json(rbm));
             assertEquals(Status.OK.getStatusCode(), response.getStatus());
@@ -2341,17 +2379,17 @@ public class ReadingTest {
             ourResult.getReadings().forEach(x -> assertEquals("Verbum Ista sequencia", x.getText()));
             ourResult.getSequences().forEach(x -> {
                 assertEquals("SEQUENCE", x.getType());
-                assertEquals(n1.getId(), Long.parseLong(x.getSource()));
+                assertEquals(n1.getElementId(), x.getSource());
             });
 
-            for (Long nid : fourth) {
-                Node n = db.getNodeById(nid);
-                ReadingModel rm = jerseyTest.target("/reading/" + n.getId())
+            for (String nid : fourth) {
+                Node n = tx.getNodeByElementId(nid);
+                ReadingModel rm = jerseyTest.target("/reading/" + n.getElementId())
                         .request(MediaType.APPLICATION_JSON).get(ReadingModel.class);
                 assertEquals(Long.valueOf(4), rm.getRank());
             }
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -2363,13 +2401,13 @@ public class ReadingTest {
         String first_id = null;
         String second_id = null;
         try (Transaction tx = db.beginTx()) {
-            Result tomerge = db.execute("MATCH (a:READING {rank:3})-[:SEQUENCE {witnesses:['D']}]->(b:READING {rank:4}) RETURN id(a), id(b)");
+            Result tomerge = tx.execute("MATCH (a:READING {rank:3})-[:SEQUENCE {witnesses:['D']}]->(b:READING {rank:4}) RETURN id(a), id(b)");
             while (tomerge.hasNext()) {
                 Map<String,Object> row = tomerge.next();
                 first_id = String.valueOf(row.get("id(a)"));
                 second_id = String.valueOf(row.get("id(b)"));
             }
-            tx.success();
+            tx.close();
         }
         assertNotNull(first_id);
         assertNotNull(second_id);
@@ -2388,10 +2426,10 @@ public class ReadingTest {
 
     @Test
     public void nextReadingTest() {
-        long withReadId;
+        String withReadId;
         try (Transaction tx = db.beginTx()) {
-            withReadId = db.findNodes(Nodes.READING, "text", "with").next().getId();
-            tx.success();
+            withReadId = tx.findNodes(Nodes.READING, "text", "with").next().getElementId();
+            tx.close();
         }
 
         ReadingModel actualResponse = jerseyTest
@@ -2530,12 +2568,12 @@ public class ReadingTest {
     @Test
     public void randomNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'april'}) return w");
+            Result result = tx.execute("match (w:READING {text:'april'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assert (nodes.hasNext());
             long rank = 2;
             assertEquals(rank, nodes.next().getProperty("rank"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -2545,9 +2583,9 @@ public class ReadingTest {
     @Test
     public void traditionNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
+            ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.TRADITION, "name", "Tradition");
             assertTrue(tradNodesIt.hasNext());
-            tx.success();
+            tx.close();
         }
     }
 
@@ -2557,9 +2595,9 @@ public class ReadingTest {
     @Test
     public void traditionEndNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.READING, "text", "#END#");
+            ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
-            tx.success();
+            tx.close();
         }
     }
 

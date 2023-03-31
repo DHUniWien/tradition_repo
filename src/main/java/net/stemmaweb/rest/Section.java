@@ -246,8 +246,11 @@ public class Section {
 
     private List<Node> collectSectionAnnotations(boolean collectReferents) {
         return VariantGraphService.collectAnnotationsOnSet(db,
-                VariantGraphService.returnTraditionSection(sectId, db)
-                        .nodes().stream().distinct().collect(Collectors.toList()),
+//                VariantGraphService.returnTraditionSection(sectId, db)
+//                        .nodes().stream().distinct().collect(Collectors.toList()),
+				StreamSupport
+						.stream(VariantGraphService.returnTraditionSection(sectId, db).nodes().spliterator(), false)
+						.collect(Collectors.toList()),
                 collectReferents);
     }
 
@@ -467,14 +470,18 @@ public class Section {
                         .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart)
                         .nodes();
                 // Limit to the requested rank range
-                result = sectionLemmata.stream().map(ReadingModel::new)
+//                result = sectionLemmata.stream().map(ReadingModel::new)
+                result = StreamSupport.stream(sectionLemmata.spliterator(), false).map(ReadingModel::new)
                         .filter(x -> x.getRank() >= startRank && x.getRank() <= endRank)
                         .collect(Collectors.toList());
             } else {
-                result = tx.traversalDescription().depthFirst()
-                        .expand(new AlignmentTraverse())
-                        .uniqueness(Uniqueness.NODE_GLOBAL)
-                        .traverse(sectionStart).nodes().stream()
+//                result = tx.traversalDescription().depthFirst()
+//                        .expand(new AlignmentTraverse())
+//                        .uniqueness(Uniqueness.NODE_GLOBAL)
+//                        .traverse(sectionStart).nodes().stream()
+				result = StreamSupport
+						.stream(tx.traversalDescription().depthFirst().expand(new AlignmentTraverse())
+								.uniqueness(Uniqueness.NODE_GLOBAL).traverse(sectionStart).nodes().spliterator(), false)
                         .filter(x -> x.hasLabel(Nodes.READING)
                                 && x.hasProperty("is_lemma")
                                 && x.getProperty("is_lemma").equals(true)
@@ -740,7 +747,7 @@ public class Section {
             VariantGraphService.getTraditionNode(thisSection).createRelationshipTo(newSection, ERelations.PART);
             newSection.setProperty("name", thisSection.getProperty("name") + " split");
             newSectionId = newSection.getElementId();
-            Section newSectionRest = new Section(tradId, String.valueOf(newSection.getElementId()));
+            Section newSectionRest = new Section(tradId, newSection.getElementId());
             Response reorder = newSectionRest.reorderSectionAfter(sectId);
             if (reorder.getStatus() != Response.Status.OK.getStatusCode())
                 return reorder;
@@ -792,9 +799,12 @@ public class Section {
 
             // Collect all readings from the second section and alter their section metadata
             final String newId = newSection.getElementId();
-            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
-                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
-                    .stream().forEach(x -> {
+//            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
+//                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
+//                    .stream().forEach(x -> {
+            StreamSupport.stream(tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
+		            .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes().spliterator(), false)
+		            .forEach(x -> {
                         if (x.hasLabel(Nodes.EMENDATION)) {
                             x.getSingleRelationship(ERelations.HAS_EMENDATION, Direction.INCOMING).delete();
                             newSection.createRelationshipTo(x, ERelations.HAS_EMENDATION);
@@ -826,7 +836,8 @@ public class Section {
     @SuppressWarnings("SameParameterValue")
     private List<Relationship> sequencesCrossingRank(Long rank, Boolean leftfencepost) {
         Node startNode = VariantGraphService.getStartNode(sectId, db);
-        return VariantGraphService.returnAllSequences(startNode).relationships().stream()
+//        return VariantGraphService.returnAllSequences(startNode).relationships().stream()
+        return StreamSupport.stream(VariantGraphService.returnAllSequences(startNode).relationships().spliterator(), false)
                 .filter(x -> crossesRank(x, rank, leftfencepost))
                 .collect(Collectors.toList());
     }
@@ -888,9 +899,11 @@ public class Section {
 
             // Collect all readings from the second section and alter their section metadata
             final String keptId = firstSection.getElementId();
-            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
-                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes()
-                    .stream().filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
+//            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
+//            		.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().stream()
+            StreamSupport.stream(tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
+                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().spliterator(), false)
+                    .filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
 
             for (Relationship r : secondSection.getRelationships(ERelations.HAS_EMENDATION)) {
                 Node e = r.getEndNode();
@@ -1031,7 +1044,7 @@ public class Section {
         List<List<ReadingModel>> couldBeIdenticalReadings;
         try (Transaction tx = db.beginTx()) {
             List<Node> questionedReadings = getReadingsBetweenRanks(
-                    useRanks.get("start"), useRanks.get("end"), startNode, limitText);
+            		Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")), startNode, limitText);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings, threshold);
             tx.close();
@@ -1108,9 +1121,12 @@ public class Section {
         List<Node> readings;
         PathExpander e = new AlignmentTraverse(startNode);
         try (Transaction tx = db.beginTx()) {
-            Stream<Node> readingStream = tx.traversalDescription().depthFirst()
+//            Stream<Node> readingStream = tx.traversalDescription().depthFirst()
+//                    .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
+//                    .traverse(startNode).nodes().stream()
+        	Stream<Node> readingStream = StreamSupport.stream(tx.traversalDescription().depthFirst()
                     .expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(startNode).nodes().stream()
+                    .traverse(startNode).nodes().spliterator(), false)
                     .filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
                             endRank >= Long.parseLong(x.getProperty("rank").toString()));
             if (!limitText.equals(""))

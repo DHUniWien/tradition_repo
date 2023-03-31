@@ -1,6 +1,8 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import net.stemmaweb.rest.ERelations;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
 import org.junit.Before;
@@ -11,7 +13,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.rest.ERelations;
 
 /**
  * 
@@ -34,21 +36,21 @@ public class UnicodeTest {
     public void testUnicodeCapability() {
         Node n;
         try (Transaction tx = graphDb.beginTx()) {
-            n = graphDb.createNode();
+            n = tx.createNode();
             n.setProperty("name", "Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(n.getId() > -1L);
+        assertTrue(!n.getElementId().isBlank());
 
         // Retrieve a node by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode = graphDb.getNodeById(n.getId());
-            assertEquals(foundNode.getId(), n.getId());
+            Node foundNode = tx.getNodeByElementId(n.getElementId());
+            assertEquals(foundNode.getElementId(), n.getElementId());
             assertEquals("Ã¤Ã¶Ã¼×“×’×›Î±Î²Î³", foundNode.getProperty("name"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -58,33 +60,33 @@ public class UnicodeTest {
         Node node2;
         Relationship relationship;
         try (Transaction tx = graphDb.beginTx()) {
-            node1 = graphDb.createNode();
+            node1 = tx.createNode();
             node1.setProperty("name", "בדיקה");
-            node2 = graphDb.createNode();
+            node2 = tx.createNode();
             node2.setProperty("name", "עוד בדיקה");
 
             relationship = node1.createRelationshipTo(node2, ERelations.SEQUENCE);
             relationship.setProperty("type", "יחס");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(node1.getId() > -1L);
-        assertTrue(node2.getId() > -1L);
-        assertTrue(relationship.getId() > -1L);
+        assertTrue(!node1.getElementId().isBlank());
+        assertTrue(!node2.getElementId().isBlank());
+        assertTrue(!relationship.getElementId().isBlank());
 
         // Retrieve nodes and relationship by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode1 = graphDb.getNodeById(node1.getId());
-            Node foundNode2 = graphDb.getNodeById(node2.getId());
-            Relationship foundRelationship = graphDb.getRelationshipById(relationship.getId());
+            Node foundNode1 = tx.getNodeByElementId(node1.getElementId());
+            Node foundNode2 = tx.getNodeByElementId(node2.getElementId());
+            Relationship foundRelationship = tx.getRelationshipByElementId(relationship.getElementId());
 
-            assertEquals(foundNode1.getId(), node1.getId());
+            assertEquals(foundNode1.getElementId(), node1.getElementId());
             assertEquals("בדיקה", foundNode1.getProperty("name"));
             assertEquals("עוד בדיקה", foundNode2.getProperty("name"));
             assertEquals("יחס", foundRelationship.getProperty("type"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -92,21 +94,21 @@ public class UnicodeTest {
     public void testHebrewCapabilityNoMatch() {
         Node n;
         try (Transaction tx = graphDb.beginTx()) {
-            n = graphDb.createNode();
+            n = tx.createNode();
             n.setProperty("name", "בדיקה");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(n.getId() > -1L);
+        assertTrue(!n.getElementId().isBlank());
 
         // Retrieve a node by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode = graphDb.getNodeById(n.getId());
-            assertEquals(foundNode.getId(), n.getId());
+            Node foundNode = tx.getNodeByElementId(n.getElementId());
+            assertEquals(foundNode.getElementId(), n.getElementId());
             assertNotEquals("בליקה", foundNode.getProperty("name"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -114,21 +116,21 @@ public class UnicodeTest {
     public void testGreekCapabilityMatch() {
         Node n;
         try (Transaction tx = graphDb.beginTx()) {
-            n = graphDb.createNode();
+            n = tx.createNode();
             n.setProperty("name", "ειπον");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(n.getId() > -1L);
+        assertTrue(!n.getElementId().isBlank());
 
         // Retrieve a node by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode = graphDb.getNodeById(n.getId());
-            assertEquals(foundNode.getId(), n.getId());
+            Node foundNode = tx.getNodeByElementId(n.getElementId());
+            assertEquals(foundNode.getElementId(), n.getElementId());
             assertEquals("ειπον", foundNode.getProperty("name"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -136,21 +138,21 @@ public class UnicodeTest {
     public void testGreekCapabilityNoMatch() {
         Node n;
         try (Transaction tx = graphDb.beginTx()) {
-            n = graphDb.createNode();
+            n = tx.createNode();
             n.setProperty("name", "ειπον");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(n.getId() > -1L);
+        assertTrue(!n.getElementId().isBlank());
 
         // Retrieve a node by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode = graphDb.getNodeById(n.getId());
-            assertEquals(foundNode.getId(), n.getId());
+            Node foundNode = tx.getNodeByElementId(n.getElementId());
+            assertEquals(foundNode.getElementId(), n.getElementId());
             assertNotEquals("ειπων", foundNode.getProperty("name"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -158,21 +160,21 @@ public class UnicodeTest {
     public void testArabicCapabilityMatch() {
         Node n;
         try (Transaction tx = graphDb.beginTx()) {
-            n = graphDb.createNode();
+            n = tx.createNode();
             n.setProperty("name", "المطلق");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(n.getId() > -1L);
+        assertTrue(!n.getElementId().isBlank());
 
         // Retrieve a node by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode = graphDb.getNodeById(n.getId());
-            assertEquals(foundNode.getId(), n.getId());
+            Node foundNode = tx.getNodeByElementId(n.getElementId());
+            assertEquals(foundNode.getElementId(), n.getElementId());
             assertEquals("المطلق", foundNode.getProperty("name"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -180,21 +182,21 @@ public class UnicodeTest {
     public void testArabicCapabilityNoMatch() {
         Node n;
         try (Transaction tx = graphDb.beginTx()) {
-            n = graphDb.createNode();
+            n = tx.createNode();
             n.setProperty("name", "المطلق");
-            tx.success();
+            tx.commit();
         }
 
         // The node should have a valid id
-        assertTrue(n.getId() > -1L);
+        assertTrue(!n.getElementId().isBlank());
 
         // Retrieve a node by using the id of the created node. The id's and
         // property should match.
         try (Transaction tx = graphDb.beginTx()) {
-            Node foundNode = graphDb.getNodeById(n.getId());
-            assertEquals(foundNode.getId(), n.getId());
+            Node foundNode = tx.getNodeByElementId(n.getElementId());
+            assertEquals(foundNode.getElementId(), n.getElementId());
             assertNotEquals("المطلو", foundNode.getProperty("name"));
-            tx.success();
+            tx.close();
         }
     }
 

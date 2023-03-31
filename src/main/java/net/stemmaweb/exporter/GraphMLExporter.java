@@ -1,9 +1,21 @@
 package net.stemmaweb.exporter;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -13,14 +25,20 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import org.apache.commons.compress.utils.IOUtils;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Entity;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
+import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
+
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
-import org.apache.commons.compress.utils.IOUtils;
-import org.neo4j.graphdb.*;
-
-import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
 /**
  * This class provides methods for exporting GraphMl (XML) File from Neo4J
@@ -70,9 +88,9 @@ public class GraphMLExporter {
     private void writeEdge(XMLStreamWriter writer, Relationship edge) {
         try {
             writer.writeStartElement("edge");
-            writer.writeAttribute("id", String.valueOf(edge.getElementId()));
-            writer.writeAttribute("source", String.valueOf(edge.getStartNode().getElementId()));
-            writer.writeAttribute("target", String.valueOf(edge.getEndNode().getElementId()));
+            writer.writeAttribute("id", edge.getElementId());
+            writer.writeAttribute("source", edge.getStartNode().getElementId());
+            writer.writeAttribute("target", edge.getEndNode().getElementId());
 
             // Write out the type
             writer.writeStartElement("data");
@@ -229,14 +247,18 @@ public class GraphMLExporter {
         try (Transaction tx = db.beginTx()) {
             // Convert our ResourceIterables to Lists and filter out any unwanted sections
             if (sectionId == null) {
-                collectionNodes = cn.stream().collect(Collectors.toList());
-                collectionEdges = ce.stream().collect(Collectors.toList());
+//                collectionNodes = cn.stream().collect(Collectors.toList());
+//                collectionEdges = ce.stream().collect(Collectors.toList());
+                collectionNodes = StreamSupport.stream(cn.spliterator(), false).collect(Collectors.toList());
+                collectionEdges = StreamSupport.stream(ce.spliterator(), false).collect(Collectors.toList());
             } else {
-                collectionNodes = cn.stream()
-                        .filter(n -> !n.hasLabel(Nodes.SECTION) || String.valueOf(n.getId()).equals(sectionId))
+//                collectionNodes = cn.stream()
+        		collectionNodes = StreamSupport.stream(cn.spliterator(), false)
+                        .filter(n -> !n.hasLabel(Nodes.SECTION) || n.getElementId().equals(sectionId))
                         .collect(Collectors.toList());
-                collectionEdges = ce.stream().filter(e -> !e.isType(ERelations.NEXT)
-                                && !(e.isType(ERelations.PART) && !String.valueOf(e.getEndNode().getId()).equals(sectionId)))
+//                collectionEdges = ce.stream().filter(e -> !e.isType(ERelations.NEXT)
+        		collectionEdges = StreamSupport.stream(ce.spliterator(), false).filter(e -> !e.isType(ERelations.NEXT)
+                                && !(e.isType(ERelations.PART) && !e.getEndNode().getElementId().equals(sectionId)))
                         .collect(Collectors.toList());
             }
             // Get any annotations pertaining to the tradition node itself and its metadata
@@ -286,8 +308,10 @@ public class GraphMLExporter {
             List<Node> allSectNodes;
             List<Relationship> allSectEdges;
             try (Transaction tx = db.beginTx()) {
-                allSectNodes = sectionNodes.stream().collect(Collectors.toList());
-                allSectEdges = sectionEdges.stream().collect(Collectors.toList());
+//                allSectNodes = sectionNodes.stream().collect(Collectors.toList());
+//                allSectEdges = sectionEdges.stream().collect(Collectors.toList());
+                allSectNodes = StreamSupport.stream(sectionNodes.spliterator(), false).collect(Collectors.toList());
+                allSectEdges = StreamSupport.stream(sectionEdges.spliterator(), false).collect(Collectors.toList());
                 collectExtraNodesAndEdges(allSectNodes, allSectEdges);
                 tx.close();
             } catch (Exception e) {

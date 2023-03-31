@@ -1,20 +1,15 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
+import static org.junit.Assert.assertNotEquals;
 
-import org.glassfish.jersey.test.JerseyTest;
-import org.junit.After;
-import org.junit.Before;
-import org.neo4j.graphdb.*;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
@@ -22,11 +17,38 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
-import static org.junit.Assert.*;
+import org.glassfish.jersey.test.JerseyTest;
+import org.junit.After;
+import org.junit.Before;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.MultipleFoundException;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestGraphDatabaseFactory;
+
+import junit.framework.TestCase;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
+import net.stemmaweb.model.ProposedEmendationModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Tests for text section functionality.
@@ -109,10 +131,10 @@ public class SectionTest extends TestCase {
         assertEquals(aText, witFragment);
 
         try (Transaction tx = db.beginTx()) {
-            assertEquals(startNode.getId(), VariantGraphService.getStartNode(tradId, db).getId());
-            assertNotEquals(endNode.getId(), VariantGraphService.getEndNode(tradId, db).getId());
-            assertEquals(VariantGraphService.getEndNode(newSectId, db).getId(), VariantGraphService.getEndNode(tradId, db).getId());
-            tx.success();
+            assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tradId, db).getElementId());
+            assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tradId, db).getElementId());
+            assertEquals(VariantGraphService.getEndNode(newSectId, db).getElementId(), VariantGraphService.getEndNode(tradId, db).getElementId());
+            tx.close();
         }
     }
 
@@ -203,8 +225,8 @@ public class SectionTest extends TestCase {
 
         // Check that our witnesses were not duplicated
         try (Transaction tx = db.beginTx()) {
-            Node witV = db.findNode(Nodes.WITNESS, "sigil", "V");
-            tx.success();
+            Node witV = tx.findNode(Nodes.WITNESS, "sigil", "V");
+            tx.close();
             assertNotNull(witV);
         } catch (MultipleFoundException e) {
             fail();
@@ -614,13 +636,13 @@ public class SectionTest extends TestCase {
 
         // Lemmatize section 3 based on majority reading
         try (Transaction tx = db.beginTx()) {
-            Node sect3 = db.getNodeById(Long.parseLong(flor3));
+            Node sect3 = tx.getNodeByElementId(flor3);
             for (Node r : VariantGraphService.calculateMajorityText(sect3)) {
                 if (r.hasProperty("is_start") || r.hasProperty("is_end"))
                     continue;
                 r.setProperty("is_lemma", true);
             }
-            tx.success();
+            tx.close();
         }
 
         Response r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/setlemma")
@@ -959,10 +981,10 @@ public class SectionTest extends TestCase {
     public void testCouldBeIdenticalReadings() {
         // Remove the 'collated' relationship that prevents merging
         try (Transaction tx = db.beginTx()) {
-            db.getAllRelationships().stream()
+            tx.getAllRelationships().stream()
                     .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").equals("collated"))
                     .forEach(Relationship::delete);
-            tx.success();
+            tx.close();
         }
 
         // Now we should have mergeable readings
@@ -994,19 +1016,19 @@ public class SectionTest extends TestCase {
         String secondId = "";
         try (Transaction tx = db.beginTx()) {
             // Find the venerabili
-            ResourceIterator<Node> ri = db.findNodes(Nodes.READING, "text", "venerabilis");
+            ResourceIterator<Node> ri = tx.findNodes(Nodes.READING, "text", "venerabilis");
             while (ri.hasNext()) {
                 Node n = ri.next();
                 if (n.getProperty("rank").equals(3L))
-                    firstId = String.valueOf(n.getId());
+                    firstId = n.getElementId();
                 if (n.getProperty("rank").equals(5L))
-                    secondId = String.valueOf(n.getId());
+                    secondId = n.getElementId();
             }
             // Get rid of all the "collated" relationships
-            db.getAllRelationships().stream()
+            tx.getAllRelationships().stream()
                     .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").equals("collated"))
                     .forEach(Relationship::delete);
-            tx.success();
+            tx.close();
         }
 
         // Merge the venerabili
@@ -1018,13 +1040,13 @@ public class SectionTest extends TestCase {
 
         // Check that the ranks are correct
         try (Transaction tx = db.beginTx()) {
-            Node remain = db.getNodeById(Long.parseLong(firstId));
+            Node remain = tx.getNodeByElementId(firstId);
             assertEquals(5L, remain.getProperty("rank"));
-            Node capv = db.findNode(Nodes.READING, "text", "Venerabilis");
+            Node capv = tx.findNode(Nodes.READING, "text", "Venerabilis");
             assertEquals(5L, capv.getProperty("rank"));
-            Node uene = db.findNode(Nodes.READING, "text", "uenerabilis");
+            Node uene = tx.findNode(Nodes.READING, "text", "uenerabilis");
             assertEquals(5L, uene.getProperty("rank"));
-            tx.success();
+            tx.close();
         }
 
         // Check that the pontifices are mergeable
@@ -1387,10 +1409,10 @@ public class SectionTest extends TestCase {
         ref1.setLabel("PLACEREF");
         AnnotationLinkModel prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(Long.valueOf(readingLookup.get("suecia/2")));
+        prb.setTarget(readingLookup.get("suecia/2"));
         AnnotationLinkModel pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(Long.valueOf(readingLookup.get("suecia/2")));
+        pre.setTarget(readingLookup.get("suecia/2"));
         ref1.addLink(prb);
         ref1.addLink(pre);
         response = jerseyTest
@@ -1409,7 +1431,7 @@ public class SectionTest extends TestCase {
         suecia.setProperties(sprops);
         AnnotationLinkModel slinks = new AnnotationLinkModel();
         slinks.setType("NAMED");
-        slinks.setTarget(Long.valueOf(ref1.getId()));
+        slinks.setTarget(ref1.getId());
         suecia.addLink(slinks);
         response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/")
@@ -1424,10 +1446,10 @@ public class SectionTest extends TestCase {
         ref2.setLabel("PLACEREF");
         prb = new AnnotationLinkModel();
         prb.setType("BEGIN");
-        prb.setTarget(Long.valueOf(readingLookup.get("magisque/15")));
+        prb.setTarget(readingLookup.get("magisque/15"));
         pre = new AnnotationLinkModel();
         pre.setType("END");
-        pre.setTarget(Long.valueOf(readingLookup.get("magisque/15")));
+        pre.setTarget(readingLookup.get("magisque/15"));
         ref2.addLink(prb);
         ref2.addLink(pre);
         response = jerseyTest
@@ -1440,7 +1462,7 @@ public class SectionTest extends TestCase {
 
         // Link the new reference to the existing place
         AnnotationLinkModel newLink = new AnnotationLinkModel();
-        newLink.setTarget(Long.valueOf(ref2.getId()));
+        newLink.setTarget(ref2.getId());
         newLink.setType("NAMED");
         response = jerseyTest
                 .target("/tradition/" + tradId + "/annotation/" + suecia.getId() + "/link")

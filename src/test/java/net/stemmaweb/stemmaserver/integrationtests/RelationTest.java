@@ -1,6 +1,16 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.client.Entity;
@@ -8,16 +18,6 @@ import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-
-import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.test.JerseyTest;
@@ -27,13 +27,23 @@ import org.junit.Test;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
-import org.neo4j.graphdb.NotFoundException;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * 
@@ -102,16 +112,16 @@ public class RelationTest {
         try (Transaction tx = db.beginTx()) {
             GraphModel readingsAndRelationships = actualResponse.readEntity(new GenericType<GraphModel>(){});
             relationshipId = ((RelationModel) readingsAndRelationships.getRelations().toArray()[0]).getId();
-            Relationship loadedRelationship = db.getRelationshipById(Long.parseLong(relationshipId));
+            Relationship loadedRelationship = tx.getRelationshipByElementId(relationshipId);
 
-            assertEquals(Long.valueOf(source), (Long) loadedRelationship.getStartNode().getId());
-            assertEquals(Long.valueOf(target), (Long) loadedRelationship.getEndNode().getId());
+            assertEquals(source, loadedRelationship.getStartNode().getElementId());
+            assertEquals(target, loadedRelationship.getEndNode().getElementId());
             assertEquals("repetition", loadedRelationship.getProperty("type"));
             assertEquals(0L,loadedRelationship.getProperty("alters_meaning"));
             assertEquals("yes",loadedRelationship.getProperty("is_significant"));
             assertEquals("april",loadedRelationship.getProperty("reading_a"));
             assertEquals("showers",loadedRelationship.getProperty("reading_b"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -189,8 +199,8 @@ public class RelationTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            db.getRelationshipById(Long.parseLong(relationshipId));
-            tx.success();
+            tx.getRelationshipByElementId(relationshipId);
+            tx.close();
         }
     }
 
@@ -198,7 +208,7 @@ public class RelationTest {
     @Test
     public void deleteRelationsTest() {
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (w:READING {text:'march'}) return w");
+            Result result = tx.execute("match (w:READING {text:'march'}) return w");
             Iterator<Node> nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             Node march1 = nodes.next();
@@ -212,12 +222,12 @@ public class RelationTest {
             assertEquals(march2, rel.getOtherNode(march1));
 
             Response removalResponse = jerseyTest
-                    .target("/tradition/" + tradId + "/relation/" + rel.getId())
+                    .target("/tradition/" + tradId + "/relation/" + rel.getElementId())
                     .request()
                     .delete();
             assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
-            result = db.execute("match (w:READING {text:'march'}) return w");
+            result = tx.execute("match (w:READING {text:'march'}) return w");
             nodes = result.columnAs("w");
             assertTrue(nodes.hasNext());
             march1 = nodes.next();
@@ -238,7 +248,7 @@ public class RelationTest {
             resp = (TextSequenceModel) new Witness(tradId, "B").getWitnessAsText().getEntity();
             assertEquals(expectedText, resp.getText());
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -262,14 +272,14 @@ public class RelationTest {
         final Comparator<Node> highestRank = (o1, o2) -> Long.valueOf(o2.getProperty("rank").toString())
                 .compareTo(Long.valueOf(o1.getProperty("rank").toString()));
 
-        long idThe = getReading("the", highestRank).getId();
-        long idTeh = getReading("teh", highestRank).getId();
-        assertTrue(idTeh > 0L);
-        assertTrue(idThe > 0L);
+        String idThe = getReading("the", highestRank).getElementId();
+        String idTeh = getReading("teh", highestRank).getElementId();
+        assertTrue(!idTeh.isBlank());
+        assertTrue(!idThe.isBlank());
         // Create the test relationship
         RelationModel r = new RelationModel();
-        r.setSource(String.valueOf(idTeh));
-        r.setTarget(String.valueOf(idThe));
+        r.setSource(idTeh);
+        r.setTarget(idThe);
         r.setType("spelling");
         r.setAlters_meaning(1L);
         r.setIs_significant("maybe");
@@ -368,9 +378,9 @@ public class RelationTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            db.getRelationshipById(Long.parseLong(relationshipId1));
-            db.getRelationshipById(Long.parseLong(relationshipId2));
-            tx.success();
+            tx.getRelationshipByElementId(relationshipId1);
+            tx.getRelationshipByElementId(relationshipId2);
+            tx.close();
             fail("These relationships should no longer exist");
         }
     }
@@ -429,13 +439,13 @@ public class RelationTest {
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
-            Node the = db.getNodeById(Long.valueOf(target));
+            Node the = tx.getNodeByElementId(target);
             Iterator<Relationship> rels = the
                     .getRelationships(ERelations.RELATED)
                     .iterator();
 
             assertFalse(rels.hasNext()); // make sure node 28 does not have a relationship now!
-            tx.success();
+            tx.close();
         }
     }
 
@@ -461,10 +471,10 @@ public class RelationTest {
         String relationshipId = ((RelationModel) tmpGraphModel.getRelations().toArray()[0]).getId();
 
         try (Transaction tx = db.beginTx()) {
-            Relationship rel = db.getRelationshipById(Integer.parseInt(relationshipId));
+            Relationship rel = tx.getRelationshipByElementId(relationshipId);
             assertEquals("root", rel.getStartNode().getProperty("text"));
             assertEquals("teh", rel.getEndNode().getProperty("text"));
-            tx.success();
+            tx.close();
         }
 
         Response response = jerseyTest
@@ -481,26 +491,29 @@ public class RelationTest {
         assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
         assertEquals(response.readEntity(ReadingModel.class).getRank(), (Long)18L);
 
-        Result result = db.execute("match (w:READING {text:'rood'}) return w");
-        Iterator<Node> nodes = result.columnAs("w");
-        assertTrue(nodes.hasNext());
-        Node node = nodes.next();
-        assertFalse(nodes.hasNext());
+        try (Transaction tx = db.beginTx()) {
+	        Result result = tx.execute("match (w:READING {text:'rood'}) return w");
+	        Iterator<Node> nodes = result.columnAs("w");
+	        assertTrue(nodes.hasNext());
+	        Node node = nodes.next();
+	        assertFalse(nodes.hasNext());
+	
+	        relationship.setSource(node.getElementId());
+	
+	        result = tx.execute("match (w:READING {text:'unto'}) return w");
+	        nodes = result.columnAs("w");
+	        assertTrue(nodes.hasNext());
+	        node = nodes.next();
+	        assertFalse(nodes.hasNext());
+	
+	        relationship.setTarget(node.getId() + "");
+	
+	        relationship.setType("grammatical");
+	        relationship.setAlters_meaning(0L);
+	        relationship.setIs_significant("yes");
 
-        relationship.setSource(node.getId() + "");
-
-        result = db.execute("match (w:READING {text:'unto'}) return w");
-        nodes = result.columnAs("w");
-        assertTrue(nodes.hasNext());
-        node = nodes.next();
-        assertFalse(nodes.hasNext());
-
-        relationship.setTarget(node.getId() + "");
-
-        relationship.setType("grammatical");
-        relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
-
+	        tx.close();
+        }
         // this one should not be make-able, due to the cross-relationship-constraint!
         actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
@@ -513,35 +526,41 @@ public class RelationTest {
                 Util.getValueFromJson(actualResponse, "error"));
 
         try (Transaction tx = db.beginTx()) {
-            Node node22 = db.getNodeById(22L);
+            Node node22 = tx.getNodeByElementId("22");
             Iterator<Relationship> rels = node22.getRelationships(ERelations.RELATED).iterator();
 
             assertFalse(rels.hasNext()); // make sure node 21 does not have a relationship now!
-            tx.success();
+            tx.close();
         }
     }
 
     @Test
     public void createRelationshipTestWithCyclicConstraint() {
         RelationModel relationship = new RelationModel();
+        Node firstNode;
+        Node secondNode;
 
-        Result result = db.execute("match (w:READING {text:'showers'}) return w");
-        Iterator<Node> nodes = result.columnAs("w");
-        assertTrue(nodes.hasNext());
-        Node firstNode = nodes.next();
-        assertFalse(nodes.hasNext());
-
-        result = db.execute("match (w:READING {text:'pierced'}) return w");
-        nodes = result.columnAs("w");
-        assertTrue(nodes.hasNext());
-        Node secondNode = nodes.next();
-        assertFalse(nodes.hasNext());
-
-        relationship.setSource(firstNode.getId() + "");
-        relationship.setTarget(secondNode.getId() + "");
-        relationship.setType("grammatical");
-        relationship.setAlters_meaning(0L);
-        relationship.setIs_significant("yes");
+        try (Transaction tx = db.beginTx()) {
+	        Result result = tx.execute("match (w:READING {text:'showers'}) return w");
+	        Iterator<Node> nodes = result.columnAs("w");
+	        assertTrue(nodes.hasNext());
+	        firstNode = nodes.next();
+	        assertFalse(nodes.hasNext());
+	
+	        result = tx.execute("match (w:READING {text:'pierced'}) return w");
+	        nodes = result.columnAs("w");
+	        assertTrue(nodes.hasNext());
+	        secondNode = nodes.next();
+	        assertFalse(nodes.hasNext());
+	
+	        relationship.setSource(firstNode.getElementId());
+	        relationship.setTarget(secondNode.getElementId());
+	        relationship.setType("grammatical");
+	        relationship.setAlters_meaning(0L);
+	        relationship.setIs_significant("yes");
+	        
+	        tx.close();
+        }
 
         Response actualResponse = jerseyTest
                 .target("/tradition/" + tradId + "/relation")
@@ -555,16 +574,16 @@ public class RelationTest {
                 actualResponse.getEntity(String.class));
 */
         try (Transaction tx = db.beginTx()) {
-            Node node1 = db.getNodeById(firstNode.getId());
+            Node node1 = tx.getNodeByElementId(firstNode.getElementId());
             Iterator<Relationship> rels = node1.getRelationships(ERelations.RELATED).iterator();
 
             assertFalse(rels.hasNext()); // make sure node does not have a relationship now!
 
-            Node node2 = db.getNodeById(secondNode.getId());
+            Node node2 = tx.getNodeByElementId(secondNode.getElementId());
             rels = node2.getRelationships(ERelations.RELATED).iterator();
 
             assertFalse(rels.hasNext()); // make sure node does not have a relationship now!
-            tx.success();
+            tx.close();
         }
     }
 
@@ -617,14 +636,14 @@ public class RelationTest {
         String myId;
         String otherId;
         try (Transaction tx = db.beginTx()) {
-            List<Node> henries = db.findNodes(Nodes.READING, "text", "henricus").stream()
+            List<Node> henries = tx.findNodes(Nodes.READING, "text", "henricus").stream()
                     .filter(x -> x.getProperty("rank").equals(4L)).collect(Collectors.toList());
-            Node other = db.findNode(Nodes.READING, "text", "heinricus");
+            Node other = tx.findNode(Nodes.READING, "text", "heinricus");
             assertEquals(1, henries.size());
             assertNotNull(other);
-            myId = String.valueOf(henries.get(0).getId());
-            otherId = String.valueOf(other.getId());
-            tx.success();
+            myId = henries.get(0).getElementId();
+            otherId = other.getElementId();
+            tx.close();
         }
         RelationModel r = new RelationModel();
         r.setSource(otherId);
@@ -641,28 +660,26 @@ public class RelationTest {
     @Test
     public void createBadRelationshipRestoreCollatedTest () {
         // Create a collation between rood and root
-        long roodId;
-        long the1Id = 0L;
-        long the2Id = 0L;
+        String roodId;
+        String the1Id = "";
+        String the2Id = "";
         try (Transaction tx = db.beginTx()) {
-            roodId = db.findNode(Nodes.READING, "text", "rood").getId();
-            List<Node> thes = db.findNodes(Nodes.READING, "text", "the").stream()
+            roodId = tx.findNode(Nodes.READING, "text", "rood").getElementId();
+            List<Node> thes = tx.findNodes(Nodes.READING, "text", "the").stream()
                     .collect(Collectors.toList());
             for (Node the : thes) {
                 if (the.getProperty("rank").equals(17L))
-                    the1Id = the.getId();
+                    the1Id = the.getElementId();
                 else
-                    the2Id = the.getId();
+                    the2Id = the.getElementId();
             }
-            tx.success();
+            tx.close();
         }
-        assertTrue(the1Id > 0);
-        assertTrue(the2Id > 0);
-
-        // Make a collated relationship between rood and the
+        assertTrue(!the1Id.isBlank());
+        assertTrue(!the2Id.isBlank());        // Make a collated relationship between rood and the
         RelationModel model = new RelationModel();
-        model.setSource(String.valueOf(roodId));
-        model.setTarget(String.valueOf(the1Id));
+        model.setSource(roodId);
+        model.setTarget(the1Id);
         model.setType("collated");
 
         Response response = jerseyTest.target("/tradition/" + tradId + "/relation")
@@ -805,10 +822,10 @@ public class RelationTest {
     private Node getReading(String text, Comparator<Node> c) {
         Node result;
         try (Transaction tx = db.beginTx()) {
-            List<Node> available = db.findNodes(Nodes.READING, "text", text).stream().collect(Collectors.toList());
+            List<Node> available = tx.findNodes(Nodes.READING, "text", text).stream().collect(Collectors.toList());
             if (c != null)
                 available.sort(c);
-            tx.success();
+            tx.close();
             result = available.get(0);
         }
         return result;

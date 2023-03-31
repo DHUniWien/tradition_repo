@@ -1,18 +1,22 @@
 package net.stemmaweb.model;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.qmino.miredot.annotations.MireDotIgnore;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.DatabaseService;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.qmino.miredot.annotations.MireDotIgnore;
+
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * 
@@ -70,7 +74,9 @@ public class TraditionModel {
     public TraditionModel() {}
 
     public TraditionModel(Node node) {
-        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+//        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        try (Transaction tx = db.beginTx()) {
             setId(node.getProperty("id").toString());
             if (node.hasProperty("name"))
                 setName(node.getProperty("name").toString());

@@ -3,12 +3,15 @@ package net.stemmaweb.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -129,7 +132,8 @@ public class ReadingModel implements Comparable<ReadingModel> {
      * @param node - The node with label READING from which the model should take its values
      */
     public ReadingModel(Node node) {
-        try (Transaction tx = node.getGraphDatabase().beginTx()) {
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        try (Transaction tx = db.beginTx()) {
             if (node.hasProperty("grammar_invalid"))
                 this.setGrammar_invalid((Boolean) node.getProperty("grammar_invalid"));
             this.setId(node.getElementId());

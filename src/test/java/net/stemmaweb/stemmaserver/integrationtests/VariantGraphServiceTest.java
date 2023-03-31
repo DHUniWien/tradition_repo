@@ -55,7 +55,7 @@ public class VariantGraphServiceTest {
             assertNotNull(startNode);
             assertEquals("#START#", startNode.getProperty("text"));
             assertEquals(true, startNode.getProperty("is_start"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -66,7 +66,7 @@ public class VariantGraphServiceTest {
             assertNotNull(endNode);
             assertEquals("#END#", endNode.getProperty("text"));
             assertEquals(true, endNode.getProperty("is_end"));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -76,7 +76,7 @@ public class VariantGraphServiceTest {
         assertEquals(1, sectionNodes.size());
         try (Transaction tx = db.beginTx()) {
             assertTrue(sectionNodes.get(0).hasLabel(Label.label("SECTION")));
-            tx.success();
+            tx.close();
         }
     }
 
@@ -103,19 +103,19 @@ public class VariantGraphServiceTest {
             for (Node n : representatives.keySet()) {
                 // If it is represented by itself, it should have an NSEQUENCE both in and out; if not, not.
                 if (!n.hasProperty("is_end"))
-                    assertEquals(n.equals(representatives.get(n)), n.hasRelationship(ERelations.NSEQUENCE, Direction.OUTGOING));
+                    assertEquals(n.equals(representatives.get(n)), n.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE));
                 if (!n.hasProperty("is_start"))
-                    assertEquals(n.equals(representatives.get(n)), n.hasRelationship(ERelations.NSEQUENCE, Direction.INCOMING));
+                    assertEquals(n.equals(representatives.get(n)), n.hasRelationship(Direction.INCOMING, ERelations.NSEQUENCE));
                 // If it's at rank 6, it should have a REPRESENTS link
                 if (n.getProperty("rank").equals(6L)) {
                     Direction d = n.getProperty("text").equals("weljellensä") ? Direction.OUTGOING : Direction.INCOMING;
-                    assertTrue(n.hasRelationship(ERelations.REPRESENTS, d));
+                    assertTrue(n.hasRelationship(d, ERelations.REPRESENTS));
                 } else if (n.getProperty("rank").equals(9L)) {
                     Direction d = n.getProperty("text").equals("Hämehen") ? Direction.OUTGOING : Direction.INCOMING;
-                    assertTrue(n.hasRelationship(ERelations.REPRESENTS, d));
+                    assertTrue(n.hasRelationship(d, ERelations.REPRESENTS));
                 }
             }
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -123,9 +123,9 @@ public class VariantGraphServiceTest {
         // Now clear the normalization and make sure we didn't fail.
         try (Transaction tx = db.beginTx()) {
             VariantGraphService.clearNormalization(sections.get(0));
-            assertTrue(db.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.NSEQUENCE)));
-            assertTrue(db.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.REPRESENTS)));
-            tx.success();
+            assertTrue(tx.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.NSEQUENCE)));
+            assertTrue(tx.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.REPRESENTS)));
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -148,7 +148,7 @@ public class VariantGraphServiceTest {
                     .map(x -> x.getProperty("text").toString())
                     .collect(Collectors.toList());
             assertEquals(expectedMajority, String.join(" ", words));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -157,15 +157,15 @@ public class VariantGraphServiceTest {
         expectedMajority = "sanoi herra Heinäricki Erjkillen weliellensä Läckämme Hämehen maallen";
         try (Transaction tx = db.beginTx()) {
             // Lemmatise a minority reading
-            Node n = db.findNode(Nodes.READING, "text", "weliellensä");
+            Node n = tx.findNode(Nodes.READING, "text", "weliellensä");
             assertNotNull(n);
             n.setProperty("is_lemma", true);
             // Collate two readings so that together they outweigh the otherwise-majority
-            Node n1 = db.findNode(Nodes.READING, "text", "Heinäricki");
-            Node n2 = db.findNode(Nodes.READING, "text", "Henärickus");
+            Node n1 = tx.findNode(Nodes.READING, "text", "Heinäricki");
+            Node n2 = tx.findNode(Nodes.READING, "text", "Henärickus");
             RelationModel rm = new RelationModel();
-            rm.setSource(String.valueOf(n1.getId()));
-            rm.setTarget(String.valueOf(n2.getId()));
+            rm.setSource(n1.getElementId());
+            rm.setTarget(n2.getElementId());
             rm.setType("collated");
             rm.setScope("local");
             Relation relRest = new Relation(newTradId);
@@ -178,7 +178,7 @@ public class VariantGraphServiceTest {
                     .map(x -> x.getProperty("text").toString())
                     .collect(Collectors.toList());
             assertEquals(expectedMajority, String.join(" ", words));
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             fail();
         }

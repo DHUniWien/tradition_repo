@@ -1,5 +1,9 @@
 package net.stemmaweb.exporter;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.parser.Util.getExpander;
+import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -7,27 +11,39 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Result;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
 import net.stemmaweb.model.DisplayOptionModel;
 import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
-
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Section;
-
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.parser.Util.getExpander;
-import static org.apache.commons.text.StringEscapeUtils.escapeHtml4;
-
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 
 /**
@@ -320,8 +336,11 @@ public class DotExporter
             throws Exception {
         if (normaliseOn == null) {
             HashMap<Node, Node> representatives = new HashMap<>();
-            List<Node> sectionNodes = VariantGraphService.returnTraditionSection(sectionNode).nodes().stream()
-                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toList());
+//            List<Node> sectionNodes = VariantGraphService.returnTraditionSection(sectionNode).nodes().stream()
+//                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toList());
+			List<Node> sectionNodes = StreamSupport
+					.stream(VariantGraphService.returnTraditionSection(sectionNode).nodes().spliterator(), false)
+					.filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toList());
             for (Node n: sectionNodes) {
                 representatives.put(n, n);
             }

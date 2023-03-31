@@ -1,26 +1,24 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-
-import net.stemmaweb.model.StemmaModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.parser.DotParser;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
@@ -34,7 +32,16 @@ import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.parser.DotParser;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Contains all tests for the api calls related to stemmas.
@@ -185,11 +192,11 @@ public class StemmaTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            Result result2 = db.execute("match (t:TRADITION {id:'" + tradId +
+            Result result2 = tx.execute("match (t:TRADITION {id:'" + tradId +
                     "'})--(s:STEMMA) return count(s) AS res2");
             assertEquals(3L, result2.columnAs("res2").next());
 
-            tx.success();
+            tx.close();
         }
 
         String stemmaTitle = "Semstem 1402333041_1";
@@ -258,7 +265,7 @@ public class StemmaTest {
         String secondNodeId = "0";
 
         try (Transaction tx = db.beginTx()) {
-            Result result1 = db.execute("match (t:TRADITION {id:'" +
+            Result result1 = tx.execute("match (t:TRADITION {id:'" +
                     tradId + "'})-[:HAS_STEMMA]->(n:STEMMA { name:'" +
                     stemmaTitle + "'}) return n");
             Iterator<Node> stNodes = result1.columnAs("n");
@@ -287,7 +294,7 @@ public class StemmaTest {
                     .post(null);
             assertEquals(Response.ok().build().getStatus(), actualStemmaResponseSecond.getStatus());
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -313,7 +320,7 @@ public class StemmaTest {
                     .post(null);
             assertEquals(Response.Status.NOT_FOUND.getStatusCode(), actualStemmaResponse2.getStatus());
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -323,7 +330,7 @@ public class StemmaTest {
         String newNodeId = "C";
 
         try (Transaction tx = db.beginTx()) {
-            Result result1 = db.execute("match (t:TRADITION {id:'" +
+            Result result1 = tx.execute("match (t:TRADITION {id:'" +
                     tradId + "'})-[:HAS_STEMMA]->(n:STEMMA { name:'" +
                     stemmaTitle + "'}) return n");
             Iterator<Node> stNodes = result1.columnAs("n");
@@ -347,7 +354,7 @@ public class StemmaTest {
             assertEquals(relAfter.iterator().next().getEndNode().getProperty("sigil").toString(),
                     newNodeId);
 
-            tx.success();
+            tx.close();
         }
     }
 
@@ -449,7 +456,7 @@ public class StemmaTest {
         assertEquals(Response.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-            Result r = db.execute("match (s:STEMMA {name:'labeltest'})-[:HAS_WITNESS]->(z:WITNESS {sigil:'0'}), " +
+            Result r = tx.execute("match (s:STEMMA {name:'labeltest'})-[:HAS_WITNESS]->(z:WITNESS {sigil:'0'}), " +
                     "(s)-[:HAS_WITNESS]->(a:WITNESS {sigil:'α'}) return z, a");
             assertTrue(r.hasNext());
             Map<String, Object> row = r.next();
@@ -458,7 +465,7 @@ public class StemmaTest {
 
             assertTrue(zeroNode.hasProperty("label"));
             assertFalse(alphaNode.hasProperty("label"));
-            tx.success();
+            tx.close();
         }
 
     }
@@ -679,8 +686,8 @@ public class StemmaTest {
     private int countGraphNodes() {
         AtomicInteger numNodes = new AtomicInteger(0);
         try (Transaction tx = db.beginTx()) {
-            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.success();
+            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.close();
         }
         return numNodes.get();
     }

@@ -1,10 +1,20 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.ws.rs.client.Entity;
@@ -12,16 +22,6 @@ import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-
-import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
@@ -35,7 +35,19 @@ import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.UserModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Contains all tests for the api calls related to the tradition.
@@ -201,13 +213,13 @@ public class TraditionTest {
          * Create a second user with id 42
          */
         try (Transaction tx = db.beginTx()) {
-            Node rootNode = db.findNode(Nodes.ROOT, "name", "Root node");
-            newUser = db.createNode(Nodes.USER);
+            Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
+            newUser = tx.createNode(Nodes.USER);
             newUser.setProperty("id", "42");
             newUser.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(newUser, ERelations.SYSTEMUSER);
-            tx.success();
+            tx.commit();
         }
 
         /*
@@ -215,7 +227,7 @@ public class TraditionTest {
          */
         try (Transaction tx = db.beginTx()) {
             Iterable<Relationship> ownedTraditions = newUser.getRelationships(ERelations.OWNS_TRADITION);
-            tx.success();
+            tx.close();
             assertFalse(ownedTraditions.iterator().hasNext());
         }
 
@@ -223,7 +235,7 @@ public class TraditionTest {
          * Verify that user 1 has tradition
          */
         try (Transaction tx = db.beginTx()) {
-            Node origUser = db.findNode(Nodes.USER, "id", "1");
+            Node origUser = tx.findNode(Nodes.USER, "id", "1");
             Iterable<Relationship> ownership = origUser.getRelationships(ERelations.OWNS_TRADITION);
             assertTrue(ownership.iterator().hasNext());
             Node tradNode = ownership.iterator().next().getEndNode();
@@ -232,7 +244,7 @@ public class TraditionTest {
             assertEquals(tradId, tradition.getId());
             assertEquals("Tradition", tradition.getName());
 
-            tx.success();
+            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -258,7 +270,7 @@ public class TraditionTest {
          * Test if user with id 42 has now the tradition
          */
         try (Transaction tx = db.beginTx()) {
-            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             TraditionModel tradition = new TraditionModel(tradNode);
 
             assertEquals("42", tradition.getOwner());
@@ -266,7 +278,7 @@ public class TraditionTest {
             assertEquals("RenamedTraditionName", tradition.getName());
             assertEquals("RL", tradition.getDirection());
             assertEquals(Integer.valueOf(3), tradition.getStemweb_jobid());
-            tx.success();
+            tx.close();
 
         }
 
@@ -274,11 +286,11 @@ public class TraditionTest {
          * The user with id 1 has no tradition
          */
         try (Transaction tx = db.beginTx()) {
-            result = db.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
+            result = tx.execute("match (n)<-[:OWNS_TRADITION]-(userId:USER {id:'1'}) return n");
             Iterator<Node> tradIterator = result.columnAs("n");
             assertFalse(tradIterator.hasNext());
 
-            tx.success();
+            tx.close();
         }
 
         /*
@@ -352,16 +364,16 @@ public class TraditionTest {
          * Create a second user with id 42
          */
         try (Transaction tx = db.beginTx()) {
-            Result result = db.execute("match (n:ROOT) return n");
+            Result result = tx.execute("match (n:ROOT) return n");
             Iterator<Node> nodes = result.columnAs("n");
             Node rootNode = nodes.next();
 
-            Node node = db.createNode(Nodes.USER);
+            Node node = tx.createNode(Nodes.USER);
             node.setProperty("id", "42");
             node.setProperty("role", "admin");
 
             rootNode.createRelationshipTo(node, ERelations.SYSTEMUSER);
-            tx.success();
+            tx.close();
         }
 
         /*
@@ -453,8 +465,8 @@ public class TraditionTest {
         // count the total number of nodes
         AtomicInteger numNodes = new AtomicInteger(0);
         try (Transaction tx = db.beginTx()) {
-            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.success();
+            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.close();
         }
         int originalNodeCount = numNodes.get();
 
@@ -487,7 +499,7 @@ public class TraditionTest {
         try (Transaction tx = db.beginTx()) {
             int[] alignRanks = {77, 110};
             for (int r : alignRanks) {
-                ResourceIterator<Node> atRank = db.findNodes(Nodes.READING, "rank", r);
+                ResourceIterator<Node> atRank = tx.findNodes(Nodes.READING, "rank", r);
                 assertTrue(atRank.hasNext());
                 ReadingModel rdg1 = new ReadingModel(atRank.next());
                 ReadingModel rdg2 = new ReadingModel(atRank.next());
@@ -503,25 +515,25 @@ public class TraditionTest {
             }
 
             // and a transposition, for kicks
-            Node tx1 = db.findNode(Nodes.READING, "rank", 217);
-            Node tx2 = db.findNode(Nodes.READING, "rank", 219);
+            Node tx1 = tx.findNode(Nodes.READING, "rank", 217);
+            Node tx2 = tx.findNode(Nodes.READING, "rank", 219);
             RelationModel txrel = new RelationModel();
             txrel.setType("transposition");
             txrel.setScope("local");
-            txrel.setSource(String.valueOf(tx1.getId()));
-            txrel.setTarget(String.valueOf(tx2.getId()));
+            txrel.setSource(String.valueOf(tx1.getElementId()));
+            txrel.setTarget(String.valueOf(tx2.getElementId()));
             jerseyResponse = jerseyTest.target("/tradition/" + florId + "/relation")
                     .request()
                     .post(Entity.json(txrel));
             assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResponse.getStatusInfo().getStatusCode());
-            tx.success();
+            tx.close();
         }
 
         // now count the nodes
         numNodes.set(0);
         try (Transaction tx = db.beginTx()) {
-            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.success();
+            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.close();
         }
         assertTrue(numNodes.get() > originalNodeCount + 200);
 
@@ -535,8 +547,8 @@ public class TraditionTest {
         // nodes should be back to original number
         numNodes.set(0);
         try (Transaction tx = db.beginTx()) {
-            db.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-            tx.success();
+            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+            tx.close();
         }
         assertEquals(originalNodeCount, numNodes.get());
     }
@@ -559,17 +571,17 @@ public class TraditionTest {
             /*
              * Test if user 1 still exists
              */
-            Result result = db.execute("match (userId:USER {id:'1'}) return userId");
+            Result result = tx.execute("match (userId:USER {id:'1'}) return userId");
             Iterator<Node> nodes = result.columnAs("userId");
             assertTrue(nodes.hasNext());
 
             /*
              * Check if tradition {tradId} still exists
              */
-            result = db.execute("match (t:TRADITION {id:'" + tradId + "'}) return t");
+            result = tx.execute("match (t:TRADITION {id:'" + tradId + "'}) return t");
             nodes = result.columnAs("t");
             assertTrue(nodes.hasNext());
-            tx.success();
+            tx.close();
         }
     }
 

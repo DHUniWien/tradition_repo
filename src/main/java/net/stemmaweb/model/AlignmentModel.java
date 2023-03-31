@@ -1,15 +1,30 @@
 package net.stemmaweb.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.services.WitnessPath;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 
 import javax.xml.bind.annotation.XmlRootElement;
-import java.util.*;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.WitnessPath;
 
 /**
  * JSON-aware data model for exporting an alignment in tabular format. Uses ReadingModel to
@@ -40,7 +55,8 @@ public class AlignmentModel {
 
     // Get an alignment table
     public AlignmentModel(Node sectionNode, boolean excludeLayers) {
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
+//        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 
         try (Transaction tx = db.beginTx()) {
             String sectId = sectionNode.getElementId();

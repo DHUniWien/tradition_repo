@@ -68,7 +68,8 @@ public class AnnotationLabelModel {
     }
 
     private void initFromNode(Node annNode) {
-        GraphDatabaseService db = annNode.getGraphDatabase();
+//        GraphDatabaseService db = annNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             // Look up the name
             this.setName(annNode.getProperty("name").toString());

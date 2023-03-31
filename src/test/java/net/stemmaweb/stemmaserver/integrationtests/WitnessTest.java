@@ -1,5 +1,11 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -7,26 +13,30 @@ import java.util.stream.Collectors;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.Response;
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-
-import net.stemmaweb.stemmaserver.Util;
-
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.neo4j.graphdb.*;
-
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * 
@@ -131,10 +141,10 @@ public class WitnessTest {
         // Find the reading that is the period
         Node period;
         try (Transaction tx = db.beginTx()) {
-            period = db.findNode(Nodes.READING, "text", ". ");
+            period = tx.findNode(Nodes.READING, "text", ". ");
             assertNotNull(period);
             period.setProperty("join_prior", true);
-            tx.success();
+            tx.close();
         }
         returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
@@ -145,14 +155,14 @@ public class WitnessTest {
                 Node n = r.getStartNode();
                 n.setProperty("join_next", true);
             }
-            tx.success();
+            tx.close();
         }
         returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
 
         try (Transaction tx = db.beginTx()) {
             period.removeProperty("join_prior");
-            tx.success();
+            tx.commit();
         }
         returnedText = (TextSequenceModel) new Witness(foxId, "w1").getWitnessAsText().getEntity();
         assertEquals(expectedText, returnedText.getText());
@@ -290,15 +300,15 @@ public class WitnessTest {
 
         // Now add a witness out-of-band, that doesn't have any particular data, to make sure we can
         // delete errant witnesses
-        Long bogusId;
+        String bogusId;
         try (Transaction tx = db.beginTx()) {
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            Node bogus = db.createNode(Nodes.WITNESS);
-            bogusId = bogus.getId();
+            Node traditionNode = tx.findNode(Nodes.TRADITION, "id", tradId);
+            Node bogus = tx.createNode(Nodes.WITNESS);
+            bogusId = bogus.getElementId();
             bogus.setProperty("hypothetical", false);
             bogus.setProperty("sigil", "n\":\"RJKYRSKZ");
             traditionNode.createRelationshipTo(bogus, ERelations.HAS_WITNESS);
-            tx.success();
+            tx.commit();
         }
         assertNotNull(bogusId);
         assertEquals(3, jerseyTest.target("/tradition/" + tradId + "/witnesses")
@@ -385,9 +395,9 @@ public class WitnessTest {
     @Test
     public void traditionNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.TRADITION, "name", "Tradition");
+            ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.TRADITION, "name", "Tradition");
             assertTrue(tradNodesIt.hasNext());
-            tx.success();
+            tx.close();
         }
     }
 
@@ -397,9 +407,9 @@ public class WitnessTest {
     @Test
     public void traditionEndNodeExistsTest() {
         try (Transaction tx = db.beginTx()) {
-            ResourceIterator<Node> tradNodesIt = db.findNodes(Nodes.READING, "text", "#END#");
+            ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
-            tx.success();
+            tx.close();
         }
     }
 

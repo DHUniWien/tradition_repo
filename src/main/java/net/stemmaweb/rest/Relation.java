@@ -1,16 +1,37 @@
 package net.stemmaweb.rest;
 
-import java.util.*;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.services.RelationService.returnRelationType;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
 import com.qmino.miredot.annotations.ReturnType;
+
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
@@ -18,15 +39,8 @@ import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
-
+import net.stemmaweb.services.RelationService.TransitiveRelationTraverser;
 import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Traverser;
-import org.neo4j.graphdb.traversal.Uniqueness;
-
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.services.RelationService.returnRelationType;
-import static net.stemmaweb.services.RelationService.TransitiveRelationTraverser;
 
 /**
  * Comprises all the api calls related to a relation.
@@ -102,7 +116,8 @@ public class Relation {
                     // Pick out the ones that share the readingA text
                     Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
                             ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
-                    HashSet<Node> ourA = tradReadings.stream()
+//                    HashSet<Node> ourA = tradReadings.stream()
+            		HashSet<Node> ourA = StreamSupport.stream(tradReadings.spliterator(), false)
                             .filter(x -> nodefilter.apply(x).equals(nodefilter.apply(readingA)) && !x.equals(readingA))
                             .collect(Collectors.toCollection(HashSet::new));
                     HashMap<String, HashSet<Long>> ranks = new HashMap<>();
@@ -117,7 +132,8 @@ public class Relation {
                     }
 
                     // Pick out the ones that share the readingB text
-                    HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
+//                    HashSet<Node> ourB = tradReadings.stream().filter(x -> x.hasProperty("text")
+            		HashSet<Node> ourB = StreamSupport.stream(tradReadings.spliterator(), false).filter(x -> x.hasProperty("text")
                             && nodefilter.apply(x).equals(nodefilter.apply(readingB)) && !x.equals(readingB))
                             .collect(Collectors.toCollection(HashSet::new));
                     RelationModel userel;

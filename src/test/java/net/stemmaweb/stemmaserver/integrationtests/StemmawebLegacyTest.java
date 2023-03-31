@@ -1,18 +1,22 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import java.util.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-
-import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
@@ -26,7 +30,14 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.junit.Assert.*;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ReadingBoundaryModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.Util;
 
 /*
  * Contains all tests for the api calls related to the tradition.
@@ -90,7 +101,7 @@ public class StemmawebLegacyTest {
         String tradId = Util.getValueFromJson(response, "tradId");
 
         try (Transaction tx = db.beginTx()) {
-            Node tradNode = db.findNode(Nodes.TRADITION, "id", tradId);
+            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             assertNotNull(tradNode);
             assertEquals(TRADNAME, tradNode.getProperty("name"));
             assertTrue(tradNode.hasRelationship());
@@ -114,7 +125,7 @@ public class StemmawebLegacyTest {
                         .toString());
             }
             assertEquals(1, rel_count);
-            tx.success();
+            tx.close();
         }
         response = jerseyTest.target("/tradition/" + tradId + "/readings")
                 .request()

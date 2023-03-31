@@ -1,19 +1,29 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
-
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import static net.stemmaweb.Util.jsonerror;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 
-import static net.stemmaweb.Util.jsonerror;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
+
+import com.qmino.miredot.annotations.ReturnType;
+
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Module to handle the specification and definition of relation types that may exist on
@@ -121,7 +131,8 @@ public class RelationType {
         }
         try (Transaction tx = db.beginTx()) {
             // Do we have any relations that use this type?
-            if (VariantGraphService.returnTraditionRelations(tradition).relationships().stream()
+//        	if (VariantGraphService.returnTraditionRelations(tradition).relationships().stream()
+            if (StreamSupport.stream(VariantGraphService.returnTraditionRelations(tradition).relationships().spliterator(), false)
                     .anyMatch(x -> x.getProperty("type", "").equals(typeName)))
                 return Response.status(Response.Status.CONFLICT)
                         .entity(jsonerror("Relations of this type still exist; please alter them then try again.")).build();

@@ -1,18 +1,32 @@
 package net.stemmaweb.model;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import javax.xml.bind.annotation.XmlRootElement;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.TraversalDescription;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantCrawler;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.WitnessPath;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.TraversalDescription;
-import org.neo4j.graphdb.traversal.Uniqueness;
-
-import javax.xml.bind.annotation.XmlRootElement;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @XmlRootElement
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
@@ -95,7 +109,8 @@ public class VariantListModel {
         this.significant = RelationModel.Significance.valueOf(significant);
         this.dislocationCombined = combine;
         if (conflate == null) conflate = "";
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
+//        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             RelationshipType follow = ERelations.SEQUENCE;
             if (!conflate.equals("")) {
@@ -118,7 +133,9 @@ public class VariantListModel {
                 // We use the requested witness text, which is connected via SEQUENCE or NSEQUENCE
                 // links and so unproblematic.
                 baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
-                baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
+//                baseText = baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList());
+				baseText = StreamSupport.stream(baseWalker.traverse(startNode).relationships().spliterator(), false)
+						.collect(Collectors.toList());
                 this.basisText = baseWitness;
             } else {
                 // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the base text.
@@ -126,7 +143,9 @@ public class VariantListModel {
                 if (startNode.hasRelationship(Direction.OUTGOING, ERelations.LEMMA_TEXT)) {
                     // We traverse the lemma text
                     baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
-                    baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
+//                    baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
+					baseReadings = StreamSupport.stream(baseWalker.traverse(startNode).nodes().spliterator(), false)
+							.collect(Collectors.toList());
                     this.basisText = "lemma";
                 } else {
                     // We calculate and use the majority text

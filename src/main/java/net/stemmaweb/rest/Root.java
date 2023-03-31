@@ -289,12 +289,12 @@ public class Root {
         try (Transaction tx = db.beginTx()) {
             Node userNode = tx.findNode(Nodes.USER, "id", userId);
             if (userNode == null) {
-                tx.failure();
+                tx.rollback();
                 throw new Exception("There is no user with ID " + userId + "!");
             }
             Node traditionNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             if (traditionNode == null) {
-                tx.failure();
+                tx.rollback();
                 throw new Exception("There is no tradition with ID " + tradId + "!");
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
