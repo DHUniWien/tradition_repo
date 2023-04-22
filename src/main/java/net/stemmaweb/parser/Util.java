@@ -25,6 +25,7 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.BranchState;
+import org.neo4j.internal.helpers.collection.Iterables;
 import org.w3c.dom.Document;
 
 import net.stemmaweb.model.RelationTypeModel;
@@ -209,37 +210,7 @@ public class Util {
                         goodPaths.add(link);
                     }
                 }
-				return goodPaths;
-//                return new AbstractResourceIterable<Relationship>() {
-//
-//					@Override
-//					protected ResourceIterator<Relationship> newIterator() {
-//						// TODO Auto-generated method stub
-//						new ResourceIterator<Relationship>(goodPaths.iterator()) {
-//							
-//							private Iterator<Relationship> iterator;
-//
-//							public void ResourceIterator(Iterator<Relationship> iterator) {
-//								this.iterator = iterator;
-//							}
-//
-//							@Override
-//							public boolean hasNext() {
-//								return iterator.hasNext();
-//							}
-//
-//							@Override
-//							public Relationship next() {
-//								return iterator.next();
-//							}
-//
-//							@Override
-//							public void close() {
-//								// TODO Auto-generated method stub
-//							}
-//						};
-//					}
-//				};
+				return Iterables.resourceIterable(goodPaths);
             }
 
             @Override

@@ -20,18 +20,18 @@ import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 
 /**
@@ -44,6 +44,7 @@ import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 public class UserTest {
 
     private GraphDatabaseService db;
+    private DatabaseManagementService dbbuilder;
 
     /*
      * JerseyTest is the test environment to Test api calls it provides a
@@ -56,7 +57,10 @@ public class UserTest {
         /*
          * Populate the test database with the root node
          */
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         DatabaseService.createRootNode(db);
 
         /*
@@ -410,7 +414,10 @@ public class UserTest {
      */
     @After
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
         jerseyTest.tearDown();
     }
 }

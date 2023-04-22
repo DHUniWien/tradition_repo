@@ -1,37 +1,55 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import com.opencsv.CSVParser;
-import com.opencsv.CSVParserBuilder;
-import com.opencsv.CSVReader;
+import static org.junit.Assert.assertNotEquals;
 
-import com.opencsv.CSVReaderBuilder;
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.*;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
-
-import org.glassfish.jersey.test.JerseyTest;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Result;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.io.StringReader;
-import java.util.*;
-import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertNotEquals;
+import org.glassfish.jersey.test.JerseyTest;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Result;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+
+import com.opencsv.CSVParser;
+import com.opencsv.CSVParserBuilder;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+
+import junit.framework.TestCase;
+import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ReadingBoundaryModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.WitnessTokensModel;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 
 /**
@@ -42,10 +60,14 @@ public class TabularInputOutputTest extends TestCase {
 
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
+	private DatabaseManagementService dbbuilder;
 
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -917,8 +939,11 @@ public class TabularInputOutputTest extends TestCase {
     }
 
     public void tearDown() throws Exception {
-        db.shutdown();
-        jerseyTest.tearDown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
+       jerseyTest.tearDown();
         super.tearDown();
     }
 }

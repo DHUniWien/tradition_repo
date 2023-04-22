@@ -1,36 +1,48 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.Util;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.neo4j.graphdb.*;
-import org.neo4j.test.TestGraphDatabaseFactory;
-
-import javax.ws.rs.core.Response;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.*;
+import javax.ws.rs.core.Response;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Relation;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.Util;
 
 public class VariantGraphServiceTest {
     private GraphDatabaseService db;
     private String traditionId;
     private String userId;
+	private DatabaseManagementService dbbuilder;
 
     @Before
     public void setUp() throws Exception {
 
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         userId = "simon";
         Util.setupTestDB(db, userId);
 
@@ -197,7 +209,10 @@ public class VariantGraphServiceTest {
      */
     @After
     public void tearDown() {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
     }
 
 }

@@ -18,13 +18,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
@@ -34,7 +35,6 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -48,6 +48,7 @@ import net.stemmaweb.stemmaserver.Util;
 public class WitnessTest {
     private String tradId;
     private GraphDatabaseService db;
+    private DatabaseManagementService dbbuilder;
 
     /*
      * JerseyTest is the test environment to Test api calls it provides a
@@ -58,7 +59,10 @@ public class WitnessTest {
 
     @Before
     public void setUp() throws Exception {
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -478,7 +482,10 @@ public class WitnessTest {
      */
     @After
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
         jerseyTest.tearDown();
     }
 }

@@ -202,7 +202,9 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         Node relTypeNode = null;
         try (Transaction tx = db.beginTx()) {
-            // First see if there is a type with this name
+        	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
+
+        	// First see if there is a type with this name
             for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
                 if (r.getEndNode().getProperty("name").toString().equals(this.thename)) {
                     relTypeNode = r.getEndNode();
@@ -220,8 +222,9 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     private Node match_relation_node(Node traditionNode, Boolean allow_update) {
 //        GraphDatabaseService db = traditionNode.getGraphDatabase();
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        Node relType = this.lookup(traditionNode);
         try (Transaction tx = db.beginTx()) {
+        	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
+        	Node relType = this.lookup(traditionNode);
             if (relType == null) {
                 // Create the node if it doesn't exist
                 relType = tx.createNode(Nodes.RELATION_TYPE);

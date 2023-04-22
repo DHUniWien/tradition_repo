@@ -29,7 +29,7 @@ public class ApplicationContextListener implements ServletContextListener {
         //Output a simple message to the server's console
         try {
             GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-            db.shutdown();
+            GraphDatabaseServiceProvider.shutdown();
             // logger.debug("This is debug: db shut down properly");
         } catch (Exception e) {
             // logger.debug("This is debug: shut down error");

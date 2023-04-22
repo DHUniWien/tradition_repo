@@ -68,10 +68,6 @@ public class StemmawebParser {
                     .entity(jsonerror("Parsing of tradition file failed!"))
                     .build();
         }
-        // The information on the relevant tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
-        String tradId;
-
         // Some variables to collect information
         HashMap<String, String> idToNeo4jId = new HashMap<>();
         HashMap<String, String> keymap = new HashMap<>();   // to store data key mappings
@@ -87,7 +83,13 @@ public class StemmawebParser {
         String edgeWitness = null;
         String witnessClass = "witnesses";
 
+        String tradId;
+
         try (Transaction tx = db.beginTx()) {
+        	// The information on the relevant tradition
+        	parentNode = tx.getNodeByElementId(parentNode.getElementId());
+        	Node traditionNode = parentNode.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
+        	
             tradId = traditionNode.getProperty("id").toString();
             outer:
             while (true) {

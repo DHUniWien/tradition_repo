@@ -1,13 +1,24 @@
 package net.stemmaweb.services;
 
-import org.neo4j.graphdb.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
-
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import org.neo4j.internal.helpers.collection.Iterables;
 
 public class VariantCrawler {
     private final Set<String> lemmaLinks;
@@ -74,7 +85,7 @@ public class VariantCrawler {
                 Map<String,Set<String>> witsSoFar = pathWitnesses.getOrDefault(key, null);
                 if (witsSoFar == null || witsSoFar.isEmpty()) {
                     // We have no "through" witnesses for this path, so don't go any farther.
-                    return new ArrayList<>();
+                    return Iterables.emptyResourceIterable();
                 }
                 // Now for each witness sigil in witsSoFar, find the relationship that continues it.
                 Map<String, Relationship> continuations = new HashMap<>();
@@ -138,7 +149,7 @@ public class VariantCrawler {
                         m.put(layer, w);
                     }
                 }
-                return continuations.values();
+                return Iterables.resourceIterable(continuations.values());
             }
 
             @Override

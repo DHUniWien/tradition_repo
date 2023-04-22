@@ -22,10 +22,10 @@ import javax.ws.rs.core.Response;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -56,10 +56,12 @@ public class GraphMLInputOutputTest extends TestCase {
     private JerseyTest jerseyTest;
     private String tradId;
     private String multiTradId;
+	private DatabaseManagementService dbService;
 
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	db = new GraphDatabaseServiceProvider((String) null).getDatabase();
         Util.setupTestDB(db, "me@example.org");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -380,8 +382,8 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request().get(new GenericType<>() {});
         // Find the ranks of the start and finish of this translation
         assertEquals(2, testAnno.get().getLinks().size());
-        String startId = 0L;
-        String endId = 0L;
+        String startId = "";
+        String endId = "";
         for (AnnotationLinkModel lm : testAnno.get().getLinks()) {
             if (lm.getType().equals("BEGIN"))
                 startId = lm.getTarget();
@@ -612,7 +614,8 @@ public class GraphMLInputOutputTest extends TestCase {
     // testXMLNoSections
 
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
         super.tearDown();
     }

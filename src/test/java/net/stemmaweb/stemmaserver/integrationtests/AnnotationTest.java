@@ -25,7 +25,6 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
 
 import junit.framework.TestCase;
 import net.stemmaweb.model.AnnotationLabelModel;
@@ -44,7 +43,8 @@ public class AnnotationTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	db = new GraphDatabaseServiceProvider((String) null).getDatabase();
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -709,7 +709,8 @@ public class AnnotationTest extends TestCase {
     }
 
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
         super.tearDown();
     }

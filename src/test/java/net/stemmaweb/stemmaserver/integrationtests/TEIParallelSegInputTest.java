@@ -1,26 +1,30 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
-import org.junit.Before;
-import org.glassfish.jersey.test.JerseyTest;
-import org.junit.After;
-import org.junit.Test;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import javax.ws.rs.core.Response;
+
+import org.glassfish.jersey.test.JerseyTest;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Test TEI parallel segmentation input.
@@ -30,10 +34,14 @@ import static org.junit.Assert.assertTrue;
 public class TEIParallelSegInputTest {
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
+	private DatabaseManagementService dbbuilder;
 
     @Before
     public void setUp() throws Exception {
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -137,7 +145,10 @@ public class TEIParallelSegInputTest {
 
     @After
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
         jerseyTest.tearDown();
     }
 }

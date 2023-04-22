@@ -1,18 +1,37 @@
 package net.stemmaweb.services;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.PathExpanders;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
 import net.stemmaweb.model.AlignmentModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.*;
-
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public class VariantGraphService {
 
@@ -156,8 +175,10 @@ public class VariantGraphService {
      */
     public static Node getTraditionNode(Node section) {
         Node tradition;
-        GraphDatabaseService db = section.getGraphDatabase();
+//        GraphDatabaseService db = section.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
+        	section = tx.getNodeByElementId(section.getElementId());
             tradition = section.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
             tx.close();
         }
@@ -170,7 +191,8 @@ public class VariantGraphService {
      * @param sectionNode - The section for which to perform the calculation
      */
     public static void calculateCommon(Node sectionNode) {
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
+//        GraphDatabaseService db = sectionNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         // Get an AlignmentModel for the given section, and go rank by rank to find
         // the common nodes.
         AlignmentModel am = new AlignmentModel(sectionNode);
@@ -216,7 +238,8 @@ public class VariantGraphService {
 
     public static HashMap<Node,Node> normalizeGraph(Node sectionNode, String normalizeType) throws Exception {
         HashMap<Node,Node> representatives = new HashMap<>();
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
+//        GraphDatabaseService db = sectionNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         // Make sure the relation type exists
         Node tradition = getTraditionNode(sectionNode);
         Node relType = new RelationTypeModel(normalizeType).lookup(tradition);
@@ -287,7 +310,8 @@ public class VariantGraphService {
      */
 
     public static void clearNormalization(Node sectionNode) throws Exception {
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
+//        GraphDatabaseService db = sectionNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             Node sectionStartNode = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
             sectionStartNode.removeProperty("ncommon");
@@ -339,7 +363,8 @@ public class VariantGraphService {
         }
 
         // Now make the relations between them
-        GraphDatabaseService db = sectionNode.getGraphDatabase();
+//        GraphDatabaseService db = sectionNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         ArrayList<Node> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             // Go through the alignment model rank by rank, finding the majority reading for each rank
@@ -480,7 +505,8 @@ public class VariantGraphService {
     @SuppressWarnings("rawtypes")
     private static Traverser returnTraverser (Node startNode, Evaluator ev, PathExpander ex) {
         Traverser tv;
-        GraphDatabaseService db = startNode.getGraphDatabase();
+//        GraphDatabaseService db = startNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             tv = tx.traversalDescription()
                     .depthFirst()

@@ -23,6 +23,7 @@ import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.internal.helpers.collection.Iterables;
 
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
@@ -330,13 +331,15 @@ public class ReadingService {
         // the related-reading clusters.
         RankCalcEvaluate(Node startNode, Boolean recalculateAll) throws Exception {
             // Get the list of colocated nodes in this section.
-            GraphDatabaseService db = startNode.getGraphDatabase();
-            String sectionId = String.valueOf(startNode.getProperty("section_id"));
+//            GraphDatabaseService db = startNode.getGraphDatabase();
+        	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        	String sectionId = String.valueOf(startNode.getProperty("section_id"));
             Transaction tx = db.beginTx();
             String tradId = tx.getNodeByElementId(sectionId)
                     .getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
                     .getProperty("id").toString();
-            this.colocatedNodes = buildColocationLookup(tradId, sectionId, startNode.getGraphDatabase());
+//            this.colocatedNodes = buildColocationLookup(tradId, sectionId, startNode.getGraphDatabase());
+            this.colocatedNodes = buildColocationLookup(tradId, sectionId, db);
             this.recalculateAll = recalculateAll;
             tx.close();
         }
@@ -404,7 +407,8 @@ public class ReadingService {
     public static Set<Node> recalculateRank (Node startNode, boolean recalculateAll) throws Exception {
         RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll);
         AlignmentTraverse a = new AlignmentTraverse(startNode);
-        GraphDatabaseService db = startNode.getGraphDatabase();
+//        GraphDatabaseService db = startNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         Transaction tx = db.beginTx();
 
         // Traverse the sequence graph from our start node, putting a mark on
@@ -494,7 +498,7 @@ public class ReadingService {
         }
 
         @Override
-        public ResourceIterable expand(Path path, BranchState state) {
+        public ResourceIterable<Relationship> expand(Path path, BranchState state) {
             return expansion(path, Direction.OUTGOING);
         }
 
@@ -514,18 +518,14 @@ public class ReadingService {
             };
         }
 
-        private Iterable<Relationship> expansion(Path path, Direction dir) {
+        private ResourceIterable<Relationship> expansion(Path path, Direction dir) {
             ArrayList<Relationship> relevantRelations = new ArrayList<>();
             // Get the sequence relationships
             for (Relationship relationship : path.endNode()
                     .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED))
                 relevantRelations.add(relationship);
-            // Get the alignment relationships and filter them
-            for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
-                if (includeRelationTypes.contains(r.getProperty("type").toString()))
-                    relevantRelations.add(r);
-            }
-            return relevantRelations;
+
+            return Iterables.resourceIterable(relevantRelations);
         }
     }
 
@@ -563,7 +563,8 @@ public class ReadingService {
      * @return - true or false
      */
     public static boolean wouldGetCyclic(Node firstReading, Node secondReading) throws Exception {
-        GraphDatabaseService db = firstReading.getGraphDatabase();
+//        GraphDatabaseService db = firstReading.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         Transaction tx = db.beginTx();
         // Get our list of colocations
         Node sectionNode = tx.getNodeByElementId(firstReading.getProperty("section_id").toString());

@@ -1,18 +1,33 @@
 package net.stemmaweb.services;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.ws.rs.core.Response;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Result;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.Evaluation;
-import org.neo4j.graphdb.traversal.Evaluator;
-
-import javax.ws.rs.core.Response;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 
@@ -68,7 +83,8 @@ public class RelationService {
      * @throws Exception - if the tradition node can't be determined from the referenceNode
      */
     public static List<RelationTypeModel> ourRelationTypes(Node referenceNode) throws Exception {
-        GraphDatabaseService db = referenceNode.getGraphDatabase();
+//        GraphDatabaseService db = referenceNode.getGraphDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         List<RelationTypeModel> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             // Find the tradition node
@@ -190,7 +206,8 @@ public class RelationService {
         if (alternatives.size() == 1) return ref;
 
         // It's not trivial
-        db = ref.getGraphDatabase();
+//        db = ref.getGraphDatabase();
+    	db = new GraphDatabaseServiceProvider().getDatabase();
         Node representative = null;
         // Go through the alternatives
         try (Transaction tx = db.beginTx()) {

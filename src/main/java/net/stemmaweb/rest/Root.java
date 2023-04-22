@@ -277,7 +277,7 @@ public class Root {
                 traditionNode.setProperty("language", language);
             if (isPublic != null)
                 traditionNode.setProperty("is_public", isPublic.equals("true"));
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -298,7 +298,7 @@ public class Root {
                 throw new Exception("There is no tradition with ID " + tradId + "!");
             }
             userNode.createRelationshipTo(traditionNode, ERelations.OWNS_TRADITION);
-            tx.close();
+            tx.commit();
         }
     }
 }

@@ -1,23 +1,30 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.Util;
-
-import org.glassfish.jersey.test.JerseyTest;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+
+import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.graphdb.GraphDatabaseService;
+
+import junit.framework.TestCase;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.Witness;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Test the CollateX parser
@@ -30,7 +37,8 @@ public class CollateXInputTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	db = new GraphDatabaseServiceProvider((String) null).getDatabase();
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -169,7 +177,8 @@ public class CollateXInputTest extends TestCase {
     }
 
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
         super.tearDown();
     }

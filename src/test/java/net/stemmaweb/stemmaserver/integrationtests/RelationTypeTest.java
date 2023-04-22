@@ -11,11 +11,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import junit.framework.TestCase;
 import net.stemmaweb.model.GraphModel;
@@ -24,12 +25,12 @@ import net.stemmaweb.model.ReadingChangePropertyModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.Util;
 
 public class RelationTypeTest extends TestCase {
     private GraphDatabaseService db;
     private JerseyTest jerseyTest;
+    private DatabaseManagementService dbbuilder;
 
     private String tradId;
     private HashMap<String,String> readingLookup;
@@ -37,7 +38,10 @@ public class RelationTypeTest extends TestCase {
 
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -517,7 +521,10 @@ public class RelationTypeTest extends TestCase {
     }
 
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
         jerseyTest.tearDown();
         super.tearDown();
     }

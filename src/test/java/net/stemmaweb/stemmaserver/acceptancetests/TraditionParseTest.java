@@ -1,6 +1,33 @@
 package net.stemmaweb.stemmaserver.acceptancetests;
 
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
+import org.glassfish.jersey.media.multipart.FormDataBodyPart;
+import org.glassfish.jersey.media.multipart.FormDataMultiPart;
+import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
@@ -10,44 +37,10 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
 import net.stemmaweb.stemmaserver.Util;
-
-import org.glassfish.jersey.media.multipart.FormDataBodyPart;
-import org.glassfish.jersey.media.multipart.FormDataMultiPart;
-import org.glassfish.jersey.test.JerseyTest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import javax.ws.rs.client.Entity;
-
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
-import org.neo4j.test.TestGraphDatabaseFactory;
-
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.Assert.*;
-import static org.junit.Assume.assumeTrue;
 
 /**
  * Try parsing all the traditions from the live database.
@@ -56,12 +49,17 @@ import static org.junit.Assume.assumeTrue;
 public class TraditionParseTest extends TestCase {
 
     private GraphDatabaseService db;
+    private DatabaseManagementService dbbuilder;
     
     private JerseyTest jerseyTest;
 
+
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+        dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+        dbbuilder.createDatabase("stemmatest");
+        db = dbbuilder.database("stemmatest");
 
         // Create a root node and test user
         DatabaseService.createRootNode(db);
@@ -200,7 +198,10 @@ public class TraditionParseTest extends TestCase {
     */
 
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
         jerseyTest.tearDown();
         super.tearDown();
     }

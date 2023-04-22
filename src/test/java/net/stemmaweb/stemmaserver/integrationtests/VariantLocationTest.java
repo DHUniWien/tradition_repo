@@ -1,28 +1,45 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.stemmaserver.Util;
-import org.glassfish.jersey.test.JerseyTest;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.*;
-import java.util.stream.Collectors;
+
+import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+
+import junit.framework.TestCase;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ReadingBoundaryModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.VariantListModel;
+import net.stemmaweb.model.VariantLocationModel;
+import net.stemmaweb.model.VariantModel;
+import net.stemmaweb.stemmaserver.Util;
 
 public class VariantLocationTest extends TestCase {
 
     private JerseyTest jerseyTest;
     private GraphDatabaseService db;
+	private DatabaseManagementService dbbuilder;
 
     public void setUp() throws Exception {
         super.setUp();
-        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+//        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	db = dbbuilder.database("stemmatest");
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -371,7 +388,10 @@ public class VariantLocationTest extends TestCase {
     }
 
     public void tearDown() throws Exception {
-        db.shutdown();
+//        db.shutdown();
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(db.databaseName());
+    	}
         jerseyTest.tearDown();
         super.tearDown();
     }

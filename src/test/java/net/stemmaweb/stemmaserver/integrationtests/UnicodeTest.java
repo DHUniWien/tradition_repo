@@ -7,11 +7,12 @@ import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestGraphDatabaseFactory;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import net.stemmaweb.rest.ERelations;
 
@@ -25,10 +26,14 @@ import net.stemmaweb.rest.ERelations;
 public class UnicodeTest {
 
     private GraphDatabaseService graphDb;
+	private DatabaseManagementService dbbuilder;
 
     @Before
     public void prepareTestDatabase() {
-        graphDb = new TestGraphDatabaseFactory().newImpermanentDatabase();
+//        graphDb = new TestGraphDatabaseFactory().newImpermanentDatabase();
+    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
+    	dbbuilder.createDatabase("stemmatest");
+    	graphDb = dbbuilder.database("stemmatest");
         // create a new Graph Database
     }
 
@@ -202,6 +207,9 @@ public class UnicodeTest {
 
     @After
     public void destroyTestDatabase() {
-        graphDb.shutdown();    // destroy the test database
+//        graphDb.shutdown();    // destroy the test database
+    	if (dbbuilder != null) {
+    		dbbuilder.shutdownDatabase(graphDb.databaseName());
+    	}
     }
 }

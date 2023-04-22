@@ -272,7 +272,7 @@ public class Tradition {
         // Make a new section node to connect to the tradition in question.
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-        Node sectionNode = createNewSection(traditionNode, sectionName);
+        Node sectionNode = createNewSection(traditionNode.getElementId(), sectionName);
         if (sectionNode == null)
             return Response.serverError().entity(jsonerror("Error creating new section node on tradition")).build();
 
@@ -306,15 +306,16 @@ public class Tradition {
 
 
     // utility method for creating a new section on a tradition
-    private static Node createNewSection(Node traditionNode, String sectionName) {
+    private static Node createNewSection(String traditionNodeId, String sectionName) {
         Node sectionNode;
 //        GraphDatabaseService db = traditionNode.getGraphDatabase();
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             sectionNode = tx.createNode(Nodes.SECTION);
+            Node traditionNode = tx.getNodeByElementId(traditionNodeId); 
             sectionNode.setProperty("name", sectionName);
             traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -337,7 +338,7 @@ public class Tradition {
         // All parsers except GraphML expect a section node; create it here if we are not adding a
         // section to an existing tradition.
         if (!addSingleSection && !filetype.startsWith("graphml")) {
-            Node sectionNode = createNewSection(parentNode, "DEFAULT");
+            Node sectionNode = createNewSection(parentNode.getElementId(), "DEFAULT");
             if (sectionNode == null)
                 return Response.serverError()
                         .entity(jsonerror("Error creating new section node on tradition")).build();

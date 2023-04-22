@@ -28,6 +28,7 @@
 				<artifactId>maven-war-plugin</artifactId>
 				<version>3.3.1</version>
 			</plugin>
+<!--
 			<plugin>
                 <groupId>com.qmino</groupId>
                 <artifactId>miredot-plugin</artifactId>
@@ -60,7 +61,7 @@
                             <intro>build/docintro.html</intro>
                         </html>
                     </output>
-                    <!-- insert other configuration here (optional) -->
+                    <!__ insert other configuration here (optional) __>
                 </configuration>
             </plugin>
 			<plugin>
@@ -84,6 +85,7 @@
 					</arguments>
 				</configuration>
 			</plugin>
+ -->
 		</plugins>
 	</build>
 	<dependencies>
@@ -305,11 +307,20 @@
 			<groupId>org.neo4j.community</groupId>
 			<artifactId>it-test-support</artifactId>
 			<version>${neo4j-version}</version>
+<!--
 			<scope>test</scope>
+ -->
 		</dependency>
 		<dependency>
 			<groupId>org.neo4j</groupId>
 			<artifactId>neo4j-io</artifactId>
+			<version>${neo4j-version}</version>
+			<type>test-jar</type>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.neo4j.test</groupId>
+			<artifactId>neo4j-harness</artifactId>
 			<version>${neo4j-version}</version>
 			<type>test-jar</type>
 			<scope>test</scope>
