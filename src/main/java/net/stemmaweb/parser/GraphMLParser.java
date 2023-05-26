@@ -136,12 +136,13 @@ public class GraphMLParser {
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), dataInfo);
         }
 
-        // Get the tradition node
-        Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode) : parentNode;
         String parentId;
 
         // Now get to work with node and relationship creation.
         try (Transaction tx = db.beginTx()) {
+        	parentNode = tx.getNodeByElementId(parentNode.getElementId());
+        	// Get the tradition node
+        	Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode, tx) : parentNode;
             // The UUID of the tradition node that was passed in to receive the parsed data
             String tradId = traditionNode.getProperty("id").toString();
             // The Neo4J node that contains our section, if we are parsing a section

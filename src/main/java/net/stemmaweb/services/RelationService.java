@@ -87,6 +87,8 @@ public class RelationService {
     	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         List<RelationTypeModel> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
+        	// Must be under control of the same transaction!
+        	referenceNode = tx.getNodeByElementId(referenceNode.getElementId());
             // Find the tradition node
             Node traditionNode = null;
             if (referenceNode.hasLabel(Nodes.TRADITION))

@@ -46,14 +46,20 @@ public class DatabaseService {
      * @return a list of all nodes related to startNode by the given relationship
      */
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
-        ArrayList<Node> result = new ArrayList<>();
 //        GraphDatabaseService db = startNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+    	ArrayList<Node> result = null;
         try (Transaction tx = db.beginTx()) {
-            Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
-            allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
-            tx.close();
+        	result = getRelated(startNode, relType, tx);
+        	tx.close();
         }
+        return result;
+    }
+    public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType, Transaction tx) {
+        ArrayList<Node> result = new ArrayList<>();
+    	Node startNode2 = tx.getNodeByElementId(startNode.getElementId());
+        Iterator<Relationship> allRels = startNode2.getRelationships(relType).iterator();
+        allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode2)));
         return result;
     }
 

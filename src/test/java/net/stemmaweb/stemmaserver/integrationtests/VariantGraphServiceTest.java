@@ -63,7 +63,7 @@ public class VariantGraphServiceTest {
     @Test
     public void getStartNodeTest() {
         try (Transaction tx = db.beginTx()) {
-            Node startNode = VariantGraphService.getStartNode(traditionId, db);
+            Node startNode = VariantGraphService.getStartNode(traditionId, db, tx);
             assertNotNull(startNode);
             assertEquals("#START#", startNode.getProperty("text"));
             assertEquals(true, startNode.getProperty("is_start"));
@@ -74,7 +74,7 @@ public class VariantGraphServiceTest {
     @Test
     public void getEndNodeTest() {
         try (Transaction tx = db.beginTx()) {
-            Node endNode = VariantGraphService.getEndNode(traditionId, db);
+            Node endNode = VariantGraphService.getEndNode(traditionId, db, tx);
             assertNotNull(endNode);
             assertEquals("#END#", endNode.getProperty("text"));
             assertEquals(true, endNode.getProperty("is_end"));

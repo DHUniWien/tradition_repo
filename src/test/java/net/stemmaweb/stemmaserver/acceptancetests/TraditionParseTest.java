@@ -156,10 +156,10 @@ public class TraditionParseTest extends TestCase {
 
             // Number of sequence edges
             // Do this with a traversal.
-            Node startNode = VariantGraphService.getStartNode(tm.getId(), db);
-            assertNotNull(startNode);
             AtomicInteger foundEdges = new AtomicInteger(0);
             try (Transaction tx = db.beginTx()) {
+            	Node startNode = VariantGraphService.getStartNode(tm.getId(), db, tx);
+            	assertNotNull(startNode);
                 tx.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                         .evaluator(Evaluators.all())

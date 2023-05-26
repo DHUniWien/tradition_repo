@@ -198,9 +198,9 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of sequence paths. Do this with a traversal.
         AtomicInteger sequenceCount = new AtomicInteger(0);
-        Node startNode = VariantGraphService.getStartNode(traditionId, db);
-        assertNotNull(startNode);
         try (Transaction tx = db.beginTx()) {
+        	Node startNode = VariantGraphService.getStartNode(traditionId, db);
+        	assertNotNull(startNode);
             tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())
@@ -382,9 +382,9 @@ public class StemmawebInputOutputTest {
 
         // Check for the correct number of sequence paths. Do this with a traversal.
         AtomicInteger sequenceCount = new AtomicInteger(0);
-        Node startNode = VariantGraphService.getStartNode(traditionId, db);
-        assertNotNull(startNode);
         try (Transaction tx = db.beginTx()) {
+        	Node startNode = VariantGraphService.getStartNode(traditionId, db);
+        	assertNotNull(startNode);
             tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .evaluator(Evaluators.all())

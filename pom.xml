@@ -224,6 +224,11 @@
 		</dependency>
 		<dependency>
 			<groupId>org.neo4j</groupId>
+			<artifactId>neo4j-common</artifactId>
+			<version>${neo4j-version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.neo4j</groupId>
 			<artifactId>graph-algorithms-core</artifactId>
 			<version>${neo4j-algo-version}</version>
 		</dependency>
@@ -332,7 +337,7 @@
 		</dependency>
 	</dependencies>
 	<properties>
-		<neo4j-version>5.6.0</neo4j-version>
+		<neo4j-version>5.8.0</neo4j-version>
 		<neo4j-algo-version>3.5.4.0</neo4j-algo-version>
 		<jackson-version>2.12.7</jackson-version>
 		<jersey-version>2.34</jersey-version>

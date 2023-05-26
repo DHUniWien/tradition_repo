@@ -280,7 +280,7 @@ public class Section {
     List<ReadingModel> sectionReadings() {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node startNode = VariantGraphService.getStartNode(sectId, db);
+            Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
             if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
             tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
@@ -456,9 +456,9 @@ public class Section {
 
     private List<ReadingModel> collectLemmaReadings(Boolean followFinal, String startFrom, String endAt) {
         List<ReadingModel> result;
-        Node sectionStart = VariantGraphService.getStartNode(sectId, db);
-        Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
+        	Node sectionStart = VariantGraphService.getStartNode(sectId, db, tx);
+        	Node sectionEnd = VariantGraphService.getEndNode(sectId, db, tx);
             long startRank = Long.parseLong(startFrom);
             long endRank = endAt.equals("E")
                     ? Long.parseLong(sectionEnd.getProperty("rank").toString()) - 1
@@ -713,11 +713,11 @@ public class Section {
 
         Long rank = Long.valueOf(rankstr);
         // Get the reading(s) at the given rank, and at the prior rank
-        Node startNode = VariantGraphService.getStartNode(sectId, db);
-        Node sectionEnd = VariantGraphService.getEndNode(sectId, db);
         String newSectionId;
 
         try (Transaction tx = db.beginTx()) {
+        	Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
+        	Node sectionEnd = VariantGraphService.getEndNode(sectId, db, tx);
             Node thisSection = tx.getNodeByElementId(sectId);
 
             // Make sure we aren't just trying to split off the end node
@@ -892,10 +892,10 @@ public class Section {
                 secondSection = thisSection;
 
             // Move relationships from the old start & end nodes
-            Node oldEnd = VariantGraphService.getEndNode(firstSection.getElementId(), db);
-            Node oldStart = VariantGraphService.getStartNode(secondSection.getElementId(), db);
-            Node trueStart = VariantGraphService.getStartNode(firstSection.getElementId(), db);
-            Node trueEnd = VariantGraphService.getEndNode(secondSection.getElementId(), db);
+            Node oldEnd = VariantGraphService.getEndNode(firstSection.getElementId(), db, tx);
+            Node oldStart = VariantGraphService.getStartNode(secondSection.getElementId(), db, tx);
+            Node trueStart = VariantGraphService.getStartNode(firstSection.getElementId(), db, tx);
+            Node trueEnd = VariantGraphService.getEndNode(secondSection.getElementId(), db, tx);
 
             // Collect all readings from the second section and alter their section metadata
             final String keptId = firstSection.getElementId();
@@ -986,7 +986,7 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
-            ReadingService.recalculateRank(VariantGraphService.getStartNode(sectId, db), true);
+            ReadingService.recalculateRank(VariantGraphService.getStartNode(sectId, db, tx), true);
             tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1247,8 +1247,8 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node startNode = VariantGraphService.getStartNode(sectId, db);
-            Node endNode = VariantGraphService.getEndNode(sectId, db);
+            Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
+            Node endNode = VariantGraphService.getEndNode(sectId, db, tx);
             // Delete any existing lemma text links
             Iterable<Relationship> lemmaLinks = tx.traversalDescription().depthFirst()
                     .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)

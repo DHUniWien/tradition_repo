@@ -8,10 +8,10 @@ import org.neo4j.common.DependencyResolver.SelectionStrategy;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
 import org.neo4j.exceptions.KernelException;
+import org.neo4j.graphalgo.UnionFindProc;
 //import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
-//import org.neo4j.kernel.impl.proc.Procedures;
-import org.neo4j.internal.kernel.api.Procedures;
+import org.neo4j.kernel.api.procedure.GlobalProcedures;
 //import org.neo4j.internal.kernel.api.exceptions.KernelException;
 import org.neo4j.kernel.internal.GraphDatabaseAPI;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
@@ -50,8 +50,8 @@ public class GraphDatabaseServiceProvider {
     			db = dbService.database(config.toString());
     		else
     			db = dbService.database("stemma");
-    		registerExtensions();
     	}
+    	registerExtensions();
 
     }
 
@@ -70,8 +70,8 @@ public class GraphDatabaseServiceProvider {
         GraphDatabaseAPI api = (GraphDatabaseAPI) db;
         // See if our procedure is already registered
         api.getDependencyResolver()
-                .resolveDependency(Procedures.class, SelectionStrategy.SINGLE)
-/* TODO               .registerProcedure(UnionFindProc.class, true)*/;
+                .resolveDependency(GlobalProcedures.class, SelectionStrategy.SINGLE)
+                .registerProcedure(UnionFindProc.class, true);
     }
     
     public static void shutdown() {

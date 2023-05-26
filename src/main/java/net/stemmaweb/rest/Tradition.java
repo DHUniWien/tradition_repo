@@ -212,7 +212,8 @@ public class Tradition {
     private ArrayList<SectionModel> produceSectionList (Node traditionNode) {
         ArrayList<SectionModel> sectionList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
+        	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
+            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART, tx);
             int depth = sectionNodes.size();
             if (depth > 0) {
                 for(Node n: sectionNodes) {
@@ -436,7 +437,7 @@ public class Tradition {
 
         try (Transaction tx = db.beginTx()) {
             for (SectionModel sm : smlist) {
-                ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), db), true);
+                ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), db, tx), true);
             }
             tx.close();
         } catch (Exception e) {
@@ -827,9 +828,9 @@ public class Tradition {
     @DELETE
     @ReturnType("java.lang.Void")
     public Response deleteTraditionById() {
-        Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db);
-        if (foundTradition != null) {
-            try (Transaction tx = db.beginTx()) {
+        try (Transaction tx = db.beginTx()) {
+        	Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db, tx);
+        	if (foundTradition != null) {
                 /*
                  * Find all the nodes and relations to remove
                  */
@@ -847,15 +848,15 @@ public class Tradition {
                 removableRelations.forEach(Relationship::delete);
                 removableNodes.forEach(Node::delete);
                 tx.commit();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            } else {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .type(MediaType.APPLICATION_JSON)
+                        .entity(jsonerror("A tradition with this id was not found!"))
+                        .build();
             }
-        } else {
-            return Response.status(Response.Status.NOT_FOUND)
-                    .type(MediaType.APPLICATION_JSON)
-                    .entity(jsonerror("A tradition with this id was not found!"))
-                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         return Response.ok().build();

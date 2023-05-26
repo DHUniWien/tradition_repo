@@ -78,10 +78,14 @@ public class DotExporter
         }
 
         // Get the list of section nodes
-        ArrayList<Node> sections = VariantGraphService.getSectionNodes(tradId, db);
+        ArrayList<Node> sections;
         File output;
         String result;
         try (Transaction tx = db.beginTx()) {
+        	sections = VariantGraphService.getSectionNodes(tradId, db, tx);
+        	traditionNode = VariantGraphService.getTraditionNode(tradId, db, tx);
+        	startNode = VariantGraphService.getStartNode(tradId, db, tx);
+        	endNode = VariantGraphService.getEndNode(tradId, db, tx);
             output = File.createTempFile("graph_", ".dot");
             out = new FileOutputStream(output);
 
@@ -129,8 +133,8 @@ public class DotExporter
                 if (dm.getExcludeWitnesses().size() > 0) {
                     numWits -= dm.getExcludeWitnesses().size();
                 }
-                Node sectionStartNode = VariantGraphService.getStartNode(sectionNode.getElementId(), db);
-                Node sectionEndNode = VariantGraphService.getEndNode(sectionNode.getElementId(), db);
+                Node sectionStartNode = VariantGraphService.getStartNode(sectionNode.getElementId(), db, tx);
+                Node sectionEndNode = VariantGraphService.getEndNode(sectionNode.getElementId(), db, tx);
                 // If we have requested a section, then that section's start and end are "the" start and end
                 // for the whole graph.
                 if (sectionId != null) {

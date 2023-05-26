@@ -327,7 +327,7 @@ public class StemmawebParser {
             }
 
             // Re-rank the entire tradition
-            Node sectionStart = VariantGraphService.getStartNode(parentNode.getElementId(), db);
+            Node sectionStart = VariantGraphService.getStartNode(parentNode.getElementId(), db, tx);
             ReadingService.recalculateRank(sectionStart, true);
             // Calculate the common nodes; don't trust the old format for this.
             VariantGraphService.calculateCommon(parentNode);
@@ -336,7 +336,7 @@ public class StemmawebParser {
             witnesses.keySet().forEach(x -> Util.findOrCreateExtant(traditionNode, x));
             // Set colocation information on relation types
             Util.setColocationFlags(traditionNode);
-            tx.close();
+            tx.commit();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch(Exception e) {

@@ -70,6 +70,7 @@ public class GraphMLInputOutputTest extends TestCase {
         Response r = Util.createTraditionFromFileOrString(jerseyTest, "Tradition",
                     "BI", "me@example.org", "src/TestFiles/testTradition.xml", "stemmaweb");
         tradId = Util.getValueFromJson(r, "tradId");
+//        assertNotNull(tradId);
 
         // Try our own medicine
         r = Util.createTraditionFromFileOrString(jerseyTest, "Multi-section tradition",
