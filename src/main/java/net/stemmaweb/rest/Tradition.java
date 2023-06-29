@@ -6,6 +6,7 @@ import com.qmino.miredot.annotations.ReturnType;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
+import net.stemmaweb.exporter.TEIExporter;
 import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.parser.*;
@@ -20,6 +21,9 @@ import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.stream.XMLStreamException;
+
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -841,6 +845,48 @@ public class Tradition {
 
         TraditionModel metadata = new TraditionModel(traditionNode);
         return Response.ok(metadata).build();
+    }
+
+    /**
+     * Returns a TEI double-endpoint-attachment file representing the section text.
+     *
+     * @title Download character matrix for parsimony analysis
+     * @param significant   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeType1  - If "true", exclude type-1 (singleton) variants
+     * @param excludeNonsense - If "true", suppress any variants marked with the is_nonsense property
+     * @param combine - If "true", move dislocated (e.g. transposed) variants to their matching base
+     * @param suppressMatching - A regular expression; all variants matching this will be suppressed in
+     *                         the apparatus. Default is to suppress all punctuation.
+     * @param baseWitness - A witness sigil, or the string "majority" or "lemma", to indicate what text to
+     *                    use as the base text in the apparatus.
+     * @param conflate - A relation type to normalize on
+     * @param excWitnesses - A witness to exclude from the apparatus. Can be specified multiple times.
+     * @return the character matrix as plaintext
+     */
+    @GET
+    @Produces("application/xml; charset=utf-8")
+    @Path("/tei")
+    public Response getTei(@DefaultValue("no") @QueryParam("significant") String significant,
+                           @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
+                           @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
+                           @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
+                           @DefaultValue("punct") @QueryParam("suppress_matching") String suppressMatching,
+                           @QueryParam("base_witness") String baseWitness,
+                           @QueryParam("normalize") String conflate,
+                           @QueryParam("exclude_witness") List<String> excWitnesses) {
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
+
+        TEIExporter exp = new TEIExporter();
+        try {
+            return exp.writeTEI(traditionId, null, null, baseWitness, excWitnesses, conflate,
+                    suppressMatching, Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1),
+                    significant, Boolean.getBoolean(combine));
+        } catch (XMLStreamException | IOException e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
     }
 
     /**

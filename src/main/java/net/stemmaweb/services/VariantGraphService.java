@@ -303,7 +303,7 @@ public class VariantGraphService {
             tx.success();
         }
     }
-
+    
     /**
      * Return a list of nodes which constitutes the majority text for a section.
      *
@@ -347,7 +347,6 @@ public class VariantGraphService {
 
     /**
      * Collect all annotations, recursively, on the set of nodes that has been passed in.
-     *
      *
      * @return The annotation nodes that point (ultimately) to the nodes in question
      */
