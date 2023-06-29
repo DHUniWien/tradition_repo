@@ -303,6 +303,58 @@ public class VariantGraphService {
             tx.success();
         }
     }
+    
+    /**
+     * Method to get the base text of a section. The method expects an empty list of Relationship, to which
+     * base text nodes will be added. The method returns what type of base text is being generated:
+     * using the passed base witness, using lemma, or calculating the majority text.
+     * @param sectionNode The section node for which the base text should be generated.
+     * @param baseWitness If a specific witness should be used as base text, it should be passed here.
+     * @param follow
+     * @param baseText
+     * @return
+     */
+    public static String getBaseText(Node sectionNode, Node startNode, String baseWitness, RelationshipType follow,
+            List<Relationship> baseText) {
+        GraphDatabaseService db = sectionNode.getGraphDatabase();
+        try (Transaction tx = db.beginTx()) {
+            String basisText;
+            TraversalDescription baseWalker = db.traversalDescription().depthFirst();
+
+            if (baseWitness != null) {
+                // We use the requested witness text, which is connected via SEQUENCE or
+                // NSEQUENCE links and so unproblematic.
+                baseWalker = baseWalker.evaluator(new WitnessPath(baseWitness, follow).getEvalForWitness());
+                baseText.addAll(baseWalker.traverse(startNode).relationships().stream().collect(Collectors.toList()));
+                basisText = baseWitness;
+            } else {
+                // We collect the readings, but count their SEQUENCE or NSEQUENCE links in the
+                // base text.
+                List<Node> baseReadings;
+                if (startNode.hasRelationship(ERelations.LEMMA_TEXT, Direction.OUTGOING)) {
+                    // We traverse the lemma text
+                    baseWalker = baseWalker.relationships(ERelations.LEMMA_TEXT);
+                    baseReadings = baseWalker.traverse(startNode).nodes().stream().collect(Collectors.toList());
+                    basisText = "lemma";
+                } else {
+                    // We calculate and use the majority text
+                    baseReadings = VariantGraphService.calculateMajorityText(sectionNode);
+                    basisText = "majority";
+                }
+                Node prior = baseReadings.remove(0);
+                for (Node curr : baseReadings) {
+                    prior.getRelationships(follow, Direction.OUTGOING).forEach(x -> {
+                        if (x.getEndNode().equals(curr))
+                            baseText.add(x);
+                    });
+                    prior = curr;
+                }
+            }
+            tx.success();
+            return basisText;
+        }
+
+    }
 
     /**
      * Return a list of nodes which constitutes the majority text for a section.
