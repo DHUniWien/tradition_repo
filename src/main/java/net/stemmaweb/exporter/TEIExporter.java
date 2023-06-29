@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,6 +45,23 @@ import net.stemmaweb.services.VariantGraphService;
 public class TEIExporter {
 	private final GraphDatabaseService db = (new GraphDatabaseServiceProvider()).getDatabase();
 
+	private static String writeRespStatement(XMLStreamWriter writer, Map<String, String> extraParams, String tag) {
+		AtomicReference<String> errorMsg = new AtomicReference<>();
+		errorMsg.set("");
+		extraParams.keySet().stream().filter(x -> x.startsWith(tag)).forEach(x -> {
+			String[] parts = x.split(":", 1);
+			try {
+				writer.writeStartElement("respStmt");
+				writer.writeStartElement(parts[1]);
+				writer.writeCharacters(extraParams.get(x));
+				writer.writeEndElement();
+			} catch (XMLStreamException e) {
+				e.printStackTrace();
+				errorMsg.set(e.getMessage());
+			}
+		});
+		return errorMsg.get();
+	}
 	private void writeTEIHeader(XMLStreamWriter writer, Map<String, String> extraParams) throws XMLStreamException {
 		// Get the information that is in the tradition node
 		writer.writeStartElement("teiHeader");
@@ -63,22 +80,9 @@ public class TEIExporter {
 			}
 		}
 		// Handle the resp keywords
-		AtomicReference<String> errorMsg = new AtomicReference<>();
-		errorMsg.set("");
-		extraParams.keySet().stream().filter(x -> x.startsWith("tresp:")).forEach(x -> {
-			String[] parts = x.split(":", 1);
-			try {
-				writer.writeStartElement("respStmt");
-				writer.writeStartElement(parts[1]);
-				writer.writeCharacters(extraParams.get(x));
-				writer.writeEndElement();
-			} catch (XMLStreamException e) {
-				e.printStackTrace();
-				errorMsg.set(e.getMessage());
-			}
-		});
-		if (!errorMsg.toString().equals(""))
-			throw new XMLStreamException(errorMsg.toString());
+		String errorMsg = writeRespStatement(writer, extraParams, "tresp:");
+		if (!errorMsg.equals(""))
+			throw new XMLStreamException(errorMsg);
 		writer.writeEndElement(); // titleStmt
 
 		// Now do the publication statement
@@ -97,19 +101,9 @@ public class TEIExporter {
 				writer.writeEndElement();
 			}
 		}
-		errorMsg.set("");
-		extraParams.keySet().stream().filter(x -> x.startsWith("presp:")).forEach(x -> {
-			String[] parts = x.split(":", 1);
-			try {
-				writer.writeStartElement("respStmt");
-				writer.writeStartElement(parts[1]);
-				writer.writeCharacters(extraParams.get(x));
-				writer.writeEndElement();
-			} catch (XMLStreamException e) {
-				e.printStackTrace();
-				errorMsg.set(e.getMessage());
-			}
-		});
+		errorMsg = writeRespStatement(writer, extraParams, "presp:");
+		if (!errorMsg.equals(""))
+			throw new XMLStreamException(errorMsg);
 		writer.writeEndElement(); // publicationStmt
 
 		// note double-end-point attachment format
@@ -195,12 +189,12 @@ public class TEIExporter {
 	 *
 	 * @return a Response containing an XML string that represents the requested
 	 *         tradition/section
-	 * @throws XMLStreamException
-	 * @throws IOException
+	 * @throws XMLStreamException passed through from XMLWriter
+	 * @throws IOException passed through from FileUtils
 	 */
-	public Response writeTEI(String tradId, String sectionId, Map<String, String> extraParams, String baseWitness, List<String> excludeWitnesses, String conflate,
-            String suppress, Boolean filterNonsense, Boolean filterTypeOne, String significant,
-            Boolean combine)
+	public Response writeTEI(String tradId, String sectionId, Map<String, String> extraParams, String baseWitness,
+							 List<String> excludeWitnesses, String conflate, String suppress, Boolean filterNonsense,
+							 Boolean filterTypeOne, String significant, Boolean combine)
 			throws XMLStreamException, IOException {
 		Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
 		if (traditionNode == null)
@@ -243,42 +237,37 @@ public class TEIExporter {
 			// Start chaining the text together
 			writer.writeStartElement("text");
 			ArrayList<Node> sectionList = new ArrayList<>();
-			Node sectionNode = null;
 			if (sectionId != null) {
-				sectionNode = db.getNodeById(Long.parseLong(sectionId));
+				Node sectionNode = db.getNodeById(Long.parseLong(sectionId));
 				sectionList.add(sectionNode);				
 			} else {
 				// get sections of traditions
 				sectionList = VariantGraphService.getSectionNodes(tradId, db);
 			}
-			
-			// this will raise a null pointer if there is no section
-			// TODO: for traditions this needs to be fixed
-			VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate, suppress, filterNonsense, filterTypeOne,
-					significant, combine);
-			
-			List<ReadingModel> baseReadingChain = getBaseReadingChain(baseWitness, sectionNode);
-            
-            // get section witnesses
-            SectionModel sectionModel = new SectionModel(sectionNode);
-			String sectionWitnesses = 
-					String.join(" ", sectionModel.getWitnesses()
-					.stream().map(w -> "#" + w)
-					.collect(Collectors.toList()));
-			
-			
+
 			writer.writeStartElement("body");
-			
-			// list witnesses in section
-			writeWitnesses(writer, sectionWitnesses, "AppStart");
-			
-			if (vlocs != null) {
+			// Iterate through the list of section nodes and create the text section by section
+			for (Node sectionNode : sectionList) {
+				VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate,
+						suppress, filterNonsense, filterTypeOne, significant, combine);
+
+				List<ReadingModel> baseReadingChain = vlocs.getBaseReadings();
+
+				// get section witnesses
+				SectionModel sectionModel = new SectionModel(sectionNode);
+				String sectionWitnesses =
+						sectionModel.getWitnesses()
+								.stream().map(w -> "#" + w)
+								.collect(Collectors.joining(" "));
+
+				// list witnesses in section
+				writeWitnesses(writer, sectionWitnesses, "AppStart");
 				writeText(writer, vlocs, baseReadingChain);
+
+				// list end of witnesses in section
+				writeWitnesses(writer, sectionWitnesses, "AppEnd");
 			}
-			
-			// list end of witnesses in section
-			writeWitnesses(writer, sectionWitnesses, "AppEnd");
-			
+
 			writer.writeEndElement(); // end body
 
 			writer.writeEndElement(); // end text
@@ -296,7 +285,7 @@ public class TEIExporter {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(createXmlError(msg)).build();
 		}
 
-		return Response.ok(FileUtils.readFileToString(file, Charset.forName("UTF-8")), MediaType.APPLICATION_XML_TYPE)
+		return Response.ok(FileUtils.readFileToString(file, StandardCharsets.UTF_8), MediaType.APPLICATION_XML_TYPE)
 				.build();
 	}
 
@@ -305,9 +294,10 @@ public class TEIExporter {
 	 * @param writer The XML writer object to use.
 	 * @param vlocs The {@link VariantListModel} holding all variants.
 	 * @param baseReadingChain A list of {@link ReadingModel}s holding the base text.
-	 * @throws XMLStreamException
+	 * @throws XMLStreamException passed on from XMLStreamWriter
 	 */
-	private void writeText(XMLStreamWriter writer, VariantListModel vlocs, List<ReadingModel> baseReadingChain) throws XMLStreamException {
+	private void writeText(XMLStreamWriter writer, VariantListModel vlocs, List<ReadingModel> baseReadingChain)
+			throws XMLStreamException {
 		long idCounter = 1;
 		
 		Iterator<VariantLocationModel> iterator = vlocs.getVariantlist().iterator();
@@ -316,7 +306,7 @@ public class TEIExporter {
 			variant = iterator.next();
 		}
 		ReadingModel prev = null;
-		PeekingIterator<ReadingModel> chainIterator = new PeekingIterator<ReadingModel>(baseReadingChain.iterator());
+		PeekingIterator<ReadingModel> chainIterator = new PeekingIterator<>(baseReadingChain.iterator());
 		while (chainIterator.hasNext()) {
 			ReadingModel baseReading = chainIterator.next();
 			if (variant != null && variant.getVariants() != null && variant.getVariants().size() > 0) {
@@ -370,15 +360,6 @@ public class TEIExporter {
 		}
 	}
 
-	private List<ReadingModel> getBaseReadingChain(String baseWitness, Node sectionNode) {
-		List<Relationship> baseReadings = new ArrayList<Relationship>();
-		VariantGraphService.getBaseText(sectionNode, sectionNode, baseWitness, ERelations.SEQUENCE, baseReadings);
-		
-		List<ReadingModel> baseChain = baseReadings.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
-		baseChain.add(0, new ReadingModel(baseReadings.get(0).getStartNode()));
-		return baseChain;
-	}
-
 	private void writeWitnesses(XMLStreamWriter writer, String sectionWitnesses, String id) throws XMLStreamException {
 		writer.writeStartElement("app");
 		writer.writeAttribute("id", id);
@@ -407,9 +388,9 @@ public class TEIExporter {
 			if (variant.getReadings() != null && variant.getReadings().size()> 0) {
 				for (ReadingModel variantReading : variant.getReadings()) {
 					writer.writeStartElement("rdg");
-					StringBuffer sigils = new StringBuffer();
+					StringBuilder sigils = new StringBuilder();
 					for (String sigil : variantReading.getWitnesses()) {
-						sigils.append("#" + sigil + " ");
+						sigils.append("#").append(sigil).append(" ");
 					}
 					writer.writeAttribute("wit", sigils.toString().trim());
 					writer.writeCharacters(variantReading.getText());
@@ -418,9 +399,9 @@ public class TEIExporter {
 			} else if (variant.getWitnesses().get("witnesses") != null && variant.getWitnesses().get("witnesses").size() > 0) {
 				// if the witnesses omit text
 				writer.writeStartElement("rdg");
-				StringBuffer sigils = new StringBuffer();
+				StringBuilder sigils = new StringBuilder();
 				for (String sigil : variant.getWitnesses().get("witnesses")) {
-					sigils.append("#" + sigil + " ");
+					sigils.append("#").append(sigil).append(" ");
 				}
 				writer.writeAttribute("wit", sigils.toString().trim());
 				writer.writeEndElement();

@@ -17,7 +17,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -79,7 +78,7 @@ public class SectionModel {
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
             
-            witnesses = new HashSet<String>();
+            witnesses = new HashSet<>();
             for (Node readingNode : traversedTradition.nodes()) {
             	ReadingModel rm = new ReadingModel(readingNode);
             	witnesses.addAll(rm.getWitnesses());

@@ -966,7 +966,6 @@ public class Section {
 
     /**
      * Resets ranks within the given section
-     *
      * This does not belong to the official API!
      * It is a secret hack to fix ranks if we find they are broken or missing.
      */
@@ -1585,7 +1584,23 @@ public class Section {
         return new TabularExporter(db).exportAsCharMatrix(tradId, maxVars, toConflate,
                 thisSection, "true".equals(excludeLayers));
     }
-    
+
+    /**
+     * Returns a TEI double-endpoint-attachment file representing the section text.
+     *
+     * @title Download character matrix for parsimony analysis
+     * @param significant   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeType1  - If "true", exclude type-1 (singleton) variants
+     * @param excludeNonsense - If "true", suppress any variants marked with the is_nonsense property
+     * @param combine - If "true", move dislocated (e.g. transposed) variants to their matching base
+     * @param suppressMatching - A regular expression; all variants matching this will be suppressed in
+     *                         the apparatus. Default is to suppress all punctuation.
+     * @param baseWitness - A witness sigil, or the string "majority" or "lemma", to indicate what text to
+     *                    use as the base text in the apparatus.
+     * @param conflate - A relation type to normalize on
+     * @param excWitnesses - A witness to exclude from the apparatus. Can be specified multiple times.
+     * @return the character matrix as plaintext
+     */
     @GET
     @Produces("application/xml; charset=utf-8")
     @Path("/tei")
@@ -1605,7 +1620,7 @@ public class Section {
         try {
             return exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, conflate, suppressMatching,
                     Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), significant,
-                    Boolean.getBoolean(conflate));
+                    Boolean.getBoolean(combine));
         } catch (XMLStreamException | IOException e) {
             e.printStackTrace();
             return Response.serverError().build();

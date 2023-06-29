@@ -41,7 +41,7 @@ public class VariantListModel {
     /**
      * the relation name, if any, that the text was normalized on prior to producing the variant list
      */
-    private String conflateOnRelation;
+    private final String conflateOnRelation;
     /**
      * the minimum level of relation significance that the variants in this list are linked with
      */
@@ -49,14 +49,21 @@ public class VariantListModel {
     /**
      * the regular expression, if any, that was used to filter readings in the list
      */
-    private String suppressedReadingsRegex;
+    private final String suppressedReadingsRegex;
     /**
      * the types of relations that are dislocations in this tradition. Not publicly accessible.
      */
     private List<String> dislocationTypes;
 
+    /**
+     * the list of ReadingModels that form our base text. Used by the TEI exporter
+     */
+    private List<ReadingModel> baseReadings;
+
+    @SuppressWarnings("unused")
     public VariantListModel() {
         variantlist = new ArrayList<>();
+        baseReadings = new ArrayList<>();
         suppressedReadingsRegex = "^$";
         conflateOnRelation = "";
     }
@@ -146,9 +153,9 @@ public class VariantListModel {
 
             // Filter readings by regex / nonsense flag as needed. Pass the base text in case
             // any before/after reading settings need to be altered.
-            List<ReadingModel> baseChain = baseText.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
-            baseChain.add(0, new ReadingModel(baseText.get(0).getStartNode()));
-            this.filterReadings(baseChain);
+            this.baseReadings = baseText.stream().map(x -> new ReadingModel(x.getEndNode())).collect(Collectors.toList());
+            this.baseReadings.add(0, new ReadingModel(baseText.get(0).getStartNode()));
+            this.filterReadings(this.baseReadings);
 
             // Filter for type1 variants
             if (filterTypeOne)
@@ -427,5 +434,7 @@ public class VariantListModel {
     public List<String> getDislocationTypes() {
         return dislocationTypes;
     }
+
+    public List<ReadingModel> getBaseReadings() { return baseReadings; }
 
 }
