@@ -78,6 +78,10 @@ public class GraphMLParser {
         try (Transaction tx = db.beginTx()) {
             // Get the XML files out of the zip stream
             LinkedHashMap<String, File> inputXML = Util.extractGraphMLZip(filestream);
+            // Make sure we actually got some files
+            if (inputXML.size() == 0)
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(jsonerror("No files found in GraphML zip input")).build();
             // Make sure the tradition.xml file is first
             boolean seenTrad = false;
             for (String filename : inputXML.keySet()) {

@@ -2,6 +2,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import junit.framework.TestCase;
 import net.stemmaweb.model.*;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
@@ -9,9 +10,7 @@ import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 import org.neo4j.test.TestGraphDatabaseFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
@@ -167,6 +166,21 @@ public class GraphMLInputOutputTest extends TestCase {
         } else {
             Util.assertStemmasEquivalent(directedStemma, stemmata.get(0).getDot());
             Util.assertStemmasEquivalent(undirectedStemma, stemmata.get(1).getDot());
+        }
+    }
+
+    public void testWrongDataForUpload() {
+        // Try to add a JSON section to an existing tradition but claim it is GraphML zip
+        Response r = Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/Matthew-418.json",
+                "graphml", "bad section");
+        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        try (Transaction tx = db.beginTx()) {
+            Node n = db.findNode(Nodes.TRADITION, "id", multiTradId);
+            assertNotNull(n);
+            List<Node> sections = new ArrayList<>();
+            n.getRelationships(ERelations.PART, Direction.OUTGOING).forEach(x -> sections.add(x.getEndNode()));
+            assertEquals(2, sections.size());
+            tx.success();
         }
     }
 
