@@ -105,7 +105,8 @@ public class TabularParser {
             else if (row.getPhysicalNumberOfCells() > expectedSize)
                 throw new Exception(String.format("Spreadsheet row %d has too many columns!", row.getRowNum()));
 
-            row.forEach(x -> rowArray.add(x.getStringCellValue()));
+            for (int i = 0; i < expectedSize; i++)
+                rowArray.add(row.getCell(i) == null ? null : row.getCell(i).getStringCellValue());
             excelRows.add(rowArray.toArray(new String[expectedSize]));
         }
         return excelRows;

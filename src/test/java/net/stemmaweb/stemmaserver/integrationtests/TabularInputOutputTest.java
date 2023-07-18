@@ -213,6 +213,35 @@ public class TabularInputOutputTest extends TestCase {
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("այսոսիկ")));
     }
 
+    public void testExcelCorrectGraph() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "BHL 2761", "LR", "1",
+                "src/TestFiles/bhl_2761.xlsx", "xlsx");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+
+        String aText = "in diebus traiani imperatoris idolorum seuitia existente erat magister militum nomine " +
+                "placidum natus secundum carnem gloriosissimorum et diuitissimorum ualde parentum et erat ditissimus " +
+                "tam in animalibus quam in auro uel argento mancipiis uel uniuersis rebus substantie sue et quamuis " +
+                "paganissimus existens inuentus est subuenire miseris et necessitatem patientibus uiuendi substantia " +
+                "ministrare ita ut acceptabilis fieret in hoc coram domino deo in operibus suis et ex omni parte " +
+                "inlustris erat cum duobus filiis suis uel matre ipsorum dum esset magister militum bellatorum et " +
+                "aduersus barbaros triumphator ita ut audito nomine eius contremescerent et fugerent sepius " +
+                "aduersarii eius erat enim ei consuetudo uenandi et cum exisset secundum consuetudinem suam ad " +
+                "uenandum apparuit grex ceruorum inter quibus erat unus pulcherrimus et omni decore mirabilis quem " +
+                "uidens magister militum relictis omnibus qui apparuerant ei ipsum unum tantum persequebatur et " +
+                "deficientibus omnibus qui secum erant ipse solus sequutus est eum in siluam condensem et " +
+                "pertransiuit ceruus in uertice montis et stans supra saxum in loco altissimo et dum non ipse " +
+                "ualeret placidus adpropinquare ad ceruum statim cogitans qualiter posset capere eum et dum " +
+                "consideraret magnitudinem eius ostendit ei deus magnum miraculum inter cornua eiusdem cerui et " +
+                "apparuit signum sancte crucis super claritatem solis inlustrantem et uidit in cornua eius inmaginem " +
+                "saluatoris cuius uocem audiuit dicentem sibi o placide quid me persequeris ego sum iesus quem tu " +
+                "ignoras et";
+
+        response = jerseyTest.target("/tradition/" + traditionId + "/witness/A/text").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(aText, Util.getValueFromJson(response, "text"));
+    }
+
     // testOutputJSON
     public void testJSONExport() {
         // Set up some data
