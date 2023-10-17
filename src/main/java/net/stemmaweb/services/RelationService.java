@@ -117,23 +117,23 @@ public class RelationService {
      *
      * @param tradId - the UUID of the relevant tradition
      * @param sectionId - the ID (as a string) of the relevant section
-     * @param db - the GraphDatabaseService to use
+     * @param tx - the GraphDatabaseService to use
      * @param colocations - whether we are retrieving colocated clusters or non-colocated ones
      * @return - a list of sets, where each set represents a group of colocated readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong in the algorithm.
      */
     public static List<Set<Node>> getClusters(
-            String tradId, String sectionId, GraphDatabaseService db, Boolean colocations)
+            String tradId, String sectionId, Transaction tx, Boolean colocations)
             throws Exception {
         // Get the tradition node and find the relevant relation types
         HashSet<String> useRelationTypes = new HashSet<>();
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
         for (RelationTypeModel rtm : ourRelationTypes(traditionNode))
             if (rtm.getIs_colocation() == colocations)
                 useRelationTypes.add(String.format("\"%s\"", rtm.getName()));
 
         // Now run the unionFind algorithm on the relevant subset of relation types
-        return collectSpecifiedClusters(sectionId, db, useRelationTypes);
+        return collectSpecifiedClusters(tradId, sectionId, tx, useRelationTypes);
     }
 
     /**
@@ -141,19 +141,19 @@ public class RelationService {
      *
      * @param tradId - the UUID of the relevant tradition
      * @param sectionId - the ID (as a string) of the relevant section
-     * @param db - the GraphDatabaseService to use
+     * @param tx - the GraphDatabaseService to use
      * @param thresholdName - the name of a RelationType; all of these relations and ones more closely bound will be clustered.
      * @return - a list of sets, where each set represents a group of closely related readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong with the algorithm
      */
     static List<Set<Node>> getCloselyRelatedClusters(
-            String tradId, String sectionId, GraphDatabaseService db, String thresholdName)
+            String tradId, String sectionId, Transaction tx, String thresholdName)
             throws Exception {
         // Is it a no-op?
         if (thresholdName == null) return new ArrayList<>();
         // Then we have some work to do.
         HashSet<String> closeRelations = new HashSet<>();
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
         List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode);
         int bindlevel = 0;
         Optional<RelationTypeModel> thresholdModel = rtmlist.stream().filter(x -> x.getName().equals(thresholdName)).findFirst();
@@ -163,40 +163,45 @@ public class RelationService {
             if (rtm.getBindlevel() <= bindlevel)
                 closeRelations.add(String.format("\"%s\"", rtm.getName()));
 
-        return collectSpecifiedClusters(sectionId, db, closeRelations);
+        return collectSpecifiedClusters(tradId, sectionId, tx, closeRelations);
     }
 
     private static List<Set<Node>> collectSpecifiedClusters(
-            String sectionId, GraphDatabaseService db, Set<String> relatedTypes)
+            String tradId, String sectionId, Transaction tx, Set<String> relatedTypes)
             throws Exception {
         // Now run the unionFind algorithm on the relevant subset of relation types
         List<Set<Node>> result = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            // Make the arguments
-            String cypherNodes = String.format("MATCH (n:READING {section_id:%s}) RETURN id(n) AS id", sectionId);
-            String cypherRels = String.format("MATCH (n:READING)-[r:RELATED]-(m) WHERE r.type IN [%s] RETURN id(n) AS source, id(m) AS target",
-                    String.join(",", relatedTypes));
-            // A struct to store the results
-            Map<String, Set<String>> clusters = new HashMap<>();
-            // Stream the results and collect the clusters
-            Result r = tx.execute(String.format("CALL algo.unionFind.stream('%s', '%s', {graph:'cypher'}) YIELD nodeId, setId", cypherNodes, cypherRels));
-            while(r.hasNext()) {
-                Map<String, Object> row = r.next();
-                String setId = row.get("setId").toString();
-                Set<String> cl = clusters.getOrDefault(setId, new HashSet<>());
-                String nodeId = row.get("nodeId").toString();
-                cl.add(nodeId);
-                clusters.put(setId, cl);
-            }
-
-            // Convert the map of setID -> set of nodeIDs into a list of nodesets
-            clusters.keySet().stream().filter(x -> clusters.get(x).size() > 1)
-                    .forEach(x -> result.add(clusters.get(x).stream().map(tx::getNodeByElementId).collect(Collectors.toSet())));
-            tx.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Exception("Could not detect colocation clusters", e);
+        // Make the arguments
+        String cypherNodes = String.format("MATCH (n:READING {section_id:%s}) RETURN id(n) AS id", sectionId);
+        String cypherRels = String.format("MATCH (n:READING)-[r:RELATED]-(m) WHERE r.type IN [%s] RETURN id(n) AS source, id(m) AS target",
+                String.join(",", relatedTypes));
+        // A struct to store the results
+        Map<String, Set<String>> clusters = new HashMap<>();
+        // Stream the results and collect the clusters
+//            Result r = tx.execute(String.format("CALL algo.unionFind.stream('%s', '%s', {graph:'cypher'}) YIELD nodeId, setId", cypherNodes, cypherRels));
+//            HashMap<String, Object> queryParams = new HashMap<String, Object>();
+//            queryParams.put("section_id", sectionId);
+//            Result nodes = tx.execute("MATCH (n:READING) RETURN id(n) AS id", queryParams);
+//            Result r = tx.execute("CALL gds.wcc.stream('cypher')", nodes.next());
+//            Result r = tx.execute("CALL gds.wcc.stream('cypher')"
+//            		+ "YIELD nodeId, componentId"
+//            		+ "RETURN gds.util.asNode(nodeId).name AS name, componentId"
+//            		+ "ORDER BY componentId, name");traditionNode.getProperty("name")
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+        Result r = tx.execute(String.format("CALL gds.wcc.stream('%s')", "" + traditionNode.getProperty("name")));
+        while(r.hasNext()) {
+            Map<String, Object> row = r.next();
+            String setId = row.get("setId").toString();
+            Set<String> cl = clusters.getOrDefault(setId, new HashSet<>());
+            String nodeId = row.get("nodeId").toString();
+            cl.add(nodeId);
+            clusters.put(setId, cl);
         }
+
+        // Convert the map of setID -> set of nodeIDs into a list of nodesets
+        clusters.keySet().stream().filter(x -> clusters.get(x).size() > 1)
+                .forEach(x -> result.add(clusters.get(x).stream().map(tx::getNodeByElementId).collect(Collectors.toSet())));
+
         return result;
     }
 

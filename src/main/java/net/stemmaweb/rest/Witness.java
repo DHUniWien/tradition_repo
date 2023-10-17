@@ -321,7 +321,7 @@ public class Witness {
 
         for (Node currentSection: iterationList) {
             try (Transaction tx = db.beginTx()) {
-                Node startNode = VariantGraphService.getStartNode(currentSection.getElementId(), db, tx);
+                Node startNode = VariantGraphService.getStartNode(currentSection.getElementId(), tx);
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 // Remove the meta node from the list
                 if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getIs_end())

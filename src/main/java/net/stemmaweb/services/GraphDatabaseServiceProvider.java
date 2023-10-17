@@ -5,10 +5,11 @@ import java.io.File;
 import java.nio.file.Path;
 
 import org.neo4j.common.DependencyResolver.SelectionStrategy;
+import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
 import org.neo4j.exceptions.KernelException;
-import org.neo4j.graphalgo.UnionFindProc;
+import org.neo4j.gds.wcc.WccStreamProc;
 //import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.kernel.api.procedure.GlobalProcedures;
@@ -41,7 +42,7 @@ public class GraphDatabaseServiceProvider {
         			.impermanent()
         			.setDatabaseRootDirectory(null)
         			.build();
-        	db = dbService.database("neo4j");
+        	db = dbService.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     	} else {
     		dbService = new DatabaseManagementServiceBuilder(Path.of(db_location + "/data/databases/graph.db")).build();
 
@@ -51,6 +52,7 @@ public class GraphDatabaseServiceProvider {
     		else
     			db = dbService.database("stemma");
     	}
+    	registerShutdownHook(dbService);
     	registerExtensions();
 
     }
@@ -71,7 +73,8 @@ public class GraphDatabaseServiceProvider {
         // See if our procedure is already registered
         api.getDependencyResolver()
                 .resolveDependency(GlobalProcedures.class, SelectionStrategy.SINGLE)
-                .registerProcedure(UnionFindProc.class, true);
+//                .registerProcedure(UnionGraphIntersectFactory.class, true);
+                .registerProcedure(WccStreamProc.class, true);
     }
     
     public static void shutdown() {
@@ -82,4 +85,14 @@ public class GraphDatabaseServiceProvider {
     	}
     }
 
+    private static void registerShutdownHook( final DatabaseManagementService managementService ) {
+    	Runtime.getRuntime().addShutdownHook( new Thread()
+    	{
+    		@Override
+    		public void run()
+    		{
+    			managementService.shutdown();
+    		}
+    	} );
+    }
 }

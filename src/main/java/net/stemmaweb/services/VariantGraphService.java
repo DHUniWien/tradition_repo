@@ -44,23 +44,29 @@ public class VariantGraphService {
      * @return - true or false
      */
     public static Boolean sectionInTradition(String tradId, String aSectionId, GraphDatabaseService db) {
-        Node traditionNode = getTraditionNode(tradId, db);
-        if (traditionNode == null)
-            return false;
-
         boolean found = false;
         try (Transaction tx = db.beginTx()) {
-            for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
-                if (s.getElementId().equals(aSectionId)) {
-                    found = true;
-                    break;
-                }
-            }
+        	found = sectionInTradition(tradId, aSectionId, tx);
             tx.close();
         }
         return found;
     }
 
+    public static Boolean sectionInTradition(String tradId, String aSectionId, Transaction tx) {
+    	Node traditionNode = getTraditionNode(tradId, tx);
+    	if (traditionNode == null)
+    		return false;
+    	
+    	boolean found = false;
+		for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
+			if (s.getElementId().equals(aSectionId)) {
+				found = true;
+				break;
+			}
+		}
+    	return found;
+    }
+    
     /**
      * Get the start node of a section, or the first section in a tradition
      *
@@ -70,11 +76,14 @@ public class VariantGraphService {
      *      NOTE if there are multiple unordered sections, an arbitrary start node may be returned!
      */
     public static Node getStartNode(String nodeId, GraphDatabaseService db) {
-        return getBoundaryNode(nodeId, db, ERelations.COLLATION, null);
+    	Transaction tx = db.beginTx();
+    	Node node = getBoundaryNode(nodeId, tx, ERelations.COLLATION);
+    	tx.close();
+    	return node;
     }
 
-    public static Node getStartNode(String nodeId, GraphDatabaseService db, Transaction tx) {
-    	return getBoundaryNode(nodeId, db, ERelations.COLLATION, tx);
+    public static Node getStartNode(String nodeId, Transaction tx) {
+    	return getBoundaryNode(nodeId, tx, ERelations.COLLATION);
     }
     
     /**
@@ -86,25 +95,28 @@ public class VariantGraphService {
      *      NOTE if there are multiple unordered sections, an arbitrary end node may be returned!
      */
     public static Node getEndNode(String nodeId, GraphDatabaseService db) {
-        return getBoundaryNode(nodeId, db, ERelations.HAS_END, null);
+    	Transaction tx = db.beginTx();
+    	Node node = getBoundaryNode(nodeId, tx, ERelations.HAS_END);
+    	tx.close();
+    	return node;
     }
 
-    public static Node getEndNode(String nodeId, GraphDatabaseService db, Transaction tx) {
-    	return getBoundaryNode(nodeId, db, ERelations.HAS_END, tx);
+    public static Node getEndNode(String nodeId, Transaction tx) {
+    	return getBoundaryNode(nodeId, tx, ERelations.HAS_END);
     }
     
-    private static Node getBoundaryNode(String nodeId, GraphDatabaseService db, ERelations direction, Transaction tx2) {
+    private static Node getBoundaryNode(String nodeId, Transaction tx, ERelations direction) {
         Node boundNode = null;
         // If we have been asked for a tradition node, use either the first or the last of
         // its section nodes instead.
-        Node currentNode = getTraditionNode(nodeId, db);
+        Node currentNode = getTraditionNode(nodeId, tx);
         if (currentNode != null) {
-            ArrayList<Node> sections = getSectionNodes(nodeId, db);
+            ArrayList<Node> sections = getSectionNodes(nodeId, tx);
             if (!sections.isEmpty()) {
                 Node relevantSection = direction.equals(ERelations.HAS_END)
                         ? sections.get(sections.size() - 1)
                         : sections.get(0);
-                return getBoundaryNode(relevantSection.getElementId(), db, direction, tx2);
+                return getBoundaryNode(relevantSection.getElementId(), tx, direction);
             } else return null;
         }
 //        // Were we asked for a nonexistent tradition node (i.e. a non-Long that corresponds to no tradition)?
@@ -115,19 +127,11 @@ public class VariantGraphService {
 //            return null;
 //        }
         // If we are here, we were asked for a section node.
-        if (tx2 == null) {
-        	try (Transaction tx = db.beginTx()) {
-        		currentNode = tx.getNodeByElementId(nodeId);
-        		if (currentNode != null)
-        			boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
-        		tx.close();
-        	}
-        } else {
-    		currentNode = tx2.getNodeByElementId(nodeId);
-    		if (currentNode != null)
-    			boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
-        }
-        return boundNode;
+		currentNode = tx.getNodeByElementId(nodeId);
+		if (currentNode != null)
+			boundNode = currentNode.getSingleRelationship(direction, Direction.OUTGOING).getEndNode();
+
+		return boundNode;
     }
 
     /**
@@ -140,17 +144,17 @@ public class VariantGraphService {
     public static ArrayList<Node> getSectionNodes(String tradId, GraphDatabaseService db) {
     	ArrayList<Node> sectionNodes;
     	try (Transaction tx = db.beginTx()) {
-    		sectionNodes = getSectionNodes(tradId, db, tx);
+    		sectionNodes = getSectionNodes(tradId, tx);
             tx.close();
         }
     	return sectionNodes;
     }
-    public static ArrayList<Node> getSectionNodes(String tradId, GraphDatabaseService db, Transaction tx) {
-        Node tradition = getTraditionNode(tradId, db);
+    public static ArrayList<Node> getSectionNodes(String tradId, Transaction tx) {
+        Node tradition = getTraditionNode(tradId, tx);
         ArrayList<Node> sectionNodes = new ArrayList<>();
         if (tradition == null)
             return sectionNodes;
-        ArrayList<Node> sections = DatabaseService.getRelated(tradition, ERelations.PART);
+        ArrayList<Node> sections = DatabaseService.getRelated(tradition, ERelations.PART, tx);
         int size = sections.size();
         for(Node n: sections) {
             if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
@@ -186,7 +190,7 @@ public class VariantGraphService {
         return tradition;
     }
 
-    public static Node getTraditionNode(String tradId, GraphDatabaseService db, Transaction tx) {
+    public static Node getTraditionNode(String tradId, Transaction tx) {
     	Node tradition;
     	tradition = tx.findNode(Nodes.TRADITION, "id", tradId);
     	return tradition;
@@ -229,7 +233,7 @@ public class VariantGraphService {
         // the common nodes.
         AlignmentModel am = new AlignmentModel(sectionNode);
         try (Transaction tx = db.beginTx()) {
-        	Node startNode = VariantGraphService.getStartNode(sectionNode.getElementId(), db, tx);
+        	Node startNode = VariantGraphService.getStartNode(sectionNode.getElementId(), tx);
             // See which kind of flag we are setting
             String propName = startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE) ? "ncommon" : "is_common";
             // Go through the table rank by rank - if a given rank has only a single reading
@@ -291,7 +295,7 @@ public class VariantGraphService {
             String tradId = tradition.getProperty("id").toString();
             String sectionId = sectionNode.getElementId();
             for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
-                    tradId, sectionId, db, normalizeType)) {
+                    tradId, sectionId, tx, normalizeType)) {
                 if (cluster.size() == 0) continue;
                 Node representative = RelationService.findRepresentative(cluster);
                 if (representative == null)
@@ -401,9 +405,9 @@ public class VariantGraphService {
         try (Transaction tx = db.beginTx()) {
             // Go through the alignment model rank by rank, finding the majority reading for each rank
             String sectionId = sectionNode.getElementId();
-            result.add(getStartNode(sectionId, db, tx));
+            result.add(getStartNode(sectionId, tx));
             majorityReadings.forEach(x -> result.add(tx.getNodeByElementId(x)));
-            result.add(getEndNode(sectionId, db, tx));
+            result.add(getEndNode(sectionId, tx));
             tx.close();
         }
         return result;

@@ -327,8 +327,8 @@ public class StemmawebParser {
             }
 
             // Re-rank the entire tradition
-            Node sectionStart = VariantGraphService.getStartNode(parentNode.getElementId(), db, tx);
-            ReadingService.recalculateRank(sectionStart, true);
+            Node sectionStart = VariantGraphService.getStartNode(parentNode.getElementId(), tx);
+            ReadingService.recalculateRank(sectionStart, true, tx);
             // Calculate the common nodes; don't trust the old format for this.
             VariantGraphService.calculateCommon(parentNode);
 

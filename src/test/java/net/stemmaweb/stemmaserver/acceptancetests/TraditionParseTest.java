@@ -158,7 +158,7 @@ public class TraditionParseTest extends TestCase {
             // Do this with a traversal.
             AtomicInteger foundEdges = new AtomicInteger(0);
             try (Transaction tx = db.beginTx()) {
-            	Node startNode = VariantGraphService.getStartNode(tm.getId(), db, tx);
+            	Node startNode = VariantGraphService.getStartNode(tm.getId(), tx);
             	assertNotNull(startNode);
                 tx.traversalDescription().breadthFirst()
                         .relationships(ERelations.SEQUENCE, Direction.OUTGOING)

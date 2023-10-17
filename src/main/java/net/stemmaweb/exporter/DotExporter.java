@@ -69,23 +69,25 @@ public class DotExporter
 
     public Response writeNeo4J(String tradId, String sectionId, DisplayOptionModel dm)
     {
-        // Get the start and end node of the whole tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        Node startNode = VariantGraphService.getStartNode(tradId, db);
-        Node endNode = VariantGraphService.getEndNode(tradId, db);
-        if(startNode==null || endNode==null || traditionNode==null) {
-            return Response.status(Status.NOT_FOUND).build();
-        }
+    	ArrayList<Node> sections;
+    	File output;
+    	String result;
+    	Transaction tx = db.beginTx();
 
-        // Get the list of section nodes
-        ArrayList<Node> sections;
-        File output;
-        String result;
-        try (Transaction tx = db.beginTx()) {
-        	sections = VariantGraphService.getSectionNodes(tradId, db, tx);
-        	traditionNode = VariantGraphService.getTraditionNode(tradId, db, tx);
-        	startNode = VariantGraphService.getStartNode(tradId, db, tx);
-        	endNode = VariantGraphService.getEndNode(tradId, db, tx);
+    	try {
+    		// Get the start and end node of the whole tradition
+    		Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		Node startNode = VariantGraphService.getStartNode(tradId, tx);
+    		Node endNode = VariantGraphService.getEndNode(tradId, tx);
+    		if(startNode==null || endNode==null || traditionNode==null) {
+    			return Response.status(Status.NOT_FOUND).build();
+    		}
+
+    		// Get the list of section nodes
+        	sections = VariantGraphService.getSectionNodes(tradId, tx);
+        	traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+        	startNode = VariantGraphService.getStartNode(tradId, tx);
+        	endNode = VariantGraphService.getEndNode(tradId, tx);
             output = File.createTempFile("graph_", ".dot");
             out = new FileOutputStream(output);
 
@@ -133,8 +135,8 @@ public class DotExporter
                 if (dm.getExcludeWitnesses().size() > 0) {
                     numWits -= dm.getExcludeWitnesses().size();
                 }
-                Node sectionStartNode = VariantGraphService.getStartNode(sectionNode.getElementId(), db, tx);
-                Node sectionEndNode = VariantGraphService.getEndNode(sectionNode.getElementId(), db, tx);
+                Node sectionStartNode = VariantGraphService.getStartNode(sectionNode.getElementId(), tx);
+                Node sectionEndNode = VariantGraphService.getEndNode(sectionNode.getElementId(), tx);
                 // If we have requested a section, then that section's start and end are "the" start and end
                 // for the whole graph.
                 if (sectionId != null) {
@@ -302,14 +304,16 @@ public class DotExporter
 
             // Remove the following line, if you want to keep the created file
             Files.deleteIfExists(output.toPath());
-
-            tx.close();
         } catch (IOException e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror("Could not write file for export")).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        } finally {
+        	if (tx != null) {
+        		tx.close();
+        	}
         }
 
         // Here is where to generate pictures from the file for debugging.

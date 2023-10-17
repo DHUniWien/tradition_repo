@@ -61,8 +61,8 @@ public class AlignmentModel {
         try (Transaction tx = db.beginTx()) {
             String sectId = sectionNode.getElementId();
             Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
-            Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
-            Node endNode = VariantGraphService.getEndNode(sectId, db, tx);
+            Node startNode = VariantGraphService.getStartNode(sectId, tx);
+            Node endNode = VariantGraphService.getEndNode(sectId, tx);
 
             // First get the length, that's the easy part.
             length = (long) endNode.getProperty("rank") - 1;

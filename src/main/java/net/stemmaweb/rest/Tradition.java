@@ -437,7 +437,7 @@ public class Tradition {
 
         try (Transaction tx = db.beginTx()) {
             for (SectionModel sm : smlist) {
-                ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), db, tx), true);
+                ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), tx), true);
             }
             tx.close();
         } catch (Exception e) {
@@ -829,7 +829,7 @@ public class Tradition {
     @ReturnType("java.lang.Void")
     public Response deleteTraditionById() {
         try (Transaction tx = db.beginTx()) {
-        	Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db, tx);
+        	Node foundTradition = VariantGraphService.getTraditionNode(traditionId, tx);
         	if (foundTradition != null) {
                 /*
                  * Find all the nodes and relations to remove

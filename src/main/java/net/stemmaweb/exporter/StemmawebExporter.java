@@ -121,17 +121,17 @@ public class StemmawebExporter {
         int nodeCountGraph1 = 0;
         int edgeCountGraph2 = 0;
         int nodeCountGraph2 = 0;
-
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        if(traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("No tradition found for this ID")).build();
-        Node traditionStartNode = VariantGraphService.getStartNode(tradId, db);
-        if(traditionStartNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("No graph found for this tradition.")).build();
-
         File file;
-        try (Transaction tx = db.beginTx()) {
+        Transaction tx = db.beginTx();
 
+        try {
+        	Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+        	if(traditionNode == null)
+        		return Response.status(Status.NOT_FOUND).entity(jsonerror("No tradition found for this ID")).build();
+        	Node traditionStartNode = VariantGraphService.getStartNode(tradId, tx);
+        	if(traditionStartNode == null)
+        		return Response.status(Status.NOT_FOUND).entity(jsonerror("No graph found for this tradition.")).build();
+        	
             file = File.createTempFile("output", ".xml");
             OutputStream out = new FileOutputStream(file);
 
@@ -355,7 +355,6 @@ public class StemmawebExporter {
             DOMSource source = new DOMSource(doc);
             StreamResult resultFile = new StreamResult(file);
             transformer.transform(source, resultFile);
-            tx.close();
         } catch(Exception e) {
             e.printStackTrace();
 
@@ -363,6 +362,10 @@ public class StemmawebExporter {
                     .status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(jsonerror("Error: Tradition could not be exported!"))
                     .build();
+        } finally {
+        	if (tx != null) {
+        		tx.close();
+        	}
         }
 
         return Response.ok(file.toString(), MediaType.APPLICATION_XML).build();

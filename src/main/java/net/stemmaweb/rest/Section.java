@@ -1,27 +1,73 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.MireDotIgnore;
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.exporter.DotExporter;
-import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.*;
-import net.stemmaweb.services.*;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.traversal.*;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+import static net.stemmaweb.services.ReadingService.addWitnessLink;
+import static net.stemmaweb.services.ReadingService.recalculateRank;
+import static net.stemmaweb.services.ReadingService.removePlaceholder;
+import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
 
-import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.text.Normalizer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static net.stemmaweb.Util.*;
-import static net.stemmaweb.services.ReadingService.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.PathExpander;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.Uniqueness;
+
+import com.qmino.miredot.annotations.MireDotIgnore;
+import com.qmino.miredot.annotations.ReturnType;
+
+import net.stemmaweb.exporter.DotExporter;
+import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.TabularExporter;
+import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.DisplayOptionModel;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.ProposedEmendationModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.VariantListModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.ReadingService.AlignmentTraverse;
+import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Comprises all the API calls related to a tradition section.
@@ -280,7 +326,7 @@ public class Section {
     List<ReadingModel> sectionReadings() {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
+            Node startNode = VariantGraphService.getStartNode(sectId, tx);
             if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
             tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
@@ -326,8 +372,8 @@ public class Section {
     ArrayList<RelationModel> sectionRelations(Boolean includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
 
-        Node startNode = VariantGraphService.getStartNode(sectId, db);
         try (Transaction tx = db.beginTx()) {
+        	Node startNode = VariantGraphService.getStartNode(sectId, tx);
             tx.traversalDescription().depthFirst()
                     .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                     .uniqueness(Uniqueness.NODE_GLOBAL)
@@ -359,19 +405,19 @@ public class Section {
     @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
     public Response getColocatedClusters() {
         List<Set<Node>> clusterList;
-        try {
-            clusterList = RelationService.getClusters(tradId, sectId, db, true);
+        try (Transaction tx = db.beginTx()) {
+            clusterList = RelationService.getClusters(tradId, sectId, tx, true);
+            List<List<ReadingModel>> result = new ArrayList<>();
+            for (Set<Node> cluster : clusterList) {
+            	List<ReadingModel> clusterModel = new ArrayList<>();
+            	for (Node n : cluster)
+            		clusterModel.add(new ReadingModel(n));
+            	result.add(clusterModel);
+            }
+            return Response.ok(result).build();
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
         }
-        List<List<ReadingModel>> result = new ArrayList<>();
-        for (Set<Node> cluster : clusterList) {
-            List<ReadingModel> clusterModel = new ArrayList<>();
-            for (Node n : cluster)
-                clusterModel.add(new ReadingModel(n));
-            result.add(clusterModel);
-        }
-        return Response.ok(result).build();
     }
     /**
      * Gets the lemma text for the section, if there is any. Returns the text in a JSON object
@@ -457,8 +503,8 @@ public class Section {
     private List<ReadingModel> collectLemmaReadings(Boolean followFinal, String startFrom, String endAt) {
         List<ReadingModel> result;
         try (Transaction tx = db.beginTx()) {
-        	Node sectionStart = VariantGraphService.getStartNode(sectId, db, tx);
-        	Node sectionEnd = VariantGraphService.getEndNode(sectId, db, tx);
+        	Node sectionStart = VariantGraphService.getStartNode(sectId, tx);
+        	Node sectionEnd = VariantGraphService.getEndNode(sectId, tx);
             long startRank = Long.parseLong(startFrom);
             long endRank = endAt.equals("E")
                     ? Long.parseLong(sectionEnd.getProperty("rank").toString()) - 1
@@ -631,7 +677,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             if (!sectionInTradition())
                 return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-            if (!priorSectID.equals("none") && !VariantGraphService.sectionInTradition(tradId, priorSectID, db))
+            if (!priorSectID.equals("none") && !VariantGraphService.sectionInTradition(tradId, priorSectID, tx))
                 return Response.status(Response.Status.NOT_FOUND).entity("Requested prior section not found").build();
             if (priorSectID.equals(sectId))
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
@@ -716,8 +762,8 @@ public class Section {
         String newSectionId;
 
         try (Transaction tx = db.beginTx()) {
-        	Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
-        	Node sectionEnd = VariantGraphService.getEndNode(sectId, db, tx);
+        	Node startNode = VariantGraphService.getStartNode(sectId, tx);
+        	Node sectionEnd = VariantGraphService.getEndNode(sectId, tx);
             Node thisSection = tx.getNodeByElementId(sectId);
 
             // Make sure we aren't just trying to split off the end node
@@ -892,10 +938,10 @@ public class Section {
                 secondSection = thisSection;
 
             // Move relationships from the old start & end nodes
-            Node oldEnd = VariantGraphService.getEndNode(firstSection.getElementId(), db, tx);
-            Node oldStart = VariantGraphService.getStartNode(secondSection.getElementId(), db, tx);
-            Node trueStart = VariantGraphService.getStartNode(firstSection.getElementId(), db, tx);
-            Node trueEnd = VariantGraphService.getEndNode(secondSection.getElementId(), db, tx);
+            Node oldEnd = VariantGraphService.getEndNode(firstSection.getElementId(), tx);
+            Node oldStart = VariantGraphService.getStartNode(secondSection.getElementId(), tx);
+            Node trueStart = VariantGraphService.getStartNode(firstSection.getElementId(), tx);
+            Node trueEnd = VariantGraphService.getEndNode(secondSection.getElementId(), tx);
 
             // Collect all readings from the second section and alter their section metadata
             final String keptId = firstSection.getElementId();
@@ -986,7 +1032,7 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
-            ReadingService.recalculateRank(VariantGraphService.getStartNode(sectId, db, tx), true);
+            ReadingService.recalculateRank(VariantGraphService.getStartNode(sectId, tx), true);
             tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1247,8 +1293,8 @@ public class Section {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
-            Node startNode = VariantGraphService.getStartNode(sectId, db, tx);
-            Node endNode = VariantGraphService.getEndNode(sectId, db, tx);
+            Node startNode = VariantGraphService.getStartNode(sectId, tx);
+            Node endNode = VariantGraphService.getEndNode(sectId, tx);
             // Delete any existing lemma text links
             Iterable<Relationship> lemmaLinks = tx.traversalDescription().depthFirst()
                     .relationships(ERelations.LEMMA_TEXT, Direction.OUTGOING)

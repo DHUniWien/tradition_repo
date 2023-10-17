@@ -135,9 +135,9 @@ public class SectionTest extends TestCase {
         assertEquals(aText, witFragment);
 
         try (Transaction tx = db.beginTx()) {
-            assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tradId, db, tx).getElementId());
-            assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tradId, db, tx).getElementId());
-            assertEquals(VariantGraphService.getEndNode(newSectId, db).getElementId(), VariantGraphService.getEndNode(tradId, db).getElementId());
+            assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tradId, tx).getElementId());
+            assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
+            assertEquals(VariantGraphService.getEndNode(newSectId, tx).getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
             tx.close();
         }
     }
