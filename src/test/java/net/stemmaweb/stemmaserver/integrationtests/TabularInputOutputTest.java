@@ -102,6 +102,47 @@ public class TabularInputOutputTest extends TestCase {
 
     }
 
+
+    public void testParseNastyCSV() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox", "LR", "1",
+                "src/TestFiles/qbf.csv", "ssv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        Tradition tradition = new Tradition(tradId);
+
+        // Get the first (only) section and check its length
+        ArrayList<SectionModel> allSections = (ArrayList<SectionModel>) tradition.getAllSections().getEntity();
+        SectionModel ourSect = allSections.get(0);
+        assertEquals(Optional.of(11L), Optional.of(ourSect.getEndRank()));
+
+        ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) tradition.getAllWitnesses().getEntity();
+        assertEquals(3, allWitnesses.size());
+
+        // Get a witness text
+        Witness witness = new Witness(tradId, "Q");
+        TextSequenceModel resp = (TextSequenceModel) witness.getWitnessAsText().getEntity();
+        assertEquals("The quck brown fox jumped over the lazy\n dogs", resp.getText());
+
+        ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) tradition.getAllReadings().getEntity();
+        assertEquals(21, allReadings.size());
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("\"jumped\"")));
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("brown\n")));
+
+        // Now export this in tabular form and import it again, to make sure the newlines were preserved
+        response = jerseyTest.target("/tradition/" + tradId + "/tsv")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String result = response.readEntity(String.class);
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox 2", "LR", "1",
+                result, "tsv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId2 = Util.getValueFromJson(response, "tradId");
+        Tradition tradition2 = new Tradition(tradId2);
+        ArrayList<ReadingModel> newReadings = (ArrayList<ReadingModel>) tradition2.getAllReadings().getEntity();
+        assertEquals(21,  newReadings.size());
+    }
+
+
     public void testParseCsvLayers() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
                 "src/TestFiles/florilegium.csv", "csv");

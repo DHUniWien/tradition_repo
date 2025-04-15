@@ -66,12 +66,12 @@ public class TabularExporter {
         StringWriter sw = new StringWriter();
         ICSVWriter writer = new CSVWriterBuilder(sw)
                 .withSeparator(separator)
-                .withQuoteChar(separator == ',' ? ICSVWriter.DEFAULT_QUOTE_CHARACTER : ICSVWriter.NO_QUOTE_CHARACTER)
+                .withQuoteChar(ICSVWriter.DEFAULT_QUOTE_CHARACTER)
                 .build();
 
         // First write out the witness list
         writer.writeNext(wholeTradition.getAlignment().stream()
-                .map(WitnessTokensModel::constructSigil).toArray(String[]::new));
+                .map(WitnessTokensModel::constructSigil).toArray(String[]::new), false);
 
         // Now write out the normal_form or text for the reading in each "row"
         for (int i = 0; i < wholeTradition.getLength(); i++) {
@@ -80,7 +80,7 @@ public class TabularExporter {
                     .map(x -> {
                         ReadingModel rm = x.getTokens().get(ai.get());
                         return rm == null ? null : rm.normalized();
-                    }).toArray(String[]::new));
+                    }).toArray(String[]::new), false);
         }
 
         // Close off the CSV writer and return

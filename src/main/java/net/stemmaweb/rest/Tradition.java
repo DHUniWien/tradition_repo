@@ -309,6 +309,9 @@ public class Tradition {
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
             result = new TabularParser().parseCSV(uploadedInputStream, parentNode, ',');
+        if (filetype.equals("ssv"))
+            // Pass it off to the CSV reader
+            result = new TabularParser().parseCSV(uploadedInputStream, parentNode, ';');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
             result = new TabularParser().parseCSV(uploadedInputStream, parentNode, '\t');

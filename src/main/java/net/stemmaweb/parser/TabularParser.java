@@ -134,6 +134,8 @@ public class TabularParser {
 
             // Get the witnesses from the first row of the table
             String[] witnessList = tableData.get(0);
+            // Strip the byte order mark, if it exists, from the first of the witnesses
+            witnessList[0] = witnessList[0].replaceFirst("\\uFEFF", "");
             // Keep a table of the last-spotted reading for each witness
             HashMap<String, Node> lastReading = new HashMap<>();
             // Add the non-layer witnesses to the graph
