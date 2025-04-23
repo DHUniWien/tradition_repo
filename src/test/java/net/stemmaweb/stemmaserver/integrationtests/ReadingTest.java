@@ -2516,6 +2516,19 @@ public class ReadingTest {
 */
 
     @Test
+    public void getReadingFromTraditionTest() {
+        HashMap<String,String> r1lookup = Util.makeReadingLookup(jerseyTest, tradId);
+        String secondTrad = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest,
+                "John verse", "LR", "1","src/TestFiles/john.csv", "csv"), "tradId");
+        Response r = jerseyTest.target("/tradition/" + secondTrad + "/reading/" + r1lookup.get("when/1"))
+                .request().get();
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        r = jerseyTest.target("/tradition/" + tradId + "/reading/" + r1lookup.get("when/1"))
+                .request().get();
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+    }
+
+    @Test
     public void compressReadingsAcrossTraditionsTest() {
         HashMap<String,String> r1lookup = Util.makeReadingLookup(jerseyTest, tradId);
         String secondTrad = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest,
