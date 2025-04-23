@@ -344,8 +344,8 @@ public class ReadingService {
         }
 
         private Long maxParentRank (Node candidate) {
-            // Returns true if the parents of this node, and of all its colocated nodes,
-            // already have a rank.
+            // Returns a value if the parents of this node, and of all its colocated nodes,
+            // already have a rank. Returns null otherwise.
             Set<Node> toCheck;
             Long maxRankFound = -1L;
             if (colocatedNodes.containsKey(candidate.getId())) {

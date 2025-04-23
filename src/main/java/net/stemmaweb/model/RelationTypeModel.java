@@ -25,10 +25,10 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * The name of the relationship type (e.g. "grammatical")
      */
     private String  thename;
+    private Boolean defaultsettings; // undocumented; use this for Stemmaweb legacy defaults
     /**
      * A short description of what this relationship type signifies
      */
-    private Boolean defaultsettings; // undocumented; use this for Stemmaweb legacy defaults
     private String  description;
     /**
      * How tightly the relationship binds. A lower number indicates a closer binding.
