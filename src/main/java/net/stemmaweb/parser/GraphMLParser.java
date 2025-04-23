@@ -2,7 +2,6 @@ package net.stemmaweb.parser;
 
 import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
-import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantGraphService;
@@ -73,13 +72,14 @@ public class GraphMLParser {
         // Keep track of GraphML ID -> created node ID
         HashMap<String, Long> idMap = new HashMap<>();
         // Initialise our response
-        String ret = null;
+        String tradId = null;
+        String firstSectionId = null;
         // Unzip the file and send each XML file therein to the "real" parser
         try (Transaction tx = db.beginTx()) {
             // Get the XML files out of the zip stream
             LinkedHashMap<String, File> inputXML = Util.extractGraphMLZip(filestream);
             // Make sure we actually got some files
-            if (inputXML.size() == 0)
+            if (inputXML.isEmpty())
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("No files found in GraphML zip input")).build();
             // Make sure the tradition.xml file is first
@@ -95,10 +95,12 @@ public class GraphMLParser {
                 // Did something go wrong? If so, exit now
                 if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                     return result;
-                // If we haven't picked up a return JSON yet, pick it up on the first pass for the
-                // tradition ID, or the last pass if we want to return the section ID
-                if (ret == null || isSingleSection)
-                    ret = (String) result.getEntity();
+                // If we haven't picked up a return object ID yet, pick it up on the first pass for the
+                // tradition ID, or the second pass if we want to return the section ID
+                if (filename.equals("tradition.xml"))
+                    tradId = result.getEntity().toString();
+                else if (firstSectionId == null)
+                    firstSectionId = result.getEntity().toString();
             }
             Util.cleanupExtractedZip(inputXML);
             tx.success();
@@ -106,6 +108,7 @@ public class GraphMLParser {
             e.printStackTrace();
             return Response.serverError().build();
         }
+        String ret = isSingleSection ? firstSectionId : tradId;
         return Response.status(Response.Status.CREATED).entity(ret).build();
     }
 
@@ -131,14 +134,7 @@ public class GraphMLParser {
 
         // Get the data keys and their types; the map entries are e.g.
         // "dn0" -> ["neolabel", "string"]
-        HashMap<String, String[]> dataKeys = new HashMap<>();
-        NodeList keyNodes = rootEl.getElementsByTagName("key");
-        for (int i = 0; i < keyNodes.getLength(); i++) {
-            NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
-            String[] dataInfo = new String[]{keyAttrs.getNamedItem("attr.name").getNodeValue(),
-                    keyAttrs.getNamedItem("attr.type").getNodeValue()};
-            dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), dataInfo);
-        }
+        HashMap<String, String[]> dataKeys = getDataKeyMap(rootEl);
 
         // Get the tradition node
         Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode) : parentNode;
@@ -317,7 +313,7 @@ public class GraphMLParser {
                         }
                     }
                 }
-                if (newRel == null && !relationshipExists(source, neolabel, Direction.OUTGOING)) { // If it exists already we don't touch it.
+                if (newRel == null && !relationshipExists(source, neolabel)) { // If it exists already we don't touch it.
                     try {
                     	newRel = source.createRelationshipTo(target, ERelations.valueOf(neolabel));
                         edgeProperties.forEach(newRel::setProperty);
@@ -399,7 +395,7 @@ public class GraphMLParser {
                 }
                 annotationsToAdd.put(((Element) xn).getAttribute("id"), am);
             }
-            while (annotationsToAdd.size() > 0) {
+            while (!annotationsToAdd.isEmpty()) {
                 Tradition tradService = new Tradition(tradId);
                 List<String> toRemove = new ArrayList<>();
                 for (String amid : annotationsToAdd.keySet()) {
@@ -415,18 +411,19 @@ public class GraphMLParser {
                             Node nodeTarget = db.getNodeById(idMap.get(alm.getTarget().toString()));
                             alm.setTarget(nodeTarget.getId());
                         }
-                        Response result = tradService.addAnnotation(am);
-                        if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                            throw new UnsupportedOperationException(String.format(
-                                    "Error on adding user annotation %s/%s: %s",
-                                    am.getId(), am.getLabel(), result.getEntity()));
+                        try (Response result = tradService.addAnnotation(am)) {
+                            if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                                throw new UnsupportedOperationException(String.format(
+                                        "Error on adding user annotation %s/%s: %s",
+                                        am.getId(), am.getLabel(), result.getEntity()));
+                            }
+                            // Add the new annotation node to the idMap so that it is there for any
+                            // dependent annotations
+                            AnnotationModel newAnno = (AnnotationModel) result.getEntity();
+                            idMap.put(amid, Long.parseLong(newAnno.getId()));
+                            // Mark this annotation to be removed from the queue
+                            toRemove.add(amid);
                         }
-                        // Add the new annotation node to the idMap so that it is there for any
-                        // dependent annotations
-                        AnnotationModel newAnno = (AnnotationModel) result.getEntity();
-                        idMap.put(amid, Long.parseLong(newAnno.getId()));
-                        // Mark this annotation to be removed from the queue
-                        toRemove.add(amid);
                     }
                 }
                 // Guard against infinite loops
@@ -451,59 +448,37 @@ public class GraphMLParser {
         return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentId)).build();
     }
 
+    private static HashMap<String, String[]> getDataKeyMap(Element rootEl) {
+        HashMap<String, String[]> dataKeys = new HashMap<>();
+        NodeList keyNodes = rootEl.getElementsByTagName("key");
+        for (int i = 0; i < keyNodes.getLength(); i++) {
+            NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
+            String[] dataInfo = new String[]{keyAttrs.getNamedItem("attr.name").getNodeValue(),
+                    keyAttrs.getNamedItem("attr.type").getNodeValue()};
+            dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), dataInfo);
+        }
+        return dataKeys;
+    }
+
     /**
      * Checks for ANNOTATIONLABEL nodes whether a relationship already exists for type and direction.
      * 
      * @param source	the node
      * @param type		relationship type
-     * @param dir		direction		
-     * @return
+     * @return a boolean to indicate whether the relationship exists
      */
-	private boolean relationshipExists(Node source, String type, Direction dir) {
+	private boolean relationshipExists(Node source, String type) {
 		boolean exists = false;
 
 		if (StreamSupport.stream(source.getLabels().spliterator(), false).anyMatch(label -> Nodes.ANNOTATIONLABEL.name().equals(label.name()))
 				&& (type.equals(ERelations.HAS_PROPERTIES.name()) || type.equals(ERelations.HAS_LINKS.name()))) {
-			Relationship rel = source.getSingleRelationship(ERelations.valueOf(type), dir);
+			Relationship rel = source.getSingleRelationship(ERelations.valueOf(type), Direction.OUTGOING);
 			if (rel != null && rel.getStartNode().equals(source)) {
 				exists = true;
 			}
 		}
 		return exists;
 	}
-
-    // Return true if the tradition already has an annotation under the given name.
-    // Throws an IllegalArgumentException if the annotation information conflicts.
-    // TODO do we still need this?
-    private boolean annoLabelExists(Node tradition, Node alabel) {
-        String name = alabel.getProperty("name").toString();
-        Optional<Node> matching = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS).stream()
-                .filter(x -> x.getProperty("name", "").equals(name)).findFirst();
-        if (matching.isEmpty()) return false;
-
-        // Check for a mismatch of properties and links. The existing model may contain a superset of
-        // allowed properties and links.
-        AnnotationLabelModel existing = new AnnotationLabelModel(matching.get());
-        AnnotationLabelModel added = new AnnotationLabelModel(alabel);
-        for (String k : added.getProperties().keySet()) {
-            if (!added.getProperties().get(k).equals(existing.getProperties().getOrDefault(k, null)))
-                throw new UnsupportedOperationException(String.format(
-                        "Mismatch between existing and input properties for annotation label %s", name));
-        }
-        for (String k : added.getLinks().keySet()) {
-            if (!existing.getLinks().containsKey(k))
-                throw new UnsupportedOperationException(String.format(
-                        "Existing annotation label %s is missing link for node type %s", name, k));
-            List<String> linkTypes = Arrays.asList(added.getLinks().get(k).split(","));
-            List<String> existingLTypes = Arrays.asList(existing.getLinks().get(k).split(","));
-            if (!existingLTypes.containsAll(linkTypes))
-                throw new UnsupportedOperationException(String.format(
-                        "Existing annotation label %s has different links to node type %s", name, k));
-        }
-
-        // If we didn't throw any errors then we can continue.
-        return true;
-    }
 
     private HashMap<String, Object> returnProperties(NodeList dataNodes, HashMap<String, String[]> dataKeys) {
         HashMap<String, Object> nodeProperties = new HashMap<>();

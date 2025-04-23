@@ -159,19 +159,18 @@ public class Root {
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-
+        Tradition tradRest = new Tradition(tradId);
         // Link the given user to the created tradition.
         try {
             this.linkUserToTradition(userId, tradId);
         } catch (Exception e) {
-            new Tradition(tradId).deleteTraditionById();
+            tradRest.deleteTraditionById();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
         // If we got file contents, we should send them off for parsing.
         if (empty == null) {
-            Response dataResult = Tradition.parseDispatcher(VariantGraphService.getTraditionNode(tradId, db),
-                    filetype, uploadedInputStream, false);
+            Response dataResult = tradRest.parseDispatcher("DEFAULT", filetype, uploadedInputStream, false);
             if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
                 // If something went wrong, delete the new tradition immediately and return the error.
                 new Tradition(tradId).deleteTraditionById();
@@ -179,7 +178,7 @@ public class Root {
             }
             // If we just parsed GraphML (the only format that can preserve prior tradition IDs),
             // get the actual tradition ID in case it was preserved from a prior export.
-            if (filetype.equals("graphml")) {
+            if (filetype.equals("graphml")) { // TODO fix to startswith
                 try {
                     JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
                     tradId = dataValues.get("parentId").toString();

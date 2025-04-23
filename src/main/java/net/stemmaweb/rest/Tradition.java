@@ -35,7 +35,7 @@ import static net.stemmaweb.Util.*;
 
 /**
  * Comprises all the api calls related to a tradition.
- * Can be called using http://BASE_URL/tradition
+ * Can be called using {@code http://BASE_URL/tradition}
  *
  * @author PSE FS 2015 Team2
  */
@@ -158,7 +158,7 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         // Make sure the stemma has a name.
-        if (stemmaSpec.getIdentifier() == null || stemmaSpec.getIdentifier().equals("")) {
+        if (stemmaSpec.getIdentifier() == null || stemmaSpec.getIdentifier().isEmpty()) {
             // Is there a name in the dot spec?
             if (stemmaSpec.getDot() != null) try {
                 stemmaSpec.setIdentifier(DotParser.getDotGraphName(stemmaSpec.getDot()));
@@ -232,31 +232,27 @@ public class Tradition {
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream) {
 
-        // Make a new section node to connect to the tradition in question.
+        // Get the existing section list
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-        Node sectionNode = createNewSection(traditionNode, sectionName);
-        if (sectionNode == null)
-            return Response.serverError().entity(jsonerror("Error creating new section node on tradition")).build();
 
-        // Dispatch the data for parsing, with the new section node as the parent node
-        Response result = parseDispatcher(sectionNode, filetype, uploadedInputStream, true);
+        // Dispatch the data for parsing. This will create one or more new section nodes.
+        // A successful response entity returned here looks like {"parentId": 123456} where the parentId
+        // is the ID of the first new section created.
+        Response result = this.parseDispatcher(sectionName, filetype, uploadedInputStream, true);
 
         // Handle the result
-        if (result.getStatus() > 201) {
-            // If the result wasn't a success, delete the section node before returning the result.
-            Section restSect = new Section(traditionId, String.valueOf(sectionNode.getId()));
-            restSect.deleteSection();
-            return result;
-        } else {
-            // Otherwise, retrieve the section ID for our own response and link this section
+        if (result.getStatus() == Status.CREATED.getStatusCode()) {
+            // If we created a section, retrieve the section ID for our own response and link this section
             // behind the last of the prior sections
             JSONObject internResponse = new JSONObject((String) result.getEntity());
-            if (existingSections != null && existingSections.size() > 0) {
+            long newSectionId = internResponse.getLong("parentId");
+            if (existingSections != null && !existingSections.isEmpty()) {
                 SectionModel ls = existingSections.get(existingSections.size() - 1);
                 try (Transaction tx = db.beginTx()) {
                     Node lastSection = db.getNodeById(Long.parseLong(ls.getId()));
-                    lastSection.createRelationshipTo(sectionNode, ERelations.NEXT);
+                    Node thisSection = db.getNodeById(newSectionId);
+                    lastSection.createRelationshipTo(thisSection, ERelations.NEXT);
                     tx.success();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -264,6 +260,8 @@ public class Tradition {
                 }
             }
             return Response.status(Status.CREATED).entity(jsonresp("sectionId", internResponse.getLong("parentId"))).build();
+        } else {
+            return result;
         }
     }
 
@@ -287,59 +285,84 @@ public class Tradition {
     /**
      * A package-private method to add sections to a given tradition, used by POST /tradition and POST /section
      *
-     * @param parentNode - either the tradition node or the section node, depending on addSingleSection
-     * @param filetype   - indicates which of the supported filetypes we are parsing
+     * @param sectionName - the name to be given to the new section created. Will be overridden for GraphML parsing
+     * @param filetype    - indicates which of the supported filetypes we are parsing
      * @param uploadedInputStream - the data to parse
-     * @param addSingleSection - whether we are adding a section to an existing tradition, or uploading
+     * @param addToExisting - whether we are adding a section to an existing tradition, or uploading
      *                          a new tradition entirely
      * @return a Response indicating the result
      */
-    static Response parseDispatcher(Node parentNode, String filetype, InputStream uploadedInputStream, boolean addSingleSection) {
+    Response parseDispatcher(String sectionName, String filetype, InputStream uploadedInputStream,
+                             boolean addToExisting) {
         Response result = null;
-        // All parsers except GraphML expect a section node; create it here if we are not adding a
-        // section to an existing tradition.
-        if (!addSingleSection && !filetype.startsWith("graphml")) {
-            Node sectionNode = createNewSection(parentNode, "DEFAULT");
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
+        Node sectionNode = null;
+        // If we are adding a section to an existing tradition, or we are parsing anything except
+        // GraphML, we have to start by creating the section node
+        if (!filetype.startsWith("graphml") || addToExisting) {
+            sectionNode = createNewSection(traditionNode, sectionName);
             if (sectionNode == null)
                 return Response.serverError()
                         .entity(jsonerror("Error creating new section node on tradition")).build();
-            parentNode = sectionNode;
         }
         // Parse the contents of the given file into that section
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, parentNode, ',');
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ',');
         if (filetype.equals("ssv"))
             // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, parentNode, ';');
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ';');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
-            result = new TabularParser().parseCSV(uploadedInputStream, parentNode, '\t');
+            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, '\t');
         if (filetype.startsWith("xls"))
             // Pass it off to the Excel reader
-            result = new TabularParser().parseExcel(uploadedInputStream, parentNode, filetype);
+            result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
         if (filetype.equals("teips"))
             // Pass it off to the TEI parser
-            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, parentNode);
+            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
         // TODO we need to parse TEI double-endpoint attachment from CTE
         if (filetype.equals("collatex"))
             // Pass it off to the CollateX parser
-            result = new CollateXParser().parseCollateX(uploadedInputStream, parentNode);
+            result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
         if (filetype.equals("cxjson"))
             // Pass it off to the CollateX JSON parser
-            result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, parentNode);
+            result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, sectionNode);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the old Stemmaweb-format parser
-            result = new StemmawebParser().parseGraphML(uploadedInputStream, parentNode);
+            result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode);
         if (filetype.equals("graphmlsingle"))
             // Pass it off to the legacy single-file GraphML parser
-            result = new GraphMLParser().parseGraphMLSingle(uploadedInputStream, parentNode, addSingleSection);
+            result = new GraphMLParser().parseGraphMLSingle(uploadedInputStream,
+                    addToExisting ? sectionNode : traditionNode,
+                    addToExisting);
         if (filetype.equals("graphml"))
             // Pass it off to the GraphML ZIP parser
-            result = new GraphMLParser().parseGraphMLZip(uploadedInputStream, parentNode, addSingleSection);
+            result = new GraphMLParser().parseGraphMLZip(uploadedInputStream,
+                    addToExisting ? sectionNode : traditionNode,
+                    addToExisting);
         // If we got this far, it was an unrecognized filetype.
         if (result == null)
             result = Response.status(Status.BAD_REQUEST).entity(jsonerror("Unrecognized file type " + filetype)).build();
+        // If we got an error as a result, make sure we aren't leaving an orphan section node.
+        if (result.getStatus() > Response.Status.CREATED.getStatusCode() && sectionNode != null) {
+            // Delete the section node that we created
+            Section restSect = new Section(traditionId, String.valueOf(sectionNode.getId()));
+            restSect.deleteSection();
+            return result;
+        }
+        else if (sectionNode != null && !addToExisting) {
+            // We created a section with the name DEFAULT at the beginning. If that is still the name,
+            // change it to the tradition name
+            try (Transaction tx = sectionNode.getGraphDatabase().beginTx()) {
+                String currentName = sectionNode.getProperty("name", "DEFAULT").toString();
+                String tradName = traditionNode.getProperty("name", "DEFAULT").toString();
+                if (currentName.equals("DEFAULT"))
+                    sectionNode.setProperty("name", tradName);
+                tx.success();
+            }
+
+        }
 
         return result;
     }
@@ -382,7 +405,6 @@ public class Tradition {
 
     /**
      * Resets ranks across the whole tradition
-     *
      * This does not belong to the official API!
      * It is a secret hack to fix ranks if we find they are broken or missing.
      */
@@ -624,7 +646,7 @@ public class Tradition {
             ArrayList<AnnotationModel> allAnnotations = new ArrayList<>();
             traditionNode.getRelationships(ERelations.HAS_ANNOTATION, Direction.OUTGOING)
                     .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode())));
-            if (filterLabels.size() > 0)
+            if (!filterLabels.isEmpty())
                 result = allAnnotations.stream().filter(x -> filterLabels.contains(x.getLabel()))
                         .collect(Collectors.toList());
             else
@@ -757,7 +779,7 @@ public class Tradition {
                 traditionNode.setProperty("is_public", tradition.getIs_public());
             if (tradition.getLanguage() != null )
                 traditionNode.setProperty("language", tradition.getLanguage());
-            if (!tradition.getDirection().equals("") )
+            if (!tradition.getDirection().isEmpty() )
                 traditionNode.setProperty("direction", tradition.getDirection());
             // We need to be able to both set and unset this, but not touch it if it isn't specified.
             // Thus, if the value passed is 0 or negative, we unset it entirely.

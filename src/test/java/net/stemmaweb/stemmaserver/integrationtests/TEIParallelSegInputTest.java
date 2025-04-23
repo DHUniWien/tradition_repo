@@ -1,9 +1,7 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.*;
 import net.stemmaweb.rest.*;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
@@ -95,6 +93,13 @@ public class TEIParallelSegInputTest {
         String tradId = Util.getValueFromJson(cResult, "tradId");
         Tradition tradition = new Tradition(tradId);
 
+        // Tradition and section metadata
+        TraditionModel tModel = (TraditionModel) tradition.getTraditionInfo().getEntity();
+        @SuppressWarnings("unchecked")
+        ArrayList<SectionModel> sections = (ArrayList<SectionModel>) tradition.getAllSections().getEntity();
+        assertEquals(1, sections.size());
+        assertEquals(tModel.getName(), sections.get(0).getName());
+
         // Basic statistics
         Response result = tradition.getAllWitnesses();
         @SuppressWarnings("unchecked")
@@ -110,7 +115,6 @@ public class TEIParallelSegInputTest {
             if (r.getText().equals("βλασφημίας"))
                 foundReading = true;
         assertTrue(foundReading);
-
 
         // Get a witness text
         TextSequenceModel tm = (TextSequenceModel) new Witness(tradId, "T").getWitnessAsText().getEntity();

@@ -116,7 +116,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, s.size());
-        assertEquals("DEFAULT", s.get(0).getName());
+        assertEquals("Tradition", s.get(0).getName());
 
         // Does the tradition have the right number of readings?
         ArrayList<ReadingModel> rdgs = jerseyTest.target("/tradition/" + tradId + "/readings")
@@ -171,9 +171,10 @@ public class GraphMLInputOutputTest extends TestCase {
 
     public void testWrongDataForUpload() {
         // Try to add a JSON section to an existing tradition but claim it is GraphML zip
-        Response r = Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/Matthew-418.json",
-                "graphml", "bad section");
-        assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        try (Response r = Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/Matthew-418.json",
+                "graphml", "bad section")) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        }
         try (Transaction tx = db.beginTx()) {
             Node n = db.findNode(Nodes.TRADITION, "id", multiTradId);
             assertNotNull(n);

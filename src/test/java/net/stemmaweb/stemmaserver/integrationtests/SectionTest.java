@@ -34,8 +34,6 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 import org.glassfish.jersey.test.JerseyTest;
-import org.junit.After;
-import org.junit.Before;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.MultipleFoundException;
 import org.neo4j.graphdb.Node;
@@ -80,7 +78,6 @@ public class SectionTest extends TestCase {
     private String tradId;
     private String firstSectId;
 
-    @Before
     public void setUp() throws Exception {
         super.setUp();
         db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
@@ -106,7 +103,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, tSections.size());
-        assertEquals("DEFAULT", tSections.get(0).getName());
+        assertEquals("Legend", tSections.get(0).getName());
         firstSectId = tSections.get(0).getId();
     }
 
@@ -286,7 +283,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(4, returnedSections.size());
-        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("DEFAULT", "part 1", "part 2", "part 3"));
+        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("Florilegium", "part 1", "part 2", "part 3"));
         ArrayList<String> returnedIds = new ArrayList<>();
         returnedSections.forEach(x -> returnedIds.add(x.getName()));
         assertEquals(expectedSections, returnedIds);
@@ -1147,7 +1144,7 @@ public class SectionTest extends TestCase {
                 km.setProperty("Quasi");
                 models.add(km);
             }
-            if (models.size() > 0) {
+            if (!models.isEmpty()) {
                 ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
                 chgModel.setProperties(models);
 
@@ -1554,7 +1551,7 @@ public class SectionTest extends TestCase {
             assertEquals(expectedTei, writer.toString());
         }
     }
-    
+
     public void testTeiPartialWitnesses() throws ParserConfigurationException, SAXException, IOException {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
@@ -1596,10 +1593,10 @@ public class SectionTest extends TestCase {
                         assertEquals(sectWits.size(), actualWitnesses.length);
                         
                         // and each witness is in the list
-                        List<String> expectedWitnesses = sectWits.stream().map(w -> w.getSigil()).collect(Collectors.toList());
+                        List<String> expectedWitnesses = sectWits.stream().map(WitnessModel::getSigil).collect(Collectors.toList());
                         for (String wit : actualWitnesses) {
                             // we have to cut off the leading #
-                            assertTrue(expectedWitnesses.contains(wit.substring(1)));  
+                            assertTrue(expectedWitnesses.contains(wit.substring(1)));
                         }
                         testSuceeded = true;
                         break;
@@ -1612,7 +1609,7 @@ public class SectionTest extends TestCase {
         // let's make sure we had actually witnesses to test against
         assertTrue(testSuceeded);
     }
-    
+
     public void testTeiTraditionWitnessesInHeader() throws ParserConfigurationException, SAXException, IOException {
         List<String> florIds = Util.importFlorilegium(jerseyTest);
         String florId = florIds.remove(0);
@@ -1643,7 +1640,7 @@ public class SectionTest extends TestCase {
         // returned from witnesses endpoint
         assertEquals(traditionWitnesses.size(), witnessNodes.getLength());
 
-        List<String> expectedWitnesses = traditionWitnesses.stream().map(w -> w.getSigil())
+        List<String> expectedWitnesses = traditionWitnesses.stream().map(WitnessModel::getSigil)
                 .collect(Collectors.toList());
         // check that all witnesses in header are in witness list returned from endpoint
         for(int i = 0; i<witnessNodes.getLength(); i++) {
@@ -1653,7 +1650,6 @@ public class SectionTest extends TestCase {
         }
     }
 
-    @After
     public void tearDown() throws Exception {
         db.shutdown();
         jerseyTest.tearDown();
