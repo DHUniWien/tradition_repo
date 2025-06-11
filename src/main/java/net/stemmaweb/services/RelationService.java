@@ -50,13 +50,19 @@ public class RelationService {
     public static RelationTypeModel returnRelationType(String traditionId, String relType) {
         RelationType rtRest = new RelationType(traditionId, relType);
         Response rtResult = rtRest.getRelationType();
+        RelationTypeModel rtm;
         if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
-            RelationTypeModel rtm = new RelationTypeModel();
+            rtm = new RelationTypeModel();
             rtm.setName(relType);
             rtm.setDefaultsettings(true);
-            rtResult = rtRest.create(rtm);
+            try (Response rtCreated = rtRest.create(rtm)) {
+                rtm = (RelationTypeModel) rtCreated.getEntity();
+
+            }
+        } else {
+            rtm = (RelationTypeModel) rtResult.getEntity();
         }
-        return (RelationTypeModel) rtResult.getEntity();
+        return rtm;
     }
 
     /**
@@ -112,7 +118,7 @@ public class RelationService {
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         for (RelationTypeModel rtm : ourRelationTypes(traditionNode))
             if (rtm.getIs_colocation() == colocations)
-                useRelationTypes.add(String.format("\"%s\"", rtm.getName()));
+                useRelationTypes.add(rtm.getName());
 
         // Now run the unionFind algorithm on the relevant subset of relation types
         return collectSpecifiedClusters(sectionId, db, useRelationTypes);
@@ -143,7 +149,7 @@ public class RelationService {
             bindlevel = thresholdModel.get().getBindlevel();
         for (RelationTypeModel rtm : rtmlist)
             if (rtm.getBindlevel() <= bindlevel)
-                closeRelations.add(String.format("\"%s\"", rtm.getName()));
+                closeRelations.add(rtm.getName());
 
         return collectSpecifiedClusters(sectionId, db, closeRelations);
     }
@@ -152,28 +158,22 @@ public class RelationService {
             String sectionId, GraphDatabaseService db, Set<String> relatedTypes)
             throws Exception {
         // Now run the unionFind algorithm on the relevant subset of relation types
-        List<Set<Node>> result = new ArrayList<>();
+        List<Set<Node>> result;
         try (Transaction tx = db.beginTx()) {
-            // Make the arguments
-            String cypherNodes = String.format("MATCH (n:READING {section_id:%s}) RETURN id(n) AS id", sectionId);
-            String cypherRels = String.format("MATCH (n:READING)-[r:RELATED]-(m) WHERE r.type IN [%s] RETURN id(n) AS source, id(m) AS target",
-                    String.join(",", relatedTypes));
-            // A struct to store the results
-            Map<Long, Set<Long>> clusters = new HashMap<>();
-            // Stream the results and collect the clusters
-            Result r = db.execute(String.format("CALL algo.unionFind.stream('%s', '%s', {graph:'cypher'}) YIELD nodeId, setId", cypherNodes, cypherRels));
-            while(r.hasNext()) {
-                Map<String, Object> row = r.next();
-                Long setId = (Long) row.get("setId");
-                Set<Long> cl = clusters.getOrDefault(setId, new HashSet<>());
-                Long nodeId = (Long) row.get("nodeId");
-                cl.add(nodeId);
-                clusters.put(setId, cl);
+            try (ResourceIterator<Node> sectionReadings = db.findNodes(Nodes.READING, "section_id", Long.parseLong(sectionId))) {
+                // List out the readings for the given section
+                List<Node> sectionNodes = sectionReadings.stream().collect(Collectors.toList());
+                // Perform a UnionFind over these nodes...
+                UnionFind uf = new UnionFind(sectionNodes);
+                for (Node sectionNode : sectionNodes)
+                    // based on the relevant relations.
+                    for (Relationship rel : sectionNode.getRelationships(ERelations.RELATED, Direction.OUTGOING))
+                        if (relatedTypes.contains(rel.getProperty("type").toString()))
+                            uf.union(sectionNode, rel.getEndNode());
+                // Filter the result to remove the sets of size 1 (i.e. the non-clusters)
+                result = uf.connectedSets().stream().filter(x -> x.size() > 1).collect(Collectors.toList());
             }
-
-            // Convert the map of setID -> set of nodeIDs into a list of nodesets
-            clusters.keySet().stream().filter(x -> clusters.get(x).size() > 1)
-                    .forEach(x -> result.add(clusters.get(x).stream().map(db::getNodeById).collect(Collectors.toSet())));
+            // Turn
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -209,7 +209,7 @@ public class RelationService {
                 alternatives.stream().filter(x -> x.hasProperty("normal_form"))
                         .map(x -> x.getProperty("normal_form").toString())
                         .forEach(x -> normals.put(x, normals.getOrDefault(x, 0) + 1));
-                if (normals.size() > 0) {
+                if (!normals.isEmpty()) {
                     String nf = normals.keySet().stream().max(Comparator.comparingInt(normals::get)).get();
                     Optional<Node> rep = alternatives.stream().filter(x -> x.getProperty("text").equals(nf)).findFirst();
                     if (rep.isPresent())

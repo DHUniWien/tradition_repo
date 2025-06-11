@@ -4,37 +4,97 @@ import org.neo4j.graphdb.Node;
 
 import java.util.*;
 
+/**
+ * A local implementation of UnionFind, specifically for Neo4J nodes, without having to call out to Cypher.
+ * The 'union' method returns a Boolean, for the case when we use this algorithm to do cycle detection.
+ */
 public class UnionFind {
-    private Map<Node, Node> parent = new HashMap<>();
+    private final int[] parent;
+    private final int[] size;
+    private final Map<Node, Integer> nodeToIndex;
+    private final Map<Integer, Node> indexToNode;
+
+    /**
+     * Create a UnionFind instance over the given set of Neo4J nodes. This will be static.
+     * @param nodes - the set of nodes we are working with. This can't be changed later.
+     */
     public UnionFind(Collection<Node> nodes) {
-        for (Node node : nodes) parent.put(node, node);
+        int nodeCount = nodes.size();
+        this.parent = new int[nodeCount];
+        this.size = new int[nodeCount];
+        this.nodeToIndex = new HashMap<>();
+        this.indexToNode = new HashMap<>();
+
+        int index = 0;
+        for (Node node : nodes) {
+            nodeToIndex.put(node, index);
+            indexToNode.put(index, node);
+            parent[index] = index;
+            size[index] = 1;
+            index++;
+        }
     }
+
     public Node find(Node node) {
-        // Here lies the recursion
-        if (parent.get(node) != node)
-            parent.put(node, find(parent.get(node)));
-        return parent.get(node);
+        if (!nodeToIndex.containsKey(node)) {
+            throw new IllegalArgumentException("Node not in initial set");
+        }
+
+        int p = nodeToIndex.get(node);
+        int root = p;
+        while (root != parent[root]) {
+            root = parent[root];
+        }
+
+        // Path compression
+        while (p != root) {
+            int next = parent[p];
+            parent[p] = root;
+            p = next;
+        }
+
+        return indexToNode.get(root);
     }
-    public boolean union(Node a, Node b) {
-        // Returns a boolean value so that we can use this for cycle detection as well
-        // as grouping.
-        Node rootA = find(a);
-        Node rootB = find(b);
-        if (rootA == rootB) return false; // Cycle detected
-        parent.put(rootA, rootB);
+
+    /**
+     * Register a connection between two nodes, collapsing them into the same set.
+     *
+     * @param p - the source node
+     * @param q - the target node
+     * @return a boolean indication of whether a new union was made.
+     */
+    public boolean union(Node p, Node q) {
+        Node rootP = find(p);
+        Node rootQ = find(q);
+
+        if (rootP.equals(rootQ)) return false;
+
+        int i = nodeToIndex.get(rootP);
+        int j = nodeToIndex.get(rootQ);
+
+        if (size[i] < size[j]) {
+            parent[i] = j;
+            size[j] += size[i];
+        } else {
+            parent[j] = i;
+            size[i] += size[j];
+        }
         return true;
     }
-    public Map<Node, Long> returnSets() {
-        // Converts the arbitrary parent node to an index number, to mimic the Neo4J UnionFindProc
-        Map<Node, Long> sets = new HashMap<>();
-        Map<Node, Long> result = new HashMap<>();
-        long i = 0L;
-        for (Node node : parent.keySet()) {
-            Node p = parent.get(node);
-            if (!sets.containsKey(p))
-                sets.put(p, i++);
-            result.put(p, sets.get(p));
+
+    /**
+     * Return the (weakly) connected components of the graph as sets of nodes.
+     *
+     * @return a list of sets of connected nodes
+     */
+    public List<Set<Node>> connectedSets() {
+        Map<Node, Set<Node>> components = new HashMap<>();
+        for (Node node : nodeToIndex.keySet()) {
+            Node root = find(node);
+            components.computeIfAbsent(root, k -> new HashSet<>()).add(node);
         }
-        return result;
+        return new ArrayList<>(components.values());
     }
+
 }
+
