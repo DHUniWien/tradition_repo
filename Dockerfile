@@ -19,7 +19,7 @@ COPY build/server.xml /usr/local/tomcat/conf/
 COPY build/tomcat-users.xml /usr/local/tomcat/conf/
 
 # Set the appropriate environment variable
-ENV STEMMAREST_HOME /var/lib/stemmarest
+ENV STEMMAREST_HOME=/var/lib/stemmarest
 
 # Run the server
 EXPOSE 8080

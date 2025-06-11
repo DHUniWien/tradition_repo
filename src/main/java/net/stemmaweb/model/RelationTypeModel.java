@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.neo4j.graphdb.*;
 
 import javax.xml.bind.annotation.XmlRootElement;
@@ -25,11 +27,19 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * The name of the relationship type (e.g. "grammatical")
      */
     private String  thename;
+    private Boolean defaultsettings; // undocumented; use this for Stemmaweb legacy defaults
     /**
      * A short description of what this relationship type signifies
      */
-    private Boolean defaultsettings; // undocumented; use this for Stemmaweb legacy defaults
     private String  description;
+    /**
+     * A JSON-formatted string field made available for client applications to specify display behaviour
+     * for the relation type. This should be of the format
+     * {@code {"com.example.myapp": {"color": "blue", "width", "3px"}, "com.example.yourapp": {"lang": "fr"}, ...}}
+     * where the key is a namespaced string indicating the application, and the value is whatever JSON object
+     * that application would expect.
+     */
+    private String  display;
     /**
      * How tightly the relationship binds. A lower number indicates a closer binding.
      * If A and B are related at bindlevel 0, and B and C at bindlevel 1, it implies
@@ -71,6 +81,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         // Set some defaults
         // this.defaultsettings = false;
         this.description = "A type of reading relation";
+        this.display = "{}";
         this.bindlevel = 10;
         this.is_colocation = true;
         this.is_weak = false;
@@ -86,6 +97,8 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                 this.setName(n.getProperty("name").toString());
             if (n.hasProperty("description"))
                 this.setDescription(n.getProperty("description").toString());
+            if (n.hasProperty("display"))
+                this.setDisplay(n.getProperty("display").toString());
             if (n.hasProperty("bindlevel"))
                 this.setBindlevel((int) n.getProperty("bindlevel"));
             if (n.hasProperty("is_colocation"))
@@ -121,6 +134,10 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
     public void setDescription(String description) {
         this.description = description;
     }
+
+    public String getDisplay() { return display; }
+
+    public void setDisplay(String display) { this.display = display; }
 
     public int getBindlevel() {
         return bindlevel;
@@ -175,7 +192,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition to which this model belongs
      * @return the created RelationType node
      */
-    public Node instantiate (Node traditionNode) {
+    public Node instantiate (Node traditionNode) throws Exception {
         return match_relation_node(traditionNode, false);
     }
 
@@ -184,7 +201,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition to which this model belongs
      * @return the updated RelationType node
      */
-    public Node update (Node traditionNode) {
+    public Node update (Node traditionNode) throws Exception {
         return match_relation_node(traditionNode, true);
     }
 
@@ -193,7 +210,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition on which to perform the lookup
      * @return - The correspondingly named RELATION_TYPE node, or null
      */
-    public Node lookup (Node traditionNode) {
+    public Node lookup (Node traditionNode) throws Exception {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         Node relTypeNode = null;
         try (Transaction tx = db.beginTx()) {
@@ -205,14 +222,11 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                 }
             }
             tx.success();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
         }
         return relTypeNode;
     }
 
-    private Node match_relation_node(Node traditionNode, Boolean allow_update) {
+    private Node match_relation_node(Node traditionNode, Boolean allow_update) throws Exception {
         GraphDatabaseService db = traditionNode.getGraphDatabase();
         Node relType = this.lookup(traditionNode);
         try (Transaction tx = db.beginTx()) {
@@ -224,6 +238,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
             } else {
                 // Check that the node matches our values, if it does exist
                 if (!(this.description.equals(relType.getProperty("description"))
+                        && this.display.equals(relType.getProperty("display"))
                         && this.bindlevel == (int) relType.getProperty("bindlevel")
                         && this.is_colocation == relType.getProperty("is_colocation")
                         && this.is_weak == relType.getProperty("is_weak")
@@ -231,21 +246,26 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                         && this.is_generalizable == relType.getProperty("is_generalizable")
                         && this.use_regular == relType.getProperty("use_regular"))) {
                     if (allow_update) this.update_reltype(relType);
-                    else throw new Exception("Another relation type by this name already exists");
+                    else throw new IllegalArgumentException("Another relation type by this name already exists");
                 }
             }
             tx.success();
             return relType;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
         }
     }
 
     // To be used inside a transaction!
-    private void update_reltype (Node relType) {
+    private void update_reltype (Node relType) throws IllegalArgumentException {
         relType.setProperty("name", this.getName());
         relType.setProperty("description", this.getDescription());
+        // Sanity check the "display" property
+        try {
+            new JSONObject(this.getDisplay());
+
+        } catch (JSONException e) {
+            throw new IllegalArgumentException("Invalid display string '" + this.getDisplay() + "': " + e.getMessage());
+        }
+        relType.setProperty("display", this.getDisplay());
         relType.setProperty("bindlevel", this.getBindlevel());
         relType.setProperty("is_colocation", this.getIs_colocation());
         relType.setProperty("is_weak", this.getIs_weak());

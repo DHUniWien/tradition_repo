@@ -168,6 +168,43 @@ public class RelationTypeTest extends TestCase {
         assertEquals(Response.Status.CONFLICT.getStatusCode(), jerseyResult.getStatus());
     }
 
+    public void testAddDisplayProperty () {
+        // Make an arbitrary (default) relation type
+        RelationTypeModel rtm = new RelationTypeModel();
+        rtm.setName("grammatical");
+        rtm.setDefaultsettings(true);
+        RelationTypeModel created;
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/grammatical")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(rtm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), jerseyResult.getStatus());
+            created = jerseyResult.readEntity(RelationTypeModel.class);
+        }
+        assertEquals("grammatical", created.getName());
+        // Set a display property
+        String firstDisplay = "{\"net.stemmaweb.variantmapper\": {\"color\": \"yellow\"}}";
+        created.setDisplay(firstDisplay);
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/grammatical")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(created))) {
+            assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+            assertEquals(firstDisplay, jerseyResult.readEntity(RelationTypeModel.class).getDisplay());
+        }
+        // Try to set a bad display property
+        String badDisplay = "\"net.stemmweb.variantmapper\": {\"color\": \"red\"}";
+        created.setDisplay(badDisplay);
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/grammatical")
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(created))) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
+            assertTrue(Util.getValueFromJson(jerseyResult, "error").startsWith("Invalid display string"));
+        }
+        // Make sure nothing changed
+        try (Response jerseyResult = jerseyTest.target("/tradition/" + tradId + "/relationtype/grammatical")
+                .request(MediaType.APPLICATION_JSON).get()) {
+            assertEquals(Response.Status.OK.getStatusCode(), jerseyResult.getStatus());
+            assertEquals(firstDisplay, jerseyResult.readEntity(RelationTypeModel.class).getDisplay());
+        }
+
+    }
+
     public void testNonGeneralizable() {
         String legeiAcute = readingLookup.getOrDefault("λέγει/1", "17");
         String legei = readingLookup.getOrDefault("λεγει/1", "17");

@@ -39,12 +39,23 @@ public class Reading {
      * The ID of the reading to query
      */
     private final Long readId;
+    private final String traditionId;
 
     public Reading(String requestedId) {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
-        readId = Long.valueOf(requestedId); // This might be set to -1 if the reading was requested
+        // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
+        readId = Long.valueOf(requestedId.replaceAll("n", "")); // This might be set to -1 if the reading was requested
                                             // via a tradition it doesn't belong to
+        traditionId = null;
+    }
+
+    public Reading(String requestedId, String tradId) {
+        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
+        db = dbServiceProvider.getDatabase();
+        // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
+        readId = Long.valueOf(requestedId.replaceAll("n", ""));
+        traditionId = tradId;
     }
 
     /**
