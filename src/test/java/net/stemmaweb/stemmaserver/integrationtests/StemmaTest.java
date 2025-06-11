@@ -1,5 +1,6 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -675,6 +676,28 @@ public class StemmaTest {
         assertNull(textInfo.getStemweb_jobid());
     }
 
+    @Test
+    public void importNeighbourNetStemmaTest() {
+        // See if a Neighbour Net generated stemma will actually import correctly
+        String tradId = createTraditionFromFile("Sapientia", "src/TestFiles/sapientia.xml");
+        // Read the dot specification in from the test file
+        String dotSpec = "";
+        try {
+            dotSpec = new String(Files.readAllBytes(Paths.get("src/TestFiles/sapientia_nn.dot")));
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
+        StemmaModel sm = new StemmaModel();
+        sm.setIdentifier("Neighbour Net 1749128699");
+        sm.setJobid(37);
+        sm.setDot(dotSpec);
+        try (Response r = jerseyTest.target("/tradition/" + tradId + "/stemma")
+                .request(MediaType.APPLICATION_JSON).post(Entity.json(sm))) {
+            assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+            StemmaModel result = r.readEntity(StemmaModel.class);
+            assertTrue(result.getIs_undirected());
+        };
+    }
 
     private int countGraphNodes() {
         AtomicInteger numNodes = new AtomicInteger(0);
