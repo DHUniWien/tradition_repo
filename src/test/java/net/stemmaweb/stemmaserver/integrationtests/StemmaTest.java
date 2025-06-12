@@ -705,7 +705,7 @@ public class StemmaTest {
     @Test
     public void importNeighbourNetStemmaTest() {
         // See if a Neighbour Net generated stemma will actually import correctly
-        String tradId = createTraditionFromFile("Sapientia", "src/TestFiles/sapientia.xml");
+        String tradId = createTraditionFromFile("Sapientia", "src/TestFiles/Sapientia.xml");
         // Set a job ID on the tradition
         TraditionModel textInfo = jerseyTest.target("/tradition/" + tradId)
                 .request().get(TraditionModel.class);
