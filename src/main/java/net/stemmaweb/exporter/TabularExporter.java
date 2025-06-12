@@ -66,12 +66,12 @@ public class TabularExporter {
         StringWriter sw = new StringWriter();
         ICSVWriter writer = new CSVWriterBuilder(sw)
                 .withSeparator(separator)
-                .withQuoteChar(separator == ',' ? ICSVWriter.DEFAULT_QUOTE_CHARACTER : ICSVWriter.NO_QUOTE_CHARACTER)
+                .withQuoteChar(ICSVWriter.DEFAULT_QUOTE_CHARACTER)
                 .build();
 
         // First write out the witness list
         writer.writeNext(wholeTradition.getAlignment().stream()
-                .map(WitnessTokensModel::constructSigil).toArray(String[]::new));
+                .map(WitnessTokensModel::constructSigil).toArray(String[]::new), false);
 
         // Now write out the normal_form or text for the reading in each "row"
         for (int i = 0; i < wholeTradition.getLength(); i++) {
@@ -80,7 +80,7 @@ public class TabularExporter {
                     .map(x -> {
                         ReadingModel rm = x.getTokens().get(ai.get());
                         return rm == null ? null : rm.normalized();
-                    }).toArray(String[]::new));
+                    }).toArray(String[]::new), false);
         }
 
         // Close off the CSV writer and return
@@ -193,14 +193,14 @@ public class TabularExporter {
         if (traditionSections.isEmpty()) return null;
 
         // Are we requesting all sections?
-        if (sectionList.size() == 0) return traditionSections;
+        if (sectionList.isEmpty()) return traditionSections;
 
         // Do the real work
         ArrayList<Node> collectedSections = new ArrayList<>();
         for (String sectionId : sectionList) {
             try (Transaction tx = db.beginTx()) {
                 collectedSections.add(tx.getNodeByElementId(sectionId));
-                tx.close();
+                tx.commit();
             } catch (NotFoundException e) {
                 throw new TabularExporterException("Section " + sectionId + " not found in tradition");
             }

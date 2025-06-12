@@ -1,6 +1,5 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -16,13 +15,8 @@ import org.junit.Test;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
-
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.rest.Witness;
+import net.stemmaweb.model.*;
+import net.stemmaweb.rest.*;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -103,6 +97,13 @@ public class TEIParallelSegInputTest {
         String tradId = Util.getValueFromJson(cResult, "tradId");
         Tradition tradition = new Tradition(tradId);
 
+        // Tradition and section metadata
+        TraditionModel tModel = (TraditionModel) tradition.getTraditionInfo().getEntity();
+        @SuppressWarnings("unchecked")
+        ArrayList<SectionModel> sections = (ArrayList<SectionModel>) tradition.getAllSections().getEntity();
+        assertEquals(1, sections.size());
+        assertEquals(tModel.getName(), sections.get(0).getName());
+
         // Basic statistics
         Response result = tradition.getAllWitnesses();
         @SuppressWarnings("unchecked")
@@ -115,10 +116,11 @@ public class TEIParallelSegInputTest {
         assertEquals(317, allReadings.size());
         boolean foundReading = false;
         for (ReadingModel r : allReadings)
-            if (r.getText().equals("βλασφημίας"))
+            if (r.getText().equals("βλασφημίας")) {
                 foundReading = true;
+                break;
+            }
         assertTrue(foundReading);
-
 
         // Get a witness text
         TextSequenceModel tm = (TextSequenceModel) new Witness(tradId, "T").getWitnessAsText().getEntity();

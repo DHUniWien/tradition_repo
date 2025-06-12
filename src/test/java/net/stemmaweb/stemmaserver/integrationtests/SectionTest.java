@@ -1,15 +1,22 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertNotEquals;
+import junit.framework.TestCase;
+import net.stemmaweb.model.*;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.dbms.api.DatabaseManagementService;
+import org.neo4j.graphdb.*;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.GenericType;
@@ -17,38 +24,21 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
-import org.glassfish.jersey.test.JerseyTest;
-import org.junit.After;
-import org.junit.Before;
-import org.neo4j.dbms.api.DatabaseManagementService;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.MultipleFoundException;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.test.TestDatabaseManagementServiceBuilder;
-
-import junit.framework.TestCase;
-import net.stemmaweb.model.AnnotationLabelModel;
-import net.stemmaweb.model.AnnotationLinkModel;
-import net.stemmaweb.model.AnnotationModel;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.KeyPropertyModel;
-import net.stemmaweb.model.ProposedEmendationModel;
-import net.stemmaweb.model.ReadingChangePropertyModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.SequenceModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
+import static org.junit.Assert.*;
 
 /**
  * Tests for text section functionality.
@@ -62,7 +52,6 @@ public class SectionTest extends TestCase {
     private String firstSectId;
 	private DatabaseManagementService dbbuilder;
 
-    @Before
     public void setUp() throws Exception {
         super.setUp();
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
@@ -91,7 +80,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, tSections.size());
-        assertEquals("DEFAULT", tSections.get(0).getName());
+        assertEquals("Legend", tSections.get(0).getName());
         firstSectId = tSections.get(0).getId();
     }
 
@@ -138,7 +127,7 @@ public class SectionTest extends TestCase {
             assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tradId, tx).getElementId());
             assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
             assertEquals(VariantGraphService.getEndNode(newSectId, tx).getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -230,7 +219,7 @@ public class SectionTest extends TestCase {
         // Check that our witnesses were not duplicated
         try (Transaction tx = db.beginTx()) {
             Node witV = tx.findNode(Nodes.WITNESS, "sigil", "V");
-            tx.close();
+            tx.commit();
             assertNotNull(witV);
         } catch (MultipleFoundException e) {
             fail();
@@ -271,7 +260,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(4, returnedSections.size());
-        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("DEFAULT", "part 1", "part 2", "part 3"));
+        ArrayList<String> expectedSections = new ArrayList<>(Arrays.asList("Florilegium", "part 1", "part 2", "part 3"));
         ArrayList<String> returnedIds = new ArrayList<>();
         returnedSections.forEach(x -> returnedIds.add(x.getName()));
         assertEquals(expectedSections, returnedIds);
@@ -646,7 +635,7 @@ public class SectionTest extends TestCase {
                     continue;
                 r.setProperty("is_lemma", true);
             }
-            tx.close();
+            tx.commit();
         }
 
         Response r = jerseyTest.target("/tradition/" + florId + "/section/" + flor3 + "/setlemma")
@@ -988,7 +977,7 @@ public class SectionTest extends TestCase {
             tx.getAllRelationships().stream()
                     .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").equals("collated"))
                     .forEach(Relationship::delete);
-            tx.close();
+            tx.commit();
         }
 
         // Now we should have mergeable readings
@@ -1032,7 +1021,7 @@ public class SectionTest extends TestCase {
             tx.getAllRelationships().stream()
                     .filter(x -> x.isType(ERelations.RELATED) && x.getProperty("type").equals("collated"))
                     .forEach(Relationship::delete);
-            tx.close();
+            tx.commit();
         }
 
         // Merge the venerabili
@@ -1050,7 +1039,7 @@ public class SectionTest extends TestCase {
             assertEquals(5L, capv.getProperty("rank"));
             Node uene = tx.findNode(Nodes.READING, "text", "uenerabilis");
             assertEquals(5L, uene.getProperty("rank"));
-            tx.close();
+            tx.commit();
         }
 
         // Check that the pontifices are mergeable
@@ -1132,7 +1121,7 @@ public class SectionTest extends TestCase {
                 km.setProperty("Quasi");
                 models.add(km);
             }
-            if (models.size() > 0) {
+            if (!models.isEmpty()) {
                 ReadingChangePropertyModel chgModel = new ReadingChangePropertyModel();
                 chgModel.setProperties(models);
 
@@ -1485,8 +1474,159 @@ public class SectionTest extends TestCase {
 
         return data;
     }
+    
+    /**
+     * This test checks if the generated TEI is correct. Since expecting a specific XML
+     * easily breaks the test as soon as indentation is incorrect or something similar,
+     * and also dates are generated on the fly to be included in the xml,  
+     * we check for the following things:
+     * <ul>
+     *  <li>it uses double-end-point attachment method (we check for the variant encoding tag)</li>
+     *  <li>we check that the generated body is the same as what we expect</li>
+     *  <li>witness lists in header and body are correct (checked in separate tests)</li>
+     * </ul>
+     * @throws ParserConfigurationException
+     * @throws SAXException
+     * @throws IOException
+     * @throws TransformerFactoryConfigurationError 
+     * @throws TransformerException 
+     */
+    public void testTeiIsCorrect() throws ParserConfigurationException, SAXException, IOException, TransformerFactoryConfigurationError, TransformerException {
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
+        String florId = florIds.remove(0);
+        
+        // Test that we get the expected TEI output
+        // we use the last section with partial witnesses
+        String actualTei = jerseyTest
+                .target("/tradition/" + florId + "/section/" + florIds.get(3) + "/tei")
+                .request()
+                .get(new GenericType<>() {});
+        
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        ByteArrayInputStream input = new ByteArrayInputStream(actualTei.getBytes());
+        Document doc = builder.parse(input);
+        Element root = doc.getDocumentElement();
+        
+        // check encoding
+        org.w3c.dom.Node encodingNode = root.getElementsByTagName("variantEncoding").item(0);
+        assertEquals("double​-end​-point", encodingNode.getAttributes().getNamedItem("method").getNodeValue());
+        assertEquals("internal", encodingNode.getAttributes().getNamedItem("location").getNodeValue());
+        
+        org.w3c.dom.Node textNode = root.getElementsByTagName("text").item(0);
+        StringWriter writer = new StringWriter();
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        Transformer transformer = transformerFactory.newTransformer();
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+        transformer.setOutputProperty(OutputKeys.INDENT, "no");
+        transformer.transform(new DOMSource(textNode), new StreamResult(writer));
+        try(Scanner scanner = new Scanner(new File("src/TestFiles/florilegium_partialWitnesses_tei.xml"))) {
+            String expectedTei = scanner.useDelimiter("\\Z").next();
+            // this is still testing against a static string but it's only the text body
+            // so while indentation would be an issue, the rest of the XML should probably
+            // stay the same.
+            assertEquals(expectedTei, writer.toString());
+        }
+    }
 
-    @After
+    public void testTeiPartialWitnesses() throws ParserConfigurationException, SAXException, IOException {
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
+        String florId = florIds.remove(0);
+        
+        // the last id should be the one of the section with partial witnesses
+        String teiResponse = jerseyTest
+                .target("/tradition/" + florId + "/section/" + florIds.get(3) + "/tei")
+                .request()
+                .get(new GenericType<>() {});
+        
+        // get witnesses of section
+        List<WitnessModel> sectWits = jerseyTest.target("/tradition/" + florId + "/section/" + florIds.get(3) + "/witnesses")
+                .request().get(new GenericType<>() {
+                });
+
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        ByteArrayInputStream input = new ByteArrayInputStream(teiResponse.getBytes());
+        Document doc = builder.parse(input);
+        Element root = doc.getDocumentElement();
+        // we get all app elements and it's 
+        NodeList appNodes = root.getElementsByTagName("app");
+        boolean testSuceeded = false;
+        for(int i = 0; i<appNodes.getLength(); i++) {
+            org.w3c.dom.Node node = appNodes.item(i);
+            // we find the first app that has AppStart as id
+            if (node.getAttributes().getNamedItem("id").getNodeValue().equals("AppStart")) {
+                // then we'll get the witnesses from the wit attribute of the rdg element
+                // that is a child of the app element
+                NodeList children = node.getChildNodes();
+                for (int j = 0; j<children.getLength(); j++) {
+                    org.w3c.dom.Node rdgNode = children.item(j);
+                    if (rdgNode.getNodeName().equals("rdg")) {
+                        String witnessString = rdgNode.getAttributes()
+                                .getNamedItem("wit").getNodeValue();
+                        String[] actualWitnesses = witnessString.split(" ");
+                        // it should have the same witnesses as what the witness endpoint returns
+                        // same number
+                        assertEquals(sectWits.size(), actualWitnesses.length);
+                        
+                        // and each witness is in the list
+                        List<String> expectedWitnesses = sectWits.stream().map(WitnessModel::getSigil).collect(Collectors.toList());
+                        for (String wit : actualWitnesses) {
+                            // we have to cut off the leading #
+                            assertTrue(expectedWitnesses.contains(wit.substring(1)));
+                        }
+                        testSuceeded = true;
+                        break;
+                    }
+                }
+                break;                
+            }
+        }
+        
+        // let's make sure we had actually witnesses to test against
+        assertTrue(testSuceeded);
+    }
+
+    public void testTeiTraditionWitnessesInHeader() throws ParserConfigurationException, SAXException, IOException {
+        List<String> florIds = Util.importFlorilegium(jerseyTest);
+        String florId = florIds.remove(0);
+        
+        
+        // get witnesses of tradition
+        List<WitnessModel> traditionWitnesses = jerseyTest.target("/tradition/" + florId + "/witnesses").request()
+                .get(new GenericType<>() {
+                });
+
+        // get TEI of first returned section
+        List<SectionModel> sections = jerseyTest.target("/tradition/" + florId + "/sections").request()
+                .get(new GenericType<>() {
+                });
+        String teiResponse = jerseyTest.target("/tradition/" + florId + "/section/" + sections.get(0).getId() + "/tei").request()
+                .get(new GenericType<>() {
+                });
+        
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        ByteArrayInputStream input = new ByteArrayInputStream(teiResponse.getBytes());
+        Document doc = builder.parse(input);
+        Element root = doc.getDocumentElement();
+        // get witness nodes from header info in TEI
+        NodeList witnessNodes = root.getElementsByTagName("witness");
+
+        // make sure the number of witnesses in header is the same as the one
+        // returned from witnesses endpoint
+        assertEquals(traditionWitnesses.size(), witnessNodes.getLength());
+
+        List<String> expectedWitnesses = traditionWitnesses.stream().map(WitnessModel::getSigil)
+                .collect(Collectors.toList());
+        // check that all witnesses in header are in witness list returned from endpoint
+        for(int i = 0; i<witnessNodes.getLength(); i++) {
+            org.w3c.dom.Node node = witnessNodes.item(i);
+            String witId = node.getAttributes().getNamedItem("xml:id").getNodeValue();
+            assertTrue(expectedWitnesses.contains(witId));
+        }
+    }
+
     public void tearDown() throws Exception {
 //        db.shutdown();
     	if (dbbuilder != null) {

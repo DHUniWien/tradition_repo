@@ -123,7 +123,7 @@
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 			<!--suppress MavenPackageUpdate -->
-			<version>2.11.0</version>
+			<version>2.18.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jaxb</groupId>
@@ -174,12 +174,12 @@
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
-			<version>5.2.3</version>
+			<version>5.4.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
-			<version>5.2.3</version>
+			<version>5.4.0</version>
 			<!-- exclude dependency to resolve duplicate module error -->
 			<exclusions>
 				<exclusion>
@@ -203,7 +203,7 @@
 		<dependency>
 			<groupId>com.opencsv</groupId>
 			<artifactId>opencsv</artifactId>
-			<version>5.5</version>
+			<version>5.7.1</version>
 		</dependency>
 		<!-- Newick parsing -->
 		<dependency>
@@ -241,58 +241,7 @@
 			<version>${neo4j-algo-version}</version>
 		</dependency>
  -->
-<!--
- -->
-<!--
-		<dependency>
-			<groupId>org.neo4j.gds</groupId>
-			<artifactId>core</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.neo4j.gds</groupId>
-			<artifactId>algo-common</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.neo4j.gds</groupId>
-			<artifactId>algo</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
-		<dependency>
-		    <groupId>org.neo4j.gds</groupId>
-		    <artifactId>proc-common</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
-		<dependency>
-		    <groupId>org.neo4j.gds</groupId>
-		    <artifactId>proc</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
-		<dependency>
-		    <groupId>org.neo4j.gds</groupId>
-		    <artifactId>alpha-proc</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
- -->
-		<dependency>
-		    <groupId>org.neo4j.gds</groupId>
-		    <artifactId>proc-community</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
-<!-- 
-		<dependency>
- 			<groupId>org.neo4j.gds</groupId>
-			<artifactId>model-catalog-api</artifactId>
-			<version>${neo4j-gds-version}</version>
-		</dependency>
--->
-		<dependency>
- 			<groupId>org.neo4j.gds</groupId>
-			<artifactId>open-model-catalog</artifactId>
-			<version>${neo4j-gds-version}</version>
-			<scope>test</scope>
-		</dependency>
+
 		<!-- Used for better documentation of REST interfaces -->
 		<dependency>
 			<groupId>com.qmino</groupId>
@@ -354,7 +303,7 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>2.1.210</version>
+			<version>2.2.220</version>
 			<scope>test</scope>
 		</dependency>
 <!-- 
@@ -408,13 +357,12 @@
         <dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>
-			<version>20210307</version>
+			<version>20240303</version>
 		</dependency>
 	</dependencies>
 	<properties>
 		<neo4j-version>5.9.0</neo4j-version>
 		<neo4j-algo-version>3.5.4.0</neo4j-algo-version>
-		<neo4j-gds-version>2.4.4</neo4j-gds-version>
 		<jackson-version>2.15.2</jackson-version>
 		<jersey-version>2.34</jersey-version>
 		<apoc.version>4.4.0.20</apoc.version>

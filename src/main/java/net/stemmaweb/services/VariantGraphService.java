@@ -47,7 +47,7 @@ public class VariantGraphService {
         boolean found = false;
         try (Transaction tx = db.beginTx()) {
         	found = sectionInTradition(tradId, aSectionId, tx);
-            tx.close();
+            tx.commit();
         }
         return found;
     }
@@ -78,7 +78,7 @@ public class VariantGraphService {
     public static Node getStartNode(String nodeId, GraphDatabaseService db) {
     	Transaction tx = db.beginTx();
     	Node node = getBoundaryNode(nodeId, tx, ERelations.COLLATION);
-    	tx.close();
+    	tx.commit();
     	return node;
     }
 
@@ -97,7 +97,7 @@ public class VariantGraphService {
     public static Node getEndNode(String nodeId, GraphDatabaseService db) {
     	Transaction tx = db.beginTx();
     	Node node = getBoundaryNode(nodeId, tx, ERelations.HAS_END);
-    	tx.close();
+    	tx.commit();
     	return node;
     }
 
@@ -145,7 +145,7 @@ public class VariantGraphService {
     	ArrayList<Node> sectionNodes;
     	try (Transaction tx = db.beginTx()) {
     		sectionNodes = getSectionNodes(tradId, tx);
-            tx.close();
+            tx.commit();
         }
     	return sectionNodes;
     }
@@ -185,7 +185,7 @@ public class VariantGraphService {
         Node tradition;
         try (Transaction tx = db.beginTx()) {
             tradition = tx.findNode(Nodes.TRADITION, "id", tradId);
-            tx.close();
+            tx.commit();
         }
         return tradition;
     }
@@ -208,7 +208,7 @@ public class VariantGraphService {
     	Node tradition;
     	try (Transaction tx = db.beginTx()) {
     		tradition = getTraditionNode(section, tx);
-    		tx.close();
+    		tx.commit();
     	}
     	return tradition;
     }
@@ -296,7 +296,7 @@ public class VariantGraphService {
             String sectionId = sectionNode.getElementId();
             for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
                     tradId, sectionId, tx, normalizeType)) {
-                if (cluster.size() == 0) continue;
+                if (cluster.isEmpty()) continue;
                 Node representative = RelationService.findRepresentative(cluster);
                 if (representative == null)
                     throw new Exception("No representative found for cluster");
@@ -331,7 +331,7 @@ public class VariantGraphService {
             }
             // and calculate the common readings.
             calculateCommon(sectionNode);
-            tx.close();
+            tx.commit();
         }
 
         return representatives;
@@ -370,7 +370,7 @@ public class VariantGraphService {
             tx.commit();
         }
     }
-
+    
     /**
      * Return a list of nodes which constitutes the majority text for a section.
      *
@@ -408,14 +408,13 @@ public class VariantGraphService {
             result.add(getStartNode(sectionId, tx));
             majorityReadings.forEach(x -> result.add(tx.getNodeByElementId(x)));
             result.add(getEndNode(sectionId, tx));
-            tx.close();
+            tx.commit();
         }
         return result;
     }
 
     /**
      * Collect all annotations, recursively, on the set of nodes that has been passed in.
-     *
      *
      * @return The annotation nodes that point (ultimately) to the nodes in question
      */
@@ -436,7 +435,7 @@ public class VariantGraphService {
                 }
             }
             annotationNodes = new ArrayList<>(foundAnns);
-            tx.close();
+            tx.commit();
         }
         return annotationNodes;
     }
@@ -550,7 +549,7 @@ public class VariantGraphService {
                     .evaluator(ev)
                     .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
                     .traverse(startNode);
-            tx.close();
+            tx.commit();
         }
         return tv;
     }
@@ -592,7 +591,7 @@ public class VariantGraphService {
         try (Transaction tx = db.beginTx()) {
             Node sectionNode = tx.getNodeByElementId(sectionId);
             tv = returnTraditionSection(sectionNode);
-            tx.close();
+            tx.commit();
         }
         return tv;
     }

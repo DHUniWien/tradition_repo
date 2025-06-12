@@ -4,17 +4,12 @@ package net.stemmaweb.services;
 import java.io.File;
 import java.nio.file.Path;
 
-import org.neo4j.common.DependencyResolver.SelectionStrategy;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
 import org.neo4j.exceptions.KernelException;
-import org.neo4j.gds.wcc.WccStreamProc;
-//import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.kernel.api.procedure.GlobalProcedures;
-//import org.neo4j.internal.kernel.api.exceptions.KernelException;
-import org.neo4j.kernel.internal.GraphDatabaseAPI;
+
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 /**
@@ -35,9 +30,7 @@ public class GraphDatabaseServiceProvider {
     // Connect to a DB at a particular path
     public GraphDatabaseServiceProvider(String db_location) throws KernelException {
 
-//        GraphDatabaseFactory dbFactory = new GraphDatabaseFactory();
-//        GraphDatabaseBuilder dbbuilder = dbFactory.newEmbeddedDatabaseBuilder(new File(db_location + "/data/databases/graph.db"));
-    	if (db_location == null) {
+        if (db_location == null) {
         	dbService = new TestDatabaseManagementServiceBuilder()
         			.impermanent()
         			.setDatabaseRootDirectory(null)
@@ -53,30 +46,18 @@ public class GraphDatabaseServiceProvider {
     			db = dbService.database("stemma");
     	}
     	registerShutdownHook(dbService);
-    	registerExtensions();
 
     }
 
     // Manage an existing (e.g. test) DB
     public GraphDatabaseServiceProvider(GraphDatabaseService existingdb) throws KernelException {
         db = existingdb;
-        registerExtensions();
     }
 
     public GraphDatabaseService getDatabase(){
         return db;
     }
 
-    // Register any extensions we need in the database
-    private static void registerExtensions() throws KernelException {
-        GraphDatabaseAPI api = (GraphDatabaseAPI) db;
-        // See if our procedure is already registered
-        api.getDependencyResolver()
-                .resolveDependency(GlobalProcedures.class, SelectionStrategy.SINGLE)
-//                .registerProcedure(UnionGraphIntersectFactory.class, true);
-                .registerProcedure(WccStreamProc.class, true);
-    }
-    
     public static void shutdown() {
     	if (dbService != null) {
     		dbService.shutdownDatabase(db.databaseName());
@@ -86,13 +67,6 @@ public class GraphDatabaseServiceProvider {
     }
 
     private static void registerShutdownHook( final DatabaseManagementService managementService ) {
-    	Runtime.getRuntime().addShutdownHook( new Thread()
-    	{
-    		@Override
-    		public void run()
-    		{
-    			managementService.shutdown();
-    		}
-    	} );
+    	Runtime.getRuntime().addShutdownHook(new Thread(managementService::shutdown));
     }
 }

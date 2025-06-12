@@ -1,73 +1,32 @@
 package net.stemmaweb.rest;
 
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.Util.jsonresp;
-import static net.stemmaweb.services.ReadingService.addWitnessLink;
-import static net.stemmaweb.services.ReadingService.recalculateRank;
-import static net.stemmaweb.services.ReadingService.removePlaceholder;
-import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
+import com.qmino.miredot.annotations.MireDotIgnore;
+import com.qmino.miredot.annotations.ReturnType;
+import net.stemmaweb.exporter.DotExporter;
+import net.stemmaweb.exporter.GraphMLExporter;
+import net.stemmaweb.exporter.TEIExporter;
+import net.stemmaweb.exporter.TabularExporter;
+import net.stemmaweb.model.*;
+import net.stemmaweb.services.*;
+import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.traversal.*;
 
+import javax.ws.rs.*;
+import javax.ws.rs.Path;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+import javax.xml.stream.XMLStreamException;
+
+import java.io.IOException;
 import java.text.Normalizer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Label;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.PathExpander;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
-
-import com.qmino.miredot.annotations.MireDotIgnore;
-import com.qmino.miredot.annotations.ReturnType;
-
-import net.stemmaweb.exporter.DotExporter;
-import net.stemmaweb.exporter.GraphMLExporter;
-import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.AlignmentModel;
-import net.stemmaweb.model.AnnotationModel;
-import net.stemmaweb.model.DisplayOptionModel;
-import net.stemmaweb.model.GraphModel;
-import net.stemmaweb.model.ProposedEmendationModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.SequenceModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.model.VariantListModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.ReadingService.AlignmentTraverse;
-import net.stemmaweb.services.RelationService;
-import net.stemmaweb.services.VariantGraphService;
+import static net.stemmaweb.Util.*;
+import static net.stemmaweb.services.ReadingService.*;
 
 /**
  * Comprises all the API calls related to a tradition section.
@@ -110,7 +69,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             ReadingModel rdg = new ReadingModel(tx.getNodeByElementId(readingId));
             readingInSection = rdg.getSection().equals(sectId);
-            tx.close();
+            tx.commit();
         }
         return readingInSection ? new Reading(readingId) : new Reading("-1");
     }
@@ -135,7 +94,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         try (Transaction tx = db.beginTx()) {
             result = new SectionModel(tx.getNodeByElementId(sectId));
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -166,7 +125,7 @@ public class Section {
                 thisSection.setProperty("name", newInfo.getName());
             if (newInfo.getLanguage() != null)
                 thisSection.setProperty("language", newInfo.getLanguage());
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -213,7 +172,7 @@ public class Section {
                     return pruned;
                 }
             }
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().type(MediaType.APPLICATION_JSON_TYPE)
@@ -252,7 +211,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             ArrayList<WitnessModel> sectionWits = new ArrayList<>();
             sectionWitnessNodes.forEach(x -> sectionWits.add(new WitnessModel(x)));
-            tx.close();
+            tx.commit();
             Collections.sort(sectionWits);
             return Response.ok().entity(sectionWits).build();
         } catch (Exception e) {
@@ -282,7 +241,7 @@ public class Section {
                     }
                 }
             }
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -334,7 +293,7 @@ public class Section {
                     .evaluator(Evaluators.all())
                     .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
                     .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -382,7 +341,7 @@ public class Section {
                             r -> relList.add(new RelationModel(r, includeReadings)))
             );
 
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -414,6 +373,7 @@ public class Section {
             		clusterModel.add(new ReadingModel(n));
             	result.add(clusterModel);
             }
+            tx.commit();
             return Response.ok(result).build();
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
@@ -535,7 +495,7 @@ public class Section {
                                 && (Long) x.getProperty("rank") <= endRank)
                         .map(ReadingModel::new).sorted().collect(Collectors.toList());
             }
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             throw(e);
@@ -548,7 +508,7 @@ public class Section {
         try (Transaction tx = db.beginTx()) {
             Node rdgNode = tx.getNodeByElementId(rdgId);
             answer = rdgNode.getProperty("rank").toString();
-            tx.close();
+            tx.commit();
         }
         return answer;
     }
@@ -581,7 +541,7 @@ public class Section {
             // and to some node in this section.
             List<Node> foundAnns = collectSectionAnnotations(recurse.equals("true"));
             // Filter the annotations if we have been asked to
-            if (filterLabels.size() > 0) {
+            if (!filterLabels.isEmpty()) {
                 for (Node a : new ArrayList<>(foundAnns)) {
                     boolean foundLabel = false;
                     for (Label l : a.getLabels()) {
@@ -592,7 +552,7 @@ public class Section {
             }
 
             foundAnns.forEach(x -> result.add(new AnnotationModel(x)));
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -645,7 +605,7 @@ public class Section {
             VariantListModel vlocs = new VariantListModel(
                     sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
                     !excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
-            tx.close();
+            tx.commit();
             return Response.ok(vlocs).build();
         } catch (Exception e) {
             e.printStackTrace();
@@ -728,7 +688,7 @@ public class Section {
             if (priorSection != null) priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
             // ...and to the old "next" if it exists
             if (latterSection != null) thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -784,7 +744,7 @@ public class Section {
             }
 
             // Make sure we have readings at the requested rank in this section
-            if (linksToSplit.size() == 0)
+            if (linksToSplit.isEmpty())
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("Rank not found within section")).build();
 
@@ -870,7 +830,7 @@ public class Section {
             // Re-initialize the ranks on the new section
             // recalculateRank(newStart);
 
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1010,7 +970,7 @@ public class Section {
             for (Node n : firstSectionEnd)
                 recalculateRank(n);
 
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
@@ -1020,7 +980,6 @@ public class Section {
 
     /**
      * Resets ranks within the given section
-     *
      * This does not belong to the official API!
      * It is a secret hack to fix ranks if we find they are broken or missing.
      */
@@ -1033,7 +992,7 @@ public class Section {
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         try (Transaction tx = db.beginTx()) {
             ReadingService.recalculateRank(VariantGraphService.getStartNode(sectId, tx), true);
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -1093,7 +1052,7 @@ public class Section {
             		Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")), startNode, limitText);
 
             couldBeIdenticalReadings = getCouldBeIdenticalAsList(questionedReadings, threshold);
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1175,10 +1134,10 @@ public class Section {
                     .traverse(startNode).nodes().spliterator(), false)
                     .filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
                             endRank >= Long.parseLong(x.getProperty("rank").toString()));
-            if (!limitText.equals(""))
+            if (!limitText.isEmpty())
                 readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
             readings = readingStream.collect(Collectors.toList());
-            tx.close();
+            tx.commit();
         }
         return readings;
     }
@@ -1210,7 +1169,8 @@ public class Section {
                     .entity(jsonerror("Rank specification is neither 'start', 'end' or a number")).build();
         }
 
-        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(Long.valueOf(useRanks.get("start")), Long.valueOf(useRanks.get("end")));
+        ArrayList<List<ReadingModel>> identicalReadings = collectIdenticalReadings(
+                Long.parseLong(useRanks.get("start")), Long.parseLong(useRanks.get("end")));
         if (identicalReadings == null)
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("no identical readings were found")).build();
 
@@ -1232,9 +1192,9 @@ public class Section {
             return null;
         }
 
-        ArrayList<List<ReadingModel>> result = identicalReadings.stream().filter(x -> x.size() > 0)
+        ArrayList<List<ReadingModel>> result = identicalReadings.stream().filter(x -> !x.isEmpty())
                 .collect(Collectors.toCollection(ArrayList::new));
-        if (result.size() == 0) return null;
+        if (result.isEmpty()) return null;
         return result;
     }
 
@@ -1341,7 +1301,7 @@ public class Section {
                             .build();
                 priorLemma = r.getEndNode();
             }
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             if (!e.getMessage().contains("More than one"))
                 e.printStackTrace();
@@ -1382,7 +1342,7 @@ public class Section {
                 }
             }
             result.setSequences(emendSeqs);
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1446,7 +1406,7 @@ public class Section {
             result.setSequences(newLinks);
             // If it is a zero-width emendation, re-rank the graph
             ReadingService.recalculateRank(emendation);
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1494,7 +1454,7 @@ public class Section {
                     .filter(x -> x.isType(ERelations.SEQUENCE) || x.isType(ERelations.LEMMA_TEXT) || x.isType(ERelations.EMENDED))
                     .map(SequenceModel::new).collect(Collectors.toSet()));
 
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -1643,6 +1603,48 @@ public class Section {
                 thisSection, "true".equals(excludeLayers));
     }
 
+    /**
+     * Returns a TEI double-endpoint-attachment file representing the section text.
+     *
+     * @title Download character matrix for parsimony analysis
+     * @param significant   - Zero or more relationship types whose readings should be treated as identical
+     * @param excludeType1  - If "true", exclude type-1 (singleton) variants
+     * @param excludeNonsense - If "true", suppress any variants marked with the is_nonsense property
+     * @param combine - If "true", move dislocated (e.g. transposed) variants to their matching base
+     * @param suppressMatching - A regular expression; all variants matching this will be suppressed in
+     *                         the apparatus. Default is to suppress all punctuation.
+     * @param baseWitness - A witness sigil, or the string "majority" or "lemma", to indicate what text to
+     *                    use as the base text in the apparatus.
+     * @param conflate - A relation type to normalize on
+     * @param excWitnesses - A witness to exclude from the apparatus. Can be specified multiple times.
+     * @return the character matrix as plaintext
+     */
+    @GET
+    @Produces("application/xml; charset=utf-8")
+    @Path("/tei")
+    public Response getTei(@DefaultValue("no") @QueryParam("significant") String significant,
+            @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
+            @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
+            @DefaultValue("no") @QueryParam("combine_dislocations") String combine,
+            @DefaultValue("punct") @QueryParam("suppress_matching") String suppressMatching,
+                                @QueryParam("base_witness") String baseWitness,
+                                @QueryParam("normalize") String conflate,
+                                @QueryParam("exclude_witness") List<String> excWitnesses) {
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        if (traditionNode == null)
+            return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
+
+        TEIExporter exp = new TEIExporter();
+        try {
+            return exp.writeTEI(tradId, sectId, null, baseWitness, excWitnesses, conflate, suppressMatching,
+                    Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1), significant,
+                    Boolean.getBoolean(combine));
+        } catch (XMLStreamException | IOException e) {
+            e.printStackTrace();
+            return Response.serverError().build();
+        }
+    }
+
     // For use in a transaction!
     private void removeFromSequence (Node thisSection) {
         Node priorSection = null;
@@ -1661,6 +1663,7 @@ public class Section {
             priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
         }
     }
+    
 
     private Boolean sectionInTradition() {
         return VariantGraphService.sectionInTradition(tradId, sectId, db);

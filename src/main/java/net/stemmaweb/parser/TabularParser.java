@@ -105,7 +105,8 @@ public class TabularParser {
             else if (row.getPhysicalNumberOfCells() > expectedSize)
                 throw new Exception(String.format("Spreadsheet row %d has too many columns!", row.getRowNum()));
 
-            row.forEach(x -> rowArray.add(x.getStringCellValue()));
+            for (int i = 0; i < expectedSize; i++)
+                rowArray.add(row.getCell(i) == null ? null : row.getCell(i).getStringCellValue());
             excelRows.add(rowArray.toArray(new String[expectedSize]));
         }
         return excelRows;
@@ -133,6 +134,8 @@ public class TabularParser {
 
             // Get the witnesses from the first row of the table
             String[] witnessList = tableData.get(0);
+            // Strip the byte order mark, if it exists, from the first of the witnesses
+            witnessList[0] = witnessList[0].replaceFirst("\\uFEFF", "");
             // Keep a table of the last-spotted reading for each witness
             HashMap<String, Node> lastReading = new HashMap<>();
             // Add the non-layer witnesses to the graph
@@ -269,7 +272,7 @@ public class TabularParser {
             // We are done!
             result = Response.Status.CREATED;
             response = jsonresp("parentId", parentNode.getElementId());
-            tx.close();
+            tx.commit();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

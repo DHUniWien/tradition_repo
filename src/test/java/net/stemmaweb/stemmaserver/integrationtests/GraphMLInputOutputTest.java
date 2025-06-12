@@ -1,50 +1,36 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import static org.junit.Assert.assertNotEquals;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.glassfish.jersey.test.JerseyTest;
-import org.neo4j.dbms.api.DatabaseManagementService;
-import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-
 import junit.framework.TestCase;
-import net.stemmaweb.model.AnnotationLabelModel;
-import net.stemmaweb.model.AnnotationLinkModel;
-import net.stemmaweb.model.AnnotationModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.model.SectionModel;
-import net.stemmaweb.model.StemmaModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.model.*;
+import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
+
+import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Response;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.ws.rs.core.GenericType;
+import javax.ws.rs.core.MediaType;
+import java.io.*;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import static org.junit.Assert.assertNotEquals;
 
 /**
  * Tests for our own input/output formats.
@@ -56,7 +42,6 @@ public class GraphMLInputOutputTest extends TestCase {
     private JerseyTest jerseyTest;
     private String tradId;
     private String multiTradId;
-	private DatabaseManagementService dbService;
 
     public void setUp() throws Exception {
         super.setUp();
@@ -137,7 +122,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request()
                 .get(new GenericType<>() {});
         assertEquals(1, s.size());
-        assertEquals("DEFAULT", s.get(0).getName());
+        assertEquals("Tradition", s.get(0).getName());
 
         // Does the tradition have the right number of readings?
         ArrayList<ReadingModel> rdgs = jerseyTest.target("/tradition/" + tradId + "/readings")
@@ -156,7 +141,7 @@ public class GraphMLInputOutputTest extends TestCase {
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
-            tx.close();
+            tx.commit();
         }
 
         // Do the witness texts match?
@@ -188,6 +173,22 @@ public class GraphMLInputOutputTest extends TestCase {
         } else {
             Util.assertStemmasEquivalent(directedStemma, stemmata.get(0).getDot());
             Util.assertStemmasEquivalent(undirectedStemma, stemmata.get(1).getDot());
+        }
+    }
+
+    public void testWrongDataForUpload() {
+        // Try to add a JSON section to an existing tradition but claim it is GraphML zip
+        try (Response r = Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/Matthew-418.json",
+                "graphml", "bad section")) {
+            assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        }
+        try (Transaction tx = db.beginTx()) {
+            Node n = tx.findNode(Nodes.TRADITION, "id", multiTradId);
+            assertNotNull(n);
+            List<Node> sections = new ArrayList<>();
+            n.getRelationships(Direction.OUTGOING, ERelations.PART).forEach(x -> sections.add(x.getEndNode()));
+            assertEquals(2, sections.size());
+            tx.commit();
         }
     }
 
@@ -272,7 +273,7 @@ public class GraphMLInputOutputTest extends TestCase {
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));
-            tx.close();
+            tx.commit();
         }
 
         // Does the tradition have any relation types defined?

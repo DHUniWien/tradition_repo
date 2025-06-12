@@ -3,14 +3,7 @@ package net.stemmaweb.stemmaserver.integrationtests;
 import static org.junit.Assert.assertNotEquals;
 
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.client.Entity;
@@ -119,10 +112,51 @@ public class TabularInputOutputTest extends TestCase {
                     tx.getNodeByElementId(firstTest).getProperty("rank"));
             assertEquals(tx.getNodeByElementId(secondComp).getProperty("rank"),
                     tx.getNodeByElementId(secondTest).getProperty("rank"));
-            tx.close();
+            tx.commit();
         }
 
     }
+
+
+    public void testParseNastyCSV() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox", "LR", "1",
+                "src/TestFiles/qbf.csv", "ssv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId = Util.getValueFromJson(response, "tradId");
+        Tradition tradition = new Tradition(tradId);
+
+        // Get the first (only) section and check its length
+        ArrayList<SectionModel> allSections = (ArrayList<SectionModel>) tradition.getAllSections().getEntity();
+        SectionModel ourSect = allSections.get(0);
+        assertEquals(Optional.of(11L), Optional.of(ourSect.getEndRank()));
+
+        ArrayList<WitnessModel> allWitnesses = (ArrayList<WitnessModel>) tradition.getAllWitnesses().getEntity();
+        assertEquals(3, allWitnesses.size());
+
+        // Get a witness text
+        Witness witness = new Witness(tradId, "Q");
+        TextSequenceModel resp = (TextSequenceModel) witness.getWitnessAsText().getEntity();
+        assertEquals("The quck brown fox jumped over the lazy\n dogs", resp.getText());
+
+        ArrayList<ReadingModel> allReadings = (ArrayList<ReadingModel>) tradition.getAllReadings().getEntity();
+        assertEquals(21, allReadings.size());
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("\"jumped\"")));
+        assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("brown\n")));
+
+        // Now export this in tabular form and import it again, to make sure the newlines were preserved
+        response = jerseyTest.target("/tradition/" + tradId + "/tsv")
+                .request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        String result = response.readEntity(String.class);
+        response = Util.createTraditionFromFileOrString(jerseyTest, "Quick brown fox 2", "LR", "1",
+                result, "tsv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String tradId2 = Util.getValueFromJson(response, "tradId");
+        Tradition tradition2 = new Tradition(tradId2);
+        ArrayList<ReadingModel> newReadings = (ArrayList<ReadingModel>) tradition2.getAllReadings().getEntity();
+        assertEquals(21,  newReadings.size());
+    }
+
 
     public void testParseCsvLayers() {
         Response response = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium", "LR", "1",
@@ -233,6 +267,35 @@ public class TabularInputOutputTest extends TestCase {
         allReadings = (ArrayList<ReadingModel>) result.getEntity();
         assertEquals(12, allReadings.size());
         assertTrue(allReadings.stream().anyMatch(x -> x.getText().equals("այսոսիկ")));
+    }
+
+    public void testExcelCorrectGraph() {
+        Response response = Util.createTraditionFromFileOrString(jerseyTest, "BHL 2761", "LR", "1",
+                "src/TestFiles/bhl_2761.xlsx", "xlsx");
+        assertEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
+        String traditionId = Util.getValueFromJson(response, "tradId");
+
+        String aText = "in diebus traiani imperatoris idolorum seuitia existente erat magister militum nomine " +
+                "placidum natus secundum carnem gloriosissimorum et diuitissimorum ualde parentum et erat ditissimus " +
+                "tam in animalibus quam in auro uel argento mancipiis uel uniuersis rebus substantie sue et quamuis " +
+                "paganissimus existens inuentus est subuenire miseris et necessitatem patientibus uiuendi substantia " +
+                "ministrare ita ut acceptabilis fieret in hoc coram domino deo in operibus suis et ex omni parte " +
+                "inlustris erat cum duobus filiis suis uel matre ipsorum dum esset magister militum bellatorum et " +
+                "aduersus barbaros triumphator ita ut audito nomine eius contremescerent et fugerent sepius " +
+                "aduersarii eius erat enim ei consuetudo uenandi et cum exisset secundum consuetudinem suam ad " +
+                "uenandum apparuit grex ceruorum inter quibus erat unus pulcherrimus et omni decore mirabilis quem " +
+                "uidens magister militum relictis omnibus qui apparuerant ei ipsum unum tantum persequebatur et " +
+                "deficientibus omnibus qui secum erant ipse solus sequutus est eum in siluam condensem et " +
+                "pertransiuit ceruus in uertice montis et stans supra saxum in loco altissimo et dum non ipse " +
+                "ualeret placidus adpropinquare ad ceruum statim cogitans qualiter posset capere eum et dum " +
+                "consideraret magnitudinem eius ostendit ei deus magnum miraculum inter cornua eiusdem cerui et " +
+                "apparuit signum sancte crucis super claritatem solis inlustrantem et uidit in cornua eius inmaginem " +
+                "saluatoris cuius uocem audiuit dicentem sibi o placide quid me persequeris ego sum iesus quem tu " +
+                "ignoras et";
+
+        response = jerseyTest.target("/tradition/" + traditionId + "/witness/A/text").request().get();
+        assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+        assertEquals(aText, Util.getValueFromJson(response, "text"));
     }
 
     // testOutputJSON
@@ -449,7 +512,7 @@ public class TabularInputOutputTest extends TestCase {
             nodes = res.columnAs("n");
             assertTrue(nodes.hasNext());
             pz = nodes.next().getElementId();
-            tx.close();
+            tx.commit();
         }
         RelationModel spellingrel = new RelationModel();
         spellingrel.setSource(ptz);

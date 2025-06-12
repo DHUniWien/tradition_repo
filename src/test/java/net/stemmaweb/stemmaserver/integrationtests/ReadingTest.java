@@ -265,7 +265,7 @@ public class ReadingTest {
         try (Transaction tx = db.beginTx()) {
             Node node = tx.getNodeByElementId(nodeid);
             assertEquals("showers", node.getProperty("text").toString());
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -342,7 +342,7 @@ public class ReadingTest {
         try (Transaction tx = db.beginTx()) {
             Node node = tx.getNodeByElementId(nodeId);
             expectedReadingModel = new ReadingModel(node);
-            tx.close();
+            tx.commit();
         }
 
             ReadingModel readingModel = jerseyTest
@@ -470,7 +470,7 @@ public class ReadingTest {
 //            allLinks = VariantGraphService.returnEntireTradition(tradId, db).relationships().stream()
             allLinks = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).relationships().spliterator(), false)
             		.collect(Collectors.toSet());
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             fail();
         }
@@ -512,7 +512,7 @@ public class ReadingTest {
                 assertTrue(allNodes.contains(n));
             for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
                 assertTrue(allLinks.contains(r));
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             fail();
         }
@@ -591,7 +591,7 @@ public class ReadingTest {
                 assertTrue(allNodes.contains(n));
             for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
                 assertTrue(allLinks.contains(r));
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             fail();
         }
@@ -672,7 +672,7 @@ public class ReadingTest {
             Node uminRdg = tx.findNode(Nodes.READING, "rank", 32L);
             assertNotNull(uminRdg);
             umin = new ReadingModel(uminRdg);
-            tx.close();
+            tx.commit();
         }
         assertNotNull(nithia);
         assertNotNull(Legei);
@@ -763,7 +763,7 @@ public class ReadingTest {
                     assertTrue(sigla.contains("w54"));
                 }
             }
-            tx.close();
+            tx.commit();
         }
 
         // -- No rank gap tests (ὑμῖν)
@@ -900,7 +900,7 @@ public class ReadingTest {
                 String val2 = duplicatedSweet.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -1005,7 +1005,7 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -1090,7 +1090,7 @@ public class ReadingTest {
                 String val2 = duplicatedOf.getProperty(key).toString();
                 assertEquals(val1, val2);
             }
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -1325,7 +1325,7 @@ public class ReadingTest {
                 if (r.hasProperty("is_start")) continue;
                 assertTrue("dangling reading " + r.getElementId(), r.getRelationships(Direction.INCOMING, ERelations.SEQUENCE).iterator().hasNext());
             }
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -1426,7 +1426,7 @@ public class ReadingTest {
                 assertNotSame(rel.getOtherNode(stayingNode), stayingNode);
             }
             assertEquals(1, numberOfRelationships);
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -1486,7 +1486,7 @@ public class ReadingTest {
             Optional<Node> to = tx.findNodes(Nodes.READING, "text", "to").stream().filter(x -> x.getProperty("rank").equals(15L)).findFirst();
             assertTrue(to.isPresent());
             rmTo = new ReadingModel(to.get());
-            tx.close();
+            tx.commit();
         }
         link.setSource(rmTeh.getId());
         link.setTarget(rmTo.getId());
@@ -1680,7 +1680,7 @@ public class ReadingTest {
                     Direction.INCOMING).delete();
 
             assertFalse(node.hasRelationship(ERelations.RELATED));
-            tx.close();
+            tx.commit();
         }
 
         // split reading
@@ -1748,7 +1748,7 @@ public class ReadingTest {
             assertNotNull(node);
             node.setProperty("text", "rood/of/the/world");
             rotw = node.getElementId();
-            tx.close();
+            tx.commit();
         }
 
         // split reading
@@ -1889,7 +1889,7 @@ public class ReadingTest {
             assertNotNull(node);
             node.setProperty("text", "rood\"of\"the\"world");
             rotw = node.getElementId();
-            tx.close();
+            tx.commit();
         }
 
         // split reading
@@ -1993,7 +1993,7 @@ public class ReadingTest {
                 } else
                     assertEquals(savedRank, n.getProperty("rank"));
             }
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2021,7 +2021,7 @@ public class ReadingTest {
             assertNotNull(follower);
             assertTrue(follower.hasProperty("join_prior"));
             assertEquals(true, follower.getProperty("join_prior"));
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2063,7 +2063,7 @@ public class ReadingTest {
             Response witText = new Witness(tradId, "C").getWitnessAsText();
             assertEquals(expectedWitnessC, ((TextSequenceModel) witText.getEntity()).getText());
 
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2337,7 +2337,7 @@ public class ReadingTest {
             TextSequenceModel resp = (TextSequenceModel) new Witness(tradId, "C").getWitnessAsText().getEntity();
             String expC = "when showers sweet with fruit to drought of march has pierced teh roodoftheworld";
             assertEquals(expC, resp.getText());
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2393,7 +2393,7 @@ public class ReadingTest {
                 assertEquals(Long.valueOf(4), rm.getRank());
             }
 
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2411,7 +2411,7 @@ public class ReadingTest {
                 first_id = String.valueOf(row.get("id(a)"));
                 second_id = String.valueOf(row.get("id(b)"));
             }
-            tx.close();
+            tx.commit();
         }
         assertNotNull(first_id);
         assertNotNull(second_id);
@@ -2433,7 +2433,7 @@ public class ReadingTest {
         String withReadId;
         try (Transaction tx = db.beginTx()) {
             withReadId = tx.findNodes(Nodes.READING, "text", "with").next().getElementId();
-            tx.close();
+            tx.commit();
         }
 
         ReadingModel actualResponse = jerseyTest
@@ -2558,6 +2558,19 @@ public class ReadingTest {
 */
 
     @Test
+    public void getReadingFromTraditionTest() {
+        HashMap<String,String> r1lookup = Util.makeReadingLookup(jerseyTest, tradId);
+        String secondTrad = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest,
+                "John verse", "LR", "1","src/TestFiles/john.csv", "csv"), "tradId");
+        Response r = jerseyTest.target("/tradition/" + secondTrad + "/reading/" + r1lookup.get("when/1"))
+                .request().get();
+        assertEquals(Status.NOT_FOUND.getStatusCode(), r.getStatus());
+        r = jerseyTest.target("/tradition/" + tradId + "/reading/" + r1lookup.get("when/1"))
+                .request().get();
+        assertEquals(Status.OK.getStatusCode(), r.getStatus());
+    }
+
+    @Test
     public void compressReadingsAcrossTraditionsTest() {
         HashMap<String,String> r1lookup = Util.makeReadingLookup(jerseyTest, tradId);
         String secondTrad = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest,
@@ -2577,7 +2590,7 @@ public class ReadingTest {
             assert (nodes.hasNext());
             long rank = 2;
             assertEquals(rank, nodes.next().getProperty("rank"));
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2589,7 +2602,7 @@ public class ReadingTest {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.TRADITION, "name", "Tradition");
             assertTrue(tradNodesIt.hasNext());
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -2601,7 +2614,7 @@ public class ReadingTest {
         try (Transaction tx = db.beginTx()) {
             ResourceIterator<Node> tradNodesIt = tx.findNodes(Nodes.READING, "text", "#END#");
             assertTrue(tradNodesIt.hasNext());
-            tx.close();
+            tx.commit();
         }
     }
 

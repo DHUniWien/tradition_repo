@@ -256,8 +256,8 @@ public class StemmawebParser {
                                             // if (currentNode.hasProperty("label") && currentNode.getProperty("label").equals("TRADITION"))
                                             //     break;
                                             if (currentNode.hasProperty("name")
-                                                    && ((String)currentNode.getProperty("name")).length() == 0
-                                                    && text.length() > 0) {
+                                                    && ((String) currentNode.getProperty("name")).isEmpty()
+                                                    && !text.isEmpty()) {
                                                 currentNode.setProperty(attr, text);
                                             }
                                             break;

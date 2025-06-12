@@ -63,6 +63,13 @@ public class CollateXJsonInputTest extends TestCase {
     }
 
     public void testParseCollateX() {
+        // Check that the name came through
+        SectionModel theSection = jerseyTest
+                .target("/tradition/" + tradId + "/section/" + sectId)
+                .request()
+                .get(SectionModel.class);
+        assertEquals(theSection.getId(), sectId);
+        assertEquals("Anno CDVII", theSection.getName());
         // Check for correct number of readings and ranks
         List<ReadingModel> allreadings = jerseyTest
                 .target("/tradition/" + tradId + "/readings")
@@ -103,7 +110,7 @@ public class CollateXJsonInputTest extends TestCase {
                     }
                 }
             }
-            tx.close();
+            tx.commit();
         }
 
         // Check a witness text
@@ -183,7 +190,7 @@ public class CollateXJsonInputTest extends TestCase {
                                 assertFalse(ew.contains(w));
                             }
                 }
-            tx.close();
+            tx.commit();
         }
     }
 
@@ -254,6 +261,7 @@ public class CollateXJsonInputTest extends TestCase {
         assertEquals(2, ourSections.size());
         assertEquals(firstSect, ourSections.get(0).getId());
         assertEquals(secondSect, ourSections.get(1).getId());
+        // Check that section names were according to the REST request
         assertEquals("AM 401", ourSections.get(0).getName());
         assertEquals("AM 407", ourSections.get(1).getName());
     }

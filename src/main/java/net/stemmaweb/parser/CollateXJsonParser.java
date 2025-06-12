@@ -38,13 +38,18 @@ public class CollateXJsonParser {
         // parse the JSON
         ArrayList<String> collationWitnesses = new ArrayList<>();
         ArrayList<ArrayList<ReadingModel>> collationTable = new ArrayList<>();
+        String collationName = "DEFAULT";
 
         // JSON parsing block; turn CollateX JSON into our model classes.
         // Needs its own try/catch for JSON exceptions
         try {
-            JSONObject table = new JSONObject(IOUtils.toString(filestream, StandardCharsets.UTF_8));
+            JSONObject collation = new JSONObject(IOUtils.toString(filestream, StandardCharsets.UTF_8));
+            // see if there is a section name here
+            if (collation.has("name")) {
+                collationName = collation.getString("name");
+            }
             // get the witness list from the clunky JSON interface
-            JSONArray jWit = table.getJSONArray("witnesses");
+            JSONArray jWit = collation.getJSONArray("witnesses");
             // Is the list of witnesses a list of sigla, or a list of id/token objects? If the latter,
             // tell the user they are trying to use CollateX input.
             Object firstWit = jWit.get(0);
@@ -54,7 +59,7 @@ public class CollateXJsonParser {
             for (int i = 0; i < jWit.length(); i++) collationWitnesses.add(jWit.getString(i));
 
             // get the table data from the clunky JSON interface
-            JSONArray jAlign = table.getJSONArray("table");
+            JSONArray jAlign = collation.getJSONArray("table");
             for (int i = 0; i < jAlign.length(); i++) {
                 ArrayList<ReadingModel> row = new ArrayList<>();
                 JSONArray jrow = jAlign.getJSONArray(i);
@@ -123,6 +128,11 @@ public class CollateXJsonParser {
         // Now we have the data in our own model classes; proceed.
         Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         try (Transaction tx = db.beginTx()) {
+            // Set the section name if we found one and it isn't already set
+            if (!collationName.equals("DEFAULT")
+                    && parentNode.getProperty("name", "DEFAULT").equals("DEFAULT")) {
+                parentNode.setProperty("name", collationName);
+            }
             // Check that we have all the witnesses
             for (String witString : collationWitnesses) {
                 List<String> wit = parseWitnessSigil(witString);
@@ -197,7 +207,7 @@ public class CollateXJsonParser {
                 Node lastReading = lastWitnessReading.get(witString);
                 ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
-            tx.close();
+            tx.commit();
             return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getElementId())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();

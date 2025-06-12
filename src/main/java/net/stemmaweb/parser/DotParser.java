@@ -14,11 +14,10 @@ import net.stemmaweb.rest.Nodes;
 import com.alexmerz.graphviz.Parser;
 
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.UnionFind;
 import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.traversal.Evaluators;
-import org.neo4j.graphdb.traversal.Uniqueness;
 
 import static net.stemmaweb.Util.jsonresp;
 
@@ -46,7 +45,7 @@ public class DotParser {
         Graph stemma = null;
         try {
             List<Graph> parsedgraphs = parseDot(stemmaSpec.getDot());
-            if (parsedgraphs.size() == 0) {
+            if (parsedgraphs.isEmpty()) {
                 messageValue = "No graphs were found in this DOT specification.";
                 result = Status.BAD_REQUEST;
             } else if (parsedgraphs.size() > 1) {
@@ -89,74 +88,84 @@ public class DotParser {
                 }
             }
             // Get a list of the existing (extant) tradition witnesses
-            HashMap<String, Node> traditionWitnesses = new HashMap<>();
+            Map<String, Node> traditionWitnesses = new HashMap<>();
             DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                     .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
 
-            // Create the new stemma node
-            Node stemmaNode = tx.createNode(Nodes.STEMMA);
-            stemmaNode.setProperty("name", stemmaName);
+            Node stemmaNode;
+            Map<Node, Boolean> witnessesVisited = new HashMap<>();
+            List<Relationship> stemmaEdges;
             Boolean isDirected = stemma.getType() == 2;
-            stemmaNode.setProperty("directed", isDirected);
+            // Create the stemma in a separate transaction, so we can query it with unionFind to check its shape.
+            try (Transaction tx2 = db.beginTx()) {
+                // Create the new stemma node
+                stemmaNode = tx.createNode(Nodes.STEMMA);
+                stemmaNode.setProperty("name", stemmaName);
 
-            // Create the nodes as Witness nodes; use existing witnesses if they exist.
-            // Store the collection of them for later traversal.
-            HashMap<Node, Boolean> witnessesVisited = new HashMap<>();
-            for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
-                String sigil = getNodeSigil(witness);
-                if (witness.getAttribute("class") == null) {
-                    messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
-                    return Status.BAD_REQUEST;
-                }
-                boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
-                // Check for the existence of a node by this name
-                Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
-                if (existingWitness != null) {
-                    // Check that the requested witness isn't hypothetical unless the
-                    // existing one is!
-                    if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical"))) {
-                        messageValue = "The extant tradition witness " + sigil
-                                + " cannot be a hypothetical stemma node.";
-                        return Status.CONFLICT;
+                stemmaNode.setProperty("directed", isDirected);
+                // Create the nodes as Witness nodes; use existing witnesses if they exist.
+                // Store the collection of them for later traversal.
+                for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
+                    String sigil = getNodeSigil(witness);
+                    if (witness.getAttribute("class") == null) {
+                        messageValue = String.format("Witness %s not marked as either hypothetical or extant", sigil);
+                        return Status.BAD_REQUEST;
                     }
-                } else {
-                    existingWitness = Util.createWitness(traditionNode, sigil, hypothetical);
-                    // Does it have a label separate from its ID?
-                    String displayLabel = witness.getAttribute("label");
-                    if (displayLabel != null) {
-                        existingWitness.setProperty("label", displayLabel);
+                    boolean hypothetical = witness.getAttribute("class").equals("hypothetical");
+                    // Check for the existence of a node by this name
+                    Node existingWitness = traditionWitnesses.getOrDefault(sigil, null);
+                    if (existingWitness != null) {
+                        // Check that the requested witness isn't hypothetical unless the
+                        // existing one is!
+                        if (hypothetical && !((Boolean) existingWitness.getProperty("hypothetical"))) {
+                            messageValue = "The extant tradition witness " + sigil
+                                    + " cannot be a hypothetical stemma node.";
+                            return Status.CONFLICT;
+                        }
+                    } else {
+                        // If the witness doesn't exist yet, create it
+                        existingWitness = Util.createWitness(traditionNode, sigil, hypothetical);
+                        // Does it have a label separate from its ID?
+                        String displayLabel = witness.getAttribute("label");
+                        if (displayLabel != null) {
+                            existingWitness.setProperty("label", displayLabel);
+                        }
+                        traditionWitnesses.put(sigil, existingWitness);
+                        // If the new witness is an extant one, add it to the tradition; apparently
+                        // it exists.
+                        if (!hypothetical) {
+                            traditionNode.createRelationshipTo(existingWitness, ERelations.HAS_WITNESS);
+                        }
                     }
-                    traditionWitnesses.put(sigil, existingWitness);
+                    stemmaNode.createRelationshipTo(existingWitness, ERelations.HAS_WITNESS);
+                    witnessesVisited.put(existingWitness, false);
                 }
-                stemmaNode.createRelationshipTo(existingWitness, ERelations.HAS_WITNESS);
-                witnessesVisited.put(existingWitness, false);
+
+                // Create the edges; each edge has the stemma label as a property.
+                stemmaEdges = new ArrayList<>();
+                for (Edge transmission : stemma.getEdges()) {
+                    Node sourceWit = traditionWitnesses.get(getNodeSigil(transmission.getSource().getNode()));
+                    Node targetWit = traditionWitnesses.get(getNodeSigil(transmission.getTarget().getNode()));
+                    Relationship txEdge = sourceWit.createRelationshipTo(targetWit, ERelations.TRANSMITTED);
+                    txEdge.setProperty("hypothesis", stemmaName);
+                    stemmaEdges.add(txEdge);
+                }
+
+                tx2.commit();
             }
 
-            // Create the edges; each edge has the stemma label as a property.
-            for (Edge transmission : stemma.getEdges()) {
-                Node sourceWit = traditionWitnesses.get(getNodeSigil(transmission.getSource().getNode()));
-                Node targetWit = traditionWitnesses.get(getNodeSigil(transmission.getTarget().getNode()));
-                Relationship txEdge = sourceWit.createRelationshipTo(targetWit, ERelations.TRANSMITTED);
-                txEdge.setProperty("hypothesis", stemmaName);
-            }
+            // Now that the stemma is in the database, let's check out its shape.
+            // See if the stemma is a strict tree or not. First the simple filter...
+            boolean contaminated = traditionWitnesses.size() - stemmaEdges.size() != 1;
 
-            // Set up a path expander for the stemma
-            // We need to traverse only those paths that belong to this stemma.
-
-            // Traverse the stemma looking for a cycle.
-            boolean contaminated = false;
-            for (Node witness : witnessesVisited.keySet()) {
-                Iterator<Node> pathNodes = tx.traversalDescription()
-                        .depthFirst()
-                        .expand(Util.getExpander(Direction.BOTH, stemmaName))
-                        .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                        .evaluator(Evaluators.all())
-                        .traverse(witness).nodes().iterator();
-                @SuppressWarnings("UnusedAssignment")
-                Node chainpoint = pathNodes.next();
-                while(pathNodes.hasNext()) {
-                    chainpoint = pathNodes.next();
-                    if (chainpoint.equals(witness)) {
+            // ...then the UnionFind check if we need it. If the number of edges is correct, and there
+            // is a single connected group, it has to be a tree. Otherwise, it is a contaminated tree and
+            // one or more unconnected witnesses.
+            if (!contaminated) {
+                // ...then the UnionFind-based check.
+                UnionFind uf = new UnionFind(witnessesVisited.keySet());
+                for (Relationship edge : stemmaEdges) {
+                    if (!uf.union(edge.getStartNode(), edge.getEndNode())) {
                         contaminated = true;
                         break;
                     }
@@ -205,7 +214,7 @@ public class DotParser {
             // Save the stemma to the tradition.
             traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
 
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             messageValue = e.toString();
@@ -219,14 +228,14 @@ public class DotParser {
         // Handle the case where we didn't provide a name in the StemmaModel, e.g. when parsing
         // bare dot strings from the old Stemmaweb
         List<Graph> allGraphs = parseDot(dotSpec);
-        if (allGraphs.size() == 0) return null;
+        if (allGraphs.isEmpty()) return null;
         return getDotGraphName(allGraphs.get(0));
     }
 
     private static String getDotGraphName (Graph dotStemma) {
         String stemmaName = dotStemma.getId().getLabel();
         // If the stemma name wasn't quoted, it will be an id.
-        if (stemmaName.equals("")) {
+        if (stemmaName.isEmpty()) {
             stemmaName = dotStemma.getId().getId();
         }
         return stemmaName;
@@ -249,7 +258,7 @@ public class DotParser {
     private static String getNodeSigil (com.alexmerz.graphviz.objects.Node n) {
         String sigil = n.getId().getId();
         // If the sigil is in quotes it will be a label, not an ID.
-        if (sigil.equals("")) {
+        if (sigil.isEmpty()) {
             sigil = n.getId().getLabel();
         }
         return sigil;

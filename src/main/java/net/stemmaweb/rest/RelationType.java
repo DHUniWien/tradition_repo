@@ -61,11 +61,15 @@ public class RelationType {
     @ReturnType("net.stemmaweb.model.RelationTypeModel")
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
-        Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, db));
-        if (foundRelType == null) {
-            return Response.noContent().build();
+        try {
+            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, db));
+            if (foundRelType == null) {
+                return Response.noContent().build();
+            }
+            return Response.ok(new RelationTypeModel(foundRelType)).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(new RelationTypeModel(foundRelType)).build();
     }
 
     /**
@@ -86,7 +90,12 @@ public class RelationType {
     public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        Node extantRelType = rtModel.lookup(traditionNode);
+        Node extantRelType;
+        try {
+            extantRelType = rtModel.lookup(traditionNode);
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
 
         // Were we asked for the secret Stemmaweb defaults?
         if (rtModel.getDefaultsettings() != null) {
@@ -97,15 +106,22 @@ public class RelationType {
             return this.makeDefaultType();
         }
 
-        if (extantRelType != null) {
-            extantRelType = rtModel.update(traditionNode);
-            if (extantRelType != null)
-                return Response.ok().entity(rtModel).build();
-        } else {
-            extantRelType = rtModel.instantiate(traditionNode);
-            if (extantRelType != null)
-                return Response.status(Response.Status.CREATED).entity(rtModel).build();
+        try {
+            if (extantRelType != null) {
+                extantRelType = rtModel.update(traditionNode);
+                if (extantRelType != null)
+                    return Response.ok().entity(rtModel).build();
+            } else {
+                extantRelType = rtModel.instantiate(traditionNode);
+                if (extantRelType != null)
+                    return Response.status(Response.Status.CREATED).entity(rtModel).build();
+            }
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
+        // If we got here,
         return Response.serverError().entity(jsonerror("Could neither instantiate nor update relation type")).build();
     }
 
@@ -125,9 +141,14 @@ public class RelationType {
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
-        Node foundRelType = rtModel.lookup(tradition);
-        if (foundRelType == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+        Node foundRelType;
+        try {
+            foundRelType = rtModel.lookup(tradition);
+            if (foundRelType == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
         try (Transaction tx = db.beginTx()) {
             // Do we have any relations that use this type?
@@ -140,7 +161,7 @@ public class RelationType {
             // Then I guess we can delete it.
             foundRelType.getSingleRelationship(ERelations.HAS_RELATION_TYPE, Direction.INCOMING).delete();
             foundRelType.delete();
-            tx.close();
+            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
@@ -177,9 +198,14 @@ public class RelationType {
         Node tradNode = VariantGraphService.getTraditionNode(traditionId, db);
         RelationTypeModel relType = new RelationTypeModel(typeName);
         // Does this already exist?
-        Node extantRelType = relType.lookup(tradNode);
-        if (extantRelType != null)
-            return Response.notModified().build();
+        Node extantRelType;
+        try {
+            extantRelType = relType.lookup(tradNode);
+            if (extantRelType != null)
+                return Response.notModified().build();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
 
         // If we don't have any settings for the requested name, use the settings for "other"
         String useType = typeName;
@@ -212,10 +238,16 @@ public class RelationType {
                 || useType.equals("other")));
         relType.setUse_regular(!useType.equals("orthographic"));
         // Create the node
-        Node result = relType.instantiate(tradNode);
-        if (result == null)
-            return Response.serverError().entity(jsonerror("Could not instantiate default relation type")).build();
-        else
-            return Response.status(Response.Status.CREATED).entity(relType).build();
+        try {
+            Node result = relType.instantiate(tradNode);
+            if (result == null)
+                return Response.serverError().entity(jsonerror("Could not instantiate default relation type")).build();
+            else
+                return Response.status(Response.Status.CREATED).entity(relType).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+        } catch (Exception e) {
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
     }
 }
