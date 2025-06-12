@@ -9,6 +9,7 @@ import net.stemmaweb.exporter.TabularExporter;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.traversal.*;
 
 import javax.ws.rs.*;
@@ -70,6 +71,8 @@ public class Section {
             ReadingModel rdg = new ReadingModel(db.getNodeById(Long.parseLong(readingId)));
             readingInSection = rdg.getSection().equals(sectId);
             tx.success();
+        } catch (NotFoundException ex) {
+            readingInSection = false;
         }
         return readingInSection ? new Reading(readingId) : new Reading("-1");
     }
@@ -533,7 +536,7 @@ public class Section {
             // and to some node in this section.
             List<Node> foundAnns = collectSectionAnnotations(recurse.equals("true"));
             // Filter the annotations if we have been asked to
-            if (filterLabels.size() > 0) {
+            if (!filterLabels.isEmpty()) {
                 for (Node a : new ArrayList<>(foundAnns)) {
                     boolean foundLabel = false;
                     for (Label l : a.getLabels()) {
@@ -736,7 +739,7 @@ public class Section {
             }
 
             // Make sure we have readings at the requested rank in this section
-            if (linksToSplit.size() == 0)
+            if (linksToSplit.isEmpty())
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("Rank not found within section")).build();
 
@@ -1117,7 +1120,7 @@ public class Section {
                     .traverse(startNode).nodes().stream()
                     .filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
                             endRank >= Long.parseLong(x.getProperty("rank").toString()));
-            if (!limitText.equals(""))
+            if (!limitText.isEmpty())
                 readingStream = readingStream.filter(x -> x.getProperty("text").toString().equals(limitText));
             readings = readingStream.collect(Collectors.toList());
             tx.success();
@@ -1174,9 +1177,9 @@ public class Section {
             return null;
         }
 
-        ArrayList<List<ReadingModel>> result = identicalReadings.stream().filter(x -> x.size() > 0)
+        ArrayList<List<ReadingModel>> result = identicalReadings.stream().filter(x -> !x.isEmpty())
                 .collect(Collectors.toCollection(ArrayList::new));
-        if (result.size() == 0) return null;
+        if (result.isEmpty()) return null;
         return result;
     }
 
