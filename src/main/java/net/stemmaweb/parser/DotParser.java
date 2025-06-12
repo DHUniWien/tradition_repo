@@ -63,7 +63,7 @@ public class DotParser {
 
         // Save the graph into Neo4J.
         if (result == null)
-            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier());
+            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier(), stemmaSpec.getJobid());
 
         // Return our answer.
         String returnKey = result == Status.CREATED ? "name" : "error";
@@ -72,7 +72,7 @@ public class DotParser {
                 .build();
     }
 
-    private Status saveToNeo(Graph stemma, String tradId, String stemmaName) {
+    private Status saveToNeo(Graph stemma, String tradId, String stemmaName, Integer jobid) {
         // Check for the existence of the tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null)
@@ -101,8 +101,10 @@ public class DotParser {
                 // Create the new stemma node
                 stemmaNode = db.createNode(Nodes.STEMMA);
                 stemmaNode.setProperty("name", stemmaName);
-
                 stemmaNode.setProperty("directed", isDirected);
+                if (jobid != null && jobid > 0)
+                    stemmaNode.setProperty("from_jobid", jobid);
+
                 // Create the nodes as Witness nodes; use existing witnesses if they exist.
                 // Store the collection of them for later traversal.
                 for (com.alexmerz.graphviz.objects.Node witness : stemma.getNodes(false)) {
@@ -150,6 +152,11 @@ public class DotParser {
                     txEdge.setProperty("hypothesis", stemmaName);
                     stemmaEdges.add(txEdge);
                 }
+
+                // If the stemma we just imported had a jobID that matches the tradition's stemweb_jobid, clear the latter
+                if (jobid != null && jobid.equals(
+                        traditionNode.getProperty("stemweb_jobid", 0)))
+                    traditionNode.removeProperty("stemweb_jobid");
 
                 tx2.success();
             }

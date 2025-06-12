@@ -705,7 +705,16 @@ public class StemmaTest {
     @Test
     public void importNeighbourNetStemmaTest() {
         // See if a Neighbour Net generated stemma will actually import correctly
-        String tradId = createTraditionFromFile("Sapientia", "src/TestFiles/sapientia.xml");
+        String tradId = createTraditionFromFile("Sapientia", "src/TestFiles/Sapientia.xml");
+        // Set a job ID on the tradition
+        TraditionModel textInfo = jerseyTest.target("/tradition/" + tradId)
+                .request().get(TraditionModel.class);
+        textInfo.setStemweb_jobid(52);
+        try (Response r = jerseyTest.target("/tradition/" + tradId)
+                .request(MediaType.APPLICATION_JSON).put(Entity.json(textInfo))) {
+            assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
+            assertEquals(textInfo.getStemweb_jobid(), r.readEntity(TraditionModel.class).getStemweb_jobid());
+        }
         // Read the dot specification in from the test file
         String dotSpec = "";
         try {
@@ -715,14 +724,21 @@ public class StemmaTest {
         }
         StemmaModel sm = new StemmaModel();
         sm.setIdentifier("Neighbour Net 1749128699");
-        sm.setJobid(37);
+        sm.setJobid(52);
         sm.setDot(dotSpec);
+        // Post the stemma and make sure it has the right information
         try (Response r = jerseyTest.target("/tradition/" + tradId + "/stemma")
                 .request(MediaType.APPLICATION_JSON).post(Entity.json(sm))) {
             assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
             StemmaModel result = r.readEntity(StemmaModel.class);
             assertTrue(result.getIs_undirected());
+            assertTrue(result.cameFromJobid());
+            assertEquals(sm.getJobid(), result.getJobid());
         }
+        // and check that the job ID on the tradition has been unset.
+        textInfo = jerseyTest.target("/tradition/" + tradId)
+                .request().get(TraditionModel.class);
+        assertNull(textInfo.getStemweb_jobid());
     }
 
     private int countGraphNodes() {
