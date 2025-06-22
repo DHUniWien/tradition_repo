@@ -10,7 +10,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
@@ -30,14 +35,14 @@ import static net.stemmaweb.services.RelationService.TransitiveRelationTraverser
 
 /**
  * Comprises all the api calls related to a relation.
- * can be called by using http://BASE_URL/relation
+ * can be called by using {@code http://BASE_URL/relation}
  * @author PSE FS 2015 Team2
  */
 
 public class Relation {
 
-    private GraphDatabaseService db;
-    private String tradId;
+    private final GraphDatabaseService db;
+    private final String tradId;
     private static final String SCOPE_LOCAL = "local";
     private static final String SCOPE_SECTION = "section";
     private static final String SCOPE_TRADITION = "tradition";
@@ -52,21 +57,46 @@ public class Relation {
     /**
      * Creates a new relation between the specified reading nodes.
      *
-     * @title Create relation
      * @param relationModel - JSON structure of the relation to create
      * @return The relation(s) created, as well as any other readings in the graph that
      * had a relation set between them.
-     * @statuscode 201 - on success
-     * @statuscode 304 - if the specified relation type/scope already exists
-     * @statuscode 400 - if the request has an invalid scope
-     * @statuscode 409 - if the relationship cannot legally be created
-     * @statuscode 500 - on failure, with JSON error message
      */
     // TODO make this an idempotent PUT call
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Create relation",
+            description = "Creates a new relation between the specified reading nodes.",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "JSON structure of the relation to create",
+                    required = true,
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON)
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "On success",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = GraphModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "304",
+                            description = "If the specified relation type/scope already exists"
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "If the request has an invalid scope"
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "If the relationship cannot legally be created"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "On failure, with JSON error message"
+                    )
+            }
+    )
     public Response create(RelationModel relationModel) {
         // Make sure a scope is set
         if (relationModel.getScope() == null) relationModel.setScope(SCOPE_LOCAL);
@@ -95,7 +125,7 @@ public class Relation {
                     Node startingPoint = VariantGraphService.getTraditionNode(tradId, db);
                     if (scope.equals(SCOPE_SECTION))
                         startingPoint = db.getNodeById((Long) readingA.getProperty("section_id"));
-                    Relationship thisRelation = db.getRelationshipById(Long.valueOf(thisRelId));
+                    Relationship thisRelation = db.getRelationshipById(Long.parseLong(thisRelId));
 
                     // Get all the readings that belong to our tradition or section
                     ResourceIterable<Node> tradReadings = VariantGraphService.returnEntireTradition(startingPoint).nodes();
@@ -108,7 +138,7 @@ public class Relation {
                     HashMap<String, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
                         long node_id = cur_node.getId();
-                        long node_rank = (Long) cur_node.getProperty("rank");
+                        String node_rank = cur_node.getProperty("rank").toString();
                         String node_section = cur_node.getProperty("section_id").toString();
                         String key = node_section + "/" + node_rank;
                         HashSet<Long> cur_set = ranks.getOrDefault(node_rank, new HashSet<>());
@@ -127,11 +157,11 @@ public class Relation {
                         String node_section = cur_node.getProperty("section_id").toString();
                         String key = node_section + "/" + node_rank;
 
-                        HashSet cur_set = ranks.get(key);
+                        HashSet<Long> cur_set = ranks.get(key);
                         if (cur_set != null) {
-                            for (Object id : cur_set) {
+                            for (Long id : cur_set) {
                                 userel = new RelationModel(thisRelation);
-                                userel.setSource(Long.toString((Long) id));
+                                userel.setSource(Long.toString(id));
                                 userel.setTarget(Long.toString(node_id));
                                 response = this.create_local(userel);
                                 if (Status.NOT_MODIFIED.getStatusCode() != response.getStatus()) {
@@ -168,7 +198,7 @@ public class Relation {
             Node readingA = db.getNodeById(Long.parseLong(relationModel.getSource()));
             Node readingB = db.getNodeById(Long.parseLong(relationModel.getTarget()));
 
-            Node ourSection = db.getNodeById(Long.valueOf(readingA.getProperty("section_id").toString()));
+            Node ourSection = db.getNodeById(Long.parseLong(readingA.getProperty("section_id").toString()));
             Node ourTradition = ourSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
             if (!ourTradition.getProperty("id").equals(tradId))
                 return Response.status(Status.CONFLICT)
@@ -337,7 +367,7 @@ public class Relation {
         // transitivity effects have been accounted for.
         for (RelationModel rm : newRelationResult.getRelations()) {
             TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tradId, rtm);
-            Node startNode = db.getNodeById(Long.valueOf(rm.getSource()));
+            Node startNode = db.getNodeById(Long.parseLong(rm.getSource()));
             ArrayList<Node> relatedNodes = new ArrayList<>();
             // Get all the readings that are related by this or a more closely-bound type.
             db.traversalDescription().depthFirst()
@@ -351,11 +381,8 @@ public class Relation {
                 Node readingA = iterateNodes.remove(0);
                 HashSet<Node> alreadyRelated = new HashSet<>();
                 readingA.getRelationships(ERelations.RELATED).forEach(x -> alreadyRelated.add(x.getOtherNode(readingA)));
-                // System.out.println(String.format("Propagating type model %s on node %d / %s",
-                //        rtm.getName(), readingA.getId(), readingA.getProperty("text")));
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
-                        // System.out.println(String.format("...making relation %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
                         GraphModel interim = createSingleRelation(readingA, readingB, rm, rtm);
                         newRelationResult.addReadings(interim.getReadings());
                         newRelationResult.addRelations(interim.getRelations());
@@ -381,7 +408,7 @@ public class Relation {
                     RelationTypeModel newtm = returnRelationType(tradId, newmodel.getType());
                     for (Node c : cousins) {
                         ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED);
-                        if (priorLinks.size() == 0) {
+                        if (priorLinks.isEmpty()) {
                             // Create a relation based on the looser link
                             GraphModel interim = createSingleRelation(n, c, newmodel, newtm);
                             newRelationResult.addReadings(interim.getReadings());
@@ -398,19 +425,28 @@ public class Relation {
     /**
      * Remove the relation specified. There should be only one.
      *
-     * @title Delete a relation specifed by JSON data.
      * @param relationModel - the JSON specification of the relationship(s) to delete
      * @return A list of all relationships that were removed.
-     * @statuscode 200 - on success
-     * @statuscode 400 - if an invalid scope was specified
-     * @statuscode 404 - if no matching relationship was found
-     * @statuscode 500 - on failure, with JSON error message
      */
     @POST
     @Path("/remove")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
+    @Operation(
+            summary = "Delete a relation specified by JSON data",
+            description = "Remove the relation specified. There should be only one.",
+            requestBody = @RequestBody(
+                    description = "The JSON specification of the relationship(s) to delete",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of all relationships that were removed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class))),
+                    @ApiResponse(responseCode = "400", description = "Bad request, if an invalid scope was specified", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Not found, if no matching relationship was found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with JSON error message", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteByData(RelationModel relationModel) {
         ArrayList<RelationModel> deleted = new ArrayList<>();
 
@@ -465,17 +501,27 @@ public class Relation {
     /**
      * Removes a relation by internal ID.
      *
-     * @title Delete relation by ID
      * @param relationId - the ID of the relation to delete
      * @return The deleted relation
-     * @statuscode 200 - on success
-     * @statuscode 403 - if the given ID does not belong to a relation
-     * @statuscode 500 - on failure, with JSON error message
      */
     @DELETE
     @Path("{relationId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = RelationModel.class)
+    @Operation(
+            summary = "Delete relation by ID",
+            description = "Removes a relation by internal ID.",
+            parameters = @Parameter(
+                    name = "relationId",
+                    description = "The ID of the relation to delete",
+                    required = true,
+                    schema = @Schema(type = "string")
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The deleted relation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationModel.class))),
+                    @ApiResponse(responseCode = "403", description = "Forbidden, if the given ID does not belong to a relation", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with JSON error message", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteById(@PathParam("relationId") String relationId) {
         RelationModel relationModel;
 

@@ -3,6 +3,7 @@ package net.stemmaweb.rest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.*;
@@ -11,7 +12,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.model.TextSequenceModel;
@@ -25,7 +31,7 @@ import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises all the API calls related to a witness.
- * Can be called using http://BASE_URL/witness
+ * Can be called using {@code http://BASE_URL/witness}
  * @author PSE FS 2015 Team2
  */
 
@@ -98,15 +104,30 @@ public class Witness {
 
     /**
      * Returns a WitnessModel corresponding to the requested witness.
-     * @title Get witness information
      * @return  A WitnessModel containing information about the witness
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = WitnessModel.class)
+    @Operation(
+            summary = "Get witness information",
+            description = "Returns a WitnessModel corresponding to the requested witness.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully retrieved witness information",
+                            content = @Content(schema = @Schema(implementation = WitnessModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Tradition, section, or witness not found"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Server error",
+                            content = @Content(schema = @Schema(implementation = String.class))
+                    )
+            }
+    )
     public Response getWitnessInfo() {
         Node witnessNode = getWitnessBySigil();
         if (witnessNode == null) return Response.status(Status.NOT_FOUND).build();
@@ -117,14 +138,34 @@ public class Witness {
     /**
      * Deletes the requested witness.
      *
-     * @title Delete a witness
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 500 - on error, with an error message
+     * @return the witness that was deleted.
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = WitnessModel.class)
+    @Operation(
+            summary = "Delete a witness",
+            description = "Deletes the requested witness from the entire tradition.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully deleted witness",
+                            content = @Content(schema = @Schema(implementation = WitnessModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Cannot delete witness from a single section",
+                            content = @Content(schema = @Schema(implementation = String.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Tradition or witness not found"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Server error during deletion"
+                    )
+            }
+    )
     public Response deleteWitness() {
         if (sectId != null)
             return Response.status(Status.BAD_REQUEST).entity("Cannot delete a witness from a single section").build();
@@ -203,21 +244,63 @@ public class Witness {
      * / from the start of the witness. If one or more witness layers are specified, return
      * the text composed of those layers.
      *
-     * @title Get witness text
      * @param layer - the text layer(s) to return, e.g. "a.c." or "s.l.". These layers must not conflict with each other!
      * @param start - the starting rank
      * @param end   - the end rank
      * @return The witness text as a string.
-     * @statuscode 200 - on success
-     * @statuscode 400 - if a start or end rank is specified on the tradition-wide call, or if the start rank and end rank match
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 409 - if a section's end node cannot be reached while assembling the witness text
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("/text")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = TextSequenceModel.class)
+    @Operation(
+            summary = "Get witness text",
+            description = "Finds a witness and returns it as text string. Optionally filters by rank range and text layers.",
+            parameters = {
+                    @Parameter(
+                            name = "layer",
+                            description = "Text layer(s) to return (e.g. 'a.c.' or 's.l.')",
+                            example = "a.c.",
+                            allowEmptyValue = true
+                    ),
+                    @Parameter(
+                            name = "start",
+                            description = "Starting rank (inclusive)",
+                            example = "0"
+                    ),
+                    @Parameter(
+                            name = "end",
+                            description = "End rank (inclusive) or 'E' for section end",
+                            example = "E"
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully retrieved witness text",
+                            content = @Content(schema = @Schema(implementation = TextSequenceModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "Invalid rank parameters",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Tradition, section, or witness not found",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "End node unreachable during text assembly",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Server error during text retrieval",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getWitnessAsTextWithLayer(
             @QueryParam("layer") @DefaultValue("") List<String> layer,
             @QueryParam("start") @DefaultValue("0") String start,
@@ -232,7 +315,7 @@ public class Witness {
                     .entity(jsonerror(errorMessage)).build();
 
         // Empty out the layer list if it is the default.
-        if (layer.size() == 1 && layer.get(0).equals(""))
+        if (layer.size() == 1 && layer.get(0).isEmpty())
             layer.remove(0);
 
         ArrayList<Node> witnessReadings = new ArrayList<>();
@@ -284,7 +367,7 @@ public class Witness {
             }
         }
         // If the path is size 0 then we didn't even get to the end node; the witness path doesn't exist.
-        if (witnessReadings.size() == 0)
+        if (witnessReadings.isEmpty())
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("No witness path found for this sigil")).build();
         // Construct the text from the node reading models
@@ -298,21 +381,49 @@ public class Witness {
     /**
      * Returns the sequence of readings for a given witness.
      *
-     * @title Get readings
      * @param witnessClass - the text layer to return, e.g. "a.c."
      * @return The witness text as a list of readings.
-     * @statuscode 200 - on success
-     * @statuscode 404 - if the tradition, section, or witness text doesn't exist
-     * @statuscode 409 - if a section's end node cannot be reached while assembling the witness text
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("/readings")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(
+            summary = "Get readings",
+            description = "Returns the sequence of readings for a given witness.",
+            parameters = {
+                    @Parameter(
+                            name = "layer",
+                            description = "Text layer to return (e.g. 'a.c.')",
+                            example = "a.c.",
+                            allowEmptyValue = true
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Successfully retrieved readings",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "Tradition, section, or witness not found",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "End node unreachable during reading assembly",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Server error during reading retrieval",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getWitnessAsReadings(@QueryParam("layer") @DefaultValue("") List<String> witnessClass) {
         ArrayList<ReadingModel> readingModels = new ArrayList<>();
-        if (witnessClass.size() == 1 && witnessClass.get(0).equals(""))
+        if (witnessClass.size() == 1 && witnessClass.get(0).isEmpty())
             witnessClass.remove(0);
 
         ArrayList<Node> iterationList = sectionsRequested();
@@ -325,7 +436,7 @@ public class Witness {
                 Node startNode = VariantGraphService.getStartNode(String.valueOf(currentSection.getId()), db);
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 // Remove the meta node from the list
-                if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getIs_end())
+                if (!readingModels.isEmpty() && readingModels.get(readingModels.size() - 1).getIs_end())
                     readingModels.remove(readingModels.size() - 1);
                 tx.success();
             } catch (Exception e) {
@@ -337,7 +448,7 @@ public class Witness {
         }
 
         // If the path is size 0 then the witness path doesn't exist.
-        if (readingModels.size() == 0)
+        if (readingModels.isEmpty())
             return Response.status(Status.NOT_FOUND)
                     .entity(jsonerror("No witness path found for this sigil")).build();
         // ...and return.
@@ -361,7 +472,7 @@ public class Witness {
                 .nodes()
                 .forEach(result::add);
         // If the path is nonzero but the end node wasn't reached, we had a conflict.
-        if (result.size() > 0 && !result.get(result.size()-1).hasProperty("is_end"))
+        if (!result.isEmpty() && !result.get(result.size()-1).hasProperty("is_end"))
             throw new Exception("CONFLICT");
         return result;
     }

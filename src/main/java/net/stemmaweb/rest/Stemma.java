@@ -10,7 +10,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.parser.NewickParser;
@@ -22,7 +25,7 @@ import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises all the api calls related to a stemma.
- * Can be called using http://BASE_URL/stemma
+ * Can be called using {@code http://BASE_URL/stemma}
  * @author PSE FS 2015 Team2
  */
 public class Stemma {
@@ -47,15 +50,31 @@ public class Stemma {
     /**
      * Fetches the information for the specified stemma.
      *
-     * @title Get stemma
      * @return The stemma information, including its dot specification.
-     * @statuscode 200 - on success
-     * @statuscode 404 - if no such tradition exists
-     * @statuscode 500 - on failure, with an error message
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Get stemma",
+            description = "Fetches the information for the specified stemma, including its dot specification.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "On success",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "If no such tradition exists",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "On failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null) {
@@ -70,19 +89,43 @@ public class Stemma {
     /**
      * Stores a new or updated stemma under the given name.
      *
-     * @title Replace or add new stemma
      * @param stemmaSpec - A StemmaModel containing the new or replacement stemma.
      * @return The stemma information, including its dot specification.
-     * @statuscode 200 - on success, if stemma is updated
-     * @statuscode 201 - on success, if stemma is new
-     * @statuscode 400 - if the stemma name in the URL doesn't match the name in the JSON information
-     * @statuscode 404 - if no such tradition exists
-     * @statuscode 500 - on failure, with an error message
      */
     @PUT  // a replacement stemma
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Replace or add new stemma",
+            description = "Stores a new or updated stemma under the given name.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "On success, if stemma is updated",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "On success, if stemma is new",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "If the stemma name in the URL doesn't match the name in the JSON information",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "If no such tradition exists",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "On failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response replaceStemma(StemmaModel stemmaSpec) {
         // In case the stemma spec doesn't have a name, assume it wants the name in the URL just called
         if (stemmaSpec.getIdentifier() == null)
@@ -122,14 +165,26 @@ public class Stemma {
     /**
      * Deletes the stemma that is identified by the given name.
      *
-     * @title Delete stemma
      * @return The stemma information, including its dot specification.
-     * @statuscode 200 - on success, if stemma is updated
-     * @statuscode 500 - on failure, with an error message
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Delete stemma",
+            description = "Deletes the stemma that is identified by the given name.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "On success, if stemma is updated",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "On failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response deleteStemma() {
         Node stemmaNode = getStemmaNode();
         if (stemmaNode == null)
@@ -177,30 +232,54 @@ public class Stemma {
      *
      * @param nodeId - archetype node
      * @return The updated stemma model
-     * @statuscode 200 - on success, if stemma is updated
-     * @statuscode 404 - if the witness does not occur in this stemma
-     * @statuscode 412 - if the stemma is contaminated
-     * @statuscode 500 - on failure, with an error message
      */
     @POST
     @Path("reorient/{nodeId}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = StemmaModel.class)
+    @Operation(
+            summary = "Reorient stemma",
+            description = "Reorients a stemma tree so that the given witness node is the root (archetype). This operation can only be performed on a stemma without contamination links.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "On success, if stemma is updated",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "If the witness does not occur in this stemma",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "412",
+                            description = "If the stemma is contaminated",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "On failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response reorientStemma(@PathParam("nodeId") String nodeId) {
 
         try (Transaction tx = db.beginTx())
         {
             // Get the stemma and the witness
-            Result foundStemma = db.execute("match (:TRADITION {id:'" + tradId
+            Node stemma;
+            Node archetype;
+            try (Result foundStemma = db.execute("match (:TRADITION {id:'" + tradId
                     + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name
-                    + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w");
-            if(!foundStemma.hasNext())
-                return Response.status(Status.NOT_FOUND).entity(jsonerror("No such witness found in stemma")).build();
+                    + "'})-[:HAS_WITNESS]->(w:WITNESS {sigil:'" + nodeId + "'}) return s, w")) {
+                if (!foundStemma.hasNext())
+                    return Response.status(Status.NOT_FOUND).entity(jsonerror("No such witness found in stemma")).build();
 
-            // Fish the stemma and requested archetype out of the query
-            Map<String, Object> queryRow = foundStemma.next();
-            Node stemma    = (Node) queryRow.get("s");
-            Node archetype = (Node) queryRow.get("w");
+                // Fish the stemma and requested archetype out of the query
+                Map<String, Object> queryRow = foundStemma.next();
+                stemma = (Node) queryRow.get("s");
+                archetype = (Node) queryRow.get("w");
+            }
 
             // Check if the stemma has contamination. If so it can't be reoriented!
             if (stemma.hasProperty("is_contaminated"))
@@ -225,13 +304,14 @@ public class Stemma {
 
     private Node getStemmaNode () {
         try (Transaction tx = db.beginTx()) {
-            Result query = db.execute("match (:TRADITION {id:'" + tradId
-                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
-            ResourceIterator<Node> foundStemma = query.columnAs("s");
-            tx.success();
-            if (!foundStemma.hasNext())
-                return null;
-            return foundStemma.next();
+            try (Result query = db.execute("match (:TRADITION {id:'" + tradId
+                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s")) {
+                ResourceIterator<Node> foundStemma = query.columnAs("s");
+                tx.success();
+                if (!foundStemma.hasNext())
+                    return null;
+                return foundStemma.next();
+            }
         }
     }
 

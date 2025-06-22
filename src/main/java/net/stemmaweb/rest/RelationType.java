@@ -1,6 +1,10 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
@@ -40,15 +44,19 @@ public class RelationType {
     /**
      * Gets the information for the given relation type name.
      *
-     * @title Get relation type
-     *
      * @return A JSON RelationTypeModel or a JSON error message
-     * @statuscode 200 on success
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("net.stemmaweb.model.RelationTypeModel")
+    @Operation(
+            summary = "Get relation type",
+            description = "Gets the information for the given relation type name.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "204", description = "No content, if the relation type does not exist"),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         try {
@@ -65,18 +73,27 @@ public class RelationType {
     /**
      * Creates or updates a relation type according to the specification given.
      *
-     * @title Create / update relation type specification
-     *
      * @param rtModel - a user specification
      * @return A JSON RelationTypeModel or a JSON error message
-     * @statuscode 200 on success, if an existing type was updated
-     * @statuscode 201 on success, if a new type was created
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = RelationTypeModel.class)
+    @Operation(
+            summary = "Create / update relation type specification",
+            description = "Creates or updates a relation type according to the specification given.",
+            requestBody = @RequestBody(
+                    description = "A user specification",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel (existing type was updated)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "201", description = "A JSON RelationTypeModel (new type was created)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Bad request, with an error report in JSON format", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -118,16 +135,20 @@ public class RelationType {
     /**
      * Deletes the named relation type.
      *
-     * @title Delete a relation type
      * @return A JSON RelationTypeModel of the deleted type
-     * @statuscode 200 on success
-     * @statuscode 404 if the specified type doesn't exist
-     * @statuscode 409 if relations of the type still exist in the tradition
-     * @statuscode 500 on failure, with an error report in JSON format
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = RelationTypeModel.class)
+    @Operation(
+            summary = "Delete a relation type",
+            description = "Deletes the named relation type.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON RelationTypeModel of the deleted type", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationTypeModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Not found, if the specified type doesn't exist", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "Conflict, if relations of the type still exist in the tradition", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
@@ -163,12 +184,10 @@ public class RelationType {
      * Creates a relation type with the given name according to default values.
      * Method for use internally, logic intended for Stemmaweb backwards compatibility.
      *
-     * @title Create a default relation type
-     *
-     * @return A JSON RelationTypeModel or a JSON error message
-     * @statuscode 200 on success, if an existing type was updated
-     * @statuscode 201 on success, if a new type was created
-     * @statuscode 500 on failure, with an error report in JSON format
+     * @return A JSON RelationTypeModel or a JSON error message:
+     * - 200 on success, if an existing type was updated
+     * - 201 on success, if a new type was created
+     * - 500 on failure, with an error report in JSON format
      */
     private Response makeDefaultType() {
         Map<String, String> defaultRelations = new HashMap<>() {{

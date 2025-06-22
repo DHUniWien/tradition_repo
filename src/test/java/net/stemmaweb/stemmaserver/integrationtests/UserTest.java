@@ -83,7 +83,7 @@ public class UserTest {
                 .target("/user/1337")
                 .request(MediaType.APPLICATION_JSON)
                 .put(Entity.json(jsonPayload));
-        assertEquals(Response.status(Response.Status.CREATED).build().getStatus(),
+        assertEquals(Response.Status.CREATED.getStatusCode(),
                 returnJSON.getStatus());
 
         // Now check the list of users and make sure that the new user is there.

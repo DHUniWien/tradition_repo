@@ -13,7 +13,14 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.*;
 import net.stemmaweb.services.*;
 
@@ -25,7 +32,7 @@ import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
- * http://BASE_URL/reading
+ * {@code http://BASE_URL/reading}
  * 
  * @author PSE FS 2015 Team2
  */
@@ -45,8 +52,8 @@ public class Reading {
         GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
         db = dbServiceProvider.getDatabase();
         // The requested ID might have an 'n' prepended, if it was taken from the SVG output.
-        readId = Long.valueOf(requestedId.replaceAll("n", "")); // This might be set to -1 if the reading was requested
-                                            // via a tradition it doesn't belong to
+        // It might be set to -1 if the reading was requested via a tradition it doesn't belong to
+        readId = Long.valueOf(requestedId.replaceAll("n", ""));
         traditionId = null;
     }
 
@@ -61,15 +68,19 @@ public class Reading {
     /**
      * Returns the metadata for a single reading.
      *
-     * @title Get a reading
      * @return The reading information as a JSON structure.
-     * @statuscode 200 - on success
-     * @statuscode 204 - if the reading doesn't exist
-     * @statuscode 500 - on error, with an error message
     */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = ReadingModel.class)
+    @Operation(
+            summary = "Get a reading",
+            description = "Returns the metadata for a single reading.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The reading information as a JSON structure.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "204", description = "If the reading doesn't exist"),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message")
+            }
+    )
     public Response getReading() {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ReadingModel reading;
@@ -90,20 +101,25 @@ public class Reading {
      * potential knock-on effects on other readings, such as "is_lemma", cannot be
      * set using this method.
      *
-     * @title Update an existing reading
      * @param changeModels
      *            an array of named key/value property pairs. For example, a request to
      *            change the reading's language to German will look like this:
      *            {@code {"properties": [{"key":"language","newProperty":"German"}]}}
      * @return The metadata of the updated reading
-     * @statuscode 200 - on success
-     * @statuscode 400 - on an invalid property key, or an invalid property value type
-     * @statuscode 500 - on error, with an error message
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = ReadingModel.class)
+    @Operation(
+            summary = "Update an existing reading",
+            description = "Changes the properties of an existing reading. Properties whose change has potential knock-on effects on other readings, such as 'is_lemma', cannot be set using this method.",
+            requestBody = @RequestBody(description = "An array of named key/value property pairs. For example, a request to change the reading's language to German will look like this: {\"properties\": [{\"key\":\"language\",\"newProperty\":\"German\"}]}.", required = true, content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReadingChangePropertyModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The metadata of the updated reading", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "400", description = "On an invalid property key, or an invalid property value type"),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message")
+            }
+    )
     public Response changeReadingProperties(ReadingChangePropertyModel changeModels) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ReadingModel modelToReturn = new ReadingModel();
@@ -153,16 +169,20 @@ public class Reading {
      * Deletes a reading. This only makes sense if it is a user-addable reading, i.e. an emendation.
      * If the lemma path goes through the emendation, the lemma path will also be removed.
      *
-     * @title Delete a user-addable reading
      * @return  A GraphModel containing the deleted content (readings and sequences)
-     * @statuscode 200 - on success
-     * @statuscode 403 - if deletion of a non-user reading is requested
-     * @statuscode 404 - if the reading doesn't exist
-     * @statuscode 500 - on error
      */
     @DELETE
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Delete a user-addable reading",
+            description = "Deletes a reading. This only makes sense if it is a user-addable reading, i.e., an emendation. If the lemma path goes through the emendation, the lemma path will also be removed.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A GraphModel containing the deleted content (readings and sequences)", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "403", description = "If deletion of a non-user reading is requested"),
+                    @ApiResponse(responseCode = "404", description = "If the reading doesn't exist"),
+                    @ApiResponse(responseCode = "500", description = "On error")
+            }
+    )
     public Response deleteUserReading() {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         GraphModel deletedElements = new GraphModel();
@@ -212,14 +232,20 @@ public class Reading {
      *
      * @param value - "true" if the reading should be a lemma
      * @return a list of changed ReadingModels
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("setlemma")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(
+            summary = "Set a reading as lemma",
+            description = "Toggles whether this reading is a lemma. If so, ensures that no other reading at this rank in this section is a lemma. Returns all readings that were changed.",
+            requestBody = @RequestBody(description = "A boolean value ('true' if the reading should be a lemma)", required = true, content = @Content(mediaType = "application/x-www-form-urlencoded")),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of changed ReadingModels", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message")
+            }
+    )
     public Response setReadingAsLemma(@FormParam("value") @DefaultValue("false") String value) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
@@ -231,10 +257,12 @@ public class Reading {
                     criteria.put("section_id", reading.getProperty("section_id"));
                     criteria.put("rank", reading.getProperty("rank"));
                     criteria.put("is_lemma", true);
-                    db.findNodes(Nodes.READING, criteria).forEachRemaining(x -> {
-                        x.removeProperty("is_lemma");
-                        changed.add(new ReadingModel(x));
-                    });
+                    try (ResourceIterator<Node> found = db.findNodes(Nodes.READING, criteria)) {
+                        found.forEachRemaining(x -> {
+                            x.removeProperty("is_lemma");
+                            changed.add(new ReadingModel(x));
+                        });
+                    }
                     reading.setProperty("is_lemma", true);
                     changed.add(new ReadingModel(reading));
                 }
@@ -260,17 +288,31 @@ public class Reading {
      * reading(s) in the sequence for that witness / those witnesses. Intended to indicate that
      * empty ranks are not a simple omission.
      *
-     * @title Insert a lacuna
      * @param forWitnesses - one or more witnesses that should have the lacuna marked.
      * @return a GraphModel containing the lacuna and its associated SEQUENCE links.
-     * @statuscode 200 - on success
-     * @statuscode 400 - if a specified witness does not pass through the given reading
-     * @statuscode 500 - on error
      */
     @POST
     @Path("/lacunaAfter")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("net.stemmaweb.model.GraphModel")
+    @Operation(
+            summary = "Insert a lacuna",
+            description = "Inserts a lacuna in the specified witness(es) after a given reading and before the next reading(s) in the sequence for that witness/those witnesses. Intended to indicate that empty ranks are not a simple omission.",
+            parameters = {
+                    @Parameter(
+                            name = "witness",
+                            description = "One or more witnesses that should have the lacuna marked.",
+                            required = true,
+                            in = ParameterIn.QUERY,
+                            array = @ArraySchema(
+                                    schema = @Schema(type = "string")
+                            )
+                    )
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A GraphModel containing the lacuna and its associated SEQUENCE links.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "400", description = "If a specified witness does not pass through the given reading"),
+                    @ApiResponse(responseCode = "500", description = "On error")
+            })
     public Response addLacuna (@QueryParam("witness") List<String> forWitnesses) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         GraphModel result = new GraphModel();
@@ -329,18 +371,25 @@ public class Reading {
 
     /**
      * Gets all readings related to the given reading.
-     * @title Get related readings
      *
      * @param filterTypes - a list of relation types to filter by
      * @return a list of readings related via the given relation types.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      *
      */
     @GET
     @Path("related")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(
+            summary = "Get related readings",
+            description = "Gets all readings related to the given reading.",
+            parameters = {
+                    @Parameter(name = "types", description = "A list of relation types to filter by", in = ParameterIn.QUERY, schema = @Schema(type = "array", implementation = String.class))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of readings related via the given relation types.", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message")
+            }
+    )
     public Response getRelatedReadings(@QueryParam("types") List<String> filterTypes) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         try {
@@ -360,17 +409,24 @@ public class Reading {
     /**
      * Propagates this reading's normal form to all other readings related by the given type.
      *
-     * @title Propagate normal form along relations
      * @param onRelationType - the relation type to propagate along
      * @return a list of changed readings
-     * @statuscode 200 - on success
-     * @statuscode 400 - if the reading has neither normal form nor text
-     * @statuscode 500 - on failure
      */
     @POST
     @Path("normaliseRelated/{reltype}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(
+            summary = "Propagate normal form along relations",
+            description = "Propagates this reading's normal form to all other readings related by the given type.",
+            parameters = {
+                    @Parameter(name = "reltype", description = "The relation type to propagate along", required = true, in = ParameterIn.PATH, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of changed readings", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "400", description = "If the reading has neither normal form nor text"),
+                    @ApiResponse(responseCode = "500", description = "On failure")
+            }
+    )
     public Response normaliseRelated(@PathParam("reltype") String onRelationType) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         List<ReadingModel> changed = new ArrayList<>();
@@ -408,7 +464,7 @@ public class Reading {
         try (Transaction tx = db.beginTx()) {
             Node reading = db.getNodeById(readId);
             RelationService.RelatedReadingsTraverser rt;
-            if (filterTypes == null || filterTypes.size() == 0)
+            if (filterTypes == null || filterTypes.isEmpty())
                 // Traverse all relations
                 rt = new RelationService.RelatedReadingsTraverser(reading);
             else
@@ -426,16 +482,20 @@ public class Reading {
 
     /**
      * Deletes all relations associated with the given reading.
-     * @title Delete all reading relations
      *
      * @return a list of the relations that were deleted.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @DELETE
     @Path("relations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel")
+    @Operation(
+            summary = "Delete all reading relations",
+            description = "Deletes all relations associated with the given reading.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationModel.class)))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response deleteAllRelations() {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ArrayList<RelationModel> deleted = new ArrayList<>();
@@ -460,16 +520,20 @@ public class Reading {
 
     /**
      * Gets the list of witnesses that carry the given reading.
-     * @title Get reading witnesses
      *
      * @return the metadata of the witnesses to this reading.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("witnesses")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
+    @Operation(
+            summary = "Get reading witnesses",
+            description = "Gets the list of witnesses that carry the given reading.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(array = @ArraySchema(schema = @Schema(implementation = WitnessModel.class)))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response getReadingWitnesses() {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         try {
@@ -516,25 +580,29 @@ public class Reading {
     /**
      * Duplicates a reading in a specific tradition; this should be used when a reading has
      * been mis-collated, or when the editor otherwise wishes to assert that seemingly
-     * identical readings in different witnesses are distinct.
+     * identical readings in different witnesses are distinct. This is the opposite of the
+     * {@code merge} call.
      *
-     * This is the opposite of the {@code merge} call.
-     *
-     * @title Duplicate a reading
      *
      * @param duplicateModel
      *            specifies the reading(s) to be duplicated, as well as the witnesses to which
      *            the duplicated new reading(s) should now belong.
      * @return a GraphModel in JSON containing all the created readings and the
      *         deleted relations.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("duplicate")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Duplicate a reading",
+            description = "Duplicates a reading in a specific tradition. This should be used when a reading has been mis-collated, or when the editor otherwise wishes to assert that seemingly identical readings in different witnesses are distinct.",
+            requestBody = @RequestBody(description = "Specifies the reading(s) to be duplicated, as well as the witnesses to which the duplicated new reading(s) should now belong.", required = true, content = @Content(schema = @Schema(implementation = DuplicateModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response duplicateReading(DuplicateModel duplicateModel) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         ArrayList<ReadingModel> createdReadings = new ArrayList<>();
@@ -584,12 +652,14 @@ public class Reading {
         }
 
         // Now outside our main transaction block, try to put back the deleted relations.
+        // If we can't, we return them as relations that did actually get deleted.
         ArrayList<RelationModel> deletedRelations = new ArrayList<>();
         Relation relationRest = new Relation(getTraditionId());
         for (RelationModel rm : tempDeleted) {
-            Response result = relationRest.create(rm);
-            if (Status.CREATED.getStatusCode() != result.getStatus())
-                deletedRelations.add(rm);
+            try (Response result = relationRest.create(rm)) {
+                if (Status.CREATED.getStatusCode() != result.getStatus())
+                    deletedRelations.add(rm);
+            }
         }
 
         GraphModel readingsAndRelations = new GraphModel(createdReadings, deletedRelations, newSequences);
@@ -706,24 +776,26 @@ public class Reading {
 
     /**
      * Merges two co-located readings into one single reading. This will primarily be used
-     * when a collation has missed that a pair of readings is identical.
+     * when a collation has missed that a pair of readings is identical. This is the opposite
+     * of the {@code duplicate} call.
      *
-     * This is the opposite of the {@code duplicate} call.
-     *
-     * @title Merge readings
      *
      * @param secondReadId - the id of the second reading to be merged
      * @return a GraphModel describing the newly-merged reading, and all sequences and relations
      *         that were altered as a result
-     * @statuscode 200 - on success
-     * @statuscode 409 - if merging the readings would invalidate the graph.
-     *                   This usually means that they are not in the same variant location.
-     * @statuscode 500 - on error, with an error message
      */
     @POST
     @Path("merge/{secondReadId}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Merge readings",
+            description = "Merges two co-located readings into one single reading. This will primarily be used when a collation has missed that a pair of readings is identical.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "409", description = "If merging the readings would invalidate the graph. This usually means that they are not in the same variant location.", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         GraphModel result;
@@ -924,12 +996,13 @@ public class Reading {
                 rel.setSource(String.valueOf(stayingReading.getId()));
             else
                 rel.setTarget(String.valueOf(stayingReading.getId()));
-            Response addResult = relService.create(rel);
-            if (addResult.getStatus() == Status.CREATED.getStatusCode())
-                addedRels.add(rel);
-            else if (addResult.getStatus() > 399)
-                throw new IllegalStateException(String.format("Conflicting %s relation to node %d prevents merge",
-                        rel.getType(), oldRel.getOtherNode(deletingReading).getId()));
+            try (Response addResult = relService.create(rel)) {
+                if (addResult.getStatus() == Status.CREATED.getStatusCode())
+                    addedRels.add(rel);
+                else if (addResult.getStatus() > 399)
+                    throw new IllegalStateException(String.format("Conflicting %s relation to node %d prevents merge",
+                            rel.getType(), oldRel.getOtherNode(deletingReading).getId()));
+            }
         }
         // Now delete all the relations from deletingReading, including any that were created just now
         // as transitive relation artifacts
@@ -939,11 +1012,8 @@ public class Reading {
 
     /**
      * Splits up a single reading into smaller consecutive reading units. Note that this
-     * operation should not change the text of any witness!
-     *
-     * This is the opposite of the {@code compress} call.
-     *
-     * @title Split a reading
+     * operation should not change the text of any witness! This is the opposite of the
+     * {@code compress} call.
      *
      * @param splitIndex - the index of the first letter of the second word, indicating where
      *            the reading is to be split. For example, "unto" with index 2 produces "un"
@@ -957,14 +1027,20 @@ public class Reading {
      *            removed from the reading text.
      * @return a JSON description of all the readings that were created or modified, as well
      *         as the new sequence links necessary to construct the bath.
-     * @statuscode 200 - on success
-     * @statuscode 500 - on error, with a descriptive error message
      */
     @POST
     @Path("split/{splitIndex}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Split a reading",
+            description = "Splits up a single reading into smaller consecutive reading units. Note that this operation should not change the text of any witness.",
+            requestBody = @RequestBody(description = "A set of criteria indicating how the reading is to be split.", required = true, content = @Content(schema = @Schema(implementation = ReadingBoundaryModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with a descriptive error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response splitReading(@PathParam("splitIndex") int splitIndex,
                                  ReadingBoundaryModel model) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
@@ -988,7 +1064,7 @@ public class Reading {
             else if (!originalText.contains(model.getCharacter()))
                 errorMessage = "no such separator exists";
 
-            else if (splitIndex != 0 && !model.getCharacter().equals("")) {
+            else if (splitIndex != 0 && !model.getCharacter().isEmpty()) {
                 String textToRemove = originalText.substring(splitIndex,
                         splitIndex + model.getCharacter().length());
                 if (!textToRemove.equals(model.getCharacter()))
@@ -1034,11 +1110,11 @@ public class Reading {
             splitWords[0] = originalText.substring(0, splitIndex);
             splitWords[1] = originalText.substring(splitIndex);
             // remove separator from second word if there was one specified
-             if (separator != null && !separator.equals("")) {
+             if (separator != null && !separator.isEmpty()) {
                 splitWords[1] = splitWords[1].substring(separator.length());
             }
         } else {
-            if (separator.equals("")) {
+            if (separator.isEmpty()) {
                 separator = "\\s+";
             }
             splitWords = originalText.split(separator);
@@ -1115,20 +1191,23 @@ public class Reading {
     /**
      * Gets the reading that follows the requested reading in the given witness.
      *
-     * @title Next reading
-     *
      * @param witnessId - the id (sigil) of the witness
      * @param layer - the witness layer to follow
      *
      * @return the following reading
-     * @statuscode 200 - on success
-     * @statuscode 404 - if there is no subsequent reading
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("next/{witnessId}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = ReadingModel.class)
+    @Operation(
+            summary = "Next reading",
+            description = "Gets the reading that follows the requested reading in the given witness.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "404", description = "If there is no subsequent reading", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
@@ -1147,20 +1226,23 @@ public class Reading {
     /**
      * Gets the reading that precedes the requested reading in the given witness.
      *
-     * @title Prior reading
-     *
      * @param witnessId - the id (sigil) of the witness
      * @param layer - the witness layer to follow
      *
      * @return the prior reading
-     * @statuscode 200 - on success
-     * @statuscode 404 - if there is no prior reading
-     * @statuscode 500 - on error, with an error message
      */
     @GET
     @Path("prior/{witnessId}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = ReadingModel.class)
+    @Operation(
+            summary = "Prior reading",
+            description = "Gets the reading that precedes the requested reading in the given witness.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = ReadingModel.class))),
+                    @ApiResponse(responseCode = "404", description = "If there is no prior reading", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
@@ -1200,7 +1282,7 @@ public class Reading {
                     .filter(x -> isPathFor(x, witnessId, layer))
                     .collect(Collectors.toList());
             // If none and we are looking for a layer, re-fetch the list of relations matching the base layer
-            if (matching.size() == 0 && !layer.equals("witnesses")) {
+            if (matching.isEmpty() && !layer.equals("witnesses")) {
                 matching = StreamSupport.stream(seqs.spliterator(), false)
                         .filter(x -> isPathFor(x, witnessId, "witnesses"))
                         .collect(Collectors.toList());
@@ -1254,11 +1336,8 @@ public class Reading {
      * (with or without a space or extra text). This call may only be used on consecutive
      * readings with no divergent witness paths between them, and no relations marked
      * on either individual reading. The reading with the lower rank (i.e., that which
-     * comes first in the text) must be given first in the URL.
-     *
-     * This is the opposite of the {@code split} call.
-     *
-     * @title Concatenate readings
+     * comes first in the text) must be given first in the URL. This is the opposite of
+     * the {@code split} call.
      *
      * @param readId2 - the id of the second reading
      * @param boundary
@@ -1266,16 +1345,22 @@ public class Reading {
      *            and if so, what string it will be. If the readings have {@code join_next} or
      *            {@code join_prior} set, this will be respected in preference to the boundary specification.
      * @return a GraphModel describing the newly compressed reading, and all sequences that were altered as a result
-     * @statuscode 200 - on success
-     * @statuscode 409 - if the readings cannot legally be concatenated
-     * @statuscode 500 - on error, with an error message
      */
     // LATER: consider whether we should actually return all modified / deleted readings...
     @POST
     @Path("concatenate/{read2Id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Concatenate readings",
+            description = "Collapse two consecutive readings into one. Texts will be concatenated together (with or without a space or extra text).",
+            requestBody = @RequestBody(description = "The specification of whether the reading text will be separated with a string, and if so, what string it will be.", required = true, content = @Content(schema = @Schema(implementation = ReadingBoundaryModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = GraphModel.class))),
+                    @ApiResponse(responseCode = "409", description = "If the readings cannot legally be concatenated", content = @Content(schema = @Schema(implementation = String.class))),
+                    @ApiResponse(responseCode = "500", description = "On error, with an error message", content = @Content(schema = @Schema(implementation = String.class)))
+            }
+    )
     public Response compressReadings(@PathParam("read2Id") long readId2, ReadingBoundaryModel boundary) {
         if (readId == -1) return Response.status(Status.NOT_FOUND).build();
         Node read1, read2;
@@ -1342,7 +1427,7 @@ public class Reading {
             }
             if (prop.equals("text"))
                 plaintextform = newText;
-            if (!newText.equals("") && (!newText.equals(plaintextform) || read1.hasProperty(prop)))
+            if (!newText.isEmpty() && (!newText.equals(plaintextform) || read1.hasProperty(prop)))
                 read1.setProperty(prop, newText);
         }
         compressedReading.getReadings().add(new ReadingModel(read1));
@@ -1462,6 +1547,9 @@ public class Reading {
     }
 
     String getTraditionId () {
+        if (this.traditionId != null)
+            return this.traditionId;
+
         String tradId;
         try (Transaction tx = db.beginTx()) {
             Node rdg = db.getNodeById(readId);

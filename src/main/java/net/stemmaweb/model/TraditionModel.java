@@ -4,7 +4,6 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.qmino.miredot.annotations.MireDotIgnore;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Node;
@@ -51,7 +50,6 @@ public class TraditionModel {
      * Whether the tradition should be viewable by other users
      */
     private Boolean is_public;
-    @MireDotIgnore
     private Integer stemweb_jobid;
     /**
      * User ID of the tradition's owner
@@ -63,7 +61,6 @@ public class TraditionModel {
      */
     private ArrayList<String> witnesses;
 
-    @MireDotIgnore
     // Derived from relationships
     private ArrayList<String> reltypes;
 
@@ -120,7 +117,7 @@ public class TraditionModel {
     }
     public String getDirection() { return direction == null ? "" : direction.toString(); }
     public void setDirection(String direction) {
-        if (!direction.equals(""))
+        if (!direction.isEmpty())
             this.direction = Direction.valueOf(direction);
     }
     public Boolean getIs_public() { return is_public; }

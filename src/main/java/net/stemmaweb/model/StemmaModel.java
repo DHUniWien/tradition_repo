@@ -3,7 +3,6 @@ package net.stemmaweb.model;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.qmino.miredot.annotations.MireDotIgnore;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.rest.ERelations;
 import org.neo4j.graphdb.Direction;
@@ -33,7 +32,6 @@ public class StemmaModel {
      * True if the stemma indicates witness contamination / conflation.
      */
     private Boolean is_contaminated;
-    @MireDotIgnore
     private Integer from_jobid;
     /**
      * A string that holds the dot specification of the stemma or tree topology.
@@ -58,8 +56,9 @@ public class StemmaModel {
             // Generate the dot as well.
             Node traditionNode = stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING).getStartNode();
             DotExporter writer = new DotExporter(db);
-            Response export = writer.writeNeo4JStemma(traditionNode.getProperty("id").toString(), identifier, false);
-            dot = export.getEntity().toString();
+            try (Response export = writer.writeNeo4JStemma(traditionNode.getProperty("id").toString(), identifier, false)) {
+                dot = export.getEntity().toString();
+            }
             tx.success();
         }
     }

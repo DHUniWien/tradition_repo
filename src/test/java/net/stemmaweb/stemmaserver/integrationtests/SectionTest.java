@@ -408,7 +408,7 @@ public class SectionTest extends TestCase {
                 .request()
                 .put(Entity.text(""));
         assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), jerseyResult.getStatus());
-        String errMsg = jerseyResult.readEntity(String.class);
+        String errMsg = Util.getValueFromJson(jerseyResult, "error");
         assertEquals("Cannot reorder a section after itself", errMsg);
     }
 
