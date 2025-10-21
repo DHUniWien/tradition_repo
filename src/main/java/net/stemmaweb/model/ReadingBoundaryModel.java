@@ -19,11 +19,11 @@ public class ReadingBoundaryModel {
      */
     private String character = " ";
     /**
-     * Whether readings should be treated as separate words.
+     * Whether readings should be treated as separate words. Defaults to true.
      */
     private Boolean separate = true;
     /**
-     * Whether the separation criterion (i.e. {@code character}) is by regular expression.
+     * Whether the separation criterion (i.e. {@code character}) is by regular expression. Defaults to false.
      */
     private Boolean isRegex = false;
 

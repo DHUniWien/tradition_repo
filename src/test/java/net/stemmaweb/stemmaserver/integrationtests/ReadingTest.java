@@ -1625,6 +1625,19 @@ public class ReadingTest {
     }
 
     @Test
+    public void splitReadingNoSpecTest() {
+        String rotw = readingLookup.get("rood-of-the-world/16");
+        // split reading
+        Response response = jerseyTest
+                .target("/reading/" + rotw + "/split/0")
+                .request(MediaType.APPLICATION_JSON)
+                .post(null);
+        assertEquals(Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+        assertEquals("Please specify a model for how the reading should be split!",
+                Util.getValueFromJson(response, "error"));
+    }
+
+    @Test
     public void splitReadingTest() {
         Node node;
         Node endNode;
@@ -2106,6 +2119,26 @@ public class ReadingTest {
             assertEquals(expectedRanks[i],
                     (int) (long) listOfReadings.get(i).getRank());
         }
+    }
+
+    // try to compress without specifying a boundary model
+    @Test
+    public void compressReadingsNoSpecTest() {
+        String showers = readingLookup.get("showers/5");
+        String sweet = readingLookup.get("sweet/6");
+
+        // A null body should produce a concatenation with the words joined by a space.
+        GraphModel ourResult;
+        try (Response res = jerseyTest.target("/reading/" + showers + "/concatenate/" + sweet)
+                .request(MediaType.APPLICATION_JSON)
+                .post(null)) {
+            assertEquals(Status.OK.getStatusCode(), res.getStatus());
+            ourResult = res.readEntity(GraphModel.class);
+        }
+        ReadingModel ourCompressed = ourResult.getReadings().iterator().next();
+        assertEquals(showers, ourCompressed.getId());
+        assertEquals("showers sweet", ourCompressed.getText());
+        assertFalse(ourCompressed.getJoin_prior() || ourCompressed.getJoin_next());
     }
 
     // compress with separate set to 0: no space between words
