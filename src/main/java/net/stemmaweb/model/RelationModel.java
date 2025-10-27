@@ -1,8 +1,8 @@
 package net.stemmaweb.model;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.Relationship;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 /**
  * Provides a model for a relationship outside of the database. Can be parsed
@@ -95,15 +95,15 @@ public class RelationModel {
      * @param includeReadings - Whether to set the source_reading and target_reading fields
      */
     public RelationModel(Relationship rel, Boolean includeReadings){
-        source = rel.getStartNode().getId() + "";
-        target = rel.getEndNode().getId() + "";
+        source = rel.getStartNode().getElementId() + "";
+        target = rel.getEndNode().getElementId() + "";
         if (includeReadings) {
             source_reading = new ReadingModel(rel.getStartNode());
             target_reading = new ReadingModel(rel.getEndNode());
         }
 
         Iterable<String> properties = rel.getPropertyKeys();
-        id = Long.toString(rel.getId());
+        id = rel.getElementId();
         for (String property : properties) {
             switch (property) {
                 case "a_derivable_from_b":

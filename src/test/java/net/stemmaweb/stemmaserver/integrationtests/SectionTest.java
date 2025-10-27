@@ -1,44 +1,71 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
+import static org.junit.Assert.assertNotEquals;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.TransformerFactoryConfigurationError;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.dbms.api.DatabaseManagementService;
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.MultipleFoundException;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.Response;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.*;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.*;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
+import junit.framework.TestCase;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
+import net.stemmaweb.model.ProposedEmendationModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Tests for text section functionality.
@@ -630,7 +657,7 @@ public class SectionTest extends TestCase {
         // Lemmatize section 3 based on majority reading
         try (Transaction tx = db.beginTx()) {
             Node sect3 = tx.getNodeByElementId(flor3);
-            for (Node r : VariantGraphService.calculateMajorityText(sect3)) {
+            for (Node r : VariantGraphService.calculateMajorityText(sect3, tx)) {
                 if (r.hasProperty("is_start") || r.hasProperty("is_end"))
                     continue;
                 r.setProperty("is_lemma", true);

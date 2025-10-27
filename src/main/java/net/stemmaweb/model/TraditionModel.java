@@ -3,8 +3,6 @@ package net.stemmaweb.model;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -14,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.qmino.miredot.annotations.MireDotIgnore;
 
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -77,6 +76,11 @@ public class TraditionModel {
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 //        try (Transaction tx = node.getGraphDatabase().beginTx()) {
         try (Transaction tx = db.beginTx()) {
+        	// Put node inside transaction if applicable
+        	Node n2 = tx.getNodeByElementId(node.getElementId());
+        	if (n2 != null) {
+        		node = n2;
+        	}
             setId(node.getProperty("id").toString());
             if (node.hasProperty("name"))
                 setName(node.getProperty("name").toString());
@@ -96,7 +100,7 @@ public class TraditionModel {
             }
 
             witnesses = new ArrayList<>();
-            DatabaseService.getRelated(node, ERelations.HAS_WITNESS).forEach(
+            DatabaseService.getRelated(node, ERelations.HAS_WITNESS, tx).forEach(
                     x -> witnesses.add(x.getProperty("sigil").toString()));
             // For now this is hard-coded
             reltypes = new ArrayList<>(Arrays.asList("grammatical", "spelling", "other", "punctuation",

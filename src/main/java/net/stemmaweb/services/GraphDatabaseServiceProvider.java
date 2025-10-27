@@ -29,24 +29,24 @@ public class GraphDatabaseServiceProvider {
 
     // Connect to a DB at a particular path
     public GraphDatabaseServiceProvider(String db_location) throws KernelException {
+    	if (db == null) {
+    		if (db_location == null) {
+    			dbService = new TestDatabaseManagementServiceBuilder()
+    					.impermanent()
+    					.setDatabaseRootDirectory(null)
+    					.build();
+    			db = dbService.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+    		} else {
+    			dbService = new DatabaseManagementServiceBuilder(Path.of(db_location + "/data/databases/graph.db")).build();
 
-        if (db_location == null) {
-        	dbService = new TestDatabaseManagementServiceBuilder()
-        			.impermanent()
-        			.setDatabaseRootDirectory(null)
-        			.build();
-        	db = dbService.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
-    	} else {
-    		dbService = new DatabaseManagementServiceBuilder(Path.of(db_location + "/data/databases/graph.db")).build();
-
-    		File config = new File(db_location + "/conf/neo4j.conf");
-    		if (config.exists())
-    			db = dbService.database(config.toString());
-    		else
-    			db = dbService.database("stemma");
+    			File config = new File(db_location + "/conf/neo4j.conf");
+    			if (config.exists())
+    				db = dbService.database(config.toString());
+    			else
+    				db = dbService.database("stemma");
+    		}
+    		registerShutdownHook(dbService);
     	}
-    	registerShutdownHook(dbService);
-
     }
 
     // Manage an existing (e.g. test) DB

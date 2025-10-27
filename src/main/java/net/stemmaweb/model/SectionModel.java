@@ -3,8 +3,6 @@ package net.stemmaweb.model;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -17,14 +15,10 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.VariantGraphService;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * This model holds a witness. The sigil is also the witness name, e.g. 'Mk10'

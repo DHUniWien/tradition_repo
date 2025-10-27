@@ -1,18 +1,32 @@
 package net.stemmaweb.model;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.ReadingService;
-import org.neo4j.graphdb.*;
-
-import javax.xml.bind.annotation.XmlRootElement;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @XmlRootElement
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
@@ -69,41 +83,38 @@ public class VariantLocationModel {
      * @param db - the GraphDatabaseService we are using
      * @param dislocationTypes - the list of relation types that are non-colocated in this tradition
      */
-    void collectRelationsInLocation(GraphDatabaseService db, List<String> dislocationTypes) {
+    void collectRelationsInLocation(Transaction tx, List<String> dislocationTypes) {
         Set<Relationship> relations = new HashSet<>();
         // Gather all the nodes we need
         Set<Node> clusterNodes = new HashSet<>();
-        try (Transaction tx = db.beginTx()) {
-            for (ReadingModel rm : this.getBase())
-                clusterNodes.add(tx.getNodeByElementId(rm.getId()));
-            HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
-            for (VariantModel vm : this.getVariants())
-                for (ReadingModel rm : vm.getReadings()) {
-                    Node vrdg = tx.getNodeByElementId(rm.getId());
-                    clusterNodes.add(vrdg);
-                    // As long as we're here, make a map of variant node -> VariantModel
-                    vModelForReading.put(vrdg, vm);
-                }
-            for (Node n : clusterNodes) {
-                for (Relationship rel : n.getRelationships(Direction.OUTGOING, ERelations.RELATED))
-                    // Add any relation we find that links to another node in this variant location
-                    if (clusterNodes.contains(rel.getEndNode()))
-                        relations.add(rel);
-                        // Add the relation anyway, if it signifies a displaced variant reading.
-                        // Also mark the variant as being displaced.
-                    else if (vModelForReading.containsKey(n)){
-                        if (dislocationTypes.contains(rel.getProperty("type").toString())) {
-                            relations.add(rel);
-                            vModelForReading.get(n).setDisplaced(true);
-                            // this.setDisplacement(true);
-                        }
-                    }
+        for (ReadingModel rm : this.getBase())
+            clusterNodes.add(tx.getNodeByElementId(rm.getId()));
+        HashMap<Node, VariantModel> vModelForReading = new HashMap<>();
+        for (VariantModel vm : this.getVariants())
+            for (ReadingModel rm : vm.getReadings()) {
+                Node vrdg = tx.getNodeByElementId(rm.getId());
+                clusterNodes.add(vrdg);
+                // As long as we're here, make a map of variant node -> VariantModel
+                vModelForReading.put(vrdg, vm);
             }
-            List<RelationModel> rml = relations.stream().map(RelationModel::new).collect(Collectors.toList());
-            this.setRelations(rml);
-            this.isEmpty = false;
-            tx.close();
+        for (Node n : clusterNodes) {
+            for (Relationship rel : n.getRelationships(Direction.OUTGOING, ERelations.RELATED))
+                // Add any relation we find that links to another node in this variant location
+                if (clusterNodes.contains(rel.getEndNode()))
+                    relations.add(rel);
+                    // Add the relation anyway, if it signifies a displaced variant reading.
+                    // Also mark the variant as being displaced.
+                else if (vModelForReading.containsKey(n)){
+                    if (dislocationTypes.contains(rel.getProperty("type").toString())) {
+                        relations.add(rel);
+                        vModelForReading.get(n).setDisplaced(true);
+                        // this.setDisplacement(true);
+                    }
+                }
         }
+        List<RelationModel> rml = relations.stream().map(RelationModel::new).collect(Collectors.toList());
+        this.setRelations(rml);
+        this.isEmpty = false;
     }
 
     /**

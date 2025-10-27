@@ -9,14 +9,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Path;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.ReadingService;
 

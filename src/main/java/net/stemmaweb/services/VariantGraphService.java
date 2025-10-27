@@ -58,7 +58,7 @@ public class VariantGraphService {
     		return false;
     	
     	boolean found = false;
-		for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
+		for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART, tx)) {
 			if (s.getElementId().equals(aSectionId)) {
 				found = true;
 				break;
@@ -185,7 +185,7 @@ public class VariantGraphService {
         Node tradition;
         try (Transaction tx = db.beginTx()) {
             tradition = tx.findNode(Nodes.TRADITION, "id", tradId);
-            tx.commit();
+            tx.close();
         }
         return tradition;
     }
@@ -226,31 +226,27 @@ public class VariantGraphService {
      *
      * @param sectionNode - The section for which to perform the calculation
      */
-    public static void calculateCommon(Node sectionNode) {
+    public static void calculateCommon(Node sectionNode, Transaction tx) {
 //        GraphDatabaseService db = sectionNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         // Get an AlignmentModel for the given section, and go rank by rank to find
         // the common nodes.
-        AlignmentModel am = new AlignmentModel(sectionNode);
-        try (Transaction tx = db.beginTx()) {
-        	Node startNode = VariantGraphService.getStartNode(sectionNode.getElementId(), tx);
-            // See which kind of flag we are setting
-            String propName = startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE) ? "ncommon" : "is_common";
-            // Go through the table rank by rank - if a given rank has only a single reading
-            // apart from lacunae, and no gaps, it is common
-            for (AtomicInteger i = new AtomicInteger(0); i.get() < am.getLength(); i.getAndIncrement()) {
-                List<ReadingModel> readingsAtRank = am.getAlignment().stream()
-                        .map(x -> x.getTokens().get(i.get())).collect(Collectors.toList());
-                HashSet<String> distinct = new HashSet<>();
-                for (ReadingModel rm : readingsAtRank) {
-                    if (rm == null) distinct.add("");
-                    else if (!rm.getIs_lacuna()) distinct.add(rm.getId());
-                }
-                // Set the commonality property. It is true if the size of the 'distinct' set is 1.
-                distinct.stream().filter(x -> !x.isEmpty())
-                        .forEach(x -> tx.getNodeByElementId(x).setProperty(propName, distinct.size() == 1));
+        AlignmentModel am = new AlignmentModel(sectionNode, tx);
+    	Node startNode = VariantGraphService.getStartNode(sectionNode.getElementId(), tx);
+        // See which kind of flag we are setting
+        String propName = startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE) ? "ncommon" : "is_common";
+        // Go through the table rank by rank - if a given rank has only a single reading
+        // apart from lacunae, and no gaps, it is common
+        for (AtomicInteger i = new AtomicInteger(0); i.get() < am.getLength(); i.getAndIncrement()) {
+            List<ReadingModel> readingsAtRank = am.getAlignment().stream()
+                    .map(x -> x.getTokens().get(i.get())).collect(Collectors.toList());
+            HashSet<String> distinct = new HashSet<>();
+            for (ReadingModel rm : readingsAtRank) {
+                if (rm == null) distinct.add("");
+                else if (!rm.getIs_lacuna()) distinct.add(rm.getId());
             }
-            tx.commit();
+            // Set the commonality property. It is true if the size of the 'distinct' set is 1.
+            distinct.stream().filter(x -> !x.isEmpty())
+                    .forEach(x -> tx.getNodeByElementId(x).setProperty(propName, distinct.size() == 1));
         }
     }
 
@@ -273,66 +269,69 @@ public class VariantGraphService {
      */
 
     public static HashMap<Node,Node> normalizeGraph(Node sectionNode, String normalizeType) throws Exception {
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+        try (Transaction tx = db.beginTx()) {
+        	return normalizeGraph(sectionNode, normalizeType, tx);
+        }
+    }
+    public static HashMap<Node,Node> normalizeGraph(Node sectionNode, String normalizeType, Transaction tx) throws Exception {
         HashMap<Node,Node> representatives = new HashMap<>();
 //        GraphDatabaseService db = sectionNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         // Make sure the relation type exists
-        Node tradition = getTraditionNode(sectionNode);
+        Node tradition = getTraditionNode(sectionNode, tx);
         Node relType = new RelationTypeModel(normalizeType).lookup(tradition);
         if (relType == null)
             throw new Exception("Relation type " + normalizeType + " does not exist in this tradition");
 
-        try (Transaction tx = db.beginTx()) {
-            Node sectionStart = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
-            // Get the list of all readings in this section
+        Node sectionStart = sectionNode.getSingleRelationship(ERelations.COLLATION, Direction.OUTGOING).getEndNode();
+        // Get the list of all readings in this section
 //            Set<Node> sectionNodes = returnTraditionSection(sectionNode).nodes().stream()
 //                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
-			Set<Node> sectionNodes = StreamSupport
-					.stream(returnTraditionSection(sectionNode).nodes().spliterator(), false)
-					.filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
+		Set<Node> sectionNodes = StreamSupport
+				.stream(returnTraditionSection(sectionNode).nodes().spliterator(), false)
+				.filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toSet());
 
-            // Find the normalisation clusters and nominate a representative for each
-            String tradId = tradition.getProperty("id").toString();
-            String sectionId = sectionNode.getElementId();
-            for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
-                    tradId, sectionId, tx, normalizeType)) {
-                if (cluster.isEmpty()) continue;
-                Node representative = RelationService.findRepresentative(cluster);
-                if (representative == null)
-                    throw new Exception("No representative found for cluster");
-                // Set the representative for all cluster members.
-                for (Node n : cluster) {
-                    representatives.put(n, representative);
-                    if (!n.equals(representative))
-                        representative.createRelationshipTo(n, ERelations.REPRESENTS);
-                    if (!sectionNodes.remove(n))
-                        throw new Exception("Tried to make equivalence for node (" + n.getElementId()
-                                + ": " + n.getAllProperties().toString()
-                                + ") that was not in sectionNodes");
-                }
+        // Find the normalisation clusters and nominate a representative for each
+        String tradId = tradition.getProperty("id").toString();
+        String sectionId = sectionNode.getElementId();
+        for (Set<Node> cluster : RelationService.getCloselyRelatedClusters(
+                tradId, sectionId, tx, normalizeType)) {
+            if (cluster.isEmpty()) continue;
+            Node representative = RelationService.findRepresentative(cluster);
+            if (representative == null)
+                throw new Exception("No representative found for cluster");
+            // Set the representative for all cluster members.
+            for (Node n : cluster) {
+                representatives.put(n, representative);
+                if (!n.equals(representative))
+                    representative.createRelationshipTo(n, ERelations.REPRESENTS);
+                if (!sectionNodes.remove(n))
+                    throw new Exception("Tried to make equivalence for node (" + n.getElementId()
+                            + ": " + n.getAllProperties().toString()
+                            + ") that was not in sectionNodes");
             }
-
-            // All remaining un-clustered readings are represented by themselves
-            sectionNodes.forEach(x -> representatives.put(x, x));
-
-            // Make sure we didn't have any accidental recursion in representation
-            for (Node n : representatives.values()) {
-                if (n.hasRelationship(Direction.INCOMING, ERelations.REPRESENTS))
-                    throw new Exception("Recursive representation was created on node " + n.getElementId() + ": " + n.getAllProperties().toString());
-            }
-
-            // Now that we have done this, make the shadow sequence
-            for (Relationship r : tx.traversalDescription().breadthFirst()
-                    .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart).relationships()) {
-                Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
-                Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
-                ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
-            }
-            // and calculate the common readings.
-            calculateCommon(sectionNode);
-            tx.commit();
         }
+
+        // All remaining un-clustered readings are represented by themselves
+        sectionNodes.forEach(x -> representatives.put(x, x));
+
+        // Make sure we didn't have any accidental recursion in representation
+        for (Node n : representatives.values()) {
+            if (n.hasRelationship(Direction.INCOMING, ERelations.REPRESENTS))
+                throw new Exception("Recursive representation was created on node " + n.getElementId() + ": " + n.getAllProperties().toString());
+        }
+
+        // Now that we have done this, make the shadow sequence
+        for (Relationship r : tx.traversalDescription().breadthFirst()
+                .relationships(ERelations.SEQUENCE,Direction.OUTGOING)
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(sectionStart).relationships()) {
+            Node repstart = representatives.getOrDefault(r.getStartNode(), r.getStartNode());
+            Node repend = representatives.getOrDefault(r.getEndNode(), r.getEndNode());
+            ReadingService.transferWitnesses(repstart, repend, r, ERelations.NSEQUENCE);
+        }
+        // and calculate the common readings.
+        calculateCommon(sectionNode, tx);
+        tx.commit();
 
         return representatives;
 
@@ -377,9 +376,9 @@ public class VariantGraphService {
      * @param  sectionNode - The section to calculate
      * @return an ordered List of READING nodes that make up the majority text
      */
-    public static List<Node> calculateMajorityText(Node sectionNode) {
+    public static List<Node> calculateMajorityText(Node sectionNode, Transaction tx) {
         // Get the IDs of our majority readings by going through the alignment table rank by rank
-        AlignmentModel am = new AlignmentModel(sectionNode);
+        AlignmentModel am = new AlignmentModel(sectionNode, tx);
         ArrayList<String> majorityReadings = new ArrayList<>();
         for (int rank = 1; rank <= am.getLength(); rank++) {
             int numNulls = 0;
@@ -400,16 +399,13 @@ public class VariantGraphService {
 
         // Now make the relations between them
 //        GraphDatabaseService db = sectionNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         ArrayList<Node> result = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-            // Go through the alignment model rank by rank, finding the majority reading for each rank
-            String sectionId = sectionNode.getElementId();
-            result.add(getStartNode(sectionId, tx));
-            majorityReadings.forEach(x -> result.add(tx.getNodeByElementId(x)));
-            result.add(getEndNode(sectionId, tx));
-            tx.commit();
-        }
+        // Go through the alignment model rank by rank, finding the majority reading for each rank
+        String sectionId = sectionNode.getElementId();
+        result.add(getStartNode(sectionId, tx));
+        majorityReadings.forEach(x -> result.add(tx.getNodeByElementId(x)));
+        result.add(getEndNode(sectionId, tx));
+
         return result;
     }
 
@@ -561,8 +557,8 @@ public class VariantGraphService {
      * @param db      the relevant GraphDatabaseService
      * @return        an org.neo4j.graphdb.traversal.Traverser object for the whole tradition
      */
-    public static Traverser returnEntireTradition(String tradId, GraphDatabaseService db) {
-        return returnEntireTradition(getTraditionNode(tradId, db));
+    public static Traverser returnEntireTradition(String tradId, Transaction tx) {
+        return returnEntireTradition(getTraditionNode(tradId, tx));
     }
 
     /**
@@ -586,13 +582,11 @@ public class VariantGraphService {
      * @param db         the relevant GraphDatabaseService
      * @return           an org.neo4j.graphdb.traversal.Traverser object for the section
      */
-    public static Traverser returnTraditionSection(String sectionId, GraphDatabaseService db) {
+    public static Traverser returnTraditionSection(String sectionId, Transaction tx) {
         Traverser tv;
-        try (Transaction tx = db.beginTx()) {
-            Node sectionNode = tx.getNodeByElementId(sectionId);
-            tv = returnTraditionSection(sectionNode);
-            tx.commit();
-        }
+        Node sectionNode = tx.getNodeByElementId(sectionId);
+        tv = returnTraditionSection(sectionNode);
+
         return tv;
     }
 

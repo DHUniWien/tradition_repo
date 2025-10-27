@@ -45,22 +45,18 @@ public class AnnotationModel {
         this.links = new ArrayList<>();
     }
 
-    public AnnotationModel(Node annNode) {
+    public AnnotationModel(Node annNode, Transaction tx) {
 //        GraphDatabaseService db = annNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-            this.setId(annNode.getElementId());
-            // We assume there is only one label
-            this.setLabel(annNode.getLabels().iterator().next().name());
-            this.setPrimary(annNode.getProperty("__primary", false).equals(true));
-            Map<String,Object> props = annNode.getAllProperties();
-            props.remove("__primary");
-            this.setProperties(props);
-            this.links = new ArrayList<>();
-            for (Relationship r : annNode.getRelationships(Direction.OUTGOING))
-                this.addLink(new AnnotationLinkModel(r));
-            tx.close();
-        }
+        this.setId(annNode.getElementId());
+        // We assume there is only one label
+        this.setLabel(annNode.getLabels().iterator().next().name());
+        this.setPrimary(annNode.getProperty("__primary", false).equals(true));
+        Map<String,Object> props = annNode.getAllProperties();
+        props.remove("__primary");
+        this.setProperties(props);
+        this.links = new ArrayList<>();
+        for (Relationship r : annNode.getRelationships(Direction.OUTGOING))
+            this.addLink(new AnnotationLinkModel(r, tx));
     }
 
     public String getId() {

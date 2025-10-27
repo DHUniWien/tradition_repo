@@ -1,25 +1,38 @@
 package net.stemmaweb.parser;
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
-
-import javax.ws.rs.core.Response;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamConstants;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-import java.io.InputStream;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
 import static net.stemmaweb.services.ReadingService.addWitnessLink;
 import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Reading;
+import net.stemmaweb.rest.Section;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Parse a TEI parallel-segmentation file into a tradition graph.
@@ -58,12 +71,12 @@ public class TEIParallelSegParser {
         }
 
         // Main XML parser loop
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         String tradId;
         String parentId;
         Node startNode;
         Node endNode = null;
         try (Transaction tx = db.beginTx()) {
+        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
             parentId = parentNode.getElementId();
             tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
@@ -118,7 +131,7 @@ public class TEIParallelSegParser {
                             case "witness":
                                 if(inHeader) {
                                     String sigil = reader.getAttributeValue(reader.getNamespaceURI("xml"), "id");
-                                    Util.findOrCreateExtant(traditionNode, sigil);
+                                    Util.findOrCreateExtant(traditionNode, sigil, tx);
                                     // All witnesses start active by default; if we encounter a witStart
                                     // we will start to use an explicit app siglorum.
                                     activeWitnesses.put(sigil, true);
@@ -186,9 +199,9 @@ public class TEIParallelSegParser {
             } // end parseloop
 
             // Now try re-ranking the nodes.
-            recalculateRank(startNode);
+            recalculateRank(startNode, false, tx);
             // Calculate which nodes are common
-            VariantGraphService.calculateCommon(parentNode);
+            VariantGraphService.calculateCommon(parentNode, tx);
             tx.close();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
@@ -203,22 +216,22 @@ public class TEIParallelSegParser {
         // Merge all mergeable readings, to get rid of duplicates across apparatus entries.
         long endRank;
         try (Transaction tx = db.beginTx()) {
-            assert(endNode != null);
-            endRank = Long.parseLong(endNode.getProperty("rank").toString());
-            tx.close();
+        	assert(endNode != null);
+        	endRank = Long.parseLong(endNode.getProperty("rank").toString());
+        	Section s = new Section(tradId, parentId);
+        	for (List<ReadingModel> identSet : s.collectIdenticalReadings(0, endRank, tx)) {
+        		ReadingModel first = identSet.remove(0);
+        		Reading rd = new Reading(first.getId());
+        		for (ReadingModel identical : identSet) {
+        			Response done = rd.mergeReadings(Long.parseLong(identical.getId()));
+        			if (done.getStatus() != Response.Status.OK.getStatusCode())
+        				return Response.serverError().entity(done.getEntity()).build();
+        		}
+        	}
+        	tx.close();
         } catch (Exception e) {
-            e.printStackTrace();
-            return Response.serverError().build();
-        }
-        Section s = new Section(tradId, parentId);
-        for (List<ReadingModel> identSet : s.collectIdenticalReadings(0, endRank)) {
-            ReadingModel first = identSet.remove(0);
-            Reading rd = new Reading(first.getId());
-            for (ReadingModel identical : identSet) {
-                Response done = rd.mergeReadings(Long.parseLong(identical.getId()));
-                if (done.getStatus() != Response.Status.OK.getStatusCode())
-                    return Response.serverError().entity(done.getEntity()).build();
-            }
+        	e.printStackTrace();
+        	return Response.serverError().build();
         }
 
         return Response.status(Response.Status.CREATED)

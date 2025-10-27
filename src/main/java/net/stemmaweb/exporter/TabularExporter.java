@@ -1,34 +1,40 @@
 package net.stemmaweb.exporter;
 
-import com.opencsv.CSVWriterBuilder;
-import com.opencsv.ICSVWriter;
-import net.stemmaweb.model.AlignmentModel;
-import net.stemmaweb.model.WitnessTokensModel;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.GraphDatabaseService;
+import static net.stemmaweb.Util.jsonerror;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
 import org.neo4j.graphdb.Transaction;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import com.opencsv.CSVWriterBuilder;
+import com.opencsv.ICSVWriter;
 
-import static net.stemmaweb.Util.jsonerror;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.WitnessTokensModel;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * A class for writing a graph out to various forms of table: JSON, CSV, Excel, etc.
  */
 public class TabularExporter {
 
-    private final GraphDatabaseService db;
-    public TabularExporter(GraphDatabaseService db){
-        this.db = db;
+    private final Transaction tx;
+    public TabularExporter(Transaction tx){
+        this.tx = tx;
     }
 
     public Response exportAsJSON(String tradId, String conflate, List<String> sectionList, boolean excludeLayers) {
@@ -36,6 +42,7 @@ public class TabularExporter {
         try {
             traditionSections = getSections(tradId, sectionList);
             if(traditionSections==null) {
+            	
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
 
@@ -188,7 +195,7 @@ public class TabularExporter {
 
     private ArrayList<Node> getSections(String tradId, List<String> sectionList)
     throws TabularExporterException {
-        ArrayList<Node> traditionSections = VariantGraphService.getSectionNodes(tradId, db);
+        ArrayList<Node> traditionSections = VariantGraphService.getSectionNodes(tradId, tx);
         // Does the tradition exist in the first place?
         if (traditionSections.isEmpty()) return null;
 
@@ -198,9 +205,8 @@ public class TabularExporter {
         // Do the real work
         ArrayList<Node> collectedSections = new ArrayList<>();
         for (String sectionId : sectionList) {
-            try (Transaction tx = db.beginTx()) {
+            try {
                 collectedSections.add(tx.getNodeByElementId(sectionId));
-                tx.commit();
             } catch (NotFoundException e) {
                 throw new TabularExporterException("Section " + sectionId + " not found in tradition");
             }
@@ -219,7 +225,7 @@ public class TabularExporter {
         int length = 0;
         for (Node sectionNode : traditionSections) {
             if (collapseRelated != null) VariantGraphService.normalizeGraph(sectionNode, collapseRelated);
-            AlignmentModel asJson = new AlignmentModel(sectionNode, excludeLayers);
+            AlignmentModel asJson = new AlignmentModel(sectionNode, excludeLayers, tx);
             if (collapseRelated != null) VariantGraphService.clearNormalization(sectionNode);
             // Save the alignment to our tables list
             tables.add(asJson);
@@ -272,7 +278,9 @@ public class TabularExporter {
     }
 
     private static class TabularExporterException extends Exception {
-        TabularExporterException (String message) {
+        private static final long serialVersionUID = 3735060874050003930L;
+
+		TabularExporterException (String message) {
             super(message);
         }
     }

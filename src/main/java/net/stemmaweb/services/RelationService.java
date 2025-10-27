@@ -1,15 +1,26 @@
 package net.stemmaweb.services;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.core.Response;
-
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
 
+import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
@@ -24,6 +35,7 @@ import net.stemmaweb.rest.RelationType;
  *
  */
 public class RelationService {
+    private static final GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 
     /**
      * Copies all the properties of a relationship to another if the property
@@ -57,9 +69,9 @@ public class RelationService {
             rtm = new RelationTypeModel();
             rtm.setName(relType);
             rtm.setDefaultsettings(true);
-            try (Response rtCreated = rtRest.create(rtm)) {
-                rtm = (RelationTypeModel) rtCreated.getEntity();
-
+            try (Transaction tx = db.beginTx()) {
+            	Response rtCreated = rtRest.create(rtm, tx);
+            	rtm = (RelationTypeModel) rtCreated.getEntity();
             }
         } else {
             rtm = (RelationTypeModel) rtResult.getEntity();
@@ -78,30 +90,33 @@ public class RelationService {
     public static List<RelationTypeModel> ourRelationTypes(Node referenceNode) throws Exception {
 //        GraphDatabaseService db = referenceNode.getGraphDatabase();
     	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        List<RelationTypeModel> result = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-        	// Must be under control of the same transaction!
-        	referenceNode = tx.getNodeByElementId(referenceNode.getElementId());
-            // Find the tradition node
-            Node traditionNode = null;
-            if (referenceNode.hasLabel(Nodes.TRADITION))
-                traditionNode = referenceNode;
-            else if (referenceNode.hasLabel(Nodes.SECTION))
-                traditionNode = VariantGraphService.getTraditionNode(referenceNode);
-            else if (referenceNode.hasLabel(Nodes.READING)) {
-                Node sectionNode = tx.getNodeByElementId(referenceNode.getProperty("section_id").toString());
-                traditionNode = VariantGraphService.getTraditionNode(sectionNode);
-            }
-            assert(traditionNode != null);
-            // ...and query its relation types.
-            traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE).forEach(
-                    x -> result.add(new RelationTypeModel(x.getEndNode()))
-            );
-            tx.commit();
+        	return ourRelationTypes(referenceNode, tx);
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("Could not collect relation types", e);
         }
+    }
+   	public static List<RelationTypeModel> ourRelationTypes(Node referenceNode, Transaction tx) throws Exception {
+//        GraphDatabaseService db = referenceNode.getGraphDatabase();
+        List<RelationTypeModel> result = new ArrayList<>();
+    	// Must be under control of the same transaction!
+    	referenceNode = tx.getNodeByElementId(referenceNode.getElementId());
+        // Find the tradition node
+        Node traditionNode = null;
+        if (referenceNode.hasLabel(Nodes.TRADITION))
+            traditionNode = referenceNode;
+        else if (referenceNode.hasLabel(Nodes.SECTION))
+            traditionNode = VariantGraphService.getTraditionNode(referenceNode, tx);
+        else if (referenceNode.hasLabel(Nodes.READING)) {
+            Node sectionNode = tx.getNodeByElementId(referenceNode.getProperty("section_id").toString());
+            traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
+        }
+        assert(traditionNode != null);
+        // ...and query its relation types.
+        traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE).forEach(
+                x -> result.add(new RelationTypeModel(x.getEndNode()))
+        );
         return result;
     }
 
@@ -121,7 +136,7 @@ public class RelationService {
         // Get the tradition node and find the relevant relation types
         HashSet<String> useRelationTypes = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-        for (RelationTypeModel rtm : ourRelationTypes(traditionNode))
+        for (RelationTypeModel rtm : ourRelationTypes(traditionNode, tx))
             if (rtm.getIs_colocation() == colocations)
                 useRelationTypes.add(rtm.getName());
 
@@ -147,7 +162,7 @@ public class RelationService {
         // Then we have some work to do.
         HashSet<String> closeRelations = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-        List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode);
+        List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode, tx);
         int bindlevel = 0;
         Optional<RelationTypeModel> thresholdModel = rtmlist.stream().filter(x -> x.getName().equals(thresholdName)).findFirst();
         if (thresholdModel.isPresent())
@@ -164,7 +179,7 @@ public class RelationService {
             throws Exception {
         // Now run the unionFind algorithm on the relevant subset of relation types
         List<Set<Node>> result;
-            try (ResourceIterator<Node> sectionReadings = tx.findNodes(Nodes.READING, "section_id", Long.parseLong(sectionId))) {
+            try (ResourceIterator<Node> sectionReadings = tx.findNodes(Nodes.READING, "section_id", sectionId)) {
                 // List out the readings for the given section
                 List<Node> sectionNodes = sectionReadings.stream().collect(Collectors.toList());
                 // Perform a UnionFind over these nodes...

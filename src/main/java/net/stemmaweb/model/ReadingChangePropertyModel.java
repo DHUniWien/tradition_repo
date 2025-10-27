@@ -3,7 +3,7 @@ package net.stemmaweb.model;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 /**
  * This model consists of a list of keypropertymodels

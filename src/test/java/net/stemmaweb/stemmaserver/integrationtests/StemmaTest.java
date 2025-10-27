@@ -1,26 +1,20 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import net.stemmaweb.model.StemmaModel;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Root;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.parser.DotParser;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
-import net.stemmaweb.stemmaserver.Util;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
@@ -35,7 +29,19 @@ import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
-import static org.junit.Assert.*;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.parser.DotParser;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Contains all tests for the api calls related to stemmas.
@@ -195,7 +201,7 @@ public class StemmaTest {
             Result result2 = tx.execute("match (t:TRADITION {id:'" + tradId +
                     "'})--(s:STEMMA) return count(s) AS res2");
             assertEquals(3L, result2.columnAs("res2").next());
-
+            tx.close();
         }
 
         String stemmaTitle = "Semstem 1402333041_1";
@@ -479,50 +485,56 @@ public class StemmaTest {
         String fileName = "src/TestFiles/florilegium_graphml.xml";
         String tradId = createTraditionFromFile("Florilegium", fileName);
 
-        // Count the nodes to start with
-        int originalNodeCount = countGraphNodes();
+        try (Transaction tx = db.beginTx()) {
+        	// Count the nodes to start with
+        	int originalNodeCount = countGraphNodes(tx);
 
-        // Add two stemmata and check the node count
-        StemmaModel stemmaCM = new StemmaModel(); // its name will be "Stemma"
-        StemmaModel stemmaTF = new StemmaModel(); // its name will be "TF Stemma"
-        DotParser parser = new DotParser(db);
-        try {
-            byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
-            stemmaCM.setDot(new String(encoded, StandardCharsets.UTF_8));
+        	// Add two stemmata and check the node count
+        	StemmaModel stemmaCM = new StemmaModel(); // its name will be "Stemma"
+        	StemmaModel stemmaTF = new StemmaModel(); // its name will be "TF Stemma"
+        	DotParser parser = new DotParser(db);
+        	try {
+        		byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
+        		stemmaCM.setDot(new String(encoded, StandardCharsets.UTF_8));
 
-            encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium_tf.dot"));
-            stemmaTF.setDot(new String(encoded, StandardCharsets.UTF_8));
+        		encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium_tf.dot"));
+        		stemmaTF.setDot(new String(encoded, StandardCharsets.UTF_8));
+        	} catch (Exception e) {
+        		fail();
+        	}
+        	try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaCM, tx)) {
+        		assertEquals(Response.Status.CREATED.getStatusCode(), parseResponse.getStatus());
+        		assertEquals(originalNodeCount + 9, countGraphNodes(tx));
+        	}
+        	try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaTF, tx)) {
+        		assertEquals(Response.Status.CREATED.getStatusCode(), parseResponse.getStatus());
+        	}
+        	tx.close();
+        	
+        	assertEquals(originalNodeCount + 19, countGraphNodes(tx));
+        	
+        	// Delete one stemma
+        	try (Response deleteResponse = jerseyTest
+        			.target("/tradition/" + tradId + "/stemma/Stemma")
+        			.request()
+        			.delete()) {
+        		assertEquals(Response.Status.OK.getStatusCode(), deleteResponse.getStatus());
+        	}
+        	
+        	// Check the node count
+        	assertEquals(originalNodeCount + 10, countGraphNodes(tx));
+        	
+        	// Check the remaining stemma
+        	String tfTitle = "TF Stemma";
+        	StemmaModel remainingStemma = jerseyTest
+        			.target("/tradition/" + tradId + "/stemma/" + tfTitle)
+        			.request(MediaType.APPLICATION_JSON)
+        			.get(StemmaModel.class);
+        	Util.assertStemmasEquivalent(stemmaTF.getDot(), remainingStemma.getDot());
+        	tx.close();
         } catch (Exception e) {
-            fail();
+        	e.printStackTrace();
         }
-        try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaCM)) {
-            assertEquals(Response.Status.CREATED.getStatusCode(), parseResponse.getStatus());
-            assertEquals(originalNodeCount + 9, countGraphNodes());
-        }
-        try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaTF)) {
-            assertEquals(Response.Status.CREATED.getStatusCode(), parseResponse.getStatus());
-        }
-
-        assertEquals(originalNodeCount + 19, countGraphNodes());
-
-        // Delete one stemma
-        try (Response deleteResponse = jerseyTest
-                .target("/tradition/" + tradId + "/stemma/Stemma")
-                .request()
-                .delete()) {
-            assertEquals(Response.Status.OK.getStatusCode(), deleteResponse.getStatus());
-        }
-
-        // Check the node count
-        assertEquals(originalNodeCount + 10, countGraphNodes());
-
-        // Check the remaining stemma
-        String tfTitle = "TF Stemma";
-        StemmaModel remainingStemma = jerseyTest
-                .target("/tradition/" + tradId + "/stemma/" + tfTitle)
-                .request(MediaType.APPLICATION_JSON)
-                .get(StemmaModel.class);
-        Util.assertStemmasEquivalent(stemmaTF.getDot(), remainingStemma.getDot());
     }
 
     @Test
@@ -718,11 +730,10 @@ public class StemmaTest {
         }
     }
 
-    private int countGraphNodes() {
+    private int countGraphNodes(Transaction tx) {
         AtomicInteger numNodes = new AtomicInteger(0);
-        try (Transaction tx = db.beginTx()) {
-            tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
-        }
+        tx.execute("match (n) return n").forEachRemaining(x -> numNodes.getAndIncrement());
+
         return numNodes.get();
     }
 

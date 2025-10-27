@@ -1,12 +1,15 @@
 package net.stemmaweb.model;
 
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import org.neo4j.graphdb.*;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
 
 /**
  * This is the model to specify a valid annotation label for a given text tradition.
@@ -29,12 +32,11 @@ public class AnnotationLabelModel {
      * e.g. {'READING': 'BEGINS,ENDS', '}
      */
     private Map<String, String> links;
-
-    /**
+	/**
      * Initialize a new model
      */
     public AnnotationLabelModel() {
-        this.properties = new HashMap<>();
+    	this.properties = new HashMap<>();
         this.links = new HashMap<>();
     }
 
@@ -43,7 +45,7 @@ public class AnnotationLabelModel {
      * @param alNode - the node to init from
      */
     public AnnotationLabelModel(Node alNode) {
-        initFromNode(alNode);
+    	initFromNode(alNode);
     }
 
     /**
@@ -51,50 +53,44 @@ public class AnnotationLabelModel {
      *
      * @param tradId - the tradition ID
      * @param name   - the label name to look for
+     * @param tx     - the transaction
      */
-    public AnnotationLabelModel(String tradId, String name) {
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        Node alNode = null;
-        try (Transaction tx = db.beginTx()) {
-            Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
-            for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE))
-                if (r.getEndNode().getProperty("name", "").equals(name)) {
-                    alNode = r.getEndNode();
-                }
-            tx.close();
-        }
+    public AnnotationLabelModel(String tradId, String name, Transaction tx) {
+    	Node alNode = null;
+        Node tradNode = tx.findNode(Nodes.TRADITION, "id", tradId);
+        for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION_TYPE))
+        	if (r.getEndNode().getProperty("name", "").equals(name)) {
+        		alNode = r.getEndNode();
+        	}
+
         if (alNode != null)
             initFromNode(alNode);
     }
 
     private void initFromNode(Node annNode) {
 //        GraphDatabaseService db = annNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-            // Look up the name
-            this.setName(annNode.getProperty("name").toString());
+    	// Look up the name
+    	this.setName(annNode.getProperty("name").toString());
 
-            // Look up the list of properties
-            properties = new HashMap<>();
-            Relationship prel = annNode.getSingleRelationship(ERelations.HAS_PROPERTIES, Direction.OUTGOING);
-            if (prel != null) {
-                Node pnode = prel.getEndNode();
-                for (String key : pnode.getPropertyKeys()) {
-                    properties.put(key, pnode.getProperty(key).toString());
-                }
-            }
+    	// Look up the list of properties
+    	properties = new HashMap<>();
+    	Relationship prel = annNode.getSingleRelationship(ERelations.HAS_PROPERTIES, Direction.OUTGOING);
+    	if (prel != null) {
+    		Node pnode = prel.getEndNode();
+    		for (String key : pnode.getPropertyKeys()) {
+    			properties.put(key, pnode.getProperty(key).toString());
+    		}
+    	}
 
-            // Look up the list of links
-            links = new HashMap<>();
-            Relationship lrel = annNode.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
-            if (lrel != null) {
-                Node lnode = lrel.getEndNode();
-                for (String key : lnode.getPropertyKeys()) {
-                    links.put(key, lnode.getProperty(key).toString());
-                }
-            }
-            tx.close();
-        }
+    	// Look up the list of links
+    	links = new HashMap<>();
+    	Relationship lrel = annNode.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
+    	if (lrel != null) {
+    		Node lnode = lrel.getEndNode();
+    		for (String key : lnode.getPropertyKeys()) {
+    			links.put(key, lnode.getProperty(key).toString());
+    		}
+    	}
     }
 
     public String getName() {

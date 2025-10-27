@@ -1,27 +1,39 @@
 package net.stemmaweb.rest;
 
+import static net.stemmaweb.Util.jsonerror;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.model.TextSequenceModel;
-import net.stemmaweb.services.*;
-
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluator;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import static net.stemmaweb.Util.jsonerror;
+import com.qmino.miredot.annotations.ReturnType;
+
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.WitnessPath;
 
 /**
  * Comprises all the API calls related to a witness.
@@ -135,7 +147,7 @@ public class Witness {
             // Find all references to the witness throughout the tradition, and delete them
             removed = new WitnessModel(witnessNode);
             HashSet<Node> orphanReadings = new HashSet<>();
-            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships()) {
+            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, tx).relationships()) {
                 if (r.isType(ERelations.SEQUENCE)) {
                     Node start = r.getStartNode();
                     Node end = r.getEndNode();

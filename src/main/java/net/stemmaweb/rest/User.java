@@ -1,24 +1,29 @@
 package net.stemmaweb.rest;
 
+import static net.stemmaweb.Util.jsonerror;
+
 import java.util.ArrayList;
-
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.UserModel;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
-import static net.stemmaweb.Util.jsonerror;
+import com.qmino.miredot.annotations.ReturnType;
+
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.UserModel;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * Comprises all the API calls related to a user.

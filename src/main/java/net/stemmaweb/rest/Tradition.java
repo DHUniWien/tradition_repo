@@ -12,20 +12,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.json.JSONObject;
 import org.neo4j.graphdb.Direction;
@@ -40,18 +26,47 @@ import com.alexmerz.graphviz.ParseException;
 import com.qmino.miredot.annotations.MireDotIgnore;
 import com.qmino.miredot.annotations.ReturnType;
 
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
 import net.stemmaweb.exporter.TEIExporter;
 import net.stemmaweb.exporter.TabularExporter;
-import net.stemmaweb.model.*;
-import net.stemmaweb.parser.*;
-import net.stemmaweb.services.*;
-
-import javax.xml.stream.XMLStreamException;
-
-import java.io.IOException;
+import net.stemmaweb.model.AlignmentModel;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.DisplayOptionModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.parser.CollateXJsonParser;
+import net.stemmaweb.parser.CollateXParser;
+import net.stemmaweb.parser.DotParser;
+import net.stemmaweb.parser.GraphMLParser;
+import net.stemmaweb.parser.StemmawebParser;
+import net.stemmaweb.parser.TEIParallelSegParser;
+import net.stemmaweb.parser.TabularParser;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
@@ -86,12 +101,22 @@ public class Tradition {
      */
     @Path("/section/{sectionId}")
     public Section getSection(@PathParam("sectionId") String sectionId) {
-        ArrayList<SectionModel> tradSections = produceSectionList(VariantGraphService.getTraditionNode(traditionId, db));
-        if (tradSections != null)
-            for (SectionModel s : tradSections)
-                if (s.getId().equals(sectionId))
-                    return new Section(traditionId, sectionId);
-        return null;
+    	Transaction tx = null;
+    	try {
+        	tx = db.beginTx();
+        	ArrayList<SectionModel> tradSections = produceSectionList(VariantGraphService.getTraditionNode(traditionId, tx), tx);
+        	if (tradSections != null)
+        		for (SectionModel s : tradSections)
+        			if (s.getId().equals(sectionId))
+        				return new Section(traditionId, sectionId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+			if (tx != null) {
+				tx.close();
+			}
+		}
+    	return null;
     }
 
     /**
@@ -195,38 +220,32 @@ public class Tradition {
         return restStemma.replaceStemma(stemmaSpec);
     }
 
-    private ArrayList<SectionModel> produceSectionList (Node traditionNode) {
+    private ArrayList<SectionModel> produceSectionList (Node traditionNode, Transaction tx) throws Exception {
         ArrayList<SectionModel> sectionList = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-        	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
-            ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART, tx);
-            int depth = sectionNodes.size();
-            if (depth > 0) {
-                for(Node n: sectionNodes) {
-                    if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
-                            .iterator()
-                            .hasNext()) {
-                        tx.traversalDescription()
-                                .depthFirst()
-                                .relationships(ERelations.NEXT, Direction.OUTGOING)
-                                .evaluator(Evaluators.toDepth(depth))
-                                .uniqueness(Uniqueness.NODE_GLOBAL)
-                                .traverse(n)
-                                .nodes()
-                                .forEach(r -> sectionList.add(new SectionModel(r)));
-                        break;
-                    }
+    	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
+        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART, tx);
+        int depth = sectionNodes.size();
+        if (depth > 0) {
+            for(Node n: sectionNodes) {
+                if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
+                        .iterator()
+                        .hasNext()) {
+                    tx.traversalDescription()
+                            .depthFirst()
+                            .relationships(ERelations.NEXT, Direction.OUTGOING)
+                            .evaluator(Evaluators.toDepth(depth))
+                            .uniqueness(Uniqueness.NODE_GLOBAL)
+                            .traverse(n)
+                            .nodes()
+                            .forEach(r -> sectionList.add(new SectionModel(r)));
+                    break;
                 }
             }
-            tx.commit();
-            if (sectionList.size() != depth) {
-                throw new Exception(
-                        String.format("Section list and section node mismatch: %d nodes, %d sections found",
-                                depth, sectionList.size()));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+        }
+        if (sectionList.size() != depth) {
+            throw new Exception(
+                    String.format("Section list and section node mismatch: %d nodes, %d sections found",
+                            depth, sectionList.size()));
         }
         return sectionList;
     }
@@ -256,55 +275,61 @@ public class Tradition {
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream) {
 
-        // Get the existing section list
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        ArrayList<SectionModel> existingSections = produceSectionList(traditionNode);
-
         // Dispatch the data for parsing. This will create one or more new section nodes.
         // A successful response entity returned here looks like {"parentId": 123456} where the parentId
         // is the ID of the first new section created.
-        Response result = this.parseDispatcher(sectionName, filetype, uploadedInputStream, true);
+    	Transaction tx = null;
+        try {
+        	tx = db.beginTx();
+        	// Get the existing section list
+        	Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+        	ArrayList<SectionModel> existingSections = produceSectionList(traditionNode, tx);
+        	
+        	Response result = this.parseDispatcher(sectionName, filetype, uploadedInputStream, true, tx);
+        	
+        	// Handle the result
+        	if (result.getStatus() == Status.CREATED.getStatusCode()) {
+        		// If we created a section, retrieve the section ID for our own response and link this section
+        		// behind the last of the prior sections
+        		JSONObject internResponse = new JSONObject((String) result.getEntity());
+        		String newSectionId = internResponse.getString("parentId");
+        		if (existingSections != null && !existingSections.isEmpty()) {
+        			SectionModel ls = existingSections.get(existingSections.size() - 1);
+        			Node lastSection = tx.getNodeByElementId(ls.getId());
+        			Node thisSection = tx.getNodeByElementId(newSectionId);
+        			lastSection.createRelationshipTo(thisSection, ERelations.NEXT);
+        		}
+        		tx.commit();
+        		tx = null;
+        		return Response.status(Status.CREATED).entity(jsonresp("sectionId", internResponse.getLong("parentId"))).build();
+        	} else {
+        		tx.commit();
+        		tx = null;
+        		return result;
+        	}
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+        } catch(Exception e) {
+            e.printStackTrace();
 
-        // Handle the result
-        if (result.getStatus() == Status.CREATED.getStatusCode()) {
-            // If we created a section, retrieve the section ID for our own response and link this section
-            // behind the last of the prior sections
-            JSONObject internResponse = new JSONObject((String) result.getEntity());
-            String newSectionId = internResponse.getString("parentId");
-            if (existingSections != null && !existingSections.isEmpty()) {
-                SectionModel ls = existingSections.get(existingSections.size() - 1);
-                try (Transaction tx = db.beginTx()) {
-                    Node lastSection = tx.getNodeByElementId(ls.getId());
-                    Node thisSection = tx.getNodeByElementId(newSectionId);
-                    lastSection.createRelationshipTo(thisSection, ERelations.NEXT);
-                    tx.commit();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return Response.serverError().build();
-                }
-            }
-            return Response.status(Status.CREATED).entity(jsonresp("sectionId", internResponse.getLong("parentId"))).build();
-        } else {
-            return result;
-        }
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(jsonerror("Tradition could not be imported!"))
+                    .build();
+        } finally {
+			if (tx != null) {
+				tx.close();
+			}
+		}
     }
 
 
     // utility method for creating a new section on a tradition
-    private static Node createNewSection(String traditionNodeId, String sectionName) {
-        Node sectionNode;
+    private static Node createNewSection(String traditionNodeId, String sectionName, Transaction tx) {
 //        GraphDatabaseService db = traditionNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-            sectionNode = tx.createNode(Nodes.SECTION);
-            Node traditionNode = tx.getNodeByElementId(traditionNodeId);
-            sectionNode.setProperty("name", sectionName);
-            traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
-            tx.commit();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+    	Node sectionNode = tx.createNode(Nodes.SECTION);
+        Node traditionNode = tx.getNodeByElementId(traditionNodeId);
+        sectionNode.setProperty("name", sectionName);
+        traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
         return sectionNode;
     }
 
@@ -317,16 +342,17 @@ public class Tradition {
      * @param addToExisting - whether we are adding a section to an existing tradition, or uploading
      *                          a new tradition entirely
      * @return a Response indicating the result
+     * @throws Exception 
      */
-    Response parseDispatcher(String sectionName, String filetype, InputStream uploadedInputStream,
-                             boolean addToExisting) {
+    protected Response parseDispatcher(String sectionName, String filetype, InputStream uploadedInputStream,
+                             boolean addToExisting, Transaction tx) throws Exception {
         Response result = null;
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
         Node sectionNode = null;
         // If we are adding a section to an existing tradition, or we are parsing anything except
         // GraphML, we have to start by creating the section node
         if (!filetype.startsWith("graphml") || addToExisting) {
-            sectionNode = createNewSection(traditionNode.getElementId(), sectionName);
+            sectionNode = createNewSection(traditionNode.getElementId(), sectionName, tx);
             if (sectionNode == null)
                 return Response.serverError()
                         .entity(jsonerror("Error creating new section node on tradition")).build();
@@ -356,7 +382,7 @@ public class Tradition {
             result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, sectionNode);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the old Stemmaweb-format parser
-            result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode);
+            result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode, tx);
         if (filetype.equals("graphmlsingle"))
             // Pass it off to the legacy single-file GraphML parser
             result = new GraphMLParser().parseGraphMLSingle(uploadedInputStream,
@@ -380,14 +406,11 @@ public class Tradition {
         else if (sectionNode != null && !addToExisting) {
             // We created a section with the name DEFAULT at the beginning. If that is still the name,
             // change it to the tradition name
-            try (Transaction tx = db.beginTx()) {
-                String currentName = sectionNode.getProperty("name", "DEFAULT").toString();
-                String tradName = traditionNode.getProperty("name", "DEFAULT").toString();
-                if (currentName.equals("DEFAULT"))
-                    sectionNode.setProperty("name", tradName);
-                tx.commit();
-            }
-
+        	String currentName = sectionNode.getProperty("name", "DEFAULT").toString();
+        	String tradName = traditionNode.getProperty("name", "DEFAULT").toString();
+        	if (currentName.equals("DEFAULT")) {
+        		sectionNode.setProperty("name", tradName);
+        	}
         }
 
         return result;
@@ -414,6 +437,7 @@ public class Tradition {
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
         try (Transaction tx = db.beginTx()) {
+        	traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
             Node anno = tx.createNode();
             traditionNode.createRelationshipTo(anno, ERelations.HAS_ANNOTATION);
             Annotation annoRest = new Annotation(traditionId, anno.getElementId());
@@ -441,21 +465,27 @@ public class Tradition {
     @Produces(MediaType.APPLICATION_JSON)
     @MireDotIgnore
     public Response initRanks() {
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-        List<SectionModel> smlist = produceSectionList(traditionNode);
-        if (smlist == null)
-            return Response.ok().build();
-
-        try (Transaction tx = db.beginTx()) {
-            for (SectionModel sm : smlist) {
-                ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), tx), true);
-            }
-            tx.commit();
+    	Transaction tx = null;
+    	try {
+        	tx = db.beginTx();
+        	Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+        	if (traditionNode == null)
+        		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        	List<SectionModel> smlist = produceSectionList(traditionNode, tx);
+        	if (smlist == null)
+        		return Response.ok().build();
+        	
+    		for (SectionModel sm : smlist) {
+    			ReadingService.recalculateRank(VariantGraphService.getStartNode(sm.getId(), tx), true, tx);
+    		}
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
+        } finally {
+			if (tx != null) {
+				tx.commit();
+			}
+		}
         return Response.ok(jsonresp("result", "success")).build();
 
     }
@@ -478,15 +508,26 @@ public class Tradition {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.SectionModel>")
     public Response getAllSections() {
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-
-        ArrayList<SectionModel> sectionList = produceSectionList(traditionNode);
-        if (sectionList == null)
-            return Response.serverError().entity(jsonerror("Something went wrong building section list")).build();
-
-        return Response.ok(sectionList).build();
+    	Transaction tx = null;
+    	try {
+        	tx = db.beginTx();
+        	Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+        	if (traditionNode == null)
+        		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        	
+        	ArrayList<SectionModel> sectionList = produceSectionList(traditionNode, tx);
+        	if (sectionList == null)
+        		return Response.serverError().entity(jsonerror("Something went wrong building section list")).build();
+        	
+        	return Response.ok(sectionList).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        } finally {
+			if (tx != null) {
+				tx.close();
+			}
+		}
     }
 
     /**
@@ -567,19 +608,30 @@ public class Tradition {
     @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-        ArrayList<SectionModel> ourSections = produceSectionList(traditionNode);
-        if (ourSections == null)
-            return Response.serverError().entity(jsonerror("section lookup failed")).build();
-        for (SectionModel s : ourSections) {
-            Section sectRest = new Section(traditionId, s.getId());
-            ArrayList<RelationModel> sectRels = sectRest.sectionRelations(includeReadings.equals("true"));
-            if (sectRels == null)
-                return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
-            relList.addAll(sectRels);
-        }
+    	Transaction tx = null;
+    	try {
+        	tx = db.beginTx();
+        	Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+        	if (traditionNode == null)
+        		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+        	ArrayList<SectionModel> ourSections = produceSectionList(traditionNode, tx);
+        	if (ourSections == null)
+        		return Response.serverError().entity(jsonerror("section lookup failed")).build();
+        	for (SectionModel s : ourSections) {
+        		Section sectRest = new Section(traditionId, s.getId());
+        		ArrayList<RelationModel> sectRels = sectRest.sectionRelations(includeReadings.equals("true"), tx);
+        		if (sectRels == null)
+        			return Response.serverError().entity(jsonerror("something went wrong in section relations")).build();
+        		relList.addAll(sectRels);
+        	}
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        } finally {
+			if (tx != null) {
+				tx.close();
+			}
+		}
 
        return Response.ok(relList).build();
     }
@@ -626,26 +678,37 @@ public class Tradition {
     @Produces("application/json; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
     public Response getAllReadings() {
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
-        if (traditionNode == null)
-            return Response.status(Status.NOT_FOUND)
-                    .entity(jsonerror("There is no tradition with this id")).build();
+    	Transaction tx = null;
+    	try {
+        	tx = db.beginTx();
+        	Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+        	if (traditionNode == null)
+        		return Response.status(Status.NOT_FOUND)
+        				.entity(jsonerror("There is no tradition with this id")).build();
+        	
+        	ArrayList<SectionModel> allSections = produceSectionList(traditionNode, tx);
+        	if (allSections == null)
+        		return Response.serverError()
+        				.entity(jsonerror("Tradition has no sections")).build();
+        	
+        	ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        	for (SectionModel sm : allSections) {
+        		Section sectRest = new Section(traditionId, sm.getId());
+        		List<ReadingModel> sectionReadings = sectRest.sectionReadings(tx);
+        		if (sectionReadings == null)
+        			return Response.serverError().entity(jsonerror("section lookup failed")).build();
 
-        ArrayList<SectionModel> allSections = produceSectionList(traditionNode);
-        if (allSections == null)
-            return Response.serverError()
-                    .entity(jsonerror("Tradition has no sections")).build();
-
-        ArrayList<ReadingModel> readingModels = new ArrayList<>();
-        for (SectionModel sm : allSections) {
-            Section sectRest = new Section(traditionId, sm.getId());
-            List<ReadingModel> sectionReadings = sectRest.sectionReadings();
-            if (sectionReadings == null)
-                return Response.serverError().entity(jsonerror("section lookup failed")).build();
-            readingModels.addAll(sectionReadings);
-
-        }
-        return Response.ok(readingModels).build();
+        		readingModels.addAll(sectionReadings);
+        	}
+        	return Response.ok(readingModels).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        } finally {
+			if (tx != null) {
+				tx.close();
+			}
+		}
     }
 
     /**
@@ -673,7 +736,7 @@ public class Tradition {
         try (Transaction tx = db.beginTx()) {
             ArrayList<AnnotationModel> allAnnotations = new ArrayList<>();
             traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION)
-                    .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode())));
+                    .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode(), tx)));
             if (!filterLabels.isEmpty())
                 result = allAnnotations.stream().filter(x -> filterLabels.contains(x.getLabel()))
                         .collect(Collectors.toList());
@@ -739,7 +802,7 @@ public class Tradition {
             for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION)) {
                 boolean isPrimary = a.getProperty("primary", false).equals(true);
                 if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
-                    deleted.add(new AnnotationModel(a));
+                    deleted.add(new AnnotationModel(a, tx));
                     a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
                     a.delete();
                 }
@@ -933,14 +996,21 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 
         TEIExporter exp = new TEIExporter();
+        Transaction tx = null;
+        Response response;
         try {
+        	tx = db.beginTx();
             return exp.writeTEI(traditionId, null, null, baseWitness, excWitnesses, conflate,
                     suppressMatching, Boolean.getBoolean(excludeNonsense), Boolean.getBoolean(excludeType1),
-                    significant, Boolean.getBoolean(combine));
-        } catch (XMLStreamException | IOException e) {
+                    significant, Boolean.getBoolean(combine), tx);
+        } catch (Exception e) {
             e.printStackTrace();
-            return Response.serverError().build();
+            response = Response.serverError().build();
         }
+        if (tx != null) {
+        	tx.close();
+        }
+        return response;
     }
 
     /**
@@ -1027,8 +1097,16 @@ public class Tradition {
     public Response getJson(@QueryParam("conflate") String toConflate,
                             @QueryParam("section") List<String> sectionList,
                             @QueryParam("exclude_layers") String excludeLayers) {
-        return new TabularExporter(db).exportAsJSON(traditionId, toConflate,
-                sectionList, "true".equals(excludeLayers));
+        Response response;
+        try (Transaction tx = db.beginTx()) {
+        	response = new TabularExporter(tx).exportAsJSON(traditionId, toConflate,
+        			sectionList, "true".equals(excludeLayers));
+        	tx.close();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return response;
     }
 
     /**
@@ -1048,8 +1126,16 @@ public class Tradition {
     public Response getCsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList,
                            @QueryParam("exclude_layers") String excludeLayers) {
-        return new TabularExporter(db).exportAsCSV(traditionId, ',', toConflate,
-                sectionList, "true".equals(excludeLayers));
+        Response response;
+        try (Transaction tx = db.beginTx()) {
+        	response = new TabularExporter(tx).exportAsCSV(traditionId, ',', toConflate,
+        			sectionList, "true".equals(excludeLayers));
+        	tx.close();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return response;
     }
 
     /**
@@ -1069,8 +1155,16 @@ public class Tradition {
     public Response getTsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList,
                            @QueryParam("exclude_layers") String excludeLayers) {
-        return new TabularExporter(db).exportAsCSV(traditionId, '\t', toConflate,
-                sectionList, "true".equals(excludeLayers));
+        Response response;
+        try (Transaction tx = db.beginTx()) {
+        	response = new TabularExporter(tx).exportAsCSV(traditionId, '\t', toConflate,
+        			sectionList, "true".equals(excludeLayers));
+        	tx.close();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return response;
     }
 
     /**
@@ -1093,8 +1187,16 @@ public class Tradition {
                                   @QueryParam("section") List<String> sectionList,
                                   @QueryParam("exclude_layers") String excludeLayers,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
-        return new TabularExporter(db).exportAsCharMatrix(traditionId, maxVars, toConflate,
-                sectionList, "true".equals(excludeLayers));
+        Response response;
+        try (Transaction tx = db.beginTx()) {
+            response = new TabularExporter(tx).exportAsCharMatrix(traditionId, maxVars, toConflate,
+                    sectionList, "true".equals(excludeLayers));
+        	tx.close();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
+        }
+        return response;
     }
 
 }

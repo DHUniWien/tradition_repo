@@ -1,16 +1,20 @@
 package net.stemmaweb.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
 
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * This model describes the properties of a particular relationship type.
@@ -94,29 +98,26 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
     public RelationTypeModel (Node n) {
         this();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 //        try (Transaction tx = n.getGraphDatabase().beginTx()) {
-        try (Transaction tx = db.beginTx()) {
-            if (n.hasProperty("name"))
-                this.setName(n.getProperty("name").toString());
-            if (n.hasProperty("description"))
-                this.setDescription(n.getProperty("description").toString());
-            if (n.hasProperty("display"))
-                this.setDisplay(n.getProperty("display").toString());
-            if (n.hasProperty("bindlevel"))
-                this.setBindlevel((int) n.getProperty("bindlevel"));
-            if (n.hasProperty("is_colocation"))
-                this.setIs_colocation((Boolean) n.getProperty("is_colocation"));
-            if (n.hasProperty("is_weak"))
-                this.setIs_weak((Boolean) n.getProperty("is_weak"));
-            if (n.hasProperty("is_transitive"))
-                this.setIs_transitive((Boolean) n.getProperty("is_transitive"));
-            if (n.hasProperty("is_generalizable"))
-                this.setIs_generalizable((Boolean) n.getProperty("is_generalizable"));
-            if (n.hasProperty("use_regular"))
-                this.setUse_regular((Boolean) n.getProperty("use_regular"));
-            tx.commit();
-        }
+
+        if (n.hasProperty("name"))
+        	this.setName(n.getProperty("name").toString());
+        if (n.hasProperty("description"))
+        	this.setDescription(n.getProperty("description").toString());
+        if (n.hasProperty("display"))
+        	this.setDisplay(n.getProperty("display").toString());
+        if (n.hasProperty("bindlevel"))
+        	this.setBindlevel((int) n.getProperty("bindlevel"));
+        if (n.hasProperty("is_colocation"))
+        	this.setIs_colocation((Boolean) n.getProperty("is_colocation"));
+        if (n.hasProperty("is_weak"))
+        	this.setIs_weak((Boolean) n.getProperty("is_weak"));
+        if (n.hasProperty("is_transitive"))
+        	this.setIs_transitive((Boolean) n.getProperty("is_transitive"));
+        if (n.hasProperty("is_generalizable"))
+        	this.setIs_generalizable((Boolean) n.getProperty("is_generalizable"));
+        if (n.hasProperty("use_regular"))
+        	this.setUse_regular((Boolean) n.getProperty("use_regular"));
     }
 
     public String getName() {
@@ -196,8 +197,8 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition to which this model belongs
      * @return the created RelationType node
      */
-    public Node instantiate (Node traditionNode) throws Exception {
-        return match_relation_node(traditionNode, false);
+    public Node instantiate (Node traditionNode, Transaction tx) throws Exception {
+        return match_relation_node(traditionNode, false, tx);
     }
 
     /**
@@ -205,8 +206,8 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition to which this model belongs
      * @return the updated RelationType node
      */
-    public Node update (Node traditionNode) throws Exception {
-        return match_relation_node(traditionNode, true);
+    public Node update (Node traditionNode, Transaction tx) throws Exception {
+        return match_relation_node(traditionNode, true, tx);
     }
 
     /**
@@ -216,54 +217,57 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      */
     public Node lookup (Node traditionNode) throws Exception {
 //        GraphDatabaseService db = traditionNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        Node relTypeNode = null;
+    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+    	Node relTypeNode = null;
         try (Transaction tx = db.beginTx()) {
         	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
-
-        	// First see if there is a type with this name
-            for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
-                if (r.getEndNode().getProperty("name").toString().equals(this.thename)) {
-                    relTypeNode = r.getEndNode();
-                    break;
-                }
-            }
-            tx.commit();
+        	relTypeNode = lookup(traditionNode, tx);
+            tx.close();
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
         }
+        return relTypeNode;
+
+    }
+    public Node lookup (Node traditionNode, Transaction tx) throws Exception {
+        Node relTypeNode = null;
+
+    	// First see if there is a type with this name
+        for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
+            if (r.getEndNode().getProperty("name").toString().equals(this.thename)) {
+                relTypeNode = r.getEndNode();
+                break;
+            }
+        }
+
         return relTypeNode;
     }
 
-    private Node match_relation_node(Node traditionNode, Boolean allow_update) throws Exception {
+    private Node match_relation_node(Node traditionNode, Boolean allow_update, Transaction tx) throws Exception {
 //        GraphDatabaseService db = traditionNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-        	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
-        	Node relType = this.lookup(traditionNode);
-            if (relType == null) {
-                // Create the node if it doesn't exist
-                relType = tx.createNode(Nodes.RELATION_TYPE);
-                this.update_reltype(relType);
-                traditionNode.createRelationshipTo(relType, ERelations.HAS_RELATION_TYPE);
-            } else {
-                // Check that the node matches our values, if it does exist
-                if (!(this.description.equals(relType.getProperty("description"))
-                        && this.display.equals(relType.getProperty("display"))
-                        && this.bindlevel == (int) relType.getProperty("bindlevel")
-                        && this.is_colocation == relType.getProperty("is_colocation")
-                        && this.is_weak == relType.getProperty("is_weak")
-                        && this.is_transitive == relType.getProperty("is_transitive")
-                        && this.is_generalizable == relType.getProperty("is_generalizable")
-                        && this.use_regular == relType.getProperty("use_regular"))) {
-                    if (allow_update) this.update_reltype(relType);
-                    else throw new IllegalArgumentException("Another relation type by this name already exists");
-                }
+//    	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
+    	Node relType = this.lookup(traditionNode, tx);
+        if (relType == null) {
+            // Create the node if it doesn't exist
+            relType = tx.createNode(Nodes.RELATION_TYPE);
+            this.update_reltype(relType);
+            traditionNode.createRelationshipTo(relType, ERelations.HAS_RELATION_TYPE);
+        } else {
+            // Check that the node matches our values, if it does exist
+            if (!(this.description.equals(relType.getProperty("description"))
+                    && this.display.equals(relType.getProperty("display"))
+                    && this.bindlevel == (int) relType.getProperty("bindlevel")
+                    && this.is_colocation == relType.getProperty("is_colocation")
+                    && this.is_weak == relType.getProperty("is_weak")
+                    && this.is_transitive == relType.getProperty("is_transitive")
+                    && this.is_generalizable == relType.getProperty("is_generalizable")
+                    && this.use_regular == relType.getProperty("use_regular"))) {
+                if (allow_update) this.update_reltype(relType);
+                else throw new IllegalArgumentException("Another relation type by this name already exists");
             }
-            tx.commit();
-            return relType;
         }
+//        tx.commit();
+        return relType;
     }
 
     // To be used inside a transaction!

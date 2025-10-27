@@ -1,9 +1,32 @@
 package net.stemmaweb.parser;
 
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
 import com.opencsv.CSVParser;
 import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
+
+import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
 import net.stemmaweb.model.RelationTypeModel;
@@ -13,21 +36,6 @@ import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.neo4j.graphdb.*;
-
-import javax.ws.rs.core.Response;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.Util.jsonresp;
 
 /**
  * Reads a variety of tabular formats (TSV, CSV, XLS, XLSX) and parses the data
@@ -115,9 +123,9 @@ public class TabularParser {
     private Response parseTableToCollation(ArrayList<String[]> tableData, Node parentNode) {
         String response;
         Response.Status result = Response.Status.OK;
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
 
         try (Transaction tx = db.beginTx()) {
+        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
             // Make the start node
             Node startNode = Util.createStartNode(parentNode);
             Node endNode = Util.createEndNode(parentNode);
@@ -128,7 +136,7 @@ public class TabularParser {
             rtm.setName("collated");
             rtm.setDefaultsettings(true);
             Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
-                    rtm.getName()).create(rtm);
+                    rtm.getName()).create(rtm, tx);
             if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                 return rtResult;
 
@@ -144,7 +152,7 @@ public class TabularParser {
                 // See if it is a layered witness, of the form XX (YY)
                 String[] sigilParts = sigil.split("\\s+\\(");  // now we have ["XX", "YY)"]
                 if (sigilParts.length == 1) // it is not a layered witness
-                    Util.findOrCreateExtant(traditionNode, sigil);
+                    Util.findOrCreateExtant(traditionNode, sigil, tx);
                 else if (sigilParts.length == 2) // it is a layered witness; store a ref to its base
                     layerWitnesses.put(sigil, sigilParts);
                 else   // what is this i don't even

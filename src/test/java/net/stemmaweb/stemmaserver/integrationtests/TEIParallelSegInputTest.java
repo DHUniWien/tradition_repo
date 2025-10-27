@@ -6,8 +6,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.ws.rs.core.Response;
-
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -15,8 +13,16 @@ import org.junit.Test;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
+
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.TextSequenceModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.Root;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.rest.Witness;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 

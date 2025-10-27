@@ -1,22 +1,33 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.model.AnnotationLabelModel;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
+import static net.stemmaweb.Util.jsonerror;
 
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static net.stemmaweb.Util.jsonerror;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+
+import com.qmino.miredot.annotations.ReturnType;
+
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Comprises the API calls having to do with specifying the annotation types that are allowed on
@@ -51,11 +62,21 @@ public class AnnotationLabel {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationLabelModel.class)
     public Response getAnnotationLabel() {
-        Node ourNode = lookupAnnotationLabel();
-        if (ourNode == null) {
-            return Response.status(Response.Status.NOT_FOUND).build();
+    	Response response;
+        try (Transaction tx = db.beginTx()) {
+        	Node ourNode = lookupAnnotationLabel(tx);
+        	if (ourNode == null) {
+        		response = Response.status(Response.Status.NOT_FOUND).build();
+        	} else {
+        	    response = Response.ok(new AnnotationLabelModel(ourNode)).build();
+        	}
+        	tx.close();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	response = Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(new AnnotationLabelModel(ourNode)).build();
+
+        return response;
     }
 
     /**
@@ -75,10 +96,10 @@ public class AnnotationLabel {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationLabelModel.class)
     public Response createOrUpdateAnnotationLabel(AnnotationLabelModel alm) {
-        Node ourNode = lookupAnnotationLabel();
-        Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
         boolean isNew = false;
         try (Transaction tx = db.beginTx()) {
+        	Node ourNode = lookupAnnotationLabel(tx);
+        	Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
             // Get the existing list of annotation labels associated with this tradition
             List<String> reservedWords = Arrays.asList("USER", "ROOT", "__SYSTEM__");
             List<String> existingLabels = getValidTargetsForTradition(reservedWords);
@@ -155,12 +176,12 @@ public class AnnotationLabel {
                 }
             }
             tx.close();
+            return Response.status(isNew ? Response.Status.CREATED : Response.Status.OK)
+            		.entity(new AnnotationLabelModel(ourNode)).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.status(isNew ? Response.Status.CREATED : Response.Status.OK)
-                .entity(new AnnotationLabelModel(ourNode)).build();
     }
 
     /**
@@ -177,13 +198,13 @@ public class AnnotationLabel {
     @DELETE
     @ReturnType(clazz = AnnotationLabelModel.class)
     public Response deleteAnnotationLabel() {
-        Node ourNode = lookupAnnotationLabel();
-        if (ourNode == null) return Response.status(Response.Status.NOT_FOUND).build();
-        AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
-        Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
-        try (Transaction tx = db.beginTx()) {
+    	try (Transaction tx = db.beginTx()) {
+    		Node ourNode = lookupAnnotationLabel(tx);
+    		if (ourNode == null) return Response.status(Response.Status.NOT_FOUND).build();
+    		AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
+    		Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
             // Check for annotations on this tradition using this label, before we delete it
-            for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION))
+            for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION, tx))
                 if (annoNode.hasLabel(Label.label(ourModel.getName())))
                     return Response.status(Response.Status.CONFLICT).entity(jsonerror(
                             "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getElementId()))
@@ -195,7 +216,7 @@ public class AnnotationLabel {
                 r.delete();
             }
             // Delete any reference to the label in any other label's linkset
-            for (Node n : getExistingLabelsForTradition()) {
+            for (Node n : getExistingLabelsForTradition(tx)) {
                 if (n.equals(ourNode)) continue;
                 Relationship l = n.getSingleRelationship(ERelations.HAS_LINKS, Direction.OUTGOING);
                 if (l != null) {
@@ -209,40 +230,35 @@ public class AnnotationLabel {
             ourNode.getSingleRelationship(ERelations.HAS_ANNOTATION_TYPE, Direction.INCOMING).delete();
             ourNode.delete();
             tx.close();
+            return Response.ok(ourModel).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        return Response.ok(ourModel).build();
     }
 
-    private Node lookupAnnotationLabel() {
+    private Node lookupAnnotationLabel(Transaction tx) {
         Node ourNode = null;
-        try (Transaction tx = db.beginTx()) {
-            Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
-            Optional<Node> foundNode = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
-                    .stream().filter(x -> x.getProperty("name", "").equals(name)).findFirst();
-            if (foundNode.isPresent()) ourNode = foundNode.get();
-            tx.close();
-        }
+        Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
+        Optional<Node> foundNode = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE, tx)
+        		.stream().filter(x -> x.getProperty("name", "").equals(name)).findFirst();
+        if (foundNode.isPresent()) ourNode = foundNode.get();
+
         return ourNode;
     }
 
-    private List<Node> getExistingLabelsForTradition() {
-        Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
+    private List<Node> getExistingLabelsForTradition(Transaction tx) {
+        Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
         List<Node> answer;
-        try (Transaction tx = db.beginTx()) {
-            answer = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE);
-            tx.close();
-            return answer;
-        }
+        answer = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE, tx);
+        return answer;
     }
 
     private List<String> getValidTargetsForTradition(List<String> reservedWords) {
         List<String> answer;
         // Get the existing labels
         try (Transaction tx = db.beginTx()) {
-            answer = getExistingLabelsForTradition().stream()
+            answer = getExistingLabelsForTradition(tx).stream()
                     .map(x -> x.getProperty("name").toString()).collect(Collectors.toList());
             tx.close();
         }

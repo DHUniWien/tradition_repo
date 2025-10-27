@@ -8,9 +8,6 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -30,6 +27,9 @@ import org.w3c.dom.Document;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
@@ -190,7 +190,7 @@ public class StemmawebExporter {
 
             DotExporter parser = new DotExporter(db);
 
-            writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
+            writer.writeCharacters(parser.getAllStemmataAsDot(tradId, tx));
             writer.writeEndElement();
 
             long nodeId = 0;

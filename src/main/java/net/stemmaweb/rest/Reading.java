@@ -1,27 +1,57 @@
 package net.stemmaweb.rest;
 
+import static net.stemmaweb.Util.jsonerror;
+
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.model.*;
-import net.stemmaweb.services.*;
-
-import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
-import static net.stemmaweb.Util.jsonerror;
+import com.qmino.miredot.annotations.ReturnType;
+
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.FormParam;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
+import net.stemmaweb.model.DuplicateModel;
+import net.stemmaweb.model.GraphModel;
+import net.stemmaweb.model.KeyPropertyModel;
+import net.stemmaweb.model.ReadingBoundaryModel;
+import net.stemmaweb.model.ReadingChangePropertyModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.RelationService;
 
 /**
  * Comprises all Rest API calls related to a reading. Can be called via
@@ -310,7 +340,7 @@ public class Reading {
                 newSeqs.add(ReadingService.addWitnessLink(lacuna, next, wit.get("sigil"), wit.get("layer")));
             }
             for (Node pushed : pushedReadings) {
-                changedReadings.addAll(ReadingService.recalculateRank(pushed));
+                changedReadings.addAll(ReadingService.recalculateRank(pushed, false, tx));
             }
             result.setReadings(changedReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
             result.setSequences(newSeqs.stream().map(SequenceModel::new).collect(Collectors.toList()));
@@ -678,7 +708,7 @@ public class Reading {
         Section sectionRest = new Section(tradId, sectId);
         Long ourRank = (Long) originalReading.getProperty("rank");
         try (Transaction tx = db.beginTx()) {
-            for (RelationModel rm : sectionRest.sectionRelations()) {
+            for (RelationModel rm : sectionRest.sectionRelations(tx)) {
                 Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
                 if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
                         (rm.getSource().equals(originalReading.getElementId()) ||
@@ -773,7 +803,7 @@ public class Reading {
             }
             // Re-rank nodes if necessary
             if (!samerank) {
-                ReadingService.recalculateRank(aPriorNode);
+                ReadingService.recalculateRank(aPriorNode, false, tx);
             }
 
             tx.commit();
@@ -1007,7 +1037,7 @@ public class Reading {
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
             readingsAndRelations = split(originalReading, splitIndex, model);
-            ReadingService.recalculateRank(originalReading, true);
+            ReadingService.recalculateRank(originalReading, true, tx);
 
             tx.commit();
         } catch (NotFoundException e) {
@@ -1297,7 +1327,7 @@ public class Reading {
                 resp =  errorResponse(Status.CONFLICT);
             } else if (canBeCompressed(read1, read2)) {
                 resp = Response.ok().entity(compress(read1, read2, boundary)).build();
-                ReadingService.recalculateRank(read1);
+                ReadingService.recalculateRank(read1, false, tx);
             } else {
                 resp = errorResponse(Status.CONFLICT);
             }

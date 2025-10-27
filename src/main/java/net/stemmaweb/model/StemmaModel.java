@@ -1,8 +1,5 @@
 package net.stemmaweb.model;
 
-import javax.ws.rs.core.Response;
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -13,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.qmino.miredot.annotations.MireDotIgnore;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -53,6 +52,11 @@ public class StemmaModel {
 //        GraphDatabaseService db = stemmaNode.getGraphDatabase();
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
+        	// Put node inside transaction if applicable
+        	Node n2 = tx.getNodeByElementId(stemmaNode.getElementId());
+        	if (n2 != null) {
+        		stemmaNode = n2;
+        	}
             identifier = stemmaNode.getProperty("name").toString();
             is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);
             is_contaminated = stemmaNode.hasProperty("is_contaminated");

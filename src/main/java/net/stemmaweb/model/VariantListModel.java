@@ -8,8 +8,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -21,6 +19,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.RelationService;
@@ -121,13 +120,13 @@ public class VariantListModel {
         try (Transaction tx = db.beginTx()) {
             RelationshipType follow = ERelations.SEQUENCE;
             if (!conflate.equals("")) {
-                VariantGraphService.normalizeGraph(sectionNode, conflate);
+                VariantGraphService.normalizeGraph(sectionNode, conflate, tx);
                 follow = ERelations.NSEQUENCE;
             }
 
             // Figure out which types are dislocation types in this tradition
             this.dislocationTypes = new ArrayList<>();
-            for (RelationTypeModel rtm : RelationService.ourRelationTypes(sectionNode)) {
+            for (RelationTypeModel rtm : RelationService.ourRelationTypes(sectionNode, tx)) {
                 if (!rtm.getIs_colocation())
                     dislocationTypes.add(rtm.getName());
             }
@@ -156,7 +155,7 @@ public class VariantListModel {
                     this.basisText = "lemma";
                 } else {
                     // We calculate and use the majority text
-                    baseReadings = VariantGraphService.calculateMajorityText(sectionNode);
+                    baseReadings = VariantGraphService.calculateMajorityText(sectionNode, tx);
                     this.basisText = "majority";
                 }
                 baseText = new ArrayList<>();
@@ -168,7 +167,7 @@ public class VariantListModel {
                 }
             }
 
-            this.findVariants(db, baseText, excludeWitnesses, follow);
+            this.findVariants(tx, baseText, excludeWitnesses, follow);
 
             // Filter readings by regex / nonsense flag as needed. Pass the base text in case
             // any before/after reading settings need to be altered.
@@ -195,38 +194,36 @@ public class VariantListModel {
         }
     }
 
-    private void findVariants (GraphDatabaseService db, List<Relationship> sequence, List<String> excludeWitnesses,
+    private void findVariants (Transaction tx, List<Relationship> sequence, List<String> excludeWitnesses,
                                RelationshipType follow) {
         // Create the evaluator we need
         VariantCrawler crawler = new VariantCrawler(sequence, follow, excludeWitnesses);
         // Set up the traversal for the path segments we want
-        try (Transaction tx = db.beginTx()) {
-            TraversalDescription traverser = tx.traversalDescription().depthFirst()
-                    .uniqueness(Uniqueness.RELATIONSHIP_PATH)
-                    .expand(crawler.variantListExpander())
-                    .evaluator(crawler.variantListEvaluator());
-            // Get our base chain of nodes
-            List<Node> baseChain = sequence.stream().map(Relationship::getEndNode).collect(Collectors.toList());
-            baseChain.add(0, sequence.get(0).getStartNode());
-            // We have to run the traverser from each node in the base chain, to get any variants that start there.
-            for (Node n : baseChain) {
-                for (org.neo4j.graphdb.Path v : traverser.traverse(n)) {
-                    VariantModel vm = new VariantModel(v, crawler.getWitnessesForPath(v));
-                    // Sanity check
-                    // if (!baseChain.contains(v.startNode()) || !baseChain.contains(v.endNode()))
-                    //     throw new Exception("Variant chain disconnected from base chain");
-                    if (!vm.isEmpty()) {
-                    	VariantLocationModel vloc = this.getVLM(baseChain, v.startNode(), v.endNode());
-                        vloc.addVariant(vm);
-                    }
+        TraversalDescription traverser = tx.traversalDescription().depthFirst()
+                .uniqueness(Uniqueness.RELATIONSHIP_PATH)
+                .expand(crawler.variantListExpander())
+                .evaluator(crawler.variantListEvaluator());
+        // Get our base chain of nodes
+        List<Node> baseChain = sequence.stream().map(Relationship::getEndNode).collect(Collectors.toList());
+        baseChain.add(0, sequence.get(0).getStartNode());
+        // We have to run the traverser from each node in the base chain, to get any variants that start there.
+        for (Node n : baseChain) {
+            for (org.neo4j.graphdb.Path v : traverser.traverse(n)) {
+                VariantModel vm = new VariantModel(v, crawler.getWitnessesForPath(v));
+                // Sanity check
+                // if (!baseChain.contains(v.startNode()) || !baseChain.contains(v.endNode()))
+                //     throw new Exception("Variant chain disconnected from base chain");
+                if (!vm.isEmpty()) {
+                	VariantLocationModel vloc = this.getVLM(baseChain, v.startNode(), v.endNode());
+                    vloc.addVariant(vm);
                 }
             }
-            tx.commit();
         }
+        tx.commit();
 
         // Add relation information to each variant location. This will also notice displaced variants.
         for (VariantLocationModel vlm : this.getVariantlist())
-            vlm.collectRelationsInLocation(db, this.dislocationTypes);
+            vlm.collectRelationsInLocation(tx, this.dislocationTypes);
         // Sort the result by rank index and base text length, and return
         this.getVariantlist().sort(Comparator.comparingInt(x -> x.getBase().size()));
         this.getVariantlist().sort(Comparator.comparingLong(VariantLocationModel::getRankIndex));

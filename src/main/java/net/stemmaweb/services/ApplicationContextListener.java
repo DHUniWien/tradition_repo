@@ -28,7 +28,6 @@ public class ApplicationContextListener implements ServletContextListener {
     public void contextDestroyed(ServletContextEvent event) {
         //Output a simple message to the server's console
         try {
-            GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
             GraphDatabaseServiceProvider.shutdown();
             // logger.debug("This is debug: db shut down properly");
         } catch (Exception e) {

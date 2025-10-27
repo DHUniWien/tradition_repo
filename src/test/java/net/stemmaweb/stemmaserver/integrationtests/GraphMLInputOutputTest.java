@@ -1,36 +1,51 @@
 package net.stemmaweb.stemmaserver.integrationtests;
 
-import junit.framework.TestCase;
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.stemmaserver.Util;
+import static org.junit.Assert.assertNotEquals;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.glassfish.jersey.test.JerseyTest;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
-
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.Response;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import java.io.*;
-import java.nio.file.Files;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static org.junit.Assert.assertNotEquals;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import junit.framework.TestCase;
+import net.stemmaweb.model.AnnotationLabelModel;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.model.SectionModel;
+import net.stemmaweb.model.StemmaModel;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.WitnessModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.stemmaserver.Util;
 
 /**
  * Tests for our own input/output formats.
@@ -54,12 +69,14 @@ public class GraphMLInputOutputTest extends TestCase {
 
         Response r = Util.createTraditionFromFileOrString(jerseyTest, "Tradition",
                     "BI", "me@example.org", "src/TestFiles/testTradition.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         tradId = Util.getValueFromJson(r, "tradId");
 //        assertNotNull(tradId);
 
         // Try our own medicine
         r = Util.createTraditionFromFileOrString(jerseyTest, "Multi-section tradition",
                 "LR", "me@example.org", "src/TestFiles/legendfrag.xml", "stemmaweb");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
         multiTradId = Util.getValueFromJson(r, "tradId");
         Util.addSectionToTradition(jerseyTest, multiTradId, "src/TestFiles/lf2.xml",
                 "stemmaweb", "section 2");
@@ -137,7 +154,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
 //        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
-            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).nodes().spliterator(), false)
+            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, tx).nodes().spliterator(), false)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
@@ -269,7 +286,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
 //        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(legendId, db).nodes().stream()
-            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(legendId, db).nodes().spliterator(), false)
+            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(legendId, tx).nodes().spliterator(), false)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));
@@ -288,10 +305,12 @@ public class GraphMLInputOutputTest extends TestCase {
     }
 
     public void testZipInputNewSectionWitnesses() {
-        String florId = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Florilegium",
-                "LR", "me@example.org", "src/TestFiles/florilegium_z.csv", "csv"), "tradId");
+    	Response r = Util.createTraditionFromFileOrString(jerseyTest, "Florilegium",
+                "LR", "me@example.org", "src/TestFiles/florilegium_z.csv", "csv");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String florId = Util.getValueFromJson(r, "tradId");
         // Get the single-section XML
-        Response r = jerseyTest.target("/tradition/" + florId + "/graphml").request().get();
+        r = jerseyTest.target("/tradition/" + florId + "/graphml").request().get();
         String chryfile = Util.saveGraphMLTempfile(r);
         assertNotNull(chryfile);
         String chryxml = Util.getConcatenatedGraphML(chryfile);
@@ -317,8 +336,10 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(13, wits.size());
 
         // Now make a new tradition with the GraphML
-        String flor2Id = Util.getValueFromJson(Util.createTraditionFromFileOrString(jerseyTest, "Floritwo",
-                "LR", "me@example.org", chryfile, "graphml"), "tradId");
+        r = Util.createTraditionFromFileOrString(jerseyTest, "Floritwo",
+                "LR", "me@example.org", chryfile, "graphml");
+        assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
+        String flor2Id = Util.getValueFromJson(r, "tradId");
         // Count the witnesses
         wits = jerseyTest.target("/tradition/" + flor2Id + "/witnesses")
                 .request()

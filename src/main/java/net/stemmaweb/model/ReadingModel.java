@@ -1,28 +1,27 @@
 package net.stemmaweb.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * Provides a model for a reading outside of the database. Can be parsed into a

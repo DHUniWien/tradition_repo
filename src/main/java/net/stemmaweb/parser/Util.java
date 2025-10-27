@@ -75,33 +75,30 @@ public class Util {
     }
 
     // Witness node creation
-    static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical) throws IllegalArgumentException {
+    static Node createWitness(Node traditionNode, String sigil, Boolean hypothetical, Transaction tx) throws IllegalArgumentException {
         // First check if the sigil has any characters that will cause trouble for REST
         for (String illegal : new String[] {"<", ">", "#", "%", "\"", "{", "}", "|", "\\", "^", "[", "]", "`", "(", ")"})
             if (sigil.contains(illegal))
                 throw new IllegalArgumentException("The character " + illegal + " may not appear in a sigil name.");
         Node witnessNode;
 //        GraphDatabaseService db = traditionNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-	        witnessNode = tx.createNode(Nodes.WITNESS);
-	        witnessNode.setProperty("sigil", sigil);
-	        witnessNode.setProperty("hypothetical", hypothetical);
-	        witnessNode.setProperty("quotesigil", !isDotId(sigil));
-	        tx.close();
-        }
+        witnessNode = tx.createNode(Nodes.WITNESS);
+        witnessNode.setProperty("sigil", sigil);
+        witnessNode.setProperty("hypothetical", hypothetical);
+        witnessNode.setProperty("quotesigil", !isDotId(sigil));
+
         return witnessNode;
     }
 
-    static Node findOrCreateExtant(Node traditionNode, String sigil) {
+    static Node findOrCreateExtant(Node traditionNode, String sigil, Transaction tx) {
         // This list should contain either zero or one items.
-        ArrayList<Node> existingWit = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
+        ArrayList<Node> existingWit = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx)
                 .stream().filter(x -> x.hasProperty("hypothetical")
                         && x.getProperty("hypothetical").equals(false)
                         && x.getProperty("sigil").equals(sigil))
                 .collect(Collectors.toCollection(ArrayList::new));
         if (existingWit.size() == 0) {
-            Node witnessNode = createWitness(traditionNode, sigil, false);
+            Node witnessNode = createWitness(traditionNode, sigil, false, tx);
             traditionNode.createRelationshipTo(witnessNode, ERelations.HAS_WITNESS);
             return witnessNode;
         } else {

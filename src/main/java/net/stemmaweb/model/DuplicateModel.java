@@ -2,10 +2,10 @@ package net.stemmaweb.model;
 
 import java.util.List;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 /**
  * This is a model for the duplicateReadings method.

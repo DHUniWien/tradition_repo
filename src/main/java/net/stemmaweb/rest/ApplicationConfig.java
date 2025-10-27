@@ -3,13 +3,7 @@ package net.stemmaweb.rest;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.annotation.PostConstruct;
-import javax.ws.rs.core.Application;
-
-import net.stemmaweb.services.DatabaseService;
-
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import org.neo4j.graphdb.GraphDatabaseService;
+import jakarta.ws.rs.core.Application;
 
 /**
  * This is the main configuration and setup class.

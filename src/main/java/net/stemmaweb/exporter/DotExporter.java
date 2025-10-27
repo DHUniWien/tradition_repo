@@ -22,9 +22,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
@@ -37,6 +34,8 @@ import org.neo4j.graphdb.Result;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.DisplayOptionModel;
 import net.stemmaweb.printer.GraphViz;
 import net.stemmaweb.rest.ERelations;
@@ -72,9 +71,8 @@ public class DotExporter
     	ArrayList<Node> sections;
     	File output;
     	String result;
-    	Transaction tx = db.beginTx();
 
-    	try {
+    	try (Transaction tx = db.beginTx()) {
     		// Get the start and end node of the whole tradition
     		Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
     		Node startNode = VariantGraphService.getStartNode(tradId, tx);
@@ -130,7 +128,7 @@ public class DotExporter
             for (Node sectionNode: sections) {
                 // Get the number of witnesses we have
                 ArrayList<Node> sectionWits = new Section(tradId, sectionNode.getElementId())
-                        .collectSectionWitnesses();
+                        .collectSectionWitnesses(tx);
                 int numWits = sectionWits.size();
                 if (dm.getExcludeWitnesses().size() > 0) {
                     numWits -= dm.getExcludeWitnesses().size();
@@ -304,16 +302,13 @@ public class DotExporter
 
             // Remove the following line, if you want to keep the created file
             Files.deleteIfExists(output.toPath());
+            tx.close();
         } catch (IOException e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror("Could not write file for export")).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-        	if (tx != null) {
-        		tx.close();
-        	}
         }
 
         // Here is where to generate pictures from the file for debugging.
@@ -495,7 +490,7 @@ public class DotExporter
         try (Transaction tx = db.beginTx()) {
             Node traditionNode = tx.findNode(Nodes.TRADITION, "id", tradId);
             Node startNodeStemma = null;
-            for (Node stemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
+            for (Node stemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx)) {
                 if (stemma.getProperty("name").equals(stemmaTitle)) {
                     startNodeStemma = stemma;
                     break;
@@ -510,7 +505,7 @@ public class DotExporter
             outputLines.add(String.format("%s \"%s\" {", stemmaType, stemmaTitle));
 
             // Output all the nodes associated with this stemma.
-            for (Node witness : DatabaseService.getRelated(startNodeStemma, ERelations.HAS_WITNESS)) {
+            for (Node witness : DatabaseService.getRelated(startNodeStemma, ERelations.HAS_WITNESS, tx)) {
                 String witnessSigil = sigilDotString(witness);
                 Boolean hypothetical = (Boolean) witness.getProperty("hypothetical");
 
@@ -525,7 +520,7 @@ public class DotExporter
 
             // Now output all the edges associated with this stemma, starting with the
             // archetype if we have one.
-            ArrayList<Node> foundRoots = DatabaseService.getRelated(startNodeStemma, ERelations.HAS_ARCHETYPE);
+            ArrayList<Node> foundRoots = DatabaseService.getRelated(startNodeStemma, ERelations.HAS_ARCHETYPE, tx);
             if (foundRoots.isEmpty()) {
                 // No archetype, so we don't know where is okay to start traversal;
                 // just output the list of edges from this stemma in any order.
@@ -541,7 +536,7 @@ public class DotExporter
             } else {
                 // We have an archetype; start there and traverse the graph.
                 Node stemmaRoot = foundRoots.get(0);  // There should be only one.
-                for (String edge : traverseStemma(startNodeStemma, stemmaRoot)) {
+                for (String edge : traverseStemma(startNodeStemma, stemmaRoot, tx)) {
                     String[] v = edge.split(" : ");
                     outputLines.add(String.format("\t%s %s %s;", v[0], edgeGlyph, v[1]));
                 }
@@ -576,30 +571,27 @@ public class DotExporter
      * @param tradId - the ID of the tradition
      * @return a string full of stemma dotfiles, one per line
      */
-    String getAllStemmataAsDot(String tradId) {
+    String getAllStemmataAsDot(String tradId, Transaction tx) {
         ArrayList<String> stemmaList = new ArrayList<>();
 
-        try(Transaction tx = db.beginTx()) {
-            //ExecutionEngine engine = new ExecutionEngine(db);
-            // find all Stemmata associated with this tradition
-            Result result = tx.execute("match (t:TRADITION {id:'"+ tradId +
-                    "'})-[:HAS_STEMMA]->(s:STEMMA) return s");
+        //ExecutionEngine engine = new ExecutionEngine(db);
+        // find all Stemmata associated with this tradition
+        Result result = tx.execute("match (t:TRADITION {id:'"+ tradId +
+        		"'})-[:HAS_STEMMA]->(s:STEMMA) return s");
 
-            Iterator<Node> stemmata = result.columnAs("s");
-            while(stemmata.hasNext()) {
-                String stemma = stemmata.next().getProperty("name").toString();
-                Response resp = writeNeo4JStemma(tradId, stemma, true);
+        Iterator<Node> stemmata = result.columnAs("s");
+        while(stemmata.hasNext()) {
+        	String stemma = stemmata.next().getProperty("name").toString();
+        	Response resp = writeNeo4JStemma(tradId, stemma, true);
 
-                stemmaList.add(resp.getEntity().toString());
-            }
-            tx.close();
+        	stemmaList.add(resp.getEntity().toString());
         }
 
         return String.join("\n", stemmaList);
     }
 
     @SuppressWarnings("rawtypes")
-    private Set<String> traverseStemma(Node stemma, Node archetype) {
+    private Set<String> traverseStemma(Node stemma, Node archetype, Transaction tx) {
         String stemmaName = (String) stemma.getProperty("name");
         Set<String> allPaths = new HashSet<>();
 
@@ -609,23 +601,21 @@ public class DotExporter
 
         // We need to traverse only those paths that belong to this stemma.
         PathExpander e = getExpander(useDir, stemmaName);
-        try (Transaction tx = db.beginTx()) {
-	        for (Path nodePath: tx.traversalDescription().breadthFirst()
-	                .expand(e)
-	                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-	                .traverse(archetype)) {
-	            Iterator<Node> orderedNodes = nodePath.nodes().iterator();
-	            Node sourceNode = orderedNodes.next();
-	            while (orderedNodes.hasNext()) {
-	                Node targetNode = orderedNodes.next();
-	                String source = sigilDotString(sourceNode);
-	                String target = sigilDotString(targetNode);
-	                allPaths.add(String.format("%s : %s", source, target));
-	                sourceNode = targetNode;
-	            }
-	        }
-	        tx.close();
+        for (Path nodePath: tx.traversalDescription().breadthFirst()
+        		.expand(e)
+        		.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+        		.traverse(archetype)) {
+        	Iterator<Node> orderedNodes = nodePath.nodes().iterator();
+        	Node sourceNode = orderedNodes.next();
+        	while (orderedNodes.hasNext()) {
+        		Node targetNode = orderedNodes.next();
+        		String source = sigilDotString(sourceNode);
+        		String target = sigilDotString(targetNode);
+        		allPaths.add(String.format("%s : %s", source, target));
+        		sourceNode = targetNode;
+        	}
         }
+
         return allPaths;
     }
 

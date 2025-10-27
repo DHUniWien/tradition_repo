@@ -5,16 +5,16 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 
-import javax.ws.rs.core.Response;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
+import jakarta.ws.rs.core.Response;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
@@ -56,9 +56,15 @@ public class DatabaseServiceTest {
 
     @Test
     public void getRelatedTest() {
-        Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
-        ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS);
-        assertEquals(3, witnesses.size());
+        Response response;
+        try (Transaction tx = db.beginTx()) {
+        	Node tradition = VariantGraphService.getTraditionNode(traditionId, tx);
+        	ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS, tx);
+        	assertEquals(3, witnesses.size());
+        	tx.close();
+        } catch (Exception e) {
+        	e.printStackTrace();
+        }
     }
 
     @Test

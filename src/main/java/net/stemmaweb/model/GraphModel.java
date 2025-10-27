@@ -4,10 +4,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 /**
  * This model contains a graph or subgraph returned from the Neo4j db

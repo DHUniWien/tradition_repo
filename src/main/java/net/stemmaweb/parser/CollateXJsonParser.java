@@ -1,10 +1,15 @@
 package net.stemmaweb.parser;
 
-import net.stemmaweb.model.ReadingModel;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.VariantGraphService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -13,14 +18,12 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.Util.jsonresp;
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.ReadingModel;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.ReadingService;
+import net.stemmaweb.services.VariantGraphService;
 
 public class CollateXJsonParser {
 
@@ -126,8 +129,8 @@ public class CollateXJsonParser {
         }
 
         // Now we have the data in our own model classes; proceed.
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         try (Transaction tx = db.beginTx()) {
+        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
             // Set the section name if we found one and it isn't already set
             if (!collationName.equals("DEFAULT")
                     && parentNode.getProperty("name", "DEFAULT").equals("DEFAULT")) {
@@ -137,7 +140,7 @@ public class CollateXJsonParser {
             for (String witString : collationWitnesses) {
                 List<String> wit = parseWitnessSigil(witString);
                 String sigil = wit.get(0);
-                Util.findOrCreateExtant(traditionNode, sigil);
+                Util.findOrCreateExtant(traditionNode, sigil, tx);
             }
 
             // Create the start node for the section

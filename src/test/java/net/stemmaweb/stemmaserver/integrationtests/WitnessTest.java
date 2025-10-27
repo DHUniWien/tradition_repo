@@ -10,9 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.Response;
-
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +24,8 @@ import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.TextSequenceModel;

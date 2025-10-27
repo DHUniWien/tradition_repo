@@ -1,27 +1,8 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.MireDotIgnore;
-import com.qmino.miredot.annotations.ReturnType;
-import net.stemmaweb.model.TraditionModel;
-import net.stemmaweb.model.UserModel;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 
-import net.stemmaweb.services.VariantGraphService;
-import org.apache.tika.Tika;
-import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
-import org.glassfish.jersey.media.multipart.FormDataParam;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.neo4j.graphdb.*;
-
-import javax.servlet.ServletContext;
-import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,7 +10,37 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static net.stemmaweb.Util.*;
+import javax.servlet.ServletContext;
+
+import org.apache.tika.Tika;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Transaction;
+
+import com.qmino.miredot.annotations.MireDotIgnore;
+import com.qmino.miredot.annotations.ReturnType;
+
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
+import net.stemmaweb.model.TraditionModel;
+import net.stemmaweb.model.UserModel;
+import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * The root of the REST hierarchy. Deals with system-wide collections of
@@ -170,23 +181,41 @@ public class Root {
 
         // If we got file contents, we should send them off for parsing.
         if (empty == null) {
-            Response dataResult = tradRest.parseDispatcher("DEFAULT", filetype, uploadedInputStream, false);
-            if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                // If something went wrong, delete the new tradition immediately and return the error.
-                new Tradition(tradId).deleteTraditionById();
-                return dataResult;
-            }
-            // If we just parsed GraphML (the only format that can preserve prior tradition IDs),
-            // get the actual tradition ID in case it was preserved from a prior export.
-            if (filetype.equals("graphml")) { // TODO fix to startswith
-                try {
-                    JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
-                    tradId = dataValues.get("parentId").toString();
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    return Response.serverError().entity(jsonerror("Bad file parse response")).build();
-                }
-            }
+        	Transaction tx = null;
+            try {
+            	tx = db.beginTx();
+            	Response dataResult = tradRest.parseDispatcher("DEFAULT", filetype, uploadedInputStream, false, tx);
+            	if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
+            		// If something went wrong, delete the new tradition immediately and return the error.
+            		new Tradition(tradId).deleteTraditionById();
+            		tx.commit();
+            		tx = null;
+            		return dataResult;
+            	}
+            	// If we just parsed GraphML (the only format that can preserve prior tradition IDs),
+            	// get the actual tradition ID in case it was preserved from a prior export.
+            	if (filetype.equals("graphml")) { // TODO fix to startswith
+            		try {
+            			JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
+            			tradId = dataValues.get("parentId").toString();
+            		} catch (JSONException e) {
+            			e.printStackTrace();
+            			return Response.serverError().entity(jsonerror("Bad file parse response")).build();
+            		}
+            	}
+            } catch (IllegalArgumentException e) {
+                return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
+            } catch(Exception e) {
+                e.printStackTrace();
+
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(jsonerror("Tradition could not be imported!"))
+                        .build();
+            } finally {
+    			if (tx != null) {
+    				tx.close();
+    			}
+    		}
         }
 
         // Handle direct non-Jersey calls from our test suite

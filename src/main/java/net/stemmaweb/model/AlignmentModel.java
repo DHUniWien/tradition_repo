@@ -5,8 +5,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -20,6 +18,7 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -49,110 +48,106 @@ public class AlignmentModel {
     // Make an empty alignment table
     public AlignmentModel() {}
 
-    public AlignmentModel(Node sectionNode) {
-        this(sectionNode, false);
+    public AlignmentModel(Node sectionNode, Transaction tx) {
+        this(sectionNode, false, tx);
     }
 
     // Get an alignment table
-    public AlignmentModel(Node sectionNode, boolean excludeLayers) {
+    public AlignmentModel(Node sectionNode, boolean excludeLayers, Transaction tx) {
 //        GraphDatabaseService db = sectionNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
 
-        try (Transaction tx = db.beginTx()) {
-            String sectId = sectionNode.getElementId();
-            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
-            Node startNode = VariantGraphService.getStartNode(sectId, tx);
-            Node endNode = VariantGraphService.getEndNode(sectId, tx);
+        String sectId = sectionNode.getElementId();
+        Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
+        Node startNode = VariantGraphService.getStartNode(sectId, tx);
+        Node endNode = VariantGraphService.getEndNode(sectId, tx);
 
-            // First get the length, that's the easy part.
-            length = (long) endNode.getProperty("rank") - 1;
+        // First get the length, that's the easy part.
+        length = (long) endNode.getProperty("rank") - 1;
 
-            // See if we are computing a normalized table
-            RelationshipType seqType = ERelations.SEQUENCE;
-            if (startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE))
-                seqType = ERelations.NSEQUENCE;
+        // See if we are computing a normalized table
+        RelationshipType seqType = ERelations.SEQUENCE;
+        if (startNode.hasRelationship(Direction.OUTGOING, ERelations.NSEQUENCE))
+            seqType = ERelations.NSEQUENCE;
 
-            // Get the traverser for the tradition readings
-            Traverser traversedTradition = tx.traversalDescription().depthFirst()
-                    .relationships(seqType, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
+        // Get the traverser for the tradition readings
+        Traverser traversedTradition = tx.traversalDescription().depthFirst()
+                .relationships(seqType, Direction.OUTGOING)
+                .evaluator(Evaluators.all())
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
 
-            // Now make the alignment.
-            alignment = new ArrayList<>();
-            // For each witness, we make a 'tokens' array of the length of the tradition
-            // Get the witnesses in the database
-            ArrayList<Node> witnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
-            for (Node w : witnesses) {
-                String sigil = w.getProperty("sigil").toString();
-                // Find out which witness layers we need to deal with
-                HashSet<String> layers = new HashSet<>();
-                layers.add("base");
-                if (!excludeLayers) {
-                    for (Relationship seq : traversedTradition.relationships()) {
-                        for (String layer : seq.getPropertyKeys()) {
-                            if (!layer.equals("witnesses")) {
-                                ArrayList<String> layerwits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(layer)));
-                                if (layerwits.contains(sigil)) layers.add(layer);
-                            }
+        // Now make the alignment.
+        alignment = new ArrayList<>();
+        // For each witness, we make a 'tokens' array of the length of the tradition
+        // Get the witnesses in the database
+        ArrayList<Node> witnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx);
+        for (Node w : witnesses) {
+            String sigil = w.getProperty("sigil").toString();
+            // Find out which witness layers we need to deal with
+            HashSet<String> layers = new HashSet<>();
+            layers.add("base");
+            if (!excludeLayers) {
+                for (Relationship seq : traversedTradition.relationships()) {
+                    for (String layer : seq.getPropertyKeys()) {
+                        if (!layer.equals("witnesses")) {
+                            ArrayList<String> layerwits = new ArrayList<>(Arrays.asList((String[]) seq.getProperty(layer)));
+                            if (layerwits.contains(sigil)) layers.add(layer);
                         }
                     }
                 }
-
-                // Now for each layer iteration, produce a set of tokens.
-                for (String layer : layers) {
-                    WitnessTokensModel witnessRow = new WitnessTokensModel();
-                    witnessRow.setWitness(sigil);
-                    if (!layer.equals("base")) {
-                        witnessRow.setLayer(layer);
-                    }
-
-                    // Make the object for the JSON token array
-                    ArrayList<ReadingModel> tokens = new ArrayList<>();
-
-                    // Get the witness readings for the given layer
-                    ArrayList<String> alternatives = new ArrayList<>();
-                    if (!layer.equals("base")) alternatives.add(layer);
-                    Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
-                    ReadingModel filler;
-                    for (Node r : tx.traversalDescription().depthFirst()
-                            .relationships(seqType, Direction.OUTGOING)
-                            .evaluator(e)
-                            .uniqueness(Uniqueness.NODE_PATH)
-                            .traverse(startNode)
-                            .nodes()) {
-                        if (r.hasProperty("is_end"))
-                            continue;
-
-                        // Make the reading token
-                        ReadingModel readingToken = new ReadingModel(r);
-                        // Check whether it was a lacuna
-                        if (readingToken.getIs_lacuna())
-                            filler = readingToken;
-                        else filler = null;
-
-                        // Put it at its proper rank, filling null bzw. lacuna tokens into the gap
-                        long currRankIndex = (long) r.getProperty("rank") - 1;
-                        for (int i = tokens.size(); i < currRankIndex; i++)
-                            tokens.add(filler);
-                        tokens.add(readingToken);
-                    }
-                    // Skip this witness if it is empty
-                    if (tokens.size() == 0) continue;
-
-                    // Fill in any empty ranks at the end
-                    for (int i = tokens.size(); i < length; i++)
-                        tokens.add(null);
-
-                    // Store the witness row and add it to the alignment
-                    witnessRow.setTokens(tokens);
-                    alignment.add(witnessRow);
-                }
             }
-            Comparator<WitnessTokensModel> bySigil = Comparator.comparing(WitnessTokensModel::constructSigil);
-            alignment.sort(bySigil);
-            tx.close();
+
+            // Now for each layer iteration, produce a set of tokens.
+            for (String layer : layers) {
+                WitnessTokensModel witnessRow = new WitnessTokensModel();
+                witnessRow.setWitness(sigil);
+                if (!layer.equals("base")) {
+                    witnessRow.setLayer(layer);
+                }
+
+                // Make the object for the JSON token array
+                ArrayList<ReadingModel> tokens = new ArrayList<>();
+
+                // Get the witness readings for the given layer
+                ArrayList<String> alternatives = new ArrayList<>();
+                if (!layer.equals("base")) alternatives.add(layer);
+                Evaluator e = new WitnessPath(sigil, alternatives, seqType).getEvalForWitness();
+                ReadingModel filler;
+                for (Node r : tx.traversalDescription().depthFirst()
+                        .relationships(seqType, Direction.OUTGOING)
+                        .evaluator(e)
+                        .uniqueness(Uniqueness.NODE_PATH)
+                        .traverse(startNode)
+                        .nodes()) {
+                    if (r.hasProperty("is_end"))
+                        continue;
+
+                    // Make the reading token
+                    ReadingModel readingToken = new ReadingModel(r);
+                    // Check whether it was a lacuna
+                    if (readingToken.getIs_lacuna())
+                        filler = readingToken;
+                    else filler = null;
+
+                    // Put it at its proper rank, filling null bzw. lacuna tokens into the gap
+                    long currRankIndex = (long) r.getProperty("rank") - 1;
+                    for (int i = tokens.size(); i < currRankIndex; i++)
+                        tokens.add(filler);
+                    tokens.add(readingToken);
+                }
+                // Skip this witness if it is empty
+                if (tokens.size() == 0) continue;
+
+                // Fill in any empty ranks at the end
+                for (int i = tokens.size(); i < length; i++)
+                    tokens.add(null);
+
+                // Store the witness row and add it to the alignment
+                witnessRow.setTokens(tokens);
+                alignment.add(witnessRow);
+            }
         }
+        Comparator<WitnessTokensModel> bySigil = Comparator.comparing(WitnessTokensModel::constructSigil);
+        alignment.sort(bySigil);
     }
 
     public ArrayList<WitnessTokensModel> getAlignment () {

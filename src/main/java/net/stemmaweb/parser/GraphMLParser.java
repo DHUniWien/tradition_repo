@@ -1,22 +1,40 @@
 package net.stemmaweb.parser;
 
-import net.stemmaweb.model.*;
-import net.stemmaweb.rest.*;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.RelationService;
-import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
-import org.neo4j.graphdb.Node;
-import org.w3c.dom.*;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 
-import javax.ws.rs.core.Response;
-import java.io.*;
-import java.util.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.Util.jsonresp;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.Transaction;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.NodeList;
+
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.AnnotationLinkModel;
+import net.stemmaweb.model.AnnotationModel;
+import net.stemmaweb.model.SequenceModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.Tradition;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.RelationService;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Parser for the GraphML that Stemmarest itself produces.
@@ -361,7 +379,7 @@ public class GraphMLParser {
                 Util.ensureSectionLink(traditionNode, thisSection);
 
             // Ensure that all witnesses exist
-            witnessSigla.forEach(x -> Util.findOrCreateExtant(traditionNode, x));
+            witnessSigla.forEach(x -> Util.findOrCreateExtant(traditionNode, x, tx));
 
             // Ensure that all relation types exist
             for (String rt : relationTypesUsed)

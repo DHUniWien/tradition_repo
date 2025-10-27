@@ -1,28 +1,34 @@
 package net.stemmaweb.parser;
 
-import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.RelationType;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.VariantGraphService;
-import org.neo4j.graphdb.*;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.NodeList;
+import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.Util.jsonresp;
 
-import javax.ws.rs.core.Response;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
 
-import static net.stemmaweb.Util.jsonerror;
-import static net.stemmaweb.Util.jsonresp;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.RelationshipType;
+import org.neo4j.graphdb.Transaction;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.NodeList;
+
+import jakarta.ws.rs.core.Response;
+import net.stemmaweb.model.RelationTypeModel;
+import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.rest.Nodes;
+import net.stemmaweb.rest.RelationType;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
+import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Parser for CollateX-collated traditions.
@@ -60,8 +66,8 @@ public class CollateXParser {
             NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
-        Node traditionNode = VariantGraphService.getTraditionNode(parentNode);
         try (Transaction tx = db.beginTx()) {
+        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
             HashMap<String,Node> createdReadings = new HashMap<>();
@@ -144,9 +150,9 @@ public class CollateXParser {
 
             }
             // Create all the witnesses
-            seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x));
+            seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x, tx));
             // Calculate the common readings
-            VariantGraphService.calculateCommon(parentNode);
+            VariantGraphService.calculateCommon(parentNode, tx);
 
             // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {
@@ -154,7 +160,7 @@ public class CollateXParser {
                 rtm.setName("transposition");
                 rtm.setDefaultsettings(true);
                 Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
-                        rtm.getName()).create(rtm);
+                        rtm.getName()).create(rtm, tx);
                 if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                     return rtResult;
             }

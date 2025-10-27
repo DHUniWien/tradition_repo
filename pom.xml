@@ -16,7 +16,7 @@
 				<version>3.8.0</version>
 				<inherited>true</inherited>
 				<configuration>
-					<release>11</release>
+					<release>21</release>
 				</configuration>
 			</plugin>
 			<!-- 
@@ -123,12 +123,12 @@
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 			<!--suppress MavenPackageUpdate -->
-			<version>2.18.0</version>
+			<version>2.20.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jaxb</groupId>
 			<artifactId>txw2</artifactId>
-			<version>3.0.1</version>
+			<version>4.0.6</version>
 		</dependency>
 		<dependency>
 			<groupId>javax.servlet</groupId>
@@ -169,22 +169,32 @@
 		<dependency>
 			<groupId>org.apache.tika</groupId>
 			<artifactId>tika-core</artifactId>
-			<version>2.8.0</version>
+			<version>3.2.3</version>
 		</dependency>		<!-- Excel sheet parsing -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
-			<version>5.4.0</version>
+			<version>5.4.1</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.logging.log4j</groupId>
+					<artifactId>log4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
-			<version>5.4.0</version>
+			<version>5.4.1</version>
 			<!-- exclude dependency to resolve duplicate module error -->
 			<exclusions>
 				<exclusion>
 					<groupId>xml-apis</groupId>
 					<artifactId>xml-apis</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.logging.log4j</groupId>
+					<artifactId>log4j-api</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -198,12 +208,12 @@
 		<dependency>
 			<groupId>org.checkerframework</groupId>
 			<artifactId>checker-qual</artifactId>
-			<version>3.37.0</version>
+			<version>3.51.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.opencsv</groupId>
 			<artifactId>opencsv</artifactId>
-			<version>5.7.1</version>
+			<version>5.12.0</version>
 		</dependency>
 		<!-- Newick parsing -->
 		<dependency>
@@ -256,13 +266,13 @@
 		<dependency>
 			<groupId>org.glassfish.jersey.test-framework</groupId>
 			<artifactId>jersey-test-framework-core</artifactId>
-			<version>${jersey-version}</version>
+			<version>${jersey-test-version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.glassfish.jersey.test-framework.providers</groupId>
 			<artifactId>jersey-test-framework-provider-grizzly2</artifactId>
-			<version>${jersey-version}</version>
+			<version>${jersey-test-version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -361,10 +371,11 @@
 		</dependency>
 	</dependencies>
 	<properties>
-		<neo4j-version>5.9.0</neo4j-version>
+		<neo4j-version>2025.09.0</neo4j-version>
 		<neo4j-algo-version>3.5.4.0</neo4j-algo-version>
 		<jackson-version>2.15.2</jackson-version>
-		<jersey-version>2.34</jersey-version>
+		<jersey-version>4.0.0-M2</jersey-version>
+		<jersey-test-version>4.0.0-M4</jersey-test-version>
 		<apoc.version>4.4.0.20</apoc.version>
 	</properties>
 

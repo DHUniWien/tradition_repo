@@ -417,79 +417,9 @@ public class ReadingService {
      * @return set of nodes whose ranks were changed
      */
 
-    public static Set<Node> recalculateRank (Node startNode, boolean recalculateAll) throws Exception {
-        RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll);
-        AlignmentTraverse a = new AlignmentTraverse(startNode);
-//        GraphDatabaseService db = startNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        Set<Node> changed = new HashSet<>();
-        try (Transaction tx = db.beginTx()) {
-
-            // Traverse the sequence graph from our start node, putting a mark on
-            // all the nodes we expect to visit
-//        tx.traversalDescription().depthFirst()
-//                .expand(a)
-//                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-//                .traverse(startNode).nodes().stream().forEach(x -> x.setProperty("touched", true));
-            StreamSupport.stream(tx.traversalDescription().depthFirst().expand(a).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode).nodes().spliterator(), false).forEach(x -> x.setProperty("touched", true));
-
-            // At this point we can start to reassign ranks
-            ResourceIterable<Node> touched = (ResourceIterable<Node>) tx.traversalDescription().depthFirst()
-                    .expand(a)
-                    .evaluator(e)
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(startNode).nodes();
-            // Run the traverser and commit the updated ranks
-            for (Node n : touched.stream().collect(Collectors.toSet())) {
-                n.removeProperty("touched");
-                if (!n.hasProperty("newrank"))
-                    throw new Exception(String.format("Node %s (%s) traversed but not re-ranked!",
-                            n.getElementId(), n.getProperty("text")));
-                Long nr = (Long) n.removeProperty("newrank");
-                if (!n.hasProperty("rank") || !n.getProperty("rank").equals(nr)) {
-                    changed.add(n);
-                    n.setProperty("rank", nr);
-                }
-
-            }
-
-
-            // TEMPORARY: Make sure that we did visit all expected nodes
-            Node sectionStart = VariantGraphService.getStartNode(startNode.getProperty("section_id").toString(), tx);
-            for (Node n : tx.traversalDescription().depthFirst()
-                    .expand(new AlignmentTraverse())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-                    .traverse(sectionStart).nodes()) {
-                if (n.hasProperty("touched"))
-                    throw new Exception("End node not reached during recalculation!");
-            }
-
-
-            // TEMPORARY: Test that our colocated groups are actually colocated
-            Node ourSection = tx.getNodeByElementId(startNode.getProperty("section_id").toString());
-            String tradId = VariantGraphService.getTraditionNode(ourSection).getProperty("id").toString();
-            List<Set<Node>> clusters = RelationService.getClusters(tradId, ourSection.getElementId(), tx, true);
-            for (Set<Node> cluster : clusters) {
-                Long clusterRank = null;
-                for (Node n : cluster) {
-                    if (clusterRank == null)
-                        clusterRank = (Long) n.getProperty("rank");
-                    else
-                        assert (clusterRank.equals(n.getProperty("rank")));
-                    // else if (!clusterRank.equals(n.getProperty("rank")))
-                    //     throw new Exception("Ranks diverge in cluster around rank " + clusterRank);
-                }
-            }
-            // END TEMPORARY
-            tx.commit();
-        }
-        return changed;
-    }
-
     public static Set<Node> recalculateRank (Node startNode, boolean recalculateAll, Transaction tx) throws Exception {
     	RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll, tx);
-    	AlignmentTraverse a = new AlignmentTraverse(startNode);
+    	AlignmentTraverse a = new AlignmentTraverse(startNode, tx);
 //        GraphDatabaseService db = startNode.getGraphDatabase();
     	// Traverse the sequence graph from our start node, putting a mark on
     	// all the nodes we expect to visit
@@ -501,14 +431,14 @@ public class ReadingService {
     			.traverse(startNode).nodes().spliterator(), false).forEach(x -> x.setProperty("touched", true));
     	
     	// At this point we can start to reassign ranks
-    	ResourceIterable<Node> touched = (ResourceIterable<Node>) tx.traversalDescription().depthFirst()
+    	Iterable<Node> touched = tx.traversalDescription().depthFirst()
     			.expand(a)
     			.evaluator(e)
     			.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
     			.traverse(startNode).nodes();
     	// Run the traverser and commit the updated ranks
     	Set<Node> changed = new HashSet<>();
-    	for (Node n : touched.stream().collect(Collectors.toSet())) {
+    	for (Node n : touched) {
     		n.removeProperty("touched");
     		if (!n.hasProperty("newrank"))
     			throw new Exception (String.format("Node %s (%s) traversed but not re-ranked!",
@@ -533,7 +463,7 @@ public class ReadingService {
     	
     	// TEMPORARY: Test that our colocated groups are actually colocated
     	Node ourSection = tx.getNodeByElementId(startNode.getProperty("section_id").toString());
-    	String tradId = VariantGraphService.getTraditionNode(ourSection).getProperty("id").toString();
+    	String tradId = VariantGraphService.getTraditionNode(ourSection, tx).getProperty("id").toString();
     	List<Set<Node>> clusters = RelationService.getClusters(tradId, ourSection.getElementId(), tx, true);
     	for (Set<Node> cluster : clusters) {
     		Long clusterRank = null;
@@ -550,10 +480,6 @@ public class ReadingService {
     	return changed;
     }
     
-    public static Set<Node> recalculateRank (Node startNode) throws Exception {
-        return recalculateRank(startNode, false);
-    }
-
     /**
      * A traversal expander for crawling an alignment, which includes sequence paths
      * as well as colocated relation paths.
@@ -568,9 +494,9 @@ public class ReadingService {
         public AlignmentTraverse() {}
 
         // Walk the graph of sequences and colocated relations
-        public AlignmentTraverse(Node referenceNode) throws Exception {
+        public AlignmentTraverse(Node referenceNode, Transaction tx) throws Exception {
             // Get the colocated types for this node's tradition
-            List<RelationTypeModel> rtms = RelationService.ourRelationTypes(referenceNode);
+            List<RelationTypeModel> rtms = RelationService.ourRelationTypes(referenceNode, tx);
             for (RelationTypeModel rtm : rtms)
                 if (rtm.getIs_colocation())
                     includeRelationTypes.add(rtm.getName());
@@ -647,7 +573,7 @@ public class ReadingService {
         try (Transaction tx = db.beginTx()) {
             // Get our list of colocations
             Node sectionNode = tx.getNodeByElementId(firstReading.getProperty("section_id").toString());
-            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode);
+            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
             Map<String, Set<Node>> colocatedLookup = buildColocationLookup(
                     traditionNode.getProperty("id").toString(), sectionNode.getElementId(), tx);
 
@@ -671,7 +597,7 @@ public class ReadingService {
 
             // For each node in the lower cluster, see if we can reach any node in the
             // higher cluster.
-            AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading);
+            AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading, tx);
             RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
             for (Node lower : reverse ? secondCluster : firstCluster) {
                 boolean followed_sequence = false;

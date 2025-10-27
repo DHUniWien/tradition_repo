@@ -22,14 +22,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
@@ -50,6 +42,13 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.DuplicateModel;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.KeyPropertyModel;
@@ -465,10 +464,10 @@ public class ReadingTest {
         Set<Relationship> allLinks = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
 //            allNodes = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
-        	allNodes = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).nodes().spliterator(), false)
+        	allNodes = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, tx).nodes().spliterator(), false)
         			.collect(Collectors.toSet());
 //            allLinks = VariantGraphService.returnEntireTradition(tradId, db).relationships().stream()
-            allLinks = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, db).relationships().spliterator(), false)
+            allLinks = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, tx).relationships().spliterator(), false)
             		.collect(Collectors.toSet());
             tx.commit();
         } catch (Exception e) {
@@ -508,9 +507,9 @@ public class ReadingTest {
         }
         // Everything else should be as before.
         try (Transaction tx = db.beginTx()) {
-            for (Node n : VariantGraphService.returnEntireTradition(tradId, db).nodes())
+            for (Node n : VariantGraphService.returnEntireTradition(tradId, tx).nodes())
                 assertTrue(allNodes.contains(n));
-            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
+            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, tx).relationships())
                 assertTrue(allLinks.contains(r));
             tx.commit();
         } catch (Exception e) {
@@ -587,9 +586,9 @@ public class ReadingTest {
 
         // Check that we are back to our original state
         try (Transaction tx = db.beginTx()) {
-            for (Node n : VariantGraphService.returnEntireTradition(tradId, db).nodes())
+            for (Node n : VariantGraphService.returnEntireTradition(tradId, tx).nodes())
                 assertTrue(allNodes.contains(n));
-            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, db).relationships())
+            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, tx).relationships())
                 assertTrue(allLinks.contains(r));
             tx.commit();
         } catch (Exception e) {

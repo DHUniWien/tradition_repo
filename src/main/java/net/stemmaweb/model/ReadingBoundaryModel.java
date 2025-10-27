@@ -1,9 +1,9 @@
 package net.stemmaweb.model;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 /**
  * Provides a model for single character that can be parsed into JSON

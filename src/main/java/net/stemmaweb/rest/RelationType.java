@@ -6,14 +6,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -21,6 +13,13 @@ import org.neo4j.graphdb.Transaction;
 
 import com.qmino.miredot.annotations.ReturnType;
 
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
@@ -61,15 +60,23 @@ public class RelationType {
     @ReturnType("net.stemmaweb.model.RelationTypeModel")
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
+        Transaction tx = null;
+        Response response;
         try {
-            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, db));
+        	tx = db.beginTx();
+            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, tx));
             if (foundRelType == null) {
-                return Response.noContent().build();
+                response = Response.noContent().build();
+            } else {
+            	response = Response.ok(new RelationTypeModel(foundRelType)).build();
             }
-            return Response.ok(new RelationTypeModel(foundRelType)).build();
         } catch (Exception e) {
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
+            response = Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
+        if (tx != null) {
+        	tx.close();
+        }
+        return response;
     }
 
     /**
@@ -87,12 +94,12 @@ public class RelationType {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = RelationTypeModel.class)
-    public Response create(RelationTypeModel rtModel) {
+    public Response create(RelationTypeModel rtModel, Transaction tx) {
         // Find any existing relation type on this tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
         Node extantRelType;
         try {
-            extantRelType = rtModel.lookup(traditionNode);
+            extantRelType = rtModel.lookup(traditionNode, tx);
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -103,16 +110,16 @@ public class RelationType {
             if (extantRelType != null)
                 return Response.status(Response.Status.CONFLICT)
                         .entity(jsonerror("Cannot instantiate a default for a type that already exists")).build();
-            return this.makeDefaultType();
+            return this.makeDefaultType(tx, traditionNode);
         }
 
         try {
             if (extantRelType != null) {
-                extantRelType = rtModel.update(traditionNode);
+                extantRelType = rtModel.update(traditionNode, tx);
                 if (extantRelType != null)
                     return Response.ok().entity(rtModel).build();
             } else {
-                extantRelType = rtModel.instantiate(traditionNode);
+                extantRelType = rtModel.instantiate(traditionNode, tx);
                 if (extantRelType != null)
                     return Response.status(Response.Status.CREATED).entity(rtModel).build();
             }
@@ -140,17 +147,19 @@ public class RelationType {
     @ReturnType(clazz = RelationTypeModel.class)
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
-        Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
         Node foundRelType;
+        Transaction tx = null;
         try {
-            foundRelType = rtModel.lookup(tradition);
-            if (foundRelType == null) {
-                return Response.status(Response.Status.NOT_FOUND).build();
-            }
-        } catch (Exception e) {
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
-        try (Transaction tx = db.beginTx()) {
+        	tx = db.beginTx();
+        	Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
+        	try {
+        		foundRelType = rtModel.lookup(tradition);
+        		if (foundRelType == null) {
+        			return Response.status(Response.Status.NOT_FOUND).build();
+        		}
+        	} catch (Exception e) {
+        		return Response.serverError().entity(jsonerror(e.getMessage())).build();
+        	}
             // Do we have any relations that use this type?
 //        	if (VariantGraphService.returnTraditionRelations(tradition).relationships().stream()
             if (StreamSupport.stream(VariantGraphService.returnTraditionRelations(tradition).relationships().spliterator(), false)
@@ -165,7 +174,11 @@ public class RelationType {
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
+        } finally {
+			if (tx != null) {
+				tx.close();
+			}
+		}
         // Return the thing we deleted.
         return Response.ok(rtModel).build();
     }
@@ -181,7 +194,7 @@ public class RelationType {
      * @statuscode 201 on success, if a new type was created
      * @statuscode 500 on failure, with an error report in JSON format
      */
-    private Response makeDefaultType() {
+    private Response makeDefaultType(Transaction tx, Node tradNode) {
         Map<String, String> defaultRelations = new HashMap<>() {{
             put("collated", "Internal use only");
             put("orthographic", "These are the same reading, neither unusually spelled.");
@@ -195,12 +208,12 @@ public class RelationType {
             put("repetition", "This is a reading that was repeated in one or more witnesses.");
         }};
 
-        Node tradNode = VariantGraphService.getTraditionNode(traditionId, db);
+//        Node tradNode = VariantGraphService.getTraditionNode(traditionId, tx);
         RelationTypeModel relType = new RelationTypeModel(typeName);
         // Does this already exist?
         Node extantRelType;
         try {
-            extantRelType = relType.lookup(tradNode);
+            extantRelType = relType.lookup(tradNode, tx);
             if (extantRelType != null)
                 return Response.notModified().build();
         } catch (Exception e) {
@@ -239,14 +252,16 @@ public class RelationType {
         relType.setUse_regular(!useType.equals("orthographic"));
         // Create the node
         try {
-            Node result = relType.instantiate(tradNode);
+            Node result = relType.instantiate(tradNode, tx);
             if (result == null)
                 return Response.serverError().entity(jsonerror("Could not instantiate default relation type")).build();
             else
                 return Response.status(Response.Status.CREATED).entity(relType).build();
         } catch (IllegalArgumentException e) {
+        	e.printStackTrace();
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
+        	e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
     }

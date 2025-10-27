@@ -7,11 +7,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.GenericType;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.JerseyTest;
 import org.json.JSONObject;
@@ -22,6 +17,10 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Traverser;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import junit.framework.TestCase;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
@@ -97,7 +96,7 @@ public class CollateXJsonInputTest extends TestCase {
         try (Transaction tx = db.beginTx()) {
             List<Relationship> sequences =
 //            		VariantGraphService.returnTraditionSection(sectId, db).relationships().stream()
-            		StreamSupport.stream(VariantGraphService.returnTraditionSection(sectId, db).relationships().spliterator(), false)
+            		StreamSupport.stream(VariantGraphService.returnTraditionSection(sectId, tx).relationships().spliterator(), false)
             		.filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
             for (Relationship r : sequences) {
                 if (r.hasProperty("witnesses")) {
@@ -178,8 +177,8 @@ public class CollateXJsonInputTest extends TestCase {
     }
 
     public void testNoRedundantWitnesses() {
-        Traverser sTrav = VariantGraphService.returnTraditionSection(sectId, db);
         try (Transaction tx = db.beginTx()) {
+        	Traverser sTrav = VariantGraphService.returnTraditionSection(sectId, tx);
             for (Relationship r : sTrav.relationships())
                 if (r.getType().equals(ERelations.SEQUENCE) && r.hasProperty("witnesses")) {
                     Iterable<String> layers = r.getPropertyKeys();

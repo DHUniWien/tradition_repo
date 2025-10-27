@@ -12,16 +12,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -32,6 +22,15 @@ import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.qmino.miredot.annotations.ReturnType;
 
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
@@ -106,7 +105,7 @@ public class Relation {
                 try (Transaction tx = db.beginTx()) {
                     Node readingA = tx.getNodeByElementId(relationModel.getSource());
                     Node readingB = tx.getNodeByElementId(relationModel.getTarget());
-                    Node startingPoint = VariantGraphService.getTraditionNode(tradId, db);
+                    Node startingPoint = VariantGraphService.getTraditionNode(tradId, tx);
                     if (scope.equals(SCOPE_SECTION))
                         startingPoint = tx.getNodeByElementId(String.valueOf(readingA.getProperty("section_id")));
                     Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
@@ -122,7 +121,6 @@ public class Relation {
                             .collect(Collectors.toCollection(HashSet::new));
                     HashMap<String, HashSet<Long>> ranks = new HashMap<>();
                     for (Node cur_node : ourA) {
-                        String node_id = cur_node.getElementId();
                         long node_rank = (Long) cur_node.getProperty("rank");
                         String node_section = cur_node.getProperty("section_id").toString();
                         String key = node_section + "/" + node_rank;
@@ -262,7 +260,7 @@ public class Relation {
             }
 
             // We are finally ready to write a relation.
-            readingsAndRelationModel = createSingleRelation(readingA, readingB, relationModel, rmodel);
+            readingsAndRelationModel = createSingleRelation(readingA, readingB, relationModel, rmodel, tx);
             // We can also write any transitive relationships.
             propagateRelation(readingsAndRelationModel, rmodel);
             tx.close();
@@ -283,7 +281,7 @@ public class Relation {
      * @return a GraphModel containing the single n4j relationship plus whatever readings were re-ranked
      */
     private GraphModel createSingleRelation(Node readingA, Node readingB,
-                                            RelationModel relModel, RelationTypeModel rtm) throws Exception {
+                                            RelationModel relModel, RelationTypeModel rtm, Transaction tx) throws Exception {
         ArrayList<ReadingModel> changedReadings = new ArrayList<>();
         ArrayList<RelationModel> createdRelations = new ArrayList<>();
 
@@ -313,7 +311,7 @@ public class Relation {
             Node lowerRanked = rankA < rankB ? readingA : readingB;
             lowerRanked.setProperty("rank", higherRank);
             changedReadings.add(new ReadingModel(lowerRanked));
-            Set<Node> changedRank = ReadingService.recalculateRank(lowerRanked);
+            Set<Node> changedRank = ReadingService.recalculateRank(lowerRanked, false, tx);
             for (Node cr : changedRank)
                 if (!cr.equals(lowerRanked))
                     changedReadings.add(new ReadingModel(cr));
@@ -373,7 +371,7 @@ public class Relation {
                 for (Node readingB : iterateNodes) {
                     if (!alreadyRelated.contains(readingB)) {
                         // System.out.println(String.format("...making relation %s to node %d / %s", rm.getType(), readingB.getId(), readingB.getProperty("text")));
-                        GraphModel interim = createSingleRelation(readingA, readingB, rm, rtm);
+                        GraphModel interim = createSingleRelation(readingA, readingB, rm, rtm, tx);
                         newRelationResult.addReadings(interim.getReadings());
                         newRelationResult.addRelations(interim.getRelations());
                     }
@@ -400,7 +398,7 @@ public class Relation {
                         ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED);
                         if (priorLinks.size() == 0) {
                             // Create a relation based on the looser link
-                            GraphModel interim = createSingleRelation(n, c, newmodel, newtm);
+                            GraphModel interim = createSingleRelation(n, c, newmodel, newtm, tx);
                             newRelationResult.addReadings(interim.getReadings());
                             newRelationResult.addRelations(interim.getRelations());
                         }
@@ -452,8 +450,8 @@ public class Relation {
                 case SCOPE_SECTION:
                 case SCOPE_TRADITION:
                     Traverser toCheck = relationModel.getScope().equals(SCOPE_SECTION)
-                            ? VariantGraphService.returnTraditionSection(readingA.getProperty("section_id").toString(), db)
-                            : VariantGraphService.returnEntireTradition(tradId, db);
+                            ? VariantGraphService.returnTraditionSection(readingA.getProperty("section_id").toString(), tx)
+                            : VariantGraphService.returnEntireTradition(tradId, tx);
 
                     for (Relationship rel : toCheck.relationships()) {
                         if (rel.getType().name().equals(ERelations.RELATED.name())) {

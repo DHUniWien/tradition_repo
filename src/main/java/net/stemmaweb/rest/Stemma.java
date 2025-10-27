@@ -1,24 +1,36 @@
 package net.stemmaweb.rest;
 
+import static net.stemmaweb.Util.jsonerror;
+
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.ws.rs.*;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
+import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
+import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.graphdb.Result;
+import org.neo4j.graphdb.Transaction;
 
 import com.qmino.miredot.annotations.ReturnType;
+
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.parser.DotParser;
 import net.stemmaweb.parser.NewickParser;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
-
-import org.neo4j.graphdb.*;
-
-import static net.stemmaweb.Util.jsonerror;
 
 /**
  * Comprises all the api calls related to a stemma.
@@ -100,10 +112,10 @@ public class Stemma {
             if (stemmaSpec.getNewick() != null) {
                 // We are importing a Newick tree; roleplay accordingly.
                 NewickParser parser = new NewickParser(db);
-                replaceResult = parser.importStemmaFromNewick(tradId, stemmaSpec);
+                replaceResult = parser.importStemmaFromNewick(tradId, stemmaSpec, tx);
             } else {
                 DotParser parser = new DotParser(db);
-                replaceResult = parser.importStemmaFromDot(tradId, stemmaSpec);
+                replaceResult = parser.importStemmaFromDot(tradId, stemmaSpec, tx);
             }
             if (replaceResult.getStatus() != 201)
                 return replaceResult;

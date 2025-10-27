@@ -1,10 +1,16 @@
 package net.stemmaweb.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.neo4j.graphdb.Relationship;
 
-import javax.xml.bind.annotation.XmlRootElement;
-import java.util.*;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import jakarta.xml.bind.annotation.XmlRootElement;
 
 /**
  * Provides a model for a reading sequence link outside of the database. Can be
@@ -52,9 +58,9 @@ public class SequenceModel {
     public SequenceModel(Relationship rel) {
         this();
         type = rel.getType().toString();
-        source = rel.getStartNode().getId() + "";
-        target = rel.getEndNode().getId() + "";
-        id = Long.toString(rel.getId());
+        source = rel.getStartNode().getElementId() + "";
+        target = rel.getEndNode().getElementId() + "";
+        id = rel.getElementId();
 
         for (String p : rel.getPropertyKeys()) {
             if (p.equals("witnesses"))

@@ -2,7 +2,6 @@ package net.stemmaweb.exporter;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
@@ -14,8 +13,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -31,6 +28,8 @@ import org.neo4j.graphdb.Transaction;
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter;
 
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.UserModel;
@@ -189,25 +188,24 @@ public class TEIExporter {
 	 *
 	 * @return a Response containing an XML string that represents the requested
 	 *         tradition/section
-	 * @throws XMLStreamException passed through from XMLWriter
-	 * @throws IOException passed through from FileUtils
+	 * @throws Exception 
 	 */
 	public Response writeTEI(String tradId, String sectionId, Map<String, String> extraParams, String baseWitness,
 							 List<String> excludeWitnesses, String conflate, String suppress, Boolean filterNonsense,
-							 Boolean filterTypeOne, String significant, Boolean combine)
-			throws XMLStreamException, IOException {
-		Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+							 Boolean filterTypeOne, String significant, Boolean combine, Transaction tx)
+			throws Exception {
+		Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
 		if (traditionNode == null)
 			return Response.status(Response.Status.NOT_FOUND).entity(createXmlError("No tradition found for this ID"))
 					.build();
-		Node traditionStartNode = VariantGraphService.getStartNode(tradId, db);
+		Node traditionStartNode = VariantGraphService.getStartNode(tradId, tx);
 		if (traditionStartNode == null)
 			return Response.status(Response.Status.NOT_FOUND)
 					.entity(createXmlError("No graph found for this tradition.")).build();
 
 		// If a specific section was requested, check that it exists
 		if (sectionId != null && !sectionId.isEmpty()
-				&& !VariantGraphService.sectionInTradition(tradId, sectionId, db))
+				&& !VariantGraphService.sectionInTradition(tradId, sectionId, tx))
 			return Response.status(Response.Status.NOT_FOUND)
 					.entity(createXmlError("Requested section not found in tradition")).build();
 
@@ -218,72 +216,60 @@ public class TEIExporter {
 		}
 
 		// Everything in one big try block because so many things can raise exceptions
-		File file;
-		try (Transaction tx = db.beginTx()) {
-			file = File.createTempFile("output", ".xml");
-			file.deleteOnExit();
-			OutputStream out = new FileOutputStream(file);
+		File file = File.createTempFile("output", ".xml");
+		file.deleteOnExit();
+		OutputStream out = new FileOutputStream(file);
 
-			XMLOutputFactory output = XMLOutputFactory.newInstance();
-			XMLStreamWriter writer = new IndentingXMLStreamWriter(output.createXMLStreamWriter(out));
-			writer.writeStartDocument();
-			writer.writeStartElement("TEI");
-			writer.writeAttribute("xmlns", "http://www.tei-c.org/ns/1.0");
+		XMLOutputFactory output = XMLOutputFactory.newInstance();
+		XMLStreamWriter writer = new IndentingXMLStreamWriter(output.createXMLStreamWriter(out));
+		writer.writeStartDocument();
+		writer.writeStartElement("TEI");
+		writer.writeAttribute("xmlns", "http://www.tei-c.org/ns/1.0");
 
-			// Collect the parameters needed for the TEI header
-			addExtraParams(extraParams, traditionNode);
-			writeTEIHeader(writer, extraParams);
+		// Collect the parameters needed for the TEI header
+		addExtraParams(extraParams, traditionNode);
+		writeTEIHeader(writer, extraParams);
 
-			// Start chaining the text together
-			writer.writeStartElement("text");
-			ArrayList<Node> sectionList = new ArrayList<>();
-			if (sectionId != null) {
-				Node sectionNode = tx.getNodeByElementId(sectionId);
-				sectionList.add(sectionNode);				
-			} else {
-				// get sections of traditions
-				sectionList = VariantGraphService.getSectionNodes(tradId, db);
-			}
-
-			writer.writeStartElement("body");
-			// Iterate through the list of section nodes and create the text section by section
-			for (Node sectionNode : sectionList) {
-				VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate,
-						suppress, filterNonsense, filterTypeOne, significant, combine);
-
-				List<ReadingModel> baseReadingChain = vlocs.getBaseReadings();
-
-				// get section witnesses
-				SectionModel sectionModel = new SectionModel(sectionNode);
-				String sectionWitnesses =
-						sectionModel.getWitnesses()
-								.stream().map(w -> "#" + w)
-								.collect(Collectors.joining(" "));
-
-				// list witnesses in section
-				writeWitnesses(writer, sectionWitnesses, "AppStart");
-				writeText(writer, vlocs, baseReadingChain);
-
-				// list end of witnesses in section
-				writeWitnesses(writer, sectionWitnesses, "AppEnd");
-			}
-
-			writer.writeEndElement(); // end body
-
-			writer.writeEndElement(); // end text
-			writer.writeEndElement(); // end TEI
-			// eventually...
-			tx.commit();
-			writer.flush();
-			out.close();
-		} catch (IOException | XMLStreamException e) {
-			String msg = "Error setting up XML output: " + e.getMessage();
-			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(createXmlError(msg)).build();
-		} catch (Exception e) {
-			e.printStackTrace();
-			String msg = "Error generating TEI output: " + e.getMessage();
-			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(createXmlError(msg)).build();
+		// Start chaining the text together
+		writer.writeStartElement("text");
+		ArrayList<Node> sectionList = new ArrayList<>();
+		if (sectionId != null) {
+			Node sectionNode = tx.getNodeByElementId(sectionId);
+			sectionList.add(sectionNode);				
+		} else {
+			// get sections of traditions
+			sectionList = VariantGraphService.getSectionNodes(tradId, tx);
 		}
+
+		writer.writeStartElement("body");
+		// Iterate through the list of section nodes and create the text section by section
+		for (Node sectionNode : sectionList) {
+			VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate,
+					suppress, filterNonsense, filterTypeOne, significant, combine);
+
+			List<ReadingModel> baseReadingChain = vlocs.getBaseReadings();
+
+			// get section witnesses
+			SectionModel sectionModel = new SectionModel(sectionNode);
+			String sectionWitnesses =
+					sectionModel.getWitnesses()
+					.stream().map(w -> "#" + w)
+					.collect(Collectors.joining(" "));
+
+			// list witnesses in section
+			writeWitnesses(writer, sectionWitnesses, "AppStart");
+			writeText(writer, vlocs, baseReadingChain);
+
+			// list end of witnesses in section
+			writeWitnesses(writer, sectionWitnesses, "AppEnd");
+		}
+
+		writer.writeEndElement(); // end body
+
+		writer.writeEndElement(); // end text
+		writer.writeEndElement(); // end TEI
+		// eventually...
+		writer.flush();
 
 		return Response.ok(FileUtils.readFileToString(file, StandardCharsets.UTF_8), MediaType.APPLICATION_XML_TYPE)
 				.build();

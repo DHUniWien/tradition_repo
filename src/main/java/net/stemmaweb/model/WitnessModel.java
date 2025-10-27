@@ -1,7 +1,5 @@
 package net.stemmaweb.model;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -10,6 +8,7 @@ import org.neo4j.graphdb.Transaction;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
+import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
