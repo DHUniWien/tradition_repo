@@ -69,7 +69,10 @@ public class DatabaseServiceTest {
 
     @Test
     public void userExistsTest() {
-        assertTrue(DatabaseService.userExists(userId, db));
+    	try (Transaction tx = db.beginTx()) {
+    		assertTrue(DatabaseService.userExists(userId, tx));
+    		tx.close();
+    	}
     }
 
     /*

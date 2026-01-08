@@ -2,15 +2,16 @@ package net.stemmaweb.services;
 
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 
+import org.neo4j.configuration.GraphDatabaseInternalSettings;
 import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
 import org.neo4j.exceptions.KernelException;
 import org.neo4j.graphdb.GraphDatabaseService;
-
-import org.neo4j.test.TestDatabaseManagementServiceBuilder;
+import org.neo4j.io.fs.FileUtils;
 
 /**
  * Creates a global DatabaseService provider, which holds a reference to the
@@ -28,12 +29,14 @@ public class GraphDatabaseServiceProvider {
     }
 
     // Connect to a DB at a particular path
-    public GraphDatabaseServiceProvider(String db_location) throws KernelException {
+    public GraphDatabaseServiceProvider(String db_location) throws KernelException, IOException {
     	if (db == null) {
     		if (db_location == null) {
-    			dbService = new TestDatabaseManagementServiceBuilder()
-    					.impermanent()
-    					.setDatabaseRootDirectory(null)
+    			Path path = Path.of("/tmp/stemmarest");
+    			FileUtils.deleteDirectory(path);
+
+    			dbService = new DatabaseManagementServiceBuilder(path)
+    					.setConfig(GraphDatabaseInternalSettings.trace_cursors, true)
     					.build();
     			db = dbService.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     		} else {

@@ -61,18 +61,16 @@ public class RelationService {
      * @param relType       - The name of the relation type (e.g. "spelling")
      * @return A RelationTypeModel with the relation type information.
      */
-    public static RelationTypeModel returnRelationType(String traditionId, String relType) {
-        RelationType rtRest = new RelationType(traditionId, relType);
+    public static RelationTypeModel returnRelationType(String traditionId, String relType, Transaction tx) {
+        RelationType rtRest = new RelationType(traditionId, relType, tx);
         Response rtResult = rtRest.getRelationType();
         RelationTypeModel rtm;
         if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {
             rtm = new RelationTypeModel();
             rtm.setName(relType);
             rtm.setDefaultsettings(true);
-            try (Transaction tx = db.beginTx()) {
-            	Response rtCreated = rtRest.create(rtm, tx);
-            	rtm = (RelationTypeModel) rtCreated.getEntity();
-            }
+            Response rtCreated = rtRest.create(rtm);
+            rtm = (RelationTypeModel) rtCreated.getEntity();
         } else {
             rtm = (RelationTypeModel) rtResult.getEntity();
         }
@@ -87,18 +85,7 @@ public class RelationService {
      * @return - a list of RelationTypeModels for the tradition in question
      * @throws Exception - if the tradition node can't be determined from the referenceNode
      */
-    public static List<RelationTypeModel> ourRelationTypes(Node referenceNode) throws Exception {
-//        GraphDatabaseService db = referenceNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-        	return ourRelationTypes(referenceNode, tx);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new Exception("Could not collect relation types", e);
-        }
-    }
    	public static List<RelationTypeModel> ourRelationTypes(Node referenceNode, Transaction tx) throws Exception {
-//        GraphDatabaseService db = referenceNode.getGraphDatabase();
         List<RelationTypeModel> result = new ArrayList<>();
     	// Must be under control of the same transaction!
     	referenceNode = tx.getNodeByElementId(referenceNode.getElementId());
@@ -272,7 +259,10 @@ public class RelationService {
             this.criterion = criterion;
             // Make a lookup table of relation types
             ourTypes = new HashMap<>();
-            ourRelationTypes(fromReading).forEach(x -> ourTypes.put(x.getName(), x));
+            try (Transaction tx = db.beginTx()) {
+            	ourRelationTypes(fromReading, tx).forEach(x -> ourTypes.put(x.getName(), x));
+            	tx.close();
+            }
         }
 
         @Override
@@ -312,10 +302,13 @@ public class RelationService {
                 return Evaluation.INCLUDE_AND_CONTINUE;
             // If it's a different relation type, we follow it if it is bound more closely
             // than our type (lower bindlevel) and if that type is also transitive.
-            RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString());
-            if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())
-                return Evaluation.INCLUDE_AND_CONTINUE;
-            return Evaluation.EXCLUDE_AND_PRUNE;
+            try (Transaction tx = db.beginTx()) {
+            	RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString(), tx);
+            	tx.close();
+            	if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())
+            		return Evaluation.INCLUDE_AND_CONTINUE;
+            	return Evaluation.EXCLUDE_AND_PRUNE;
+            }
         }
     }
 

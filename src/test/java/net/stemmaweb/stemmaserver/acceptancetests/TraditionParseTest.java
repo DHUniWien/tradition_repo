@@ -62,8 +62,8 @@ public class TraditionParseTest extends TestCase {
         db = dbbuilder.database("stemmatest");
 
         // Create a root node and test user
-        DatabaseService.createRootNode(db);
         try (Transaction tx = db.beginTx()) {
+        	DatabaseService.createRootNode(tx);
             Node rootNode = tx.findNode(Nodes.ROOT, "name", "Root node");
             Node node = tx.createNode(Nodes.USER);
             node.setProperty("id", "1");

@@ -106,7 +106,10 @@ public class ReadingTest {
         /*
          * Populate the test database with the root node and a user with id 1
          */
-        DatabaseService.createRootNode(db);
+    	try (Transaction tx = db.beginTx()) {
+    		DatabaseService.createRootNode(tx);
+    		tx.commit();
+    	}
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls

@@ -291,7 +291,7 @@ public class Section {
         HashSet<Node> witnessList = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
         Node sectionStart = VariantGraphService.getStartNode(sectId, tx);
-        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
+        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx);
         for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE)) {
         	for (String witClass : relationship.getPropertyKeys()) {
         		for (String sigil : (String[]) relationship.getProperty(witClass)) {
@@ -625,9 +625,7 @@ public class Section {
     @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
     public Response getAnnotationsOnSection(@QueryParam("label") List<String> filterLabels,
                                             @QueryParam("recursive") @DefaultValue("false") String recurse) {
-    	Transaction tx = null;
-    	try {
-    		tx = db.beginTx();
+    	try (Transaction tx = db.beginTx()) {
         	if (!sectionInTradition(tx))
         		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
         	List<AnnotationModel> result = new ArrayList<>();
@@ -646,14 +644,11 @@ public class Section {
     		}
     		
     		foundAnns.forEach(x -> result.add(new AnnotationModel(x, tx)));
+    		tx.close();
     		return Response.ok(result).build();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
 		}
     }
 
@@ -983,7 +978,7 @@ public class Section {
         	tx = db.beginTx();
         	if (!sectionInTradition(tx))
         		return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
-        	if (!VariantGraphService.sectionInTradition(tradId, otherId, db))
+        	if (!VariantGraphService.sectionInTradition(tradId, otherId, tx))
         		return Response.status(Response.Status.NOT_FOUND).entity("Requested other section not found").build();
         	
     		// Get this node, and see which direction we're merging
@@ -1148,7 +1143,13 @@ public class Section {
             @PathParam("endRank") String endRank,
             @DefaultValue("10") @QueryParam("threshold") long threshold,
             @DefaultValue("") @QueryParam("text") String limitText) {
-        Node startNode = VariantGraphService.getStartNode(sectId, db);
+
+    	Node startNode = null;
+    	try (Transaction tx = db.beginTx()) {
+    		startNode = VariantGraphService.getStartNode(sectId, tx);
+            tx.close();
+        }
+
         if (startNode == null) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonerror("Tradition and/or section not found")).build();
@@ -1184,8 +1185,13 @@ public class Section {
         String startRankL = startRank.equals("start")
                     ? "1"
                     : startRank;
+    	Node endNode = null;
+    	try (Transaction tx = db.beginTx()) {
+    		endNode = VariantGraphService.getEndNode(sectId, tx);
+            tx.close();
+        }
         String endRankL = endRank.equals("end")
-                    ? VariantGraphService.getEndNode(sectId, db).getElementId()
+                    ? endNode.getElementId()
                     : endRank;
         result.put("start", startRankL);
         result.put("end", endRankL);
@@ -1304,7 +1310,7 @@ public class Section {
 
     // We want access within net.stemmaweb.parser as well
     public ArrayList<List<ReadingModel>> collectIdenticalReadings(long startRank, long endRank, Transaction tx) {
-        Node startNode = VariantGraphService.getStartNode(sectId, db);
+        Node startNode = VariantGraphService.getStartNode(sectId, tx);
         if (startNode == null) return null;
 
         ArrayList<List<ReadingModel>> identicalReadings;
@@ -1573,7 +1579,13 @@ public class Section {
     @ReturnType(clazz = GraphModel.class)
     public Response getGraphModel() {
         // TODO does this check make sense, or does the not-found happen already in Tradition.java?
-        if (VariantGraphService.getTraditionNode(tradId, db) == null)
+    	Node traditionNode = null;
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+            tx.close();
+        }
+
+    	if (traditionNode == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
                     .entity("No such tradition found").build();
 
@@ -1616,7 +1628,13 @@ public class Section {
     @Produces("application/zip")
     @ReturnType("java.lang.Void")
     public Response getGraphML() {
-        if (VariantGraphService.getTraditionNode(tradId, db) == null)
+    	Node traditionNode = null;
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+            tx.close();
+        }
+
+    	if (traditionNode == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
                     .entity("No such tradition found").build();
 
@@ -1650,7 +1668,13 @@ public class Section {
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
                                                   @QueryParam("normalise") String normalise,
                                                   @QueryParam("exclude_witness") List<String> excWitnesses) {
-        if (VariantGraphService.getTraditionNode(tradId, db) == null)
+    	Node traditionNode = null;
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+            tx.close();
+        }
+
+    	if (traditionNode == null)
             return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
 
         // Put our options into an object
@@ -1805,7 +1829,12 @@ public class Section {
                                 @QueryParam("base_witness") String baseWitness,
                                 @QueryParam("normalize") String conflate,
                                 @QueryParam("exclude_witness") List<String> excWitnesses) {
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+    	Node traditionNode = null;
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+            tx.close();
+        }
+
         if (traditionNode == null)
             return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
 

@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
@@ -21,7 +20,6 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.RelationTypeModel;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -32,16 +30,15 @@ import net.stemmaweb.services.VariantGraphService;
  */
 
 public class RelationType {
-    private final GraphDatabaseService db;
+    private final Transaction tx;
     /**
      * The name of a type of reading relation.
      */
     private final String traditionId;
     private final String typeName;
 
-    public RelationType(String tradId, String requestedType) {
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-        db = dbServiceProvider.getDatabase();
+    public RelationType(String tradId, String requestedType, Transaction tx) {
+        this.tx = tx;
         traditionId = tradId;
         typeName = requestedType;
     }
@@ -60,11 +57,9 @@ public class RelationType {
     @ReturnType("net.stemmaweb.model.RelationTypeModel")
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
-        Transaction tx = null;
         Response response;
         try {
-        	tx = db.beginTx();
-            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, tx));
+            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, tx), tx);
             if (foundRelType == null) {
                 response = Response.noContent().build();
             } else {
@@ -73,9 +68,7 @@ public class RelationType {
         } catch (Exception e) {
             response = Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-        if (tx != null) {
-        	tx.close();
-        }
+
         return response;
     }
 
@@ -94,7 +87,7 @@ public class RelationType {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = RelationTypeModel.class)
-    public Response create(RelationTypeModel rtModel, Transaction tx) {
+    public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
         Node extantRelType;
@@ -148,12 +141,10 @@ public class RelationType {
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Node foundRelType;
-        Transaction tx = null;
         try {
-        	tx = db.beginTx();
-        	Node tradition = VariantGraphService.getTraditionNode(traditionId, db);
+        	Node tradition = VariantGraphService.getTraditionNode(traditionId, tx);
         	try {
-        		foundRelType = rtModel.lookup(tradition);
+        		foundRelType = rtModel.lookup(tradition, tx);
         		if (foundRelType == null) {
         			return Response.status(Response.Status.NOT_FOUND).build();
         		}
@@ -170,14 +161,9 @@ public class RelationType {
             // Then I guess we can delete it.
             foundRelType.getSingleRelationship(ERelations.HAS_RELATION_TYPE, Direction.INCOMING).delete();
             foundRelType.delete();
-            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
 		}
         // Return the thing we deleted.
         return Response.ok(rtModel).build();

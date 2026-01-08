@@ -182,22 +182,22 @@ public class StemmaTest {
 
     @Test
     public void setStemmaTest() {
-
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-        assertEquals(2, stemmata.size());
-
-        StemmaModel input = new StemmaModel();
-        input.setDot("graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}");
-
-        try (Response actualStemmaResponse = jerseyTest
-                .target("/tradition/" + tradId + "/stemma"  )
-                .request(MediaType.APPLICATION_JSON)
-                .post(Entity.json(input))) {
-            assertEquals(Response.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
-        }
+    	StemmaModel input = new StemmaModel();
 
         try (Transaction tx = db.beginTx()) {
+        	Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+        	ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+        	assertEquals(2, stemmata.size());
+        	
+        	input.setDot("graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}");
+        	
+        	try (Response actualStemmaResponse = jerseyTest
+        			.target("/tradition/" + tradId + "/stemma"  )
+        			.request(MediaType.APPLICATION_JSON)
+        			.post(Entity.json(input))) {
+        		assertEquals(Response.Status.CREATED.getStatusCode(), actualStemmaResponse.getStatus());
+        	}
+        	
             Result result2 = tx.execute("match (t:TRADITION {id:'" + tradId +
                     "'})--(s:STEMMA) return count(s) AS res2");
             assertEquals(3L, result2.columnAs("res2").next());
@@ -539,9 +539,16 @@ public class StemmaTest {
 
     @Test
     public void replaceStemmaTest() {
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-        assertEquals(2, stemmata.size());
+    	Node traditionNode = null;
+    	ArrayList<Node> stemmata;
+
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+            tx.close();
+        }
+
+    	assertEquals(2, stemmata.size());
 
         StemmaModel input = new StemmaModel();
         input.setDot("graph stemma {\n  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  " +
@@ -553,7 +560,9 @@ public class StemmaTest {
                 .put(Entity.json(input))) {
             assertEquals(Response.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
         }
-        assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
+        try (Transaction tx = db.beginTx()) {
+        	assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx).size());
+        }
 
         StemmaModel replacedStemma = jerseyTest
                 .target("/tradition/" + tradId + "/stemma/stemma"  )
@@ -564,9 +573,16 @@ public class StemmaTest {
 
     @Test
     public void replaceStemmaWithDudTest() {
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
-        assertEquals(2, stemmata.size());
+    	Node traditionNode = null;
+    	ArrayList<Node> stemmata;
+
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+            tx.close();
+        }
+
+    	assertEquals(2, stemmata.size());
 
         String original = "digraph \"stemma\" {\n  0 [ class=hypothetical ];  "
                 + "A [ class=extant ];  B [ class=extant ];  "
@@ -581,7 +597,13 @@ public class StemmaTest {
         }
 
         // Do we still have the old one?
-        assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+            tx.close();
+        }
+
+    	assertEquals(2, stemmata.size());
         StemmaModel storedStemma = jerseyTest
                 .target("/tradition/" + tradId + "/stemma/stemma"  )
                 .request(MediaType.APPLICATION_JSON)
@@ -592,8 +614,15 @@ public class StemmaTest {
     @Test
     public void replaceStemmaNameMismatchTest() {
         // This used to fail; now the name given in the model overrides the name in the dot.
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
-        ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
+    	Node traditionNode = null;
+    	ArrayList<Node> stemmata;
+
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+            tx.close();
+        }
+
         assertEquals(2, stemmata.size());
 
         String input = "graph stemma2 {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}";
@@ -609,7 +638,13 @@ public class StemmaTest {
         }
 
         // Do we still have the old one?
-        assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
+    	try (Transaction tx = db.beginTx()) {
+    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+            tx.close();
+        }
+
+    	assertEquals(2, stemmata.size());
         StemmaModel storedStemma = jerseyTest
                 .target("/tradition/" + tradId + "/stemma/stemma"  )
                 .request(MediaType.APPLICATION_JSON)

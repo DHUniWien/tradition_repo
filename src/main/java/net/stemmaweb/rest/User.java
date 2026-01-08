@@ -160,7 +160,7 @@ public class User {
             if (foundUser != null) {
                 removed = new UserModel(foundUser);
                 // See if the user owns any traditions
-                ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
+                ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION, tx);
                 if (userTraditions.size() > 0)
                     return Response.status(Status.PRECONDITION_FAILED)
                             .entity("User's traditions must be deleted first")
@@ -191,15 +191,22 @@ public class User {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
     public Response getUserTraditions() {
-        if (!DatabaseService.userExists(userId, db)) {
+    	boolean userExists = false;
+    	try (Transaction tx = db.beginTx()) {
+            userExists = DatabaseService.userExists(userId, tx);
+            tx.close();
+        }
+
+        if (!userExists) {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("User does not exist")).build();
         }
 
         ArrayList<TraditionModel> traditions = new ArrayList<>();
-        try {
+        try (Transaction tx = db.beginTx()) {
             Node thisUser = getUserNode();
-            DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION)
+            DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION, tx)
                     .forEach(x -> traditions.add(new TraditionModel(x)));
+            tx.close();
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }

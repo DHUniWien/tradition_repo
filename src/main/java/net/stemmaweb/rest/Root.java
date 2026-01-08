@@ -153,7 +153,13 @@ public class Root {
                                   @FormDataParam("file") InputStream uploadedInputStream,
                                   @FormDataParam("file") FormDataContentDisposition fileDetail) {
 
-        if (!DatabaseService.userExists(userId, db)) {
+    	boolean userExists = false;
+    	try (Transaction tx = db.beginTx()) {
+            userExists = DatabaseService.userExists(userId, tx);
+            tx.close();
+        }
+
+    	if (!userExists) {
             return Response.status(Response.Status.CONFLICT)
                     .entity(jsonerror("No user with this id exists"))
                     .build();

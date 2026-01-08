@@ -445,10 +445,12 @@ public class TraditionTest {
                 .delete();
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
+        try (Transaction tx = db.beginTx()) {
+        	Node startNode = VariantGraphService.getStartNode(tradId, tx);
+        	tx.close();
 
-        Node startNode = VariantGraphService.getStartNode(tradId, db);
-
-        assertNull(startNode);
+        	assertNull(startNode);
+        }
     }
 
     /**

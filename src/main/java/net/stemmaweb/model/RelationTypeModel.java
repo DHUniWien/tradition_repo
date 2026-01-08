@@ -4,7 +4,6 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -14,7 +13,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * This model describes the properties of a particular relationship type.
@@ -215,20 +213,6 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition on which to perform the lookup
      * @return - The correspondingly named RELATION_TYPE node, or null
      */
-    public Node lookup (Node traditionNode) throws Exception {
-//        GraphDatabaseService db = traditionNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-    	Node relTypeNode = null;
-        try (Transaction tx = db.beginTx()) {
-        	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
-        	relTypeNode = lookup(traditionNode, tx);
-            tx.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return relTypeNode;
-
-    }
     public Node lookup (Node traditionNode, Transaction tx) throws Exception {
         Node relTypeNode = null;
 

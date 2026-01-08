@@ -43,15 +43,6 @@ public class VariantGraphService {
      * @param db - the GraphDatabaseService where the tradition is stored
      * @return - true or false
      */
-    public static Boolean sectionInTradition(String tradId, String aSectionId, GraphDatabaseService db) {
-        boolean found = false;
-        try (Transaction tx = db.beginTx()) {
-        	found = sectionInTradition(tradId, aSectionId, tx);
-            tx.commit();
-        }
-        return found;
-    }
-
     public static Boolean sectionInTradition(String tradId, String aSectionId, Transaction tx) {
     	Node traditionNode = getTraditionNode(tradId, tx);
     	if (traditionNode == null)
@@ -75,13 +66,6 @@ public class VariantGraphService {
      * @return  the start node, or null if there is none.
      *      NOTE if there are multiple unordered sections, an arbitrary start node may be returned!
      */
-    public static Node getStartNode(String nodeId, GraphDatabaseService db) {
-    	Transaction tx = db.beginTx();
-    	Node node = getBoundaryNode(nodeId, tx, ERelations.COLLATION);
-    	tx.commit();
-    	return node;
-    }
-
     public static Node getStartNode(String nodeId, Transaction tx) {
     	return getBoundaryNode(nodeId, tx, ERelations.COLLATION);
     }
@@ -94,13 +78,6 @@ public class VariantGraphService {
      * @return  the end node, or null if there is none
      *      NOTE if there are multiple unordered sections, an arbitrary end node may be returned!
      */
-    public static Node getEndNode(String nodeId, GraphDatabaseService db) {
-    	Transaction tx = db.beginTx();
-    	Node node = getBoundaryNode(nodeId, tx, ERelations.HAS_END);
-    	tx.commit();
-    	return node;
-    }
-
     public static Node getEndNode(String nodeId, Transaction tx) {
     	return getBoundaryNode(nodeId, tx, ERelations.HAS_END);
     }
@@ -141,14 +118,6 @@ public class VariantGraphService {
      * @param db        the GraphDatabaseService where the tradition is stored
      * @return          a list of sections, which is empty if the tradition doesn't exist
      */
-    public static ArrayList<Node> getSectionNodes(String tradId, GraphDatabaseService db) {
-    	ArrayList<Node> sectionNodes;
-    	try (Transaction tx = db.beginTx()) {
-    		sectionNodes = getSectionNodes(tradId, tx);
-            tx.commit();
-        }
-    	return sectionNodes;
-    }
     public static ArrayList<Node> getSectionNodes(String tradId, Transaction tx) {
         Node tradition = getTraditionNode(tradId, tx);
         ArrayList<Node> sectionNodes = new ArrayList<>();
@@ -181,15 +150,6 @@ public class VariantGraphService {
      * @param db      the GraphDatabaseService where the tradition is stored
      * @return        the relevant tradition node
      */
-    public static Node getTraditionNode(String tradId, GraphDatabaseService db) {
-        Node tradition;
-        try (Transaction tx = db.beginTx()) {
-            tradition = tx.findNode(Nodes.TRADITION, "id", tradId);
-            tx.close();
-        }
-        return tradition;
-    }
-
     public static Node getTraditionNode(String tradId, Transaction tx) {
     	Node tradition;
     	tradition = tx.findNode(Nodes.TRADITION, "id", tradId);
@@ -202,17 +162,6 @@ public class VariantGraphService {
      * @param section  the section node whose tradition we're hunting
      * @return         the relevant tradition node
      */
-    public static Node getTraditionNode(Node section) {
-//        GraphDatabaseService db = section.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-    	Node tradition;
-    	try (Transaction tx = db.beginTx()) {
-    		tradition = getTraditionNode(section, tx);
-    		tx.commit();
-    	}
-    	return tradition;
-    }
-
     public static Node getTraditionNode(Node section, Transaction tx) {
         Node tradition;
     	section = tx.getNodeByElementId(section.getElementId());
@@ -279,7 +228,7 @@ public class VariantGraphService {
 //        GraphDatabaseService db = sectionNode.getGraphDatabase();
         // Make sure the relation type exists
         Node tradition = getTraditionNode(sectionNode, tx);
-        Node relType = new RelationTypeModel(normalizeType).lookup(tradition);
+        Node relType = new RelationTypeModel(normalizeType).lookup(tradition, tx);
         if (relType == null)
             throw new Exception("Relation type " + normalizeType + " does not exist in this tradition");
 

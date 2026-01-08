@@ -5,7 +5,6 @@ import java.util.Iterator;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Entity;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -26,14 +25,11 @@ public class DatabaseService {
      * @param db: the GraphDatabaseService where the Database should be entered
      *
      */
-    public static void createRootNode(GraphDatabaseService db) {
-        try (Transaction tx = db.beginTx()) {
-            Node result = tx.findNode(Nodes.ROOT, "name", "Root node");
-            if (result == null) {
-                Node node = tx.createNode(Nodes.ROOT);
-                node.setProperty("name", "Root node");
-            }
-            tx.close();
+    public static void createRootNode(Transaction tx) {
+        Node result = tx.findNode(Nodes.ROOT, "name", "Root node");
+        if (result == null) {
+            Node node = tx.createNode(Nodes.ROOT);
+            node.setProperty("name", "Root node");
         }
     }
 
@@ -45,16 +41,6 @@ public class DatabaseService {
      * @param relType - the relationship type to follow
      * @return a list of all nodes related to startNode by the given relationship
      */
-    public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
-//        GraphDatabaseService db = startNode.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-    	ArrayList<Node> result = null;
-        try (Transaction tx = db.beginTx()) {
-        	result = getRelated(startNode, relType, tx);
-        	tx.close();
-        }
-        return result;
-    }
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType, Transaction tx) {
         ArrayList<Node> result = new ArrayList<>();
     	Node startNode2 = tx.getNodeByElementId(startNode.getElementId());
@@ -70,16 +56,14 @@ public class DatabaseService {
      * @param endNode   - node 2
      * @return - a list of relationships between the two, empty if none
      */
-    public static ArrayList<Relationship> getRelationshipTo(Node startNode, Node endNode, RelationshipType rtype) {
+    public static ArrayList<Relationship> getRelationshipTo(Node startNode, Node endNode, RelationshipType rtype, Transaction tx) {
         ArrayList<Relationship> found = new ArrayList<>();
-//        GraphDatabaseService db = startNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-            for (Relationship r : startNode.getRelationships(Direction.BOTH, rtype))
-                if (r.getOtherNode(startNode).equals(endNode))
-                    found.add(r);
-            tx.close();
+        for (Relationship r : startNode.getRelationships(Direction.BOTH, rtype)) {
+            if (r.getOtherNode(startNode).equals(endNode)) {
+                found.add(r);
+            }
         }
+
         return found;
     }
 
@@ -92,12 +76,9 @@ public class DatabaseService {
      * @param db      the DB in which to check
      * @return        boolean
      */
-    public static boolean userExists(String userId, GraphDatabaseService db) {
+    public static boolean userExists(String userId, Transaction tx) {
         Node extantUser;
-        try (Transaction tx = db.beginTx()) {
-            extantUser = tx.findNode(Nodes.USER, "id", userId);
-            tx.close();
-        }
+        extantUser = tx.findNode(Nodes.USER, "id", userId);
         return extantUser != null;
     }
 

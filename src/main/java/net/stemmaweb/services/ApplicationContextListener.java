@@ -12,6 +12,7 @@ import javax.servlet.ServletContextListener;
 //import org.apache.log4j.Logger;
 
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
 
 /**
  *
@@ -44,7 +45,10 @@ public class ApplicationContextListener implements ServletContextListener {
         // logger.debug("This is debug - Listener: context initialized");
         try {
             GraphDatabaseService db = new GraphDatabaseServiceProvider(DB_PATH).getDatabase();
-            DatabaseService.createRootNode(db);
+            try (Transaction tx = db.beginTx()) {
+            	DatabaseService.createRootNode(tx);
+            	tx.commit();
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }

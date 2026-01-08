@@ -27,7 +27,7 @@ public class AnnotationLinkModel {
 
     public AnnotationLinkModel() {}
 
-    public AnnotationLinkModel(Relationship r, Transaction tx) {
+    public AnnotationLinkModel(Relationship r) {
 //        GraphDatabaseService db = r.getGraphDatabase();
         setType(r.getType().name());
         setTarget(r.getEndNode().getElementId());

@@ -39,7 +39,7 @@ public class NewickParser {
      */
     public Response importStemmaFromNewick(String tradId, StemmaModel stemmaSpec, Transaction tx) {
         // Get our tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
+        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
         if (traditionNode == null)
             return Response.status(Response.Status.NOT_FOUND).build();
 

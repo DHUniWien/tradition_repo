@@ -125,32 +125,32 @@ public class SectionTest extends TestCase {
     }
 
     public void testAddSection() {
-        // Get the existing start and end nodes
-        Node startNode = VariantGraphService.getStartNode(tradId, db);
-        Node endNode = VariantGraphService.getEndNode(tradId, db);
-
-        String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
-                "stemmaweb", "section 2"), "sectionId");
-
-        List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
-                .request()
-                .get(new GenericType<>() {});
-        assertEquals(2, tSections.size());
-        assertEquals("section 2", tSections.get(1).getName());
-        Long expectedRank = 22L;
-        assertEquals(expectedRank, tSections.get(1).getEndRank());
-
-        String aText = "quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magis " +
-                "magisque illustrabatur iugiter ac informabatur Sanctus autem";
-        Response jerseyResponse = jerseyTest
-                .target("/tradition/" + tradId + "/section/" + newSectId + "/witness/A/text")
-                .request()
-                .get();
-        assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
-        String witFragment = Util.getValueFromJson(jerseyResponse, "text");
-        assertEquals(aText, witFragment);
-
         try (Transaction tx = db.beginTx()) {
+        	// Get the existing start and end nodes
+        	Node startNode = VariantGraphService.getStartNode(tradId, tx);
+        	Node endNode = VariantGraphService.getEndNode(tradId, tx);
+        	
+        	String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
+        			"stemmaweb", "section 2"), "sectionId");
+        	
+        	List<SectionModel> tSections = jerseyTest.target("/tradition/" + tradId + "/sections")
+        			.request()
+        			.get(new GenericType<>() {});
+        	assertEquals(2, tSections.size());
+        	assertEquals("section 2", tSections.get(1).getName());
+        	Long expectedRank = 22L;
+        	assertEquals(expectedRank, tSections.get(1).getEndRank());
+        	
+        	String aText = "quasi duobus magnis luminaribus populus terre illius ad veri dei noticiam & cultum magis " +
+        			"magisque illustrabatur iugiter ac informabatur Sanctus autem";
+        	Response jerseyResponse = jerseyTest
+        			.target("/tradition/" + tradId + "/section/" + newSectId + "/witness/A/text")
+        			.request()
+        			.get();
+        	assertEquals(Response.Status.OK.getStatusCode(), jerseyResponse.getStatus());
+        	String witFragment = Util.getValueFromJson(jerseyResponse, "text");
+        	assertEquals(aText, witFragment);
+        	
             assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tradId, tx).getElementId());
             assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
             assertEquals(VariantGraphService.getEndNode(newSectId, tx).getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());

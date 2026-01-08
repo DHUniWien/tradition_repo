@@ -101,8 +101,8 @@ public class Relation {
             assert(orm.isPresent());
             String thisRelId = orm.get().getId();
             if (!scope.equals(SCOPE_LOCAL)) {
-                Boolean use_normal = returnRelationType(tradId, relationModel.getType()).getUse_regular();
                 try (Transaction tx = db.beginTx()) {
+                	Boolean use_normal = returnRelationType(tradId, relationModel.getType(), tx).getUse_regular();
                     Node readingA = tx.getNodeByElementId(relationModel.getSource());
                     Node readingB = tx.getNodeByElementId(relationModel.getTarget());
                     Node startingPoint = VariantGraphService.getTraditionNode(tradId, tx);
@@ -201,7 +201,7 @@ public class Relation {
                     .build();
 
             // Get, or create implicitly, the relation type node for the given type.
-            RelationTypeModel rmodel = returnRelationType(tradId, relationModel.getType());
+            RelationTypeModel rmodel = returnRelationType(tradId, relationModel.getType(), tx);
 
             // Check that the relation type is compatible with the passed relation model
             if (!relationModel.getScope().equals("local") && !rmodel.getIs_generalizable())
@@ -215,13 +215,13 @@ public class Relation {
             if (colocation) {
                 Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsA) {
-                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString());
+                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString(), tx);
                     if (rm.getIs_weak())
                         r.delete();
                 }
                 Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsB) {
-                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString());
+                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString(), tx);
                     if (rm.getIs_weak())
                         r.delete();
                 }
@@ -245,7 +245,7 @@ public class Relation {
             for (Relationship relationship : relationships) {
                 if (relationship.getOtherNode(readingA).equals(readingB)) {
                     RelationModel thisRel = new RelationModel(relationship);
-                    RelationTypeModel rtm = returnRelationType(tradId, thisRel.getType());
+                    RelationTypeModel rtm = returnRelationType(tradId, thisRel.getType(), tx);
                     if (thisRel.getType().equals(relationModel.getType())) {
                         // TODO allow for update of existing relation
                         tx.close();
@@ -384,7 +384,7 @@ public class Relation {
                 // Get the nodes we are directly related to, and the relations involved, if
                 // they meet the criteria
                 for (Relationship r : sibling.getRelationships(ERelations.RELATED)) {
-                    RelationTypeModel othertm = returnRelationType(tradId, r.getProperty("type").toString());
+                    RelationTypeModel othertm = returnRelationType(tradId, r.getProperty("type").toString(), tx);
                     if (othertm.getBindlevel() > rtm.getBindlevel() && othertm.getIs_transitive())
                         connections.put(r.getOtherNode(sibling), r);
                 }
@@ -393,9 +393,9 @@ public class Relation {
                 for (Node n : connections.keySet()) {
                     cousins.remove(n);
                     RelationModel newmodel = new RelationModel(connections.get(n));
-                    RelationTypeModel newtm = returnRelationType(tradId, newmodel.getType());
+                    RelationTypeModel newtm = returnRelationType(tradId, newmodel.getType(), tx);
                     for (Node c : cousins) {
-                        ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED);
+                        ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED, tx);
                         if (priorLinks.size() == 0) {
                             // Create a relation based on the looser link
                             GraphModel interim = createSingleRelation(n, c, newmodel, newtm, tx);
@@ -436,7 +436,7 @@ public class Relation {
 
             switch (relationModel.getScope()) {
                 case SCOPE_LOCAL:
-                    ArrayList<Relationship> findRel = DatabaseService.getRelationshipTo(readingA, readingB, ERelations.RELATED);
+                    ArrayList<Relationship> findRel = DatabaseService.getRelationshipTo(readingA, readingB, ERelations.RELATED, tx);
                     if (findRel.isEmpty()) {
                         return Response.status(Status.NOT_FOUND).entity(jsonerror("Relation not found")).build();
                     } else {

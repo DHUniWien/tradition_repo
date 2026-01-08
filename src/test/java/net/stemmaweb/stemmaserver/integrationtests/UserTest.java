@@ -60,7 +60,11 @@ public class UserTest {
     	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
     	dbbuilder.createDatabase("stemmatest");
     	db = dbbuilder.database("stemmatest");
-        DatabaseService.createRootNode(db);
+
+    	try (Transaction tx = db.beginTx()) {
+    		DatabaseService.createRootNode(tx);
+    		tx.commit();
+    	}
 
         /*
          * Create a JersyTestServer serving the Resource under test

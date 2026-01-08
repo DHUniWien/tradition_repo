@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.NotFoundException;
@@ -40,7 +39,6 @@ import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.model.AnnotationLinkModel;
 import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -51,13 +49,12 @@ import net.stemmaweb.services.VariantGraphService;
  */
 
 public class Annotation {
-    private final GraphDatabaseService db;
+    private Transaction tx;
     private final String tradId;
     private final String annoId;
 
-    Annotation(String tradId, String aid) {
-        GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-        this.db = dbServiceProvider.getDatabase();
+    Annotation(String tradId, String aid, Transaction tx) {
+        this.tx = tx;
         this.tradId = tradId;
         this.annoId = aid;
     }
@@ -76,19 +73,14 @@ public class Annotation {
     public Response getAnnotation() {
         AnnotationModel result;
         Response response;
-        try (Transaction tx = db.beginTx()) {
-        	if (annotationNotFound(tx)) {
-        		response = Response.status(Response.Status.NOT_FOUND).build();
-        	} else {
-	            Node a = tx.getNodeByElementId(annoId);
-	            result = new AnnotationModel(a, tx);
-	            response = Response.ok(result).build();
-        	}
-            tx.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            response = Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
+    	if (annotationNotFound(tx)) {
+    		response = Response.status(Response.Status.NOT_FOUND).build();
+    	} else {
+            Node a = tx.getNodeByElementId(annoId);
+            result = new AnnotationModel(a, tx);
+            response = Response.ok(result).build();
+    	}
+
         return response;
     }
 
@@ -109,9 +101,7 @@ public class Annotation {
     @ReturnType(clazz = AnnotationModel.class)
     public Response updateAnnotation(AnnotationModel newAnno) {
         AnnotationModel result = null;
-        Transaction tx = null;
         try {
-        	tx = db.beginTx();
         	if (annotationNotFound(tx)) {
         		return Response.status(Response.Status.NOT_FOUND).build();
         	} else {
@@ -191,10 +181,6 @@ public class Annotation {
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-        	if (tx != null) {
-        		tx.close();
-        	}
 		}
     }
 
@@ -213,7 +199,7 @@ public class Annotation {
     public Response deleteAnnotation() {
         List<AnnotationModel> deleted;
         Response response;
-        try (Transaction tx = db.beginTx()) {
+        try {
         	if (annotationNotFound(tx)) {
         		response = Response.status(Response.Status.NOT_FOUND).build();
         	} else {
@@ -224,7 +210,6 @@ public class Annotation {
         		a.removeProperty("__primary");
         		// Delete the annotation and any other non-primary annotations that it leaves dangling
         		deleted = deleteIfDangling(a, tx);
-        		tx.commit();
         		response = Response.ok(deleted).build();
         	}
         } catch (Exception e) {
@@ -273,9 +258,7 @@ public class Annotation {
     @ReturnType(clazz = AnnotationModel.class)
     public Response addAnnotationLink(AnnotationLinkModel alm) {
         AnnotationModel updated;
-        Transaction tx = null;
         try {
-        	tx = db.beginTx();
         	if (annotationNotFound(tx)) {
         		return Response.status(Response.Status.NOT_FOUND).build();
         	}
@@ -309,10 +292,6 @@ public class Annotation {
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.commit();
-			}
 		}
         return Response.ok(updated).build();
     }
@@ -338,7 +317,7 @@ public class Annotation {
     public Response deleteAnnotationLink(AnnotationLinkModel alm) {
         AnnotationModel updated;
         Response response;
-        try (Transaction tx = db.beginTx()) {
+        try {
         	if (annotationNotFound(tx)) {
         		response = Response.status(Response.Status.NOT_FOUND).build();
         	} else {
@@ -379,7 +358,6 @@ public class Annotation {
     public Response getReferents(@QueryParam("recursive") @DefaultValue("false") String recurse) {
     	Transaction tx = null;
     	try {
-        	tx = db.beginTx();
         	if (annotationNotFound(tx)) {
         		return Response.status(Response.Status.NOT_FOUND).build();
         	}
@@ -396,10 +374,6 @@ public class Annotation {
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
 		}
 
     }
@@ -424,14 +398,13 @@ public class Annotation {
 
     // Used inside a transaction
     private Relationship findExistingLink(AnnotationLinkModel alm) {
-    	Transaction tx = db.beginTx();
         Node aNode = tx.getNodeByElementId(annoId);
         for (Relationship r : aNode.getRelationships(Direction.OUTGOING)) {
             if (r.getType().name().equals(alm.getType()) && r.getEndNode().getElementId() == alm.getTarget()) {
                 return r;
             }
         }
-        tx.close();
+
         return null;
     }
 

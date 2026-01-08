@@ -111,7 +111,7 @@ public class Util {
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             String tradId = traditionNode.getProperty("id").toString();
-            ArrayList<Node> tsections = VariantGraphService.getSectionNodes(tradId, db);
+            ArrayList<Node> tsections = VariantGraphService.getSectionNodes(tradId, tx);
             if (!tsections.contains(sectionNode)) {
                 traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
                 if (!tsections.isEmpty())

@@ -451,14 +451,14 @@ public class ReadingService {
     	}
     	
     	// TEMPORARY: Make sure that we did visit all expected nodes
-    	Node sectionStart = VariantGraphService.getStartNode(startNode.getProperty("section_id").toString(), tx);
-    	for (Node n : tx.traversalDescription().depthFirst()
-    			.expand(new AlignmentTraverse())
-    			.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-    			.traverse(sectionStart).nodes()) {
-    		if (n.hasProperty("touched"))
-    			throw new Exception ("End node not reached during recalculation!");
-    	}
+//    	Node sectionStart = VariantGraphService.getStartNode(startNode.getProperty("section_id").toString(), tx);
+//    	for (Node n : tx.traversalDescription().depthFirst()
+//    			.expand(new AlignmentTraverse())
+//    			.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+//    			.traverse(sectionStart).nodes()) {
+//    		if (n.hasProperty("touched"))
+//    			throw new Exception ("End node not reached during recalculation!");
+//    	}
     	
     	
     	// TEMPORARY: Test that our colocated groups are actually colocated

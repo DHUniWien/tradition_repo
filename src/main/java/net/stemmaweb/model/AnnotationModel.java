@@ -56,7 +56,7 @@ public class AnnotationModel {
         this.setProperties(props);
         this.links = new ArrayList<>();
         for (Relationship r : annNode.getRelationships(Direction.OUTGOING))
-            this.addLink(new AnnotationLinkModel(r, tx));
+            this.addLink(new AnnotationLinkModel(r));
     }
 
     public String getId() {
