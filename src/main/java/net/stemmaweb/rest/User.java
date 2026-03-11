@@ -1,13 +1,20 @@
 package net.stemmaweb.rest;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.TraditionModel;
 import net.stemmaweb.model.UserModel;
 import net.stemmaweb.services.DatabaseService;
@@ -50,7 +57,34 @@ public class User {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = UserModel.class)
+    @Operation(
+            summary = "Get user",
+            description = "Gets the information for the given user ID",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Success",
+                            content = @Content(schema = @Schema(implementation = UserModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "204",
+                            description = "No content (user not found)"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Failure",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getUserById() {
         UserModel userModel;
         try (Transaction tx = db.beginTx()) {
@@ -81,7 +115,40 @@ public class User {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = UserModel.class)
+    @Operation(
+            summary = "Create / update user",
+            description = "Creates or updates a user according to the specification given",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            requestBody = @RequestBody(
+                    description = "User specification",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = UserModel.class))
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Existing user updated",
+                            content = @Content(schema = @Schema(implementation = UserModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "New user created",
+                            content = @Content(schema = @Schema(implementation = UserModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Failure",
+                            content = @Content(schema = @Schema(implementation = String.class))
+                    )
+            }
+    )
     public Response create(UserModel userModel) {
         // Find any existing user
         Node extantUser;
@@ -145,7 +212,40 @@ public class User {
      */
     @DELETE
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = UserModel.class)
+    @Operation(
+            summary = "Delete user",
+            description = "Removes a user. Requires user's traditions to be deleted first",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Success",
+                            content = @Content(schema = @Schema(implementation = UserModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(schema = @Schema(implementation = String.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "412",
+                            description = "User still owns traditions",
+                            content = @Content(schema = @Schema(implementation = String.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Failure",
+                            content = @Content(schema = @Schema(implementation = String.class))
+                    )
+            }
+    )
     public Response deleteUser() {
         Node foundUser;
         UserModel removed;
@@ -184,7 +284,37 @@ public class User {
     @GET
     @Path("/traditions")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.TraditionModel>")
+    @Operation(
+            summary = "List user traditions",
+            description = "Get a list of the traditions belonging to the user",
+            parameters = {
+                    @Parameter(
+                            name = "userId",
+                            description = "The ID of a stemmarest user; usually an email address or Google ID token",
+                            required = true,
+                            in = ParameterIn.PATH
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Success",
+                            content = @Content(schema = @Schema(
+                                    implementation = TraditionModel[].class,
+                                    description = "List of tradition metadata objects"))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "User not found",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Failure",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getUserTraditions() {
         if (!DatabaseService.userExists(userId, db)) {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("User does not exist")).build();

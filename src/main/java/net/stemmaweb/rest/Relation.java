@@ -10,7 +10,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.GraphModel;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
@@ -66,7 +71,38 @@ public class Relation {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Create relation",
+            description = "Creates a new relation between the specified reading nodes.",
+            requestBody = @RequestBody(
+                    description = "JSON structure of the relation to create",
+                    required = true,
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON)
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "On success",
+                            content = @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(implementation = GraphModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "304",
+                            description = "If the specified relation type/scope already exists"
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "If the request has an invalid scope"
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "If the relationship cannot legally be created"
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "On failure, with JSON error message"
+                    )
+            }
+    )
     public Response create(RelationModel relationModel) {
         // Make sure a scope is set
         if (relationModel.getScope() == null) relationModel.setScope(SCOPE_LOCAL);
@@ -410,7 +446,21 @@ public class Relation {
     @Path("/remove")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
+    @Operation(
+            summary = "Delete a relation specified by JSON data",
+            description = "Remove the relation specified. There should be only one.",
+            requestBody = @RequestBody(
+                    description = "The JSON specification of the relationship(s) to delete",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of all relationships that were removed", content = @Content(mediaType = "application/json", schema = @Schema(implementation = List.class))),
+                    @ApiResponse(responseCode = "400", description = "Bad request, if an invalid scope was specified", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "404", description = "Not found, if no matching relationship was found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with JSON error message", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteByData(RelationModel relationModel) {
         ArrayList<RelationModel> deleted = new ArrayList<>();
 
@@ -475,7 +525,21 @@ public class Relation {
     @DELETE
     @Path("{relationId}")
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
-    @ReturnType(clazz = RelationModel.class)
+    @Operation(
+            summary = "Delete relation by ID",
+            description = "Removes a relation by internal ID.",
+            parameters = @Parameter(
+                    name = "relationId",
+                    description = "The ID of the relation to delete",
+                    required = true,
+                    schema = @Schema(type = "string")
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The deleted relation", content = @Content(mediaType = "application/json", schema = @Schema(implementation = RelationModel.class))),
+                    @ApiResponse(responseCode = "403", description = "Forbidden, if the given ID does not belong to a relation", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with JSON error message", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteById(@PathParam("relationId") String relationId) {
         RelationModel relationModel;
 

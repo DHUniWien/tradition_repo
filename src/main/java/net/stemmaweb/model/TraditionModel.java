@@ -4,7 +4,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.qmino.miredot.annotations.MireDotIgnore;
+import io.swagger.v3.oas.annotations.media.Schema;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
 import org.neo4j.graphdb.Node;
@@ -34,36 +34,43 @@ public class TraditionModel {
     /**
      * ID of the tradition
      */
+    @Schema(description = "ID of the tradition", required = true)
     private String id;
     /**
      * Name of the tradition
      */
+    @Schema(description = "Name of the tradition")
     private String name;
     /**
      * Language of the tradition
      */
+    @Schema(description = "Language of the tradition")
     private String language;
     /**
      * Direction of the tradition (LR, RL, or BI)
      */
+    @Schema(description = "Direction of the tradition (LR, RL, or BI)")
     private Direction direction;
     /**
      * Whether the tradition should be viewable by other users
      */
+    @Schema(description = "Whether the tradition should be viewable by other users")
     private Boolean is_public;
-    @MireDotIgnore
+    @Schema(hidden = true)
     private Integer stemweb_jobid;
     /**
      * User ID of the tradition's owner
      */
+    @Schema(description = "User ID of the tradition's owner")
     private String owner;
 
     /**
      * The list of witness sigla belonging to this tradition
      */
+    @Schema(description = "The list of witness sigla belonging to this tradition")
     private ArrayList<String> witnesses;
 
-    @MireDotIgnore
+    @Schema(hidden = true)
     // Derived from relationships
     private ArrayList<String> reltypes;
 
@@ -120,7 +127,7 @@ public class TraditionModel {
     }
     public String getDirection() { return direction == null ? "" : direction.toString(); }
     public void setDirection(String direction) {
-        if (!direction.equals(""))
+        if (!direction.isEmpty())
             this.direction = Direction.valueOf(direction);
     }
     public Boolean getIs_public() { return is_public; }

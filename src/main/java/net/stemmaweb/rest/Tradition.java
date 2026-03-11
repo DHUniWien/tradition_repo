@@ -1,8 +1,14 @@
 package net.stemmaweb.rest;
 
 import com.alexmerz.graphviz.ParseException;
-import com.qmino.miredot.annotations.MireDotIgnore;
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.StemmawebExporter;
@@ -150,7 +156,25 @@ public class Tradition {
     @Path("/stemma")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType("net.stemmaweb.model.StemmaModel")
+    @Operation(
+            summary = "Upload a new stemma",
+            description = "Creates/saves a new stemma for this tradition.",
+            requestBody = @RequestBody(
+                    description = "A StemmaModel describing the new stemma",
+                    content = @Content(schema = @Schema(implementation = StemmaModel.class))
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "Stemma created successfully",
+                            content = @Content(schema = @Schema(implementation = StemmaModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "Internal server error, with an error message"
+                    )
+            }
+    )
     public Response newStemma(StemmaModel stemmaSpec) {
         // Make sure the tradition exists
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -227,7 +251,26 @@ public class Tradition {
     @Path("/section")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @Operation(
+            summary = "Upload section",
+            description = "Creates a new section for this tradition. Returns the ID of the new section.",
+            requestBody = @RequestBody(
+                    description = "Multipart form data: 'name' (section name), 'filetype' (data format), 'file' (section data file).",
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = SectionUploadModel.class)
+                    )
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "201",
+                            description = "Section created successfully",
+                            content = @Content(schema = @Schema(type = "object", example = "{\"sectionId\": 123456}"))
+                    ),
+                    @ApiResponse(responseCode = "400", description = "Unrecognized file type"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response addSection(@FormDataParam("name") String sectionName,
                                @FormDataParam("filetype") String filetype,
                                @FormDataParam("file") InputStream uploadedInputStream) {
@@ -381,7 +424,21 @@ public class Tradition {
     @Path("/annotation")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationModel.class)
+    @Operation(
+            summary = "Create a new annotation on this tradition",
+            description = "Creates a new annotation on this tradition.",
+            requestBody = @RequestBody(
+                    description = "An AnnotationModel specifying the annotation to create",
+                    content = @Content(schema = @Schema(implementation = AnnotationModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Annotation created successfully",
+                            content = @Content(schema = @Schema(implementation = AnnotationModel.class))),
+                    @ApiResponse(responseCode = "403", description = "Invalid AnnotationModel"),
+                    @ApiResponse(responseCode = "404", description = "Tradition not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public Response addAnnotation(AnnotationModel am) {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         Response result;
@@ -411,7 +468,7 @@ public class Tradition {
     @GET
     @Path("/initRanks")
     @Produces(MediaType.APPLICATION_JSON)
-    @MireDotIgnore
+    @Operation(hidden = true)
     public Response initRanks() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -448,7 +505,16 @@ public class Tradition {
     @GET
     @Path("/sections")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.SectionModel>")
+    @Operation(
+            summary = "Get sections",
+            description = "Gets a list of all sections of a tradition with the given id.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of section metadata",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = SectionModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getAllSections() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -473,7 +539,16 @@ public class Tradition {
     @GET
     @Path("/witnesses")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
+    @Operation(
+            summary = "Get witnesses",
+            description = "Gets a list of all the witnesses of a tradition with the given id.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of witness metadata",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = WitnessModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getAllWitnesses() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -503,7 +578,16 @@ public class Tradition {
     @GET
     @Path("/stemmata")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.StemmaModel>")
+    @Operation(
+            summary = "Get stemmata",
+            description = "Gets a list of all the stemmata associated with this tradition.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of stemma metadata",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = StemmaModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getAllStemmata() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -536,7 +620,21 @@ public class Tradition {
     @GET
     @Path("/relations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
+    @Operation(
+            summary = "Get relationships",
+            description = "Gets a list of all relationships defined within the given tradition.",
+            parameters = {
+                    @Parameter(name = "include_readings",
+                            description = "Include the ReadingModel information for the source and target",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "false"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of relationship metadata",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = new ArrayList<>();
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
@@ -568,7 +666,16 @@ public class Tradition {
     @GET
     @Path("/relationtypes")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationTypeModel>")
+    @Operation(
+            summary = "Get relationship types",
+            description = "Gets a list of all relation types defined within the given tradition.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of relationship type metadata",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationTypeModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getAllRelationTypes() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         List<RelationTypeModel> relTypeList;
@@ -596,7 +703,16 @@ public class Tradition {
     @GET
     @Path("/readings")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(
+            summary = "Get readings",
+            description = "Gets a list of all readings in the given tradition.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of reading metadata",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getAllReadings() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -634,7 +750,21 @@ public class Tradition {
     @GET
     @Path("/annotations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    @Operation(
+            summary = "Get annotations on tradition",
+            description = "Returns a list of the annotations that have been made on this tradition.",
+            parameters = {
+                    @Parameter(name = "label",
+                            description = "Return only annotations with the given label. May be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of AnnotationModels",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnotationModel.class)))),
+                    @ApiResponse(responseCode = "400", description = "Tradition doesn't exist"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public Response getAllAnnotations(@QueryParam("label") List<String> filterLabels) {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -672,7 +802,16 @@ public class Tradition {
     @GET
     @Path("/annotationlabels")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationLabelModel>")
+    @Operation(
+            summary = "Get annotation labels for tradition",
+            description = "Returns a list of the annotation labels that have been defined for this tradition.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of AnnotationLabelModels",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnotationLabelModel.class)))),
+                    @ApiResponse(responseCode = "400", description = "Tradition doesn't exist"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public Response getDefinedAnnotationLabels() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -701,7 +840,16 @@ public class Tradition {
     @POST
     @Path("/pruneAnnotations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    @Operation(
+            summary = "Clean up dangling annotations",
+            description = "Deletes any annotations on this tradition that lack referents, unless the annotation is marked as 'primary'. Returns a list of the deleted annotations.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A list of AnnotationModels representing deleted annotations",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnotationModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "No such tradition found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response pruneAnnotations() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -745,7 +893,20 @@ public class Tradition {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = TraditionModel.class)
+    @Operation(
+            summary = "Update tradition information",
+            description = "Changes the metadata of the tradition.",
+            requestBody = @RequestBody(
+                    description = "A JSON specification of the desired tradition metadata",
+                    content = @Content(schema = @Schema(implementation = TraditionModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The updated tradition information",
+                            content = @Content(schema = @Schema(implementation = TraditionModel.class))),
+                    @ApiResponse(responseCode = "404", description = "The tradition or the requested owner does not exist"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response changeTraditionMetadata(TraditionModel tradition) {
         TraditionModel updatedTradition;
         try (Transaction tx = db.beginTx()) {
@@ -811,7 +972,15 @@ public class Tradition {
      * @statuscode 500 - on error, with an error message
      */
     @DELETE
-    @ReturnType("java.lang.Void")
+    @Operation(
+            summary = "Delete tradition",
+            description = "Removes an entire tradition, including all witnesses, stemmata, sections, readings, and relationships.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Tradition deleted successfully"),
+                    @ApiResponse(responseCode = "404", description = "Tradition does not exist"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response deleteTraditionById() {
         Node foundTradition = VariantGraphService.getTraditionNode(traditionId, db);
         if (foundTradition != null) {
@@ -862,7 +1031,16 @@ public class Tradition {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = TraditionModel.class)
+    @Operation(
+            summary = "Get tradition information",
+            description = "Returns the stored information (metadata) of a tradition.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "A JSON structure containing the tradition's metadata",
+                            content = @Content(schema = @Schema(implementation = TraditionModel.class))),
+                    @ApiResponse(responseCode = "404", description = "Tradition does not exist"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error, with an error message")
+            }
+    )
     public Response getTraditionInfo() {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, db);
         if (traditionNode == null)
@@ -891,6 +1069,33 @@ public class Tradition {
     @GET
     @Produces("application/xml; charset=utf-8")
     @Path("/tei")
+    @Operation(
+            summary = "Download TEI",
+            description = "Returns a TEI double-endpoint-attachment file representing the tradition text.",
+            parameters = {
+                    @Parameter(name = "significant", description = "Zero or more relationship types whose readings should be treated as identical",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "exclude_type1", description = "If 'true', exclude type-1 (singleton) variants",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "exclude_nonsense", description = "If 'true', suppress any variants marked with the is_nonsense property",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "combine_dislocations", description = "If 'true', move dislocated (e.g. transposed) variants to their matching base",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "suppress_matching", description = "A regular expression; all variants matching this will be suppressed in the apparatus. Default is to suppress all punctuation.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "punct")),
+                    @Parameter(name = "base_witness", description = "A witness sigil, or the string 'majority' or 'lemma', to indicate what text to use as the base text in the apparatus.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "normalize", description = "A relation type to normalize on",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "exclude_witness", description = "A witness to exclude from the apparatus. Can be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The TEI XML output"),
+                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Internal server error", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getTei(@DefaultValue("no") @QueryParam("significant") String significant,
                            @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
                            @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
@@ -923,7 +1128,14 @@ public class Tradition {
     @GET
     @Path("/graphml")
     @Produces("application/zip")
-    @ReturnType("java.lang.Void")
+    @Operation(
+            summary = "Download GraphML",
+            description = "Returns a GraphML file that describes the specified tradition and its data.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "ZIP file with GraphML data"),
+                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = MediaType.TEXT_PLAIN))
+            }
+    )
     public Response getGraphML() {
         if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
@@ -940,7 +1152,14 @@ public class Tradition {
     @GET
     @Path("/stemmaweb")
     @Produces(MediaType.APPLICATION_XML)
-    @ReturnType("java.lang.String")
+    @Operation(
+            summary = "Download legacy GraphML",
+            description = "Returns a legacy Stemmaweb-compatible GraphML file that describes the specified tradition and its data.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "XML data"),
+                    @ApiResponse(responseCode = "404", description = "No such tradition found", content = @Content(mediaType = MediaType.TEXT_PLAIN))
+            }
+    )
     public Response getGraphMLStemmaweb() {
         if (VariantGraphService.getTraditionNode(traditionId, db) == null)
             return Response.status(Status.NOT_FOUND).type(MediaType.TEXT_PLAIN).entity("No such tradition found").build();
@@ -964,7 +1183,28 @@ public class Tradition {
     @GET
     @Path("/dot")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.String")
+    @Operation(
+            summary = "Download GraphViz",
+            description = "Returns a GraphViz dot file that describes the specified tradition and its data.",
+            parameters = {
+                    @Parameter(name = "include_relations", description = "Include RELATED edges in the dot, if true",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
+                    @Parameter(name = "show_normal", description = "Display normal form of readings alongside 'raw' text form, if true",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
+                    @Parameter(name = "show_rank", description = "Display the rank of readings, if true",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
+                    @Parameter(name = "expand_sigla", description = "Avoid the 'majority' contraction of long witness labels, if true",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
+                    @Parameter(name = "normalise", description = "A RelationType name to normalise on, if desired",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "include_witness", description = "Exclude the given witness from the dot output. Can be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Plaintext dot format", content = @Content(mediaType = "text/plain; charset=utf-8")),
+                    @ApiResponse(responseCode = "404", description = "No such tradition found")
+            }
+    )
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
@@ -994,7 +1234,22 @@ public class Tradition {
     @GET
     @Path("/json")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AlignmentModel.class)
+    @Operation(
+            summary = "Download JSON alignment",
+            description = "Returns a JSON file that contains the aligned reading data for the tradition.",
+            parameters = {
+                    @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The JSON alignment",
+                            content = @Content(schema = @Schema(implementation = AlignmentModel.class)))
+            }
+    )
     public Response getJson(@QueryParam("conflate") String toConflate,
                             @QueryParam("section") List<String> sectionList,
                             @QueryParam("exclude_layers") String excludeLayers) {
@@ -1015,7 +1270,21 @@ public class Tradition {
     @GET
     @Path("/csv")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.String")
+    @Operation(
+            summary = "Download CSV alignment",
+            description = "Returns a CSV file that contains the aligned reading data for the tradition.",
+            parameters = {
+                    @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The CSV alignment as plaintext")
+            }
+    )
     public Response getCsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList,
                            @QueryParam("exclude_layers") String excludeLayers) {
@@ -1036,7 +1305,21 @@ public class Tradition {
     @GET
     @Path("/tsv")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.String")
+    @Operation(
+            summary = "Download TSV alignment",
+            description = "Returns a tab-separated values (TSV) file that contains the aligned reading data for the tradition.",
+            parameters = {
+                    @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The TSV alignment as plaintext")
+            }
+    )
     public Response getTsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("section") List<String> sectionList,
                            @QueryParam("exclude_layers") String excludeLayers) {
@@ -1059,7 +1342,23 @@ public class Tradition {
     @GET
     @Path("/matrix")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.String")
+    @Operation(
+            summary = "Download character matrix for parsimony analysis",
+            description = "Returns a character matrix suitable for use with e.g. Phylip Pars.",
+            parameters = {
+                    @Parameter(name = "conflate", description = "Zero or more relationship types whose readings should be treated as identical",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "section", description = "Restrict the output to include the given sections. Can be specified multiple times.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "exclude_layers", description = "If 'true', exclude witness layers from the output.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "maxVars", description = "Maximum number of variants per location, above which that location will be discarded. Default is 8, for compatibility with Phylip Pars.",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "integer", defaultValue = "8"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The character matrix as plaintext")
+            }
+    )
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @QueryParam("section") List<String> sectionList,
                                   @QueryParam("exclude_layers") String excludeLayers,

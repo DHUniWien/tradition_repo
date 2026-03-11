@@ -1,6 +1,10 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.model.AnnotationLabelModel;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.GraphDatabaseServiceProvider;
@@ -49,7 +53,15 @@ public class AnnotationLabel {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationLabelModel.class)
+    @Operation(
+            summary = "Get annotation label spec",
+            description = "Retrieves the specification for the given annotation type name.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response getAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
         if (ourNode == null) {
@@ -73,7 +85,22 @@ public class AnnotationLabel {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AnnotationLabelModel.class)
+    @Operation(
+            summary = "Put annotation label spec",
+            description = "Creates or updates an annotation type specification.",
+            requestBody = @RequestBody(
+                    description = "The AnnotationLabelModel specification to use",
+                    required = true,
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))
+            ),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Updated existing label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "201", description = "Created new label", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "400", description = "Error in the annotation type specification", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "409", description = "Requested name is already in use", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response createOrUpdateAnnotationLabel(AnnotationLabelModel alm) {
         Node ourNode = lookupAnnotationLabel();
         Node tradNode = VariantGraphService.getTraditionNode(tradId, db);
@@ -175,7 +202,15 @@ public class AnnotationLabel {
      * @return the label model that was deleted
      */
     @DELETE
-    @ReturnType(clazz = AnnotationLabelModel.class)
+    @Operation(
+            summary = "Delete annotation label",
+            description = "Deletes the specified annotation label specification from the tradition. Returns an error if the label is still in use.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Success", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AnnotationLabelModel.class))),
+                    @ApiResponse(responseCode = "409", description = "Annotation label is still in use", content = @Content(mediaType = "application/json")),
+                    @ApiResponse(responseCode = "500", description = "Failure, with an error report in JSON format", content = @Content(mediaType = "application/json"))
+            }
+    )
     public Response deleteAnnotationLabel() {
         Node ourNode = lookupAnnotationLabel();
         if (ourNode == null) return Response.status(Response.Status.NOT_FOUND).build();

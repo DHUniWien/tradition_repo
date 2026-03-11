@@ -28,63 +28,7 @@
 				<artifactId>maven-war-plugin</artifactId>
 				<version>3.3.1</version>
 			</plugin>
-			<plugin>
-                <groupId>com.qmino</groupId>
-                <artifactId>miredot-plugin</artifactId>
-                <version>2.4.2-Java11-SNAPSHOT</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.neo4j</groupId>
-                        <artifactId>neo4j</artifactId>
-                        <version>${neo4j-version}</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>restdoc</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <licence>MIREDOT_LICENSE</licence>
-                    <restModel>
-                        <restFramework>
-                            <name>jax-rs</name>
-                        </restFramework>
-                    </restModel>
-                    <output>
-                        <title>Stemmarest - a repository for variant text traditions</title>
-                        <html>
-                            <initialCollapseLevel>3</initialCollapseLevel>
-                            <intro>build/docintro.html</intro>
-                        </html>
-                    </output>
-                    <!-- insert other configuration here (optional) -->
-                </configuration>
-            </plugin>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>exec-maven-plugin</artifactId>
-				<version>1.6.0</version>
-				<executions>
-					<execution>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<executable>cp</executable>
-					<arguments>
-						<argument>-R</argument>
-						<argument>target/miredot</argument>
-						<argument>src/main/webapp/WEB-INF/docs</argument>
-					</arguments>
-				</configuration>
-			</plugin>
-		</plugins>
+			</plugins>
 	</build>
 	<dependencies>
 		<dependency>
@@ -230,11 +174,16 @@
 			<artifactId>graph-algorithms-algo</artifactId>
 			<version>${neo4j-algo-version}</version>
 		</dependency>
-		<!-- Used for better documentation of REST interfaces -->
+		<!-- OpenAPI 3 / Swagger documentation -->
 		<dependency>
-			<groupId>com.qmino</groupId>
-			<artifactId>miredot-annotations</artifactId>
-			<version>1.6.0</version>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-jaxrs2</artifactId>
+			<version>2.2.25</version>
+		</dependency>
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-annotations</artifactId>
+			<version>2.2.25</version>
 		</dependency>
 		<!-- Test dependencies -->
 		<!-- <dependency> <groupId>${jersey-group}</groupId> <artifactId>jersey-client</artifactId> 
@@ -333,30 +282,7 @@
 			<id>repository</id>
 			<url>file://${basedir}/repository</url>
 		</repository>
-		<repository>
-			<id>miredot</id>
-			<name>Miredot Releases</name>
-			<url>https://secure-nexus.miredot.com/content/repositories/miredot/</url>
-		</repository>
-		<repository>
-			<id>miredot-snapshot</id>
-			<name>Miredot Snapshots</name>
-			<url>https://secure-nexus.miredot.com/content/repositories/miredot-snapshots/</url>
-		</repository>
 	</repositories>
-
-	<pluginRepositories>
-		<pluginRepository>
-			<id>miredot</id>
-			<name>Miredot Releases</name>
-			<url>https://secure-nexus.miredot.com/content/repositories/miredot/</url>
-		</pluginRepository>
-		<pluginRepository>
-			<id>miredot-snapshot</id>
-			<name>Miredot Snapshots</name>
-			<url>https://secure-nexus.miredot.com/content/repositories/miredot-snapshots/</url>
-		</pluginRepository>
-	</pluginRepositories>
 
 
 </project>

@@ -1,7 +1,13 @@
 package net.stemmaweb.rest;
 
-import com.qmino.miredot.annotations.MireDotIgnore;
-import com.qmino.miredot.annotations.ReturnType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.exporter.GraphMLExporter;
 import net.stemmaweb.exporter.TEIExporter;
@@ -90,7 +96,13 @@ public class Section {
      */
     @GET
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = SectionModel.class)
+    @Operation(summary = "Get section", description = "Get the metadata for a section.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(schema = @Schema(implementation = SectionModel.class))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getSectionInfo() {
         SectionModel result;
         if (!sectionInTradition())
@@ -118,7 +130,15 @@ public class Section {
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = SectionModel.class)
+    @Operation(summary = "Update section", description = "Update the metadata for a section.",
+            requestBody = @RequestBody(description = "A JSON specification of the section update", required = true,
+                    content = @Content(schema = @Schema(implementation = SectionModel.class))),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(schema = @Schema(implementation = SectionModel.class))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response updateSectionInfo(SectionModel newInfo) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -146,7 +166,13 @@ public class Section {
      * @statuscode 500 - on failure, with an error message
      */
     @DELETE
-    @ReturnType("java.lang.Void")
+    @Operation(summary = "Delete section",
+            description = "Delete the specified section, and update the tradition's sequence of sections to account for any resulting gap. Returns a JSON response on error with key 'error'.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success"),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response deleteSection() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.APPLICATION_JSON_TYPE)
@@ -201,7 +227,13 @@ public class Section {
     @GET
     @Path("/witnesses")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
+    @Operation(summary = "Get witnesses", description = "Gets a list of all the witnesses of the section with the given id.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = WitnessModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getAllWitnessInSection() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -271,7 +303,13 @@ public class Section {
     @GET
     @Path("/readings")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(summary = "Get readings", description = "Gets a list of all readings in the given tradition section.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "If no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "On failure, with an error message")
+            })
     public Response getAllReadings() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -314,7 +352,17 @@ public class Section {
     @GET
     @Path("/relations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.RelationModel>")
+    @Operation(summary = "Get relations", description = "Gets a list of all relations defined within the given section.",
+            parameters = {
+                    @Parameter(name = "include_readings", description = "Include the ReadingModel information for the source and target",
+                            in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "false"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = RelationModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getAllRelationships(@DefaultValue("false") @QueryParam("include_readings") String includeReadings) {
         ArrayList<RelationModel> relList = sectionRelations(includeReadings.equals("true"));
 
@@ -361,7 +409,13 @@ public class Section {
     @GET
     @Path("/colocated")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
+    @Operation(summary = "Get colocated clusters of readings",
+            description = "Gets a list of all clusters of readings that are related via colocation links.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "500", description = "on error")
+            })
     public Response getColocatedClusters() {
         List<Set<Node>> clusterList;
         try {
@@ -396,7 +450,20 @@ public class Section {
     @GET
     @Path("/lemmatext")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = TextSequenceModel.class)
+    @Operation(summary = "Get lemma text for the section.",
+            description = "Retrieve the lemma text for the section, if there is any, in a JSON object with key 'text'.",
+            parameters = {
+                    @Parameter(name = "final", in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
+                    @Parameter(name = "startRank", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "1")),
+                    @Parameter(name = "endRank", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "E")),
+                    @Parameter(name = "startRdg", in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "endRdg", in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "On success", content = @Content(schema = @Schema(implementation = TextSequenceModel.class))),
+                    @ApiResponse(responseCode = "404", description = "If no such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "On failure, with an error message")
+            })
     public Response getLemmaText(@QueryParam("final")     @DefaultValue("false") String followFinal,
                                  @QueryParam("startRank") @DefaultValue("1") String startRank,
                                  @QueryParam("endRank")   @DefaultValue("E") String endRank,
@@ -439,7 +506,21 @@ public class Section {
     @GET
     @Path("/lemmareadings")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.ReadingModel>")
+    @Operation(summary = "Get sequence of lemma readings",
+            description = "Gets the list of lemma readings for the section, if there are any. Requesting the 'final' lemma sequence will return what was set by .../setlemma; otherwise all readings marked as lemmata will be returned, in order of rank, whether or not they are yet on a lemma path.",
+            parameters = {
+                    @Parameter(name = "final", in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false")),
+                    @Parameter(name = "startRank", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "1")),
+                    @Parameter(name = "endRank", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "E")),
+                    @Parameter(name = "startRdg", in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "endRdg", in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getLemmaReadings(@QueryParam("final") @DefaultValue("false") String followFinal,
                                      @QueryParam("startRank") @DefaultValue("1") String startRank,
                                      @QueryParam("endRank")   @DefaultValue("E") String endRank,
@@ -525,7 +606,18 @@ public class Section {
     @GET
     @Path("/annotations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<net.stemmaweb.model.AnnotationModel>")
+    @Operation(summary = "Get annotations on section",
+            description = "Return a list of annotations that refer to a node belonging to this section. The 'label' query parameter can be specified one or more times to restrict the output to the selected annotation types. If the 'recursive' query parameter has a value of 'true', then the results will include the ancestors of the (selected) section annotations.",
+            parameters = {
+                    @Parameter(name = "label", in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "recursive", in = ParameterIn.QUERY, schema = @Schema(type = "boolean", defaultValue = "false"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = AnnotationModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getAnnotationsOnSection(@QueryParam("label") List<String> filterLabels,
                                             @QueryParam("recursive") @DefaultValue("false") String recurse) {
         if (!sectionInTradition())
@@ -582,7 +674,24 @@ public class Section {
     @GET
     @Path("/variants")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = VariantListModel.class)
+    @Operation(summary = "Get variant list",
+            description = "Return a list of variant groupings suitable for a critical apparatus.",
+            parameters = {
+                    @Parameter(name = "significant", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "exclude_type1", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "exclude_nonsense", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "combine_dislocations", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "no")),
+                    @Parameter(name = "suppress_matching", in = ParameterIn.QUERY, schema = @Schema(type = "string", defaultValue = "punct")),
+                    @Parameter(name = "base_witness", in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "normalize", in = ParameterIn.QUERY, schema = @Schema(type = "string")),
+                    @Parameter(name = "exclude_witness", in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(schema = @Schema(implementation = VariantListModel.class))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getVariantGroups(@DefaultValue("no") @QueryParam("significant") String significant,
                                      @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
                                      @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
@@ -627,7 +736,17 @@ public class Section {
     @PUT
     @Path("/orderAfter/{priorSectID}")
     @Produces(MediaType.TEXT_PLAIN)
-    @ReturnType("java.lang.Void")
+    @Operation(summary = "Reorder section",
+            description = "Move this section to a new place in the section sequence. Upon error, returns a JSON response with key 'error'.",
+            parameters = {
+                    @Parameter(name = "priorSectID", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success"),
+                    @ApiResponse(responseCode = "400", description = "if the priorSectId doesn't belong to the given tradition"),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response reorderSectionAfter(@PathParam("priorSectID") String priorSectID) {
         try (Transaction tx = db.beginTx()) {
             if (!sectionInTradition())
@@ -707,7 +826,18 @@ public class Section {
     @POST
     @Path("/splitAtRank/{rank}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.Map<String,Long>")
+    @Operation(summary = "Split section at rank",
+            description = "Split a section into two at the given graph rank, and adjust the tradition's section order accordingly.",
+            parameters = {
+                    @Parameter(name = "rank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(schema = @Schema(type = "object"))),
+                    @ApiResponse(responseCode = "400", description = "if the rank doesn't exist"),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response splitAtRank (@PathParam("rank") String rankstr) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -861,7 +991,17 @@ public class Section {
     @POST
     @Path("/merge/{otherId}")
     @Produces(MediaType.TEXT_PLAIN)
-    @ReturnType("java.lang.Void")
+    @Operation(summary = "Merge sections",
+            description = "Merge two sections into one, and adjust the tradition's section order accordingly. The specified sections must be contiguous, and will be merged according to their existing order.",
+            parameters = {
+                    @Parameter(name = "otherId", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success"),
+                    @ApiResponse(responseCode = "400", description = "if the sections are not contiguous"),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response mergeSections (@PathParam("otherId") String otherId) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -975,7 +1115,7 @@ public class Section {
     @GET
     @Path("/initRanks")
     @Produces(MediaType.APPLICATION_JSON)
-    @MireDotIgnore
+    @Operation(hidden = true)
     public Response initRanks() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity("Tradition and/or section not found").build();
@@ -1013,7 +1153,20 @@ public class Section {
     @GET
     @Path("/mergeablereadings/{startRank}/{endRank}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
+    @Operation(summary = "List mergeable readings",
+            description = "Returns a list of pairs of readings that could potentially be identical - that is, they have the same text and same joining properties, and are co-located.",
+            parameters = {
+                    @Parameter(name = "startRank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string")),
+                    @Parameter(name = "endRank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string")),
+                    @Parameter(name = "threshold", in = ParameterIn.QUERY, schema = @Schema(type = "integer", defaultValue = "10")),
+                    @Parameter(name = "text", in = ParameterIn.QUERY, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists"),
+                    @ApiResponse(responseCode = "500", description = "on failure, with an error message")
+            })
     public Response getCouldBeIdenticalReadings(
             @PathParam("startRank") String startRank,
             @PathParam("endRank") String endRank,
@@ -1144,7 +1297,17 @@ public class Section {
     @GET
     @Path("/identicalreadings/{startRank}/{endRank}")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.List<java.util.List<net.stemmaweb.model.ReadingModel>>")
+    @Operation(summary = "Find identical readings",
+            description = "Get all readings which have the same text and the same rank, between the given ranks. This is a constrained version of mergeablereadings.",
+            parameters = {
+                    @Parameter(name = "startRank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string")),
+                    @Parameter(name = "endRank", in = ParameterIn.PATH, required = true, schema = @Schema(type = "string"))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "on success",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = ReadingModel.class)))),
+                    @ApiResponse(responseCode = "404", description = "if no such tradition or section exists")
+            })
     public Response getIdenticalReadings(@PathParam("startRank") String startRank,
                                          @PathParam("endRank") String endRank) {
         Map<String,Long> useRanks;
@@ -1233,7 +1396,32 @@ public class Section {
     @POST
     @Path("/setlemma")
     @Produces("application/json; charset=utf-8")
-    @ReturnType("java.util.Map<String,String>")
+    @Operation(
+            summary = "Set the lemma text",
+            description = "Chain through the readings marked as lemmata and construct the LEMMA_TEXT link. Returns a short JSON value with key 'result' (== 'success') or 'error'.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "409",
+                            description = "on detection of conflicting lemma readings",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response setLemmaText() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
@@ -1307,7 +1495,27 @@ public class Section {
     @GET
     @Path("/emendations")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Get emendations",
+            description = "Return a list of emendations on this section.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = GraphModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if specified section or specified tradition doesn't exist",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on error",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getEmendations() {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND)
@@ -1352,7 +1560,36 @@ public class Section {
     @Path("/emend")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Record emendation",
+            description = "Propose an emendation (that is, an edit not supported by any witness) to the text. An emendation is a special type of reading, which requires an authority (i.e. the identity of the proposer) to be named.",
+            requestBody = @RequestBody(
+                    description = "A ProposedEmendationModel with the information",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = ProposedEmendationModel.class))
+            ),
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = GraphModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "400",
+                            description = "on bad request",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if the tradition and/or section doesn't exist",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on error"
+                    )
+            }
+    )
     public Response emendText(ProposedEmendationModel proposal) {
         if (!sectionInTradition())
             return Response.status(Response.Status.NOT_FOUND)
@@ -1416,7 +1653,27 @@ public class Section {
     @GET
     @Path("/graph")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = GraphModel.class)
+    @Operation(
+            summary = "Download JSON description of graph nodes & edges",
+            description = "Returns a JSON GraphModel (readings, relations, sequences incl. lemma & emendation) for the section.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = GraphModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class))
+                    )
+            }
+    )
     public Response getGraphModel() {
         // TODO does this check make sense, or does the not-found happen already in Tradition.java?
         if (VariantGraphService.getTraditionNode(tradId, db) == null)
@@ -1460,7 +1717,28 @@ public class Section {
     @GET
     @Path("/graphml")
     @Produces("application/zip")
-    @ReturnType("java.lang.Void")
+    @Operation(
+            summary = "Download GraphML XML description of section",
+            description = "Returns a GraphML file that describes the specified section and its data, including annotations.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getGraphML() {
         if (VariantGraphService.getTraditionNode(tradId, db) == null)
             return Response.status(Response.Status.NOT_FOUND).type(MediaType.TEXT_PLAIN_TYPE)
@@ -1489,7 +1767,61 @@ public class Section {
     @GET
     @Path("/dot")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType(clazz = String.class)
+    @Operation(
+            summary = "Download GraphViz dot",
+            description = "Returns a GraphViz dot file that describes the specified section and its data.",
+            parameters = {
+                    @Parameter(
+                            name = "include_relations",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "boolean", defaultValue = "false")
+                    ),
+                    @Parameter(
+                            name = "show_normal",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "boolean", defaultValue = "false")
+                    ),
+                    @Parameter(
+                            name = "show_rank",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "boolean", defaultValue = "false")
+                    ),
+                    @Parameter(
+                            name = "expand_sigla",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "boolean", defaultValue = "false")
+                    ),
+                    @Parameter(
+                            name = "normalise",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_witness",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(type = "string"))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getDot(@DefaultValue("false") @QueryParam("include_relations") Boolean includeRelatedRelationships,
                            @DefaultValue("false") @QueryParam("show_normal") Boolean showNormalForms,
                            @DefaultValue("false") @QueryParam("show_rank") Boolean showRank,
@@ -1519,7 +1851,41 @@ public class Section {
     @GET
     @Path("/json")
     @Produces("application/json; charset=utf-8")
-    @ReturnType(clazz = AlignmentModel.class)
+    @Operation(
+            summary = "Download JSON alignment",
+            description = "Returns an alignment table for the section in JSON format.",
+            parameters = {
+                    @Parameter(
+                            name = "conflate",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_layers",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(implementation = AlignmentModel.class))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getJson(@QueryParam("conflate") String toConflate,
                             @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1538,7 +1904,40 @@ public class Section {
     @GET
     @Path("/csv")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType("java.lang.Void")
+    @Operation(
+            summary = "Download CSV alignment",
+            description = "Returns a CSV file that contains the aligned reading data for the tradition.",
+            parameters = {
+                    @Parameter(
+                            name = "conflate",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_layers",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getCsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1558,7 +1957,40 @@ public class Section {
     @GET
     @Path("/tsv")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType(clazz = String.class)
+    @Operation(
+            summary = "Download TSV alignment",
+            description = "Returns a TSV file that contains the aligned reading data for the tradition.",
+            parameters = {
+                    @Parameter(
+                            name = "conflate",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_layers",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getTsv(@QueryParam("conflate") String toConflate,
                            @QueryParam("exclude_layers") String excludeLayers) {
         List<String> thisSection = new ArrayList<>(Collections.singletonList(sectId));
@@ -1579,7 +2011,46 @@ public class Section {
     @GET
     @Path("/matrix")
     @Produces("text/plain; charset=utf-8")
-    @ReturnType(clazz = String.class)
+    @Operation(
+            summary = "Download character matrix for parsimony analysis",
+            description = "Returns a character matrix suitable for use with e.g. Phylip Pars.",
+            parameters = {
+                    @Parameter(
+                            name = "conflate",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_layers",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "maxVars",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "integer", defaultValue = "8")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success",
+                            content = @Content(schema = @Schema(type = "string"))
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition or section exists",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on failure, with an error message",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getCharMatrix(@QueryParam("conflate") String toConflate,
                                   @QueryParam("exclude_layers") String excludeLayers,
                                   @DefaultValue("8") @QueryParam("maxVars") int maxVars) {
@@ -1607,6 +2078,70 @@ public class Section {
     @GET
     @Produces("application/xml; charset=utf-8")
     @Path("/tei")
+    @Operation(
+            summary = "Download TEI XML encoding of section",
+            description = "Returns a TEI XML file representing the section text, using the double-endpoint-attachment method to encode the variation.",
+            parameters = {
+                    @Parameter(
+                            name = "significant",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string", defaultValue = "no")
+                    ),
+                    @Parameter(
+                            name = "exclude_type1",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string", defaultValue = "no")
+                    ),
+                    @Parameter(
+                            name = "exclude_nonsense",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string", defaultValue = "no")
+                    ),
+                    @Parameter(
+                            name = "combine_dislocations",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string", defaultValue = "no")
+                    ),
+                    @Parameter(
+                            name = "suppress_matching",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string", defaultValue = "punct")
+                    ),
+                    @Parameter(
+                            name = "base_witness",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "normalize",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    ),
+                    @Parameter(
+                            name = "exclude_witness",
+                            in = ParameterIn.QUERY,
+                            schema = @Schema(type = "string")
+                    )
+            },
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "on success"
+                    ),
+                    @ApiResponse(
+                            responseCode = "404",
+                            description = "if no such tradition found",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    ),
+                    @ApiResponse(
+                            responseCode = "500",
+                            description = "on error",
+                            content = @Content(schema = @Schema(implementation = Map.class),
+                                    mediaType = "application/json")
+                    )
+            }
+    )
     public Response getTei(@DefaultValue("no") @QueryParam("significant") String significant,
             @DefaultValue("no") @QueryParam("exclude_type1") String excludeType1,
             @DefaultValue("no") @QueryParam("exclude_nonsense") String excludeNonsense,
