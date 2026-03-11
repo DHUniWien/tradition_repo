@@ -19,6 +19,8 @@ import net.stemmaweb.services.VariantGraphService;
 import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.Node;
 
+import org.json.JSONObject;
+
 import static net.stemmaweb.Util.jsonresp;
 
 /**
@@ -28,6 +30,7 @@ import static net.stemmaweb.Util.jsonresp;
 public class DotParser {
     private final GraphDatabaseService db;
     private String messageValue = null;
+    private long createdStemmaid = -1;
 
     public DotParser(GraphDatabaseService db) {
         this.db = db;
@@ -38,9 +41,10 @@ public class DotParser {
      *
      * @param tradId     - The ID of the tradition to which this stemma should be added
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
+     * @param stemmaNode - an existing node, in case we are replacing an existing stemma
      * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
      */
-    public Response importStemmaFromDot(String tradId, StemmaModel stemmaSpec) {
+    public Response importStemmaFromDot(String tradId, StemmaModel stemmaSpec, Node stemmaNode) {
         Status result = null;
         Graph stemma = null;
         try {
@@ -54,8 +58,8 @@ public class DotParser {
             }
             stemma = parsedgraphs.get(0);
             // Get its name, in case we still don't have one
-            if (stemmaSpec.getIdentifier() == null)
-                stemmaSpec.setIdentifier(getDotGraphName(stemma));
+            if (stemmaSpec.getName() == null)
+                stemmaSpec.setName(getDotGraphName(stemma));
         } catch (ParseException e) {
             messageValue = "Error on attempt to parse dot: " + e.getMessage();
             result = Status.BAD_REQUEST;
@@ -63,47 +67,49 @@ public class DotParser {
 
         // Save the graph into Neo4J.
         if (result == null)
-            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier(), stemmaSpec.getJobid());
+            result = saveToNeo(stemma, tradId, stemmaSpec.getName(), stemmaNode, stemmaSpec.getJobid());
 
         // Return our answer.
-        String returnKey = result == Status.CREATED ? "name" : "error";
-        return Response.status(result)
-                .entity(jsonresp(returnKey, messageValue))
-                .build();
+        if (result == Status.CREATED) {
+            return Response.status(result)
+                    .entity(new JSONObject().put("name", messageValue).put("stemmaid", createdStemmaid).toString())
+                    .build();
+        }
+        return Response.status(result).entity(jsonresp("error", messageValue)).build();
     }
 
-    private Status saveToNeo(Graph stemma, String tradId, String stemmaName, Integer jobid) {
+    private Status saveToNeo(Graph stemma, String tradId, String stemmaName, Node stemmaNode, Integer jobid) {
         // Check for the existence of the tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, db);
         if (traditionNode == null)
             return Status.NOT_FOUND;
 
+        long stemmaid;
         try (Transaction tx = db.beginTx()) {
-            // First check that no stemma with this name already exists for this tradition,
-            // unless we intend to replace it.
-            for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
-                if (priorStemma.getProperty("name").equals(stemmaName)) {
-                    messageValue = "A stemma by this name already exists for this tradition.";
-                    return Status.CONFLICT;
-                }
-            }
+
             // Get a list of the existing (extant) tradition witnesses
             Map<String, Node> traditionWitnesses = new HashMap<>();
             DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                     .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
 
-            Node stemmaNode;
             Map<Node, Boolean> witnessesVisited = new HashMap<>();
             List<Relationship> stemmaEdges;
             Boolean isDirected = stemma.getType() == 2;
             // Create the stemma in a separate transaction, so we can query it with unionFind to check its shape.
             try (Transaction tx2 = db.beginTx()) {
                 // Create the new stemma node
-                stemmaNode = db.createNode(Nodes.STEMMA);
+                if (stemmaNode == null) {
+                    stemmaNode = db.createNode(Nodes.STEMMA);
+                    // Save the stemma to the tradition.
+                    traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
+                }
                 stemmaNode.setProperty("name", stemmaName);
                 stemmaNode.setProperty("directed", isDirected);
                 if (jobid != null && jobid > 0)
                     stemmaNode.setProperty("from_jobid", jobid);
+                else if (stemmaNode.hasProperty("from_jobid"))
+                    stemmaNode.removeProperty("from_jobid");
+                stemmaid = stemmaNode.getId();
 
                 // Create the nodes as Witness nodes; use existing witnesses if they exist.
                 // Store the collection of them for later traversal.
@@ -143,13 +149,14 @@ public class DotParser {
                     witnessesVisited.put(existingWitness, false);
                 }
 
-                // Create the edges; each edge has the stemma label as a property.
+                // Create the edges; each edge has the stemma identifier as a property.
                 stemmaEdges = new ArrayList<>();
+                String stemmaidStr = String.valueOf(stemmaid);
                 for (Edge transmission : stemma.getEdges()) {
                     Node sourceWit = traditionWitnesses.get(getNodeSigil(transmission.getSource().getNode()));
                     Node targetWit = traditionWitnesses.get(getNodeSigil(transmission.getTarget().getNode()));
                     Relationship txEdge = sourceWit.createRelationshipTo(targetWit, ERelations.TRANSMITTED);
-                    txEdge.setProperty("hypothesis", stemmaName);
+                    txEdge.setProperty("hypothesis", stemmaidStr);
                     stemmaEdges.add(txEdge);
                 }
 
@@ -193,7 +200,7 @@ public class DotParser {
                     if (witnessesVisited.get(witness))
                         continue;
                     ResourceIterable<Node> pathNodes = db.traversalDescription().depthFirst()
-                            .expand(Util.getExpander(Direction.INCOMING, stemmaName))
+                            .expand(Util.getExpander(Direction.INCOMING, String.valueOf(stemmaid)))
                             .traverse(witness).nodes();
                     Node pathEnd = null;
                     for (Node pNode : pathNodes) {
@@ -218,9 +225,6 @@ public class DotParser {
                 stemmaNode.createRelationshipTo(rootNode, ERelations.HAS_ARCHETYPE);
             }
 
-            // Save the stemma to the tradition.
-            traditionNode.createRelationshipTo(stemmaNode, ERelations.HAS_STEMMA);
-
             tx.success();
         } catch (Exception e) {
             e.printStackTrace();
@@ -228,6 +232,7 @@ public class DotParser {
             return Status.INTERNAL_SERVER_ERROR;
         }
         messageValue = stemmaName;
+        createdStemmaid = stemmaid;
         return Status.CREATED;
     }
 

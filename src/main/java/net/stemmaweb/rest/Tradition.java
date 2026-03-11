@@ -82,11 +82,11 @@ public class Tradition {
 
     /**
      * Delegates to {@link net.stemmaweb.rest.Stemma Stemma} module
-     * @param name - the name of the requested stemma
+     * @param stemmaId - the stemmaid (numeric) or legacy name of the requested stemma
      */
-    @Path("/stemma/{name}")
-    public Stemma getStemma(@PathParam("name") String name) {
-        return new Stemma(traditionId, name);
+    @Path("/stemma/{stemmaId}")
+    public Stemma getStemma(@PathParam("stemmaId") String stemmaId) {
+        return new Stemma(traditionId, stemmaId);
     }
 
     /**
@@ -158,17 +158,17 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
 
         // Make sure the stemma has a name.
-        if (stemmaSpec.getIdentifier() == null || stemmaSpec.getIdentifier().isEmpty()) {
+        if (stemmaSpec.getName() == null || stemmaSpec.getName().isEmpty()) {
             // Is there a name in the dot spec?
             if (stemmaSpec.getDot() != null) try {
-                stemmaSpec.setIdentifier(DotParser.getDotGraphName(stemmaSpec.getDot()));
+                stemmaSpec.setName(DotParser.getDotGraphName(stemmaSpec.getDot()));
             } catch (ParseException e) {
                 return Response.status(Status.BAD_REQUEST)
                         .entity(jsonerror("Parse error in dot: " + e.getMessage())).build();
             }
-            else stemmaSpec.setIdentifier(String.format("New stemma %s", now()));
+            else stemmaSpec.setName(String.format("New stemma %s", now()));
         }
-        Stemma restStemma = new Stemma(traditionId, stemmaSpec.getIdentifier(), true);
+        Stemma restStemma = new Stemma(traditionId, stemmaSpec.getName(), true);
         return restStemma.replaceStemma(stemmaSpec);
     }
 

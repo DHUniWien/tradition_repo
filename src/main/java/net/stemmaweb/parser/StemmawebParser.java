@@ -254,8 +254,8 @@ public class StemmawebParser {
                                             // if (currentNode.hasProperty("label") && currentNode.getProperty("label").equals("TRADITION"))
                                             //     break;
                                             if (currentNode.hasProperty("name")
-                                                    && ((String)currentNode.getProperty("name")).length() == 0
-                                                    && text.length() > 0) {
+                                                    && ((String) currentNode.getProperty("name")).isEmpty()
+                                                    && !text.isEmpty()) {
                                                 currentNode.setProperty(attr, text);
                                             }
                                             break;
@@ -352,7 +352,7 @@ public class StemmawebParser {
                 DotParser parser = new DotParser(db);
                 StemmaModel sm = new StemmaModel();
                 sm.setDot(graph);
-                parser.importStemmaFromDot(tradId, sm);
+                parser.importStemmaFromDot(tradId, sm, null);
             }
         }
 

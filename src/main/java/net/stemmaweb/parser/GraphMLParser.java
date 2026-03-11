@@ -433,6 +433,25 @@ public class GraphMLParser {
                 toRemove.forEach(annotationsToAdd::remove);
             }
 
+            // Update hypothesis property on TRANSMITTED relationships for any STEMMA nodes that were
+            // re-created with new IDs. The hypothesis property stores the stemmaid (Neo4j node ID),
+            // so if the node ID changed on re-import, we need to update all related TRANSMITTED edges.
+            for (Map.Entry<String, Long> idEntry : idMap.entrySet()) {
+                Node createdNode;
+                try { createdNode = db.getNodeById(idEntry.getValue()); }
+                catch (Exception e) { continue; }
+                if (!createdNode.hasLabel(Nodes.STEMMA)) continue;
+                String oldStemmaid = idEntry.getKey();
+                String newStemmaid = String.valueOf(idEntry.getValue());
+                if (oldStemmaid.equals(newStemmaid)) continue;
+                for (Relationship hw : createdNode.getRelationships(ERelations.HAS_WITNESS, Direction.OUTGOING)) {
+                    for (Relationship tRel : hw.getEndNode().getRelationships(ERelations.TRANSMITTED, Direction.BOTH)) {
+                        if (oldStemmaid.equals(tRel.getProperty("hypothesis", "")))
+                            tRel.setProperty("hypothesis", newStemmaid);
+                    }
+                }
+            }
+
             // Sanity check: if we created any relationship-less nodes, delete them again.
             idMap.values().stream().map(db::getNodeById)
                     .filter(n -> !n.hasRelationship()).forEach(Node::delete);

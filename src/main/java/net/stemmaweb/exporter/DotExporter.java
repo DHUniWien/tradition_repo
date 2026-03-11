@@ -110,7 +110,7 @@ public class DotExporter
                 ArrayList<Node> sectionWits = new Section(tradId, String.valueOf(sectionNode.getId()))
                         .collectSectionWitnesses();
                 int numWits = sectionWits.size();
-                if (dm.getExcludeWitnesses().size() > 0) {
+                if (!dm.getExcludeWitnesses().isEmpty()) {
                     numWits -= dm.getExcludeWitnesses().size();
                 }
                 Node sectionStartNode = VariantGraphService.getStartNode(String.valueOf(sectionNode.getId()), db);
@@ -177,7 +177,7 @@ public class DotExporter
                     ArrayList<String> seqSpecs = new ArrayList<>();
                     // This node is automatically in a requested witness if it is the start node, or if there
                     // is no witness filter.
-                    boolean inRequestedWitness = node.equals(sectionStartNode) || dm.getExcludeWitnesses().size() == 0;
+                    boolean inRequestedWitness = node.equals(sectionStartNode) || dm.getExcludeWitnesses().isEmpty();
                     for (Relationship rel : node.getRelationships(Direction.INCOMING, seqLabel)) {
                         if (rel == null)
                             continue;
@@ -185,7 +185,7 @@ public class DotExporter
                         Long relStartNodeId = relStartNode.getId();
 
                         boolean witnessLink = false; // Does the witness filter need this sequence?
-                        if (node.equals(sectionStartNode) || dm.getExcludeWitnesses().size() == 0)
+                        if (node.equals(sectionStartNode) || dm.getExcludeWitnesses().isEmpty())
                             witnessLink = true;
                         else
                             for (Object v : rel.getAllProperties().values())
@@ -454,32 +454,29 @@ public class DotExporter
      * Parses a Stemma of a tradition in a JSON string in DOT format
      * don't throw error far enough
      *
-     * @param tradId - the ID of the tradition in question
-     * @param stemmaTitle - the desired stemma
+     * @param stemmaid   - the desired stemma
      * @param singleLine - whether the result needs to omit linebreaks
      * @return a Response with the result
      */
 
-    public Response writeNeo4JStemma(String tradId, String stemmaTitle, Boolean singleLine)
+    public Response writeNeo4JStemma(long stemmaid, Boolean singleLine)
     {
         ArrayList<String> outputLines = new ArrayList<>();
 
         try (Transaction tx = db.beginTx()) {
-            Node traditionNode = db.findNode(Nodes.TRADITION, "id", tradId);
-            Node startNodeStemma = null;
-            for (Node stemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
-                if (stemma.getProperty("name").equals(stemmaTitle)) {
-                    startNodeStemma = stemma;
-                    break;
-                }
-            }
-            if(startNodeStemma == null) {
+            Node startNodeStemma;
+            try {
+                startNodeStemma = db.getNodeById(stemmaid);
+            } catch (NotFoundException e) {
+                tx.success();
                 return Response.status(Status.NOT_FOUND).build();
             }
 
+            String stemmaName = startNodeStemma.getProperty("name").toString();
+            String stemmaidStr = String.valueOf(stemmaid);
             String stemmaType = (Boolean) startNodeStemma.getProperty("directed") ? "digraph" : "graph";
             String edgeGlyph = (Boolean) startNodeStemma.getProperty("directed") ? "->" : "--";
-            outputLines.add(String.format("%s \"%s\" {", stemmaType, stemmaTitle));
+            outputLines.add(String.format("%s \"%s\" {", stemmaType, stemmaName));
 
             // Output all the nodes associated with this stemma.
             for (Node witness : DatabaseService.getRelated(startNodeStemma, ERelations.HAS_WITNESS)) {
@@ -503,7 +500,7 @@ public class DotExporter
                 // just output the list of edges from this stemma in any order.
                 Result txEdges = db.execute(String.format("MATCH (s)-[:HAS_WITNESS]->(a:WITNESS)-[:TRANSMITTED " +
                         "{hypothesis:'%s'}]->(b:WITNESS) WHERE id(s) = %d RETURN a, b",
-                        stemmaTitle, startNodeStemma.getId()));
+                        stemmaidStr, stemmaid));
                 while (txEdges.hasNext()) {
                     Map<String, Object> vector = txEdges.next();
                     String source = sigilDotString((Node) vector.get("a"));
@@ -559,10 +556,10 @@ public class DotExporter
 
             Iterator<Node> stemmata = result.columnAs("s");
             while(stemmata.hasNext()) {
-                String stemma = stemmata.next().getProperty("name").toString();
-                Response resp = writeNeo4JStemma(tradId, stemma, true);
-
-                stemmaList.add(resp.getEntity().toString());
+                long stemma = stemmata.next().getId();
+                try (Response resp = writeNeo4JStemma(stemma, true)) {
+                    stemmaList.add(resp.getEntity().toString());
+                }
             }
             tx.success();
         }
@@ -572,7 +569,7 @@ public class DotExporter
 
     @SuppressWarnings("rawtypes")
     private Set<String> traverseStemma(Node stemma, Node archetype) {
-        String stemmaName = (String) stemma.getProperty("name");
+        String stemmaName = String.valueOf(stemma.getId());
         Set<String> allPaths = new HashSet<>();
 
         // If the stemma is contaminated then we must pay attention to direction of link;
