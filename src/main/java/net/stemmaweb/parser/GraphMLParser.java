@@ -433,10 +433,21 @@ public class GraphMLParser {
                 toRemove.forEach(annotationsToAdd::remove);
             }
 
-            // Sanity check: if we created any relationship-less nodes, delete them again.
-            idMap.values().stream().map(db::getNodeById)
-                    .filter(n -> !n.hasRelationship()).forEach(Node::delete);
+            // Sanity check: if we created any relationship-less nodes, make sure they are deleted.
+            try {
+                idMap.values().stream().map(db::getNodeById)
+                        .filter(n -> !n.hasRelationship()).forEach(Node::delete);
+            } catch (NotFoundException e) {
+                // Try and figure out how we got here. Fish the missing node ID from the message
+                System.err.println("Triggered NotFoundException in graphml parse sanity check");
+                Long nid = Long.valueOf(e.getMessage().replaceAll("\\D+", ""));
+                for (String key : idMap.keySet()) {
+                    if (idMap.get(key).equals(nid)) {
+                        System.err.println("Tried and failed to delete node corresponding to " + key);
+                    }
+                }
 
+            }
             tx.success();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
