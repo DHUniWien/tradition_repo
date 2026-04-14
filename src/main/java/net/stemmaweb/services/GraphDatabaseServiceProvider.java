@@ -3,6 +3,7 @@ package net.stemmaweb.services;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.neo4j.configuration.GraphDatabaseInternalSettings;
@@ -32,22 +33,24 @@ public class GraphDatabaseServiceProvider {
     public GraphDatabaseServiceProvider(String db_location) throws KernelException, IOException {
     	if (db == null) {
     		if (db_location == null) {
+				// Delete and recreate a database at a default location
     			Path path = Path.of("/tmp/stemmarest");
     			FileUtils.deleteDirectory(path);
 
+				// This can probably go when the migration is done
     			dbService = new DatabaseManagementServiceBuilder(path)
     					.setConfig(GraphDatabaseInternalSettings.trace_cursors, true)
     					.build();
-    			db = dbService.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     		} else {
-    			dbService = new DatabaseManagementServiceBuilder(Path.of(db_location + "/data/databases/graph.db")).build();
+				Path db_path = Path.of(db_location);
+				DatabaseManagementServiceBuilder dbBuilder = new DatabaseManagementServiceBuilder(db_path);
+				Path configFile = db_path.resolve("conf/neo4j.conf");
+				if (Files.exists(configFile))
+					dbBuilder.loadPropertiesFromFile(configFile);
+    			dbService = dbBuilder.build();
 
-    			File config = new File(db_location + "/conf/neo4j.conf");
-    			if (config.exists())
-    				db = dbService.database(config.toString());
-    			else
-    				db = dbService.database("stemma");
     		}
+			db = dbService.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
     		registerShutdownHook(dbService);
     	}
     }
