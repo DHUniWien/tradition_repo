@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -21,14 +20,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.services.WitnessPath;
 
 /**
  * JSON-aware data model for exporting an alignment in tabular format. Uses ReadingModel to
  * represent the reading tokens.
- *
  * The result will look like this:
  *  {@code table = { alignment: [ { witness: "SIGIL",
  *                            tokens: [ { id: 123, text: "TEXT", normal_form: "NORMAL, ... }, ... ] },
@@ -54,8 +51,6 @@ public class AlignmentModel {
 
     // Get an alignment table
     public AlignmentModel(Node sectionNode, boolean excludeLayers, Transaction tx) {
-//        GraphDatabaseService db = sectionNode.getGraphDatabase();
-
         String sectId = sectionNode.getElementId();
         Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
         Node startNode = VariantGraphService.getStartNode(sectId, tx);
@@ -79,7 +74,7 @@ public class AlignmentModel {
         alignment = new ArrayList<>();
         // For each witness, we make a 'tokens' array of the length of the tradition
         // Get the witnesses in the database
-        ArrayList<Node> witnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx);
+        ArrayList<Node> witnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
         for (Node w : witnesses) {
             String sigil = w.getProperty("sigil").toString();
             // Find out which witness layers we need to deal with
@@ -135,7 +130,7 @@ public class AlignmentModel {
                     tokens.add(readingToken);
                 }
                 // Skip this witness if it is empty
-                if (tokens.size() == 0) continue;
+                if (tokens.isEmpty()) continue;
 
                 // Fill in any empty ranks at the end
                 for (int i = tokens.size(); i < length; i++)

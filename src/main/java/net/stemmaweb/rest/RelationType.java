@@ -59,7 +59,7 @@ public class RelationType {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Response response;
         try {
-            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, tx), tx);
+            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, tx));
             if (foundRelType == null) {
                 response = Response.noContent().build();
             } else {
@@ -92,7 +92,7 @@ public class RelationType {
         Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
         Node extantRelType;
         try {
-            extantRelType = rtModel.lookup(traditionNode, tx);
+            extantRelType = rtModel.lookup(traditionNode);
         } catch (Exception e) {
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
@@ -144,7 +144,7 @@ public class RelationType {
         try {
         	Node tradition = VariantGraphService.getTraditionNode(traditionId, tx);
         	try {
-        		foundRelType = rtModel.lookup(tradition, tx);
+        		foundRelType = rtModel.lookup(tradition);
         		if (foundRelType == null) {
         			return Response.status(Response.Status.NOT_FOUND).build();
         		}
@@ -199,7 +199,7 @@ public class RelationType {
         // Does this already exist?
         Node extantRelType;
         try {
-            extantRelType = relType.lookup(tradNode, tx);
+            extantRelType = relType.lookup(tradNode);
             if (extantRelType != null)
                 return Response.notModified().build();
         } catch (Exception e) {
@@ -212,21 +212,12 @@ public class RelationType {
 
         relType.setDescription(defaultRelations.get(useType));
         // Set the bindlevel
-        int bindlevel = 0; // orthographic, punctuation, uncertain, other
-        switch (useType) {
-            case "spelling":
-                bindlevel = 1;
-                break;
-            case "grammatical":
-            case "lexical":
-                bindlevel = 2;
-                break;
-            case "collated":
-            case "transposition":
-            case "repetition":
-                bindlevel = 50;
-                break;
-        }
+        int bindlevel = switch (useType) {
+            case "spelling" -> 1;
+            case "grammatical", "lexical" -> 2;
+            case "collated", "transposition", "repetition" -> 50;
+            default -> 0; // orthographic, punctuation, uncertain, other
+        };
         relType.setBindlevel(bindlevel);
         // Set the booleans
         relType.setIs_colocation(!(useType.equals("transposition") || useType.equals("repetition")));

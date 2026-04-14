@@ -188,9 +188,9 @@ public class StemmawebExporter {
             writer.writeStartElement("data");
             writer.writeAttribute("key", graphMap.get("stemmata")[0]);
 
-            DotExporter parser = new DotExporter(db);
+            DotExporter parser = new DotExporter(tx);
 
-            writer.writeCharacters(parser.getAllStemmataAsDot(tradId, tx));
+            writer.writeCharacters(parser.getAllStemmataAsDot(tradId));
             writer.writeEndElement();
 
             long nodeId = 0;

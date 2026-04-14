@@ -1,12 +1,10 @@
 package net.stemmaweb.model;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.stream.Stream;
 
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.Transaction;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -15,7 +13,6 @@ import com.qmino.miredot.annotations.MireDotIgnore;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * 
@@ -73,41 +70,36 @@ public class TraditionModel {
     public TraditionModel() {}
 
     public TraditionModel(Node node) {
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-//        try (Transaction tx = node.getGraphDatabase().beginTx()) {
-        try (Transaction tx = db.beginTx()) {
-        	// Put node inside transaction if applicable
-        	Node n2 = tx.getNodeByElementId(node.getElementId());
-        	if (n2 != null) {
-        		node = n2;
-        	}
-            setId(node.getProperty("id").toString());
-            if (node.hasProperty("name"))
-                setName(node.getProperty("name").toString());
-            if (node.hasProperty("language"))
-                setLanguage(node.getProperty("language").toString());
-            if (node.hasProperty("direction"))
-                setDirection(node.getProperty("direction").toString());
-            if (node.hasProperty("is_public"))
-                setIs_public((Boolean) node.getProperty("is_public"));
-            if (node.hasProperty("stemweb_jobid"))
-                setStemweb_jobid(Integer.parseInt(node.getProperty("stemweb_jobid").toString()));
+        setId(node.getProperty("id").toString());
+        if (node.hasProperty("name"))
+            setName(node.getProperty("name").toString());
+        if (node.hasProperty("language"))
+            setLanguage(node.getProperty("language").toString());
+        if (node.hasProperty("direction"))
+            setDirection(node.getProperty("direction").toString());
+        if (node.hasProperty("is_public"))
+            setIs_public((Boolean) node.getProperty("is_public"));
+        if (node.hasProperty("stemweb_jobid"))
+            setStemweb_jobid(Integer.parseInt(node.getProperty("stemweb_jobid").toString()));
 
-            Relationship ownerRel = node.getSingleRelationship(ERelations.OWNS_TRADITION,
-                    org.neo4j.graphdb.Direction.INCOMING);
-            if( ownerRel != null ) {
-                setOwner(ownerRel.getStartNode().getProperty("id").toString());
-            }
-
-            witnesses = new ArrayList<>();
-            DatabaseService.getRelated(node, ERelations.HAS_WITNESS, tx).forEach(
-                    x -> witnesses.add(x.getProperty("sigil").toString()));
-            // For now this is hard-coded
-            reltypes = new ArrayList<>(Arrays.asList("grammatical", "spelling", "other", "punctuation",
-                    "lexical", "orthographic", "uncertain"));
-
-            tx.close();
+        Relationship ownerRel = node.getSingleRelationship(ERelations.OWNS_TRADITION,
+                org.neo4j.graphdb.Direction.INCOMING);
+        if( ownerRel != null ) {
+            setOwner(ownerRel.getStartNode().getProperty("id").toString());
         }
+
+        witnesses = new ArrayList<>();
+        DatabaseService.getRelated(node, ERelations.HAS_WITNESS).forEach(
+                x -> witnesses.add(x.getProperty("sigil").toString()));
+
+        reltypes = new ArrayList<>();
+        DatabaseService.getRelated(node, ERelations.HAS_RELATION_TYPE).forEach(
+                x -> reltypes.add(x.getProperty("name").toString()));
+
+        // Add in the default relation types, in case they have not been otherwise defined
+        Stream.of("grammatical", "spelling", "other", "punctuation",
+                "lexical", "orthographic", "uncertain").filter(
+                        x -> !reltypes.contains(x)).forEach(reltypes::add);
     }
 
     public String getName() {
@@ -130,7 +122,7 @@ public class TraditionModel {
     }
     public String getDirection() { return direction == null ? "" : direction.toString(); }
     public void setDirection(String direction) {
-        if (!direction.equals(""))
+        if (!direction.isEmpty())
             this.direction = Direction.valueOf(direction);
     }
     public Boolean getIs_public() { return is_public; }

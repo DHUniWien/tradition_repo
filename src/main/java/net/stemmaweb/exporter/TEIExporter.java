@@ -244,13 +244,13 @@ public class TEIExporter {
 		writer.writeStartElement("body");
 		// Iterate through the list of section nodes and create the text section by section
 		for (Node sectionNode : sectionList) {
-			VariantListModel vlocs = new VariantListModel(sectionNode, baseWitness, excludeWitnesses, conflate,
+			VariantListModel vlocs = new VariantListModel(tx, sectionNode, baseWitness, excludeWitnesses, conflate,
 					suppress, filterNonsense, filterTypeOne, significant, combine);
 
 			List<ReadingModel> baseReadingChain = vlocs.getBaseReadings();
 
 			// get section witnesses
-			SectionModel sectionModel = new SectionModel(sectionNode);
+			SectionModel sectionModel = new SectionModel(tx, sectionNode);
 			String sectionWitnesses =
 					sectionModel.getWitnesses()
 					.stream().map(w -> "#" + w)

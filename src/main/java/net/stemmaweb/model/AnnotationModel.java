@@ -2,8 +2,6 @@ package net.stemmaweb.model;
 
 import org.neo4j.graphdb.*;
 
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,8 +43,7 @@ public class AnnotationModel {
         this.links = new ArrayList<>();
     }
 
-    public AnnotationModel(Node annNode, Transaction tx) {
-//        GraphDatabaseService db = annNode.getGraphDatabase();
+    public AnnotationModel(Node annNode) {
         this.setId(annNode.getElementId());
         // We assume there is only one label
         this.setLabel(annNode.getLabels().iterator().next().name());

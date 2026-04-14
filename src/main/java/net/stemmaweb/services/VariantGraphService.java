@@ -40,7 +40,7 @@ public class VariantGraphService {
      *
      * @param tradId - The alleged parent tradition
      * @param aSectionId - The section to check
-     * @param db - the GraphDatabaseService where the tradition is stored
+     * @param tx - the transaction within which we are working
      * @return - true or false
      */
     public static Boolean sectionInTradition(String tradId, String aSectionId, Transaction tx) {
@@ -49,7 +49,7 @@ public class VariantGraphService {
     		return false;
     	
     	boolean found = false;
-		for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART, tx)) {
+		for (Node s : DatabaseService.getRelated(traditionNode, ERelations.PART)) {
 			if (s.getElementId().equals(aSectionId)) {
 				found = true;
 				break;
@@ -62,7 +62,7 @@ public class VariantGraphService {
      * Get the start node of a section, or the first section in a tradition
      *
      * @param nodeId the ID of the tradition or section whose start node should be returned
-     * @param db  the GraphDatabaseService where the tradition is stored
+     * @param tx  the transaction within which we are working
      * @return  the start node, or null if there is none.
      *      NOTE if there are multiple unordered sections, an arbitrary start node may be returned!
      */
@@ -74,7 +74,7 @@ public class VariantGraphService {
      * Get the end node of a section, or the last section in a tradition
      *
      * @param nodeId the ID of the tradition or section whose end node should be returned
-     * @param db  the GraphDatabaseService where the tradition is stored
+     * @param tx  the transaction within which we are working
      * @return  the end node, or null if there is none
      *      NOTE if there are multiple unordered sections, an arbitrary end node may be returned!
      */
@@ -115,7 +115,7 @@ public class VariantGraphService {
      * Return the list of a tradition's sections, ordered by NEXT relationship
      *
      * @param tradId    the tradition whose sections to return
-     * @param db        the GraphDatabaseService where the tradition is stored
+     * @param tx        the transaction within which we are working
      * @return          a list of sections, which is empty if the tradition doesn't exist
      */
     public static ArrayList<Node> getSectionNodes(String tradId, Transaction tx) {
@@ -123,7 +123,7 @@ public class VariantGraphService {
         ArrayList<Node> sectionNodes = new ArrayList<>();
         if (tradition == null)
             return sectionNodes;
-        ArrayList<Node> sections = DatabaseService.getRelated(tradition, ERelations.PART, tx);
+        ArrayList<Node> sections = DatabaseService.getRelated(tradition, ERelations.PART);
         int size = sections.size();
         for(Node n: sections) {
             if (!n.getRelationships(Direction.INCOMING, ERelations.NEXT)
@@ -147,7 +147,7 @@ public class VariantGraphService {
      * Get the node of the specified tradition
      *
      * @param tradId  the string ID of the tradition we're hunting
-     * @param db      the GraphDatabaseService where the tradition is stored
+     * @param tx      the transaction within which we are working
      * @return        the relevant tradition node
      */
     public static Node getTraditionNode(String tradId, Transaction tx) {
@@ -228,7 +228,7 @@ public class VariantGraphService {
 //        GraphDatabaseService db = sectionNode.getGraphDatabase();
         // Make sure the relation type exists
         Node tradition = getTraditionNode(sectionNode, tx);
-        Node relType = new RelationTypeModel(normalizeType).lookup(tradition, tx);
+        Node relType = new RelationTypeModel(normalizeType).lookup(tradition);
         if (relType == null)
             throw new Exception("Relation type " + normalizeType + " does not exist in this tradition");
 
@@ -503,7 +503,7 @@ public class VariantGraphService {
      * Return a traverser that includes all nodes and relationships for everything in a tradition.
      *
      * @param tradId  the string ID of the tradition to crawl
-     * @param db      the relevant GraphDatabaseService
+     * @param tx      the transaction within which we are working
      * @return        an org.neo4j.graphdb.traversal.Traverser object for the whole tradition
      */
     public static Traverser returnEntireTradition(String tradId, Transaction tx) {
@@ -528,7 +528,7 @@ public class VariantGraphService {
      * Return a traverser that includes all nodes and relationships for a particular section.
      *
      * @param sectionId  the string ID of the section to crawl
-     * @param db         the relevant GraphDatabaseService
+     * @param tx         the transaction within which we are working
      * @return           an org.neo4j.graphdb.traversal.Traverser object for the section
      */
     public static Traverser returnTraditionSection(String sectionId, Transaction tx) {

@@ -60,7 +60,7 @@ public class DatabaseServiceTest {
         Response response;
         try (Transaction tx = db.beginTx()) {
         	Node tradition = VariantGraphService.getTraditionNode(traditionId, tx);
-        	ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS, tx);
+        	ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS);
         	assertEquals(3, witnesses.size());
         	tx.close();
         } catch (Exception e) {

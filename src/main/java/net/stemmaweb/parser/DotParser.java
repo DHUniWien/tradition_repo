@@ -86,7 +86,7 @@ public class DotParser {
 
         // First check that no stemma with this name already exists for this tradition,
         // unless we intend to replace it.
-        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx)) {
+        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)) {
         	if (priorStemma.getProperty("name").equals(stemmaName)) {
         		messageValue = "A stemma by this name already exists for this tradition.";
         		return Status.CONFLICT;
@@ -94,7 +94,7 @@ public class DotParser {
         }
         // Get a list of the existing (extant) tradition witnesses
         Map<String, Node> traditionWitnesses = new HashMap<>();
-        DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx)
+        DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
         .forEach(x -> traditionWitnesses.put(x.getProperty("sigil").toString(), x));
 
         Node stemmaNode;

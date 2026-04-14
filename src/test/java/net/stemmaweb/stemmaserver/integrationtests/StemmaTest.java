@@ -187,7 +187,7 @@ public class StemmaTest {
 
         try (Transaction tx = db.beginTx()) {
         	Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-        	ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+        	ArrayList<Node> stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
         	assertEquals(2, stemmata.size());
         	
         	input.setDot("graph \"Semstem 1402333041_1\" {  0 [ class=hypothetical ];  A [ class=extant ];  B [ class=extant ];  C [ class=extant ]; 0 -- A;  A -- B;  A -- C;}");
@@ -545,7 +545,7 @@ public class StemmaTest {
 
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
             tx.close();
         }
 
@@ -562,7 +562,7 @@ public class StemmaTest {
             assertEquals(Response.Status.OK.getStatusCode(), actualStemmaResponse.getStatus());
         }
         try (Transaction tx = db.beginTx()) {
-        	assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx).size());
+        	assertEquals(2, DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA).size());
         }
 
         StemmaModel replacedStemma = jerseyTest
@@ -579,7 +579,7 @@ public class StemmaTest {
 
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
             tx.close();
         }
 
@@ -600,7 +600,7 @@ public class StemmaTest {
         // Do we still have the old one?
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
             tx.close();
         }
 
@@ -620,7 +620,7 @@ public class StemmaTest {
 
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
             tx.close();
         }
 
@@ -641,7 +641,7 @@ public class StemmaTest {
         // Do we still have the old one?
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx);
+    		stemmata = DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA);
             tx.close();
         }
 

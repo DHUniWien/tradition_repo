@@ -160,7 +160,7 @@ public class User {
             if (foundUser != null) {
                 removed = new UserModel(foundUser);
                 // See if the user owns any traditions
-                ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION, tx);
+                ArrayList<Node> userTraditions = DatabaseService.getRelated(foundUser, ERelations.OWNS_TRADITION);
                 if (userTraditions.size() > 0)
                     return Response.status(Status.PRECONDITION_FAILED)
                             .entity("User's traditions must be deleted first")
@@ -204,7 +204,7 @@ public class User {
         ArrayList<TraditionModel> traditions = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node thisUser = getUserNode();
-            DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION, tx)
+            DatabaseService.getRelated(thisUser, ERelations.OWNS_TRADITION)
                     .forEach(x -> traditions.add(new TraditionModel(x)));
             tx.close();
         } catch (Exception e) {

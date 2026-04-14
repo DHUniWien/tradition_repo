@@ -1,7 +1,5 @@
 package net.stemmaweb.model;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
@@ -10,11 +8,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.qmino.miredot.annotations.MireDotIgnore;
 
-import jakarta.ws.rs.core.Response;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.exporter.DotExporter;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * A model for the stemma object and its representation.
@@ -48,28 +44,16 @@ public class StemmaModel {
 
     public StemmaModel () {}
 
-    public StemmaModel(Node stemmaNode) {
-//        GraphDatabaseService db = stemmaNode.getGraphDatabase();
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-        	// Put node inside transaction if applicable
-        	Node n2 = tx.getNodeByElementId(stemmaNode.getElementId());
-        	if (n2 != null) {
-        		stemmaNode = n2;
-        	}
-            identifier = stemmaNode.getProperty("name").toString();
-            is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);
-            is_contaminated = stemmaNode.hasProperty("is_contaminated");
-            if (stemmaNode.hasProperty("from_jobid"))
-                from_jobid = (Integer) stemmaNode.getProperty("from_jobid");
+    public StemmaModel(Transaction tx, Node stemmaNode) {
+        identifier = stemmaNode.getProperty("name").toString();
+        is_undirected = !stemmaNode.hasRelationship(ERelations.HAS_ARCHETYPE);
+        is_contaminated = stemmaNode.hasProperty("is_contaminated");
+        if (stemmaNode.hasProperty("from_jobid"))
+            from_jobid = (Integer) stemmaNode.getProperty("from_jobid");
 
-            // Generate the dot as well.
-            Node traditionNode = stemmaNode.getSingleRelationship(ERelations.HAS_STEMMA, Direction.INCOMING).getStartNode();
-            DotExporter writer = new DotExporter(db);
-            Response export = writer.writeNeo4JStemma(traditionNode.getProperty("id").toString(), identifier, false);
-            dot = export.getEntity().toString();
-            tx.close();
-        }
+        // Generate the dot as well.
+        DotExporter writer = new DotExporter(tx);
+        dot = writer.getStemmaDot(stemmaNode, false);
     }
 
     public String getIdentifier () { return this.identifier; }

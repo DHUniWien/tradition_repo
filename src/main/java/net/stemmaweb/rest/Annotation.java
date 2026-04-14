@@ -77,7 +77,7 @@ public class Annotation {
     		response = Response.status(Response.Status.NOT_FOUND).build();
     	} else {
             Node a = tx.getNodeByElementId(annoId);
-            result = new AnnotationModel(a, tx);
+            result = new AnnotationModel(a);
             response = Response.ok(result).build();
     	}
 
@@ -107,7 +107,7 @@ public class Annotation {
         	} else {
         		Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
         		// Find the relevant annotation label
-        		Optional<Node> al = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE, tx)
+        		Optional<Node> al = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
         				.stream().filter(x -> x.getProperty("name").equals(newAnno.getLabel())).findFirst();
         		if (al.isEmpty())
         			return Response.status(Response.Status.BAD_REQUEST)
@@ -171,7 +171,7 @@ public class Annotation {
         					return linkAdded;
         			}
         		}
-        		result = new AnnotationModel(aNode, tx);
+        		result = new AnnotationModel(aNode);
         		return Response.ok(result).build();
         	}
         } catch (ClassNotFoundException e) {
@@ -227,7 +227,7 @@ public class Annotation {
 
         // Delete the node if it has no remaining outgoing relations
         if (!a.hasRelationship(Direction.OUTGOING) && a.getProperty("__primary", false).equals(false)) {
-            result.add(new AnnotationModel(a, tx));
+            result.add(new AnnotationModel(a));
             ArrayList<Node> parents = new ArrayList<>();
             a.getRelationships(Direction.INCOMING).forEach(x -> {parents.add(x.getStartNode()); x.delete();});
             for (Node p : parents)
@@ -285,7 +285,7 @@ public class Annotation {
             Relationship link = aNode.createRelationshipTo(target, RelationshipType.withName(alm.getType()));
             if (alm.getFollow() != null)
                 link.setProperty("follow", alm.getFollow());
-            updated = new AnnotationModel(aNode, tx);
+            updated = new AnnotationModel(aNode);
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(jsonerror("Target node " + alm.getTarget() + " not found")).build();
@@ -327,7 +327,7 @@ public class Annotation {
         		} else {
         			Node aNode = r.getStartNode();
         			r.delete();
-        			updated = new AnnotationModel(aNode, tx);
+        			updated = new AnnotationModel(aNode);
         			response = Response.ok(updated).build();
         		}
         	}
@@ -368,7 +368,7 @@ public class Annotation {
         	result = new ArrayList<AnnotationModel>(nodes.size());
         	for (Iterator<Node> iterator = nodes.iterator(); iterator.hasNext();) {
 				Node node = (Node) iterator.next();
-				result.add(new AnnotationModel(node, tx));
+				result.add(new AnnotationModel(node));
 			}
         	return Response.ok(result).build();
         } catch (Exception e) {

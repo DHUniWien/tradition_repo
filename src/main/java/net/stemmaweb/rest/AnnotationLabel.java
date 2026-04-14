@@ -204,7 +204,7 @@ public class AnnotationLabel {
     		AnnotationLabelModel ourModel = new AnnotationLabelModel(ourNode);
     		Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
             // Check for annotations on this tradition using this label, before we delete it
-            for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION, tx))
+            for (Node annoNode : DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION))
                 if (annoNode.hasLabel(Label.label(ourModel.getName())))
                     return Response.status(Response.Status.CONFLICT).entity(jsonerror(
                             "Label " + ourModel.getName() + " still in use on annotation " + annoNode.getElementId()))
@@ -240,7 +240,7 @@ public class AnnotationLabel {
     private Node lookupAnnotationLabel(Transaction tx) {
         Node ourNode = null;
         Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
-        Optional<Node> foundNode = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE, tx)
+        Optional<Node> foundNode = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
         		.stream().filter(x -> x.getProperty("name", "").equals(name)).findFirst();
         if (foundNode.isPresent()) ourNode = foundNode.get();
 
@@ -250,7 +250,7 @@ public class AnnotationLabel {
     private List<Node> getExistingLabelsForTradition(Transaction tx) {
         Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
         List<Node> answer;
-        answer = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE, tx);
+        answer = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE);
         return answer;
     }
 

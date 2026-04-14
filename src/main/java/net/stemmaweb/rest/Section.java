@@ -132,22 +132,16 @@ public class Section {
     @ReturnType(clazz = SectionModel.class)
     public Response getSectionInfo() {
         SectionModel result;
-        Transaction tx = null;
-        try {
-        	tx = db.beginTx();
+        try (Transaction tx = db.beginTx()) {
         	if (!sectionInTradition(tx))
         		return Response.status(Response.Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
         	else {
-        		result = new SectionModel(tx.getNodeByElementId(sectId));
+        		result = new SectionModel(tx, tx.getNodeByElementId(sectId));
         	}
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        }
         return Response.ok().entity(result).build();
     }
 
@@ -291,7 +285,7 @@ public class Section {
         HashSet<Node> witnessList = new HashSet<>();
         Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
         Node sectionStart = VariantGraphService.getStartNode(sectId, tx);
-        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx);
+        ArrayList<Node> traditionWitnesses = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS);
         for (Relationship relationship : sectionStart.getRelationships(ERelations.SEQUENCE)) {
         	for (String witClass : relationship.getPropertyKeys()) {
         		for (String sigil : (String[]) relationship.getProperty(witClass)) {
@@ -643,7 +637,7 @@ public class Section {
     			}
     		}
     		
-    		foundAnns.forEach(x -> result.add(new AnnotationModel(x, tx)));
+    		foundAnns.forEach(x -> result.add(new AnnotationModel(x)));
     		tx.close();
     		return Response.ok(result).build();
         } catch (Exception e) {
@@ -695,7 +689,7 @@ public class Section {
         	
         	Node sectionNode = tx.getNodeByElementId(sectId);
         	VariantListModel vlocs = new VariantListModel(
-        			sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
+        			tx, sectionNode, baseWitness, excWitnesses, conflate, suppressMatching,
         			!excludeNonsense.equals("no"), !excludeType1.equals("no"), significant, !combine.equals("no"));
 
         	return Response.ok(vlocs).build();
@@ -1668,21 +1662,19 @@ public class Section {
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
                                                   @QueryParam("normalise") String normalise,
                                                   @QueryParam("exclude_witness") List<String> excWitnesses) {
-    	Node traditionNode = null;
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-            tx.close();
+    		Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+            if (traditionNode == null)
+                return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
+            // Put our options into an object
+            DisplayOptionModel dm = new DisplayOptionModel(
+                    includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);
+            // Make the dot.
+            DotExporter exporter = new DotExporter(tx);
+            return exporter.writeNeo4J(tradId, sectId, dm);
         }
 
-    	if (traditionNode == null)
-            return Response.status(Response.Status.NOT_FOUND).entity("No such tradition found").build();
 
-        // Put our options into an object
-        DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);
-        // Make the dot.
-        DotExporter exporter = new DotExporter(db);
-        return exporter.writeNeo4J(tradId, sectId, dm);
     }
 
     /**

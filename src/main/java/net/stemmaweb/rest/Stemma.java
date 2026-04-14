@@ -69,14 +69,16 @@ public class Stemma {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = StemmaModel.class)
     public Response getStemma() {
-        Node stemmaNode = getStemmaNode();
-        if (stemmaNode == null) {
-            return Response.status(Status.NOT_FOUND)
-                    .entity(jsonerror(String.format("No stemma %s found for tradition %s", name, tradId))).build();
+        try (Transaction tx = db.beginTx()) {
+            Node stemmaNode = getStemmaNode(tx);
+            if (stemmaNode == null) {
+                return Response.status(Status.NOT_FOUND)
+                        .entity(jsonerror(String.format("No stemma %s found for tradition %s", name, tradId))).build();
+            }
+            StemmaModel result = new StemmaModel(tx, stemmaNode);
+            Status returncode = newCreated ? Status.CREATED : Status.OK;
+            return Response.status(returncode).entity(result).build();
         }
-        StemmaModel result = new StemmaModel(stemmaNode);
-        Status returncode = newCreated ? Status.CREATED : Status.OK;
-        return Response.status(returncode).entity(result).build();
     }
 
     /**
@@ -143,11 +145,12 @@ public class Stemma {
     @Produces(MediaType.APPLICATION_JSON + "; charset=utf-8")
     @ReturnType(clazz = StemmaModel.class)
     public Response deleteStemma() {
-        Node stemmaNode = getStemmaNode();
-        if (stemmaNode == null)
-            return Response.status(Status.NOT_FOUND).build();
-        StemmaModel removed = new StemmaModel(stemmaNode);
         try (Transaction tx = db.beginTx()) {
+            Node stemmaNode = getStemmaNode(tx);
+            if (stemmaNode == null)
+                return Response.status(Status.NOT_FOUND).build();
+
+            StemmaModel removed = new StemmaModel(tx, stemmaNode);
             Set<Relationship> removableRelations = new HashSet<>();
             Set<Node> removableNodes = new HashSet<>();
 
@@ -228,23 +231,19 @@ public class Stemma {
             stemma.createRelationshipTo(archetype, ERelations.HAS_ARCHETYPE);
             // and make sure the stemma is directed.
             stemma.setProperty("directed", true);
-
-        tx.close();
         }
         return getStemma();
 
     }
 
-    private Node getStemmaNode () {
-        try (Transaction tx = db.beginTx()) {
-            Result query = tx.execute("match (:TRADITION {id:'" + tradId
-                    + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
-            ResourceIterator<Node> foundStemma = query.columnAs("s");
-            tx.close();
-            if (!foundStemma.hasNext())
-                return null;
-            return foundStemma.next();
-        }
+    private Node getStemmaNode (Transaction tx) {
+        Result query = tx.execute("match (:TRADITION {id:'" + tradId
+                + "'})-[:HAS_STEMMA]->(s:STEMMA {name:'" + name + "'}) return s");
+        ResourceIterator<Node> foundStemma = query.columnAs("s");
+        tx.close();
+        if (!foundStemma.hasNext())
+            return null;
+        return foundStemma.next();
     }
 
 }

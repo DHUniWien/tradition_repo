@@ -22,7 +22,7 @@ public class DatabaseService {
     /**
      * Creates a root node for the entire graph.
      *
-     * @param db: the GraphDatabaseService where the Database should be entered
+     * @param tx: the transaction within which we are working
      *
      */
     public static void createRootNode(Transaction tx) {
@@ -41,11 +41,10 @@ public class DatabaseService {
      * @param relType - the relationship type to follow
      * @return a list of all nodes related to startNode by the given relationship
      */
-    public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType, Transaction tx) {
+    public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
         ArrayList<Node> result = new ArrayList<>();
-    	Node startNode2 = tx.getNodeByElementId(startNode.getElementId());
-        Iterator<Relationship> allRels = startNode2.getRelationships(relType).iterator();
-        allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode2)));
+        Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
+        allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
         return result;
     }
 
@@ -73,7 +72,7 @@ public class DatabaseService {
      * in the DB
      *
      * @param userId  the user whose existence to check
-     * @param db      the DB in which to check
+     * @param tx      the transaction within which we are working
      * @return        boolean
      */
     public static boolean userExists(String userId, Transaction tx) {

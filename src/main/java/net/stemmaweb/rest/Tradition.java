@@ -246,7 +246,7 @@ public class Tradition {
     private ArrayList<SectionModel> produceSectionList (Node traditionNode, Transaction tx) throws Exception {
         ArrayList<SectionModel> sectionList = new ArrayList<>();
     	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
-        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART, tx);
+        ArrayList<Node> sectionNodes = DatabaseService.getRelated(traditionNode, ERelations.PART);
         int depth = sectionNodes.size();
         if (depth > 0) {
             for(Node n: sectionNodes) {
@@ -260,7 +260,7 @@ public class Tradition {
                             .uniqueness(Uniqueness.NODE_GLOBAL)
                             .traverse(n)
                             .nodes()
-                            .forEach(r -> sectionList.add(new SectionModel(r)));
+                            .forEach(r -> sectionList.add(new SectionModel(tx, r)));
                     break;
                 }
             }
@@ -583,7 +583,7 @@ public class Tradition {
 
         ArrayList<WitnessModel> witnessList = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx)
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                     .forEach(r -> witnessList.add(new WitnessModel(r)));
             tx.commit();
         } catch (Exception e) {
@@ -619,8 +619,8 @@ public class Tradition {
         // find all stemmata associated with this tradition
         ArrayList<StemmaModel> stemmata = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx)
-                    .forEach(x -> stemmata.add(new StemmaModel(x)));
+            DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA)
+                    .forEach(x -> stemmata.add(new StemmaModel(tx, x)));
             tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
@@ -787,7 +787,7 @@ public class Tradition {
         try (Transaction tx = db.beginTx()) {
             ArrayList<AnnotationModel> allAnnotations = new ArrayList<>();
             traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_ANNOTATION)
-                    .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode(), tx)));
+                    .forEach(x -> allAnnotations.add(new AnnotationModel(x.getEndNode())));
             if (!filterLabels.isEmpty())
                 result = allAnnotations.stream().filter(x -> filterLabels.contains(x.getLabel()))
                         .collect(Collectors.toList());
@@ -860,10 +860,10 @@ public class Tradition {
             return Response.status(Status.NOT_FOUND).entity(jsonerror("No such tradition found")).build();
         List<AnnotationModel> deleted = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
-            for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION, tx)) {
+            for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION)) {
                 boolean isPrimary = a.getProperty("primary", false).equals(true);
                 if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
-                    deleted.add(new AnnotationModel(a, tx));
+                    deleted.add(new AnnotationModel(a));
                     a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
                     a.delete();
                 }
@@ -1157,21 +1157,18 @@ public class Tradition {
                            @DefaultValue("false") @QueryParam("expand_sigla") Boolean displayAllSigla,
                                                   @QueryParam("normalise") String normalise,
                                                   @QueryParam("include_witness") List<String> excWitnesses) {
-    	Node traditionNode = null;
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
-            tx.close();
+    		Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
+            // Put our options into an object
+            DisplayOptionModel dm = new DisplayOptionModel(
+                    includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);
+            DotExporter exporter = new DotExporter(tx);
+            return exporter.writeNeo4J(traditionId, dm);
         }
 
-        if (traditionNode == null) {
-            return Response.status(Status.NOT_FOUND).entity("No such tradition found").build();
-        }
 
-        // Put our options into an object
-        DisplayOptionModel dm = new DisplayOptionModel(
-                includeRelatedRelationships, showNormalForms, showRank, displayAllSigla, normalise, excWitnesses);
-        DotExporter exporter = new DotExporter(db);
-        return exporter.writeNeo4J(traditionId, dm);
     }
 
     /**

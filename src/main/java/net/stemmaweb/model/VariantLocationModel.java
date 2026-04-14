@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -80,7 +79,7 @@ public class VariantLocationModel {
      * Looks for all RELATED links between nodes involved in a VariantLocationModel, and adds the
      * corresponding RelationModels to the VariantLocationModel in question.
      *
-     * @param db - the GraphDatabaseService we are using
+     * @param tx - the transaction within which we are working
      * @param dislocationTypes - the list of relation types that are non-colocated in this tradition
      */
     void collectRelationsInLocation(Transaction tx, List<String> dislocationTypes) {
@@ -145,7 +144,7 @@ public class VariantLocationModel {
         if (filteredBase.size() != this.getBase().size()) {
             this.setBase(filteredBase);
             // Reset the rank index just in case
-            this.setRankIndex(filteredBase.size() > 0 ? filteredBase.get(0).getRank() : this.getBefore().getRank() + 1);
+            this.setRankIndex(!filteredBase.isEmpty() ? filteredBase.getFirst().getRank() : this.getBefore().getRank() + 1);
         }
 
         // Do we have to change the before/after settings?
@@ -181,7 +180,7 @@ public class VariantLocationModel {
             for (ReadingModel rm : vm.getReadings()) {
                 if (!shouldBeFiltered(rm, p, filterNonsense)) filteredVariants.add(rm);
             }
-            if (!filteredVariants.containsAll(vm.getReadings()))
+            if (!new HashSet<>(filteredVariants).containsAll(vm.getReadings()))
                 vm.setReadings(filteredVariants);
         }
         // Empty out and re-add all variants, which will merge any that are now identical
@@ -190,11 +189,11 @@ public class VariantLocationModel {
         existing.forEach(this::addVariant);
 
         // Now treat the special case where we have an emptied-out base and some emptied-out variants
-        if (this.getBase().size() == 0)
-            this.setVariants(this.getVariants().stream().filter(x -> x.getReadings().size() > 0).collect(Collectors.toList()));
+        if (this.getBase().isEmpty())
+            this.setVariants(this.getVariants().stream().filter(x -> !x.getReadings().isEmpty()).collect(Collectors.toList()));
 
         // If the location has no variants left, mark it as empty
-        if (this.getVariants().size() == 0)
+        if (this.getVariants().isEmpty())
             this.isEmpty = true;
     }
 
@@ -341,7 +340,7 @@ public class VariantLocationModel {
         // String to = this.isNormalised() ? this.getAfter().getNormal_form() : this.getAfter().getText();
         String base = ReadingService.textOfReadings(this.getBase(), this.isNormalised(), false);
         boolean interp = false;
-        if (base.equals("")) {
+        if (base.isEmpty()) {
             // Any variants with content are going to be additions. We will represent them as interpolations
             // between the "before" and "after" readings.
             List<ReadingModel> reps = Arrays.asList(this.getBefore(), this.getAfter());
@@ -355,7 +354,7 @@ public class VariantLocationModel {
             String varText = ReadingService.textOfReadings(vm.getReadings(), this.isNormalised(), false);
             if (interp)
                 varText += " (interp.)";
-            else if (varText.equals(""))
+            else if (varText.isEmpty())
                 varText = "(om.)";
             else if (vm.getDisplaced() && this.hasDisplacement()) {
                 ReadingModel anchor = vm.getAnchor();
@@ -363,7 +362,7 @@ public class VariantLocationModel {
                     varText = "transp. ";
                 else
                     varText += " transp. ";
-                if (anchor != null && anchor.getRank() > vm.getReadings().get(0).getRank())
+                if (anchor != null && anchor.getRank() > vm.getReadings().getFirst().getRank())
                     varText += "prae ";
                 else
                     varText += "post ";

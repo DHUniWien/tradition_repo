@@ -4,7 +4,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -17,7 +16,6 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
 import net.stemmaweb.rest.ERelations;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -56,37 +54,32 @@ public class SectionModel {
      * Generates a model from a Neo4j Node
      * @param node - the section node to initialize from
      */
-    public SectionModel(Node node) {
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-//        try (Transaction tx = node.getGraphDatabase().beginTx()) {
-        try (Transaction tx = db.beginTx()) {
-            setId(node.getElementId());
-            if (node.hasProperty("name"))
-                setName(node.getProperty("name").toString());
-            // If this node has a language set, use it; otherwise fall back to the tradition language.
-            if (node.hasProperty("language"))
-                setLanguage(node.getProperty("language").toString());
-            else {
-                Node tn = node.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
-                if (tn.hasProperty("language"))
-                    setLanguage(tn.getProperty("language").toString());
-            }
-            Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
-            setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
+    public SectionModel(Transaction tx, Node node) {
+        setId(node.getElementId());
+        if (node.hasProperty("name"))
+            setName(node.getProperty("name").toString());
+        // If this node has a language set, use it; otherwise fall back to the tradition language.
+        if (node.hasProperty("language"))
+            setLanguage(node.getProperty("language").toString());
+        else {
+            Node tn = node.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode();
+            if (tn.hasProperty("language"))
+                setLanguage(tn.getProperty("language").toString());
+        }
+        Relationship sectionEnd = node.getSingleRelationship(ERelations.HAS_END, Direction.OUTGOING);
+        setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
-            // Get the traverser for the tradition readings
-            Node startNode = VariantGraphService.getStartNode(node.getElementId(), tx);
-            Traverser traversedTradition = tx.traversalDescription().depthFirst()
-                    .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-                    .evaluator(Evaluators.all())
-                    .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
+        // Get the traverser for the tradition readings
+        Node startNode = VariantGraphService.getStartNode(node.getElementId(), tx);
+        Traverser traversedTradition = tx.traversalDescription().depthFirst()
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                .evaluator(Evaluators.all())
+                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL).traverse(startNode);
 
-            witnesses = new HashSet<>();
-            for (Node readingNode : traversedTradition.nodes()) {
-            	ReadingModel rm = new ReadingModel(readingNode);
-            	witnesses.addAll(rm.getWitnesses());
-            }
-            tx.commit();
+        witnesses = new HashSet<>();
+        for (Node readingNode : traversedTradition.nodes()) {
+            ReadingModel rm = new ReadingModel(readingNode);
+            witnesses.addAll(rm.getWitnesses());
         }
     }
 

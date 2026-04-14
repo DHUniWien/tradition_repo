@@ -255,7 +255,7 @@ public class Witness {
             if (end.equals("E")) {
                 // Find the rank of the graph's end.
                 try (Transaction tx = db.beginTx()) {
-                	Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END, tx).get(0);
+                	Node endNode = DatabaseService.getRelated(currentSection, ERelations.HAS_END).get(0);
                     endRank = Long.parseLong(endNode.getProperty("rank").toString());
                     tx.close();
                 } catch (Exception e) {

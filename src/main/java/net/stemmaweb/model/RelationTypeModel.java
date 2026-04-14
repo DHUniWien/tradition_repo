@@ -96,8 +96,6 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
 
     public RelationTypeModel (Node n) {
         this();
-//        try (Transaction tx = n.getGraphDatabase().beginTx()) {
-
         if (n.hasProperty("name"))
         	this.setName(n.getProperty("name").toString());
         if (n.hasProperty("description"))
@@ -213,7 +211,7 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
      * @param traditionNode - The tradition on which to perform the lookup
      * @return - The correspondingly named RELATION_TYPE node, or null
      */
-    public Node lookup (Node traditionNode, Transaction tx) throws Exception {
+    public Node lookup (Node traditionNode) {
         Node relTypeNode = null;
 
     	// First see if there is a type with this name
@@ -227,10 +225,9 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
         return relTypeNode;
     }
 
-    private Node match_relation_node(Node traditionNode, Boolean allow_update, Transaction tx) throws Exception {
-//        GraphDatabaseService db = traditionNode.getGraphDatabase();
-//    	traditionNode = tx.getNodeByElementId(traditionNode.getElementId());
-    	Node relType = this.lookup(traditionNode, tx);
+    private Node match_relation_node(Node traditionNode, Boolean allow_update, Transaction tx)
+            throws IllegalArgumentException {
+    	Node relType = this.lookup(traditionNode);
         if (relType == null) {
             // Create the node if it doesn't exist
             relType = tx.createNode(Nodes.RELATION_TYPE);
@@ -250,11 +247,9 @@ public class RelationTypeModel implements Comparable<RelationTypeModel> {
                 else throw new IllegalArgumentException("Another relation type by this name already exists");
             }
         }
-//        tx.commit();
         return relType;
     }
 
-    // To be used inside a transaction!
     private void update_reltype (Node relType) throws IllegalArgumentException {
         relType.setProperty("name", this.getName());
         relType.setProperty("description", this.getDescription());

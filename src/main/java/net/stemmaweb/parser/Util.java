@@ -92,7 +92,7 @@ public class Util {
 
     static Node findOrCreateExtant(Node traditionNode, String sigil, Transaction tx) {
         // This list should contain either zero or one items.
-        ArrayList<Node> existingWit = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS, tx)
+        ArrayList<Node> existingWit = DatabaseService.getRelated(traditionNode, ERelations.HAS_WITNESS)
                 .stream().filter(x -> x.hasProperty("hypothetical")
                         && x.getProperty("hypothetical").equals(false)
                         && x.getProperty("sigil").equals(sigil))

@@ -48,8 +48,8 @@ public class VariantModel {
         List<ReadingModel> vReadings = new ArrayList<>();
         p.nodes().forEach(x -> vReadings.add(new ReadingModel(x)));
         // Remove the first and last (common) readings
-        vReadings.remove(0);
-        vReadings.remove(vReadings.size()-1);
+        vReadings.removeFirst();
+        vReadings.removeLast();
         this.setReadings(vReadings);
 
         // Set the "normal" flag appropriately
@@ -63,7 +63,7 @@ public class VariantModel {
             endWitnesses.put(layer, sigla);
         }
         this.setWitnesses(endWitnesses);
-        if (endWitnesses.size() > 0)
+        if (!endWitnesses.isEmpty())
             this.isEmpty = false;
     }
 
@@ -213,7 +213,7 @@ public class VariantModel {
     @Override
     public String toString() {
         String vText = ReadingService.textOfReadings(this.readings, this.normal, true);
-        if (vText.equals("")) vText = "om.";
+        if (vText.isEmpty()) vText = "om.";
         return String.format("%s: %s", vText, String.join(" ", this.getWitnessList()));
     }
 }

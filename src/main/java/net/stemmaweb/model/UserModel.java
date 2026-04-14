@@ -1,14 +1,11 @@
 package net.stemmaweb.model;
 
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import jakarta.xml.bind.annotation.XmlRootElement;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * Provides a model for a user outside of the database. Can be parsed into a
@@ -44,25 +41,15 @@ public class UserModel {
     public UserModel() {}
 
     public UserModel(Node node) {
-        GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-//    	try (Transaction tx = node.getGraphDatabase().beginTx()) {
-        try (Transaction tx = db.beginTx()) {
-        	// Put node inside transaction if applicable
-        	Node n2 = tx.getNodeByElementId(node.getElementId());
-        	if (n2 != null) {
-        		node = n2;
-        	}
-            setId(node.getProperty("id").toString());
-            if (node.hasProperty("passphrase"))
-                setPassphrase(node.getProperty("passphrase").toString());
-            if (node.hasProperty("role"))
-                setRole(node.getProperty("role").toString());
-            if (node.hasProperty("active"))
-                setActive((Boolean) node.getProperty("active"));
-            if (node.hasProperty("email"))
-                setEmail(node.getProperty("email").toString());
-            tx.close();
-        }
+        setId(node.getProperty("id").toString());
+        if (node.hasProperty("passphrase"))
+            setPassphrase(node.getProperty("passphrase").toString());
+        if (node.hasProperty("role"))
+            setRole(node.getProperty("role").toString());
+        if (node.hasProperty("active"))
+            setActive((Boolean) node.getProperty("active"));
+        if (node.hasProperty("email"))
+            setEmail(node.getProperty("email").toString());
     }
 
     public String getPassphrase () { return passphrase; }

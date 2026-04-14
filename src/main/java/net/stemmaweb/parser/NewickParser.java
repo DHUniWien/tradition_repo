@@ -44,7 +44,7 @@ public class NewickParser {
             return Response.status(Response.Status.NOT_FOUND).build();
 
         // Do we already have a stemma by this name? If so, abort.
-        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA, tx))
+        for (Node priorStemma : DatabaseService.getRelated(traditionNode, ERelations.HAS_STEMMA))
         	if (priorStemma.getProperty("name").equals(stemmaSpec.getIdentifier())) return Response.status(Response.Status.CONFLICT)
         			.entity(jsonerror("A stemma by this name already exists for this tradition.")).build();
 
