@@ -159,7 +159,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
 //        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
-            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, tx).nodes().spliterator(), false)
+            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tx, tradId).nodes().spliterator(), false)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(sections.contains(rdg.getProperty("section_id").toString()));
@@ -291,7 +291,7 @@ public class GraphMLInputOutputTest extends TestCase {
                 .stream().map(SectionModel::getId).collect(Collectors.toSet());
         try (Transaction tx = db.beginTx()) {
 //        	List<Node> ourReadings = VariantGraphService.returnEntireTradition(legendId, db).nodes().stream()
-            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(legendId, tx).nodes().spliterator(), false)
+            List<Node> ourReadings = StreamSupport.stream(VariantGraphService.returnEntireTradition(tx, legendId).nodes().spliterator(), false)
                     .filter(x -> x.hasLabel(Nodes.READING)).collect(Collectors.toList());
             for (Node rdg : ourReadings)
                 assertTrue(newSections.contains(rdg.getProperty("section_id").toString()));

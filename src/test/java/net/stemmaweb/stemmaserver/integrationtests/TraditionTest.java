@@ -447,7 +447,7 @@ public class TraditionTest {
         assertEquals(Response.Status.OK.getStatusCode(), removalResponse.getStatus());
 
         try (Transaction tx = db.beginTx()) {
-        	Node startNode = VariantGraphService.getStartNode(tradId, tx);
+        	Node startNode = VariantGraphService.getStartNode(tx, tradId);
         	tx.close();
 
         	assertNull(startNode);

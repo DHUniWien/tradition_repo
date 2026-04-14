@@ -70,18 +70,18 @@ public class DotExporter
 
     	try {
     		// Get the start and end node of the whole tradition
-    		Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-    		Node startNode = VariantGraphService.getStartNode(tradId, tx);
-    		Node endNode = VariantGraphService.getEndNode(tradId, tx);
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+    		Node startNode = VariantGraphService.getStartNode(tx, tradId);
+    		Node endNode = VariantGraphService.getEndNode(tx, tradId);
     		if(startNode==null || endNode==null || traditionNode==null) {
     			return Response.status(Status.NOT_FOUND).build();
     		}
 
     		// Get the list of section nodes
-        	sections = VariantGraphService.getSectionNodes(tradId, tx);
-        	traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-        	startNode = VariantGraphService.getStartNode(tradId, tx);
-        	endNode = VariantGraphService.getEndNode(tradId, tx);
+        	sections = VariantGraphService.getSectionNodes(tx, tradId);
+        	traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+        	startNode = VariantGraphService.getStartNode(tx, tradId);
+        	endNode = VariantGraphService.getEndNode(tx, tradId);
             output = File.createTempFile("graph_", ".dot");
             out = new FileOutputStream(output);
 
@@ -129,8 +129,8 @@ public class DotExporter
                 if (!dm.getExcludeWitnesses().isEmpty()) {
                     numWits -= dm.getExcludeWitnesses().size();
                 }
-                Node sectionStartNode = VariantGraphService.getStartNode(sectionNode.getElementId(), tx);
-                Node sectionEndNode = VariantGraphService.getEndNode(sectionNode.getElementId(), tx);
+                Node sectionStartNode = VariantGraphService.getStartNode(tx, sectionNode.getElementId());
+                Node sectionEndNode = VariantGraphService.getEndNode(tx, sectionNode.getElementId());
                 // If we have requested a section, then that section's start and end are "the" start and end
                 // for the whole graph.
                 if (sectionId != null) {
@@ -147,7 +147,7 @@ public class DotExporter
                 }
 
                 // Find our representative nodes, in case we are producing a normalised form of the graph
-                HashMap<Node, Node> representatives = getRepresentatives(sectionNode, dm.getNormaliseOn());
+                HashMap<Node, Node> representatives = getRepresentatives(tx, sectionNode, dm.getNormaliseOn());
                 RelationshipType seqLabel = dm.getNormaliseOn() == null ? ERelations.SEQUENCE : ERelations.NSEQUENCE;
 
                 // Collect any lemma edge pairs. We need to be able to search by start node, but want to note
@@ -282,9 +282,6 @@ public class DotExporter
 					write(String.format("\t%s->%s [color=white,penwidth=0,arrowhead=none];\n",
 							r.getStartNode().getElementId(), r.getEndNode().getElementId()));
 
-                // Clean up after ourselves
-                if (seqLabel.equals(ERelations.NSEQUENCE))
-                    VariantGraphService.clearNormalization(sectionNode);
             }
 
             write("}\n");
@@ -330,21 +327,21 @@ public class DotExporter
      * Helper functions for variant graph production
      */
 
-    private static HashMap<Node, Node> getRepresentatives(Node sectionNode, String normaliseOn)
+    private static HashMap<Node, Node> getRepresentatives(Transaction tx, Node sectionNode, String normaliseOn)
             throws Exception {
         if (normaliseOn == null) {
             HashMap<Node, Node> representatives = new HashMap<>();
 //            List<Node> sectionNodes = VariantGraphService.returnTraditionSection(sectionNode).nodes().stream()
 //                    .filter(x -> x.hasLabel(Label.label("READING"))).collect(Collectors.toList());
 			List<Node> sectionNodes = StreamSupport
-					.stream(VariantGraphService.returnTraditionSection(sectionNode).nodes().spliterator(), false)
+					.stream(VariantGraphService.returnTraditionSection(tx, sectionNode).nodes().spliterator(), false)
 					.filter(x -> x.hasLabel(Label.label("READING"))).toList();
             for (Node n: sectionNodes) {
                 representatives.put(n, n);
             }
             return representatives;
         } else {
-            return VariantGraphService.normalizeGraph(sectionNode, normaliseOn);
+            return VariantGraphService.normalizeGraph(tx, sectionNode, normaliseOn);
         }
     }
 

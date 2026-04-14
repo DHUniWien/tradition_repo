@@ -105,7 +105,7 @@ public class Annotation {
         	if (annotationNotFound(tx)) {
         		return Response.status(Response.Status.NOT_FOUND).build();
         	} else {
-        		Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
+        		Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
         		// Find the relevant annotation label
         		Optional<Node> al = DatabaseService.getRelated(tradNode, ERelations.HAS_ANNOTATION_TYPE)
         				.stream().filter(x -> x.getProperty("name").equals(newAnno.getLabel())).findFirst();

@@ -195,7 +195,7 @@ public class TabularExporter {
 
     private ArrayList<Node> getSections(String tradId, List<String> sectionList)
     throws TabularExporterException {
-        ArrayList<Node> traditionSections = VariantGraphService.getSectionNodes(tradId, tx);
+        ArrayList<Node> traditionSections = VariantGraphService.getSectionNodes(tx, tradId);
         // Does the tradition exist in the first place?
         if (traditionSections.isEmpty()) return null;
 
@@ -224,9 +224,8 @@ public class TabularExporter {
         ArrayList<AlignmentModel> tables = new ArrayList<>();
         int length = 0;
         for (Node sectionNode : traditionSections) {
-            if (collapseRelated != null) VariantGraphService.normalizeGraph(sectionNode, collapseRelated);
+            if (collapseRelated != null) VariantGraphService.normalizeGraph(tx, sectionNode, collapseRelated);
             AlignmentModel asJson = new AlignmentModel(sectionNode, excludeLayers, tx);
-            if (collapseRelated != null) VariantGraphService.clearNormalization(sectionNode);
             // Save the alignment to our tables list
             tables.add(asJson);
             length += asJson.getLength();

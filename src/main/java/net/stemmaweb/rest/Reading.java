@@ -340,7 +340,7 @@ public class Reading {
                 newSeqs.add(ReadingService.addWitnessLink(lacuna, next, wit.get("sigil"), wit.get("layer")));
             }
             for (Node pushed : pushedReadings) {
-                changedReadings.addAll(ReadingService.recalculateRank(pushed, false, tx));
+                changedReadings.addAll(ReadingService.recalculateRank(tx, pushed, false));
             }
             result.setReadings(changedReadings.stream().map(ReadingModel::new).collect(Collectors.toList()));
             result.setSequences(newSeqs.stream().map(SequenceModel::new).collect(Collectors.toList()));
@@ -440,10 +440,10 @@ public class Reading {
             RelationService.RelatedReadingsTraverser rt;
             if (filterTypes == null || filterTypes.isEmpty())
                 // Traverse all relations
-                rt = new RelationService.RelatedReadingsTraverser(reading);
+                rt = new RelationService.RelatedReadingsTraverser(tx, reading);
             else
                 // Traverse only the named relations
-                rt = new RelationService.RelatedReadingsTraverser(reading, x -> filterTypes.contains(x.getName()));
+                rt = new RelationService.RelatedReadingsTraverser(tx, reading, x -> filterTypes.contains(x.getName()));
             tx.traversalDescription().depthFirst()
                     .relationships(ERelations.RELATED)
                     .evaluator(rt)
@@ -766,7 +766,7 @@ public class Reading {
 
             ReadingModel drm = new ReadingModel(deletingReading);
 
-            if (!canBeMerged(stayingReading, deletingReading)) {
+            if (!canBeMerged(tx, stayingReading, deletingReading)) {
                 return errorResponse(Status.CONFLICT);
             }
             // See if they are on the same rank; if not, we will have to re-rank the graph
@@ -803,7 +803,7 @@ public class Reading {
             }
             // Re-rank nodes if necessary
             if (!samerank) {
-                ReadingService.recalculateRank(aPriorNode, false, tx);
+                ReadingService.recalculateRank(tx, aPriorNode, false);
             }
 
             tx.commit();
@@ -831,7 +831,7 @@ public class Reading {
      *            the reading which will be deleted from the database
      * @return true if readings can be merged, false if not
      */
-    private boolean canBeMerged(Node stayingReading, Node deletingReading) throws Exception {
+    private boolean canBeMerged(Transaction tx, Node stayingReading, Node deletingReading) throws Exception {
         // Ensure that the two readings belong to the same section.
         if (!stayingReading.getProperty("section_id").equals(deletingReading.getProperty("section_id"))) {
             errorMessage = "Readings must be in the same section!";
@@ -845,23 +845,20 @@ public class Reading {
         // If the two readings are aligned, there is no need to test for cycles.
         boolean aligned = false;
         RelationService.RelatedReadingsTraverser rt = new RelationService.RelatedReadingsTraverser(
-                stayingReading, RelationTypeModel::getIs_colocation);
-        try (Transaction tx = db.beginTx()) {
-            for (Node n : tx.traversalDescription().depthFirst()
-                    .relationships(ERelations.RELATED)
-                    .evaluator(rt)
-                    .uniqueness(Uniqueness.NODE_GLOBAL)
-                    .traverse(stayingReading).nodes()) {
-                if (n.equals(deletingReading)) {
-                    aligned = true;
-                    break;
-                }
+                tx, stayingReading, RelationTypeModel::getIs_colocation);
+        for (Node n : tx.traversalDescription().depthFirst()
+                .relationships(ERelations.RELATED)
+                .evaluator(rt)
+                .uniqueness(Uniqueness.NODE_GLOBAL)
+                .traverse(stayingReading).nodes()) {
+            if (n.equals(deletingReading)) {
+                aligned = true;
+                break;
             }
-            tx.commit();
         }
         // Test for cycles.
         if (!aligned) {
-            if (ReadingService.wouldGetCyclic(stayingReading, deletingReading)) {
+            if (ReadingService.wouldGetCyclic(tx, stayingReading, deletingReading)) {
                 errorMessage = "Readings to be merged would make the graph cyclic";
                 return false;
             }
@@ -1037,7 +1034,7 @@ public class Reading {
                 return errorResponse(Status.INTERNAL_SERVER_ERROR);
 
             readingsAndRelations = split(originalReading, splitIndex, model);
-            ReadingService.recalculateRank(originalReading, true, tx);
+            ReadingService.recalculateRank(tx, originalReading, true);
 
             tx.commit();
         } catch (NotFoundException e) {
@@ -1327,7 +1324,7 @@ public class Reading {
                 resp =  errorResponse(Status.CONFLICT);
             } else if (canBeCompressed(read1, read2)) {
                 resp = Response.ok().entity(compress(read1, read2, boundary)).build();
-                ReadingService.recalculateRank(read1, false, tx);
+                ReadingService.recalculateRank(tx, read1, false);
             } else {
                 resp = errorResponse(Status.CONFLICT);
             }

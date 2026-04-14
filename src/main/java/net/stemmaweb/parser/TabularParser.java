@@ -125,7 +125,7 @@ public class TabularParser {
         Response.Status result = Response.Status.OK;
 
         try (Transaction tx = db.beginTx()) {
-        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
+        	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Make the start node
             Node startNode = Util.createStartNode(parentNode);
             Node endNode = Util.createEndNode(parentNode);

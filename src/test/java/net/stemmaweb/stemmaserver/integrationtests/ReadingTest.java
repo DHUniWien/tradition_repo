@@ -468,10 +468,10 @@ public class ReadingTest {
         Set<Relationship> allLinks = new HashSet<>();
         try (Transaction tx = db.beginTx()) {
 //            allNodes = VariantGraphService.returnEntireTradition(tradId, db).nodes().stream()
-        	allNodes = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, tx).nodes().spliterator(), false)
+        	allNodes = StreamSupport.stream(VariantGraphService.returnEntireTradition(tx, tradId).nodes().spliterator(), false)
         			.collect(Collectors.toSet());
 //            allLinks = VariantGraphService.returnEntireTradition(tradId, db).relationships().stream()
-            allLinks = StreamSupport.stream(VariantGraphService.returnEntireTradition(tradId, tx).relationships().spliterator(), false)
+            allLinks = StreamSupport.stream(VariantGraphService.returnEntireTradition(tx, tradId).relationships().spliterator(), false)
             		.collect(Collectors.toSet());
             tx.commit();
         } catch (Exception e) {
@@ -511,9 +511,9 @@ public class ReadingTest {
         }
         // Everything else should be as before.
         try (Transaction tx = db.beginTx()) {
-            for (Node n : VariantGraphService.returnEntireTradition(tradId, tx).nodes())
+            for (Node n : VariantGraphService.returnEntireTradition(tx, tradId).nodes())
                 assertTrue(allNodes.contains(n));
-            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, tx).relationships())
+            for (Relationship r : VariantGraphService.returnEntireTradition(tx, tradId).relationships())
                 assertTrue(allLinks.contains(r));
             tx.commit();
         } catch (Exception e) {
@@ -590,9 +590,9 @@ public class ReadingTest {
 
         // Check that we are back to our original state
         try (Transaction tx = db.beginTx()) {
-            for (Node n : VariantGraphService.returnEntireTradition(tradId, tx).nodes())
+            for (Node n : VariantGraphService.returnEntireTradition(tx, tradId).nodes())
                 assertTrue(allNodes.contains(n));
-            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, tx).relationships())
+            for (Relationship r : VariantGraphService.returnEntireTradition(tx, tradId).relationships())
                 assertTrue(allLinks.contains(r));
             tx.commit();
         } catch (Exception e) {

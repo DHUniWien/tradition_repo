@@ -128,8 +128,8 @@ public class SectionTest extends TestCase {
     public void testAddSection() {
         try (Transaction tx = db.beginTx()) {
         	// Get the existing start and end nodes
-        	Node startNode = VariantGraphService.getStartNode(tradId, tx);
-        	Node endNode = VariantGraphService.getEndNode(tradId, tx);
+        	Node startNode = VariantGraphService.getStartNode(tx, tradId);
+        	Node endNode = VariantGraphService.getEndNode(tx, tradId);
         	
         	String newSectId = Util.getValueFromJson(Util.addSectionToTradition(jerseyTest, tradId, "src/TestFiles/lf2.xml",
         			"stemmaweb", "section 2"), "sectionId");
@@ -152,9 +152,9 @@ public class SectionTest extends TestCase {
         	String witFragment = Util.getValueFromJson(jerseyResponse, "text");
         	assertEquals(aText, witFragment);
         	
-            assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tradId, tx).getElementId());
-            assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
-            assertEquals(VariantGraphService.getEndNode(newSectId, tx).getElementId(), VariantGraphService.getEndNode(tradId, tx).getElementId());
+            assertEquals(startNode.getElementId(), VariantGraphService.getStartNode(tx, tradId).getElementId());
+            assertNotEquals(endNode.getElementId(), VariantGraphService.getEndNode(tx, tradId).getElementId());
+            assertEquals(VariantGraphService.getEndNode(tx, newSectId).getElementId(), VariantGraphService.getEndNode(tx, tradId).getElementId());
             tx.commit();
         }
     }
@@ -658,7 +658,7 @@ public class SectionTest extends TestCase {
         // Lemmatize section 3 based on majority reading
         try (Transaction tx = db.beginTx()) {
             Node sect3 = tx.getNodeByElementId(flor3);
-            for (Node r : VariantGraphService.calculateMajorityText(sect3, tx)) {
+            for (Node r : VariantGraphService.calculateMajorityText(tx, sect3)) {
                 if (r.hasProperty("is_start") || r.hasProperty("is_end"))
                     continue;
                 r.setProperty("is_lemma", true);

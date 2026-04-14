@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
@@ -169,7 +168,7 @@ public class GraphMLParser {
         // Now get to work with node and relationship creation.
     	parentNode = tx.getNodeByElementId(parentNode.getElementId());
     	// Get the tradition node
-    	Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(parentNode, tx) : parentNode;
+    	Node traditionNode = isSingleSection ? VariantGraphService.getTraditionNode(tx, parentNode) : parentNode;
         // The UUID of the tradition node that was passed in to receive the parsed data
         String tradId = traditionNode.getProperty("id").toString();
         // The Neo4J node that contains our section, if we are parsing a section
@@ -185,17 +184,11 @@ public class GraphMLParser {
         // If we are parsing a new section into an existing tradition, get the tradition metadata nodes
         // to make sure we don't duplicate them. This should only happen if we have isSingleSection set,
         // since otherwise the relevant nodes should already be in idMap.
-		List<Node> existingMeta = isSingleSection
-//                    VariantGraphService.returnTraditionMeta(traditionNode).nodes().stream().collect(Collectors.toList()) :
-				? StreamSupport
-						.stream(VariantGraphService.returnTraditionMeta(traditionNode).nodes().spliterator(), false)
-						.collect(Collectors.toList())
+		List<Node> existingMeta = isSingleSection ? StreamSupport
+                .stream(VariantGraphService.returnTraditionMeta(tx, traditionNode).nodes().spliterator(), false).toList()
 				: new ArrayList<>();
-        List<Relationship> existingMetaRel = isSingleSection
-//                    VariantGraphService.returnTraditionMeta(traditionNode).relationships().stream().collect(Collectors.toList()) :
-				? StreamSupport
-						.stream(VariantGraphService.returnTraditionMeta(traditionNode).relationships().spliterator(), false)
-						.collect(Collectors.toList())
+        List<Relationship> existingMetaRel = isSingleSection ? StreamSupport
+                .stream(VariantGraphService.returnTraditionMeta(tx, traditionNode).relationships().spliterator(), false).toList()
 				: new ArrayList<>();
 
         // We will hold back nodes that were labeled by the user rather than the system, such as annotations,
@@ -336,7 +329,7 @@ public class GraphMLParser {
                 boolean exists = true;
                 for (Relationship ex : existingMetaRel.stream()
                         .filter(x -> x.getStartNode().equals(source) && x.getEndNode().equals(target))
-                        .collect(Collectors.toList())) {
+                        .toList()) {
                     for (String p : edgeProperties.keySet()) {
                         exists = exists && edgeProperties.get(p).equals(ex.getProperty(p, null));
                     }
@@ -392,7 +385,7 @@ public class GraphMLParser {
 
         // Ensure that all relation types exist
         for (String rt : relationTypesUsed)
-            RelationService.returnRelationType(tradId, rt, tx);
+            RelationService.returnRelationType(tx, tradId, rt);
 
         // Now add user-labeled nodes separately, via the existing validation infrastructure.
         HashMap<String,AnnotationModel> annotationsToAdd = new HashMap<>();
@@ -436,7 +429,7 @@ public class GraphMLParser {
                 AnnotationModel am = annotationsToAdd.get(amid);
                 // Look at the links and see if the targets exist yet
                 boolean targetsExist = true;
-                for (String target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).collect(Collectors.toList())) {
+                for (String target : am.getLinks().stream().map(AnnotationLinkModel::getTarget).toList()) {
                     targetsExist = targetsExist && idMap.containsKey(target);
                 }
                 if (targetsExist) {
@@ -513,25 +506,15 @@ public class GraphMLParser {
             String keyCode = datumXML.getAttributes().getNamedItem("key").getNodeValue();
             String keyVal = datumXML.getTextContent();
             String[] keyInfo = dataKeys.get(keyCode);
-            Object propValue;
+            Object propValue = switch (keyInfo[1]) {
+                case "boolean" -> Boolean.valueOf(keyVal);
+                case "long" -> Long.valueOf(keyVal);
+                case "int" -> Integer.valueOf(keyVal);
+                case "stringarray" -> keyVal.replace("[", "").replace("]", "").split(",\\s+");
+                default -> // e.g. "string"
+                        keyVal;
+            };
             // These datatypes need to be kept in sync with exporter.GraphMLExporter
-            switch (keyInfo[1]) {
-                case "boolean":
-                    propValue = Boolean.valueOf(keyVal);
-                    break;
-                case "long":
-                    propValue = Long.valueOf(keyVal);
-                    break;
-                case "int":
-                    propValue = Integer.valueOf(keyVal);
-                    break;
-                case "stringarray":
-                    propValue = keyVal.replace("[", "").replace("]", "").split(",\\s+");
-                    break;
-                default: // e.g. "string"
-                    propValue = keyVal;
-
-            }
             nodeProperties.put(keyInfo[0], propValue);
         }
         return nodeProperties;

@@ -194,18 +194,18 @@ public class TEIExporter {
 							 List<String> excludeWitnesses, String conflate, String suppress, Boolean filterNonsense,
 							 Boolean filterTypeOne, String significant, Boolean combine, Transaction tx)
 			throws Exception {
-		Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+		Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
 		if (traditionNode == null)
 			return Response.status(Response.Status.NOT_FOUND).entity(createXmlError("No tradition found for this ID"))
 					.build();
-		Node traditionStartNode = VariantGraphService.getStartNode(tradId, tx);
+		Node traditionStartNode = VariantGraphService.getStartNode(tx, tradId);
 		if (traditionStartNode == null)
 			return Response.status(Response.Status.NOT_FOUND)
 					.entity(createXmlError("No graph found for this tradition.")).build();
 
 		// If a specific section was requested, check that it exists
 		if (sectionId != null && !sectionId.isEmpty()
-				&& !VariantGraphService.sectionInTradition(tradId, sectionId, tx))
+				&& !VariantGraphService.sectionInTradition(tx, tradId, sectionId))
 			return Response.status(Response.Status.NOT_FOUND)
 					.entity(createXmlError("Requested section not found in tradition")).build();
 
@@ -238,7 +238,7 @@ public class TEIExporter {
 			sectionList.add(sectionNode);				
 		} else {
 			// get sections of traditions
-			sectionList = VariantGraphService.getSectionNodes(tradId, tx);
+			sectionList = VariantGraphService.getSectionNodes(tx, tradId);
 		}
 
 		writer.writeStartElement("body");

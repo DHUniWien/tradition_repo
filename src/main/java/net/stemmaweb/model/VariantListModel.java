@@ -116,19 +116,19 @@ public class VariantListModel {
         if (conflate == null) conflate = "";
         RelationshipType follow = ERelations.SEQUENCE;
         if (!conflate.isEmpty()) {
-            VariantGraphService.normalizeGraph(sectionNode, conflate, tx);
+            VariantGraphService.normalizeGraph(tx, sectionNode, conflate);
             follow = ERelations.NSEQUENCE;
         }
 
         // Figure out which types are dislocation types in this tradition
         this.dislocationTypes = new ArrayList<>();
-        for (RelationTypeModel rtm : RelationService.ourRelationTypes(sectionNode, tx)) {
+        for (RelationTypeModel rtm : RelationService.ourRelationTypes(tx, sectionNode)) {
             if (!rtm.getIs_colocation())
                 dislocationTypes.add(rtm.getName());
         }
 
         // See which list of readings will serve as our base text
-        Node startNode = VariantGraphService.getStartNode(sectionNode.getElementId(), tx);
+        Node startNode = VariantGraphService.getStartNode(tx, sectionNode.getElementId());
         TraversalDescription baseWalker = tx.traversalDescription().depthFirst();
         List<Relationship> baseText;
         if (baseWitness != null) {
@@ -151,7 +151,7 @@ public class VariantListModel {
                 this.basisText = "lemma";
             } else {
                 // We calculate and use the majority text
-                baseReadings = VariantGraphService.calculateMajorityText(sectionNode, tx);
+                baseReadings = VariantGraphService.calculateMajorityText(tx, sectionNode);
                 this.basisText = "majority";
             }
             baseText = new ArrayList<>();
@@ -182,12 +182,6 @@ public class VariantListModel {
 
         // Combine dislocations if we were asked to
         if (combine) this.combineDisplacements();
-
-        // Clean up if we normalised
-        if (!conflate.isEmpty())
-            VariantGraphService.clearNormalization(sectionNode);
-
-        tx.commit();
     }
 
     private void findVariants (Transaction tx, List<Relationship> sequence, List<String> excludeWitnesses,
@@ -215,7 +209,6 @@ public class VariantListModel {
                 }
             }
         }
-        tx.commit();
 
         // Add relation information to each variant location. This will also notice displaced variants.
         for (VariantLocationModel vlm : this.getVariantlist())

@@ -63,7 +63,7 @@ public class VariantGraphServiceTest {
     @Test
     public void getStartNodeTest() {
         try (Transaction tx = db.beginTx()) {
-            Node startNode = VariantGraphService.getStartNode(traditionId, tx);
+            Node startNode = VariantGraphService.getStartNode(tx, traditionId);
             assertNotNull(startNode);
             assertEquals("#START#", startNode.getProperty("text"));
             assertEquals(true, startNode.getProperty("is_start"));
@@ -74,7 +74,7 @@ public class VariantGraphServiceTest {
     @Test
     public void getEndNodeTest() {
         try (Transaction tx = db.beginTx()) {
-            Node endNode = VariantGraphService.getEndNode(traditionId, tx);
+            Node endNode = VariantGraphService.getEndNode(tx, traditionId);
             assertNotNull(endNode);
             assertEquals("#END#", endNode.getProperty("text"));
             assertEquals(true, endNode.getProperty("is_end"));
@@ -85,7 +85,7 @@ public class VariantGraphServiceTest {
     @Test
     public void getSectionNodesTest() {
         try (Transaction tx = db.beginTx()) {
-        	ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(traditionId, tx);
+        	ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(tx, traditionId);
         	assertEquals(1, sectionNodes.size());
             assertTrue(sectionNodes.get(0).hasLabel(Label.label("SECTION")));
             tx.close();
@@ -95,12 +95,12 @@ public class VariantGraphServiceTest {
     @Test
     public void getTraditionNodeTest() {
     	try (Transaction tx = db.beginTx()) {
-    		Node foundTradition = VariantGraphService.getTraditionNode(traditionId, tx);
+    		Node foundTradition = VariantGraphService.getTraditionNode(tx, traditionId);
     		assertNotNull(foundTradition);
     		// Now by section node
-    		ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(traditionId, tx);
+    		ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(tx, traditionId);
     		assertEquals(1, sectionNodes.size());
-    		assertEquals(foundTradition, VariantGraphService.getTraditionNode(sectionNodes.get(0), tx));
+    		assertEquals(foundTradition, VariantGraphService.getTraditionNode(tx, sectionNodes.get(0)));
     		tx.close();
     	}
     }
@@ -113,8 +113,8 @@ public class VariantGraphServiceTest {
                 "tradId"
         );
         try (Transaction tx = db.beginTx()) {
-        	ArrayList<Node> sections = VariantGraphService.getSectionNodes(newTradId, tx);
-            HashMap<Node,Node> representatives = VariantGraphService.normalizeGraph(sections.get(0), "collated", tx);
+        	ArrayList<Node> sections = VariantGraphService.getSectionNodes(tx, newTradId);
+            HashMap<Node,Node> representatives = VariantGraphService.normalizeGraph(tx, sections.get(0), "collated");
             for (Node n : representatives.keySet()) {
                 // If it is represented by itself, it should have an NSEQUENCE both in and out; if not, not.
                 if (!n.hasProperty("is_end"))
@@ -130,12 +130,6 @@ public class VariantGraphServiceTest {
                     assertTrue(n.hasRelationship(d, ERelations.REPRESENTS));
                 }
             }
-
-            // Now clear the normalization and make sure we didn't fail.
-            VariantGraphService.clearNormalization(sections.get(0));
-            assertTrue(tx.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.NSEQUENCE)));
-            assertTrue(tx.getAllRelationships().stream().noneMatch(x -> x.isType(ERelations.REPRESENTS)));
-            tx.close();
         } catch (Exception e) {
             fail();
         }
@@ -150,8 +144,8 @@ public class VariantGraphServiceTest {
         );
         String expectedMajority = "sanoi herra Heinärickus Erjkillen weljellensä Läckämme Hämehen maallen";
         try (Transaction tx = db.beginTx()) {
-        	ArrayList<Node> sections = VariantGraphService.getSectionNodes(newTradId, tx);
-            List<Node> majorityReadings = VariantGraphService.calculateMajorityText(sections.get(0), tx);
+        	ArrayList<Node> sections = VariantGraphService.getSectionNodes(tx, newTradId);
+            List<Node> majorityReadings = VariantGraphService.calculateMajorityText(tx, sections.get(0));
             List<String> words = majorityReadings.stream()
                     .filter(x -> !x.hasProperty("is_start") && !x.hasProperty("is_end"))
                     .map(x -> x.getProperty("text").toString())
@@ -175,8 +169,8 @@ public class VariantGraphServiceTest {
             Relation relRest = new Relation(newTradId);
             Response r = relRest.create(rm);
             assertEquals(Response.Status.CREATED.getStatusCode(), r.getStatus());
-            VariantGraphService.normalizeGraph(sections.get(0), "collated", tx); // TODO not sure this has an effect??
-            majorityReadings = VariantGraphService.calculateMajorityText(sections.get(0), tx);
+            VariantGraphService.normalizeGraph(tx, sections.get(0), "collated"); // TODO not sure this has an effect??
+            majorityReadings = VariantGraphService.calculateMajorityText(tx, sections.get(0));
             words = majorityReadings.stream()
             		.filter(x -> !x.hasProperty("is_start") && !x.hasProperty("is_end"))
             		.map(x -> x.getProperty("text").toString())

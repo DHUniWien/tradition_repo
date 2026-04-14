@@ -111,7 +111,7 @@ public class Util {
         GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
         try (Transaction tx = db.beginTx()) {
             String tradId = traditionNode.getProperty("id").toString();
-            ArrayList<Node> tsections = VariantGraphService.getSectionNodes(tradId, tx);
+            ArrayList<Node> tsections = VariantGraphService.getSectionNodes(tx, tradId);
             if (!tsections.contains(sectionNode)) {
                 traditionNode.createRelationshipTo(sectionNode, ERelations.PART);
                 if (!tsections.isEmpty())
@@ -178,7 +178,7 @@ public class Util {
 
     // Helper to set colocation flags on all colocated RELATED links.
     // NOTE: For use inside a transaction
-    static void setColocationFlags (Node traditionNode) {
+    static void setColocationFlags (Transaction tx, Node traditionNode) {
         HashSet<String> colocatedTypes = new HashSet<>();
         for (Relationship r : traditionNode.getRelationships(Direction.OUTGOING, ERelations.HAS_RELATION_TYPE)) {
             RelationTypeModel relType = new RelationTypeModel(r.getEndNode());
@@ -186,7 +186,7 @@ public class Util {
         }
 
         // Traverse the tradition looking for these types
-        for (Relationship rel : VariantGraphService.returnTraditionRelations(traditionNode).relationships()) {
+        for (Relationship rel : VariantGraphService.returnTraditionRelations(tx, traditionNode).relationships()) {
             if (colocatedTypes.contains(rel.getProperty("type").toString()))
                 rel.setProperty("colocation", true);
             else if (rel.hasProperty("colocation"))

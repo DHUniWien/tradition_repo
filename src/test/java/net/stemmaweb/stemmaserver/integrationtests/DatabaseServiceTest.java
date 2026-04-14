@@ -59,7 +59,7 @@ public class DatabaseServiceTest {
     public void getRelatedTest() {
         Response response;
         try (Transaction tx = db.beginTx()) {
-        	Node tradition = VariantGraphService.getTraditionNode(traditionId, tx);
+        	Node tradition = VariantGraphService.getTraditionNode(tx, traditionId);
         	ArrayList<Node> witnesses = DatabaseService.getRelated(tradition, ERelations.HAS_WITNESS);
         	assertEquals(3, witnesses.size());
         	tx.close();
@@ -71,7 +71,7 @@ public class DatabaseServiceTest {
     @Test
     public void userExistsTest() {
     	try (Transaction tx = db.beginTx()) {
-    		assertTrue(DatabaseService.userExists(userId, tx));
+    		assertTrue(DatabaseService.userExists(tx, userId));
     		tx.close();
     	}
     }

@@ -73,7 +73,7 @@ public class Witness {
     private String getWitnessById(String nodeId) {
         String foundSigil = null;
         try (Transaction tx = db.beginTx()) {
-        	Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
+        	Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
             Node found = null;
             for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
                 if (r.getEndNode().getElementId().equals(nodeId))
@@ -89,7 +89,7 @@ public class Witness {
     private Node getWitnessBySigil() {
         Node found = null;
         try (Transaction tx = db.beginTx()) {
-        	Node tradNode = VariantGraphService.getTraditionNode(tradId, tx);
+        	Node tradNode = VariantGraphService.getTraditionNode(tx, tradId);
             for (Relationship r : tradNode.getRelationships(Direction.OUTGOING, ERelations.HAS_WITNESS)) {
                 Node wit = r.getEndNode();
                 if (wit.hasProperty("sigil") && wit.getProperty("sigil").equals(sigil)) {
@@ -147,7 +147,7 @@ public class Witness {
             // Find all references to the witness throughout the tradition, and delete them
             removed = new WitnessModel(witnessNode);
             HashSet<Node> orphanReadings = new HashSet<>();
-            for (Relationship r : VariantGraphService.returnEntireTradition(tradId, tx).relationships()) {
+            for (Relationship r : VariantGraphService.returnEntireTradition(tx, tradId).relationships()) {
                 if (r.isType(ERelations.SEQUENCE)) {
                     Node start = r.getStartNode();
                     Node end = r.getEndNode();
@@ -279,7 +279,7 @@ public class Witness {
             }
 
             try (Transaction tx = db.beginTx()) {
-            	Node startNode = VariantGraphService.getStartNode(currentSection.getElementId(), tx);
+            	Node startNode = VariantGraphService.getStartNode(tx, currentSection.getElementId());
                 final long sr = startRank;
                 final long er = endRank;
                 witnessReadings.addAll(traverseReadings(startNode, layer).stream()
@@ -333,7 +333,7 @@ public class Witness {
 
         for (Node currentSection: iterationList) {
             try (Transaction tx = db.beginTx()) {
-                Node startNode = VariantGraphService.getStartNode(currentSection.getElementId(), tx);
+                Node startNode = VariantGraphService.getStartNode(tx, currentSection.getElementId());
                 readingModels.addAll(traverseReadings(startNode, witnessClass).stream().map(ReadingModel::new).collect(Collectors.toList()));
                 // Remove the meta node from the list
                 if (readingModels.size() > 0 && readingModels.get(readingModels.size() - 1).getIs_end())
@@ -386,7 +386,7 @@ public class Witness {
     private ArrayList<Node> sectionsRequested() {
     	Node traditionNode = null;
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+    		traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
             tx.close();
         }
 
@@ -398,13 +398,13 @@ public class Witness {
         ArrayList<Node> iterationList = new ArrayList<>();
         if (this.sectId == null) {
         	try (Transaction tx = db.beginTx()) {
-        		iterationList = VariantGraphService.getSectionNodes(tradId, tx);
+        		iterationList = VariantGraphService.getSectionNodes(tx, tradId);
         		tx.close();
         	}
         } else {
         	boolean sectionInTradition = false;
         	try (Transaction tx = db.beginTx()) {
-        		sectionInTradition = VariantGraphService.sectionInTradition(tradId, sectId, tx);
+        		sectionInTradition = VariantGraphService.sectionInTradition(tx, tradId, sectId);
         		tx.close();
         	}
             if (!sectionInTradition) {

@@ -52,9 +52,9 @@ public class AlignmentModel {
     // Get an alignment table
     public AlignmentModel(Node sectionNode, boolean excludeLayers, Transaction tx) {
         String sectId = sectionNode.getElementId();
-        Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
-        Node startNode = VariantGraphService.getStartNode(sectId, tx);
-        Node endNode = VariantGraphService.getEndNode(sectId, tx);
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, sectionNode);
+        Node startNode = VariantGraphService.getStartNode(tx, sectId);
+        Node endNode = VariantGraphService.getEndNode(tx, sectId);
 
         // First get the length, that's the easy part.
         length = (long) endNode.getProperty("rank") - 1;

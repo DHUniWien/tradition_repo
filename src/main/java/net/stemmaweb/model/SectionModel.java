@@ -70,7 +70,7 @@ public class SectionModel {
         setEndRank(Long.valueOf(sectionEnd.getEndNode().getProperty("rank").toString()));
 
         // Get the traverser for the tradition readings
-        Node startNode = VariantGraphService.getStartNode(node.getElementId(), tx);
+        Node startNode = VariantGraphService.getStartNode(tx, node.getElementId());
         Traverser traversedTradition = tx.traversalDescription().depthFirst()
                 .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
                 .evaluator(Evaluators.all())

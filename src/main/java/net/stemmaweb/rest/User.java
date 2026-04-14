@@ -193,7 +193,7 @@ public class User {
     public Response getUserTraditions() {
     	boolean userExists = false;
     	try (Transaction tx = db.beginTx()) {
-            userExists = DatabaseService.userExists(userId, tx);
+            userExists = DatabaseService.userExists(tx, userId);
             tx.close();
         }
 

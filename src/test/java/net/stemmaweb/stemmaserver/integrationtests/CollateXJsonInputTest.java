@@ -97,7 +97,7 @@ public class CollateXJsonInputTest extends TestCase {
         try (Transaction tx = db.beginTx()) {
             List<Relationship> sequences =
 //            		VariantGraphService.returnTraditionSection(sectId, db).relationships().stream()
-            		StreamSupport.stream(VariantGraphService.returnTraditionSection(sectId, tx).relationships().spliterator(), false)
+            		StreamSupport.stream(VariantGraphService.returnTraditionSection(tx, sectId).relationships().spliterator(), false)
             		.filter(x -> x.getType().toString().equals("SEQUENCE")).collect(Collectors.toList());
             for (Relationship r : sequences) {
                 if (r.hasProperty("witnesses")) {
@@ -179,7 +179,7 @@ public class CollateXJsonInputTest extends TestCase {
 
     public void testNoRedundantWitnesses() {
         try (Transaction tx = db.beginTx()) {
-        	Traverser sTrav = VariantGraphService.returnTraditionSection(sectId, tx);
+        	Traverser sTrav = VariantGraphService.returnTraditionSection(tx, sectId);
             for (Relationship r : sTrav.relationships())
                 if (r.getType().equals(ERelations.SEQUENCE) && r.hasProperty("witnesses")) {
                     Iterable<String> layers = r.getPropertyKeys();

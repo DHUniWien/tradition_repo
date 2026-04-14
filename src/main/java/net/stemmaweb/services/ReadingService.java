@@ -7,11 +7,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.PathExpander;
@@ -314,7 +312,7 @@ public class ReadingService {
             // if (joinString == null) joinString = "";
             witnessAsText.append(joinString);
         }
-        if (show_gaps && lastSeenRank < rml.get(rml.size() - 1).getRank() - 1)
+        if (show_gaps && lastSeenRank < rml.getLast().getRank() - 1)
             witnessAsText.append(" [...]");
         return witnessAsText.toString().trim();
     }
@@ -324,36 +322,18 @@ public class ReadingService {
     private static class RankCalcEvaluate implements Evaluator {
 
         Map<String, Set<Node>> colocatedNodes;
-        boolean recalculateAll;
+        boolean recalculateAll; // TODO is this used??
 
         // Constructor - we need to know where we are starting so we can build our list of
         // equivalences and find our starting point. Throws an exception if we can't get
         // the related-reading clusters.
-        RankCalcEvaluate(Node startNode, Boolean recalculateAll) throws Exception {
-            // Get the list of colocated nodes in this section.
-//            GraphDatabaseService db = startNode.getGraphDatabase();
-        	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        	String sectionId = String.valueOf(startNode.getProperty("section_id"));
-            try (Transaction tx = db.beginTx()) {
-                String tradId = tx.getNodeByElementId(sectionId)
-                        .getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
-                        .getProperty("id").toString();
-//            this.colocatedNodes = buildColocationLookup(tradId, sectionId, startNode.getGraphDatabase());
-                this.colocatedNodes = buildColocationLookup(tradId, sectionId, tx);
-                this.recalculateAll = recalculateAll;
-                tx.commit();
-            }
-        }
-
-        RankCalcEvaluate(Node startNode, Boolean recalculateAll, Transaction tx) throws Exception {
+        RankCalcEvaluate(Transaction tx, Node startNode, Boolean recalculateAll) throws Exception {
         	// Get the list of colocated nodes in this section.
-//            GraphDatabaseService db = startNode.getGraphDatabase();
         	String sectionId = String.valueOf(startNode.getProperty("section_id"));
         	String tradId = tx.getNodeByElementId(sectionId)
         			.getSingleRelationship(ERelations.PART, Direction.INCOMING).getStartNode()
         			.getProperty("id").toString();
-//            this.colocatedNodes = buildColocationLookup(tradId, sectionId, startNode.getGraphDatabase());
-        	this.colocatedNodes = buildColocationLookup(tradId, sectionId, tx);
+        	this.colocatedNodes = buildColocationLookup(tx, tradId, sectionId);
         	this.recalculateAll = recalculateAll;
         }
         
@@ -412,24 +392,19 @@ public class ReadingService {
      * Recalculates ranks, starting from startNode, until the ranks stop changing. Note that
      * the rank on startNode needs to be correct before this is run.
      *
+     * @param tx - the transaction within which we are working
      * @param startNode - the reading from which to begin the recalculation
-     * @throws Exception if the RankCalcEvaluate initialisation fails
+     * @param recalculateAll - not sure this is actually used
      * @return set of nodes whose ranks were changed
+     * @throws Exception if the RankCalcEvaluate initialisation fails
      */
 
-    public static Set<Node> recalculateRank (Node startNode, boolean recalculateAll, Transaction tx) throws Exception {
-    	RankCalcEvaluate e = new RankCalcEvaluate(startNode, recalculateAll, tx);
+    public static Set<Node> recalculateRank (Transaction tx, Node startNode, boolean recalculateAll) throws Exception {
+    	RankCalcEvaluate e = new RankCalcEvaluate(tx, startNode, recalculateAll);
     	AlignmentTraverse a = new AlignmentTraverse(startNode, tx);
-//        GraphDatabaseService db = startNode.getGraphDatabase();
-    	// Traverse the sequence graph from our start node, putting a mark on
-    	// all the nodes we expect to visit
-//        tx.traversalDescription().depthFirst()
-//                .expand(a)
-//                .uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-//                .traverse(startNode).nodes().stream().forEach(x -> x.setProperty("touched", true));
     	StreamSupport.stream(tx.traversalDescription().depthFirst().expand(a).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
     			.traverse(startNode).nodes().spliterator(), false).forEach(x -> x.setProperty("touched", true));
-    	
+
     	// At this point we can start to reassign ranks
     	Iterable<Node> touched = tx.traversalDescription().depthFirst()
     			.expand(a)
@@ -450,21 +425,10 @@ public class ReadingService {
     		}
     	}
     	
-    	// TEMPORARY: Make sure that we did visit all expected nodes
-//    	Node sectionStart = VariantGraphService.getStartNode(startNode.getProperty("section_id").toString(), tx);
-//    	for (Node n : tx.traversalDescription().depthFirst()
-//    			.expand(new AlignmentTraverse())
-//    			.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
-//    			.traverse(sectionStart).nodes()) {
-//    		if (n.hasProperty("touched"))
-//    			throw new Exception ("End node not reached during recalculation!");
-//    	}
-    	
-    	
     	// TEMPORARY: Test that our colocated groups are actually colocated
     	Node ourSection = tx.getNodeByElementId(startNode.getProperty("section_id").toString());
-    	String tradId = VariantGraphService.getTraditionNode(ourSection, tx).getProperty("id").toString();
-    	List<Set<Node>> clusters = RelationService.getClusters(tradId, ourSection.getElementId(), tx, true);
+    	String tradId = VariantGraphService.getTraditionNode(tx, ourSection).getProperty("id").toString();
+    	List<Set<Node>> clusters = RelationService.getClusters(tx, tradId, ourSection.getElementId(), true);
     	for (Set<Node> cluster : clusters) {
     		Long clusterRank = null;
     		for (Node n : cluster) {
@@ -496,7 +460,7 @@ public class ReadingService {
         // Walk the graph of sequences and colocated relations
         public AlignmentTraverse(Node referenceNode, Transaction tx) throws Exception {
             // Get the colocated types for this node's tradition
-            List<RelationTypeModel> rtms = RelationService.ourRelationTypes(referenceNode, tx);
+            List<RelationTypeModel> rtms = RelationService.ourRelationTypes(tx, referenceNode);
             for (RelationTypeModel rtm : rtms)
                 if (rtm.getIs_colocation())
                     includeRelationTypes.add(rtm.getName());
@@ -563,64 +527,60 @@ public class ReadingService {
      * tradition. If yes when merging these nodes the graph would get cyclic.
      * NOTE: For use within a transaction@
      *
+     * @param tx - the transaction in which we are working
      * @param firstReading - a node to merge
      * @param secondReading - the node with which to merge it
      * @return - true or false
      */
-    public static boolean wouldGetCyclic(Node firstReading, Node secondReading) throws Exception {
-//        GraphDatabaseService db = firstReading.getGraphDatabase();
-    	GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-        try (Transaction tx = db.beginTx()) {
-            // Get our list of colocations
-            Node sectionNode = tx.getNodeByElementId(firstReading.getProperty("section_id").toString());
-            Node traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
-            Map<String, Set<Node>> colocatedLookup = buildColocationLookup(
-                    traditionNode.getProperty("id").toString(), sectionNode.getElementId(), tx);
+    public static boolean wouldGetCyclic(Transaction tx, Node firstReading, Node secondReading) throws Exception {
+        // Get our list of colocations
+        Node sectionNode = tx.getNodeByElementId(firstReading.getProperty("section_id").toString());
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, sectionNode);
+        Map<String, Set<Node>> colocatedLookup = buildColocationLookup(
+                tx, traditionNode.getProperty("id").toString(), sectionNode.getElementId());
 
-            // Get the relevant cluster sets
-            Set<Node> firstCluster = colocatedLookup.containsKey(firstReading.getElementId()) ?
-                    colocatedLookup.get(firstReading.getElementId()) : new HashSet<>();
-            Set<Node> secondCluster = colocatedLookup.containsKey(secondReading.getElementId()) ?
-                    colocatedLookup.get(secondReading.getElementId()) : new HashSet<>();
-            firstCluster.add(firstReading);    // in case there was no existing cluster
-            secondCluster.add(secondReading);  // in case there was no existing cluster
-            // Is it the same cluster set? Then they won't get cyclic
-            if (firstCluster.equals(secondCluster)) return false;
+        // Get the relevant cluster sets
+        Set<Node> firstCluster = colocatedLookup.containsKey(firstReading.getElementId()) ?
+                colocatedLookup.get(firstReading.getElementId()) : new HashSet<>();
+        Set<Node> secondCluster = colocatedLookup.containsKey(secondReading.getElementId()) ?
+                colocatedLookup.get(secondReading.getElementId()) : new HashSet<>();
+        firstCluster.add(firstReading);    // in case there was no existing cluster
+        secondCluster.add(secondReading);  // in case there was no existing cluster
+        // Is it the same cluster set? Then they won't get cyclic
+        if (firstCluster.equals(secondCluster)) return false;
 
-            // Find our max rank, as well as whether we need to reverse the search
-            boolean reverse = false;
-            Long maxRank = (Long) firstReading.getProperty("rank");
-            if (maxRank > (Long) secondReading.getProperty("rank"))
-                reverse = true;
-            else
-                maxRank = (Long) secondReading.getProperty("rank");
+        // Find our max rank, as well as whether we need to reverse the search
+        boolean reverse = false;
+        Long maxRank = (Long) firstReading.getProperty("rank");
+        if (maxRank > (Long) secondReading.getProperty("rank"))
+            reverse = true;
+        else
+            maxRank = (Long) secondReading.getProperty("rank");
 
-            // For each node in the lower cluster, see if we can reach any node in the
-            // higher cluster.
-            AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading, tx);
-            RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
-            for (Node lower : reverse ? secondCluster : firstCluster) {
-                boolean followed_sequence = false;
-                for (Relationship r : tx.traversalDescription()
-                        .depthFirst()
-                        .evaluator(rankEvaluator)
-                        .expand(alignmentEvaluator).traverse(lower).relationships()) {
-                    // TODO does this need to include EMENDED links?
-                    if (r.getType().name().equals(ERelations.SEQUENCE.name()))
-                        followed_sequence = true;
-                    if ((reverse ? firstCluster : secondCluster).contains(r.getEndNode()) && followed_sequence)
-                        return true;
-                }
+        // For each node in the lower cluster, see if we can reach any node in the
+        // higher cluster.
+        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading, tx);
+        RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
+        for (Node lower : reverse ? secondCluster : firstCluster) {
+            boolean followed_sequence = false;
+            for (Relationship r : tx.traversalDescription()
+                    .depthFirst()
+                    .evaluator(rankEvaluator)
+                    .expand(alignmentEvaluator).traverse(lower).relationships()) {
+                // TODO does this need to include EMENDED links?
+                if (r.getType().name().equals(ERelations.SEQUENCE.name()))
+                    followed_sequence = true;
+                if ((reverse ? firstCluster : secondCluster).contains(r.getEndNode()) && followed_sequence)
+                    return true;
             }
-            tx.commit();
         }
         return false;
     }
 
-    private static Map<String, Set<Node>> buildColocationLookup (String tradId, String sectionId, Transaction tx)
+    private static Map<String, Set<Node>> buildColocationLookup (Transaction tx, String tradId, String sectionId)
             throws Exception {
         Map<String, Set<Node>> result = new HashMap<>();
-        List<Set<Node>> clusters = RelationService.getClusters(tradId, sectionId, tx, true);
+        List<Set<Node>> clusters = RelationService.getClusters(tx, tradId, sectionId, true);
         for (Set<Node> cluster : clusters)
             for (Node n : cluster)
                 result.put(n.getElementId(), cluster);

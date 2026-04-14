@@ -326,15 +326,15 @@ public class StemmawebParser {
         	}
 
         // Re-rank the entire tradition
-        Node sectionStart = VariantGraphService.getStartNode(parentNode.getElementId(), tx);
-        ReadingService.recalculateRank(sectionStart, true, tx);
+        Node sectionStart = VariantGraphService.getStartNode(tx, parentNode.getElementId());
+        ReadingService.recalculateRank(tx, sectionStart, true);
         // Calculate the common nodes; don't trust the old format for this.
-        VariantGraphService.calculateCommon(parentNode, tx);
+        VariantGraphService.calculateCommon(tx, parentNode);
 
         // Create the witness nodes.
         witnesses.keySet().forEach(x -> Util.findOrCreateExtant(traditionNode, x, tx));
         // Set colocation information on relation types
-        Util.setColocationFlags(traditionNode);
+        Util.setColocationFlags(tx, traditionNode);
 
         if( !stemmata.isEmpty() ) {
             String[] graphs = stemmata.split("\n");

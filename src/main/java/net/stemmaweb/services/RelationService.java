@@ -11,7 +11,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.Relationship;
@@ -35,8 +34,6 @@ import net.stemmaweb.rest.RelationType;
  *
  */
 public class RelationService {
-    private static final GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
-
     /**
      * Copies all the properties of a relationship to another if the property
      * exists.
@@ -57,11 +54,12 @@ public class RelationService {
      * Returns a RelationTypeModel for the given relation type string, associated with
      * the given tradition. Creates the type with default values if it doesn't already exist.
      *
-     * @param traditionId   - The ID string of the tradition
-     * @param relType       - The name of the relation type (e.g. "spelling")
+     * @param tx          - The transaction within which we are working
+     * @param traditionId - The ID string of the tradition
+     * @param relType     - The name of the relation type (e.g. "spelling")
      * @return A RelationTypeModel with the relation type information.
      */
-    public static RelationTypeModel returnRelationType(String traditionId, String relType, Transaction tx) {
+    public static RelationTypeModel returnRelationType(Transaction tx, String traditionId, String relType) {
         RelationType rtRest = new RelationType(traditionId, relType, tx);
         Response rtResult = rtRest.getRelationType();
         RelationTypeModel rtm;
@@ -81,11 +79,11 @@ public class RelationService {
      * Returns a list of RelationTypeModels that pertain to a tradition. The lookup can be
      * based on the tradition node, or any section or reading node therein.
      *
+     * @param tx            - the transaction within which we are working
      * @param referenceNode - a Tradition, Section or Reading node that belongs to the tradition
      * @return - a list of RelationTypeModels for the tradition in question
-     * @throws Exception - if the tradition node can't be determined from the referenceNode
      */
-   	public static List<RelationTypeModel> ourRelationTypes(Node referenceNode, Transaction tx) throws Exception {
+   	public static List<RelationTypeModel> ourRelationTypes(Transaction tx, Node referenceNode) {
         List<RelationTypeModel> result = new ArrayList<>();
     	// Must be under control of the same transaction!
     	referenceNode = tx.getNodeByElementId(referenceNode.getElementId());
@@ -94,10 +92,10 @@ public class RelationService {
         if (referenceNode.hasLabel(Nodes.TRADITION))
             traditionNode = referenceNode;
         else if (referenceNode.hasLabel(Nodes.SECTION))
-            traditionNode = VariantGraphService.getTraditionNode(referenceNode, tx);
+            traditionNode = VariantGraphService.getTraditionNode(tx, referenceNode);
         else if (referenceNode.hasLabel(Nodes.READING)) {
             Node sectionNode = tx.getNodeByElementId(referenceNode.getProperty("section_id").toString());
-            traditionNode = VariantGraphService.getTraditionNode(sectionNode, tx);
+            traditionNode = VariantGraphService.getTraditionNode(tx, sectionNode);
         }
         assert(traditionNode != null);
         // ...and query its relation types.
@@ -110,46 +108,46 @@ public class RelationService {
     /**
      * Retrieve clusters of readings, either colocated or non-, from the given section of the given tradition.
      *
-     * @param tradId - the UUID of the relevant tradition
-     * @param sectionId - the ID (as a string) of the relevant section
-     * @param tx - the GraphDatabaseService to use
+     * @param tx          - the transaction within which we are working
+     * @param tradId      - the UUID of the relevant tradition
+     * @param sectionId   - the ID (as a string) of the relevant section
      * @param colocations - whether we are retrieving colocated clusters or non-colocated ones
      * @return - a list of sets, where each set represents a group of colocated readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong in the algorithm.
      */
     public static List<Set<Node>> getClusters(
-            String tradId, String sectionId, Transaction tx, Boolean colocations)
+            Transaction tx, String tradId, String sectionId, Boolean colocations)
             throws Exception {
         // Get the tradition node and find the relevant relation types
         HashSet<String> useRelationTypes = new HashSet<>();
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-        for (RelationTypeModel rtm : ourRelationTypes(traditionNode, tx))
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+        for (RelationTypeModel rtm : ourRelationTypes(tx, traditionNode))
             if (rtm.getIs_colocation() == colocations)
                 useRelationTypes.add(rtm.getName());
 
         // Now run the unionFind algorithm on the relevant subset of relation types
-        return collectSpecifiedClusters(sectionId, tx, useRelationTypes);
+        return collectSpecifiedClusters(tx, sectionId, useRelationTypes);
     }
 
     /**
      * Retrieve clusters of readings that should be conflated according to the given threshold RelationType.
      *
-     * @param tradId - the UUID of the relevant tradition
-     * @param sectionId - the ID (as a string) of the relevant section
-     * @param tx - the GraphDatabaseService to use
+     * @param tx            - the transaction within which we are working
+     * @param tradId        - the UUID of the relevant tradition
+     * @param sectionId     - the ID (as a string) of the relevant section
      * @param thresholdName - the name of a RelationType; all of these relations and ones more closely bound will be clustered.
      * @return - a list of sets, where each set represents a group of closely related readings
      * @throws Exception - if the relation types can't be collected, or if something goes wrong with the algorithm
      */
     static List<Set<Node>> getCloselyRelatedClusters(
-            String tradId, String sectionId, Transaction tx, String thresholdName)
+            Transaction tx, String tradId, String sectionId, String thresholdName)
             throws Exception {
         // Is it a no-op?
         if (thresholdName == null) return new ArrayList<>();
         // Then we have some work to do.
         HashSet<String> closeRelations = new HashSet<>();
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
-        List<RelationTypeModel> rtmlist = ourRelationTypes(traditionNode, tx);
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
+        List<RelationTypeModel> rtmlist = ourRelationTypes(tx, traditionNode);
         int bindlevel = 0;
         Optional<RelationTypeModel> thresholdModel = rtmlist.stream().filter(x -> x.getName().equals(thresholdName)).findFirst();
         if (thresholdModel.isPresent())
@@ -158,11 +156,11 @@ public class RelationService {
             if (rtm.getBindlevel() <= bindlevel)
                 closeRelations.add(rtm.getName());
 
-        return collectSpecifiedClusters(sectionId, tx, closeRelations);
+        return collectSpecifiedClusters(tx, sectionId, closeRelations);
     }
 
     private static List<Set<Node>> collectSpecifiedClusters(
-            String sectionId, Transaction tx, Set<String> relatedTypes)
+            Transaction tx, String sectionId, Set<String> relatedTypes)
             throws Exception {
         // Now run the unionFind algorithm on the relevant subset of relation types
         List<Set<Node>> result;
@@ -187,54 +185,46 @@ public class RelationService {
     }
 
     static Node findRepresentative(Set<Node> alternatives) {
-        GraphDatabaseService db;
         // See if this is trivial
         if (alternatives.isEmpty()) return null;
         Node ref = alternatives.stream().findFirst().get();
         if (alternatives.size() == 1) return ref;
 
-        // It's not trivial
-//        db = ref.getGraphDatabase();
-    	db = new GraphDatabaseServiceProvider().getDatabase();
         Node representative = null;
         // Go through the alternatives
-        try (Transaction tx = db.beginTx()) {
-            // First see if one of the alternatives is a lemma
-            Optional<Node> thelemma = alternatives.stream()
-                    .filter(x -> (Boolean) x.getProperty("is_lemma", false)).findFirst();
-            if (thelemma.isPresent())
-                representative = thelemma.get();
+        // First see if one of the alternatives is a lemma
+        Optional<Node> thelemma = alternatives.stream()
+                .filter(x -> (Boolean) x.getProperty("is_lemma", false)).findFirst();
+        if (thelemma.isPresent())
+            representative = thelemma.get();
 
-            // Next sort through the readings with normal forms. If there is a majority
-            // normal form, we want the reading that has this form as its text; failing
-            // that, we want the majority-witness of these readings.
-            else {
-                // Do a frequency count of normal forms
-                HashMap<String, Integer> normals = new HashMap<>();
-                alternatives.stream().filter(x -> x.hasProperty("normal_form"))
-                        .map(x -> x.getProperty("normal_form").toString())
-                        .forEach(x -> normals.put(x, normals.getOrDefault(x, 0) + 1));
-                if (!normals.isEmpty()) {
-                    String nf = normals.keySet().stream().max(Comparator.comparingInt(normals::get)).get();
-                    Optional<Node> rep = alternatives.stream().filter(x -> x.getProperty("text").equals(nf)).findFirst();
-                    if (rep.isPresent())
-                        representative = rep.get();
-                    else {
-                        rep = alternatives.stream()
-                                .filter(x -> x.getProperty("normal_form", "").equals("nf"))
-                                .min(RelationService::byWitnessesDescending);
-                        if (rep.isPresent()) representative = rep.get();
-                    }
+        // Next sort through the readings with normal forms. If there is a majority
+        // normal form, we want the reading that has this form as its text; failing
+        // that, we want the majority-witness of these readings.
+        else {
+            // Do a frequency count of normal forms
+            HashMap<String, Integer> normals = new HashMap<>();
+            alternatives.stream().filter(x -> x.hasProperty("normal_form"))
+                    .map(x -> x.getProperty("normal_form").toString())
+                    .forEach(x -> normals.put(x, normals.getOrDefault(x, 0) + 1));
+            if (!normals.isEmpty()) {
+                String nf = normals.keySet().stream().max(Comparator.comparingInt(normals::get)).get();
+                Optional<Node> rep = alternatives.stream().filter(x -> x.getProperty("text").equals(nf)).findFirst();
+                if (rep.isPresent())
+                    representative = rep.get();
+                else {
+                    rep = alternatives.stream()
+                            .filter(x -> x.getProperty("normal_form", "").equals("nf"))
+                            .min(RelationService::byWitnessesDescending);
+                    if (rep.isPresent()) representative = rep.get();
                 }
             }
-
-            // If that didn't get us an answer, return the most "popular" reading
-            if (representative == null)
-                representative = alternatives.stream().sorted(RelationService::byWitnessesDescending)
-                        .collect(Collectors.toList()).get(0);
-
-            tx.commit();
         }
+
+        // If that didn't get us an answer, return the most "popular" reading
+        if (representative == null)
+            representative = alternatives.stream().sorted(RelationService::byWitnessesDescending).toList().getFirst();
+
         return representative;
     }
 
@@ -251,18 +241,15 @@ public class RelationService {
         private final HashMap<String, RelationTypeModel> ourTypes;
         private final Function<RelationTypeModel, Boolean> criterion;
 
-        public RelatedReadingsTraverser(Node fromReading) throws Exception {
-            this(fromReading, x -> true);
+        public RelatedReadingsTraverser(Transaction tx, Node fromReading) {
+            this(tx, fromReading, x -> true);
         }
 
-        public RelatedReadingsTraverser(Node fromReading, Function<RelationTypeModel, Boolean> criterion) throws Exception {
+        public RelatedReadingsTraverser(Transaction tx, Node fromReading, Function<RelationTypeModel, Boolean> criterion) {
             this.criterion = criterion;
             // Make a lookup table of relation types
             ourTypes = new HashMap<>();
-            try (Transaction tx = db.beginTx()) {
-            	ourRelationTypes(fromReading, tx).forEach(x -> ourTypes.put(x.getName(), x));
-            	tx.close();
-            }
+            ourRelationTypes(tx, fromReading).forEach(x -> ourTypes.put(x.getName(), x));
         }
 
         @Override
@@ -282,10 +269,12 @@ public class RelationService {
     }
 
     public static class TransitiveRelationTraverser implements Evaluator {
+        private final Transaction tx;
         private final String tradId;
         private final RelationTypeModel rtm;
 
-        public TransitiveRelationTraverser(String tradId, RelationTypeModel reltypemodel) {
+        public TransitiveRelationTraverser(Transaction tx, String tradId, RelationTypeModel reltypemodel) {
+            this.tx = tx;
             this.tradId = tradId;
             this.rtm = reltypemodel;
         }
@@ -302,13 +291,10 @@ public class RelationService {
                 return Evaluation.INCLUDE_AND_CONTINUE;
             // If it's a different relation type, we follow it if it is bound more closely
             // than our type (lower bindlevel) and if that type is also transitive.
-            try (Transaction tx = db.beginTx()) {
-            	RelationTypeModel othertm = returnRelationType(tradId, path.lastRelationship().getProperty("type").toString(), tx);
-            	tx.close();
-            	if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())
-            		return Evaluation.INCLUDE_AND_CONTINUE;
-            	return Evaluation.EXCLUDE_AND_PRUNE;
-            }
+            RelationTypeModel othertm = returnRelationType(tx, tradId, path.lastRelationship().getProperty("type").toString());
+            if (rtm.getBindlevel() > othertm.getBindlevel() && othertm.getIs_transitive())
+                return Evaluation.INCLUDE_AND_CONTINUE;
+            return Evaluation.EXCLUDE_AND_PRUNE;
         }
     }
 

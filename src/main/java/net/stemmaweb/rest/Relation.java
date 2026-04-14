@@ -102,16 +102,16 @@ public class Relation {
             String thisRelId = orm.get().getId();
             if (!scope.equals(SCOPE_LOCAL)) {
                 try (Transaction tx = db.beginTx()) {
-                	Boolean use_normal = returnRelationType(tradId, relationModel.getType(), tx).getUse_regular();
+                	Boolean use_normal = returnRelationType(tx, tradId, relationModel.getType()).getUse_regular();
                     Node readingA = tx.getNodeByElementId(relationModel.getSource());
                     Node readingB = tx.getNodeByElementId(relationModel.getTarget());
-                    Node startingPoint = VariantGraphService.getTraditionNode(tradId, tx);
+                    Node startingPoint = VariantGraphService.getTraditionNode(tx, tradId);
                     if (scope.equals(SCOPE_SECTION))
                         startingPoint = tx.getNodeByElementId(String.valueOf(readingA.getProperty("section_id")));
                     Relationship thisRelation = tx.getRelationshipByElementId(thisRelId);
 
                     // Get all the readings that belong to our tradition or section
-                    Iterable<Node> tradReadings = VariantGraphService.returnEntireTradition(startingPoint).nodes();
+                    Iterable<Node> tradReadings = VariantGraphService.returnEntireTradition(tx, startingPoint).nodes();
                     // Pick out the ones that share the readingA text
                     Function<Node, Object> nodefilter = (n) -> use_normal && n.hasProperty("normal_form")
                             ? n.getProperty("normal_form") : (n.hasProperty("text") ? n.getProperty("text"): "");
@@ -201,7 +201,7 @@ public class Relation {
                     .build();
 
             // Get, or create implicitly, the relation type node for the given type.
-            RelationTypeModel rmodel = returnRelationType(tradId, relationModel.getType(), tx);
+            RelationTypeModel rmodel = returnRelationType(tx, tradId, relationModel.getType());
 
             // Check that the relation type is compatible with the passed relation model
             if (!relationModel.getScope().equals("local") && !rmodel.getIs_generalizable())
@@ -215,19 +215,19 @@ public class Relation {
             if (colocation) {
                 Iterable<Relationship> relsA = readingA.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsA) {
-                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString(), tx);
+                    RelationTypeModel rm = returnRelationType(tx, tradId, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
                 Iterable<Relationship> relsB = readingB.getRelationships(ERelations.RELATED);
                 for (Relationship r : relsB) {
-                    RelationTypeModel rm = returnRelationType(tradId, r.getProperty("type").toString(), tx);
+                    RelationTypeModel rm = returnRelationType(tx, tradId, r.getProperty("type").toString());
                     if (rm.getIs_weak())
                         r.delete();
                 }
             }
 
-            Boolean isCyclic = ReadingService.wouldGetCyclic(readingA, readingB);
+            Boolean isCyclic = ReadingService.wouldGetCyclic(tx, readingA, readingB);
             if (isCyclic && colocation) {
                     return Response
                             .status(Status.CONFLICT)
@@ -245,7 +245,7 @@ public class Relation {
             for (Relationship relationship : relationships) {
                 if (relationship.getOtherNode(readingA).equals(readingB)) {
                     RelationModel thisRel = new RelationModel(relationship);
-                    RelationTypeModel rtm = returnRelationType(tradId, thisRel.getType(), tx);
+                    RelationTypeModel rtm = returnRelationType(tx, tradId, thisRel.getType());
                     if (thisRel.getType().equals(relationModel.getType())) {
                         // TODO allow for update of existing relation
                         tx.close();
@@ -311,7 +311,7 @@ public class Relation {
             Node lowerRanked = rankA < rankB ? readingA : readingB;
             lowerRanked.setProperty("rank", higherRank);
             changedReadings.add(new ReadingModel(lowerRanked));
-            Set<Node> changedRank = ReadingService.recalculateRank(lowerRanked, false, tx);
+            Set<Node> changedRank = ReadingService.recalculateRank(tx, lowerRanked, false);
             for (Node cr : changedRank)
                 if (!cr.equals(lowerRanked))
                     changedReadings.add(new ReadingModel(cr));
@@ -351,7 +351,7 @@ public class Relation {
         // transitivity effects have been accounted for.
         Transaction tx = db.beginTx();
         for (RelationModel rm : newRelationResult.getRelations()) {
-            TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tradId, rtm);
+            TransitiveRelationTraverser relTraverser = new TransitiveRelationTraverser(tx, tradId, rtm);
             Node startNode = tx.getNodeByElementId(rm.getSource());
             ArrayList<Node> relatedNodes = new ArrayList<>();
             // Get all the readings that are related by this or a more closely-bound type.
@@ -384,7 +384,7 @@ public class Relation {
                 // Get the nodes we are directly related to, and the relations involved, if
                 // they meet the criteria
                 for (Relationship r : sibling.getRelationships(ERelations.RELATED)) {
-                    RelationTypeModel othertm = returnRelationType(tradId, r.getProperty("type").toString(), tx);
+                    RelationTypeModel othertm = returnRelationType(tx, tradId, r.getProperty("type").toString());
                     if (othertm.getBindlevel() > rtm.getBindlevel() && othertm.getIs_transitive())
                         connections.put(r.getOtherNode(sibling), r);
                 }
@@ -393,9 +393,9 @@ public class Relation {
                 for (Node n : connections.keySet()) {
                     cousins.remove(n);
                     RelationModel newmodel = new RelationModel(connections.get(n));
-                    RelationTypeModel newtm = returnRelationType(tradId, newmodel.getType(), tx);
+                    RelationTypeModel newtm = returnRelationType(tx, tradId, newmodel.getType());
                     for (Node c : cousins) {
-                        ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED, tx);
+                        ArrayList<Relationship> priorLinks = DatabaseService.getRelationshipTo(n, c, ERelations.RELATED);
                         if (priorLinks.size() == 0) {
                             // Create a relation based on the looser link
                             GraphModel interim = createSingleRelation(n, c, newmodel, newtm, tx);
@@ -436,7 +436,7 @@ public class Relation {
 
             switch (relationModel.getScope()) {
                 case SCOPE_LOCAL:
-                    ArrayList<Relationship> findRel = DatabaseService.getRelationshipTo(readingA, readingB, ERelations.RELATED, tx);
+                    ArrayList<Relationship> findRel = DatabaseService.getRelationshipTo(readingA, readingB, ERelations.RELATED);
                     if (findRel.isEmpty()) {
                         return Response.status(Status.NOT_FOUND).entity(jsonerror("Relation not found")).build();
                     } else {
@@ -450,8 +450,8 @@ public class Relation {
                 case SCOPE_SECTION:
                 case SCOPE_TRADITION:
                     Traverser toCheck = relationModel.getScope().equals(SCOPE_SECTION)
-                            ? VariantGraphService.returnTraditionSection(readingA.getProperty("section_id").toString(), tx)
-                            : VariantGraphService.returnEntireTradition(tradId, tx);
+                            ? VariantGraphService.returnTraditionSection(tx, readingA.getProperty("section_id").toString())
+                            : VariantGraphService.returnEntireTradition(tx, tradId);
 
                     for (Relationship rel : toCheck.relationships()) {
                         if (rel.getType().name().equals(ERelations.RELATED.name())) {

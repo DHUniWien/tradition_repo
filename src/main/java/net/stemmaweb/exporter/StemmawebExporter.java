@@ -125,10 +125,10 @@ public class StemmawebExporter {
         Transaction tx = db.beginTx();
 
         try {
-        	Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+        	Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         	if(traditionNode == null)
         		return Response.status(Status.NOT_FOUND).entity(jsonerror("No tradition found for this ID")).build();
-        	Node traditionStartNode = VariantGraphService.getStartNode(tradId, tx);
+        	Node traditionStartNode = VariantGraphService.getStartNode(tx, tradId);
         	if(traditionStartNode == null)
         		return Response.status(Status.NOT_FOUND).entity(jsonerror("No graph found for this tradition.")).build();
         	

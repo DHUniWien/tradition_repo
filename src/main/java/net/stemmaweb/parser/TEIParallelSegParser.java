@@ -76,7 +76,7 @@ public class TEIParallelSegParser {
         Node startNode;
         Node endNode = null;
         try (Transaction tx = db.beginTx()) {
-        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
+        	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             parentId = parentNode.getElementId();
             tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
@@ -199,9 +199,9 @@ public class TEIParallelSegParser {
             } // end parseloop
 
             // Now try re-ranking the nodes.
-            recalculateRank(startNode, false, tx);
+            recalculateRank(tx, startNode, false);
             // Calculate which nodes are common
-            VariantGraphService.calculateCommon(parentNode, tx);
+            VariantGraphService.calculateCommon(tx, parentNode);
             tx.close();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();

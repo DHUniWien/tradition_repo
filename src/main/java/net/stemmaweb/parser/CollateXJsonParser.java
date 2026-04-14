@@ -130,7 +130,7 @@ public class CollateXJsonParser {
 
         // Now we have the data in our own model classes; proceed.
         try (Transaction tx = db.beginTx()) {
-        	Node traditionNode = VariantGraphService.getTraditionNode(parentNode, tx);
+        	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Set the section name if we found one and it isn't already set
             if (!collationName.equals("DEFAULT")
                     && parentNode.getProperty("name", "DEFAULT").equals("DEFAULT")) {

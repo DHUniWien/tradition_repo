@@ -1,14 +1,8 @@
 package net.stemmaweb.services;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.Entity;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 
 import net.stemmaweb.rest.Nodes;
 
@@ -43,8 +37,9 @@ public class DatabaseService {
      */
     public static ArrayList<Node> getRelated (Node startNode, RelationshipType relType) {
         ArrayList<Node> result = new ArrayList<>();
-        Iterator<Relationship> allRels = startNode.getRelationships(relType).iterator();
-        allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
+        try (ResourceIterator<Relationship> allRels = startNode.getRelationships(relType).iterator()) {
+            allRels.forEachRemaining(x -> result.add(x.getOtherNode(startNode)));
+        }
         return result;
     }
 
@@ -55,7 +50,7 @@ public class DatabaseService {
      * @param endNode   - node 2
      * @return - a list of relationships between the two, empty if none
      */
-    public static ArrayList<Relationship> getRelationshipTo(Node startNode, Node endNode, RelationshipType rtype, Transaction tx) {
+    public static ArrayList<Relationship> getRelationshipTo(Node startNode, Node endNode, RelationshipType rtype) {
         ArrayList<Relationship> found = new ArrayList<>();
         for (Relationship r : startNode.getRelationships(Direction.BOTH, rtype)) {
             if (r.getOtherNode(startNode).equals(endNode)) {
@@ -71,11 +66,11 @@ public class DatabaseService {
      * This method can be used to determine whether a user with given Id exists
      * in the DB
      *
-     * @param userId  the user whose existence to check
-     * @param tx      the transaction within which we are working
-     * @return        boolean
+     * @param tx     the transaction within which we are working
+     * @param userId the user whose existence to check
+     * @return boolean
      */
-    public static boolean userExists(String userId, Transaction tx) {
+    public static boolean userExists(Transaction tx, String userId) {
         Node extantUser;
         extantUser = tx.findNode(Nodes.USER, "id", userId);
         return extantUser != null;

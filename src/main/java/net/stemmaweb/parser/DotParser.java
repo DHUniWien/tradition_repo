@@ -80,7 +80,7 @@ public class DotParser {
 
     private Status saveToNeo(Graph stemma, String tradId, String stemmaName, Transaction tx) {
         // Check for the existence of the tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(tradId, tx);
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
             return Status.NOT_FOUND;
 

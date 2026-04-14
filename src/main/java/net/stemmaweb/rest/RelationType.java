@@ -59,7 +59,7 @@ public class RelationType {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Response response;
         try {
-            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(traditionId, tx));
+            Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(tx, traditionId));
             if (foundRelType == null) {
                 response = Response.noContent().build();
             } else {
@@ -89,7 +89,7 @@ public class RelationType {
     @ReturnType(clazz = RelationTypeModel.class)
     public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(traditionId, tx);
+        Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
         Node extantRelType;
         try {
             extantRelType = rtModel.lookup(traditionNode);
@@ -142,7 +142,7 @@ public class RelationType {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Node foundRelType;
         try {
-        	Node tradition = VariantGraphService.getTraditionNode(traditionId, tx);
+        	Node tradition = VariantGraphService.getTraditionNode(tx, traditionId);
         	try {
         		foundRelType = rtModel.lookup(tradition);
         		if (foundRelType == null) {
@@ -153,7 +153,7 @@ public class RelationType {
         	}
             // Do we have any relations that use this type?
 //        	if (VariantGraphService.returnTraditionRelations(tradition).relationships().stream()
-            if (StreamSupport.stream(VariantGraphService.returnTraditionRelations(tradition).relationships().spliterator(), false)
+            if (StreamSupport.stream(VariantGraphService.returnTraditionRelations(tx, tradition).relationships().spliterator(), false)
                     .anyMatch(x -> x.getProperty("type", "").equals(typeName)))
                 return Response.status(Response.Status.CONFLICT)
                         .entity(jsonerror("Relations of this type still exist; please alter them then try again.")).build();
