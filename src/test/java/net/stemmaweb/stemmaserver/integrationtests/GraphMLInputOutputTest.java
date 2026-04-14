@@ -2,10 +2,8 @@ package net.stemmaweb.stemmaserver.integrationtests;
 
 import static org.junit.Assert.assertNotEquals;
 
-import java.io.File;
-import java.io.FileReader;
 import java.io.InputStream;
-import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -27,7 +25,6 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.GenericType;
@@ -94,12 +91,11 @@ public class GraphMLInputOutputTest extends TestCase {
                 .request("application/zip").get();
         assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
         try {
-            LinkedHashMap<String,File> lm = net.stemmaweb.parser.Util.extractGraphMLZip(r.readEntity(InputStream.class));
-            for (File f : lm.values()) {
-                assertTrue(new String(Files.readAllBytes(f.toPath()))
+            LinkedHashMap<String,InputStream> lm = net.stemmaweb.parser.Util.extractGraphMLZip(r.readEntity(InputStream.class));
+            for (InputStream is : lm.values()) {
+                assertTrue(new String(is.readAllBytes(), StandardCharsets.UTF_8)
                         .contains("<key attr.name=\"neolabel\" attr.type=\"string\" for=\"node\" id=\"dn0\"/>"));
             }
-            net.stemmaweb.parser.Util.cleanupExtractedZip(lm);
         } catch (Exception e) {
             fail();
         }
@@ -229,18 +225,17 @@ public class GraphMLInputOutputTest extends TestCase {
                 + targetSection + "/graphml")
                 .request("application/zip").get();
         assertEquals(Response.Status.OK.getStatusCode(), r.getStatus());
-        LinkedHashMap<String,File> xmlFiles;
+        LinkedHashMap<String,InputStream> xmlStreams;
         try {
-            xmlFiles = net.stemmaweb.parser.Util.extractGraphMLZip(r.readEntity(InputStream.class));
+            xmlStreams = net.stemmaweb.parser.Util.extractGraphMLZip(r.readEntity(InputStream.class));
             // There should be a tradition file and a single section file
-            assertEquals(2, xmlFiles.size());
-            assertTrue(xmlFiles.containsKey("tradition.xml"));
-            assertTrue(xmlFiles.containsKey(sectFileName));
+            assertEquals(2, xmlStreams.size());
+            assertTrue(xmlStreams.containsKey("tradition.xml"));
+            assertTrue(xmlStreams.containsKey(sectFileName));
             // The tradition file should contain the tradition node, three relation types, 37 witnesses and a section
-            assertEquals(42, getXMLNodeList(xmlFiles.get("tradition.xml")).getLength());
+            assertEquals(42, getXMLNodeList(xmlStreams.get("tradition.xml")).getLength());
             // The section file should contain a section and 30 readings
-            assertEquals(31, getXMLNodeList(xmlFiles.get(sectFileName)).getLength());
-            net.stemmaweb.parser.Util.cleanupExtractedZip(xmlFiles);
+            assertEquals(31, getXMLNodeList(xmlStreams.get(sectFileName)).getLength());
         } catch (Exception e) {
             fail();
         }
@@ -256,10 +251,8 @@ public class GraphMLInputOutputTest extends TestCase {
         assertEquals(37, witnesses.size()); */
     }
 
-    private NodeList getXMLNodeList(File input) throws Exception {
-        InputSource is = new InputSource();
-        is.setCharacterStream(new FileReader(input));
-        Document traddoc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
+    private NodeList getXMLNodeList(InputStream input) throws Exception {
+        Document traddoc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(input);
         return traddoc.getElementsByTagName("node");
     }
 

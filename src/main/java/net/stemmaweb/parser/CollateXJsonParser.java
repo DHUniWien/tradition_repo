@@ -14,21 +14,22 @@ import org.apache.commons.io.IOUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
 
 public class CollateXJsonParser {
 
-    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final Transaction tx;
+
+    public CollateXJsonParser(Transaction tx) {
+        this.tx = tx;
+    }
 
     /**
      * Parse a CollateX JSON input stream and attach it to the given (section) parentNode.
@@ -101,7 +102,7 @@ public class CollateXJsonParser {
                         joinNext = jtoken.has("join_next") && jtoken.getBoolean("join_next");
                         jtoken.remove("join_next");
                         // Save the remaining token contents as a string in the annotation field, for future reference
-                        if (jtoken.length() > 0) {
+                        if (!jtoken.isEmpty()) {
                             rownames.put(thisToken);
                             rowsource.put(jtoken);
                         }
@@ -129,7 +130,7 @@ public class CollateXJsonParser {
         }
 
         // Now we have the data in our own model classes; proceed.
-        try (Transaction tx = db.beginTx()) {
+        try {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Set the section name if we found one and it isn't already set
             if (!collationName.equals("DEFAULT")
@@ -139,12 +140,12 @@ public class CollateXJsonParser {
             // Check that we have all the witnesses
             for (String witString : collationWitnesses) {
                 List<String> wit = parseWitnessSigil(witString);
-                String sigil = wit.get(0);
-                Util.findOrCreateExtant(traditionNode, sigil, tx);
+                String sigil = wit.getFirst();
+                Util.findOrCreateExtant(tx, traditionNode, sigil);
             }
 
             // Create the start node for the section
-            Node startNode = Util.createStartNode(parentNode);
+            Node startNode = Util.createStartNode(tx, parentNode);
             HashMap<String, Node> lastWitnessReading = new HashMap<>();
             collationWitnesses.forEach(x -> lastWitnessReading.put(x, startNode));
 
@@ -194,7 +195,7 @@ public class CollateXJsonParser {
                     ReadingService.addWitnessLink(lastReading, thisReading, witParts.get(0), witParts.get(1));
                     lastWitnessReading.put(thisWitness, thisReading);
                 }
-                if (createdReadings.size() > 0) {
+                if (!createdReadings.isEmpty()) {
                     // Increment the rank
                     rank++;
                     // Set commonality attribute on all readings created
@@ -203,14 +204,13 @@ public class CollateXJsonParser {
                 }
             }
 
-            Node endNode = Util.createEndNode(parentNode);
+            Node endNode = Util.createEndNode(tx, parentNode);
             endNode.setProperty("rank", rank);
             for (String witString : collationWitnesses) {
                 List<String> witParts = parseWitnessSigil(witString);
                 Node lastReading = lastWitnessReading.get(witString);
                 ReadingService.addWitnessLink(lastReading, endNode, witParts.get(0), witParts.get(1));
             }
-            tx.commit();
             return Response.status(Response.Status.CREATED).entity(jsonresp("parentId", parentNode.getElementId())).build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
@@ -233,7 +233,7 @@ public class CollateXJsonParser {
                 return currvalue.toString();
             sigil = String.format("%s (%s)", witness.get(0), witness.get(1));
         } else { // ...we are assuming for our own sanity that layers are declared after main witnesses.
-            sigil = witness.get(0);
+            sigil = witness.getFirst();
         }
         currvalue.put(sigil, newValue);
         return currvalue.toString();
@@ -259,7 +259,7 @@ public class CollateXJsonParser {
     private static String readingAppend (String current, JSONObject token, String key, Boolean joinNext)
             throws JSONException {
         StringBuilder prior = new StringBuilder(current);
-        boolean noSpace = prior.length() == 0 || joinNext;
+        boolean noSpace = prior.isEmpty() || joinNext;
         if (token.has("join_prior") && token.getBoolean("join_prior"))
             noSpace = true;
         if (!noSpace)

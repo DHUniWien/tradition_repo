@@ -12,7 +12,6 @@ import java.util.Optional;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -27,7 +26,6 @@ import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.RelationType;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -36,8 +34,11 @@ import net.stemmaweb.services.VariantGraphService;
  * @author tla
  */
 public class CollateXParser {
-    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final Transaction tx;
+
+    public CollateXParser(Transaction tx) {
+        this.tx = tx;
+    }
 
     /**
      * Parse a CollateX XML input stream and attach it to the given (section) parentNode.
@@ -66,7 +67,7 @@ public class CollateXParser {
             NamedNodeMap keyAttrs = keyNodes.item(i).getAttributes();
             dataKeys.put(keyAttrs.getNamedItem("id").getNodeValue(), keyAttrs.getNamedItem("attr.name").getNodeValue());
         }
-        try (Transaction tx = db.beginTx()) {
+        try {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Create all the nodes from the graphml nodes
             NodeList readingNodes = rootEl.getElementsByTagName("node");
@@ -150,7 +151,7 @@ public class CollateXParser {
 
             }
             // Create all the witnesses
-            seenWitnesses.forEach(x -> Util.findOrCreateExtant(traditionNode, x, tx));
+            seenWitnesses.forEach(x -> Util.findOrCreateExtant(tx, traditionNode, x));
             // Calculate the common readings
             VariantGraphService.calculateCommon(tx, parentNode);
 
@@ -164,8 +165,6 @@ public class CollateXParser {
                 if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                     return rtResult;
             }
-
-            tx.close();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         } catch (Exception e) {

@@ -9,14 +9,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -34,7 +32,6 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Relation;
 import net.stemmaweb.rest.RelationType;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -42,7 +39,11 @@ import net.stemmaweb.services.VariantGraphService;
  * into a tradition.
  */
 public class TabularParser {
-    private final GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+    private final Transaction tx;
+
+    public TabularParser(Transaction tx) {
+        this.tx = tx;
+    }
 
     /**
      * Parse a comma- or tab-separated file stream into a graph.
@@ -56,11 +57,8 @@ public class TabularParser {
     public Response parseCSV(InputStream fileData, Node sectionNode, char sepChar) {
         // Parse the CSV file
         ArrayList<String[]> csvRows = new ArrayList<>();
-        try {
-            final CSVParser parser = new CSVParserBuilder().withSeparator(sepChar).build();
-            final CSVReader reader = new CSVReaderBuilder(new InputStreamReader(fileData))
-                    .withCSVParser(parser)
-                    .build();
+        final CSVParser parser = new CSVParserBuilder().withSeparator(sepChar).build();
+        try (CSVReader reader = new CSVReaderBuilder(new InputStreamReader(fileData)).withCSVParser(parser).build()) {
             String[] nextLine;
             while ((nextLine = reader.readNext()) != null)
                 csvRows.add(nextLine);
@@ -124,11 +122,11 @@ public class TabularParser {
         String response;
         Response.Status result = Response.Status.OK;
 
-        try (Transaction tx = db.beginTx()) {
+        try {
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             // Make the start node
-            Node startNode = Util.createStartNode(parentNode);
-            Node endNode = Util.createEndNode(parentNode);
+            Node startNode = Util.createStartNode(tx, parentNode);
+            Node endNode = Util.createEndNode(tx, parentNode);
             endNode.setProperty("rank", (long) tableData.size());
 
             // Make the COLLATED relation type
@@ -141,7 +139,7 @@ public class TabularParser {
                 return rtResult;
 
             // Get the witnesses from the first row of the table
-            String[] witnessList = tableData.get(0);
+            String[] witnessList = tableData.getFirst();
             // Strip the byte order mark, if it exists, from the first of the witnesses
             witnessList[0] = witnessList[0].replaceFirst("\\uFEFF", "");
             // Keep a table of the last-spotted reading for each witness
@@ -152,7 +150,7 @@ public class TabularParser {
                 // See if it is a layered witness, of the form XX (YY)
                 String[] sigilParts = sigil.split("\\s+\\(");  // now we have ["XX", "YY)"]
                 if (sigilParts.length == 1) // it is not a layered witness
-                    Util.findOrCreateExtant(traditionNode, sigil, tx);
+                    Util.findOrCreateExtant(tx, traditionNode, sigil);
                 else if (sigilParts.length == 2) // it is a layered witness; store a ref to its base
                     layerWitnesses.put(sigil, sigilParts);
                 else   // what is this i don't even
@@ -173,7 +171,7 @@ public class TabularParser {
                     String sigil = witnessList[j];
                     Node lastNode = lastReading.get(sigil);
                     // Is it an empty reading?
-                    if (reading == null || reading.equals("")) {
+                    if (reading == null || reading.isEmpty()) {
                         distinct++;
                         continue;
                     }
@@ -240,7 +238,7 @@ public class TabularParser {
                 // Create a COLLATED link between all non-meta readings created at the same rank, to preserve
                 // the collation as it was uploaded.
                 List<ReadingModel> collatedReadings = createdReadings.values().stream().map(ReadingModel::new)
-                        .filter(x -> !x.isMeta()).collect(Collectors.toList());
+                        .filter(x -> !x.isMeta()).toList();
                 int i = collatedReadings.size();
                 Relation relRest = new Relation(traditionNode.getProperty("id").toString());
                 RelationModel rm = new RelationModel();
@@ -280,7 +278,6 @@ public class TabularParser {
             // We are done!
             result = Response.Status.CREATED;
             response = jsonresp("parentId", parentNode.getElementId());
-            tx.commit();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {

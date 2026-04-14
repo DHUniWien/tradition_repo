@@ -8,7 +8,6 @@ import java.io.BufferedReader;
 import java.io.StringReader;
 import java.util.HashMap;
 
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -24,12 +23,11 @@ import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
 
 public class NewickParser {
-    private final GraphDatabaseService db;
+    private final Transaction tx;
 
-    public NewickParser(GraphDatabaseService db) {
-        this.db = db;
+    public NewickParser(Transaction tx) {
+        this.tx = tx;
     }
-
     /**
      * Parses the Newick string in a StemmaModel into a stemma object, and returns an appropriate Response.
      *
@@ -37,7 +35,7 @@ public class NewickParser {
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
      * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
      */
-    public Response importStemmaFromNewick(String tradId, StemmaModel stemmaSpec, Transaction tx) {
+    public Response importStemmaFromNewick(String tradId, StemmaModel stemmaSpec) {
         // Get our tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
@@ -66,10 +64,10 @@ public class NewickParser {
         for (TreeNode n : nTree.nodes) {
         	Node wit;
         	if (n.isLeaf()) {
-        		wit = findOrCreateExtant(traditionNode, n.getName(), tx);
+        		wit = findOrCreateExtant(tx, traditionNode, n.getName());
         	} else {
         		// It's a hypothetical node, so make it from scratch.
-        		wit = Util.createWitness(traditionNode, String.valueOf(n.getKey()), true, tx);
+        		wit = Util.createWitness(tx, String.valueOf(n.getKey()), true);
         	}
         	stemmaNode.createRelationshipTo(wit, ERelations.HAS_WITNESS);
         	stemmaWits.put(n.getKey(), wit);

@@ -20,7 +20,6 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -31,14 +30,13 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Reading;
 import net.stemmaweb.rest.Section;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Parse a TEI parallel-segmentation file into a tradition graph.
  */
 public class TEIParallelSegParser {
-    private final GraphDatabaseService db = new GraphDatabaseServiceProvider().getDatabase();
+    private final Transaction tx;
 
     // Global variables needed for the parsing
     // Keep track of which witnesses are "active" at any given time
@@ -49,6 +47,10 @@ public class TEIParallelSegParser {
     private Boolean appSiglorumPresent = false;
     private Boolean spaceSignificant = false;
 
+    public TEIParallelSegParser(Transaction tx) {
+        this.tx = tx;
+    }
+
     /**
      * Parse a TEI XML input stream with parallel-segmentation representation of variant text
      * and attach it to the given (section) parentNode.
@@ -58,29 +60,20 @@ public class TEIParallelSegParser {
      * @return a Response to indicate the result
      */
     public Response parseTEIParallelSeg(InputStream xmldata, Node parentNode) {
-        XMLInputFactory factory;
-        XMLStreamReader reader;
-        factory = XMLInputFactory.newInstance();
-        try {
-            reader = factory.createXMLStreamReader(xmldata);
-        } catch (XMLStreamException e) {
-            e.printStackTrace();
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(jsonerror("Parsing of tradition file failed!"))
-                    .build();
-        }
-
         // Main XML parser loop
         String tradId;
         String parentId;
         Node startNode;
         Node endNode = null;
-        try (Transaction tx = db.beginTx()) {
+        XMLInputFactory factory = XMLInputFactory.newInstance();
+        XMLStreamReader reader = null;
+        try {
+            reader = factory.createXMLStreamReader(xmldata);
         	Node traditionNode = VariantGraphService.getTraditionNode(tx, parentNode);
             parentId = parentNode.getElementId();
             tradId = traditionNode.getProperty("id").toString();
             // Set up the start node
-            startNode = Util.createStartNode(parentNode);
+            startNode = Util.createStartNode(tx, parentNode);
 
             // State variables
             boolean inHeader = false;
@@ -109,7 +102,7 @@ public class TEIParallelSegParser {
 
                             case "text":
                                 // End of the text; add the end node.
-                                endNode = Util.createEndNode(parentNode);
+                                endNode = Util.createEndNode(tx, parentNode);
                                 // endNode.setProperty("rank", 0L);
                                 Relationship endLink = documentPrior.createRelationshipTo(endNode, ERelations.SEQUENCE);
                                 setAllWitnesses(endLink);
@@ -131,7 +124,7 @@ public class TEIParallelSegParser {
                             case "witness":
                                 if(inHeader) {
                                     String sigil = reader.getAttributeValue(reader.getNamespaceURI("xml"), "id");
-                                    Util.findOrCreateExtant(traditionNode, sigil, tx);
+                                    Util.findOrCreateExtant(tx, traditionNode, sigil);
                                     // All witnesses start active by default; if we encounter a witStart
                                     // we will start to use an explicit app siglorum.
                                     activeWitnesses.put(sigil, true);
@@ -174,10 +167,10 @@ public class TEIParallelSegParser {
                                     .collect(Collectors.toCollection(ArrayList::new));
                             // Make a reading chain of the text
                             chain = makeReadingChain(reader, parentNode.getElementId(), readingWitnesses, "witnesses");
-                            if (chain.size() != 0) {
+                            if (!chain.isEmpty()) {
                                 // Add a placeholder to the end of the chain
                                 Node chainEnd = createPlaceholderNode("chainEnd");
-                                Relationship ceRel = chain.get(chain.size()-1)
+                                Relationship ceRel = chain.getLast()
                                         .createRelationshipTo(chainEnd, ERelations.SEQUENCE);
                                 ceRel.setProperty("witnesses", readingWitnesses.toArray(new String[0]));
                                 // Link inactive witnesses straight from placeholder to placeholder
@@ -187,7 +180,7 @@ public class TEIParallelSegParser {
                                     addWitnessLink(documentPrior, chainEnd, w, "witnesses");
 
                                 // Link the beginning of the chain to the documentPrior
-                                Relationship link = documentPrior.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
+                                Relationship link = documentPrior.createRelationshipTo(chain.getFirst(), ERelations.SEQUENCE);
                                 link.setProperty("witnesses", readingWitnesses.toArray(new String[0]));
 
                                 // The end of the chain is the new documentPrior
@@ -203,35 +196,42 @@ public class TEIParallelSegParser {
             // Calculate which nodes are common
             VariantGraphService.calculateCommon(tx, parentNode);
             tx.close();
+        } catch (XMLStreamException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(jsonerror("Parsing of tradition file failed: " + e.getMessage()))
+                    .build();
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
         } catch (Exception e) {
-            System.out.printf("Error encountered in XML line %d column %d: %n",
-                    reader.getLocation().getLineNumber(),
-                    reader.getLocation().getColumnNumber());
+            String location = "";
+            if (reader != null) {
+                location = String.format("XML line %d column %d",
+                        reader.getLocation().getLineNumber(),
+                        reader.getLocation().getColumnNumber());
+            }
             e.printStackTrace();
-            return Response.serverError().build();
+            return Response.serverError()
+                    .entity(jsonerror("Parsing of tradition file failed at " + location + ": " + e.getMessage()))
+                    .build();
         }
 
         // Merge all mergeable readings, to get rid of duplicates across apparatus entries.
-        long endRank;
-        try (Transaction tx = db.beginTx()) {
-        	assert(endNode != null);
-        	endRank = Long.parseLong(endNode.getProperty("rank").toString());
-        	Section s = new Section(tradId, parentId);
-        	for (List<ReadingModel> identSet : s.collectIdenticalReadings(0, endRank, tx)) {
-        		ReadingModel first = identSet.remove(0);
-        		Reading rd = new Reading(first.getId());
-        		for (ReadingModel identical : identSet) {
-        			Response done = rd.mergeReadings(Long.parseLong(identical.getId()));
-        			if (done.getStatus() != Response.Status.OK.getStatusCode())
-        				return Response.serverError().entity(done.getEntity()).build();
-        		}
-        	}
-        	tx.close();
-        } catch (Exception e) {
-        	e.printStackTrace();
-        	return Response.serverError().build();
+        assert(endNode != null);
+        long endRank = Long.parseLong(endNode.getProperty("rank").toString());
+        Section s = new Section(tradId, parentId);
+        for (List<ReadingModel> identSet : s.collectIdenticalReadings(0, endRank, tx)) {
+            ReadingModel first = identSet.removeFirst();
+            Reading rd = new Reading(first.getId());
+            for (ReadingModel identical : identSet) {
+                try (Response done = rd.mergeReadings(Long.parseLong(identical.getId()))) {
+                    if (done.getStatus() != Response.Status.OK.getStatusCode())
+                        return Response.serverError().entity(done.getEntity()).build();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return Response.serverError().entity(jsonerror(e.getMessage())).build();
+                }
+
+            }
         }
 
         return Response.status(Response.Status.CREATED)
@@ -240,7 +240,8 @@ public class TEIParallelSegParser {
 
     // Parse an app, its readings, and its sub-apps if necessary. Return the node that
     // is now the last reading in its chain.
-    private Node parseApp(XMLStreamReader reader, String sectId, Node contextPrior, Boolean recursed) {
+    private Node parseApp(XMLStreamReader reader, String sectId, Node contextPrior, Boolean recursed)
+            throws XMLStreamException, IllegalArgumentException {
 
         // We are at the START_ELEMENT event for the <app> tag.
         // Create a bracket of placeholder nodes, which all readings in this app
@@ -259,138 +260,134 @@ public class TEIParallelSegParser {
         // Keep track of the witness class on a particular reading
         String witClass = "witnesses";
 
-        try (Transaction tx = db.beginTx()) {
-            parseloop:
-            while (true) {
-                int event = reader.next();
+        parseloop:
+        while (true) {
+            int event = reader.next();
 
-                switch (event) {
-                    case XMLStreamConstants.END_ELEMENT:
-                        switch (reader.getLocalName()) {
-                            case "app":
-                                // Connect the prior node with the app start. Do this here instead of outside the loop
-                                // so that inactiveWitnesses is populated if applicable.
-                                Relationship r = contextPrior.createRelationshipTo(appStart, ERelations.SEQUENCE);
-                                if (!recursed) {
-                                    // Connect all witnesses from main app to main app, even if they are missing
-                                    setAllWitnesses(r);
-                                    // Connect the app start to the app end via all *inactive* witnesses
-                                    ArrayList<String> inactiveWitnesses = activeWitnesses.keySet().stream()
-                                            .filter(x -> !activeWitnesses.get(x)).collect(Collectors.toCollection(ArrayList::new));
-                                    for (String w : inactiveWitnesses)
-                                        addWitnessLink(appStart, appEnd, w, "witnesses");
-                                } else {
-                                    // Connect only the current active witnesses from the enclosing app to this one
-                                    r.setProperty("witnesses", activeWitnesses.keySet().stream()
-                                            .filter(activeWitnesses::get).toArray(String[]::new));
-                                    // and app start-to-end should be entirely via the readings.
-                                }
-
-                                // Check that all active-for-this-app witnesses have a "normal" path through the app;
-                                // this is to catch witnesses that appear only via special witness classes, or
-                                // <witStart/> / <witEnd/> apps.
-                                HashSet<String> hasWitnesses = new HashSet<>();
-                                Iterable<Relationship> outgoing = appStart.getRelationships(
-                                		Direction.OUTGOING, ERelations.SEQUENCE);
-                                // Note the witness links that already exist in this app
-                                for (Relationship rel : outgoing)
-                                    if (rel.hasProperty("witnesses"))
-                                        Collections.addAll(hasWitnesses, (String[]) rel.getProperty("witnesses"));
-                                // Add any active wits that are missing in this app
-                                activeWitnesses.keySet().stream().filter(activeWitnesses::get)
-                                        .filter(x -> !hasWitnesses.contains(x))
-                                        .forEach(x -> addWitnessLink(appStart, appEnd, x, "witnesses"));
-
-                                // Promote our new end node and get out of here.
-                                contextPrior = appEnd;
-                                break parseloop;
-
-                            case "rdg":
-                            case "lem":
-                                // Hook up the end of the reading to the end of the app
-                                assert(readingEnd != null);
-                                Relationship el = readingEnd.createRelationshipTo(appEnd, ERelations.SEQUENCE);
-                                el.setProperty(witClass, readingWitnesses.toArray(new String[0]));
-                                // Clear some state variables
-                                readingEnd = null;
-                                readingWitnesses.clear();
-                                chain.clear();
-                                witClass = "witnesses";
-                                break;
-
-                        }
-                        break;
-
-                    case XMLStreamConstants.START_ELEMENT:
-                        switch (reader.getLocalName()) {
-                            case "app":
-                                // Make the current reading witnesses the only active ones
-                                ArrayList<String> savedActive = new ArrayList<>();
-                                activeWitnesses.keySet().stream().filter(activeWitnesses::get).forEach(savedActive::add);
-                                activeWitnesses.keySet().forEach(x -> activeWitnesses.put(x, false));
-                                readingWitnesses.forEach(x -> activeWitnesses.put(x, true));
-                                // Send the app for recursive parsing and attach its endpoint to ours
-                                readingEnd = parseApp(reader, sectId, readingEnd, true);
-                                // Now restore the active witnesses
-                                savedActive.forEach(x -> activeWitnesses.put(x, true));
-                                break;
-
-                            case "rdg":
-                            case "lem":
-                                readingEnd = createPlaceholderNode("RDGSTART_" + appId);
-                                readingWitnesses = parseWitnesses(reader.getAttributeValue("", "wit"));
-                                String variantClass = reader.getAttributeValue("", "type");
-                                if (variantClass != null)
-                                    witClass = variantClass;
-                                Relationship link = appStart.createRelationshipTo(readingEnd, ERelations.SEQUENCE);
-                                link.setProperty(witClass, readingWitnesses.toArray(new String[0]));
-                                break;
-
-                            case "witStart":
-                                if (recursed)
-                                    throw new Exception("Cannot have witStart / witEnd in recursed apparatus");
-                                readingWitnesses.forEach(x -> activeWitnesses.put(x, true));
-                                if (!appSiglorumPresent)
-                                    // then we also have to deactivate the false ones explicitly.
-                                    for (String w : activeWitnesses.keySet())
-                                        if (!readingWitnesses.contains(w))
-                                            activeWitnesses.put(w, false);
-                                appSiglorumPresent = true;
-                                break;
-                            case "witEnd":
-                                if (recursed)
-                                    throw new Exception("Cannot have witStart / witEnd in recursed apparatus");
-                                // If we see witEnd before witStart, then all witnesses were implicitly
-                                // started and we don't need to deactivate any extras.
-                                appSiglorumPresent = true;
-                                readingWitnesses.forEach(x -> activeWitnesses.put(x, false));
-                                break;
-
-                            case "witDetail":
-                                skip = true;
-                        }
-                        break;
-
-                    case XMLStreamConstants.CHARACTERS:
-                        if(!skip && !reader.isWhiteSpace()) {
-                            chain = makeReadingChain(reader, sectId, readingWitnesses, witClass);
-                            if (chain.size() > 0) {
-                                // Attach the chain to the reading start; error if there is no reading start
-                                assert(readingEnd != null);
-                                Relationship link = readingEnd.createRelationshipTo(chain.get(0), ERelations.SEQUENCE);
-                                link.setProperty(witClass, readingWitnesses.toArray(new String[0]));
-                                // Set the reading end to be the end of the chain
-                                readingEnd = chain.get(chain.size()-1);
+            switch (event) {
+                case XMLStreamConstants.END_ELEMENT:
+                    switch (reader.getLocalName()) {
+                        case "app":
+                            // Connect the prior node with the app start. Do this here instead of outside the loop
+                            // so that inactiveWitnesses is populated if applicable.
+                            Relationship r = contextPrior.createRelationshipTo(appStart, ERelations.SEQUENCE);
+                            if (!recursed) {
+                                // Connect all witnesses from main app to main app, even if they are missing
+                                setAllWitnesses(r);
+                                // Connect the app start to the app end via all *inactive* witnesses
+                                ArrayList<String> inactiveWitnesses = activeWitnesses.keySet().stream()
+                                        .filter(x -> !activeWitnesses.get(x)).collect(Collectors.toCollection(ArrayList::new));
+                                for (String w : inactiveWitnesses)
+                                    addWitnessLink(appStart, appEnd, w, "witnesses");
+                            } else {
+                                // Connect only the current active witnesses from the enclosing app to this one
+                                r.setProperty("witnesses", activeWitnesses.keySet().stream()
+                                        .filter(activeWitnesses::get).toArray(String[]::new));
+                                // and app start-to-end should be entirely via the readings.
                             }
 
+                            // Check that all active-for-this-app witnesses have a "normal" path through the app;
+                            // this is to catch witnesses that appear only via special witness classes, or
+                            // <witStart/> / <witEnd/> apps.
+                            HashSet<String> hasWitnesses = new HashSet<>();
+                            Iterable<Relationship> outgoing = appStart.getRelationships(
+                                    Direction.OUTGOING, ERelations.SEQUENCE);
+                            // Note the witness links that already exist in this app
+                            for (Relationship rel : outgoing)
+                                if (rel.hasProperty("witnesses"))
+                                    Collections.addAll(hasWitnesses, (String[]) rel.getProperty("witnesses"));
+                            // Add any active wits that are missing in this app
+                            activeWitnesses.keySet().stream().filter(activeWitnesses::get)
+                                    .filter(x -> !hasWitnesses.contains(x))
+                                    .forEach(x -> addWitnessLink(appStart, appEnd, x, "witnesses"));
+
+                            // Promote our new end node and get out of here.
+                            contextPrior = appEnd;
+                            break parseloop;
+
+                        case "rdg":
+                        case "lem":
+                            // Hook up the end of the reading to the end of the app
+                            assert(readingEnd != null);
+                            Relationship el = readingEnd.createRelationshipTo(appEnd, ERelations.SEQUENCE);
+                            el.setProperty(witClass, readingWitnesses.toArray(new String[0]));
+                            // Clear some state variables
+                            readingEnd = null;
+                            readingWitnesses.clear();
+                            chain.clear();
+                            witClass = "witnesses";
+                            break;
+
+                    }
+                    break;
+
+                case XMLStreamConstants.START_ELEMENT:
+                    switch (reader.getLocalName()) {
+                        case "app":
+                            // Make the current reading witnesses the only active ones
+                            ArrayList<String> savedActive = new ArrayList<>();
+                            activeWitnesses.keySet().stream().filter(activeWitnesses::get).forEach(savedActive::add);
+                            activeWitnesses.keySet().forEach(x -> activeWitnesses.put(x, false));
+                            readingWitnesses.forEach(x -> activeWitnesses.put(x, true));
+                            // Send the app for recursive parsing and attach its endpoint to ours
+                            readingEnd = parseApp(reader, sectId, readingEnd, true);
+                            // Now restore the active witnesses
+                            savedActive.forEach(x -> activeWitnesses.put(x, true));
+                            break;
+
+                        case "rdg":
+                        case "lem":
+                            readingEnd = createPlaceholderNode("RDGSTART_" + appId);
+                            readingWitnesses = parseWitnesses(reader.getAttributeValue("", "wit"));
+                            String variantClass = reader.getAttributeValue("", "type");
+                            if (variantClass != null)
+                                witClass = variantClass;
+                            Relationship link = appStart.createRelationshipTo(readingEnd, ERelations.SEQUENCE);
+                            link.setProperty(witClass, readingWitnesses.toArray(new String[0]));
+                            break;
+
+                        case "witStart":
+                            if (recursed)
+                                throw new IllegalArgumentException("Cannot have witStart / witEnd in recursed apparatus");
+                            readingWitnesses.forEach(x -> activeWitnesses.put(x, true));
+                            if (!appSiglorumPresent)
+                                // then we also have to deactivate the false ones explicitly.
+                                for (String w : activeWitnesses.keySet())
+                                    if (!readingWitnesses.contains(w))
+                                        activeWitnesses.put(w, false);
+                            appSiglorumPresent = true;
+                            break;
+                        case "witEnd":
+                            if (recursed)
+                                throw new IllegalArgumentException("Cannot have witStart / witEnd in recursed apparatus");
+                            // If we see witEnd before witStart, then all witnesses were implicitly
+                            // started and we don't need to deactivate any extras.
+                            appSiglorumPresent = true;
+                            readingWitnesses.forEach(x -> activeWitnesses.put(x, false));
+                            break;
+
+                        case "witDetail":
+                            skip = true;
+                    }
+                    break;
+
+                case XMLStreamConstants.CHARACTERS:
+                    if(!skip && !reader.isWhiteSpace()) {
+                        chain = makeReadingChain(reader, sectId, readingWitnesses, witClass);
+                        if (!chain.isEmpty()) {
+                            // Attach the chain to the reading start; error if there is no reading start
+                            assert(readingEnd != null);
+                            Relationship link = readingEnd.createRelationshipTo(chain.getFirst(), ERelations.SEQUENCE);
+                            link.setProperty(witClass, readingWitnesses.toArray(new String[0]));
+                            // Set the reading end to be the end of the chain
+                            readingEnd = chain.getLast();
                         }
-                        break;
-                }
+
+                    }
+                    break;
             }
-            tx.close();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
+
         return contextPrior;
     }
 
@@ -404,40 +401,37 @@ public class TEIParallelSegParser {
 
         // Make the chain of readings with the remaining words
         ArrayList<Node> chain = new ArrayList<>();
-        try (Transaction tx = db.beginTx()) {
-	        for (String word : words) {
-	            if (word.matches("^\\s*$"))
-	                continue;
-	            Node wordNode = tx.createNode(Nodes.READING);
-	            wordNode.setProperty("text", word);
-	            wordNode.setProperty("section_id", sectId);
-	            // wordNode.setProperty("rank", 0L);
-	            if (join_prior) {
-	                wordNode.setProperty("join_prior", true);
-	                join_prior = false;
-	            }
-	            if (!chain.isEmpty()) {
-	                Node lastNode = chain.get(chain.size() - 1);
-	                Relationship seq = lastNode.createRelationshipTo(wordNode, ERelations.SEQUENCE);
-	                seq.setProperty(witClass, readingWitnesses.toArray(new String[0]));
-	            }
-	            chain.add(wordNode);
-	        }
-	        // Set join_prior / join_next on the first & last readings
-	        // if there was a significant lack of whitespace
-	        if (spaceSignificant)
-	            if (!reader.getText().matches("\\s+$"))
-	                chain.get(chain.size()-1).setProperty("join_next", true);
-	            else if (join_prior || !reader.getText().matches("^\\s+"))
-	                chain.get(0).setProperty("join_prior", true);
-        } catch (Exception e) {
-            e.printStackTrace();
+        for (String word : words) {
+            if (word.matches("^\\s*$"))
+                continue;
+            Node wordNode = tx.createNode(Nodes.READING);
+            wordNode.setProperty("text", word);
+            wordNode.setProperty("section_id", sectId);
+            // wordNode.setProperty("rank", 0L);
+            if (join_prior) {
+                wordNode.setProperty("join_prior", true);
+                join_prior = false;
+            }
+            if (!chain.isEmpty()) {
+                Node lastNode = chain.getLast();
+                Relationship seq = lastNode.createRelationshipTo(wordNode, ERelations.SEQUENCE);
+                seq.setProperty(witClass, readingWitnesses.toArray(new String[0]));
+            }
+            chain.add(wordNode);
         }
+        // Set join_prior / join_next on the first & last readings
+        // if there was a significant lack of whitespace
+        if (spaceSignificant)
+            if (!reader.getText().matches("\\s+$"))
+                chain.getLast().setProperty("join_next", true);
+            else if (join_prior || !reader.getText().matches("^\\s+"))
+                chain.getFirst().setProperty("join_prior", true);
+
         return chain;
     }
 
     private Node createPlaceholderNode (String name) {
-        Node ph = db.beginTx().createNode(Nodes.READING);
+        Node ph = tx.createNode(Nodes.READING);
         ph.setProperty("is_placeholder", true);
         if (name != null) ph.setProperty("text", name);
         placeholderNodes.add(ph);

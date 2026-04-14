@@ -111,7 +111,7 @@ public class Util {
 
     private static String getSigil (com.alexmerz.graphviz.objects.Node n) {
         String id = n.getId().getId();
-        if (id.equals(""))
+        if (id.isEmpty())
             id = n.getId().getLabel();
         return id;
     }
@@ -274,7 +274,7 @@ public class Util {
         // Get the existing single section ID
         SectionModel firstSection = jerseyTest.target("/tradition/" + florId + "/sections")
                 .request()
-                .get(new GenericType<List<SectionModel>>() {}).get(0);
+                .get(new GenericType<List<SectionModel>>() {}).getFirst();
         if (firstSection == null) fail();
         florIds.add(firstSection.getId());
 
@@ -327,8 +327,7 @@ public class Util {
     public static String getConcatentatedGraphML(InputStream is) {
         StringBuilder output = new StringBuilder();
         try {
-            for (File f : net.stemmaweb.parser.Util.extractGraphMLZip(is).values()) {
-                FileInputStream fi = new FileInputStream(f.getAbsolutePath());
+            for (InputStream fi : net.stemmaweb.parser.Util.extractGraphMLZip(is).values()) {
                 String content = new String(fi.readAllBytes(), StandardCharsets.UTF_8);
                 output.append(content);
                 fi.close();
@@ -357,7 +356,7 @@ public class Util {
                 .request().get(new GenericType<>() {});
         if (sections.size() != 1)
             throw new RuntimeException("Tradition does not have a single section");
-        return sections.get(0);
+        return sections.getFirst();
     }
 
 }

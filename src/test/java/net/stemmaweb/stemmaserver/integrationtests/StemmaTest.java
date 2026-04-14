@@ -493,7 +493,7 @@ public class StemmaTest {
         	// Add two stemmata and check the node count
         	StemmaModel stemmaCM = new StemmaModel(); // its name will be "Stemma"
         	StemmaModel stemmaTF = new StemmaModel(); // its name will be "TF Stemma"
-        	DotParser parser = new DotParser(db);
+        	DotParser parser = new DotParser(tx);
         	try {
         		byte[] encoded = Files.readAllBytes(Paths.get("src/TestFiles/florilegium.dot"));
         		stemmaCM.setDot(new String(encoded, StandardCharsets.UTF_8));
@@ -503,11 +503,11 @@ public class StemmaTest {
         	} catch (Exception e) {
         		fail();
         	}
-        	try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaCM, tx)) {
+        	try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaCM)) {
         		assertEquals(Response.Status.CREATED.getStatusCode(), parseResponse.getStatus());
         		assertEquals(originalNodeCount + 9, countGraphNodes(tx));
         	}
-        	try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaTF, tx)) {
+        	try (Response parseResponse = parser.importStemmaFromDot(tradId, stemmaTF)) {
         		assertEquals(Response.Status.CREATED.getStatusCode(), parseResponse.getStatus());
         	}
         	tx.close();

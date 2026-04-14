@@ -3,8 +3,6 @@ package net.stemmaweb.parser;
 import static net.stemmaweb.Util.jsonerror;
 import static net.stemmaweb.Util.jsonresp;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,7 +13,6 @@ import java.util.Map;
 import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -31,7 +28,6 @@ import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Tradition;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -41,8 +37,11 @@ import net.stemmaweb.services.VariantGraphService;
  * Created by tla on 17/02/2017.
  */
 public class GraphMLParser {
-    private final GraphDatabaseServiceProvider dbServiceProvider = new GraphDatabaseServiceProvider();
-    private final GraphDatabaseService db = dbServiceProvider.getDatabase();
+    private final Transaction tx;
+
+    public GraphMLParser(Transaction tx) {
+        this.tx = tx;
+    }
 
     /**
      * Parses a single GraphML file (the old style) representing either an entire tradition or a single
@@ -60,13 +59,12 @@ public class GraphMLParser {
         // We won't use this, but the new parser expects it
         HashMap<String, String> idMap = new HashMap<>();
         Response result;
-        try (Transaction tx = db.beginTx()) {
+        try {
             // Mimic whether this is a tradition or a section file
-            result = parseGraphML(filestream, filename, parentNode, idMap, isSingleSection, tx);
+            result = parseGraphML(filestream, filename, parentNode, idMap, isSingleSection);
             // Did something go wrong? If so, exit now
             if (result.getStatus() != Response.Status.CREATED.getStatusCode())
                 return result;
-            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -92,24 +90,22 @@ public class GraphMLParser {
         String tradId = null;
         String firstSectionId = null;
         // Unzip the file and send each XML file therein to the "real" parser
-        try (Transaction tx = db.beginTx()) {
+        try {
             // Get the XML files out of the zip stream
-            LinkedHashMap<String, File> inputXML = Util.extractGraphMLZip(filestream);
+            LinkedHashMap<String, InputStream> inputXML = Util.extractGraphMLZip(filestream);
             // Make sure we actually got some files
             if (inputXML.isEmpty())
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(jsonerror("No files found in GraphML zip input")).build();
             // Make sure the tradition.xml file is first
             boolean seenTrad = false;
-            tx.commit();
 
             for (String filename : inputXML.keySet()) {
                 seenTrad = seenTrad || filename.equals("tradition.xml");
                 if (!seenTrad)
                     return Response.status(Response.Status.BAD_REQUEST)
                             .entity(jsonerror("Bad zipfile input - is tradition.xml not first?")).build();
-                File infile = inputXML.get(filename);
-                FileInputStream fi = new FileInputStream(infile.getAbsolutePath());
+                InputStream fi = inputXML.get(filename);
                 Response result = parseGraphML(fi, filename, parentNode, idMap, isSingleSection);
                 // Did something go wrong? If so, exit now
                 if (result.getStatus() != Response.Status.CREATED.getStatusCode())
@@ -121,8 +117,6 @@ public class GraphMLParser {
                 else if (firstSectionId == null)
                     firstSectionId = result.getEntity().toString();
             }
-            Util.cleanupExtractedZip(inputXML);
-//            tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
             return Response.serverError().build();
@@ -142,15 +136,7 @@ public class GraphMLParser {
      * @return a Response indicating the result
      */
     private Response parseGraphML(InputStream filestream, String fileName, Node parentNode,
-    		Map<String, String> idMap, boolean isSingleSection) {
-    	Transaction tx = db.beginTx();
-        Response result = parseGraphML(filestream, fileName, parentNode, idMap, isSingleSection, tx);
-        tx.commit();
-        return result;
-    }
-
-    private Response parseGraphML(InputStream filestream, String fileName, Node parentNode,
-                                  Map<String, String> idMap, boolean isSingleSection, Transaction tx) {
+                                  Map<String, String> idMap, boolean isSingleSection) {
         // We will use a DOM parser for this
         Document doc = Util.openFileStream(filestream);
         if (doc == null)
@@ -378,10 +364,10 @@ public class GraphMLParser {
 
         // Ensure that the tradition and section are linked
         if (thisSection != null)
-            Util.ensureSectionLink(traditionNode, thisSection);
+            Util.ensureSectionLink(tx, traditionNode, thisSection);
 
         // Ensure that all witnesses exist
-        witnessSigla.forEach(x -> Util.findOrCreateExtant(traditionNode, x, tx));
+        witnessSigla.forEach(x -> Util.findOrCreateExtant(tx, traditionNode, x));
 
         // Ensure that all relation types exist
         for (String rt : relationTypesUsed)

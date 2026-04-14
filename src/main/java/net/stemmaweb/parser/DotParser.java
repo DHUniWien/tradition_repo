@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
@@ -32,11 +31,11 @@ import net.stemmaweb.services.VariantGraphService;
  * @author PSE FS 2015 Team2
  */
 public class DotParser {
-    private final GraphDatabaseService db;
+    private final Transaction tx;
     private String messageValue = null;
 
-    public DotParser(GraphDatabaseService db) {
-        this.db = db;
+    public DotParser(Transaction tx) {
+        this.tx = tx;
     }
 
     /**
@@ -46,7 +45,7 @@ public class DotParser {
      * @param stemmaSpec - A StemmaModel containing the specification for the stemma
      * @return a Response whose entity is a JSON response, either {'name':stemmaName} or {'error':errorMessage}
      */
-    public Response importStemmaFromDot(String tradId, StemmaModel stemmaSpec, Transaction tx) {
+    public Response importStemmaFromDot(String tradId, StemmaModel stemmaSpec) {
         Status result = null;
         Graph stemma = null;
         try {
@@ -58,7 +57,7 @@ public class DotParser {
                 messageValue = "More than one graph was found in this DOT specification.";
                 result = Status.BAD_REQUEST;
             }
-            stemma = parsedgraphs.get(0);
+            stemma = parsedgraphs.getFirst();
             // Get its name, in case we still don't have one
             if (stemmaSpec.getIdentifier() == null)
                 stemmaSpec.setIdentifier(getDotGraphName(stemma));
@@ -69,7 +68,7 @@ public class DotParser {
 
         // Save the graph into Neo4J.
         if (result == null)
-            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier(), tx);
+            result = saveToNeo(stemma, tradId, stemmaSpec.getIdentifier());
 
         // Return our answer.
         String returnKey = result == Status.CREATED ? "name" : "error";
@@ -78,7 +77,7 @@ public class DotParser {
                 .build();
     }
 
-    private Status saveToNeo(Graph stemma, String tradId, String stemmaName, Transaction tx) {
+    private Status saveToNeo(Graph stemma, String tradId, String stemmaName) {
         // Check for the existence of the tradition
         Node traditionNode = VariantGraphService.getTraditionNode(tx, tradId);
         if (traditionNode == null)
@@ -128,7 +127,7 @@ public class DotParser {
         		}
         	} else {
         		// If the witness doesn't exist yet, create it
-        		existingWitness = Util.createWitness(traditionNode, sigil, hypothetical, tx);
+        		existingWitness = Util.createWitness(tx, sigil, hypothetical);
         		// Does it have a label separate from its ID?
         		String displayLabel = witness.getAttribute("label");
         		if (displayLabel != null) {
@@ -225,7 +224,7 @@ public class DotParser {
         // bare dot strings from the old Stemmaweb
         List<Graph> allGraphs = parseDot(dotSpec);
         if (allGraphs.isEmpty()) return null;
-        return getDotGraphName(allGraphs.get(0));
+        return getDotGraphName(allGraphs.getFirst());
     }
 
     private static String getDotGraphName (Graph dotStemma) {

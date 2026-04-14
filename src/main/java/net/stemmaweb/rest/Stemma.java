@@ -34,7 +34,7 @@ import net.stemmaweb.services.GraphDatabaseServiceProvider;
 
 /**
  * Comprises all the api calls related to a stemma.
- * Can be called using http://BASE_URL/stemma
+ * Can be called using <a href="http://BASE_URL/stemma">...</a>
  * @author PSE FS 2015 Team2
  */
 public class Stemma {
@@ -113,11 +113,11 @@ public class Stemma {
             Response replaceResult;
             if (stemmaSpec.getNewick() != null) {
                 // We are importing a Newick tree; roleplay accordingly.
-                NewickParser parser = new NewickParser(db);
-                replaceResult = parser.importStemmaFromNewick(tradId, stemmaSpec, tx);
+                NewickParser parser = new NewickParser(tx);
+                replaceResult = parser.importStemmaFromNewick(tradId, stemmaSpec);
             } else {
-                DotParser parser = new DotParser(db);
-                replaceResult = parser.importStemmaFromDot(tradId, stemmaSpec, tx);
+                DotParser parser = new DotParser(tx);
+                replaceResult = parser.importStemmaFromDot(tradId, stemmaSpec);
             }
             if (replaceResult.getStatus() != 201)
                 return replaceResult;

@@ -348,7 +348,6 @@ public class Tradition {
 
     // utility method for creating a new section on a tradition
     private static Node createNewSection(String traditionNodeId, String sectionName, Transaction tx) {
-//        GraphDatabaseService db = traditionNode.getGraphDatabase();
     	Node sectionNode = tx.createNode(Nodes.SECTION);
         Node traditionNode = tx.getNodeByElementId(traditionNodeId);
         sectionNode.setProperty("name", sectionName);
@@ -365,55 +364,51 @@ public class Tradition {
      * @param addToExisting - whether we are adding a section to an existing tradition, or uploading
      *                          a new tradition entirely
      * @return a Response indicating the result
-     * @throws Exception 
      */
     protected Response parseDispatcher(String sectionName, String filetype, InputStream uploadedInputStream,
-                             boolean addToExisting, Transaction tx) throws Exception {
+                             boolean addToExisting, Transaction tx) {
         Response result = null;
         Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
         Node sectionNode = null;
         // If we are adding a section to an existing tradition, or we are parsing anything except
         // GraphML, we have to start by creating the section node
-        if (!filetype.startsWith("graphml") || addToExisting) {
+        if (!filetype.startsWith("graphml") || addToExisting)
             sectionNode = createNewSection(traditionNode.getElementId(), sectionName, tx);
-            if (sectionNode == null)
-                return Response.serverError()
-                        .entity(jsonerror("Error creating new section node on tradition")).build();
-        }
+
         // Parse the contents of the given file into that section
         if (filetype.equals("csv"))
             // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ',');
+            result = new TabularParser(tx).parseCSV(uploadedInputStream, sectionNode, ',');
         if (filetype.equals("ssv"))
             // Pass it off to the CSV reader
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, ';');
+            result = new TabularParser(tx).parseCSV(uploadedInputStream, sectionNode, ';');
         if (filetype.equals("tsv"))
             // Pass it off to the CSV reader with tab separators
-            result = new TabularParser().parseCSV(uploadedInputStream, sectionNode, '\t');
+            result = new TabularParser(tx).parseCSV(uploadedInputStream, sectionNode, '\t');
         if (filetype.startsWith("xls"))
             // Pass it off to the Excel reader
-            result = new TabularParser().parseExcel(uploadedInputStream, sectionNode, filetype);
+            result = new TabularParser(tx).parseExcel(uploadedInputStream, sectionNode, filetype);
         if (filetype.equals("teips"))
             // Pass it off to the TEI parser
-            result = new TEIParallelSegParser().parseTEIParallelSeg(uploadedInputStream, sectionNode);
+            result = new TEIParallelSegParser(tx).parseTEIParallelSeg(uploadedInputStream, sectionNode);
         // TODO we need to parse TEI double-endpoint attachment from CTE
         if (filetype.equals("collatex"))
             // Pass it off to the CollateX parser
-            result = new CollateXParser().parseCollateX(uploadedInputStream, sectionNode);
+            result = new CollateXParser(tx).parseCollateX(uploadedInputStream, sectionNode);
         if (filetype.equals("cxjson"))
             // Pass it off to the CollateX JSON parser
-            result = new CollateXJsonParser().parseCollateXJson(uploadedInputStream, sectionNode);
+            result = new CollateXJsonParser(tx).parseCollateXJson(uploadedInputStream, sectionNode);
         if (filetype.equals("stemmaweb"))
             // Pass it off to the old Stemmaweb-format parser
-            result = new StemmawebParser().parseGraphML(uploadedInputStream, sectionNode, tx);
+            result = new StemmawebParser(tx).parseGraphML(uploadedInputStream, sectionNode);
         if (filetype.equals("graphmlsingle"))
             // Pass it off to the legacy single-file GraphML parser
-            result = new GraphMLParser().parseGraphMLSingle(uploadedInputStream,
+            result = new GraphMLParser(tx).parseGraphMLSingle(uploadedInputStream,
                     addToExisting ? sectionNode : traditionNode,
                     addToExisting);
         if (filetype.equals("graphml"))
             // Pass it off to the GraphML ZIP parser
-            result = new GraphMLParser().parseGraphMLZip(uploadedInputStream,
+            result = new GraphMLParser(tx).parseGraphMLZip(uploadedInputStream,
                     addToExisting ? sectionNode : traditionNode,
                     addToExisting);
         // If we got this far, it was an unrecognized filetype.
