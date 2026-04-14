@@ -29,6 +29,7 @@ import org.neo4j.graphdb.PathExpander;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.Evaluators;
+import org.neo4j.graphdb.traversal.InitialBranchState;
 import org.neo4j.graphdb.traversal.Uniqueness;
 
 import com.qmino.miredot.annotations.MireDotIgnore;
@@ -893,7 +894,8 @@ public class Section {
 //            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart))
 //                    .uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes()
 //                    .stream().forEach(x -> {
-    		StreamSupport.stream(tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(newStart, tx))
+    		StreamSupport.stream(tx.traversalDescription().depthFirst()
+    				.expand(new AlignmentTraverse(newStart), new InitialBranchState.State<>(tx, tx))
     				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(newStart).nodes().spliterator(), false)
     		.forEach(x -> {
     			if (x.hasLabel(Nodes.EMENDATION)) {
@@ -997,7 +999,8 @@ public class Section {
     		final String keptId = firstSection.getElementId();
 //            tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart))
 //            		.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().stream()
-    		StreamSupport.stream(tx.traversalDescription().depthFirst().expand(new AlignmentTraverse(oldStart, tx))
+    		StreamSupport.stream(tx.traversalDescription().depthFirst()
+    				.expand(new AlignmentTraverse(oldStart), new InitialBranchState.State<>(tx, tx))
     				.uniqueness(Uniqueness.NODE_GLOBAL).traverse(oldStart).nodes().spliterator(), false)
     		.filter(x -> x.hasLabel(Nodes.READING)).forEach(x -> x.setProperty("section_id", keptId));
     		
@@ -1226,12 +1229,11 @@ public class Section {
     }
 
     // Retrieve all readings of a tradition between two ranks as Nodes
-    @SuppressWarnings("rawtypes")
     private List<Node> getReadingsBetweenRanks(long startRank, long endRank, Node startNode, String limitText, Transaction tx) throws Exception {
         List<Node> readings;
-        PathExpander e = new AlignmentTraverse(startNode, tx);
+        PathExpander<Transaction> e = new AlignmentTraverse(startNode);
         Stream<Node> readingStream = StreamSupport.stream(tx.traversalDescription().depthFirst()
-        		.expand(e).uniqueness(Uniqueness.NODE_GLOBAL)
+        		.expand(e, new InitialBranchState.State<>(tx, tx)).uniqueness(Uniqueness.NODE_GLOBAL)
         		.traverse(startNode).nodes().spliterator(), false)
         		.filter(x -> startRank <= Long.parseLong(x.getProperty("rank").toString()) &&
         		endRank >= Long.parseLong(x.getProperty("rank").toString()));

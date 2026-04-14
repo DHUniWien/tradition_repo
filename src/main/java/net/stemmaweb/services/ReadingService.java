@@ -20,6 +20,7 @@ import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.InitialBranchState;
 import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.internal.helpers.collection.Iterables;
 
@@ -401,13 +402,14 @@ public class ReadingService {
 
     public static Set<Node> recalculateRank (Transaction tx, Node startNode, boolean recalculateAll) throws Exception {
     	RankCalcEvaluate e = new RankCalcEvaluate(tx, startNode, recalculateAll);
-    	AlignmentTraverse a = new AlignmentTraverse(startNode, tx);
-    	StreamSupport.stream(tx.traversalDescription().depthFirst().expand(a).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
+    	AlignmentTraverse a = new AlignmentTraverse(startNode);
+    	StreamSupport.stream(tx.traversalDescription().depthFirst()
+    			.expand(a, new InitialBranchState.State<>(tx, tx)).uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
     			.traverse(startNode).nodes().spliterator(), false).forEach(x -> x.setProperty("touched", true));
 
     	// At this point we can start to reassign ranks
     	Iterable<Node> touched = tx.traversalDescription().depthFirst()
-    			.expand(a)
+    			.expand(a, new InitialBranchState.State<>(tx, tx))
     			.evaluator(e)
     			.uniqueness(Uniqueness.RELATIONSHIP_GLOBAL)
     			.traverse(startNode).nodes();
@@ -449,40 +451,46 @@ public class ReadingService {
      * as well as colocated relation paths.
      *
      */
-    public static class AlignmentTraverse implements PathExpander {
+    public static class AlignmentTraverse implements PathExpander<Transaction> {
 
-        // What was this?? private final Relationship excludeRel = null;
         private final HashSet<String> includeRelationTypes = new HashSet<>();
+        private final Node referenceNode;
+        private boolean initialized = false;
 
         // Walk the graph of sequences only
-        public AlignmentTraverse() {}
+        public AlignmentTraverse() {
+            this.referenceNode = null;
+        }
 
         // Walk the graph of sequences and colocated relations
-        public AlignmentTraverse(Node referenceNode, Transaction tx) throws Exception {
-            // Get the colocated types for this node's tradition
-            List<RelationTypeModel> rtms = RelationService.ourRelationTypes(tx, referenceNode);
-            for (RelationTypeModel rtm : rtms)
-                if (rtm.getIs_colocation())
-                    includeRelationTypes.add(rtm.getName());
+        public AlignmentTraverse(Node referenceNode) {
+            this.referenceNode = referenceNode;
         }
 
         @Override
-        public ResourceIterable<Relationship> expand(Path path, BranchState state) {
+        public ResourceIterable<Relationship> expand(Path path, BranchState<Transaction> state) {
+            if (!initialized && referenceNode != null) {
+                // Get the colocated types for this node's tradition
+                List<RelationTypeModel> rtms = RelationService.ourRelationTypes(state.getState(), this.referenceNode);
+                rtms.stream().filter(RelationTypeModel::getIs_colocation)
+                        .map(RelationTypeModel::getName)
+                        .forEach(includeRelationTypes::add);
+                initialized = true;
+            }
             return expansion(path, Direction.OUTGOING);
         }
 
         @Override
-        public PathExpander reverse() {
-            return new PathExpander() {
-                PathExpander parent = this;
+        public PathExpander<Transaction> reverse() {
+            AlignmentTraverse outer = this;
+            return new PathExpander<>() {
                 @Override
-                public ResourceIterable<Relationship> expand(Path path, BranchState branchState) {
-                    return expansion(path, Direction.INCOMING);
+                public ResourceIterable<Relationship> expand(Path path, BranchState<Transaction> branchState) {
+                    return outer.expansion(path, Direction.INCOMING);
                 }
-
                 @Override
-                public PathExpander reverse() {
-                    return parent;
+                public PathExpander<Transaction> reverse() {
+                    return outer;
                 }
             };
         }
@@ -493,34 +501,32 @@ public class ReadingService {
             for (Relationship relationship : path.endNode()
                     .getRelationships(dir, ERelations.SEQUENCE, ERelations.LEMMA_TEXT, ERelations.EMENDED))
                 relevantRelations.add(relationship);
-
+            // Get the alignment relationships and filter them
+            for (Relationship r : path.endNode().getRelationships(Direction.BOTH, ERelations.RELATED)) {
+                if (includeRelationTypes.contains(r.getProperty("type").toString()))
+                    relevantRelations.add(r);
+            }
             return Iterables.resourceIterable(relevantRelations);
         }
     }
 
     /* Custom evaluation and expander for checking alignment traversals */
 
-    private static class RankEvaluate implements Evaluator {
-
-        private final Long rank;
-
-        RankEvaluate(Long stoprank) {
-            rank = stoprank;
-        }
+    private record RankEvaluate(Long rank) implements Evaluator {
 
         @Override
-        public Evaluation evaluate(Path path) {
-            if (path.endNode().equals(path.startNode()))
-                return Evaluation.INCLUDE_AND_CONTINUE;
-            Node testNode = path.lastRelationship().getStartNode();
-            if (testNode.hasProperty("rank")
-                    && (Long) testNode.getProperty("rank") >= rank) {
-                return Evaluation.INCLUDE_AND_PRUNE;
-            } else {
-                return Evaluation.INCLUDE_AND_CONTINUE;
+            public Evaluation evaluate(Path path) {
+                if (path.endNode().equals(path.startNode()))
+                    return Evaluation.INCLUDE_AND_CONTINUE;
+                Node testNode = path.lastRelationship().getStartNode();
+                if (testNode.hasProperty("rank")
+                        && (Long) testNode.getProperty("rank") >= rank) {
+                    return Evaluation.INCLUDE_AND_PRUNE;
+                } else {
+                    return Evaluation.INCLUDE_AND_CONTINUE;
+                }
             }
         }
-    }
 
     /**
      * Checks if both readings can be found in the same path through the
@@ -559,14 +565,14 @@ public class ReadingService {
 
         // For each node in the lower cluster, see if we can reach any node in the
         // higher cluster.
-        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading, tx);
+        AlignmentTraverse alignmentEvaluator = new AlignmentTraverse(firstReading);
         RankEvaluate rankEvaluator = new RankEvaluate(maxRank);
         for (Node lower : reverse ? secondCluster : firstCluster) {
             boolean followed_sequence = false;
             for (Relationship r : tx.traversalDescription()
                     .depthFirst()
                     .evaluator(rankEvaluator)
-                    .expand(alignmentEvaluator).traverse(lower).relationships()) {
+                    .expand(alignmentEvaluator, new InitialBranchState.State<>(tx, tx)).traverse(lower).relationships()) {
                 // TODO does this need to include EMENDED links?
                 if (r.getType().name().equals(ERelations.SEQUENCE.name()))
                     followed_sequence = true;
