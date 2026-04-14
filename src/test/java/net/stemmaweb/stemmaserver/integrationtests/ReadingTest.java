@@ -27,6 +27,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -66,6 +67,7 @@ import net.stemmaweb.rest.Root;
 import net.stemmaweb.rest.Witness;
 import net.stemmaweb.services.DatabaseService;
 import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -86,7 +88,6 @@ public class ReadingTest {
     private String expectedWitnessC = "when showers sweet with fruit to drought of march has pierced teh rood-of-the-world";
 
     private GraphDatabaseService db;
-    private DatabaseManagementService dbbuilder;
     private HashMap<String, String> readingLookup = new HashMap<>();
 
     /*
@@ -99,9 +100,9 @@ public class ReadingTest {
     public void setUp() throws Exception {
 
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
-    	dbbuilder.createDatabase("stemmatest");
-    	db = dbbuilder.database("stemmatest");
+        DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+    	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+    	new GraphDatabaseServiceProvider(dbbuilder, db);
 
         /*
          * Populate the test database with the root node and a user with id 1
@@ -2628,9 +2629,7 @@ public class ReadingTest {
     @After
     public void tearDown() throws Exception {
 //        db.shutdown();
-    	if (dbbuilder != null) {
-    		dbbuilder.shutdownDatabase(db.databaseName());
-    	}
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
     }
 

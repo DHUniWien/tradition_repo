@@ -52,8 +52,9 @@ public class GraphDatabaseServiceProvider {
     	}
     }
 
-    // Manage an existing (e.g. test) DB
-    public GraphDatabaseServiceProvider(GraphDatabaseService existingdb) throws KernelException {
+    // Manage an existing (e.g. test) DB with its management service
+    public GraphDatabaseServiceProvider(DatabaseManagementService managementService, GraphDatabaseService existingdb) {
+        dbService = managementService;
         db = existingdb;
     }
 
@@ -63,10 +64,10 @@ public class GraphDatabaseServiceProvider {
 
     public static void shutdown() {
     	if (dbService != null) {
-    		dbService.shutdownDatabase(db.databaseName());
-    		db = null;
+    		dbService.shutdown();
     		dbService = null;
     	}
+    	db = null;
     }
 
     private static void registerShutdownHook( final DatabaseManagementService managementService ) {

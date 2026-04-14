@@ -13,6 +13,7 @@ import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -38,6 +39,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -52,15 +54,14 @@ public class StemmawebInputOutputTest {
     private StemmawebExporter exportStemmawebResource;
 
     private JerseyTest jerseyTest;
-	private DatabaseManagementService dbbuilder;
 
     @Before
     public void setUp() throws Exception {
 
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
-    	dbbuilder.createDatabase("stemmatest");
-    	db = dbbuilder.database("stemmatest");
+        DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+    	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+    	new GraphDatabaseServiceProvider(dbbuilder, db);
         Util.setupTestDB(db, "1");
 
         exportStemmawebResource = new StemmawebExporter();
@@ -430,9 +431,7 @@ public class StemmawebInputOutputTest {
     @After
     public void tearDown() throws Exception {
 //        db.shutdown();
-    	if (dbbuilder != null) {
-    		dbbuilder.shutdownDatabase(db.databaseName());
-    	}
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
     }
 }

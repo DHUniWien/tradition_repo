@@ -18,10 +18,13 @@ import java.util.stream.StreamSupport;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.glassfish.jersey.test.JerseyTest;
+import org.neo4j.configuration.GraphDatabaseSettings;
+import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
@@ -61,7 +64,9 @@ public class GraphMLInputOutputTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-    	db = new GraphDatabaseServiceProvider((String) null).getDatabase();
+        DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+    	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+    	new GraphDatabaseServiceProvider(dbbuilder, db);
         Util.setupTestDB(db, "me@example.org");
 
         // Create a JerseyTestServer for the necessary REST API calls

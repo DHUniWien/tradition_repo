@@ -21,6 +21,7 @@ import org.glassfish.jersey.test.JerseyTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -45,6 +46,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.VariantGraphService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -57,7 +59,6 @@ public class TraditionTest {
     private String tradId;
 
     private GraphDatabaseService db;
-    private DatabaseManagementService dbbuilder;
 
     /*
      * JerseyTest is the test environment to Test api calls it provides a
@@ -71,9 +72,9 @@ public class TraditionTest {
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory()
 //                .newImpermanentDatabase())
 //                .getDatabase();
-    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
-    	dbbuilder.createDatabase("stemmatest");
-    	db = dbbuilder.database("stemmatest");
+        DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+    	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+    	new GraphDatabaseServiceProvider(dbbuilder, db);
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -599,8 +600,6 @@ public class TraditionTest {
     public void tearDown() throws Exception {
         jerseyTest.tearDown();
 //        db.shutdown();
-    	if (dbbuilder != null) {
-    		dbbuilder.shutdownDatabase(db.databaseName());
-    	}
+    	GraphDatabaseServiceProvider.shutdown();
     }
 }

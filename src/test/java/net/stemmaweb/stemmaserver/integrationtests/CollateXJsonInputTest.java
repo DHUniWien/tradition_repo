@@ -10,6 +10,7 @@ import java.util.stream.StreamSupport;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.test.JerseyTest;
 import org.json.JSONObject;
+import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Relationship;
@@ -26,13 +27,13 @@ import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.SectionModel;
 import net.stemmaweb.model.WitnessModel;
 import net.stemmaweb.rest.ERelations;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 
 public class CollateXJsonInputTest extends TestCase {
 
     private GraphDatabaseService db;
-    private DatabaseManagementService dbbuilder;
     private JerseyTest jerseyTest;
 
     private String tradId;
@@ -42,9 +43,9 @@ public class CollateXJsonInputTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        dbbuilder = new TestDatabaseManagementServiceBuilder().build();
-        dbbuilder.createDatabase("stemmatest");
-        db = dbbuilder.database("stemmatest");
+        DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+        db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+        new GraphDatabaseServiceProvider(dbbuilder, db);
         Util.setupTestDB(db, "1");
 
         // Create a JerseyTestServer for the necessary REST API calls
@@ -285,9 +286,7 @@ public class CollateXJsonInputTest extends TestCase {
 
     public void tearDown() throws Exception {
 //        db.shutdown();
-    	if (dbbuilder != null) {
-    		dbbuilder.shutdownDatabase(db.databaseName());
-    	}
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
         super.tearDown();
     }

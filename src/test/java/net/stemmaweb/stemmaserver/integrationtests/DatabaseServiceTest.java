@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.neo4j.configuration.GraphDatabaseSettings;
 import org.neo4j.dbms.api.DatabaseManagementService;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -17,6 +18,7 @@ import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.Util;
 
@@ -30,15 +32,14 @@ public class DatabaseServiceTest {
     private GraphDatabaseService db;
     private String traditionId;
     private String userId;
-	private DatabaseManagementService dbbuilder;
 
     @Before
     public void setUp() throws Exception {
 
 //      db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-    	dbbuilder = new TestDatabaseManagementServiceBuilder().build();
-    	dbbuilder.createDatabase("stemmatest");
-    	db = dbbuilder.database("stemmatest");
+        DatabaseManagementService dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+    	db = dbbuilder.database(GraphDatabaseSettings.DEFAULT_DATABASE_NAME);
+    	new GraphDatabaseServiceProvider(dbbuilder, db);
         userId = "simon";
         Util.setupTestDB(db, userId);
 
@@ -81,8 +82,6 @@ public class DatabaseServiceTest {
     @After
     public void tearDown() {
 //        db.shutdown();
-    	if (dbbuilder != null) {
-    		dbbuilder.shutdownDatabase(db.databaseName());
-    	}
+    	GraphDatabaseServiceProvider.shutdown();
     }
 }

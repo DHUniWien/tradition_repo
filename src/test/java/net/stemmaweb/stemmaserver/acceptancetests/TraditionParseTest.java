@@ -37,6 +37,7 @@ import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
 import net.stemmaweb.rest.Root;
 import net.stemmaweb.services.DatabaseService;
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import net.stemmaweb.services.VariantGraphService;
 import net.stemmaweb.stemmaserver.JerseyTestServerFactory;
 import net.stemmaweb.stemmaserver.TraditionXMLParser;
@@ -57,9 +58,9 @@ public class TraditionParseTest extends TestCase {
     public void setUp() throws Exception {
         super.setUp();
 //        db = new GraphDatabaseServiceProvider(new TestGraphDatabaseFactory().newImpermanentDatabase()).getDatabase();
-        dbbuilder = new TestDatabaseManagementServiceBuilder().build();
-        dbbuilder.createDatabase("stemmatest");
-        db = dbbuilder.database("stemmatest");
+        dbbuilder = new TestDatabaseManagementServiceBuilder().impermanent().build();
+        db = dbbuilder.database("neo4j");
+        new GraphDatabaseServiceProvider(dbbuilder, db);
 
         // Create a root node and test user
         try (Transaction tx = db.beginTx()) {
@@ -199,9 +200,7 @@ public class TraditionParseTest extends TestCase {
 
     public void tearDown() throws Exception {
 //        db.shutdown();
-    	if (dbbuilder != null) {
-    		dbbuilder.shutdownDatabase(db.databaseName());
-    	}
+    	GraphDatabaseServiceProvider.shutdown();
         jerseyTest.tearDown();
         super.tearDown();
     }
