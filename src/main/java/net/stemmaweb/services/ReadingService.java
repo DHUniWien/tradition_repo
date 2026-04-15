@@ -39,6 +39,24 @@ import net.stemmaweb.rest.Nodes;
 public class ReadingService {
 
     /**
+     * Returns the ID of the tradition to which a reading belongs.
+     *
+     * @param tx - the transaction within which we are working
+     * @param readId - the ID of the reading to check
+     * @return - the ID of the tradition
+     */
+    public static String getTraditionId (Transaction tx, String readId) {
+        Node rdg = tx.getNodeByElementId(readId);
+        try {
+            return tx.getNodeByElementId(rdg.getProperty("section_id").toString())
+                    .getSingleRelationship(ERelations.PART, Direction.INCOMING)
+                    .getStartNode().getProperty("id").toString();
+        } catch (NullPointerException e) {
+            return "";
+        }
+    }
+
+    /**
      * Copies all the properties of a reading to another if the property exists.
      *
      * @param oldReading - the reading to copy from

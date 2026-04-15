@@ -60,7 +60,7 @@ public class RelationService {
      * @return A RelationTypeModel with the relation type information.
      */
     public static RelationTypeModel returnRelationType(Transaction tx, String traditionId, String relType) {
-        RelationType rtRest = new RelationType(traditionId, relType, tx);
+        RelationType rtRest = new RelationType(traditionId, relType);
         Response rtResult = rtRest.getRelationType();
         RelationTypeModel rtm;
         if (rtResult.getStatus() == Response.Status.NO_CONTENT.getStatusCode()) {

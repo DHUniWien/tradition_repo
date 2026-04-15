@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
+import net.stemmaweb.services.AnnotationService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
@@ -27,7 +28,6 @@ import net.stemmaweb.model.AnnotationModel;
 import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Tradition;
 import net.stemmaweb.services.RelationService;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -409,7 +409,6 @@ public class GraphMLParser {
             annotationsToAdd.put(((Element) xn).getAttribute("id"), am);
         }
         while (!annotationsToAdd.isEmpty()) {
-            Tradition tradService = new Tradition(tradId);
             List<String> toRemove = new ArrayList<>();
             for (String amid : annotationsToAdd.keySet()) {
                 AnnotationModel am = annotationsToAdd.get(amid);
@@ -424,19 +423,19 @@ public class GraphMLParser {
                         Node nodeTarget = tx.getNodeByElementId(idMap.get(alm.getTarget()));
                         alm.setTarget(nodeTarget.getElementId());
                     }
-                    try (Response result = tradService.addAnnotation(am)) {
-                        if (result.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                            throw new UnsupportedOperationException(String.format(
-                                    "Error on adding user annotation %s/%s: %s",
-                                    am.getId(), am.getLabel(), result.getEntity()));
-                        }
-                        // Add the new annotation node to the idMap so that it is there for any
-                        // dependent annotations
-                        AnnotationModel newAnno = (AnnotationModel) result.getEntity();
-                        idMap.put(amid, newAnno.getId());
-                        // Mark this annotation to be removed from the queue
-                        toRemove.add(amid);
+                    AnnotationModel newAnno;
+                    try {
+                        newAnno = AnnotationService.addAnnotationToTradition(tx, traditionNode, am);
+                    } catch (IllegalArgumentException e) {
+                        throw new UnsupportedOperationException(String.format(
+                                "Error on adding user annotation %s/%s: %s",
+                                am.getId(), am.getLabel(), e.getMessage()));
                     }
+                    // Add the new annotation node to the idMap so that it is there for any
+                    // dependent annotations
+                    idMap.put(amid, newAnno.getId());
+                    // Mark this annotation to be removed from the queue
+                    toRemove.add(amid);
                 }
             }
             // Guard against infinite loops

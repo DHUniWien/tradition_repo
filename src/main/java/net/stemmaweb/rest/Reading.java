@@ -433,7 +433,7 @@ public class Reading {
     }
 
 
-    private List<Node> collectRelatedReadings(List<String> filterTypes) throws Exception {
+    private List<Node> collectRelatedReadings(List<String> filterTypes) {
         List<Node> allRelated = new ArrayList<>();
         try (Transaction tx = db.beginTx()) {
             Node reading = tx.getNodeByElementId(readId);
@@ -573,7 +573,7 @@ public class Reading {
         Node originalReading;
 
         try (Transaction tx = db.beginTx()) {
-            List<String> readings = duplicateModel.getReadings().stream().map(String::valueOf).collect(Collectors.toList());
+            List<String> readings = duplicateModel.getReadings().stream().map(String::valueOf).toList();
             for (String readId : readings) {
                 originalReading = tx.getNodeByElementId(readId);
                 List<String> newWitnesses = duplicateModel.getWitnesses();
@@ -1237,7 +1237,7 @@ public class Reading {
             if (matching.isEmpty() && !layer.equals("witnesses")) {
                 matching = StreamSupport.stream(seqs.spliterator(), false)
                         .filter(x -> isPathFor(x, witnessId, "witnesses"))
-                        .collect(Collectors.toList());
+                        .toList();
             }
             // We should now have exactly one matching sequence.
             if (matching.size() != 1) {
@@ -1494,17 +1494,4 @@ public class Reading {
         return foundRels;
     }
 
-    String getTraditionId () {
-        String tradId;
-        if (this.traditionId != null)
-            return this.traditionId;
-        try (Transaction tx = db.beginTx()) {
-            Node rdg = tx.getNodeByElementId(readId);
-            tradId = tx.getNodeByElementId(rdg.getProperty("section_id").toString())
-                    .getSingleRelationship(ERelations.PART, Direction.INCOMING)
-                    .getStartNode().getProperty("id").toString();
-            tx.commit();
-        }
-        return tradId;
-    }
 }

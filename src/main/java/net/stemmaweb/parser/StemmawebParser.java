@@ -138,7 +138,7 @@ public class StemmawebParser {
 												RelationTypeModel rtm = new RelationTypeModel();
 												rtm.setName(typeName);
 												rtm.setDefaultsettings(true);
-												Response rtResult = new RelationType(tradId, typeName, tx).create(rtm);
+												Response rtResult = new RelationType(tradId, typeName).create(rtm);
 												if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
 													return rtResult;
 												else relationtypes.add(typeName);

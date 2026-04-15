@@ -6,7 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
+import net.stemmaweb.services.GraphDatabaseServiceProvider;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
@@ -30,15 +32,15 @@ import net.stemmaweb.services.VariantGraphService;
  */
 
 public class RelationType {
-    private final Transaction tx;
     /**
      * The name of a type of reading relation.
      */
+    private final GraphDatabaseService db;
     private final String traditionId;
     private final String typeName;
 
-    public RelationType(String tradId, String requestedType, Transaction tx) {
-        this.tx = tx;
+    public RelationType(String tradId, String requestedType) {
+        this.db = new GraphDatabaseServiceProvider().getDatabase();
         traditionId = tradId;
         typeName = requestedType;
     }
@@ -58,7 +60,7 @@ public class RelationType {
     public Response getRelationType() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Response response;
-        try {
+        try (Transaction tx = db.beginTx()){
             Node foundRelType = rtModel.lookup(VariantGraphService.getTraditionNode(tx, traditionId));
             if (foundRelType == null) {
                 response = Response.noContent().build();
@@ -89,24 +91,19 @@ public class RelationType {
     @ReturnType(clazz = RelationTypeModel.class)
     public Response create(RelationTypeModel rtModel) {
         // Find any existing relation type on this tradition
-        Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-        Node extantRelType;
-        try {
-            extantRelType = rtModel.lookup(traditionNode);
-        } catch (Exception e) {
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
+        try (Transaction tx = db.beginTx()){
+            Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+            Node extantRelType = rtModel.lookup(traditionNode);
 
-        // Were we asked for the secret Stemmaweb defaults?
-        if (rtModel.getDefaultsettings() != null) {
-            // This won't work if we also have an extant type of this name.
-            if (extantRelType != null)
-                return Response.status(Response.Status.CONFLICT)
-                        .entity(jsonerror("Cannot instantiate a default for a type that already exists")).build();
-            return this.makeDefaultType(tx, traditionNode);
-        }
+            // Were we asked for the secret Stemmaweb defaults?
+            if (rtModel.getDefaultsettings() != null) {
+                // This won't work if we also have an extant type of this name.
+                if (extantRelType != null)
+                    return Response.status(Response.Status.CONFLICT)
+                            .entity(jsonerror("Cannot instantiate a default for a type that already exists")).build();
+                return this.makeDefaultType(tx, traditionNode);
+            }
 
-        try {
             if (extantRelType != null) {
                 extantRelType = rtModel.update(traditionNode, tx);
                 if (extantRelType != null)
@@ -141,7 +138,7 @@ public class RelationType {
     public Response delete() {
         RelationTypeModel rtModel = new RelationTypeModel(typeName);
         Node foundRelType;
-        try {
+        try (Transaction tx = db.beginTx()) {
         	Node tradition = VariantGraphService.getTraditionNode(tx, traditionId);
         	try {
         		foundRelType = rtModel.lookup(tradition);

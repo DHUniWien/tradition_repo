@@ -134,7 +134,7 @@ public class TabularParser {
             rtm.setName("collated");
             rtm.setDefaultsettings(true);
             Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
-                    rtm.getName(), tx).create(rtm);
+                    rtm.getName()).create(rtm);
             if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
                 return rtResult;
 

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import net.stemmaweb.services.*;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.json.JSONObject;
 import org.neo4j.graphdb.Direction;
@@ -62,11 +63,6 @@ import net.stemmaweb.parser.GraphMLParser;
 import net.stemmaweb.parser.StemmawebParser;
 import net.stemmaweb.parser.TEIParallelSegParser;
 import net.stemmaweb.parser.TabularParser;
-import net.stemmaweb.services.DatabaseService;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
-import net.stemmaweb.services.RelationService;
-import net.stemmaweb.services.VariantGraphService;
 
 //import org.neo4j.helpers.collection.IteratorUtil; // Neo4j 2.x
 
@@ -95,28 +91,14 @@ public class Tradition {
      * Delegated API calls
      */
 
+    // LATER move all "belonging" checks to here maybe?
     /**
      * Delegates to {@link net.stemmaweb.rest.Section Section} module
      * @param sectionId - the ID of the requested tradition section
      */
     @Path("/section/{sectionId}")
     public Section getSection(@PathParam("sectionId") String sectionId) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	ArrayList<SectionModel> tradSections = produceSectionList(VariantGraphService.getTraditionNode(tx, traditionId), tx);
-        	if (tradSections != null)
-        		for (SectionModel s : tradSections)
-        			if (s.getId().equals(sectionId))
-        				return new Section(traditionId, sectionId);
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
-    	return null;
+    	return new Section(traditionId, sectionId);
     }
 
     /**
@@ -150,9 +132,12 @@ public class Tradition {
      */
     @Path("/reading/{id}")
     public Reading getReading(@PathParam("id") String rid) {
-        Reading resource = new Reading(rid);
-        if (resource.getTraditionId().equals(traditionId))
-            return resource;
+        boolean readingInTradition = false;
+        try (Transaction tx = db.beginTx()) {
+            if (ReadingService.getTraditionId(tx, rid).equals(traditionId))
+                readingInTradition = true;
+        }
+        if (readingInTradition) return new Reading(rid, traditionId);
         // Otherwise return a Reading resource that will produce a 404
         return new Reading("-1");
     }
@@ -163,15 +148,7 @@ public class Tradition {
      */
     @Path("/relationtype/{name}")
     public RelationType getRelationType(@PathParam("name") String name) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	return new RelationType(traditionId, name, tx);
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        return new RelationType(traditionId, name);
     }
 
     /**
@@ -179,7 +156,9 @@ public class Tradition {
      * @param name - the name of the requested annotation label
      */
     @Path("/annotationlabel/{name}")
-    public AnnotationLabel getAnnotationType(@PathParam("name") String name) { return new AnnotationLabel(traditionId, name); }
+    public AnnotationLabel getAnnotationType(@PathParam("name") String name) {
+        return new AnnotationLabel(traditionId, name);
+    }
 
     /**
      * Delegates to {@link net.stemmaweb.rest.Annotation Annotation} module
@@ -187,15 +166,7 @@ public class Tradition {
      */
     @Path("/annotation/{annoid}")
     public Annotation getAnnotationOnTradition(@PathParam("annoid") String annoid) {
-    	Transaction tx = null;
-    	try {
-        	tx = db.beginTx();
-        	return new Annotation(traditionId, annoid, tx);
-        } finally {
-			if (tx != null) {
-				tx.close();
-			}
-		}
+        return new Annotation(traditionId, annoid);
     }
 
     /*
@@ -222,7 +193,6 @@ public class Tradition {
     	Node traditionNode = null;
     	try (Transaction tx = db.beginTx()) {
     		traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-            tx.close();
         }
 
         if (traditionNode == null)
@@ -450,32 +420,19 @@ public class Tradition {
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = AnnotationModel.class)
     public Response addAnnotation(AnnotationModel am) {
-    	Node traditionNode = null;
     	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-            tx.close();
-        }
-
-    	Response result;
-    	if (traditionNode == null)
-    		return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
-    	try (Transaction tx = db.beginTx()) {
-    		traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
-    		Node anno = tx.createNode();
-    		traditionNode.createRelationshipTo(anno, ERelations.HAS_ANNOTATION);
-    		Annotation annoRest = new Annotation(traditionId, anno.getElementId(), tx);
-    		result = annoRest.updateAnnotation(am);
-    		if (result.getStatus() != Status.OK.getStatusCode()) {
-    			// Abort the operation and return the non-OK result
-    			tx.rollback();
-    			return result;
-    		}
-    		// Otherwise, commit it
-    		tx.commit();
+    		Node traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+            if (traditionNode == null)
+                return Response.status(Status.NOT_FOUND).entity(jsonerror("tradition not found")).build();
+            traditionNode = VariantGraphService.getTraditionNode(tx, traditionId);
+            Node anno = tx.createNode();
+            traditionNode.createRelationshipTo(anno, ERelations.HAS_ANNOTATION);
+            AnnotationModel result = AnnotationService.updateAnnotation(tx, traditionNode, anno, am);
+            tx.commit();
+            return Response.status(Status.CREATED).entity(result).build();
     	} catch (Exception e) {
     		return Response.serverError().entity(jsonerror(e.getMessage())).build();
     	}
-    	return Response.status(Status.CREATED).entity(result.getEntity()).build();
     }
 
     /**
