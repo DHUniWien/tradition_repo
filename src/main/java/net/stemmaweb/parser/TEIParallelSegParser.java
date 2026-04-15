@@ -28,7 +28,6 @@ import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Reading;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -198,16 +197,14 @@ public class TEIParallelSegParser {
             long endRank = Long.parseLong(endNode.getProperty("rank").toString());
             for (List<ReadingModel> identSet : VariantGraphService.collectIdenticalReadings(tx, parentId, 0, endRank)) {
                 ReadingModel first = identSet.removeFirst();
-                Reading rd = new Reading(first.getId());
                 for (ReadingModel identical : identSet) {
-                    try (Response done = rd.mergeReadings(Long.parseLong(identical.getId()))) {
-                        if (done.getStatus() != Response.Status.OK.getStatusCode())
-                            return Response.serverError().entity(done.getEntity()).build();
-                    } catch (Exception e) {
+                    String tradId = traditionNode.getProperty("tradition_id").toString();
+                    try {
+                        VariantGraphService.mergeReadings(tx, first.getId(), identical.getId(), tradId);
+                    } catch (IllegalStateException e) {
                         e.printStackTrace();
                         return Response.serverError().entity(jsonerror(e.getMessage())).build();
                     }
-
                 }
             }
         } catch (XMLStreamException e) {

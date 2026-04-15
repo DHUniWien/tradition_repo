@@ -3,6 +3,7 @@ package net.stemmaweb.services;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 import org.neo4j.graphdb.Direction;
@@ -118,5 +119,18 @@ public class AnnotationService {
             }
         }
         return null;
+    }
+
+    public static List<AnnotationModel> pruneAnnotations(Node traditionNode) {
+        List<AnnotationModel> deleted = new ArrayList<>();
+        for (Node a : DatabaseService.getRelated(traditionNode, ERelations.HAS_ANNOTATION)) {
+            boolean isPrimary = a.getProperty("primary", false).equals(true);
+            if (!a.hasRelationship(Direction.OUTGOING) && !isPrimary) {
+                deleted.add(new AnnotationModel(a));
+                a.getRelationships(Direction.INCOMING).forEach(Relationship::delete);
+                a.delete();
+            }
+        }
+        return deleted;
     }
 }

@@ -32,10 +32,7 @@ import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.model.WitnessTokensModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relation;
 import net.stemmaweb.services.ReadingService.AlignmentTraverse;
-
-import jakarta.ws.rs.core.Response;
 
 public class VariantGraphService {
 
@@ -594,6 +591,28 @@ public class VariantGraphService {
     }
 
     /**
+     * Return ReadingModel objects for all the readings in a section, in traversal order.
+     *
+     * @param tx     - the transaction within which we are working
+     * @param sectId - the ID of the section whose readings we are collecting
+     * @return the list of its reading models
+     * @throws Exception if the section has no start node
+     */
+    public static List<ReadingModel> sectionReadings(Transaction tx, String sectId) throws Exception {
+        ArrayList<ReadingModel> readingModels = new ArrayList<>();
+        Node startNode = VariantGraphService.getStartNode(tx, sectId);
+        if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
+        tx.traversalDescription().depthFirst()
+                .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
+                .relationships(ERelations.EMENDED, Direction.OUTGOING)
+                .evaluator(Evaluators.all())
+                .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
+                .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
+
+        return readingModels;
+    }
+
+    /**
      * Get all readings which have the same text and the same rank, between the given ranks.
      *
      * @param tx        the transaction within which we are working
@@ -791,6 +810,70 @@ public class VariantGraphService {
                 witnessReadings.stream().map(ReadingModel::new).collect(Collectors.toList()), false, false);
     }
 
+    public static void reorderSectionAfter(Transaction tx, String tradId, String sectToMove, String priorSectID) {
+        Node thisSection = tx.getNodeByElementId(sectToMove);
+
+        // Check that the requested prior section also exists and is part of the tradition
+        Node priorSection = null;   // the requested prior section
+        Node latterSection = null;  // the section after the requested prior
+        if (priorSectID.equals("none")) {
+            // There is no prior section, and the first section will become the latter one. Find it.
+            ArrayList<Node> sectionNodes = getSectionNodes(tx, tradId);
+            if (sectionNodes.isEmpty())
+                throw new IllegalArgumentException("Tradition has no sections");
+            for (Node s : sectionNodes) {
+                if (!s.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
+                    latterSection = s;
+                    break;
+                }
+            }
+            if (latterSection == null)
+                throw new RuntimeException("Could not find tradition's first section");
+
+                // If we request the first section to go first, it should be a no-op.
+            else if (latterSection.equals(thisSection))
+                return;
+        } else {
+            priorSection = tx.getNodeByElementId(priorSectID);
+            if (priorSection == null)
+                throw new IllegalArgumentException("Section " + priorSectID + "not found");
+            Node pnTradition = getTraditionNode(tx, priorSection);
+            if (!pnTradition.getProperty("id").equals(tradId))
+                throw new IllegalArgumentException("Section " + priorSectID + " doesn't belong to this tradition");
+
+            if (priorSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
+                Relationship oldSeq = priorSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
+                latterSection = oldSeq.getEndNode();
+                oldSeq.delete();
+            }
+        }
+
+        // Remove our node from its existing sequence
+        removeSectionFromSequence(thisSection);
+
+        // Link it up to the prior if it exists
+        if (priorSection != null) priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
+        // ...and to the old "next" if it exists
+        if (latterSection != null) thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
+    }
+
+    public static void removeSectionFromSequence (Node aSection) {
+        Node priorSection = null;
+        Node nextSection = null;
+        if (aSection.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
+            Relationship incomingRel = aSection.getSingleRelationship(ERelations.NEXT, Direction.INCOMING);
+            priorSection = incomingRel.getStartNode();
+            incomingRel.delete();
+        }
+        if (aSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
+            Relationship outgoingRel = aSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
+            nextSection = outgoingRel.getEndNode();
+            outgoingRel.delete();
+        }
+        if (priorSection != null && nextSection != null) {
+            priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
+        }
+    }
 
     /*
      * Methods for merging two readings
@@ -867,6 +950,12 @@ public class VariantGraphService {
         deletingReading.delete();
         merged.getReadings().add(new ReadingModel(stayingReading));
         return merged;
+    }
+
+    // NOTE: as is, this form is only used by callers that don't care about the return value. This may change...
+    public static void mergeReadings(Transaction tx, String stayingRdgId, String deletingRdgId, String traditionId)
+            throws IllegalStateException {
+        mergeReadings(tx, tx.getNodeByElementId(stayingRdgId), tx.getNodeByElementId(deletingRdgId), traditionId);
     }
 
     /**

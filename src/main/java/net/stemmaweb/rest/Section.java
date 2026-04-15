@@ -6,6 +6,7 @@ import static net.stemmaweb.services.ReadingService.addWitnessLink;
 import static net.stemmaweb.services.ReadingService.recalculateRank;
 import static net.stemmaweb.services.ReadingService.removePlaceholder;
 import static net.stemmaweb.services.ReadingService.wouldGetCyclic;
+import static net.stemmaweb.services.VariantGraphService.removeSectionFromSequence;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import net.stemmaweb.services.*;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
@@ -61,11 +63,7 @@ import net.stemmaweb.model.SequenceModel;
 import net.stemmaweb.model.TextSequenceModel;
 import net.stemmaweb.model.VariantListModel;
 import net.stemmaweb.model.WitnessModel;
-import net.stemmaweb.services.GraphDatabaseServiceProvider;
-import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.ReadingService.AlignmentTraverse;
-import net.stemmaweb.services.RelationService;
-import net.stemmaweb.services.VariantGraphService;
 
 /**
  * Comprises all the API calls related to a tradition section.
@@ -196,7 +194,7 @@ public class Section {
             Node foundSection = tx.getNodeByElementId(sectId);
             if (foundSection != null) {
                 // Find the section either side of this one and connect them if necessary.
-                removeFromSequence(foundSection);
+                removeSectionFromSequence(foundSection);
                 // Collect all nodes and relationships that belong to this section.
                 Set<Relationship> removableRelations = new HashSet<>();
                 Set<Node> removableNodes = new HashSet<>();
@@ -210,11 +208,7 @@ public class Section {
                 removableRelations.forEach(Relationship::delete);
                 removableNodes.forEach(Node::delete);
                 // Clean up any annotations that need it.
-                Tradition tService = new Tradition(tradId);
-                Response pruned = tService.pruneAnnotations();
-                if (pruned.getStatus() > 299) {
-                    return pruned;
-                }
+                AnnotationService.pruneAnnotations(VariantGraphService.getTraditionNode(tx, tradId));
                 tx.commit();
             }
         } catch (Exception e) {
@@ -290,8 +284,8 @@ public class Section {
             if (!VariantGraphService.sectionInTradition(tx, tradId, sectId)) {
                 return Response.status(Status.NOT_FOUND).entity(jsonerror("Tradition and/or section not found")).build();
             }
-            List<ReadingModel> readingModels = sectionReadings(tx);
-            if (readingModels == null) {
+            List<ReadingModel> readingModels = VariantGraphService.sectionReadings(tx, sectId);
+            if (readingModels.isEmpty()) {
                 return Response.serverError().entity(jsonerror("No readings found in section")).build();
             }
             return Response.ok(readingModels).build();
@@ -299,20 +293,6 @@ public class Section {
             e.printStackTrace();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
-    }
-
-    List<ReadingModel> sectionReadings(Transaction tx) throws Exception {
-        ArrayList<ReadingModel> readingModels = new ArrayList<>();
-        Node startNode = VariantGraphService.getStartNode(tx, sectId);
-        if (startNode == null) throw new Exception("Section " + sectId + " has no start node");
-        tx.traversalDescription().depthFirst()
-        .relationships(ERelations.SEQUENCE, Direction.OUTGOING)
-        .relationships(ERelations.EMENDED, Direction.OUTGOING)
-        .evaluator(Evaluators.all())
-        .uniqueness(Uniqueness.NODE_GLOBAL).traverse(startNode)
-        .nodes().forEach(node -> readingModels.add(new ReadingModel(node)));
-
-        return readingModels;
     }
 
     /**
@@ -643,52 +623,7 @@ public class Section {
             if (priorSectID.equals(sectId))
                 return Response.status(Response.Status.BAD_REQUEST).entity("Cannot reorder a section after itself").build();
 
-            Node thisSection = tx.getNodeByElementId(sectId);
-
-            // Check that the requested prior section also exists and is part of the tradition
-            Node priorSection = null;   // the requested prior section
-            Node latterSection = null;  // the section after the requested prior
-            if (priorSectID.equals("none")) {
-                // There is no prior section, and the first section will become the latter one. Find it.
-                ArrayList<Node> sectionNodes = VariantGraphService.getSectionNodes(tx, tradId);
-                if (sectionNodes.isEmpty())
-                    return Response.serverError().entity("Tradition has no sections").build();
-                for (Node s : sectionNodes) {
-                    if (!s.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
-                        latterSection = s;
-                        break;
-                    }
-                }
-                if (latterSection == null)
-                    return Response.serverError().entity("Could not find tradition's first section").build();
-
-                // If we request the first section to go first, it should be a no-op.
-                else if (latterSection.equals(thisSection))
-                    return Response.ok().build();
-            } else {
-                priorSection = tx.getNodeByElementId(priorSectID);
-                if (priorSection == null) {
-                    return Response.status(Response.Status.NOT_FOUND).entity("Section " + priorSectID + "not found").build();
-                }
-                Node pnTradition = VariantGraphService.getTraditionNode(tx, priorSection);
-                if (!pnTradition.getProperty("id").equals(tradId))
-                    return Response.status(Response.Status.BAD_REQUEST)
-                            .entity("Section " + priorSectID + " doesn't belong to this tradition").build();
-
-                if (priorSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
-                    Relationship oldSeq = priorSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
-                    latterSection = oldSeq.getEndNode();
-                    oldSeq.delete();
-                }
-            }
-
-            // Remove our node from its existing sequence
-            removeFromSequence(thisSection);
-
-            // Link it up to the prior if it exists
-            if (priorSection != null) priorSection.createRelationshipTo(thisSection, ERelations.NEXT);
-            // ...and to the old "next" if it exists
-            if (latterSection != null) thisSection.createRelationshipTo(latterSection, ERelations.NEXT);
+            VariantGraphService.reorderSectionAfter(tx, tradId, sectId, priorSectID);
             tx.commit();
         } catch (Exception e) {
             e.printStackTrace();
@@ -756,10 +691,7 @@ public class Section {
     		VariantGraphService.getTraditionNode(tx, thisSection).createRelationshipTo(newSection, ERelations.PART);
     		newSection.setProperty("name", thisSection.getProperty("name") + " split");
     		newSectionId = newSection.getElementId();
-    		Section newSectionRest = new Section(tradId, newSection.getElementId());
-    		Response reorder = newSectionRest.reorderSectionAfter(sectId);
-    		if (reorder.getStatus() != Response.Status.OK.getStatusCode())
-    			return reorder;
+            VariantGraphService.reorderSectionAfter(tx, tradId, newSectionId, sectId);
     		
     		// Attach the old END node to the new section
     		sectionEnd.getSingleRelationship(ERelations.HAS_END, Direction.INCOMING).delete();
@@ -972,7 +904,7 @@ public class Section {
     		firstSection.createRelationshipTo(trueEnd, ERelations.HAS_END);
     		
     		// Adjust the section ordering and delete the second section
-    		removeFromSequence(secondSection);
+    		removeSectionFromSequence(secondSection);
     		secondSection.getSingleRelationship(ERelations.PART, Direction.INCOMING).delete();
     		secondSection.delete();
     		
@@ -1199,7 +1131,8 @@ public class Section {
     		lemmaLinks.forEach(Relationship::delete);
     		// Go through the section readings collecting and ordering lemmata
     		
-    		List<ReadingModel> sectionLemmata = sectionReadings(tx).stream().filter(ReadingModel::getIs_lemma)
+    		List<ReadingModel> sectionLemmata = VariantGraphService.sectionReadings(tx, sectId).stream()
+                    .filter(ReadingModel::getIs_lemma)
     				.sorted(ReadingModel::compareTo).toList();
     		
     		// Recreate links, checking for branching
@@ -1616,21 +1549,4 @@ public class Section {
         }
     }
 
-    private void removeFromSequence (Node thisSection) {
-        Node priorSection = null;
-        Node nextSection = null;
-        if (thisSection.hasRelationship(Direction.INCOMING, ERelations.NEXT)) {
-            Relationship incomingRel = thisSection.getSingleRelationship(ERelations.NEXT, Direction.INCOMING);
-            priorSection = incomingRel.getStartNode();
-            incomingRel.delete();
-        }
-        if (thisSection.hasRelationship(Direction.OUTGOING, ERelations.NEXT)) {
-            Relationship outgoingRel = thisSection.getSingleRelationship(ERelations.NEXT, Direction.OUTGOING);
-            nextSection = outgoingRel.getEndNode();
-            outgoingRel.delete();
-        }
-        if (priorSection != null && nextSection != null) {
-            priorSection.createRelationshipTo(nextSection, ERelations.NEXT);
-        }
-    }
 }

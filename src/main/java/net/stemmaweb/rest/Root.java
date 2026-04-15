@@ -153,75 +153,54 @@ public class Root {
                                   @FormDataParam("file") InputStream uploadedInputStream,
                                   @FormDataParam("file") FormDataContentDisposition fileDetail) {
 
-    	boolean userExists = false;
-    	try (Transaction tx = db.beginTx()) {
-            userExists = DatabaseService.userExists(tx, userId);
-            tx.close();
-        }
-
-    	if (!userExists) {
-            return Response.status(Response.Status.CONFLICT)
-                    .entity(jsonerror("No user with this id exists"))
-                    .build();
-        }
-
-        if (fileDetail == null && uploadedInputStream == null && empty == null) {
-            // No file to parse
+        // No file to parse
+        if (fileDetail == null && uploadedInputStream == null && empty == null)
             return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror("No file found")).build();
-        }
 
         String tradId;
-        try {
+    	try (Transaction tx = db.beginTx()) {
+            if (!DatabaseService.userExists(tx, userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(jsonerror("No user with this id exists"))
+                        .build();
+            }
             tradId = this.createTradition(name, direction, language, is_public);
-        } catch (Exception e) {
-            return Response.serverError().entity(jsonerror(e.getMessage())).build();
-        }
-        Tradition tradRest = new Tradition(tradId);
-        // Link the given user to the created tradition.
-        try {
+            // Link the given user to the created tradition.
             this.linkUserToTradition(userId, tradId);
+            tx.commit();
         } catch (Exception e) {
-            tradRest.deleteTraditionById();
             return Response.serverError().entity(jsonerror(e.getMessage())).build();
         }
 
-        // If we got file contents, we should send them off for parsing.
+        // Now read whatever data was sent into the tradition node we just created.
+        Tradition tradRest = new Tradition(tradId);
         if (empty == null) {
-        	Transaction tx = null;
-            try {
-            	tx = db.beginTx();
-            	Response dataResult = tradRest.parseDispatcher("DEFAULT", filetype, uploadedInputStream, false, tx);
-            	if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode()) {
-            		// If something went wrong, delete the new tradition immediately and return the error.
-            		new Tradition(tradId).deleteTraditionById();
-            		tx.commit();
-            		tx = null;
-            		return dataResult;
-            	}
+            try (Transaction tx = db.beginTx()) {
+                Response dataResult = tradRest.parseDispatcher("DEFAULT", filetype, uploadedInputStream, false, tx);
+                // If something went wrong, delete the new tradition immediately and return the error.
+                if (dataResult.getStatus() != Response.Status.CREATED.getStatusCode())
+                    throw new Exception(dataResult.getEntity().toString());
             	// If we just parsed GraphML (the only format that can preserve prior tradition IDs),
             	// get the actual tradition ID in case it was preserved from a prior export.
-            	if (filetype.equals("graphml")) { // TODO fix to startswith
-            		try {
-            			JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
-            			tradId = dataValues.get("parentId").toString();
-            		} catch (JSONException e) {
-            			e.printStackTrace();
-            			return Response.serverError().entity(jsonerror("Bad file parse response")).build();
-            		}
+            	if (filetype.startsWith("graphml")) {
+                    JSONObject dataValues = new JSONObject(dataResult.getEntity().toString());
+                    tradId = dataValues.get("parentId").toString();
             	}
+                tx.commit();
+            } catch (JSONException e) {
+                e.printStackTrace();
+                tradRest.deleteTraditionById();
+                return Response.serverError().entity(jsonerror("Bad file parse response")).build();
             } catch (IllegalArgumentException e) {
+                tradRest.deleteTraditionById();
                 return Response.status(Response.Status.BAD_REQUEST).entity(jsonerror(e.getMessage())).build();
             } catch(Exception e) {
+                tradRest.deleteTraditionById();
                 e.printStackTrace();
-
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                         .entity(jsonerror("Tradition could not be imported!"))
                         .build();
-            } finally {
-    			if (tx != null) {
-    				tx.close();
-    			}
-    		}
+            }
         }
 
         // Handle direct non-Jersey calls from our test suite

@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import net.stemmaweb.services.RelationService;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -27,11 +28,8 @@ import com.opencsv.CSVReaderBuilder;
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.ReadingModel;
 import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.Relation;
-import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -129,14 +127,12 @@ public class TabularParser {
             Node endNode = Util.createEndNode(tx, parentNode);
             endNode.setProperty("rank", (long) tableData.size());
 
-            // Make the COLLATED relation type
-            RelationTypeModel rtm = new RelationTypeModel();
-            rtm.setName("collated");
-            rtm.setDefaultsettings(true);
-            Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
-                    rtm.getName()).create(rtm);
-            if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
-                return rtResult;
+            // Make the COLLATED relation type if it doesn't exist already
+            try {
+                RelationService.makeDefaultType(tx, traditionNode, "collated");
+            } catch (Exception e) {
+                return Response.serverError().entity(jsonerror("Error creating default relation type: " + e.getMessage())).build();
+            }
 
             // Get the witnesses from the first row of the table
             String[] witnessList = tableData.getFirst();
@@ -240,7 +236,6 @@ public class TabularParser {
                 List<ReadingModel> collatedReadings = createdReadings.values().stream().map(ReadingModel::new)
                         .filter(x -> !x.isMeta()).toList();
                 int i = collatedReadings.size();
-                Relation relRest = new Relation(traditionNode.getProperty("id").toString());
                 RelationModel rm = new RelationModel();
                 rm.setType("collated");
                 rm.setAnnotation("Aligned in tabular input");
@@ -252,9 +247,11 @@ public class TabularParser {
                         throw new Exception("Same reading twice in createdReadings?!");
                     rm.setSource(srdg.getId());
                     rm.setTarget(trdg.getId());
-                    Response resp = relRest.create(rm);
-                    if (resp.getStatus() > 399)
-                        throw new Exception("Problem collating aligned readings: " + resp.getEntity().toString());
+                    try {
+                        RelationService.createLocalRelation(tx, traditionNode.getProperty("id").toString(), rm);
+                    } catch (Exception e) {
+                        throw new Exception("Problem collating aligned readings: " + e.getMessage());
+                    }
                     i--;
                 }
 

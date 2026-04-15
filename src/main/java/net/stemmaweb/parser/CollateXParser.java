@@ -12,6 +12,7 @@ import java.util.Optional;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
@@ -22,10 +23,8 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
 import jakarta.ws.rs.core.Response;
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.VariantGraphService;
 
 /**
@@ -157,13 +156,11 @@ public class CollateXParser {
 
             // Create the 'transposition' relation type if it occurred in the data
             if (transpositionSeen) {
-                RelationTypeModel rtm = new RelationTypeModel();
-                rtm.setName("transposition");
-                rtm.setDefaultsettings(true);
-                Response rtResult = new RelationType(traditionNode.getProperty("id").toString(),
-                        rtm.getName()).create(rtm);
-                if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
-                    return rtResult;
+                try {
+                    RelationService.makeDefaultType(tx, traditionNode, "transposition");
+                } catch (Exception e) {
+                    return Response.serverError().entity(jsonerror("Error creating default relation type: " + e.getMessage())).build();
+                }
             }
         } catch (IllegalArgumentException e) {
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();

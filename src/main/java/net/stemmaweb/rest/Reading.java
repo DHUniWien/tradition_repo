@@ -1,10 +1,11 @@
 package net.stemmaweb.rest;
 
 import static net.stemmaweb.Util.jsonerror;
+import static net.stemmaweb.services.ReadingService.collectWitnesses;
+import static net.stemmaweb.services.ReadingService.getNeighbourReadingInSequence;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,7 +15,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
@@ -326,7 +326,7 @@ public class Reading {
                 }
                 // Find the witness's following node
                 HashMap<String, String> wit = parseSigil(sigil);
-                Node next = this.getNeighbourReadingInSequence(wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
+                Node next = getNeighbourReadingInSequence(tx, readId, wit.get("sigil"), wit.get("layer"), Direction.OUTGOING);
                 if (next == null) {
                     errorMessage = "Witness path " + sigil + " ends after requested reading";
                     return errorResponse(Status.INTERNAL_SERVER_ERROR);
@@ -502,8 +502,8 @@ public class Reading {
     @ReturnType("java.util.List<net.stemmaweb.model.WitnessModel>")
     public Response getReadingWitnesses() {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
-        try {
-            return Response.ok(collectWitnesses(false)).build();
+        try (Transaction tx = db.beginTx()) {
+            return Response.ok(collectWitnesses(tx, readId,false)).build();
         } catch (NotFoundException e) {
             errorMessage = e.getMessage();
             return errorResponse(Status.NOT_FOUND);
@@ -512,35 +512,6 @@ public class Reading {
             errorMessage = e.getMessage();
             return errorResponse(Status.INTERNAL_SERVER_ERROR);
         }
-    }
-
-    private HashSet<String> collectWitnesses(Boolean includeAllLayers) {
-        HashSet<String> normalWitnesses = new HashSet<>();
-
-        // Look at all incoming SEQUENCE relationships to the reading
-        try (Transaction tx = db.beginTx()) {
-            Node reading = tx.getNodeByElementId(readId);
-            // First get the "normal" witnesses
-            Iterable<Relationship> readingSeqs = reading.getRelationships(Direction.BOTH, ERelations.SEQUENCE);
-            for (Relationship r : readingSeqs)
-                if (r.hasProperty("witnesses"))
-                    Collections.addAll(normalWitnesses, (String[]) r.getProperty("witnesses"));
-            // Now look for the specials, and add them if they are not in the normal witnesses
-            for (Relationship r : readingSeqs) {
-                for (String prop : r.getPropertyKeys()) {
-                    if (prop.equals("witnesses"))
-                        continue;
-                    String[] specialWits = (String[]) r.getProperty(prop);
-                    for (String w : specialWits) {
-                        if (normalWitnesses.contains(w) && !includeAllLayers)
-                            continue;
-                        normalWitnesses.add(w + " (" + prop + ")");
-                    }
-                }
-            }
-            tx.commit();
-        }
-        return normalWitnesses;
     }
 
     /**
@@ -583,7 +554,7 @@ public class Reading {
                 }
 
                 Node newNode = tx.createNode();
-                GraphModel localResult = duplicate(newWitnesses, originalReading, newNode);
+                GraphModel localResult = duplicate(tx, newWitnesses, originalReading, newNode);
                 tempDeleted.addAll(localResult.getRelations());
                 newSequences.addAll(localResult.getSequences());
                 ReadingModel newModel = new ReadingModel(newNode);
@@ -646,15 +617,11 @@ public class Reading {
      * @return true if specific reading can be duplicated, false else
      */
     private boolean canBeDuplicated(Node originalReading, List<String> newWitnesses) {
-        // Make a new REST object for the given reading, to check its witnesses
-        Reading tocheck = new Reading(originalReading.getElementId());
-        HashSet<String> allWitnesses = tocheck.collectWitnesses(true);
-
         if (newWitnesses.isEmpty()) {
             errorMessage = "No witnesses have been assigned to the new reading";
             return false;
         }
-
+        HashSet<String> allWitnesses = collectWitnesses(originalReading, true);
         for (String newWitness : newWitnesses)
             if (!allWitnesses.contains(newWitness)) {
                 errorMessage = "The reading does not contain the specified witness " + newWitness;
@@ -683,28 +650,25 @@ public class Reading {
      * @return a GraphModel containing the new readings, new sequences and deleted relations.
      *         Note that this does NOT return deleted or modified sequences.
      */
-    private GraphModel duplicate(List<String> newWitnesses, Node originalReading, Node addedReading) throws Exception {
+    private GraphModel duplicate(Transaction tx, List<String> newWitnesses, Node originalReading, Node addedReading)
+            throws Exception {
         // copy reading properties to newly added reading
         ReadingService.copyReadingProperties(originalReading, addedReading);
-        Reading rdgRest = new Reading(originalReading.getElementId());
 
         // add witnesses to the correct sequence links
         HashSet<Relationship> newSequences = new HashSet<>();
         for (String wit : newWitnesses) {
             HashMap<String, String> witness = parseSigil(wit);
-            Node prior = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
-            Node next = rdgRest.getNeighbourReadingInSequence(witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
+            Node prior = getNeighbourReadingInSequence(tx, originalReading.getElementId(), witness.get("sigil"), witness.get("layer"), Direction.INCOMING);
+            Node next = getNeighbourReadingInSequence(tx, originalReading.getElementId(), witness.get("sigil"), witness.get("layer"), Direction.OUTGOING);
             if (prior == null || next == null) {
                 throw new Exception("No prior / next node found for reading " + originalReading.getElementId() + "!");
             }
-            try (Transaction tx = db.beginTx()) {
-                // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
-                newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
-                newSequences.add(ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer")));
-                ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"), "end");
-                ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"), "start");
-                tx.commit();
-            }
+            // Store the added/changed SEQUENCE links, so that they go into the new GraphModel
+            newSequences.add(ReadingService.addWitnessLink(prior, addedReading, witness.get("sigil"), witness.get("layer")));
+            newSequences.add(ReadingService.addWitnessLink(addedReading, next, witness.get("sigil"), witness.get("layer")));
+            ReadingService.removeWitnessLink(prior, originalReading, witness.get("sigil"), witness.get("layer"), "end");
+            ReadingService.removeWitnessLink(originalReading, next, witness.get("sigil"), witness.get("layer"), "start");
         }
         ArrayList<SequenceModel> sequenceModels = new ArrayList<>();
         newSequences.forEach(x -> sequenceModels.add(new SequenceModel(x)));
@@ -714,31 +678,28 @@ public class Reading {
         ArrayList<RelationModel> tempDeleted = new ArrayList<>();
         String sectId = originalReading.getProperty("section_id").toString();
         Long ourRank = (Long) originalReading.getProperty("rank");
-        try (Transaction tx = db.beginTx()) {
-            for (RelationModel rm : VariantGraphService.sectionRelations(tx, sectId)) {
-                Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
-                if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
-                        (rm.getSource().equals(originalReading.getElementId()) ||
-                                rm.getTarget().equals(originalReading.getElementId()))) {
-                    Relationship newRel = addedReading.createRelationshipTo(
-                            originalRel.getOtherNode(originalReading),
-                            ERelations.RELATED);
-                    for (String key : originalRel.getPropertyKeys()) {
-                        newRel.setProperty(key, originalRel.getProperty(key));
-                    }
-                } else if (!(originalRel.hasProperty("colocation") &&
-                        originalRel.getProperty("colocation").equals(true))) {
-                    // Get the related readings
-                    ReadingModel relSource = new ReadingModel(tx.getNodeByElementId(rm.getSource()));
-                    ReadingModel relTarget = new ReadingModel(tx.getNodeByElementId(rm.getTarget()));
-                    if ((relSource.getRank() < ourRank && relTarget.getRank() > ourRank)
-                            || (relSource.getRank() > ourRank && relTarget.getRank() < ourRank)) {
-                        originalRel.delete();
-                        tempDeleted.add(rm);
-                    }
+        for (RelationModel rm : VariantGraphService.sectionRelations(tx, sectId)) {
+            Relationship originalRel = tx.getRelationshipByElementId(rm.getId());
+            if (originalRel.hasProperty("colocation") && originalRel.getProperty("colocation").equals(true) &&
+                    (rm.getSource().equals(originalReading.getElementId()) ||
+                            rm.getTarget().equals(originalReading.getElementId()))) {
+                Relationship newRel = addedReading.createRelationshipTo(
+                        originalRel.getOtherNode(originalReading),
+                        ERelations.RELATED);
+                for (String key : originalRel.getPropertyKeys()) {
+                    newRel.setProperty(key, originalRel.getProperty(key));
+                }
+            } else if (!(originalRel.hasProperty("colocation") &&
+                    originalRel.getProperty("colocation").equals(true))) {
+                // Get the related readings
+                ReadingModel relSource = new ReadingModel(tx.getNodeByElementId(rm.getSource()));
+                ReadingModel relTarget = new ReadingModel(tx.getNodeByElementId(rm.getTarget()));
+                if ((relSource.getRank() < ourRank && relTarget.getRank() > ourRank)
+                        || (relSource.getRank() > ourRank && relTarget.getRank() < ourRank)) {
+                    originalRel.delete();
+                    tempDeleted.add(rm);
                 }
             }
-            tx.commit();
         }
 
         return new GraphModel(new ArrayList<>(), tempDeleted, sequenceModels);
@@ -763,7 +724,7 @@ public class Reading {
     @Path("merge/{secondReadId}")
     @Produces("application/json; charset=utf-8")
     @ReturnType(clazz = GraphModel.class)
-    public Response mergeReadings(@PathParam("secondReadId") long secondReadId) {
+    public Response mergeWithReading(@PathParam("secondReadId") long secondReadId) {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
         GraphModel result;
 
@@ -795,18 +756,11 @@ public class Reading {
             // TEMPORARY: Check that all affected witnesses still have paths to the end node
             for (String sig : drm.getWitnesses()) {
                 HashMap<String, String> parts = parseSigil(sig);
-                Witness w = new Witness(traditionId, keepingReading.getProperty("section_id").toString(), parts.get("sigil"));
-                Response r;
-                if (parts.get("layer").equals("witnesses"))
-                    r = w.getWitnessAsText();
-                else {
-                    ArrayList<String> layers = new ArrayList<>();
-                    layers.add(parts.get("layer"));
-                    r = w.getWitnessAsTextWithLayer(layers, "0", "E");
-                }
-                if (r.getStatus() != Status.OK.getStatusCode()) {
-                    throw new Exception ("Merge broke path for witness " + sig);
-                }
+                ArrayList<String> checkLayer = new ArrayList<>();
+                if (!parts.get("layer").equals("witnesses"))
+                    checkLayer.add(parts.get("layer"));
+                // This will throw an IllegalStateException if it doesn't work
+                VariantGraphService.getWitnessText(tx, traditionId, drm.getSection(), parts.get("sigil"), checkLayer, 0, Long.MAX_VALUE);
             }
             // Re-rank nodes if necessary
             if (!samerank) {
@@ -1024,16 +978,18 @@ public class Reading {
     public Response getNextReadingInWitness(@PathParam("witnessId") String witnessId,
                                             @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
-        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.OUTGOING);
-        if (foundNeighbour != null) {
-            ReadingModel result = new ReadingModel(foundNeighbour);
-            if (result.getIs_end()) {
-                errorMessage = "this was the last reading for this witness";
-                return errorResponse(Status.NOT_FOUND);
+        try (Transaction tx = db.beginTx()) {
+            Node foundNeighbour = getNeighbourReadingInSequence(tx, readId, witnessId, layer, Direction.OUTGOING);
+            if (foundNeighbour != null) {
+                ReadingModel result = new ReadingModel(foundNeighbour);
+                if (result.getIs_end()) {
+                    errorMessage = "this was the last reading for this witness";
+                    return errorResponse(Status.NOT_FOUND);
+                }
+                return Response.ok(new ReadingModel(foundNeighbour)).build();
             }
-            return Response.ok(new ReadingModel(foundNeighbour)).build();
+            return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
         }
-        return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -1056,76 +1012,18 @@ public class Reading {
     public Response getPreviousReadingInWitness(@PathParam("witnessId") String witnessId,
                                                 @DefaultValue("witnesses") @QueryParam("layer") String layer) {
         if ("-1".equals(readId)) return Response.status(Status.NOT_FOUND).build();
-        Node foundNeighbour = getNeighbourReadingInSequence(witnessId, layer, Direction.INCOMING);
-        if (foundNeighbour != null) {
-            ReadingModel result = new ReadingModel(foundNeighbour);
-            if (result.getIs_start()) {
-                errorMessage = "this was the first reading for this witness";
-                return errorResponse(Status.NOT_FOUND);
-            }
-            return Response.ok(new ReadingModel(foundNeighbour)).build();
-        }
-        return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
-    }
-
-    // Gets the neighbour reading in the given direction for the given witness. Returns
-    // the relevant ReadingModel, or sets errorMessage and returns null.
-    private Node getNeighbourReadingInSequence(String witnessId, String layer, Direction dir) {
-        Node neighbour = null;
         try (Transaction tx = db.beginTx()) {
-            Node read = tx.getNodeByElementId(readId);
-            // Sanity check: does the requested witness+layer actually exist in this node in
-            // either direction?
-            ReadingModel rm = new ReadingModel(read);
-            if (!layer.equals("witnesses")) { // if the base witness isn't here we will error below anyway
-                String wholesigil = String.format("%s (%s)", witnessId, layer);
-                if (!rm.getWitnesses().contains(wholesigil)) {
-                    errorMessage = "Requested witness layer " + wholesigil + "does not pass through this node";
-                    return null;
+            Node foundNeighbour = getNeighbourReadingInSequence(tx, readId, witnessId, layer, Direction.INCOMING);
+            if (foundNeighbour != null) {
+                ReadingModel result = new ReadingModel(foundNeighbour);
+                if (result.getIs_start()) {
+                    errorMessage = "this was the first reading for this witness";
+                    return errorResponse(Status.NOT_FOUND);
                 }
-
+                return Response.ok(new ReadingModel(foundNeighbour)).build();
             }
-            String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
-            Iterable<Relationship> seqs = read.getRelationships(dir, ERelations.SEQUENCE);
-            // Get the list of relations matching the given layer
-            Collection<Relationship> matching = StreamSupport.stream(seqs.spliterator(), false)
-                    .filter(x -> isPathFor(x, witnessId, layer))
-                    .collect(Collectors.toList());
-            // If none and we are looking for a layer, re-fetch the list of relations matching the base layer
-            if (matching.isEmpty() && !layer.equals("witnesses")) {
-                matching = StreamSupport.stream(seqs.spliterator(), false)
-                        .filter(x -> isPathFor(x, witnessId, "witnesses"))
-                        .toList();
-            }
-            // We should now have exactly one matching sequence.
-            if (matching.size() != 1) {
-                errorMessage = matching.isEmpty()
-                        ? "There is no " + dirdisplay + " reading!"
-                        : "There is more than one " + dirdisplay + " reading!";
-            } else {
-                neighbour = matching.iterator().next().getOtherNode(read);
-            }
-            tx.commit();
-        } catch (NotFoundException e) {
-            errorMessage = e.getMessage();
-        } catch (Exception e) {
-            e.printStackTrace();
-            errorMessage = e.getMessage();
+            return errorResponse(errorMessage.contains("not found") ? Status.NOT_FOUND : Status.INTERNAL_SERVER_ERROR);
         }
-        return neighbour;
-    }
-
-    // Assumes that we are already in a transaction!
-    // Returns true if the sequence contains the given witness layer.
-    private Boolean isPathFor(Relationship sequence, String sigil, String layer) {
-        if (sequence.hasProperty(layer)) {
-            String[] wits = (String []) sequence.getProperty(layer);
-            for (String wit : wits) {
-                if (wit.equals(sigil))
-                    return true;
-            }
-        }
-        return false;
     }
 
     // Small utility function for parsing witness sigla

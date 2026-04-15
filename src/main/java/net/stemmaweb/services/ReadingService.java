@@ -1,22 +1,10 @@
 package net.stemmaweb.services;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.neo4j.graphdb.Direction;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Path;
-import org.neo4j.graphdb.PathExpander;
-import org.neo4j.graphdb.Relationship;
-import org.neo4j.graphdb.RelationshipType;
-import org.neo4j.graphdb.ResourceIterable;
-import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.traversal.BranchState;
 import org.neo4j.graphdb.traversal.Evaluation;
 import org.neo4j.graphdb.traversal.Evaluator;
@@ -86,6 +74,34 @@ public class ReadingService {
             return Arrays.asList(wits).contains(sigil);
         }
         return false;
+    }
+
+    public static HashSet<String> collectWitnesses(Transaction tx, String readId, Boolean includeAllLayers) {
+        return collectWitnesses(tx.getNodeByElementId(readId), includeAllLayers);
+    }
+
+    public static HashSet<String> collectWitnesses(Node reading, Boolean includeAllLayers) {
+        HashSet<String> normalWitnesses = new HashSet<>();
+        // Look at all incoming SEQUENCE relationships to the reading
+        // First get the "normal" witnesses
+        Iterable<Relationship> readingSeqs = reading.getRelationships(Direction.BOTH, ERelations.SEQUENCE);
+        for (Relationship r : readingSeqs)
+            if (r.hasProperty("witnesses"))
+                Collections.addAll(normalWitnesses, (String[]) r.getProperty("witnesses"));
+        // Now look for the specials, and add them if they are not in the normal witnesses
+        for (Relationship r : readingSeqs) {
+            for (String prop : r.getPropertyKeys()) {
+                if (prop.equals("witnesses"))
+                    continue;
+                String[] specialWits = (String[]) r.getProperty(prop);
+                for (String w : specialWits) {
+                    if (normalWitnesses.contains(w) && !includeAllLayers)
+                        continue;
+                    normalWitnesses.add(w + " (" + prop + ")");
+                }
+            }
+        }
+        return normalWitnesses;
     }
 
     /**
@@ -307,6 +323,53 @@ public class ReadingService {
                 addWitnessLink(priorNode, thisToExtra.get(extra), w, extra);
             }
         }
+    }
+
+    // Gets the neighbour reading in the given direction for the given witness. Returns
+    // the relevant ReadingModel, or sets errorMessage and returns null.
+    public static Node getNeighbourReadingInSequence(Transaction tx, String readId, String witnessId, String layer, Direction dir) {
+        Node read = tx.getNodeByElementId(readId);
+        // Sanity check: does the requested witness+layer actually exist in this node in
+        // either direction?
+        ReadingModel rm = new ReadingModel(read);
+        if (!layer.equals("witnesses")) { // if the base witness isn't here we will error below anyway
+            String wholesigil = String.format("%s (%s)", witnessId, layer);
+            if (!rm.getWitnesses().contains(wholesigil))
+                throw new IllegalArgumentException("Requested witness layer " + wholesigil + "does not pass through this node");
+        }
+        String dirdisplay = dir.equals(Direction.INCOMING) ? "prior" : "next";
+        Iterable<Relationship> seqs = read.getRelationships(dir, ERelations.SEQUENCE);
+        // Get the list of relations matching the given layer
+        Collection<Relationship> matching = StreamSupport.stream(seqs.spliterator(), false)
+                .filter(x -> isPathFor(x, witnessId, layer))
+                .collect(Collectors.toList());
+        // If none and we are looking for a layer, re-fetch the list of relations matching the base layer
+        if (matching.isEmpty() && !layer.equals("witnesses")) {
+            matching = StreamSupport.stream(seqs.spliterator(), false)
+                    .filter(x -> isPathFor(x, witnessId, "witnesses"))
+                    .toList();
+        }
+        // We should now have exactly one matching sequence.
+        if (matching.size() != 1) {
+            String errorMessage = matching.isEmpty()
+                    ? "There is no " + dirdisplay + " reading!"
+                    : "There is more than one " + dirdisplay + " reading!";
+            throw new RuntimeException(errorMessage);
+        }
+
+        return matching.iterator().next().getOtherNode(read);
+    }
+
+    // Returns true if the sequence contains the given witness layer.
+    private static Boolean isPathFor(Relationship sequence, String sigil, String layer) {
+        if (sequence.hasProperty(layer)) {
+            String[] wits = (String []) sequence.getProperty(layer);
+            for (String wit : wits) {
+                if (wit.equals(sigil))
+                    return true;
+            }
+        }
+        return false;
     }
 
     public static String textOfReadings(List<ReadingModel> rml, Boolean normal, Boolean show_gaps) {

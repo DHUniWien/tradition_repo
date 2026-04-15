@@ -14,6 +14,7 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import net.stemmaweb.services.RelationService;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Entity;
 import org.neo4j.graphdb.Node;
@@ -22,11 +23,9 @@ import org.neo4j.graphdb.Transaction;
 
 import jakarta.ws.rs.core.Response;
 import net.stemmaweb.model.RelationModel;
-import net.stemmaweb.model.RelationTypeModel;
 import net.stemmaweb.model.StemmaModel;
 import net.stemmaweb.rest.ERelations;
 import net.stemmaweb.rest.Nodes;
-import net.stemmaweb.rest.RelationType;
 import net.stemmaweb.services.ReadingService;
 import net.stemmaweb.services.VariantGraphService;
 
@@ -135,13 +134,12 @@ public class StemmawebParser {
 											relship.setProperty("type", typeName);
 											// Make sure this relationship type exists
 											if (!relationtypes.contains(typeName)) {
-												RelationTypeModel rtm = new RelationTypeModel();
-												rtm.setName(typeName);
-												rtm.setDefaultsettings(true);
-												Response rtResult = new RelationType(tradId, typeName).create(rtm);
-												if (rtResult.getStatus() == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
-													return rtResult;
-												else relationtypes.add(typeName);
+												try {
+													RelationService.makeDefaultType(tx, traditionNode, typeName);
+												} catch (Exception e) {
+													return Response.serverError().entity(jsonerror("Error creating default relation type: " + e.getMessage())).build();
+												}
+												relationtypes.add(typeName);
 											}
 										}
 										if (currentRelModel.getA_derivable_from_b() != null)
